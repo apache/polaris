@@ -70,7 +70,7 @@ public class PolarisSparkCatalog implements TableCatalog {
   public Table loadTable(Identifier identifier) throws NoSuchTableException {
     try {
       GenericTable genericTable =
-          this.polarisCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
+              this.polarisCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
       // Currently Hudi supports Spark Datasource V1, therefore we return a V1Table
       if (PolarisCatalogUtils.useHudi(genericTable.format())) {
         return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
@@ -85,11 +85,11 @@ public class PolarisSparkCatalog implements TableCatalog {
   @Override
   @SuppressWarnings({"deprecation", "RedundantSuppression"})
   public Table createTable(
-      Identifier identifier,
-      StructType schema,
-      Transform[] transforms,
-      Map<String, String> properties)
-      throws TableAlreadyExistsException, NoSuchNamespaceException {
+          Identifier identifier,
+          StructType schema,
+          Transform[] transforms,
+          Map<String, String> properties)
+          throws TableAlreadyExistsException, NoSuchNamespaceException {
     try {
       String format = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
 
@@ -102,20 +102,20 @@ public class PolarisSparkCatalog implements TableCatalog {
         baseLocation = properties.get(TableCatalog.PROP_LOCATION);
         if (properties.get(PolarisCatalogUtils.TABLE_PATH_KEY) != null) {
           LOGGER.debug(
-              "Both location and path are propagated in the table properties, location {}, path {}",
-              baseLocation,
-              properties.get(PolarisCatalogUtils.TABLE_PATH_KEY));
+                  "Both location and path are propagated in the table properties, location {}, path {}",
+                  baseLocation,
+                  properties.get(PolarisCatalogUtils.TABLE_PATH_KEY));
         }
       } else {
         baseLocation = properties.get(PolarisCatalogUtils.TABLE_PATH_KEY);
       }
       GenericTable genericTable =
-          this.polarisCatalog.createGenericTable(
-              Spark3Util.identifierToTableIdentifier(identifier),
-              format,
-              baseLocation,
-              null,
-              properties);
+              this.polarisCatalog.createGenericTable(
+                      Spark3Util.identifierToTableIdentifier(identifier),
+                      format,
+                      baseLocation,
+                      null,
+                      properties);
       // Currently Hudi supports Spark Datasource V1, therefore we return a V1Table
       if (PolarisCatalogUtils.useHudi(format)) {
         return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
@@ -129,7 +129,7 @@ public class PolarisSparkCatalog implements TableCatalog {
 
   @Override
   public Table alterTable(Identifier identifier, TableChange... changes)
-      throws NoSuchTableException {
+          throws NoSuchTableException {
     // alterTable currently is not supported for generic tables
     throw new UnsupportedOperationException("alterTable operation is not supported");
   }
@@ -147,7 +147,7 @@ public class PolarisSparkCatalog implements TableCatalog {
 
   @Override
   public void renameTable(Identifier from, Identifier to)
-      throws NoSuchTableException, TableAlreadyExistsException {
+          throws NoSuchTableException, TableAlreadyExistsException {
     throw new UnsupportedOperationException("renameTable operation is not supported");
   }
 
@@ -155,8 +155,8 @@ public class PolarisSparkCatalog implements TableCatalog {
   public Identifier[] listTables(String[] namespace) {
     try {
       return this.polarisCatalog.listGenericTables(Namespace.of(namespace)).stream()
-          .map(ident -> Identifier.of(ident.namespace().levels(), ident.name()))
-          .toArray(Identifier[]::new);
+              .map(ident -> Identifier.of(ident.namespace().levels(), ident.name()))
+              .toArray(Identifier[]::new);
     } catch (UnsupportedOperationException ex) {
       return new Identifier[0];
     }

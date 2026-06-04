@@ -113,7 +113,7 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
     this.pageSize = PropertyUtil.propertyAsNullableInt(mergedProps, REST_PAGE_SIZE);
     if (pageSize != null) {
       Preconditions.checkArgument(
-          pageSize > 0, "Invalid value for %s, must be a positive integer", REST_PAGE_SIZE);
+              pageSize > 0, "Invalid value for %s, must be a positive integer", REST_PAGE_SIZE);
     }
 
     this.closeables = new CloseableGroup();
@@ -122,24 +122,24 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   }
 
   protected static ConfigResponse fetchConfig(
-      RESTClient client, Map<String, String> headers, Map<String, String> properties) {
+          RESTClient client, Map<String, String> headers, Map<String, String> properties) {
     // send the client's warehouse location to the service to keep in sync
     // this is needed for cases where the warehouse is configured at client side,
     // and used by Polaris server as catalog name.
     ImmutableMap.Builder<String, String> queryParams = ImmutableMap.builder();
     if (properties.containsKey(CatalogProperties.WAREHOUSE_LOCATION)) {
       queryParams.put(
-          CatalogProperties.WAREHOUSE_LOCATION,
-          properties.get(CatalogProperties.WAREHOUSE_LOCATION));
+              CatalogProperties.WAREHOUSE_LOCATION,
+              properties.get(CatalogProperties.WAREHOUSE_LOCATION));
     }
 
     ConfigResponse configResponse =
-        client.get(
-            ResourcePaths.config(),
-            queryParams.build(),
-            ConfigResponse.class,
-            headers,
-            ErrorHandlers.defaultErrorHandler());
+            client.get(
+                    ResourcePaths.config(),
+                    queryParams.build(),
+                    ConfigResponse.class,
+                    headers,
+                    ErrorHandlers.defaultErrorHandler());
     configResponse.validate();
     return configResponse;
   }
@@ -165,14 +165,14 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
     do {
       queryParams.put("pageToken", pageToken);
       ListGenericTablesRESTResponse response =
-          restClient
-              .withAuthSession(this.catalogAuth)
-              .get(
-                  pathGenerator.genericTables(ns),
-                  queryParams,
-                  ListGenericTablesRESTResponse.class,
-                  Map.of(),
-                  ErrorHandlers.namespaceErrorHandler());
+              restClient
+                      .withAuthSession(this.catalogAuth)
+                      .get(
+                              pathGenerator.genericTables(ns),
+                              queryParams,
+                              ListGenericTablesRESTResponse.class,
+                              Map.of(),
+                              ErrorHandlers.namespaceErrorHandler());
       pageToken = response.getNextPageToken();
       tables.addAll(response.getIdentifiers());
     } while (pageToken != null);
@@ -186,12 +186,12 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
 
     try {
       restClient
-          .withAuthSession(this.catalogAuth)
-          .delete(
-              pathGenerator.genericTable(identifier),
-              null,
-              Map.of(),
-              ErrorHandlers.tableErrorHandler());
+              .withAuthSession(this.catalogAuth)
+              .delete(
+                      pathGenerator.genericTable(identifier),
+                      null,
+                      Map.of(),
+                      ErrorHandlers.tableErrorHandler());
       return true;
     } catch (NoSuchTableException e) {
       return false;
@@ -200,31 +200,31 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
 
   @Override
   public GenericTable createGenericTable(
-      TableIdentifier identifier,
-      String format,
-      String baseLocation,
-      String doc,
-      Map<String, String> props) {
+          TableIdentifier identifier,
+          String format,
+          String baseLocation,
+          String doc,
+          Map<String, String> props) {
     Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
     CreateGenericTableRESTRequest request =
-        new CreateGenericTableRESTRequest(
-            CreateGenericTableRequest.builder()
-                .setName(identifier.name())
-                .setFormat(format)
-                .setBaseLocation(baseLocation)
-                .setDoc(doc)
-                .setProperties(props)
-                .build());
+            new CreateGenericTableRESTRequest(
+                    CreateGenericTableRequest.builder()
+                            .setName(identifier.name())
+                            .setFormat(format)
+                            .setBaseLocation(baseLocation)
+                            .setDoc(doc)
+                            .setProperties(props)
+                            .build());
 
     LoadGenericTableRESTResponse response =
-        restClient
-            .withAuthSession(this.catalogAuth)
-            .post(
-                pathGenerator.genericTables(identifier.namespace()),
-                request,
-                LoadGenericTableRESTResponse.class,
-                Map.of(),
-                ErrorHandlers.tableErrorHandler());
+            restClient
+                    .withAuthSession(this.catalogAuth)
+                    .post(
+                            pathGenerator.genericTables(identifier.namespace()),
+                            request,
+                            LoadGenericTableRESTResponse.class,
+                            Map.of(),
+                            ErrorHandlers.tableErrorHandler());
 
     return response.getTable();
   }
@@ -233,14 +233,14 @@ public class PolarisRESTCatalog implements PolarisCatalog, Closeable {
   public GenericTable loadGenericTable(TableIdentifier identifier) {
     Endpoint.check(endpoints, PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
     LoadGenericTableRESTResponse response =
-        restClient
-            .withAuthSession(this.catalogAuth)
-            .get(
-                pathGenerator.genericTable(identifier),
-                null,
-                LoadGenericTableRESTResponse.class,
-                Map.of(),
-                ErrorHandlers.tableErrorHandler());
+            restClient
+                    .withAuthSession(this.catalogAuth)
+                    .get(
+                            pathGenerator.genericTable(identifier),
+                            null,
+                            LoadGenericTableRESTResponse.class,
+                            Map.of(),
+                            ErrorHandlers.tableErrorHandler());
 
     return response.getTable();
   }

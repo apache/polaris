@@ -35,10 +35,10 @@ public class PaimonHelperTest {
   @Test
   public void testLoadPaimonCatalogWithNoopPaimonCatalog() {
     CaseInsensitiveStringMap options =
-        new CaseInsensitiveStringMap(
-            ImmutableMap.of(
-                PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
-                "org.apache.polaris.spark.NoopPaimonCatalog"));
+            new CaseInsensitiveStringMap(
+                    ImmutableMap.of(
+                            PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
+                            "org.apache.polaris.spark.NoopPaimonCatalog"));
     PaimonHelper helper = new PaimonHelper(options);
     PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 
@@ -52,10 +52,10 @@ public class PaimonHelperTest {
   @Test
   public void testLoadPaimonCatalogCachesInstance() {
     CaseInsensitiveStringMap options =
-        new CaseInsensitiveStringMap(
-            ImmutableMap.of(
-                PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
-                "org.apache.polaris.spark.NoopPaimonCatalog"));
+            new CaseInsensitiveStringMap(
+                    ImmutableMap.of(
+                            PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
+                            "org.apache.polaris.spark.NoopPaimonCatalog"));
     PaimonHelper helper = new PaimonHelper(options);
     PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 
@@ -69,24 +69,24 @@ public class PaimonHelperTest {
   @Test
   public void testLoadPaimonCatalogWithNonExistentClass() {
     CaseInsensitiveStringMap options =
-        new CaseInsensitiveStringMap(
-            ImmutableMap.of(
-                PaimonHelper.PAIMON_CATALOG_IMPL_KEY, "com.example.NonExistentPaimonCatalog"));
+            new CaseInsensitiveStringMap(
+                    ImmutableMap.of(
+                            PaimonHelper.PAIMON_CATALOG_IMPL_KEY, "com.example.NonExistentPaimonCatalog"));
     PaimonHelper helper = new PaimonHelper(options);
     PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 
     assertThatThrownBy(() -> helper.loadPaimonCatalog(polarisSparkCatalog))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Cannot initialize Paimon Catalog")
-        .hasMessageContaining("com.example.NonExistentPaimonCatalog");
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Cannot initialize Paimon Catalog")
+            .hasMessageContaining("com.example.NonExistentPaimonCatalog");
   }
 
   @Test
   public void testLoadPaimonCatalogWithCaseInsensitiveOptions() {
     // Test that options are case-insensitive
     CaseInsensitiveStringMap options =
-        new CaseInsensitiveStringMap(
-            ImmutableMap.of("PAIMON-CATALOG-IMPL", "org.apache.polaris.spark.NoopPaimonCatalog"));
+            new CaseInsensitiveStringMap(
+                    ImmutableMap.of("PAIMON-CATALOG-IMPL", "org.apache.polaris.spark.NoopPaimonCatalog"));
     PaimonHelper helper = new PaimonHelper(options);
     PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 
@@ -99,10 +99,10 @@ public class PaimonHelperTest {
   @Test
   public void testLoadPaimonCatalogSetsDelegateCatalog() {
     CaseInsensitiveStringMap options =
-        new CaseInsensitiveStringMap(
-            ImmutableMap.of(
-                PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
-                "org.apache.polaris.spark.NoopPaimonCatalog"));
+            new CaseInsensitiveStringMap(
+                    ImmutableMap.of(
+                            PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
+                            "org.apache.polaris.spark.NoopPaimonCatalog"));
     PaimonHelper helper = new PaimonHelper(options);
     PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 

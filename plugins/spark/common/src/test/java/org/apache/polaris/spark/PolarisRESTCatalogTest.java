@@ -66,16 +66,16 @@ public class PolarisRESTCatalogTest {
   @Test
   public void testInitializeWithDefaultEndpoints() {
     ConfigResponse configResponse =
-        ConfigResponse.builder()
-            .withDefaults(ImmutableMap.of())
-            .withOverrides(ImmutableMap.of())
-            .build();
+            ConfigResponse.builder()
+                    .withDefaults(ImmutableMap.of())
+                    .withOverrides(ImmutableMap.of())
+                    .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
-        .thenReturn(configResponse);
+            .thenReturn(configResponse);
 
     Map<String, String> properties =
-        ImmutableMap.of(CatalogProperties.URI, "http://localhost:8181");
+            ImmutableMap.of(CatalogProperties.URI, "http://localhost:8181");
 
     catalog.initialize(properties, mockAuthSession);
 
@@ -85,20 +85,20 @@ public class PolarisRESTCatalogTest {
   @Test
   public void testInitializeWithCustomEndpoints() {
     ConfigResponse configResponse =
-        ConfigResponse.builder()
-            .withDefaults(ImmutableMap.of())
-            .withOverrides(ImmutableMap.of())
-            .withEndpoints(
-                ImmutableList.of(
-                    PolarisEndpoints.V1_LIST_GENERIC_TABLES,
-                    PolarisEndpoints.V1_CREATE_GENERIC_TABLE))
-            .build();
+            ConfigResponse.builder()
+                    .withDefaults(ImmutableMap.of())
+                    .withOverrides(ImmutableMap.of())
+                    .withEndpoints(
+                            ImmutableList.of(
+                                    PolarisEndpoints.V1_LIST_GENERIC_TABLES,
+                                    PolarisEndpoints.V1_CREATE_GENERIC_TABLE))
+                    .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
-        .thenReturn(configResponse);
+            .thenReturn(configResponse);
 
     Map<String, String> properties =
-        ImmutableMap.of(CatalogProperties.URI, "http://localhost:8181");
+            ImmutableMap.of(CatalogProperties.URI, "http://localhost:8181");
 
     catalog.initialize(properties, mockAuthSession);
 
@@ -108,20 +108,20 @@ public class PolarisRESTCatalogTest {
   @Test
   public void testInitializeWithPageSize() {
     ConfigResponse configResponse =
-        ConfigResponse.builder()
-            .withDefaults(ImmutableMap.of())
-            .withOverrides(ImmutableMap.of())
-            .build();
+            ConfigResponse.builder()
+                    .withDefaults(ImmutableMap.of())
+                    .withOverrides(ImmutableMap.of())
+                    .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
-        .thenReturn(configResponse);
+            .thenReturn(configResponse);
 
     Map<String, String> properties =
-        ImmutableMap.of(
-            CatalogProperties.URI,
-            "http://localhost:8181",
-            PolarisRESTCatalog.REST_PAGE_SIZE,
-            "10");
+            ImmutableMap.of(
+                    CatalogProperties.URI,
+                    "http://localhost:8181",
+                    PolarisRESTCatalog.REST_PAGE_SIZE,
+                    "10");
 
     catalog.initialize(properties, mockAuthSession);
 
@@ -131,31 +131,31 @@ public class PolarisRESTCatalogTest {
   @Test
   public void testInitializeWithInvalidPageSize() {
     ConfigResponse configResponse =
-        ConfigResponse.builder()
-            .withDefaults(ImmutableMap.of())
-            .withOverrides(ImmutableMap.of())
-            .build();
+            ConfigResponse.builder()
+                    .withDefaults(ImmutableMap.of())
+                    .withOverrides(ImmutableMap.of())
+                    .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
-        .thenReturn(configResponse);
+            .thenReturn(configResponse);
 
     Map<String, String> properties =
-        ImmutableMap.of(
-            CatalogProperties.URI,
-            "http://localhost:8181",
-            PolarisRESTCatalog.REST_PAGE_SIZE,
-            "-1");
+            ImmutableMap.of(
+                    CatalogProperties.URI,
+                    "http://localhost:8181",
+                    PolarisRESTCatalog.REST_PAGE_SIZE,
+                    "-1");
 
     assertThatThrownBy(() -> catalog.initialize(properties, mockAuthSession))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("must be a positive integer");
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("must be a positive integer");
   }
 
   @Test
   public void testInitializeWithNullConfig() {
     assertThatThrownBy(() -> catalog.initialize(null, mockAuthSession))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Invalid configuration: null");
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Invalid configuration: null");
   }
 
   @Test
@@ -167,10 +167,10 @@ public class PolarisRESTCatalogTest {
     TableIdentifier table2 = TableIdentifier.of(namespace, "table2");
 
     ListGenericTablesRESTResponse response =
-        new ListGenericTablesRESTResponse(null, ImmutableSet.of(table1, table2));
+            new ListGenericTablesRESTResponse(null, ImmutableSet.of(table1, table2));
 
     when(mockClient.get(any(), anyMap(), eq(ListGenericTablesRESTResponse.class), anyMap(), any()))
-        .thenReturn(response);
+            .thenReturn(response);
 
     List<TableIdentifier> tables = catalog.listGenericTables(namespace);
 
@@ -181,17 +181,17 @@ public class PolarisRESTCatalogTest {
   @Test
   public void testListGenericTablesWithPagination() {
     ConfigResponse configResponse =
-        ConfigResponse.builder()
-            .withDefaults(ImmutableMap.of())
-            .withOverrides(ImmutableMap.of())
-            .build();
+            ConfigResponse.builder()
+                    .withDefaults(ImmutableMap.of())
+                    .withOverrides(ImmutableMap.of())
+                    .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
-        .thenReturn(configResponse);
+            .thenReturn(configResponse);
 
     Map<String, String> properties =
-        ImmutableMap.of(
-            CatalogProperties.URI, "http://localhost:8181", PolarisRESTCatalog.REST_PAGE_SIZE, "2");
+            ImmutableMap.of(
+                    CatalogProperties.URI, "http://localhost:8181", PolarisRESTCatalog.REST_PAGE_SIZE, "2");
 
     catalog.initialize(properties, mockAuthSession);
 
@@ -201,12 +201,12 @@ public class PolarisRESTCatalogTest {
     TableIdentifier table3 = TableIdentifier.of(namespace, "table3");
 
     ListGenericTablesRESTResponse response1 =
-        new ListGenericTablesRESTResponse("page2", ImmutableSet.of(table1, table2));
+            new ListGenericTablesRESTResponse("page2", ImmutableSet.of(table1, table2));
     ListGenericTablesRESTResponse response2 =
-        new ListGenericTablesRESTResponse(null, ImmutableSet.of(table3));
+            new ListGenericTablesRESTResponse(null, ImmutableSet.of(table3));
 
     when(mockClient.get(any(), anyMap(), eq(ListGenericTablesRESTResponse.class), anyMap(), any()))
-        .thenReturn(response1, response2);
+            .thenReturn(response1, response2);
 
     List<TableIdentifier> tables = catalog.listGenericTables(namespace);
 
@@ -220,22 +220,22 @@ public class PolarisRESTCatalogTest {
 
     TableIdentifier identifier = TableIdentifier.of("test_ns", "test_table");
     GenericTable table =
-        GenericTable.builder()
-            .name("test_table")
-            .format("delta")
-            .baseLocation("s3://bucket/path")
-            .doc("Test table")
-            .properties(ImmutableMap.of("key", "value"))
-            .build();
+            GenericTable.builder()
+                    .name("test_table")
+                    .format("delta")
+                    .baseLocation("s3://bucket/path")
+                    .doc("Test table")
+                    .properties(ImmutableMap.of("key", "value"))
+                    .build();
 
     LoadGenericTableRESTResponse response = new LoadGenericTableRESTResponse(table);
 
     when(mockClient.post(any(), any(), eq(LoadGenericTableRESTResponse.class), anyMap(), any()))
-        .thenReturn(response);
+            .thenReturn(response);
 
     GenericTable result =
-        catalog.createGenericTable(
-            identifier, "delta", "s3://bucket/path", "Test table", ImmutableMap.of("key", "value"));
+            catalog.createGenericTable(
+                    identifier, "delta", "s3://bucket/path", "Test table", ImmutableMap.of("key", "value"));
 
     assertThat(result.name()).isEqualTo("test_table");
     assertThat(result.format()).isEqualTo("delta");
@@ -252,7 +252,7 @@ public class PolarisRESTCatalogTest {
     LoadGenericTableRESTResponse response = new LoadGenericTableRESTResponse(table);
 
     when(mockClient.get(any(), any(), eq(LoadGenericTableRESTResponse.class), anyMap(), any()))
-        .thenReturn(response);
+            .thenReturn(response);
 
     GenericTable result = catalog.loadGenericTable(identifier);
 
@@ -280,7 +280,7 @@ public class PolarisRESTCatalogTest {
     TableIdentifier identifier = TableIdentifier.of("test_ns", "test_table");
 
     when(mockClient.delete(any(), any(), anyMap(), any()))
-        .thenThrow(new NoSuchTableException("Table not found"));
+            .thenThrow(new NoSuchTableException("Table not found"));
 
     boolean result = catalog.dropGenericTable(identifier);
 
@@ -292,20 +292,20 @@ public class PolarisRESTCatalogTest {
     RESTClient client = mock(RESTClient.class);
     Map<String, String> headers = ImmutableMap.of("Authorization", "Bearer token");
     Map<String, String> properties =
-        ImmutableMap.of(
-            CatalogProperties.URI,
-            "http://localhost:8181",
-            CatalogProperties.WAREHOUSE_LOCATION,
-            "s3://warehouse");
+            ImmutableMap.of(
+                    CatalogProperties.URI,
+                    "http://localhost:8181",
+                    CatalogProperties.WAREHOUSE_LOCATION,
+                    "s3://warehouse");
 
     ConfigResponse expectedResponse =
-        ConfigResponse.builder()
-            .withDefaults(ImmutableMap.of())
-            .withOverrides(ImmutableMap.of())
-            .build();
+            ConfigResponse.builder()
+                    .withDefaults(ImmutableMap.of())
+                    .withOverrides(ImmutableMap.of())
+                    .build();
 
     when(client.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
-        .thenReturn(expectedResponse);
+            .thenReturn(expectedResponse);
 
     ConfigResponse response = PolarisRESTCatalog.fetchConfig(client, headers, properties);
 
@@ -314,31 +314,31 @@ public class PolarisRESTCatalogTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Map<String, String>> queryParamsCaptor = ArgumentCaptor.forClass(Map.class);
     verify(client)
-        .get(any(), queryParamsCaptor.capture(), eq(ConfigResponse.class), anyMap(), any());
+            .get(any(), queryParamsCaptor.capture(), eq(ConfigResponse.class), anyMap(), any());
 
     Map<String, String> capturedParams = queryParamsCaptor.getValue();
     assertThat(capturedParams)
-        .containsEntry(CatalogProperties.WAREHOUSE_LOCATION, "s3://warehouse");
+            .containsEntry(CatalogProperties.WAREHOUSE_LOCATION, "s3://warehouse");
   }
 
   private void initializeCatalog() {
     ConfigResponse configResponse =
-        ConfigResponse.builder()
-            .withDefaults(ImmutableMap.of())
-            .withOverrides(ImmutableMap.of())
-            .withEndpoints(
-                ImmutableList.of(
-                    PolarisEndpoints.V1_LIST_GENERIC_TABLES,
-                    PolarisEndpoints.V1_CREATE_GENERIC_TABLE,
-                    PolarisEndpoints.V1_LOAD_GENERIC_TABLE,
-                    PolarisEndpoints.V1_DELETE_GENERIC_TABLE))
-            .build();
+            ConfigResponse.builder()
+                    .withDefaults(ImmutableMap.of())
+                    .withOverrides(ImmutableMap.of())
+                    .withEndpoints(
+                            ImmutableList.of(
+                                    PolarisEndpoints.V1_LIST_GENERIC_TABLES,
+                                    PolarisEndpoints.V1_CREATE_GENERIC_TABLE,
+                                    PolarisEndpoints.V1_LOAD_GENERIC_TABLE,
+                                    PolarisEndpoints.V1_DELETE_GENERIC_TABLE))
+                    .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
-        .thenReturn(configResponse);
+            .thenReturn(configResponse);
 
     Map<String, String> properties =
-        ImmutableMap.of(CatalogProperties.URI, "http://localhost:8181");
+            ImmutableMap.of(CatalogProperties.URI, "http://localhost:8181");
 
     catalog.initialize(properties, mockAuthSession);
   }

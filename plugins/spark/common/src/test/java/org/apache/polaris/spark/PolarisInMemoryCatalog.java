@@ -43,9 +43,9 @@ public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCa
   @Override
   public List<TableIdentifier> listGenericTables(Namespace ns) {
     return this.genericTables.keySet().stream()
-        .filter(t -> t.namespace().equals(ns))
-        .sorted(Comparator.comparing(TableIdentifier::toString))
-        .collect(Collectors.toList());
+            .filter(t -> t.namespace().equals(ns))
+            .sorted(Comparator.comparing(TableIdentifier::toString))
+            .collect(Collectors.toList());
   }
 
   @Override
@@ -65,26 +65,26 @@ public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCa
 
   @Override
   public GenericTable createGenericTable(
-      TableIdentifier identifier,
-      String format,
-      String baseLocation,
-      String doc,
-      Map<String, String> props) {
+          TableIdentifier identifier,
+          String format,
+          String baseLocation,
+          String doc,
+          Map<String, String> props) {
     if (!namespaceExists(identifier.namespace())) {
       throw new NoSuchNamespaceException(
-          "Cannot create generic table %s. Namespace does not exist: %s",
-          identifier, identifier.namespace());
+              "Cannot create generic table %s. Namespace does not exist: %s",
+              identifier, identifier.namespace());
     }
 
     GenericTable previous =
-        this.genericTables.putIfAbsent(
-            identifier,
-            GenericTable.builder()
-                .name(identifier.name())
-                .format(format)
-                .baseLocation(baseLocation)
-                .properties(props)
-                .build());
+            this.genericTables.putIfAbsent(
+                    identifier,
+                    GenericTable.builder()
+                            .name(identifier.name())
+                            .format(format)
+                            .baseLocation(baseLocation)
+                            .properties(props)
+                            .build());
 
     if (previous != null) {
       throw new AlreadyExistsException("Generic table already exists: %s", identifier);

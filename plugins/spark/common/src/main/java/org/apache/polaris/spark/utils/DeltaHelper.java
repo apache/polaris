@@ -46,7 +46,7 @@ public class DeltaHelper {
 
   public static final String DELTA_CATALOG_IMPL_KEY = "delta-catalog-impl";
   private static final String DEFAULT_DELTA_CATALOG_CLASS =
-      "org.apache.spark.sql.delta.catalog.DeltaCatalog";
+          "org.apache.spark.sql.delta.catalog.DeltaCatalog";
 
   private TableCatalog deltaCatalog = null;
   private String deltaCatalogImpl = DEFAULT_DELTA_CATALOG_CLASS;
@@ -67,18 +67,18 @@ public class DeltaHelper {
       ctor = DynConstructors.builder(TableCatalog.class).impl(deltaCatalogImpl).buildChecked();
     } catch (NoSuchMethodException e) {
       throw new IllegalArgumentException(
-          String.format("Cannot initialize Delta Catalog %s: %s", deltaCatalogImpl, e.getMessage()),
-          e);
+              String.format("Cannot initialize Delta Catalog %s: %s", deltaCatalogImpl, e.getMessage()),
+              e);
     }
 
     try {
       this.deltaCatalog = ctor.newInstance();
     } catch (ClassCastException e) {
       throw new IllegalArgumentException(
-          String.format(
-              "Cannot initialize Delta Catalog, %s does not implement Table Catalog.",
-              deltaCatalogImpl),
-          e);
+              String.format(
+                      "Cannot initialize Delta Catalog, %s does not implement Table Catalog.",
+                      deltaCatalogImpl),
+              e);
     }
 
     // set the polaris spark catalog as the delegate catalog of delta catalog
@@ -110,7 +110,7 @@ public class DeltaHelper {
       field.set(this.deltaCatalog, true);
     } catch (NoSuchFieldException e) {
       throw new RuntimeException(
-          "Failed find the isUnityCatalog field, delta-spark version >= 3.2.1 is required", e);
+              "Failed find the isUnityCatalog field, delta-spark version >= 3.2.1 is required", e);
     } catch (IllegalAccessException e) {
       throw new RuntimeException("Failed to set the isUnityCatalog field", e);
     }
