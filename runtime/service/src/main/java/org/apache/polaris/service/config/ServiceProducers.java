@@ -467,7 +467,7 @@ public class ServiceProducers {
   @Identifier("event-listener-executor")
   public Executor eventListenerExecutor(PolarisEventListenerConfiguration config) {
     if (config.types().isEmpty()) {
-      return r -> {};
+      return Runnable::run;
     }
     return SmallRyeManagedExecutor.builder()
         .injectionPointName("event-listener-executor")

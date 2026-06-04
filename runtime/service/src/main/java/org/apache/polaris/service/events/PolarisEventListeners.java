@@ -74,8 +74,7 @@ public class PolarisEventListeners {
       }
       var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
       Handler<Message<PolarisEvent>> handler =
-          message ->
-              executor.execute(() -> deliverEvent(message.body(), enabledEventListener, listener));
+          message -> deliverEvent(message.body(), enabledEventListener, listener);
       for (var polarisEventType : supportedTypes) {
         enabledEventTypes.add(polarisEventType);
         eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
@@ -85,9 +84,24 @@ public class PolarisEventListeners {
 
   private void deliverEvent(
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
-    LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
     try {
-      listener.onEvent(event);
+      executor.execute(
+          () -> {
+            LOGGER.debug(
+                "Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
+            try {
+              listener.onEvent(event);
+            } catch (Exception e) {
+              LOGGER.error(
+                  "Error while delivering {} event to listener '{}' ({})",
+                  event.type(),
+                  listenerName,
+                  listener,
+                  e);
+            }
+            LOGGER.debug(
+                "Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
+          });
     } catch (Exception e) {
       LOGGER.error(
           "Error while delivering {} event to listener '{}' ({})",
@@ -96,7 +110,6 @@ public class PolarisEventListeners {
           listener,
           e);
     }
-    LOGGER.debug("Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
   }
 
   public boolean hasListeners(PolarisEventType polarisEventType) {
