@@ -50,6 +50,7 @@ import org.apache.spark.sql.connector.catalog.TableChange;
 import org.apache.spark.sql.connector.catalog.View;
 import org.apache.spark.sql.connector.catalog.ViewCatalog;
 import org.apache.spark.sql.connector.catalog.ViewChange;
+import org.apache.spark.sql.connector.catalog.ViewInfo;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
@@ -316,27 +317,9 @@ public class SparkCatalog
   }
 
   @Override
-  public View createView(
-      Identifier ident,
-      String sql,
-      String currentCatalog,
-      String[] currentNamespace,
-      StructType schema,
-      String[] queryColumnNames,
-      String[] columnAliases,
-      String[] columnComments,
-      Map<String, String> properties)
+  public View createView(ViewInfo viewInfo)
       throws ViewAlreadyExistsException, NoSuchNamespaceException {
-    return this.icebergsSparkCatalog.createView(
-        ident,
-        sql,
-        currentCatalog,
-        currentNamespace,
-        schema,
-        queryColumnNames,
-        columnAliases,
-        columnComments,
-        properties);
+    return this.icebergsSparkCatalog.createView(viewInfo);
   }
 
   @Override
@@ -354,6 +337,12 @@ public class SparkCatalog
   public void renameView(Identifier fromIdentifier, Identifier toIdentifier)
       throws NoSuchViewException, ViewAlreadyExistsException {
     this.icebergsSparkCatalog.renameView(fromIdentifier, toIdentifier);
+  }
+
+  @Override
+  public View replaceView(ViewInfo viewInfo, boolean orCreate)
+      throws NoSuchNamespaceException, NoSuchViewException {
+    return this.icebergsSparkCatalog.replaceView(viewInfo, orCreate);
   }
 
   @Override

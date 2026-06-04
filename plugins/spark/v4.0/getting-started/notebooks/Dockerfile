@@ -17,17 +17,19 @@
 # under the License.
 #
 
-FROM docker.io/apache/spark:3.5.6-java17
+FROM docker.io/apache/spark:4.0.2-scala2.13-java17-ubuntu
 
 ENV PYSPARK_PYTHON=/home/spark/venv/bin/python \
-    PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:/home/spark/venv/lib/python3.10/site-packages"
+    PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.9-src.zip:/home/spark/venv/lib/python3.10/site-packages"
 
 USER root
 
+# Spark 4.0 ubuntu image creates the spark user with HOME=/nonexistent, thus, we need to run usermod to assign the HOME
 RUN apt-get update -y && \
     apt-get install -y python3-venv && \
     mkdir -p /home/spark && \
-    chown -R spark /home/spark
+    chown -R spark /home/spark && \
+    usermod -d /home/spark spark
 
 USER spark
 
@@ -36,7 +38,7 @@ WORKDIR /home/spark
 COPY --chown=spark client /home/spark/client
 COPY --chown=spark regtests/requirements.txt /tmp
 COPY --chown=spark regtests/notebook_requirements.txt /tmp
-COPY --chown=spark plugins/spark/v3.5/spark/build/2.12/libs/*bundle.jar /opt/spark/jars/
+COPY --chown=spark plugins/spark/v4.0/spark/build/2.13/libs/*bundle.jar /opt/spark/jars/
 
 RUN python3 -m venv /home/spark/venv && \
     . /home/spark/venv/bin/activate && \

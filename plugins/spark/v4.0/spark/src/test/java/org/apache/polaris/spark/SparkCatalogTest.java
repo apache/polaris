@@ -53,6 +53,7 @@ import org.apache.spark.sql.connector.catalog.TableProvider;
 import org.apache.spark.sql.connector.catalog.V1Table;
 import org.apache.spark.sql.connector.catalog.View;
 import org.apache.spark.sql.connector.catalog.ViewChange;
+import org.apache.spark.sql.connector.catalog.ViewInfo;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
@@ -139,13 +140,20 @@ public class SparkCatalogTest {
     // Setup persistent SparkSession mock
     mockedStaticSparkSession = Mockito.mockStatic(SparkSession.class);
     mockedSession = Mockito.mock(SparkSession.class);
+    mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
+    mockedStaticSparkSession
+        .when(SparkSession::getActiveSession)
+        .thenReturn(scala.Option.apply(mockedSession));
+    mockedStaticSparkSession
+        .when(SparkSession::getDefaultSession)
+        .thenReturn(scala.Option.apply(mockedSession));
+
     org.apache.spark.sql.RuntimeConfig mockedConfig =
         Mockito.mock(org.apache.spark.sql.RuntimeConfig.class);
     SparkContext mockedContext = Mockito.mock(SparkContext.class);
     SessionState mockedSessionState = Mockito.mock(SessionState.class);
     SQLConf mockedSQLConf = Mockito.mock(SQLConf.class);
 
-    mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
     Mockito.when(mockedSession.conf()).thenReturn(mockedConfig);
     Mockito.when(mockedSession.sessionState()).thenReturn(mockedSessionState);
     Mockito.when(mockedSessionState.conf()).thenReturn(mockedSQLConf);
@@ -160,7 +168,7 @@ public class SparkCatalogTest {
     Mockito.when(mockedContext.applicationId()).thenReturn("appId");
     Mockito.when(mockedContext.appName()).thenReturn("test-app");
     Mockito.when(mockedContext.sparkUser()).thenReturn("test-user");
-    Mockito.when(mockedContext.version()).thenReturn("3.5");
+    Mockito.when(mockedContext.version()).thenReturn("4.0");
 
     try (MockedStatic<SparkUtil> mockedSparkUtil = Mockito.mockStatic(SparkUtil.class)) {
       mockedSparkUtil
@@ -306,15 +314,16 @@ public class SparkCatalogTest {
     String viewSql = "select id from test-table where id < 3";
     StructType schema = new StructType().add("id", "long");
     catalog.createView(
-        viewIdentifier,
-        viewSql,
-        catalogName,
-        defaultNS,
-        schema,
-        new String[0],
-        new String[0],
-        new String[0],
-        Maps.newHashMap());
+        new ViewInfo(
+            viewIdentifier,
+            viewSql,
+            catalogName,
+            defaultNS,
+            schema,
+            new String[0],
+            new String[0],
+            new String[0],
+            Maps.newHashMap()));
 
     // load the view
     View view = catalog.loadView(viewIdentifier);
@@ -340,15 +349,17 @@ public class SparkCatalogTest {
     Map<String, String> properties = Maps.newHashMap();
     properties.put("key1", "value1");
     catalog.replaceView(
-        newIdentifier,
-        newSql,
-        catalogName,
-        defaultNS,
-        schema,
-        new String[0],
-        new String[0],
-        new String[0],
-        properties);
+        new ViewInfo(
+            newIdentifier,
+            newSql,
+            catalogName,
+            defaultNS,
+            schema,
+            new String[0],
+            new String[0],
+            new String[0],
+            properties),
+        false);
     view = catalog.loadView(newIdentifier);
     assertThat(view.query()).isEqualTo(newSql);
     assertThat(view.properties()).contains(Map.entry("key1", "value1"));
@@ -368,15 +379,16 @@ public class SparkCatalogTest {
     String view1Name = "test-view1";
     String view1SQL = "select id from test-table where id >= 3";
     catalog.createView(
-        Identifier.of(defaultNS, view1Name),
-        view1SQL,
-        catalogName,
-        defaultNS,
-        defaultSchema,
-        new String[0],
-        new String[0],
-        new String[0],
-        Maps.newHashMap());
+        new ViewInfo(
+            Identifier.of(defaultNS, view1Name),
+            view1SQL,
+            catalogName,
+            defaultNS,
+            defaultSchema,
+            new String[0],
+            new String[0],
+            new String[0],
+            Maps.newHashMap()));
     // create two views under ns.nsl2
     String[] nsl2ViewNames = new String[] {"test-view2", "test-view3"};
     String[] nsl2ViewSQLs =
@@ -385,15 +397,16 @@ public class SparkCatalogTest {
         };
     for (int i = 0; i < nsl2ViewNames.length; i++) {
       catalog.createView(
-          Identifier.of(namespace, nsl2ViewNames[i]),
-          nsl2ViewSQLs[i],
-          catalogName,
-          namespace,
-          defaultSchema,
-          new String[0],
-          new String[0],
-          new String[0],
-          Maps.newHashMap());
+          new ViewInfo(
+              Identifier.of(namespace, nsl2ViewNames[i]),
+              nsl2ViewSQLs[i],
+              catalogName,
+              namespace,
+              defaultSchema,
+              new String[0],
+              new String[0],
+              new String[0],
+              Maps.newHashMap()));
     }
     // list views under defaultNS
     Identifier[] l1Views = catalog.listViews(defaultNS);
