@@ -220,8 +220,9 @@ This product includes code from Apache Iceberg.
 * integration-tests/src/main/java/org/apache/polaris/service/it/test/PolarisRestCatalogIntegrationBase.java
 * runtime/service/src/main/java/org/apache/polaris/service/catalog/iceberg/IcebergCatalog.java
 * runtime/service/src/main/java/org/apache/polaris/service/catalog/iceberg/CatalogHandlerUtils.java
-* plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/PolarisRESTCatalog.java
+* plugins/spark/common/src/main/java/org/apache/polaris/spark/PolarisRESTCatalog.java
 * plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/SparkCatalog.java
+* plugins/spark/v4.0/spark/src/main/java/org/apache/polaris/spark/SparkCatalog.java
 * runtime/service/src/main/java/org/apache/polaris/service/catalog/common/LocationUtils.java
 
 Copyright: Copyright 2017-2025 The Apache Software Foundation
