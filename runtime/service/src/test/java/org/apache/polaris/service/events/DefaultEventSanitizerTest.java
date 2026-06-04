@@ -29,10 +29,8 @@ import org.junit.jupiter.api.Test;
 
 class DefaultEventSanitizerTest {
 
-  private static final EventAttributeFilter DEFAULT_FILTER =
-      new DefaultEventAttributeFilter(DefaultEventAttributeFilter.DEFAULT_DENYLIST);
-
-  private final DefaultEventSanitizer sanitizer = new DefaultEventSanitizer(DEFAULT_FILTER);
+  private final DefaultEventSanitizer sanitizer =
+      new DefaultEventSanitizer(DefaultEventSanitizer.DEFAULT_DENYLIST);
 
   @Test
   void shouldDropDenylistedAttributes() {

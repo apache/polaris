@@ -16,17 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.events.listeners;
 
 /**
- * Per-attribute denial policy used by the default {@link EventSanitizer} implementation. Decides
- * whether a given {@link AttributeKey} is safe to pass downstream. This is a sub-component of
- * {@link EventSanitizer}, not a standalone global hook: replacing only this bean tweaks which
- * attributes are denied while keeping the standard derivation logic intact. To change derivation or
- * add raw-event passthrough, replace {@link EventSanitizer} instead.
+ * Marker interface signalling that a {@link PolarisEventListener} requires the raw, unsanitized
+ * event. Listeners that implement this interface receive the original event from {@link
+ * org.apache.polaris.service.events.PolarisEventListeners#deliverEvent}, bypassing the global
+ * {@link org.apache.polaris.service.events.EventSanitizer}.
+ *
+ * <p>This is an explicit security opt-out. Implement only when the listener has a documented need
+ * for sensitive attributes (for example, a forensic audit sink that records principal credentials
+ * or raw catalog configuration). All other listeners receive the sanitized event by default.
  */
-public interface EventAttributeFilter {
-
-  boolean isAllowed(AttributeKey<?> key);
-}
+public interface RawEventAccess {}

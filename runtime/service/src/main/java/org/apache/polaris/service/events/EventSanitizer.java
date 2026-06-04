@@ -19,20 +19,26 @@
 
 package org.apache.polaris.service.events;
 
+import org.apache.polaris.service.events.listeners.RawEventAccess;
+
 /**
- * Global, dispatcher-enforced sanitizer for events. Invoked exactly once at the choke point in
- * {@link PolarisEventListeners} before delivery to any listener. Implementations are responsible
- * for both stripping disallowed attributes and producing any derived attributes that downstream
- * listeners depend on.
+ * Global, dispatcher-enforced sanitizer for events. Invoked once per listener delivery from {@link
+ * PolarisEventListeners#deliverEvent(PolarisEvent, String,
+ * org.apache.polaris.service.events.listeners.PolarisEventListener)
+ * PolarisEventListeners.deliverEvent}, before each listener that has not opted in via {@link
+ * RawEventAccess}. Each invocation produces a fresh sanitized copy; the original event is never
+ * mutated.
  *
- * <p>Replacing this bean replaces the entire global sanitization policy — attribute denial,
- * derivation, and any future raw-event escape-hatch logic.
+ * <p>Implementations are responsible for both stripping disallowed attributes and producing any
+ * derived attributes that downstream listeners depend on. Replacing this bean replaces the entire
+ * global sanitization policy — attribute denial and derivation.
  */
 public interface EventSanitizer {
 
   /**
    * Returns a sanitized copy of {@code event}. The original event is not modified. The returned
-   * event MUST be safe to deliver to all listeners that have not opted in to receiving raw events.
+   * event MUST be safe to deliver to all listeners that have not opted in via {@link
+   * RawEventAccess}.
    */
   PolarisEvent sanitize(PolarisEvent event);
 }

@@ -41,7 +41,7 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.service.events.DefaultEventAttributeFilter;
+import org.apache.polaris.service.events.DefaultEventSanitizer;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
@@ -158,9 +158,7 @@ class PolarisPersistenceEventListenerTest {
   @Test
   void shouldRejectUnknownAttributesInGlobalDenylistConfiguration() {
     assertThatThrownBy(
-            () ->
-                DefaultEventAttributeFilter.resolveAdditionalDenylist(
-                    Set.of("NONEXISTENT_ATTRIBUTE")))
+            () -> DefaultEventSanitizer.resolveAdditionalDenylist(Set.of("NONEXISTENT_ATTRIBUTE")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("NONEXISTENT_ATTRIBUTE");
   }

@@ -35,6 +35,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.concurrent.Executor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.RawEventAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,19 +87,15 @@ public class PolarisEventListeners {
   private void deliverEvent(
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
     LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
-    // TODO: Add an opt-in mechanism (e.g., a marker interface or annotation) for specialized
-    // listeners that need access to the raw, unsanitized event. When implemented, the dispatcher
-    // would skip sanitization for listeners that opt in. Implementation deferred pending dev@
-    // discussion on whether such an escape hatch should exist at all.
-    // see https://lists.apache.org/thread/w3mszmog7llyn5spw7rv9tq7r0qp0p6w
     try {
-      PolarisEvent sanitizedEvent = eventSanitizer.sanitize(event);
+      PolarisEvent toDeliver =
+          (listener instanceof RawEventAccess) ? event : eventSanitizer.sanitize(event);
       executor.execute(
           () -> {
             LOGGER.debug(
                 "Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
             try {
-              listener.onEvent(sanitizedEvent);
+              listener.onEvent(toDeliver);
             } catch (Exception e) {
               LOGGER.error(
                   "Error while delivering {} event to listener '{}' ({})",

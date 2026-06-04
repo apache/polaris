@@ -20,27 +20,62 @@
 package org.apache.polaris.service.events;
 
 import io.quarkus.arc.DefaultBean;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.polaris.core.admin.model.Catalog;
 
 /**
- * Default implementation of {@link EventSanitizer}. Composes attribute filtering (delegated to
- * {@link EventAttributeFilter}) and derivation of safe attributes (e.g., {@code CATALOG_NAME}
- * extracted from a denied {@code CATALOG} object). Operators who want to keep the standard
- * derivation logic but customize denial can replace only the {@link EventAttributeFilter} bean.
- * Operators who need to change derivation or add raw-event passthrough should replace this bean.
+ * Default implementation of {@link EventSanitizer}. Drops attributes whose keys are on the denylist
+ * and derives safe attributes (e.g., {@code CATALOG_NAME} extracted from a denied {@code CATALOG}
+ * object) from the originals. The built-in denylist covers attributes that carry credentials or
+ * internal secrets and may be extended via {@code polaris.event-listener.denylisted-attributes}.
+ *
+ * <p>Operators who need a different denial or derivation policy should replace this bean.
  */
 @ApplicationScoped
 @DefaultBean
 public class DefaultEventSanitizer implements EventSanitizer {
 
-  @Inject EventAttributeFilter attributeFilter;
+  // These carry full domain objects containing credentials or internal secrets:
+  // PRINCIPAL - may contain client IDs, internal identity metadata
+  // UPDATE_PRINCIPAL_REQUEST - credential rotation data, secret changes
+  // CATALOG - includes StorageConfigInfo with cloud credentials (AWS keys, Azure tokens, etc.)
+  // NOTIFICATION_REQUEST - contains metadata file locations and potentially signed URLs
+  static final Set<AttributeKey<?>> DEFAULT_DENYLIST =
+      Set.of(
+          EventAttributes.PRINCIPAL,
+          EventAttributes.UPDATE_PRINCIPAL_REQUEST,
+          EventAttributes.CATALOG,
+          EventAttributes.NOTIFICATION_REQUEST);
 
-  DefaultEventSanitizer() {}
+  @Inject PolarisEventListenerConfiguration configuration;
 
-  DefaultEventSanitizer(EventAttributeFilter attributeFilter) {
-    this.attributeFilter = attributeFilter;
+  private Set<AttributeKey<?>> denylist;
+
+  DefaultEventSanitizer() {
+    this(DEFAULT_DENYLIST);
+  }
+
+  DefaultEventSanitizer(Set<AttributeKey<?>> denylist) {
+    this.denylist = Set.copyOf(denylist);
+  }
+
+  @PostConstruct
+  void initializeFromConfiguration() {
+    if (configuration == null) {
+      return;
+    }
+    Set<String> configuredNames =
+        configuration.denylistedAttributes().orElse(Collections.emptySet());
+    if (!configuredNames.isEmpty()) {
+      this.denylist = resolveAdditionalDenylist(configuredNames);
+    }
   }
 
   @Override
@@ -50,12 +85,28 @@ public class DefaultEventSanitizer implements EventSanitizer {
         .attributes()
         .forEach(
             (key, value) -> {
-              if (attributeFilter.isAllowed(key)) {
+              if (!denylist.contains(key)) {
                 putUnchecked(filtered, key, value);
               }
             });
     extractDerivedAttributes(event, filtered);
     return new PolarisEvent(event.type(), event.metadata(), filtered);
+  }
+
+  public static Set<AttributeKey<?>> resolveAdditionalDenylist(Set<String> configuredNames) {
+    Set<AttributeKey<?>> resolved = new LinkedHashSet<>(DEFAULT_DENYLIST);
+    List<String> unknown = new ArrayList<>();
+
+    for (String name : configuredNames) {
+      EventAttributes.findByName(name).ifPresentOrElse(resolved::add, () -> unknown.add(name));
+    }
+
+    if (!unknown.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Unknown event attributes in denylist configuration: " + unknown);
+    }
+
+    return Set.copyOf(resolved);
   }
 
   private static void extractDerivedAttributes(PolarisEvent event, EventAttributeMap filtered) {

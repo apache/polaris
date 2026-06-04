@@ -38,6 +38,10 @@ public class PolarisEvent {
    * <p>This is a transitional placeholder: {@code catalogId} is currently {@code NOT NULL} in the
    * persistence schema, so realm-scoped events cannot store {@code null} directly. A future schema
    * migration may relax that constraint and let realm-scoped events use {@code NULL} instead.
+   *
+   * <p>TODO: Remove this sentinel once the {@code catalogId} column is made nullable. Realm-scoped
+   * events should store {@code NULL}, not a magic string, so downstream queries can use {@code IS
+   * NULL} instead of filtering out a reserved value.
    */
   public static final String REALM_SCOPED = "__realm__";
 
