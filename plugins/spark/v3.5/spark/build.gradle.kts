@@ -29,6 +29,11 @@ checkstyle {
     )
 }
 
+sourceSets {
+  main { java { srcDir("../../common/src/main/java") } }
+  test { java { srcDir("../../common/src/test/java") } }
+}
+
 // get version information
 val sparkMajorVersion = "3.5"
 val scalaVersion = getAndUseScalaVersionForProject()
