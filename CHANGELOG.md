@@ -49,6 +49,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for `register table` overwrite semantics in the Iceberg REST catalog flow (`overwrite=true`) for internal Polaris catalogs. With overwrite enabled, existing table pointers can be updated to a new metadata location while preserving default behavior for `overwrite=false`.
 - Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
 - Added Polaris Spark 4.0 client.
+- Python client: added support for Python 3.14
 
 ### Changes
 - Added REPL support to Polaris CLI.
