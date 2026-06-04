@@ -33,6 +33,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.concurrent.Executor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,10 @@ public class PolarisEventListeners {
   @Inject EventBus eventBus;
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
+
+  @Inject
+  @Identifier("event-listener-executor")
+  Executor executor;
 
   private final EnumSet<PolarisEventType> enabledEventTypes = EnumSet.allOf(PolarisEventType.class);
 
@@ -69,7 +74,8 @@ public class PolarisEventListeners {
       }
       var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
       Handler<Message<PolarisEvent>> handler =
-          message -> deliverEvent(message.body(), enabledEventListener, listener);
+          message ->
+              executor.execute(() -> deliverEvent(message.body(), enabledEventListener, listener));
       for (var polarisEventType : supportedTypes) {
         enabledEventTypes.add(polarisEventType);
         eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);

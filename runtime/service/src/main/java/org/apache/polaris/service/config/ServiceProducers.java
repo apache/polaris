@@ -32,6 +32,7 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import java.time.Clock;
 import java.util.Optional;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -74,6 +75,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
+import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -458,5 +460,28 @@ public class ServiceProducers {
   public PolarisMetricsReporter metricsReporter(
       MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
     return reporters.select(Identifier.Literal.of(config.type())).get();
+  }
+
+  @Produces
+  @Singleton
+  @Identifier("event-listener-executor")
+  public Executor eventListenerExecutor(PolarisEventListenerConfiguration config) {
+    if (config.types().isEmpty()) {
+      return r -> {};
+    }
+    return SmallRyeManagedExecutor.builder()
+        .injectionPointName("event-listener-executor")
+        .propagated(ThreadContext.ALL_REMAINING)
+        .cleared(ThreadContext.CDI)
+        .maxAsync(config.executor().poolSize())
+        .maxQueued(config.executor().queueSize())
+        .build();
+  }
+
+  public void closeEventListenerExecutor(
+      @Disposes @Identifier("event-listener-executor") Executor executor) {
+    if (executor instanceof ManagedExecutor managedExecutor) {
+      managedExecutor.close();
+    }
   }
 }

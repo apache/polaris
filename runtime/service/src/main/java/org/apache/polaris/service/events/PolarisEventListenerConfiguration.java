@@ -20,6 +20,7 @@ package org.apache.polaris.service.events;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithParentName;
 import java.util.Map;
 import java.util.Optional;
@@ -66,5 +67,22 @@ public interface PolarisEventListenerConfiguration {
      * present, then all event types are enabled.
      */
     Optional<Set<PolarisEventType.Category>> enabledEventCategories();
+  }
+
+  /** Configuration for the thread pool running event listeners. */
+  Executor executor();
+
+  interface Executor {
+
+    /**
+     * The thread pool size. The default is -1, which is interpreted as the number of available
+     * cores.
+     */
+    @WithDefault("-1")
+    int poolSize();
+
+    /** The queue size. The default is -1, which is interpreted as unbounded. */
+    @WithDefault("-1")
+    int queueSize();
   }
 }
