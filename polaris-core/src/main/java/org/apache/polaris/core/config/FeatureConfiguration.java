@@ -657,6 +657,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_STORAGE_NAME_OVERRIDE =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_STORAGE_NAME_OVERRIDE")
+          .description(
+              "If set to true, allows namespaces and tables to set the polaris.storage.name "
+                  + "property to override which server-configured named storage profile is used "
+                  + "for credential vending. The override is resolved leaf-to-root at access time. "
+                  + "Whether the resolved name actually changes vended credentials additionally "
+                  + "depends on RESOLVE_CREDENTIALS_BY_STORAGE_NAME being enabled. Default: false.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES")
