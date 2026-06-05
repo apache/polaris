@@ -99,6 +99,31 @@ class PolarisStorageIntegrationProviderImplTest {
   }
 
   @Test
+  void distinctOverridesProduceDistinctBoundConfigsForCacheSegregation() {
+    PolarisStorageIntegrationProviderImpl provider = newProvider();
+
+    PolarisStorageIntegration teamA =
+        provider.getStorageIntegration(
+            List.of(catalogEntity(), namespaceEntityWithOverride("team-a")));
+    PolarisStorageIntegration teamB =
+        provider.getStorageIntegration(
+            List.of(catalogEntity(), namespaceEntityWithOverride("team-b")));
+
+    PolarisStorageConfigurationInfo configA =
+        ((CachingStorageIntegration<?>) teamA).storageConfig();
+    PolarisStorageConfigurationInfo configB =
+        ((CachingStorageIntegration<?>) teamB).storageConfig();
+
+    // The bound configs differ only in storageName, but Immutables-generated equals/hashCode
+    // includes that field, so AwsStorageCredentialCacheKey (which has storageConfig as a value
+    // field) will produce distinct keys for these two paths.
+    assertThat(configA).isNotEqualTo(configB);
+    assertThat(configA.hashCode()).isNotEqualTo(configB.hashCode());
+    assertThat(configA.getStorageName()).isEqualTo("team-a");
+    assertThat(configB.getStorageName()).isEqualTo("team-b");
+  }
+
+  @Test
   void noBaseConfigReturnsNullEvenWithOverride() {
     PolarisStorageIntegrationProviderImpl provider = newProvider();
 
