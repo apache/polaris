@@ -27,7 +27,6 @@ import org.apache.arrow.util.VisibleForTesting;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.rest.auth.OAuth2Util;
-import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.spark.utils.DeltaHelper;
 import org.apache.polaris.spark.utils.HudiHelper;
@@ -48,24 +47,16 @@ import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.catalog.TableChange;
 import org.apache.spark.sql.connector.catalog.View;
-import org.apache.spark.sql.connector.catalog.ViewCatalog;
 import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 /**
- * SparkCatalog Implementation that is able to interact with both Iceberg SparkCatalog and Polaris
- * SparkCatalog. All namespaces and view related operations continue goes through the Iceberg
- * SparkCatalog. For table operations, depends on the table format, the operation can be achieved
- * with interaction with both Iceberg and Polaris SparkCatalog.
+ * SparkCatalog implementation that is able to interact with both Iceberg SparkCatalog and Polaris.
  */
-public class SparkCatalog
-    implements StagingTableCatalog,
-        TableCatalog,
-        SupportsNamespaces,
-        ViewCatalog,
-        SupportsReplaceView {
+public abstract class BasePolarisSparkCatalog
+    implements StagingTableCatalog, TableCatalog, SupportsNamespaces {
 
   @VisibleForTesting protected String catalogName = null;
   @VisibleForTesting protected org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
@@ -73,6 +64,8 @@ public class SparkCatalog
   @VisibleForTesting protected DeltaHelper deltaHelper = null;
   @VisibleForTesting protected HudiHelper hudiHelper = null;
   @VisibleForTesting protected PaimonHelper paimonHelper = null;
+
+  protected abstract PolarisCatalogUtils createCatalogUtils();
 
   @Override
   public String name() {
@@ -125,7 +118,7 @@ public class SparkCatalog
         PolarisCatalogUtils.getAuthSession(this.icebergsSparkCatalog);
     PolarisRESTCatalog restCatalog = new PolarisRESTCatalog();
     restCatalog.initialize(options, catalogAuth);
-    this.polarisSparkCatalog = new PolarisSparkCatalog(restCatalog);
+    this.polarisSparkCatalog = new PolarisSparkCatalog(restCatalog, createCatalogUtils());
     this.polarisSparkCatalog.initialize(name, resolvedOptions);
   }
 
@@ -148,7 +141,7 @@ public class SparkCatalog
   }
 
   @Override
-  @SuppressWarnings({"deprecation"})
+  @SuppressWarnings({"deprecation", "RedundantSuppression"})
   public Table createTable(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
       throws TableAlreadyExistsException, NoSuchNamespaceException {
@@ -254,6 +247,7 @@ public class SparkCatalog
   }
 
   @Override
+  @SuppressWarnings({"deprecation", "RedundantSuppression"})
   public StagedTable stageReplace(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
       throws NoSuchTableException {
@@ -261,6 +255,7 @@ public class SparkCatalog
   }
 
   @Override
+  @SuppressWarnings({"deprecation", "RedundantSuppression"})
   public StagedTable stageCreateOrReplace(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties) {
     return this.icebergsSparkCatalog.stageCreateOrReplace(ident, schema, transforms, properties);
@@ -305,58 +300,28 @@ public class SparkCatalog
     return this.icebergsSparkCatalog.dropNamespace(namespace, cascade);
   }
 
-  @Override
   public Identifier[] listViews(String... namespace) {
     return this.icebergsSparkCatalog.listViews(namespace);
   }
 
-  @Override
   public View loadView(Identifier ident) throws NoSuchViewException {
     return this.icebergsSparkCatalog.loadView(ident);
   }
 
-  @Override
-  public View createView(
-      Identifier ident,
-      String sql,
-      String currentCatalog,
-      String[] currentNamespace,
-      StructType schema,
-      String[] queryColumnNames,
-      String[] columnAliases,
-      String[] columnComments,
-      Map<String, String> properties)
-      throws ViewAlreadyExistsException, NoSuchNamespaceException {
-    return this.icebergsSparkCatalog.createView(
-        ident,
-        sql,
-        currentCatalog,
-        currentNamespace,
-        schema,
-        queryColumnNames,
-        columnAliases,
-        columnComments,
-        properties);
-  }
-
-  @Override
   public View alterView(Identifier ident, ViewChange... changes)
       throws NoSuchViewException, IllegalArgumentException {
     return this.icebergsSparkCatalog.alterView(ident, changes);
   }
 
-  @Override
   public boolean dropView(Identifier ident) {
     return this.icebergsSparkCatalog.dropView(ident);
   }
 
-  @Override
   public void renameView(Identifier fromIdentifier, Identifier toIdentifier)
       throws NoSuchViewException, ViewAlreadyExistsException {
     this.icebergsSparkCatalog.renameView(fromIdentifier, toIdentifier);
   }
 
-  @Override
   public View replaceView(
       Identifier ident,
       String sql,

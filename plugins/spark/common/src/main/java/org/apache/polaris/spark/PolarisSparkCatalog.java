@@ -19,6 +19,7 @@
 package org.apache.polaris.spark;
 
 import java.util.Map;
+import org.apache.arrow.util.VisibleForTesting;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.spark.Spark3Util;
@@ -51,9 +52,11 @@ public class PolarisSparkCatalog implements TableCatalog {
 
   private PolarisCatalog polarisCatalog = null;
   private String catalogName = null;
+  @VisibleForTesting PolarisCatalogUtils catalogUtils;
 
-  public PolarisSparkCatalog(PolarisCatalog polarisCatalog) {
+  public PolarisSparkCatalog(PolarisCatalog polarisCatalog, PolarisCatalogUtils catalogUtils) {
     this.polarisCatalog = polarisCatalog;
+    this.catalogUtils = catalogUtils;
   }
 
   @Override
@@ -73,7 +76,7 @@ public class PolarisSparkCatalog implements TableCatalog {
           this.polarisCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
       // Currently Hudi supports Spark Datasource V1, therefore we return a V1Table
       if (PolarisCatalogUtils.useHudi(genericTable.format())) {
-        return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
+        return catalogUtils.loadV1SparkTable(genericTable, identifier, name());
       } else {
         return PolarisCatalogUtils.loadV2SparkTable(genericTable);
       }
@@ -118,7 +121,7 @@ public class PolarisSparkCatalog implements TableCatalog {
               properties);
       // Currently Hudi supports Spark Datasource V1, therefore we return a V1Table
       if (PolarisCatalogUtils.useHudi(format)) {
-        return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
+        return catalogUtils.loadV1SparkTable(genericTable, identifier, name());
       } else {
         return PolarisCatalogUtils.loadV2SparkTable(genericTable);
       }
