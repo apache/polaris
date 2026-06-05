@@ -29,9 +29,6 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SparkCatalog;
 import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.catalyst.TableIdentifier;
-import org.apache.spark.sql.catalyst.catalog.CatalogTable;
-import org.apache.spark.sql.catalyst.catalog.CatalogTableType;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
@@ -39,12 +36,11 @@ import org.apache.spark.sql.connector.catalog.TableProvider;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
-import scala.Option;
-import scala.Tuple2;
-import scala.collection.immutable.Map$;
-import scala.collection.mutable.Builder;
 
-public class PolarisCatalogUtils {
+/**
+ * Base class with helpers used by the Polaris Spark client.
+ */
+public abstract class PolarisCatalogUtils {
 
   public static final String TABLE_PROVIDER_KEY = "provider";
   public static final String TABLE_PATH_KEY = "path";
@@ -82,7 +78,7 @@ public class PolarisCatalogUtils {
    * Normalize table properties for loading Spark tables by ensuring the TABLE_PATH_KEY is properly
    * set. DataSourceV2 requires the path property on table loading.
    */
-  private static Map<String, String> normalizeTablePropertiesForLoadSparkTable(
+  protected static Map<String, String> normalizeTablePropertiesForLoadSparkTable(
       GenericTable genericTable) {
     Map<String, String> properties = genericTable.properties();
     boolean hasLocationClause = properties.get(TableCatalog.PROP_LOCATION) != null;
@@ -123,57 +119,8 @@ public class PolarisCatalogUtils {
    * Return a Spark V1Table for formats that do not use DataSourceV2. Currently, this is being used
    * for Hudi tables
    */
-  public static Table loadV1SparkTable(
-      GenericTable genericTable, Identifier identifier, String catalogName) {
-    Map<String, String> tableProperties = normalizeTablePropertiesForLoadSparkTable(genericTable);
-
-    // Need full identifier in order to construct CatalogTable
-    String namespacePath = String.join(".", identifier.namespace());
-    TableIdentifier tableIdentifier =
-        new TableIdentifier(
-            identifier.name(), Option.apply(namespacePath), Option.apply(catalogName));
-
-    Builder<Tuple2<String, String>, scala.collection.immutable.Map<String, String>> mb =
-        Map$.MODULE$.newBuilder();
-    tableProperties.forEach((k, v) -> mb.$plus$eq(Tuple2.apply(k, v)));
-    scala.collection.immutable.Map<String, String> scalaOptions = mb.result();
-
-    org.apache.spark.sql.catalyst.catalog.CatalogStorageFormat storage =
-        DataSource.buildStorageFormatFromOptions(scalaOptions);
-
-    // Currently Polaris generic table does not contain any schema information, partition columns,
-    // stats, etc
-    // for now we will fill the parameters we have from polaris catalog, and let underlying client
-    // resolve the rest within its catalog implementation
-    org.apache.spark.sql.types.StructType emptySchema = new org.apache.spark.sql.types.StructType();
-    @SuppressWarnings("deprecation")
-    scala.collection.immutable.Seq<String> emptyStringSeq =
-        scala.collection.JavaConverters.asScalaBuffer(new java.util.ArrayList<String>()).toList();
-    CatalogTable catalogTable =
-        new CatalogTable(
-            tableIdentifier,
-            CatalogTableType.EXTERNAL(),
-            storage,
-            emptySchema,
-            Option.apply(genericTable.format()),
-            emptyStringSeq,
-            scala.Option.empty(),
-            genericTable.properties().get(TableCatalog.PROP_OWNER),
-            System.currentTimeMillis(),
-            -1L,
-            "",
-            scalaOptions,
-            scala.Option.empty(),
-            scala.Option.empty(),
-            scala.Option.empty(),
-            emptyStringSeq,
-            false,
-            true,
-            scala.collection.immutable.Map$.MODULE$.empty(),
-            scala.Option.empty());
-
-    return new org.apache.spark.sql.connector.catalog.V1Table(catalogTable);
-  }
+  public abstract Table loadV1SparkTable(
+      GenericTable genericTable, Identifier identifier, String catalogName);
 
   /**
    * Get the catalogAuth field inside the RESTSessionCatalog used by Iceberg Spark Catalog use
