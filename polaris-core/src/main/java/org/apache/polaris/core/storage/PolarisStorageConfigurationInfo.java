@@ -39,8 +39,11 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.ImmutableAwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.azure.ImmutableAzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.gcp.ImmutableGcpStorageConfigurationInfo;
 import org.immutables.value.Value;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -88,6 +91,38 @@ public abstract class PolarisStorageConfigurationInfo {
   public abstract String getStorageName();
 
   public abstract StorageType getStorageType();
+
+  /**
+   * Return a copy of {@code base} with its {@code storageName} replaced by {@code storageName}. All
+   * other fields are preserved. Used by the storage-name override path so that an entity-level
+   * override flows through credential vending and into the per-backend cache key without mutating
+   * the original config.
+   *
+   * @throws IllegalArgumentException if {@code base} is not one of the four supported subtypes
+   */
+  public static PolarisStorageConfigurationInfo withStorageName(
+      PolarisStorageConfigurationInfo base, @Nullable String storageName) {
+    if (base instanceof AwsStorageConfigurationInfo aws) {
+      return ImmutableAwsStorageConfigurationInfo.builder().from(aws).storageName(storageName).build();
+    }
+    if (base instanceof AzureStorageConfigurationInfo azure) {
+      return ImmutableAzureStorageConfigurationInfo.builder()
+          .from(azure)
+          .storageName(storageName)
+          .build();
+    }
+    if (base instanceof GcpStorageConfigurationInfo gcp) {
+      return ImmutableGcpStorageConfigurationInfo.builder().from(gcp).storageName(storageName).build();
+    }
+    if (base instanceof FileStorageConfigurationInfo file) {
+      return ImmutableFileStorageConfigurationInfo.builder()
+          .from(file)
+          .storageName(storageName)
+          .build();
+    }
+    throw new IllegalArgumentException(
+        "Unsupported PolarisStorageConfigurationInfo subtype: " + base.getClass().getName());
+  }
 
   private static final ObjectMapper DEFAULT_MAPPER;
 
