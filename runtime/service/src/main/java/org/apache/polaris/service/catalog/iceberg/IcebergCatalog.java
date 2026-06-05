@@ -426,7 +426,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     IcebergTableLikeEntity existingEntity = IcebergTableLikeEntity.of(rawEntity);
 
     Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
-    Map<String, String> commitProperties = new HashMap<>(metadata.properties());
     String priorTableOverride =
         existingEntity
             .getInternalPropertiesAsMap()
@@ -435,7 +434,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       storedProperties.put(
           PolarisEntityConstants.getStorageNameOverridePropertyName(), priorTableOverride);
     }
-    processStorageNameOverrideOnWrite(commitProperties, storedProperties, priorTableOverride);
+    // Validate / flag-gate / translate polaris.storage.name from the incoming metadata properties
+    // into the internal storage_name_override key on storedProperties. The mutated copy of the
+    // user-facing properties is discarded; only the storedProperties side-effect is load-bearing.
+    processStorageNameOverrideOnWrite(
+        new HashMap<>(metadata.properties()), storedProperties, priorTableOverride);
     IcebergTableLikeEntity updatedEntity =
         new IcebergTableLikeEntity.Builder(existingEntity)
             .setInternalProperties(storedProperties)
@@ -1816,8 +1819,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // Process polaris.storage.name on the table commit's properties: validate, gate against
       // ALLOW_STORAGE_NAME_OVERRIDE when changing, and translate into the internal
       // storage_name_override key on `storedProperties`. The override survives across commits
-      // because we seed `storedProperties` with the prior persisted value before processing.
-      Map<String, String> commitProperties = new HashMap<>(metadata.properties());
+      // because we seed `storedProperties` with the prior persisted value before processing. The
+      // mutated copy of the user-facing properties is discarded; only the storedProperties
+      // side-effect is load-bearing.
       String priorTableOverride =
           entity == null
               ? null
@@ -1828,7 +1832,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         storedProperties.put(
             PolarisEntityConstants.getStorageNameOverridePropertyName(), priorTableOverride);
       }
-      processStorageNameOverrideOnWrite(commitProperties, storedProperties, priorTableOverride);
+      processStorageNameOverrideOnWrite(
+          new HashMap<>(metadata.properties()), storedProperties, priorTableOverride);
       String existingLocation;
       if (null == entity) {
         existingLocation = null;

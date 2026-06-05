@@ -30,9 +30,8 @@ import org.jspecify.annotations.NonNull;
  * applying any nearest-ancestor {@code storage_name_override} on top of the catalog's base storage
  * configuration.
  *
- * <p>The input list is in root-to-leaf order (matching {@link
- * PolarisStorageConfigurationInfo#findStorageInfoFromHierarchy(List)}). The walk runs leaf-to-root
- * and:
+ * <p>The input list is in root-to-leaf order (the catalog is at index 0). The walk runs
+ * leaf-to-root and:
  *
  * <ol>
  *   <li>Captures the first {@code storage_name_override} encountered (nearest wins).

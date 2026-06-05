@@ -166,13 +166,7 @@ public abstract class PolarisStorageConfigurationInfo {
 
   public static Optional<LocationRestrictions> forEntityPath(
       RealmConfig realmConfig, List<PolarisEntity> entityPath) {
-    return findStorageInfoFromHierarchy(entityPath)
-        .map(
-            storageInfo ->
-                deserialize(
-                    storageInfo
-                        .getInternalPropertiesAsMap()
-                        .get(PolarisEntityConstants.getStorageConfigInfoPropertyName())))
+    return StorageConfigOverrideResolver.resolveEffectiveConfig(entityPath)
         .map(
             configInfo -> {
               List<PolarisEntity> entityPathReversed = new ArrayList<>(entityPath);
@@ -207,18 +201,6 @@ public abstract class PolarisStorageConfigurationInfo {
                 return new LocationRestrictions(configInfo);
               }
             });
-  }
-
-  public static @NonNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
-      List<PolarisEntity> entityPath) {
-    for (int i = entityPath.size() - 1; i >= 0; i--) {
-      PolarisEntity e = entityPath.get(i);
-      if (e.getInternalPropertiesAsMap()
-          .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
-        return Optional.of(e);
-      }
-    }
-    return Optional.empty();
   }
 
   /** Subclasses must provide the Iceberg FileIO impl associated with their type in this method. */

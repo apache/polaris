@@ -147,6 +147,15 @@ Config key for whether to allow setting the FILE_IO_IMPL using catalog propertie
 
 ---
 
+##### `polaris.features."ALLOW_STORAGE_NAME_OVERRIDE"`
+
+If set to true, allows namespaces and tables to set the polaris.storage.name property to override which server-configured named storage profile is used for credential vending. The override is resolved leaf-to-root at access time. Whether the resolved name actually changes vended credentials additionally depends on RESOLVE_CREDENTIALS_BY_STORAGE_NAME being enabled. Default: false.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ALLOW_TABLE_LOCATION_OVERLAP"`
 
 If set to true, Polaris allows table or view locations to overlap existing table or namespace locations. This disables Polaris location-overlap protection for table-like objects in the catalog and should only be used for compatibility cases where storage isolation is enforced outside Polaris.
