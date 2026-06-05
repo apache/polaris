@@ -47,8 +47,7 @@ class FileIOUtilTest {
 
   @Test
   void noOverrideReturnsBaseEntityWithBaseConfig() {
-    PolarisResolvedPathWrapper path =
-        wrap(catalogEntity(), namespaceEntity(Map.of()));
+    PolarisResolvedPathWrapper path = wrap(catalogEntity(), namespaceEntity(Map.of()));
     Optional<PolarisEntity> result = FileIOUtil.findStorageInfoFromHierarchy(path);
     assertThat(result).isPresent();
     PolarisStorageConfigurationInfo cfg =
@@ -62,8 +61,7 @@ class FileIOUtilTest {
 
   @Test
   void namespaceOverrideAppliedToReturnedSyntheticEntity() {
-    PolarisResolvedPathWrapper path =
-        wrap(catalogEntity(), namespaceEntityWithOverride("team-a"));
+    PolarisResolvedPathWrapper path = wrap(catalogEntity(), namespaceEntityWithOverride("team-a"));
     Optional<PolarisEntity> result = FileIOUtil.findStorageInfoFromHierarchy(path);
     assertThat(result).isPresent();
     PolarisStorageConfigurationInfo cfg =

@@ -77,7 +77,8 @@ class StorageConfigOverrideResolverTest {
   void leafOverrideBeatsAncestorOverride() {
     PolarisEntity catalog = catalogEntity(BASE_CONFIG);
     PolarisEntity ns = entity(PolarisEntityType.NAMESPACE, "ns", overrideOnly("team-namespace"));
-    PolarisEntity table = entity(PolarisEntityType.TABLE_LIKE, "tbl", overrideOnly("table-special"));
+    PolarisEntity table =
+        entity(PolarisEntityType.TABLE_LIKE, "tbl", overrideOnly("table-special"));
     Optional<PolarisStorageConfigurationInfo> resolved =
         StorageConfigOverrideResolver.resolveEffectiveConfig(List.of(catalog, ns, table));
     assertThat(resolved).isPresent();

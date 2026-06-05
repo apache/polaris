@@ -838,7 +838,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     PolarisEntity entity = resolvedEntities.getRawLeafEntity();
     Map<String, String> newProperties = new HashMap<>(entity.getPropertiesAsMap());
-    Map<String, String> updatedInternalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+    Map<String, String> updatedInternalProperties =
+        new HashMap<>(entity.getInternalPropertiesAsMap());
 
     // Merge new properties into existing map. Process the polaris.storage.name override on a
     // mutable copy of the incoming properties so the user-facing key is stripped before the merge
@@ -1997,14 +1998,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * Process the user-facing {@link #POLARIS_STORAGE_NAME_PROPERTY} on a write request: validate
-   * the value, gate against {@link FeatureConfiguration#ALLOW_STORAGE_NAME_OVERRIDE} when the
-   * value would change, write the resolved value into the internal-property map (or remove it
-   * when cleared), and strip the user-facing key from the user property map.
+   * Process the user-facing {@link #POLARIS_STORAGE_NAME_PROPERTY} on a write request: validate the
+   * value, gate against {@link FeatureConfiguration#ALLOW_STORAGE_NAME_OVERRIDE} when the value
+   * would change, write the resolved value into the internal-property map (or remove it when
+   * cleared), and strip the user-facing key from the user property map.
    *
    * <p>The flag is only enforced when the requested value would actually mutate the persisted
-   * {@code storage_name_override}. An idempotent re-set with the prior value is always allowed,
-   * so flipping the flag off does not break existing entities.
+   * {@code storage_name_override}. An idempotent re-set with the prior value is always allowed, so
+   * flipping the flag off does not break existing entities.
    *
    * <p>Property semantics:
    *
@@ -2014,12 +2015,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    *   <li>Property absent from the user map: no change to the override.
    * </ul>
    *
-   * @param userProperties user-facing property map being persisted; the
-   *     {@link #POLARIS_STORAGE_NAME_PROPERTY} key is removed in place if present.
+   * @param userProperties user-facing property map being persisted; the {@link
+   *     #POLARIS_STORAGE_NAME_PROPERTY} key is removed in place if present.
    * @param internalProperties internal-property map that will be persisted onto the entity; the
    *     {@code storage_name_override} key is set or removed in place based on the request.
-   * @param priorOverride the override value already persisted on the entity (or {@code null} for
-   *     a fresh create). Used to decide whether the request is an idempotent re-set.
+   * @param priorOverride the override value already persisted on the entity (or {@code null} for a
+   *     fresh create). Used to decide whether the request is an idempotent re-set.
    */
   @VisibleForTesting
   void processStorageNameOverrideOnWrite(
@@ -2034,11 +2035,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     try {
       requested = StorageNameValidator.normalizeAndValidate(rawValue);
     } catch (IllegalArgumentException e) {
-      throw new BadRequestException(e, "Invalid %s: %s", POLARIS_STORAGE_NAME_PROPERTY, e.getMessage());
+      throw new BadRequestException(
+          e, "Invalid %s: %s", POLARIS_STORAGE_NAME_PROPERTY, e.getMessage());
     }
     boolean changing = !Objects.equal(priorOverride, requested);
-    if (changing
-        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE)) {
+    if (changing && !realmConfig.getConfig(FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE)) {
       throw new BadRequestException(
           "Setting %s requires feature %s to be enabled",
           POLARIS_STORAGE_NAME_PROPERTY, FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE.key());

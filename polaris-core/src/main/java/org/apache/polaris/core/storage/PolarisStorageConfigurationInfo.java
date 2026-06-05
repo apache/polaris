@@ -103,7 +103,10 @@ public abstract class PolarisStorageConfigurationInfo {
   public static PolarisStorageConfigurationInfo withStorageName(
       PolarisStorageConfigurationInfo base, @Nullable String storageName) {
     if (base instanceof AwsStorageConfigurationInfo aws) {
-      return ImmutableAwsStorageConfigurationInfo.builder().from(aws).storageName(storageName).build();
+      return ImmutableAwsStorageConfigurationInfo.builder()
+          .from(aws)
+          .storageName(storageName)
+          .build();
     }
     if (base instanceof AzureStorageConfigurationInfo azure) {
       return ImmutableAzureStorageConfigurationInfo.builder()
@@ -112,7 +115,10 @@ public abstract class PolarisStorageConfigurationInfo {
           .build();
     }
     if (base instanceof GcpStorageConfigurationInfo gcp) {
-      return ImmutableGcpStorageConfigurationInfo.builder().from(gcp).storageName(storageName).build();
+      return ImmutableGcpStorageConfigurationInfo.builder()
+          .from(gcp)
+          .storageName(storageName)
+          .build();
     }
     if (base instanceof FileStorageConfigurationInfo file) {
       return ImmutableFileStorageConfigurationInfo.builder()

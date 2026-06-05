@@ -57,8 +57,7 @@ public final class StorageNameValidator {
           "polaris.storage.name length must be at most " + MAX_LENGTH + " characters");
     }
     if (!VALID.matcher(trimmed).matches()) {
-      throw new IllegalArgumentException(
-          "polaris.storage.name must match pattern [a-zA-Z0-9_-]+");
+      throw new IllegalArgumentException("polaris.storage.name must match pattern [a-zA-Z0-9_-]+");
     }
     return trimmed;
   }

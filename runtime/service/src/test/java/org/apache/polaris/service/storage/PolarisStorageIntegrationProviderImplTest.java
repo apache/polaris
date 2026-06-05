@@ -62,7 +62,8 @@ class PolarisStorageIntegrationProviderImplTest {
         provider.getStorageIntegration(List.of(catalogEntity()));
 
     assertThat(integration).isInstanceOf(CachingStorageIntegration.class);
-    PolarisStorageConfigurationInfo bound = ((CachingStorageIntegration<?>) integration).storageConfig();
+    PolarisStorageConfigurationInfo bound =
+        ((CachingStorageIntegration<?>) integration).storageConfig();
     assertThat(bound.getStorageName()).isEqualTo("default");
   }
 
@@ -70,16 +71,17 @@ class PolarisStorageIntegrationProviderImplTest {
   void namespaceOverrideAppliedToBoundConfig() {
     PolarisStorageIntegrationProviderImpl provider = newProvider();
 
-    List<PolarisEntity> path =
-        List.of(catalogEntity(), namespaceEntityWithOverride("team-a"));
+    List<PolarisEntity> path = List.of(catalogEntity(), namespaceEntityWithOverride("team-a"));
 
     PolarisStorageIntegration integration = provider.getStorageIntegration(path);
 
     assertThat(integration).isInstanceOf(CachingStorageIntegration.class);
-    PolarisStorageConfigurationInfo bound = ((CachingStorageIntegration<?>) integration).storageConfig();
+    PolarisStorageConfigurationInfo bound =
+        ((CachingStorageIntegration<?>) integration).storageConfig();
     assertThat(bound.getStorageName()).isEqualTo("team-a");
     // Other fields preserved.
-    assertThat(((AwsStorageConfigurationInfo) bound).getRoleARN()).isEqualTo(BASE_AWS_CONFIG.getRoleARN());
+    assertThat(((AwsStorageConfigurationInfo) bound).getRoleARN())
+        .isEqualTo(BASE_AWS_CONFIG.getRoleARN());
   }
 
   @Test
@@ -94,7 +96,8 @@ class PolarisStorageIntegrationProviderImplTest {
 
     PolarisStorageIntegration integration = provider.getStorageIntegration(path);
 
-    PolarisStorageConfigurationInfo bound = ((CachingStorageIntegration<?>) integration).storageConfig();
+    PolarisStorageConfigurationInfo bound =
+        ((CachingStorageIntegration<?>) integration).storageConfig();
     assertThat(bound.getStorageName()).isEqualTo("table-special");
   }
 

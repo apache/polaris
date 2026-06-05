@@ -63,7 +63,8 @@ class StorageNameValidatorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"foo bar", "a/b", "a.b", "a:b", "a#b", "name!", "tab\tname", "with space"})
+  @ValueSource(
+      strings = {"foo bar", "a/b", "a.b", "a:b", "a#b", "name!", "tab\tname", "with space"})
   void invalidCharactersRejected(String input) {
     assertThatThrownBy(() -> StorageNameValidator.normalizeAndValidate(input))
         .isInstanceOf(IllegalArgumentException.class)
