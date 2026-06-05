@@ -53,27 +53,19 @@ public class PolarisEventListeners {
   private final EnumSet<PolarisEventType> eventTypesWithListeners =
       EnumSet.noneOf(PolarisEventType.class);
 
+  /**
+   * Registers configured Polaris event listeners with the local Vert.x event bus at startup.
+   *
+   * <p>Each listener may enable event categories, individual event types, or both. When no
+   * per-listener filters are configured, the listener receives every Polaris event type.
+   */
   public void onStartup(@Observes StartupEvent event) {
     var listenerTypeSet = configuration.types().orElseGet(HashSet::new);
     for (String enabledEventListener : listenerTypeSet) {
       var listenerConfiguration = configuration.listenerConfig().get(enabledEventListener);
-      var supportedTypes =
-          listenerConfiguration == null
-                  || (listenerConfiguration.enabledEventCategories().isEmpty()
-                      && listenerConfiguration.enabledEventTypes().isEmpty())
-              ? EnumSet.allOf(PolarisEventType.class)
-              : EnumSet.noneOf(PolarisEventType.class);
-      if (listenerConfiguration != null) {
-        if (listenerConfiguration.enabledEventCategories().isPresent()) {
-          for (var enabledEventCategory : listenerConfiguration.enabledEventCategories().get()) {
-            supportedTypes.addAll(PolarisEventType.typesOfCategory(enabledEventCategory));
-          }
-        }
-        if (listenerConfiguration.enabledEventTypes().isPresent()) {
-          supportedTypes.addAll(listenerConfiguration.enabledEventTypes().get());
-        }
-      }
+      var supportedTypes = resolveSupportedTypes(listenerConfiguration);
       var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
+      // Reuse the same handler for every selected event type for this listener.
       Handler<Message<PolarisEvent>> handler =
           message -> deliverEvent(message.body(), enabledEventListener, listener);
       for (var polarisEventType : supportedTypes) {
@@ -81,6 +73,28 @@ public class PolarisEventListeners {
         eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
       }
     }
+  }
+
+  private static EnumSet<PolarisEventType> resolveSupportedTypes(
+      PolarisEventListenerConfiguration.ListenerConfiguration listenerConfiguration) {
+    // Missing or empty per-listener filters mean that the listener receives all event types.
+    if (listenerConfiguration == null
+        || (listenerConfiguration.enabledEventCategories().isEmpty()
+            && listenerConfiguration.enabledEventTypes().isEmpty())) {
+      return EnumSet.allOf(PolarisEventType.class);
+    }
+
+    // Category and type filters are additive: a listener receives the union of both.
+    var supportedTypes = EnumSet.noneOf(PolarisEventType.class);
+    if (listenerConfiguration.enabledEventCategories().isPresent()) {
+      for (var enabledEventCategory : listenerConfiguration.enabledEventCategories().get()) {
+        supportedTypes.addAll(PolarisEventType.typesOfCategory(enabledEventCategory));
+      }
+    }
+    if (listenerConfiguration.enabledEventTypes().isPresent()) {
+      supportedTypes.addAll(listenerConfiguration.enabledEventTypes().get());
+    }
+    return supportedTypes;
   }
 
   private void deliverEvent(
