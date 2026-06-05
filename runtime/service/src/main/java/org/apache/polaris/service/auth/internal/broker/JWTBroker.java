@@ -39,7 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Generates a JWT Token. */
-public abstract class JWTBroker implements TokenBroker {
+public class JWTBroker implements TokenBroker {
   private static final Logger LOGGER = LoggerFactory.getLogger(JWTBroker.class);
 
   private static final String ISSUER_KEY = "polaris";
@@ -51,17 +51,32 @@ public abstract class JWTBroker implements TokenBroker {
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisCallContext polarisCallContext;
   private final int maxTokenGenerationInSeconds;
+  private final Algorithm algorithm;
+  private final JWTVerifier verifier;
 
   JWTBroker(
       PolarisMetaStoreManager metaStoreManager,
       PolarisCallContext polarisCallContext,
-      int maxTokenGenerationInSeconds) {
+      int maxTokenGenerationInSeconds,
+      Algorithm algorithm,
+      JWTVerifier verifier) {
     this.metaStoreManager = metaStoreManager;
     this.polarisCallContext = polarisCallContext;
     this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
+    this.algorithm = algorithm;
+    this.verifier = verifier;
   }
 
-  public abstract Algorithm getAlgorithm();
+  /**
+   * Builds a {@link JWTVerifier} for the given algorithm. Intended to be called once per realm by a
+   * {@link TokenBrokerFactory} so the verifier can be reused across request-scoped brokers.
+   */
+  static JWTVerifier buildVerifier(Algorithm algorithm) {
+    return JWT.require(algorithm)
+        .withIssuer(ISSUER_KEY)
+        .withClaim(CLAIM_KEY_ACTIVE, true)
+        .build();
+  }
 
   @Override
   public PolarisCredential verify(String token) {
@@ -69,12 +84,6 @@ public abstract class JWTBroker implements TokenBroker {
   }
 
   private InternalPolarisToken verifyInternal(String token) {
-    JWTVerifier verifier =
-        JWT.require(getAlgorithm())
-            .withIssuer(ISSUER_KEY)
-            .withClaim(CLAIM_KEY_ACTIVE, true)
-            .build();
-
     try {
       DecodedJWT decodedJWT = verifier.verify(token);
       return InternalPolarisToken.of(
@@ -165,7 +174,7 @@ public abstract class JWTBroker implements TokenBroker {
         .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
         .withClaim(CLAIM_KEY_PRINCIPAL_ID, principalId)
         .withClaim(CLAIM_KEY_SCOPE, scopes(scope))
-        .sign(getAlgorithm());
+        .sign(algorithm);
   }
 
   @Override
