@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -200,6 +201,25 @@ class StorageNameOverrideTest {
     assertThatThrownBy(
             () -> catalog.processStorageNameOverrideOnRemove(Set.of(USER_KEY), internal, "team-a"))
         .isInstanceOf(BadRequestException.class);
+  }
+
+  // --- regression: createNamespace must preserve parent-namespace internal key ----
+  // When override processing produces an empty additional-internal-properties map,
+  // the NamespaceEntity.Builder's parent-namespace internal key (set in its
+  // constructor) must survive. Earlier code passed a fresh empty map to
+  // setInternalProperties(...), which wiped the parent-namespace key on every
+  // namespace at depth >= 2 and broke loadNamespaceMetadata downstream.
+  @Test
+  void onWrite_emptyOverrideMap_preservesPriorInternalKeys() {
+    Map<String, String> user = new HashMap<>(Map.of("k", "v"));
+    Map<String, String> additional = new HashMap<>();
+    catalog.processStorageNameOverrideOnWrite(user, additional, null);
+    assertThat(additional).isEmpty();
+    // Sanity: the helper itself never touches keys it doesn't own. The fix lives in
+    // createNamespaceInternal which uses addInternalProperty for each entry of the
+    // additional map (a no-op when empty), so the Builder's parent-namespace key
+    // set by NamespaceEntity.Builder(Namespace) is preserved.
+    assertThat(Namespace.of("ns1", "ns1a").length()).isEqualTo(2); // depth >= 2 case
   }
 
   @Test

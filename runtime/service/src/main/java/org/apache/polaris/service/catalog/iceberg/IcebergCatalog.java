@@ -640,19 +640,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     Map<String, String> userProperties = new HashMap<>(metadata);
-    Map<String, String> internalProperties = new HashMap<>();
-    processStorageNameOverrideOnWrite(userProperties, internalProperties, null);
+    Map<String, String> additionalInternalProperties = new HashMap<>();
+    processStorageNameOverrideOnWrite(userProperties, additionalInternalProperties, null);
 
-    NamespaceEntity entity =
+    NamespaceEntity.Builder entityBuilder =
         new NamespaceEntity.Builder(namespace)
             .setCatalogId(getCatalogId())
             .setId(getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
             .setParentId(resolvedParent.getRawLeafEntity().getId())
             .setProperties(userProperties)
-            .setInternalProperties(internalProperties)
             .setCreateTimestamp(System.currentTimeMillis())
-            .setBaseLocation(baseLocation)
-            .build();
+            .setBaseLocation(baseLocation);
+    // Add any storage-name override into internalProperties without clobbering the
+    // parent-namespace key that NamespaceEntity.Builder's constructor already set.
+    additionalInternalProperties.forEach(entityBuilder::addInternalProperty);
+    NamespaceEntity entity = entityBuilder.build();
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(entity, resolvedParent.getRawFullPath());
