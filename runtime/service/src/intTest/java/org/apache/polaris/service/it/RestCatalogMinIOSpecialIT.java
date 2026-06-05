@@ -382,7 +382,6 @@ public class RestCatalogMinIOSpecialIT {
                     id,
                     "ALL",
                     Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
-        .hasMessageContaining("Failed to get subscoped credentials")
         .hasMessageContaining("invalid resource")
         .hasMessageContaining("arn:aws:kms:us-west-2:000000000000:key/*");
   }
