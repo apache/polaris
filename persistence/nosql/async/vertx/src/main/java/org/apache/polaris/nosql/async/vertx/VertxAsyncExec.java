@@ -60,6 +60,7 @@ import org.slf4j.MDC;
 class VertxAsyncExec implements AsyncExec, AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(VertxAsyncExec.class.getName());
   private static final Duration MAX_DURATION = Duration.ofDays(7);
+  private static final long SUBMISSION_RETRY_MILLIS = 10L;
 
   public static final String EXECUTOR_THREAD_NAME_PREFIX = "VertxAsyncExec#";
 
@@ -143,6 +144,9 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
   @VisibleForTesting
   void taskTrackedHook(Cancelable<?> cancelable) {}
 
+  @VisibleForTesting
+  void taskSubmissionRejectedHook(Cancelable<?> cancelable) {}
+
   @PreDestroy
   @Override
   public void close() {
@@ -202,6 +206,8 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
     private record Started(long timerId) implements TimerState {}
 
     private final AtomicReference<TimerState> timerState =
+        new AtomicReference<>(NotStarted.INSTANCE);
+    private final AtomicReference<TimerState> retryTimerState =
         new AtomicReference<>(NotStarted.INSTANCE);
 
     private final CompletableFuture<R> completable = new CompletableFuture<>();
@@ -264,18 +270,62 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
       if (periodic && !running.compareAndSet(false, true)) {
         return;
       }
+      submitAsync();
+    }
+
+    @SuppressWarnings("FutureReturnValueIgnored")
+    private void submitAsync() {
       try {
         var f = executorService.submit(this);
         runningFuture.set(f);
         VertxAsyncExec.this.taskSubmittedHook(f);
       } catch (Throwable e) {
+        VertxAsyncExec.this.taskSubmissionRejectedHook(this);
+        if (cancelledOrShutdown()) {
+          if (periodic) {
+            running.set(false);
+          }
+          cancel();
+        } else {
+          scheduleSubmissionRetry();
+        }
+      }
+    }
+
+    private void scheduleSubmissionRetry() {
+      try {
+        var timerId = vertx.setTimer(SUBMISSION_RETRY_MILLIS, this::execAsyncRetry);
+        if (!retryTimerState.compareAndSet(NotStarted.INSTANCE, new Started(timerId))) {
+          vertx.cancelTimer(timerId);
+        } else if (cancelledOrShutdown()) {
+          cancelRetryTimer();
+        }
+      } catch (Throwable e) {
         cancelTimer();
+        cancelRetryTimer();
         runningFuture.set(null);
         if (periodic) {
           running.set(false);
         }
         completable.completeExceptionally(e);
         tasks.remove(this);
+      }
+    }
+
+    private void execAsyncRetry(long unused) {
+      var previous =
+          retryTimerState.getAndUpdate(
+              state -> state instanceof Canceled ? state : NotStarted.INSTANCE);
+      if (previous instanceof Canceled) {
+        return;
+      }
+      if (cancelledOrShutdown()) {
+        if (periodic) {
+          running.set(false);
+        }
+        cancel();
+      } else {
+        submitAsync();
       }
     }
 
@@ -314,6 +364,13 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
       }
     }
 
+    private void cancelRetryTimer() {
+      var previous = retryTimerState.getAndSet(Canceled.INSTANCE);
+      if (previous instanceof Started(long timerId)) {
+        vertx.cancelTimer(timerId);
+      }
+    }
+
     private boolean cancelledOrShutdown() {
       return completable.isCancelled() || shutdown;
     }
@@ -326,6 +383,7 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
     @Override
     public void cancel() {
       cancelTimer();
+      cancelRetryTimer();
       completable.cancel(false);
       var f = runningFuture.getAndSet(null);
       if (f != null && !f.isDone()) {

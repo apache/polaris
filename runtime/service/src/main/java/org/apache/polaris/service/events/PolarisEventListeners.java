@@ -33,6 +33,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.concurrent.Executor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,10 @@ public class PolarisEventListeners {
   @Inject EventBus eventBus;
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
+
+  @Inject
+  @Identifier("event-listener-executor")
+  Executor executor;
 
   private final EnumSet<PolarisEventType> enabledEventTypes = EnumSet.allOf(PolarisEventType.class);
 
@@ -81,7 +86,23 @@ public class PolarisEventListeners {
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
     LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
     try {
-      listener.onEvent(event);
+      executor.execute(
+          () -> {
+            LOGGER.debug(
+                "Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
+            try {
+              listener.onEvent(event);
+            } catch (Exception e) {
+              LOGGER.error(
+                  "Error while delivering {} event to listener '{}' ({})",
+                  event.type(),
+                  listenerName,
+                  listener,
+                  e);
+            }
+            LOGGER.debug(
+                "Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
+          });
     } catch (Exception e) {
       LOGGER.error(
           "Error while delivering {} event to listener '{}' ({})",
@@ -90,7 +111,6 @@ public class PolarisEventListeners {
           listener,
           e);
     }
-    LOGGER.debug("Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
   }
 
   public boolean hasListeners(PolarisEventType polarisEventType) {

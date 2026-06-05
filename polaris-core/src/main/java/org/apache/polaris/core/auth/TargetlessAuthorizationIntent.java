@@ -16,14 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.core.auth;
 
-package org.apache.polaris.persistence.relational.jdbc;
+import com.google.common.base.Preconditions;
+import org.jspecify.annotations.NonNull;
 
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplV4SchemaTest
-    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
+/** Authorization intent for operations with no explicit securable target. */
+public record TargetlessAuthorizationIntent(@NonNull PolarisAuthorizableOperation operation)
+    implements AuthorizationIntent {
+  public TargetlessAuthorizationIntent {
+    Preconditions.checkNotNull(operation, "operation must be non-null");
+  }
 
   @Override
-  public int schemaVersion() {
-    return 4;
+  public @NonNull PolarisAuthorizableOperation getOperation() {
+    return operation;
   }
 }

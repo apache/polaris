@@ -16,13 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.core.auth;
 
-package org.apache.polaris.persistence.relational.jdbc;
+import org.jspecify.annotations.NonNull;
 
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplV0SchemaTest
-    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
-  @Override
-  public int schemaVersion() {
-    return 0;
-  }
+/** Authorization intent describing an operation and its target resource shape. */
+public sealed interface AuthorizationIntent
+    permits TargetlessAuthorizationIntent,
+        SingleTargetAuthorizationIntent,
+        RenameAuthorizationIntent,
+        PolicyAttachmentAuthorizationIntent,
+        RoleAssignmentAuthorizationIntent,
+        PrivilegeGrantAuthorizationIntent,
+        RootPrivilegeGrantAuthorizationIntent {
+
+  @NonNull PolarisAuthorizableOperation getOperation();
 }

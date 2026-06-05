@@ -16,13 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.core.auth;
 
-package org.apache.polaris.persistence.relational.jdbc;
+import com.google.common.base.Preconditions;
+import org.jspecify.annotations.NonNull;
 
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplV3SchemaTest
-    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
+/** Authorization intent for granting or revoking root privileges for a grantee. */
+public record RootPrivilegeGrantAuthorizationIntent(
+    @NonNull PolarisAuthorizableOperation operation, @NonNull PolarisSecurable grantee)
+    implements AuthorizationIntent {
+  public RootPrivilegeGrantAuthorizationIntent {
+    Preconditions.checkNotNull(operation, "operation must be non-null");
+    Preconditions.checkNotNull(grantee, "grantee must be non-null");
+  }
+
   @Override
-  public int schemaVersion() {
-    return 3;
+  public @NonNull PolarisAuthorizableOperation getOperation() {
+    return operation;
   }
 }

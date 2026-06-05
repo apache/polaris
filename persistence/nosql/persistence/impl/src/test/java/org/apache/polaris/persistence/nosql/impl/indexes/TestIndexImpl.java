@@ -37,6 +37,8 @@ import static org.apache.polaris.persistence.nosql.impl.indexes.ObjTestValue.obj
 import static org.apache.polaris.persistence.nosql.impl.indexes.ObjTestValue.objTestValueOfSize;
 import static org.apache.polaris.persistence.nosql.impl.indexes.Util.asHex;
 import static org.apache.polaris.persistence.nosql.impl.indexes.Util.randomObjId;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.groups.Tuple.tuple;
 
 import java.nio.ByteBuffer;
@@ -747,35 +749,23 @@ public class TestIndexImpl {
   }
 
   @Test
-  public void emptyIndexDivide() {
-    for (var i = -5; i < 5; i++) {
-      var parts = i;
+  public void invalidSplitByTargetSize() {
+    for (var i = -5; i <= 0; i++) {
+      var targetSize = i;
       soft.assertThatIllegalArgumentException()
-          .isThrownBy(() -> newStoreIndex(OBJ_REF_SERIALIZER).divide(parts))
-          .withMessageStartingWith("Number of parts ")
-          .withMessageContaining(
-              " must be greater than 0 and less or equal to number of elements ");
+          .isThrownBy(() -> newStoreIndex(OBJ_REF_SERIALIZER).splitByTargetSize(targetSize))
+          .withMessageStartingWith("Target serialized size ")
+          .withMessageContaining(" must be greater than 0");
     }
   }
 
-  @Test
-  public void impossibleDivide() {
-    var indexTestSet = basicIndexTestSet();
-    var index = indexTestSet.keyIndex();
-
-    soft.assertThatIllegalArgumentException()
-        .isThrownBy(() -> index.divide(index.asKeyList().size() + 1))
-        .withMessageStartingWith("Number of parts ")
-        .withMessageContaining(" must be greater than 0 and less or equal to number of elements ");
-  }
-
   @ParameterizedTest
-  @ValueSource(ints = {2, 3, 4, 5, 6})
-  public void divide(int parts) {
+  @ValueSource(longs = {32, 48, 64, 96, 128})
+  public void splitByTargetSize(long targetSize) {
     var indexTestSet = basicIndexTestSet();
     var index = indexTestSet.keyIndex();
 
-    var splits = index.divide(parts);
+    var splits = index.splitByTargetSize(targetSize);
 
     soft.assertThat(splits.stream().mapToInt(i -> i.asKeyList().size()).sum())
         .isEqualTo(index.asKeyList().size());
@@ -786,6 +776,67 @@ public class TestIndexImpl {
         .containsExactlyElementsOf(index);
     soft.assertThat(splits.getFirst().first()).isEqualTo(index.first());
     soft.assertThat(splits.getLast().last()).isEqualTo(index.last());
+    soft.assertThat(splits).allSatisfy(split -> assertSplitRespectsTargetSize(split, targetSize));
+  }
+
+  @Test
+  public void splitByTargetSizeIsolatesLargeEntries() {
+    var index = newStoreIndex(OBJ_TEST_SERIALIZER);
+    var firstKey = key("a");
+    var largeKey = key("b");
+    var lastKey = key("c");
+    var firstValue = objTestValueFromString("cafe");
+    var lastValue = objTestValueFromString("babe");
+    var targetSize = 128L;
+    var largeValue =
+        objTestValueOfSize(
+            smallestValueSizeAboveActualSingleEntrySerializedSize(largeKey, targetSize));
+
+    index.put(firstKey, firstValue);
+    index.put(largeKey, largeValue);
+    index.put(lastKey, lastValue);
+
+    var splits = index.splitByTargetSize(targetSize);
+
+    soft.assertThat(splits).hasSize(3);
+    soft.assertThat(splits.get(0).asKeyList()).containsExactly(firstKey);
+    soft.assertThat(splits.get(1).asKeyList()).containsExactly(largeKey);
+    soft.assertThat(splits.get(2).asKeyList()).containsExactly(lastKey);
+  }
+
+  @Test
+  public void splitByTargetSizeReturnsSameSingletonInstance() {
+    var key = key("singleton");
+    var targetSize = 64L;
+    var value =
+        objTestValueOfSize(smallestValueSizeAboveActualSingleEntrySerializedSize(key, targetSize));
+
+    var modified = newStoreIndex(OBJ_TEST_SERIALIZER);
+    modified.put(key, value);
+    soft.assertThat(modified.splitByTargetSize(targetSize)).containsExactly(modified);
+    soft.assertThat(modified.isModified()).isTrue();
+
+    var deserialized = deserializeStoreIndex(modified.serialize(), OBJ_TEST_SERIALIZER);
+    soft.assertThat(deserialized.isModified()).isFalse();
+    soft.assertThat(deserialized.splitByTargetSize(targetSize)).containsExactly(deserialized);
+    soft.assertThat(deserialized.isModified()).isFalse();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {127, 128, 16_383, 16_384})
+  public void splitByTargetSizeElementCountVarIntBoundary(int entryCount) {
+    var index = newStoreIndex(OBJ_REF_SERIALIZER);
+    for (var i = 0; i < entryCount; i++) {
+      index.put(key(format("entry-%03d", i)), randomObjId());
+    }
+
+    var splits = index.splitByTargetSize(Long.MAX_VALUE);
+
+    soft.assertThat(splits).hasSize(1);
+    soft.assertThat(splits.getFirst().asKeyList()).hasSize(entryCount);
+    assertThatCode(() -> splits.getFirst().serialize()).doesNotThrowAnyException();
+    soft.assertThat(splits.getFirst().estimatedSerializedSize())
+        .isGreaterThanOrEqualTo(splits.getFirst().serialize().remaining());
   }
 
   @Test
@@ -795,7 +846,27 @@ public class TestIndexImpl {
 
     soft.assertThat(index.asMutableIndex()).isSameAs(index);
     soft.assertThat(index.isMutable()).isTrue();
-    soft.assertThatCode(() -> index.divide(3)).doesNotThrowAnyException();
+    soft.assertThatCode(() -> index.splitByTargetSize(3)).doesNotThrowAnyException();
+  }
+
+  private static int smallestValueSizeAboveActualSingleEntrySerializedSize(
+      IndexKey key, long maxEntrySerializedSize) {
+    var valueSize = (int) Math.min(maxEntrySerializedSize, Integer.MAX_VALUE);
+    while (((long) IndexImpl.INDEX_SERIALIZATION_HEADER_SIZE
+            + key.serializedSize()
+            + OBJ_TEST_SERIALIZER.serializedSize(objTestValueOfSize(valueSize)))
+        <= maxEntrySerializedSize) {
+      valueSize++;
+    }
+    return valueSize;
+  }
+
+  private static void assertSplitRespectsTargetSize(IndexSpi<?> split, long targetSize) {
+    var estimatedSize = split.estimatedSerializedSize();
+    if (estimatedSize <= targetSize) {
+      return;
+    }
+    assertThat(split.asKeyList()).hasSize(1);
   }
 
   /**

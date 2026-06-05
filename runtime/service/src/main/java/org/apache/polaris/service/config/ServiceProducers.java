@@ -32,6 +32,8 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import java.time.Clock;
 import java.util.Optional;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -58,7 +60,6 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
@@ -75,6 +76,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
+import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -112,8 +114,8 @@ public class ServiceProducers {
   @Produces
   @ApplicationScoped
   public StorageCredentialCache storageCredentialCache(
-      PolarisDiagnostics diagnostics, StorageCredentialCacheConfig storageCredentialCacheConfig) {
-    return new StorageCredentialCache(diagnostics, storageCredentialCacheConfig);
+      StorageCredentialCacheConfig storageCredentialCacheConfig) {
+    return new StorageCredentialCache(storageCredentialCacheConfig);
   }
 
   @Produces
@@ -234,13 +236,6 @@ public class ServiceProducers {
   public PolarisMetaStoreManager polarisMetaStoreManager(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
-  public StorageCredentialsVendor storageCredentialsVendor(
-      PolarisMetaStoreManager metaStoreManager, CallContext callContext) {
-    return new StorageCredentialsVendor(metaStoreManager, callContext);
   }
 
   @Produces
@@ -465,5 +460,31 @@ public class ServiceProducers {
   public PolarisMetricsReporter metricsReporter(
       MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
     return reporters.select(Identifier.Literal.of(config.type())).get();
+  }
+
+  @Produces
+  @Singleton
+  @Identifier("event-listener-executor")
+  public Executor eventListenerExecutor(PolarisEventListenerConfiguration config) {
+    if (config.types().isEmpty()) {
+      return runnable -> {
+        throw new RejectedExecutionException(
+            "Event listener executor is not available because no event listeners are configured");
+      };
+    }
+    return SmallRyeManagedExecutor.builder()
+        .injectionPointName("event-listener-executor")
+        .propagated(ThreadContext.ALL_REMAINING)
+        .cleared(ThreadContext.CDI)
+        .maxAsync(config.executor().poolSize())
+        .maxQueued(config.executor().queueSize())
+        .build();
+  }
+
+  public void closeEventListenerExecutor(
+      @Disposes @Identifier("event-listener-executor") Executor executor) {
+    if (executor instanceof ManagedExecutor managedExecutor) {
+      managedExecutor.close();
+    }
   }
 }

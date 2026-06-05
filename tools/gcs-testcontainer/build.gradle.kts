@@ -17,12 +17,27 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.relational.jdbc;
+plugins {
+  id("org.kordamp.gradle.jandex")
+  id("polaris-server")
+}
 
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplV1SchemaTest
-    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
-  @Override
-  public int schemaVersion() {
-    return 1;
+dependencies {
+  api(platform(libs.testcontainers.bom))
+  api("org.testcontainers:testcontainers")
+
+  api(platform(libs.google.cloud.storage.bom))
+  api("com.google.cloud:google-cloud-storage")
+
+  implementation(project(":polaris-container-spec-helper"))
+  implementation(libs.guava)
+
+  compileOnly(platform(libs.junit.bom))
+  compileOnly("org.junit.jupiter:junit-jupiter-api")
+}
+
+testing {
+  suites {
+    val intTest by registering(JvmTestSuite::class)
   }
 }

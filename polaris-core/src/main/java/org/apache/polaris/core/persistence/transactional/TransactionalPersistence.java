@@ -298,27 +298,18 @@ public interface TransactionalPersistence
   /**
    * See {@link org.apache.polaris.core.persistence.IntegrationPersistence#createStorageIntegration}
    */
-  @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @NonNull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+  @Nullable PolarisStorageIntegration createStorageIntegrationInCurrentTxn(
+      @NonNull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
 
   /**
    * See {@link
    * org.apache.polaris.core.persistence.IntegrationPersistence#persistStorageIntegrationIfNeeded}
    */
-  <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeededInCurrentTxn(
+  void persistStorageIntegrationIfNeededInCurrentTxn(
       @NonNull PolarisCallContext callContext,
       @NonNull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration);
-
-  /**
-   * See {@link
-   * org.apache.polaris.core.persistence.IntegrationPersistence#loadPolarisStorageIntegration}
-   */
-  @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
-          @NonNull PolarisCallContext callContext, @NonNull PolarisBaseEntity entity);
+      @Nullable PolarisStorageIntegration storageIntegration);
 }

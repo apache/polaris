@@ -16,13 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.core.auth;
 
-package org.apache.polaris.persistence.relational.jdbc;
+import com.google.common.base.Preconditions;
+import org.jspecify.annotations.NonNull;
 
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplV2SchemaTest
-    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
+/** Authorization intent for assigning or revoking a role for an assignee. */
+public record RoleAssignmentAuthorizationIntent(
+    @NonNull PolarisAuthorizableOperation operation,
+    @NonNull PolarisSecurable role,
+    @NonNull PolarisSecurable assignee)
+    implements AuthorizationIntent {
+  public RoleAssignmentAuthorizationIntent {
+    Preconditions.checkNotNull(operation, "operation must be non-null");
+    Preconditions.checkNotNull(role, "role must be non-null");
+    Preconditions.checkNotNull(assignee, "assignee must be non-null");
+  }
+
   @Override
-  public int schemaVersion() {
-    return 2;
+  public @NonNull PolarisAuthorizableOperation getOperation() {
+    return operation;
   }
 }

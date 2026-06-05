@@ -936,6 +936,112 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
+  /**
+   * Build an Iceberg table, then invoke a subsequent register table call that overwrites the
+   * existing table metadata. Verifies that the overwrite is applied and the catalog reflects the
+   * updated metadata.
+   */
+  @Test
+  public void testRegisterTableOverwriteViaRest() {
+    Namespace ns = Namespace.of("ns_overwrite_rest");
+    restCatalog.createNamespace(ns);
+
+    // Create a source table and capture its metadata location
+    Table source = restCatalog.buildTable(TableIdentifier.of(ns, "source_table"), SCHEMA).create();
+    String currentMetadataLocation =
+        ((BaseTable) source).operations().current().metadataFileLocation();
+    String metadataDir =
+        currentMetadataLocation.substring(0, currentMetadataLocation.lastIndexOf('/') + 1);
+    String newMetadataLocation = metadataDir + "overwrite-v1.metadata.json";
+
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+
+      // Write a new metadata file (re-using the current metadata contents)
+      TableMetadataParser.write(
+          ((BaseTable) source).operations().current(),
+          resolvingFileIO.newOutputFile(newMetadataLocation));
+
+      // Invoke REST register with overwrite=true
+      Invocation registerInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns_overwrite_rest/register")
+              .buildPost(
+                  Entity.json(
+                      Map.of(
+                          "name",
+                          "source_table",
+                          "metadata-location",
+                          newMetadataLocation,
+                          "overwrite",
+                          true)));
+
+      try (Response registerResponse = registerInvocation.invoke()) {
+        assertThat(registerResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      }
+
+      // Reload the table via REST client and verify metadata-location updated
+      Table loaded = restCatalog.loadTable(TableIdentifier.of(ns, "source_table"));
+      assertThat(((BaseTable) loaded).operations().current().metadataFileLocation())
+          .isEqualTo(newMetadataLocation);
+
+      // Clean up the old metadata file
+      resolvingFileIO.deleteFile(currentMetadataLocation);
+    }
+  }
+
+  /**
+   * Attempt to invoke registerTable with overwrite=true against an EXTERNAL (federated) catalog.
+   * Polaris only supports the overwrite path for its internal IcebergCatalog; EXTERNAL catalogs
+   * must receive a 400 Bad Request.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @Test
+  public void testRegisterTableOverwriteRejectedForExternalCatalog() {
+    Namespace ns = Namespace.of("ns_overwrite_ext");
+    restCatalog.createNamespace(ns);
+
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            externalCatalogBaseLocation + "/ns_overwrite_ext/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+
+      String fileLocation =
+          externalCatalogBaseLocation + "/ns_overwrite_ext/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+
+      // Register the table without overwrite first (must succeed)
+      restCatalog.registerTable(TableIdentifier.of(ns, "my_table"), fileLocation);
+
+      // Now attempt to register again with overwrite=true — must be rejected with 400
+      Invocation overwriteInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns_overwrite_ext/register")
+              .buildPost(
+                  Entity.json(
+                      Map.of(
+                          "name",
+                          "my_table",
+                          "metadata-location",
+                          fileLocation,
+                          "overwrite",
+                          true)));
+
+      try (Response overwriteResponse = overwriteInvocation.invoke()) {
+        assertThat(overwriteResponse.getStatus())
+            .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
   @Test
   public void testCreateAndLoadTableWithReturnedEtag() {
     Namespace ns1 = Namespace.of("ns1");

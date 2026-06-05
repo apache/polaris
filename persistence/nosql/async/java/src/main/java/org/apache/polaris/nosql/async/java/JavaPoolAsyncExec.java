@@ -63,6 +63,7 @@ import org.slf4j.MDC;
 public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(JavaPoolAsyncExec.class.getName());
   private static final Duration MAX_DURATION = Duration.ofDays(7);
+  private static final long SUBMISSION_RETRY_MILLIS = 10L;
 
   public static final String EXECUTOR_THREAD_NAME_PREFIX = "JavaPoolTaskExecutor#";
   public static final String SCHEDULER_THREAD_NAME_PREFIX = "JavaPoolTaskScheduler#";
@@ -239,7 +240,19 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
 
   @SuppressWarnings("FutureReturnValueIgnored")
   private void immediate(CancelableFuture<?> cancelable) {
-    executorService.submit(cancelable);
+    try {
+      executorService.submit(cancelable);
+    } catch (RejectedExecutionException e) {
+      taskSubmissionRejectedHook(cancelable);
+      // In case the pool is being shut-down, do not attempt to reschedule.
+      if (!cancelable.cancelledOrShutdown()) {
+        try {
+          delayed(cancelable, SUBMISSION_RETRY_MILLIS);
+        } catch (RejectedExecutionException retryRejected) {
+          cancelable.completeExceptionally(retryRejected);
+        }
+      }
+    }
   }
 
   @SuppressWarnings("FutureReturnValueIgnored")
@@ -260,6 +273,9 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
 
   @VisibleForTesting
   void taskTrackedHook(Cancelable<?> cancelable) {}
+
+  @VisibleForTesting
+  void taskSubmissionRejectedHook(Cancelable<?> cancelable) {}
 
   private final class CancelableFuture<R> implements Cancelable<R>, Runnable {
     private final CompletableFuture<R> completable = new CompletableFuture<>();
@@ -339,6 +355,11 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
 
     private boolean cancelledOrShutdown() {
       return completable.isCancelled() || shutdown;
+    }
+
+    private void completeExceptionally(Throwable t) {
+      completable.completeExceptionally(t);
+      tasks.remove(this);
     }
 
     @Override

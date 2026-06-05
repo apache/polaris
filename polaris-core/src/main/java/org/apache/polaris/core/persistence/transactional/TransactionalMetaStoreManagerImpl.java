@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -73,17 +72,14 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -422,7 +418,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @NonNull PolarisCallContext callCtx,
       @NonNull TransactionalPersistence ms,
       @NonNull PolarisBaseEntity catalog,
-      @Nullable PolarisStorageIntegration<?> integration,
+      @Nullable PolarisStorageIntegration integration,
       @NonNull List<PolarisEntityCore> principalRoles) {
     // validate input
     getDiagnostics().checkNotNull(catalog, "unexpected_null_catalog");
@@ -948,7 +944,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         internalProp.get(PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName());
     String storageConfigInfoStr =
         internalProp.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    PolarisStorageIntegration<?> integration;
+    PolarisStorageIntegration integration;
     // storageConfigInfo's presence is needed to create a storage integration
     // and the catalog should not have an internal property of storage identifier or id yet
     if (storageConfigInfoStr != null && integrationIdentifierOrId == null) {
@@ -2009,64 +2005,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @NonNull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
     return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, pageToken));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @NonNull ScopedCredentialsResult getSubscopedCredsForEntity(
-      @NonNull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      @NonNull PolarisEntityType entityType,
-      boolean allowListOperation,
-      @NonNull Set<String> allowedReadLocations,
-      @NonNull Set<String> allowedWriteLocations,
-      @NonNull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @NonNull CredentialVendingContext credentialVendingContext) {
-
-    // get meta store session we should be using
-    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
-    getDiagnostics()
-        .check(
-            !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
-            "allowed_locations_to_subscope_is_required");
-
-    // reload the entity, error out if not found
-    EntityResult reloadedEntity = loadEntity(callCtx, catalogId, entityId, entityType);
-    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return new ScopedCredentialsResult(
-          reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
-    }
-
-    // get storage integration
-    PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
-        ms.loadPolarisStorageIntegrationInCurrentTxn(callCtx, reloadedEntity.getEntity());
-
-    // cannot be null
-    getDiagnostics()
-        .checkNotNull(
-            storageIntegration,
-            "storage_integration_not_exists",
-            "catalogId={}, entityId={}",
-            catalogId,
-            entityId);
-
-    try {
-      StorageAccessConfig storageAccessConfig =
-          storageIntegration.getSubscopedCreds(
-              callCtx.getRealmConfig(),
-              allowListOperation,
-              allowedReadLocations,
-              allowedWriteLocations,
-              polarisPrincipal,
-              refreshCredentialsEndpoint,
-              credentialVendingContext);
-      return new ScopedCredentialsResult(storageAccessConfig);
-    } catch (Exception ex) {
-      return new ScopedCredentialsResult(
-          BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
-    }
   }
 
   /** {@link #loadResolvedEntityById(PolarisCallContext, long, long, PolarisEntityType)} */

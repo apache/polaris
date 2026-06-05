@@ -21,6 +21,8 @@ plugins { id("polaris-bom") }
 
 description = "Apache Polaris - Bill of Materials (BOM)"
 
+val ideaActive = System.getProperty("idea.active").toBoolean()
+
 dependencies {
   constraints {
     api(rootProject)
@@ -30,6 +32,8 @@ dependencies {
     api(project(":polaris-api-management-service"))
 
     api(project(":polaris-container-spec-helper"))
+    api(project(":polaris-azurite-testcontainer"))
+    api(project(":polaris-gcs-testcontainer"))
     api(project(":polaris-minio-testcontainer"))
     api(project(":polaris-rustfs-testcontainer"))
     api(project(":polaris-immutables"))
@@ -44,6 +48,7 @@ dependencies {
     api(project(":polaris-idgen-api"))
     api(project(":polaris-idgen-impl"))
     api(project(":polaris-idgen-spi"))
+    api(project(":polaris-idgen-mocks"))
 
     api(project(":polaris-nodes-api"))
     api(project(":polaris-nodes-impl"))
@@ -90,6 +95,20 @@ dependencies {
     api(project(":polaris-relational-jdbc"))
 
     api(project(":polaris-extensions-auth-opa"))
+    api(project(":polaris-extensions-auth-opa-tests"))
+    api(project(":polaris-extensions-auth-ranger"))
+    api(project(":polaris-extensions-auth-ranger-tests"))
+    api(project(":polaris-extensions-federation-bigquery"))
+    api(project(":polaris-extensions-federation-hadoop"))
+    api(project(":polaris-extensions-federation-hive"))
+    api(project(":polaris-hms-testcontainer"))
+
+    api(project(":polaris-spark-3.5_2.12"))
+    api(project(":polaris-spark-integration-3.5_2.12"))
+    if (!ideaActive) {
+      api(project(":polaris-spark-3.5_2.13"))
+      api(project(":polaris-spark-integration-3.5_2.13"))
+    }
 
     api(project(":polaris-admin"))
     api(project(":polaris-runtime-common"))
@@ -102,3 +121,46 @@ dependencies {
     api(project(":polaris-tests"))
   }
 }
+
+tasks.register("verifyBomDependencies") {
+  group = "verification"
+  description = "Checks if the BOM dependencies are complete"
+
+  actions.addLast {
+    // Projects that shall not be referenced from the BOM.
+    val nonBomProjects =
+      setOf(
+        ":polaris-bom",
+        ":aggregated-license-report",
+        ":polaris-config-docs-site",
+        ":polaris-distribution",
+      )
+
+    val apiConfig = configurations.api.get()
+    val declaredGroupName =
+      apiConfig.dependencyConstraints.filterIsInstance<DependencyConstraint>().map {
+        "${it.group}:${it.name}"
+      }
+
+    val missingProjectPaths =
+      rootProject.allprojects
+        .filter {
+          !declaredGroupName.contains("${it.group}:${it.name}") && !nonBomProjects.contains(it.path)
+        }
+        .map { it.path }
+        .sorted()
+
+    if (!missingProjectPaths.isEmpty()) {
+      logger.error(
+        "The dependencies declared in ${project.projectDir.relativeTo(rootProject.projectDir)} might be incomplete, the following delcarations might be missing:"
+      )
+      missingProjectPaths.forEach { logger.error("  api(project(\"$it\"))") }
+
+      throw GradleException(
+        "The dependencies declared in ${project.projectDir.relativeTo(rootProject.projectDir)} might be incomplete, see logged errors above."
+      )
+    }
+  }
+}
+
+tasks.named("check") { dependsOn("verifyBomDependencies") }
