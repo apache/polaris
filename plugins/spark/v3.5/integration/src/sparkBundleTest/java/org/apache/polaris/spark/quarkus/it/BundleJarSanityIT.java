@@ -24,11 +24,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
+import java.io.File;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -45,26 +50,60 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.spark.deploy.SparkSubmitUtils;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import scala.Option;
+import scala.collection.JavaConverters;
+import scala.collection.Seq;
+import scala.collection.immutable.Nil$;
 
-/** Sanity test exercising the polaris-spark shaded bundle jar on a curated classpath. */
+/** Sanity tests exercising the deployment modes for the polaris-spark client. */
 @QuarkusIntegrationTest
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class BundleJarSanityIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String SPARK_MAJOR_VERSION = "3.5";
 
   @Test
   void testBundleJarLoading(
       @TempDir Path tempDir, PolarisApiEndpoints endpoints, ClientCredentials credentials)
       throws Exception {
+    String bundleJar = System.getProperty("polaris.spark.bundle.jar");
+    assertThat(bundleJar).as("polaris.spark.bundle.jar system property").isNotBlank();
+    runSparkSqlExercise(
+        tempDir, endpoints, credentials, new URL[] {Paths.get(bundleJar).toUri().toURL()});
+  }
+
+  @Test
+  void testPackagesResolution(
+      @TempDir Path tempDir, PolarisApiEndpoints endpoints, ClientCredentials credentials)
+      throws Exception {
+    String version = System.getProperty("polaris.version");
+    assertThat(version).as("polaris.version system property").isNotBlank();
+    String scalaversion = System.getProperty("polaris.scala.version");
+    assertThat(version).as("polaris.scala.version system property").isNotBlank();
+    String coordinate =
+        String.format(
+            "org.apache.polaris:polaris-spark-%s_%s:%s",
+            SPARK_MAJOR_VERSION, scalaversion, version);
+    URL[] urls = resolveMavenCoordinate(coordinate);
+    runSparkSqlExercise(tempDir, endpoints, credentials, urls);
+  }
+
+  private static void runSparkSqlExercise(
+      Path tempDir, PolarisApiEndpoints endpoints, ClientCredentials credentials, URL[] urls)
+      throws Exception {
     String catalogName = "bundle_test_catalog_" + UUID.randomUUID().toString().replace("-", "");
     String token = obtainToken(endpoints, credentials);
     String catalogBaseLocation = tempDir.resolve("catalog").toUri().toString();
     createFileCatalog(endpoints, token, catalogName, catalogBaseLocation);
+    ClassLoader previous = Thread.currentThread().getContextClassLoader();
+    URLClassLoader loader = new URLClassLoader(urls, previous);
+    Thread.currentThread().setContextClassLoader(loader);
     try (SparkSession spark =
         SparkSession.builder()
             .master("local")
@@ -83,8 +122,36 @@ public class BundleJarSanityIT {
       spark.sql("DROP TABLE bundle_ns.t");
       spark.sql("DROP NAMESPACE bundle_ns");
     } finally {
+      Thread.currentThread().setContextClassLoader(previous);
+      loader.close();
       deleteCatalog(endpoints, token, catalogName);
     }
+  }
+
+  /**
+   * Resolves a Maven coordinate to local jar paths via Spark's own Ivy machinery — the same code
+   * path that backs {@code spark-submit --packages}. With {@code useLocalM2=true}, artifacts
+   * published by {@code publishToMavenLocal} are picked up from {@code ~/.m2/repository};
+   * transitives not in the local repo (e.g. iceberg-spark-runtime) fall through to Maven Central.
+   */
+  @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
+  private static URL[] resolveMavenCoordinate(String coordinate) throws Exception {
+    scala.collection.immutable.Seq<String> emptyExclusions =
+        (scala.collection.immutable.Seq) Nil$.MODULE$;
+    Seq<String> resolved =
+        SparkSubmitUtils.resolveMavenCoordinates(
+            coordinate,
+            SparkSubmitUtils.buildIvySettings(Option.empty(), Option.empty(), true),
+            Option.empty(),
+            true,
+            emptyExclusions,
+            false);
+    List<URL> urls = new ArrayList<>();
+    for (String path : JavaConverters.seqAsJavaList(resolved)) {
+      urls.add(new File(path).toURI().toURL());
+    }
+    assertThat(urls).as("resolved jars for %s", coordinate).isNotEmpty();
+    return urls.toArray(new URL[0]);
   }
 
   private static String obtainToken(PolarisApiEndpoints endpoints, ClientCredentials credentials)

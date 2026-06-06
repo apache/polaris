@@ -193,10 +193,6 @@ testing {
         implementation(libs.javax.servlet.api)
         runtimeOnly("org.apache.logging.log4j:log4j-core:2.26.0")
 
-        // Bundle jar as a file artifact so the shadow jar is the only source of
-        // polaris-spark/polaris-core classes
-        runtimeOnly(files(sparkBundleJarTask.flatMap { it.archiveFile }))
-
         implementation(project(":polaris-api-management-model"))
         implementation(testFixtures(project(":polaris-runtime-service")))
 
@@ -209,6 +205,17 @@ testing {
           systemProperty("build.output.directory", layout.buildDirectory.asFile.get())
           dependsOn(tasks.named("quarkusBuild"))
           dependsOn(sparkBundleJarTask)
+          systemProperty(
+            "polaris.spark.bundle.jar",
+            sparkBundleJarTask.flatMap { it.archiveFile }.get().asFile.absolutePath,
+          )
+          systemProperty("polaris.version", project.version.toString())
+          systemProperty("polaris.scala.version", scalaVersion)
+          dependsOn(":publishToMavenLocal")
+          dependsOn(":polaris-core:publishMavenPublicationToMavenLocal")
+          dependsOn(
+            ":polaris-spark-${sparkMajorVersion}_${scalaVersion}:publishMavenPublicationToMavenLocal"
+          )
           jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-Dquarkus.profile=it") })
 
           if (System.getenv("AWS_REGION") == null) {
