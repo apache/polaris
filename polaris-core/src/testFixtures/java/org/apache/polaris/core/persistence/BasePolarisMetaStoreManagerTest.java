@@ -131,6 +131,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .extracting(PolarisEntity::toCore)
         .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
+    // JSONB backends may rewrite JSON formatting; equals() on raw strings would fail here.
     PolarisPersistenceTestSupport.assertEntitiesEquivalentInAnyOrder(
         createdEntities, listedEntities);
   }

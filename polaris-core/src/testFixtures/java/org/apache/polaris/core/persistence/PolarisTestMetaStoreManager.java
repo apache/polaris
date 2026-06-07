@@ -1209,19 +1209,33 @@ public class PolarisTestMetaStoreManager {
       PolarisBaseEntity target,
       PolicyEntity policy,
       Map<String, String> parameters) {
-    Map<String, String> expectedParameters = parameters == null ? Map.of() : parameters;
+    PolarisPolicyMappingRecord expected =
+        new PolarisPolicyMappingRecord(
+            target.getCatalogId(),
+            target.getId(),
+            policy.getCatalogId(),
+            policy.getId(),
+            policy.getPolicyTypeCode(),
+            parameters);
     long policyMappingCount =
         policyMappingRecords.stream()
-            .filter(
-                record ->
-                    record.getPolicyCatalogId() == policy.getCatalogId()
-                        && record.getPolicyId() == policy.getId()
-                        && record.getTargetCatalogId() == target.getCatalogId()
-                        && record.getTargetId() == target.getId()
-                        && record.getPolicyTypeCode() == policy.getPolicyTypeCode()
-                        && Objects.equals(record.getParametersAsMap(), expectedParameters))
+            .filter(record -> policyMappingRecordSemanticallyEquals(record, expected))
             .count();
     return policyMappingCount == 1;
+  }
+
+  /**
+   * Like {@link PolarisPolicyMappingRecord#equals(Object)} but compares {@code parameters} by
+   * parsed map content rather than raw serialized JSON.
+   */
+  private static boolean policyMappingRecordSemanticallyEquals(
+      PolarisPolicyMappingRecord record, PolarisPolicyMappingRecord expected) {
+    return record.getTargetCatalogId() == expected.getTargetCatalogId()
+        && record.getTargetId() == expected.getTargetId()
+        && record.getPolicyCatalogId() == expected.getPolicyCatalogId()
+        && record.getPolicyId() == expected.getPolicyId()
+        && record.getPolicyTypeCode() == expected.getPolicyTypeCode()
+        && Objects.equals(record.getParametersAsMap(), expected.getParametersAsMap());
   }
 
   /**

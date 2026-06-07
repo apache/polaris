@@ -70,7 +70,8 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     try {
       datasourceOperations =
           new DatasourceOperations(
-              createDataSource(), TestRelationalJdbcConfiguration.forDatabaseType(databaseType()));
+              createDataSource(),
+              SimpleRelationalJdbcConfiguration.forDatabaseType(databaseType()));
       try (InputStream scriptStream = openSchemaScript()) {
         datasourceOperations.executeScript(scriptStream);
       }

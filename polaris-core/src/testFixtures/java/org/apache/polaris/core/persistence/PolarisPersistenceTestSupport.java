@@ -20,7 +20,7 @@ package org.apache.polaris.core.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -28,6 +28,9 @@ import org.jspecify.annotations.NonNull;
 
 /** Shared helpers for persistence integration tests. */
 final class PolarisPersistenceTestSupport {
+
+  private static final Comparator<PolarisBaseEntity> SEMANTIC_ENTITY_COMPARATOR =
+      (left, right) -> entitiesSemanticallyEquivalent(left, right) ? 0 : 1;
 
   private PolarisPersistenceTestSupport() {}
 
@@ -37,7 +40,7 @@ final class PolarisPersistenceTestSupport {
    * rewrite JSON formatting while preserving semantics.
    */
   static void assertEntitiesEquivalent(
-      @NonNull PolarisBaseEntity actual, @NonNull PolarisBaseEntity expected) {
+      @NonNull PolarisBaseEntity expected, @NonNull PolarisBaseEntity actual) {
     assertThat(PolarisEntity.toCore(actual)).isEqualTo(PolarisEntity.toCore(expected));
     assertThat(actual.getSubTypeCode()).isEqualTo(expected.getSubTypeCode());
     assertThat(actual.getCreateTimestamp()).isEqualTo(expected.getCreateTimestamp());
@@ -51,34 +54,33 @@ final class PolarisPersistenceTestSupport {
         .isEqualTo(expected.getInternalPropertiesAsMap());
   }
 
+  /**
+   * Like {@link #assertEntitiesEquivalent(PolarisBaseEntity, PolarisBaseEntity)} for unordered
+   * lists. Uses a semantic comparator so {@code containsExactlyInAnyOrderElementsOf} still works
+   * when PostgreSQL JSONB rewrites JSON formatting.
+   */
   static void assertEntitiesEquivalentInAnyOrder(
-      @NonNull List<PolarisBaseEntity> actual, @NonNull List<PolarisBaseEntity> expected) {
-    assertThat(actual).hasSameSizeAs(expected);
-    List<PolarisBaseEntity> unmatched = new ArrayList<>(expected);
-    for (PolarisBaseEntity actualEntity : actual) {
-      PolarisBaseEntity match =
-          unmatched.stream()
-              .filter(candidate -> entitiesEquivalent(actualEntity, candidate))
-              .findFirst()
-              .orElse(null);
-      assertThat(match)
-          .as("No equivalent entity found in expected list for %s", actualEntity)
-          .isNotNull();
-      unmatched.remove(match);
-    }
+      @NonNull List<PolarisBaseEntity> expected, @NonNull List<PolarisBaseEntity> actual) {
+    assertThat(actual)
+        .usingElementComparator(SEMANTIC_ENTITY_COMPARATOR)
+        .containsExactlyInAnyOrderElementsOf(expected);
   }
 
-  private static boolean entitiesEquivalent(
-      @NonNull PolarisBaseEntity actual, @NonNull PolarisBaseEntity expected) {
-    return PolarisEntity.toCore(actual).equals(PolarisEntity.toCore(expected))
-        && actual.getSubTypeCode() == expected.getSubTypeCode()
-        && actual.getCreateTimestamp() == expected.getCreateTimestamp()
-        && actual.getDropTimestamp() == expected.getDropTimestamp()
-        && actual.getPurgeTimestamp() == expected.getPurgeTimestamp()
-        && actual.getToPurgeTimestamp() == expected.getToPurgeTimestamp()
-        && actual.getLastUpdateTimestamp() == expected.getLastUpdateTimestamp()
-        && actual.getGrantRecordsVersion() == expected.getGrantRecordsVersion()
-        && actual.getPropertiesAsMap().equals(expected.getPropertiesAsMap())
-        && actual.getInternalPropertiesAsMap().equals(expected.getInternalPropertiesAsMap());
+  /**
+   * Unlike {@link PolarisBaseEntity#equals(Object)}, compares JSON-backed fields by parsed map
+   * content rather than raw serialized strings.
+   */
+  private static boolean entitiesSemanticallyEquivalent(
+      @NonNull PolarisBaseEntity left, @NonNull PolarisBaseEntity right) {
+    return PolarisEntity.toCore(left).equals(PolarisEntity.toCore(right))
+        && left.getSubTypeCode() == right.getSubTypeCode()
+        && left.getCreateTimestamp() == right.getCreateTimestamp()
+        && left.getDropTimestamp() == right.getDropTimestamp()
+        && left.getPurgeTimestamp() == right.getPurgeTimestamp()
+        && left.getToPurgeTimestamp() == right.getToPurgeTimestamp()
+        && left.getLastUpdateTimestamp() == right.getLastUpdateTimestamp()
+        && left.getGrantRecordsVersion() == right.getGrantRecordsVersion()
+        && left.getPropertiesAsMap().equals(right.getPropertiesAsMap())
+        && left.getInternalPropertiesAsMap().equals(right.getInternalPropertiesAsMap());
   }
 }

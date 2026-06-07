@@ -20,20 +20,20 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import java.util.Optional;
 
-/** Shared {@link RelationalJdbcConfiguration} for JDBC persistence integration tests. */
-final class TestRelationalJdbcConfiguration implements RelationalJdbcConfiguration {
+/** Minimal {@link RelationalJdbcConfiguration} for JDBC persistence integration tests. */
+final class SimpleRelationalJdbcConfiguration implements RelationalJdbcConfiguration {
 
   private final String databaseType;
 
-  private TestRelationalJdbcConfiguration(String databaseType) {
+  private SimpleRelationalJdbcConfiguration(String databaseType) {
     this.databaseType = databaseType;
   }
 
-  static TestRelationalJdbcConfiguration forDatabaseType(DatabaseType databaseType) {
+  static SimpleRelationalJdbcConfiguration forDatabaseType(DatabaseType databaseType) {
     return switch (databaseType) {
-      case H2 -> new TestRelationalJdbcConfiguration("h2");
-      case POSTGRES -> new TestRelationalJdbcConfiguration("postgresql");
-      case COCKROACHDB -> new TestRelationalJdbcConfiguration("cockroachdb");
+      case H2 -> new SimpleRelationalJdbcConfiguration("h2");
+      case POSTGRES -> new SimpleRelationalJdbcConfiguration("postgresql");
+      case COCKROACHDB -> new SimpleRelationalJdbcConfiguration("cockroachdb");
     };
   }
 

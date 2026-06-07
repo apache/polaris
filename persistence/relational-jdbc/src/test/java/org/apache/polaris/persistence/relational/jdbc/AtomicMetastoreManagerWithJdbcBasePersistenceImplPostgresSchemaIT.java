@@ -96,6 +96,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplPostgresSchemaIT
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE " + databaseName);
     } catch (SQLException e) {
+      // 42P04 is PostgreSQL's duplicate_database error; ignore when the schema DB already exists.
       if (!"42P04".equals(e.getSQLState())) {
         throw new RuntimeException("Failed to create database " + databaseName, e);
       }
