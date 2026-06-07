@@ -2492,6 +2492,44 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(loadGrantsResult.getGrantRecords()).hasSize(0);
   }
 
+  /** Test that granting the same privilege twice leaves exactly one grant record. */
+  public void testGrantRecordWriteIsIdempotent() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    PolarisBaseEntity role =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.CATALOG_ROLE, "R1");
+    PolarisBaseEntity namespace =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    PolarisPrivilege privilege = PolarisPrivilege.TABLE_READ_DATA;
+    List<PolarisEntityCore> catalogPath = List.of(catalog, namespace);
+
+    polarisMetaStoreManager.grantPrivilegeOnSecurableToRole(
+        this.polarisCallContext, role, catalogPath, namespace, privilege);
+    polarisMetaStoreManager.grantPrivilegeOnSecurableToRole(
+        this.polarisCallContext, role, catalogPath, namespace, privilege);
+
+    LoadGrantsResult grantsOnSecurable =
+        polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, namespace);
+    Assertions.assertThat(grantsOnSecurable.isSuccess()).isTrue();
+    Assertions.assertThat(grantsOnSecurable.getGrantRecords())
+        .filteredOn(
+            grant ->
+                grant.getGranteeId() == role.getId()
+                    && grant.getSecurableId() == namespace.getId()
+                    && grant.getPrivilegeCode() == privilege.getCode())
+        .hasSize(1);
+
+    LoadGrantsResult grantsOnGrantee =
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, role);
+    Assertions.assertThat(grantsOnGrantee.isSuccess()).isTrue();
+    Assertions.assertThat(grantsOnGrantee.getGrantRecords())
+        .filteredOn(
+            grant ->
+                grant.getGranteeId() == role.getId()
+                    && grant.getSecurableId() == namespace.getId()
+                    && grant.getPrivilegeCode() == privilege.getCode())
+        .hasSize(1);
+  }
+
   /**
    * Rename an entity and validate it worked
    *

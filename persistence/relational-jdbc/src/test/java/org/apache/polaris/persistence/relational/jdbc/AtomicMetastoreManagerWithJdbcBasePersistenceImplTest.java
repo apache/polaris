@@ -37,9 +37,21 @@ import org.mockito.Mockito;
 public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     extends BasePolarisMetaStoreManagerTest {
 
-  public DataSource createH2DataSource() {
+  protected DataSource createDataSource() {
     return JdbcConnectionPool.create(
         String.format("jdbc:h2:file:./build/test_data/polaris/db_%s", schemaVersion()), "sa", "");
+  }
+
+  protected RelationalJdbcConfiguration createJdbcConfiguration() {
+    return new H2JdbcConfiguration();
+  }
+
+  protected String schemaScriptResource() {
+    return String.format("%s/schema-v%s.sql", databaseType().getDisplayName(), schemaVersion());
+  }
+
+  protected DatabaseType databaseType() {
+    return DatabaseType.H2;
   }
 
   public abstract int schemaVersion();
@@ -50,17 +62,17 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     DatasourceOperations datasourceOperations;
     try {
       datasourceOperations =
-          new DatasourceOperations(createH2DataSource(), new H2JdbcConfiguration());
+          new DatasourceOperations(createDataSource(), createJdbcConfiguration());
       ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-      InputStream scriptStream =
-          classLoader.getResourceAsStream(
-              String.format(
-                  "%s/schema-v%s.sql", DatabaseType.H2.getDisplayName(), schemaVersion()));
+      InputStream scriptStream = classLoader.getResourceAsStream(schemaScriptResource());
+      if (scriptStream == null) {
+        throw new IllegalStateException(schemaScriptResource() + " not found on classpath");
+      }
       datasourceOperations.executeScript(scriptStream);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(
-              "Error executing %s script: %s", DatabaseType.H2.getDisplayName(), e.getMessage()),
+              "Error executing %s script: %s", databaseType().getDisplayName(), e.getMessage()),
           e);
     }
 

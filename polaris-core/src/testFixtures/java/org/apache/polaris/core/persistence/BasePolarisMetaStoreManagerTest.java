@@ -265,6 +265,12 @@ public abstract class BasePolarisMetaStoreManagerTest {
     polarisTestMetaStoreManager.testPrivileges();
   }
 
+  /** Test that duplicate grant writes are idempotent */
+  @Test
+  protected void testGrantRecordWriteIsIdempotent() {
+    polarisTestMetaStoreManager.testGrantRecordWriteIsIdempotent();
+  }
+
   /** test entity rename */
   @Test
   protected void testRename() {
