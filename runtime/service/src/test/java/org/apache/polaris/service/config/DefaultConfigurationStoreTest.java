@@ -199,6 +199,7 @@ public class DefaultConfigurationStoreTest {
     Assertions.assertThat(configurationStore.getConfiguration(realmContext, catalog, safeConfig))
         .isTrue();
   }
+
   @Test
   public void testInvalidFeatureConfigurationIsHandled() {
     // invalid feature key format (simulates malformed configuration input)
@@ -208,5 +209,5 @@ public class DefaultConfigurationStoreTest {
 
     // should not crash and should safely return null
     assertThat(value).isNull();
-}
+  }
 }
