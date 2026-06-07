@@ -35,9 +35,9 @@ github:
     - catalog
 
   enabled_merge_buttons:
-    merge: false
+    merge: true
     squash: true
-    rebase: false
+    rebase: true
 
   del_branch_on_merge: true
 
