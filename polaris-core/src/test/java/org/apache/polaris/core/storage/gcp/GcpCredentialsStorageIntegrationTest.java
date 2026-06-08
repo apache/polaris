@@ -85,8 +85,7 @@ import tools.jackson.databind.node.ObjectNode;
 
 class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
-  private final String gcsServiceKeyJson...tion =
-      System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+  private final String gcsServiceKeyJsonLocation = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
   private static final String REFRESH_ENDPOINT = "get/credentials";
 
@@ -116,7 +115,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testSubscope(boolean allowedListAction) throws Exception {
-    Assumptions.assumeThat(gcsServiceKeyJson...tion)
+    Assumptions.assumeThat(gcsServiceKeyJsonLocation)
         .describedAs("Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits")
         .isNotNull()
         .isNotEmpty();
@@ -437,7 +436,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testRefreshCredentialsEndpointIsReturned() throws IOException {
-    Assumptions.assumeThat(gcsServiceKeyJson...tion)
+    Assumptions.assumeThat(gcsServiceKeyJsonLocation)
         .describedAs("Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits")
         .isNotNull()
         .isNotEmpty();
@@ -651,7 +650,10 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     gen.initialize(2048);
     KeyPair keyPair = gen.generateKeyPair();
     String pem =
-        "[REDACTED PRIVATE KEY]\n";
+        "-----BEGIN PRIVATE KEY-----\n"
+            + Base64.getMimeEncoder(64, "\n".getBytes(UTF_8))
+                .encodeToString(keyPair.getPrivate().getEncoded())
+            + "\n-----END PRIVATE KEY-----\n";
     Path keyFile = tempDir.resolve("attribution-key.pem");
     Files.writeString(keyFile, pem);
 

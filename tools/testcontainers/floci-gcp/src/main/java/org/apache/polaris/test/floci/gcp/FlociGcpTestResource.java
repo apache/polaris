@@ -43,7 +43,9 @@ public class FlociGcpTestResource implements QuarkusTestResourceLifecycleManager
                 initArgs.get("oauth2Token"))
             .withStartupAttempts(5);
     this.container.start();
-    return Map.of();
+    return Map.of(
+        "polaris.storage.gcp.token", container.oauth2Token(),
+        "STORAGE_EMULATOR_HOST", container.baseUri());
   }
 
   @Override

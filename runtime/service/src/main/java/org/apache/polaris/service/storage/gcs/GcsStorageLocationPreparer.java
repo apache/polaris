@@ -50,6 +50,7 @@ public class GcsStorageLocationPreparer extends HierarchicalFolderLocationPrepar
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GcsStorageLocationPreparer.class);
   private static final String GCS_STORAGE_LAYOUT = "_";
+  private static final String STORAGE_EMULATOR_HOST = "STORAGE_EMULATOR_HOST";
 
   private final Supplier<GoogleCredentials> credentialsSupplier;
 
@@ -142,8 +143,15 @@ public class GcsStorageLocationPreparer extends HierarchicalFolderLocationPrepar
   }
 
   Bucket fetchBucketMetadata(String bucketName) {
-    Storage storage =
-        StorageOptions.newBuilder().setCredentials(credentialsSupplier.get()).build().getService();
+    StorageOptions.Builder options =
+        StorageOptions.newBuilder().setCredentials(credentialsSupplier.get());
+    String emulatorHost =
+        Optional.ofNullable(System.getProperty(STORAGE_EMULATOR_HOST))
+            .orElseGet(() -> System.getenv(STORAGE_EMULATOR_HOST));
+    if (emulatorHost != null && !emulatorHost.isBlank()) {
+      options.setHost(emulatorHost);
+    }
+    Storage storage = options.build().getService();
 
     return Optional.ofNullable(
             storage.get(
