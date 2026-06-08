@@ -113,19 +113,6 @@ $(VENV_DIR):
 	@$(PYTHON) -m venv $(VENV_DIR)
 	@echo "Virtual environment created."
 
-.PHONY: client-install-dependencies
-client-install-dependencies: $(VENV_DIR)
-	@echo "Installing UV and project dependencies into $(VENV_DIR)..."
-	@$(VENV_DIR)/bin/pip install --upgrade pip
-	@if [ ! -f "$(VENV_DIR)/bin/uv" ]; then \
-		$(VENV_DIR)/bin/pip install --upgrade "uv$(UV_VERSION)"; \
-	fi
-	@$(ACTIVATE_AND_CD) && uv lock && uv sync --active --all-extras
-	@echo "uv and dependencies installed."
-
-.PHONY: client-setup-env
-client-setup-env: $(VENV_DIR) client-install-dependencies
-
 .PHONY: client-build
 client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format, and VERSION to stamp the version before building.
 	@echo "--- Building client distribution ---"
@@ -159,6 +146,16 @@ client-cleanup: ## Cleanup virtual environment and Python cache files
 	@find $(PYTHON_CLIENT_DIR) -type f -name "*.pyc" -delete
 	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -delete
 	@echo "--- Virtual environment and Python cache cleanup complete ---"
+
+.PHONY: client-setup-env
+client-setup-env: $(VENV_DIR) ## Set up Python client environment (venv + dependencies)
+	@echo "--- Setting up Python client environment ---"
+	@$(VENV_DIR)/bin/pip install --upgrade pip
+	@if [ ! -f "$(VENV_DIR)/bin/uv" ]; then \
+		$(VENV_DIR)/bin/pip install --upgrade "uv$(UV_VERSION)"; \
+	fi
+	@$(ACTIVATE_AND_CD) && uv lock && uv sync --active --all-extras
+	@echo "--- Python client environment setup complete ---"
 
 .PHONY: client-integration-test
 client-integration-test: build-server client-setup-env ## Run client integration tests

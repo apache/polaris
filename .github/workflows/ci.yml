@@ -425,7 +425,7 @@ jobs:
       - name: Integration Tests
         run: make client-integration-test
       - name: Run Polaris Client help manual
-        run: ./polaris --help
+        run: .venv/bin/polaris --help
 
   regtest:
     name: Regression Tests (${{ matrix.s3-backend }})

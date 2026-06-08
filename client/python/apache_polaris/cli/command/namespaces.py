@@ -39,9 +39,9 @@ class NamespacesCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris namespaces create --catalog my_schema my_namespace
-        * ./polaris namespaces list --catalog my_catalog
-        * ./polaris namespaces delete --catalog my_catalog my_namespace.inner
+        * polaris namespaces create --catalog my_schema my_namespace
+        * polaris namespaces list --catalog my_catalog
+        * polaris namespaces delete --catalog my_catalog my_namespace.inner
     """
 
     namespaces_subcommand: str

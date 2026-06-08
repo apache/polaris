@@ -43,7 +43,7 @@ CLIENT_ID=root \
 CLIENT_SECRET=s3cr3t \
 DEFAULT_BASE_LOCATION=s3://example-bucket/my_data \
 ROLE_ARN=arn:aws:iam::111122223333:role/ExampleCorpRole \
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   catalogs \
