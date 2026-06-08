@@ -26,14 +26,16 @@ flowchart TD
 
     E --> H["👤 Release Manager<br/><br/>• Start vote thread on dev mailing list<br/>• Wait for the vote to pass"]
 
-    H --> I["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/><br/>• Copy distribution from dist dev to dist release space<br/>• Create a final release tag to Git repository<br/>• Create the GitHub release<br/>• Publish Docker images to DockerHub<br/>• Release the candidate repository on Nexus"]
+    H --> I["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/><br/>• Create a final release tag to Git repository<br/>• Create the GitHub release (artifacts downloaded from dist dev)<br/>• Publish Docker images to DockerHub<br/>• Release the candidate repository on Nexus"]
 
-    I --> J["👤 Release Manager<br/><br/>• Update documentation - TBD - Process yet to be determined"]
+    I --> L["👤 Release Manager<br/><br/>• svn mv distribution, Helm chart, and Python client from dist dev to dist release<br/>• svn mv Helm index.yaml and artifacthub-repo.yml from dist dev to dist release<br/>• svn rm old release versions superseded by this release"]
 
-    I --> K["👤 Release Manager<br/><br/>• Send announcement e-mail to dev mailing list<br/>• Send announcement to announce Apache mailing list"]
+    L --> J["👤 Release Manager<br/><br/>• Update documentation - TBD - Process yet to be determined"]
+
+    L --> K["👤 Release Manager<br/><br/>• Send announcement e-mail to dev mailing list<br/>• Send announcement to announce Apache mailing list"]
 
     %% Class definition for left-aligned text
     classDef leftAlign text-align:left;
 
     %% Apply left-align class to all nodes
-    class B,C,D,E,H,I,J,K leftAlign;
+    class B,C,D,E,H,I,J,K,L leftAlign;
