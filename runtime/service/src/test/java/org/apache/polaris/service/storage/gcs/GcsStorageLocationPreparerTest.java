@@ -223,13 +223,13 @@ class GcsStorageLocationPreparerTest {
       verify(mockControlClient, times(5)).createFolder(any(CreateFolderRequest.class));
       verify(mockControlClient, times(5))
           .createFolder(
-              argThat(
-                  request -> request.hasFolder() && request.getFolderId().endsWith("/")));
+              argThat(request -> request.hasFolder() && request.getFolderId().endsWith("/")));
     }
 
     @Test
     void preservesQuestionMarkAndHashInObjectPath() {
-      preparer.prepareLocations(List.of("gs://" + TEST_BUCKET + "/warehouse/table?branch#metadata"));
+      preparer.prepareLocations(
+          List.of("gs://" + TEST_BUCKET + "/warehouse/table?branch#metadata"));
 
       verify(mockControlClient)
           .createFolder(
