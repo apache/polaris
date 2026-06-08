@@ -20,8 +20,13 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -29,17 +34,22 @@ import static org.mockito.Mockito.when;
 
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.rest.credentials.Credential;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
+import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -59,6 +69,8 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
@@ -67,12 +79,15 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 class IcebergCatalogHandlerTest {
 
   private static final String CATALOG_NAME = "test";
   private static final Namespace NS1 = Namespace.of("ns1");
   private static final TableIdentifier TABLE2 = TableIdentifier.of(NS1, "table2");
+  private static final Schema SCHEMA =
+      new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get()));
 
   private final PolarisResolutionManifest resolutionManifest =
       mock(PolarisResolutionManifest.class);
@@ -85,6 +100,11 @@ class IcebergCatalogHandlerTest {
       mock(AccessDelegationModeResolver.class);
   private final StorageAccessConfigProvider storageAccessConfigProvider =
       mock(StorageAccessConfigProvider.class);
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider =
+      mock(PolarisStorageIntegrationProvider.class);
+  private final PolarisStorageIntegration storageIntegration =
+      mock(PolarisStorageIntegration.class);
+  private final ReservedProperties reservedProperties = mock(ReservedProperties.class);
 
   @SuppressWarnings({"unchecked"})
   private IcebergCatalogHandler newHandler() {
@@ -100,6 +120,7 @@ class IcebergCatalogHandlerTest {
     // Authorization path: any resolved path lookup returns a non-null wrapper so the
     // "not found" check in CatalogHandler#authorizeBasicTableLikeOperationsOrThrow passes.
     when(resolutionManifest.getResolvedPath(any(), any(), anyBoolean())).thenReturn(resolvedPath);
+    when(resolutionManifest.getResolvedPath(any(), anyBoolean())).thenReturn(resolvedPath);
     when(resolutionManifest.getResolvedPath(any(), any())).thenReturn(resolvedPath);
     when(resolutionManifest.getResolvedPath(any())).thenReturn(resolvedPath);
     when(resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
@@ -108,6 +129,9 @@ class IcebergCatalogHandlerTest {
     // Return a CatalogEntity without a connection config so we take the local-catalog path.
     when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(catalogEntity);
     when(catalogEntity.getConnectionConfigInfoDpo()).thenReturn(null);
+    when(reservedProperties.removeReservedProperties(
+            org.mockito.ArgumentMatchers.<Map<String, String>>any()))
+        .thenReturn(Map.of());
 
     return ImmutableIcebergCatalogHandler.builder()
         .catalogName(CATALOG_NAME)
@@ -122,14 +146,93 @@ class IcebergCatalogHandlerTest {
         .prefixParser(mock(CatalogPrefixParser.class))
         .resolverFactory(mock(ResolverFactory.class))
         .localCatalogFactory(localCatalogFactory)
-        .reservedProperties(mock(ReservedProperties.class))
+        .reservedProperties(reservedProperties)
         .catalogHandlerUtils(mock(CatalogHandlerUtils.class))
         .storageAccessConfigProvider(storageAccessConfigProvider)
+        .storageIntegrationProvider(storageIntegrationProvider)
         .eventAttributeMap(mock(EventAttributeMap.class))
         .metricsReporter(mock(PolarisMetricsReporter.class))
         .clock(mock(Clock.class))
         .accessDelegationModeResolver(accessDelegationModeResolver)
         .build();
+  }
+
+  @Test
+  void createTableStagedDoesNotPrepareStorageWhenValidationFails() {
+    TableIdentifier tableIdentifier = TableIdentifier.of(NS1, "new_table");
+    String requestedLocation = "gs://bucket/requested/new_table";
+    String transformedLocation = "gs://bucket/transformed/new_table";
+
+    IcebergCatalog icebergCatalog = mock(IcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+    when(icebergCatalog.tableExists(tableIdentifier)).thenReturn(false);
+    when(icebergCatalog.transformTableLikeLocation(eq(tableIdentifier), eq(requestedLocation)))
+        .thenReturn(transformedLocation);
+    doThrow(new BadRequestException("location rejected"))
+        .when(icebergCatalog)
+        .validateStagedTableCreate(eq(tableIdentifier), any(TableMetadata.class));
+
+    when(resolvedPath.getRawFullPath()).thenReturn(List.of());
+    when(storageIntegrationProvider.getStorageIntegration(any())).thenReturn(storageIntegration);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    CreateTableRequest request =
+        CreateTableRequest.builder()
+            .withName(tableIdentifier.name())
+            .withLocation(requestedLocation)
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    assertThatThrownBy(() -> handler.createTableStaged(NS1, request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("location rejected");
+
+    verify(storageIntegration, never()).prepareLocations(any());
+  }
+
+  @Test
+  void createTableStagedPreparesTransformedLocationAfterValidation() {
+    TableIdentifier tableIdentifier = TableIdentifier.of(NS1, "new_table");
+    String requestedLocation = "gs://bucket/requested/new_table";
+    String transformedLocation = "gs://bucket/transformed/new_table";
+
+    IcebergCatalog icebergCatalog = mock(IcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+    when(icebergCatalog.tableExists(tableIdentifier)).thenReturn(false);
+    when(icebergCatalog.transformTableLikeLocation(eq(tableIdentifier), eq(requestedLocation)))
+        .thenReturn(transformedLocation);
+    when(resolvedPath.getRawFullPath()).thenReturn(List.of());
+    when(storageIntegrationProvider.getStorageIntegration(any())).thenReturn(storageIntegration);
+    when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
+        .thenReturn(StorageAccessConfig.builder().build());
+    when(accessDelegationModeResolver.resolve(any(), any())).thenReturn(Optional.empty());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    CreateTableRequest request =
+        CreateTableRequest.builder()
+            .withName(tableIdentifier.name())
+            .withLocation(requestedLocation)
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    handler.createTableStaged(NS1, request);
+
+    InOrder inOrder = inOrder(icebergCatalog, storageIntegration);
+    inOrder.verify(icebergCatalog).validateStagedTableCreate(eq(tableIdentifier), any());
+    inOrder
+        .verify(storageIntegration)
+        .prepareLocations(
+            argThat(
+                locations ->
+                    locations.containsAll(
+                        List.of(
+                            transformedLocation,
+                            transformedLocation + "/metadata",
+                            transformedLocation + "/data"))));
   }
 
   /**

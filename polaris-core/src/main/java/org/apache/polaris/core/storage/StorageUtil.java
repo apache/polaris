@@ -19,7 +19,9 @@
 package org.apache.polaris.core.storage;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.view.ViewMetadata;
@@ -76,6 +78,23 @@ public class StorageUtil {
         properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
     locations.remove(null);
     return removeRedundantLocations(locations);
+  }
+
+  /**
+   * Given a baseLocation and table properties, extracts the locations that may need explicit
+   * materialization before a new table's initial metadata is written.
+   */
+  public static @NonNull List<String> getLocationsToPrepareForTable(
+      String baseLocation, Map<String, String> properties) {
+    String metadataPath =
+        Optional.ofNullable(
+                properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
+            .orElse(baseLocation + "/metadata");
+    String dataPath =
+        Optional.ofNullable(
+                properties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))
+            .orElse(baseLocation + "/data");
+    return List.of(baseLocation, metadataPath, dataPath);
   }
 
   /** Given a ViewMetadata, extracts the locations where the view's [meta]data might be found. */

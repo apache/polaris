@@ -48,7 +48,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -60,6 +59,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageLocationPreparer;
 import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.jspecify.annotations.NonNull;
@@ -83,7 +83,7 @@ public class GcpCredentialsStorageIntegration
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
   private final GcpCredentialOps credentialOps;
-  private final Consumer<List<String>> folderPreparer;
+  private final StorageLocationPreparer folderPreparer;
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
@@ -155,7 +155,7 @@ public class GcpCredentialsStorageIntegration
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig,
-      @NonNull Consumer<List<String>> folderPreparer) {
+      @NonNull StorageLocationPreparer folderPreparer) {
     this(
         sourceCredentials,
         transportFactory,
@@ -173,7 +173,7 @@ public class GcpCredentialsStorageIntegration
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig,
       GcpCredentialOps credentialOps,
-      @NonNull Consumer<List<String>> folderPreparer) {
+      @NonNull StorageLocationPreparer folderPreparer) {
     super(cache, realmConfig, storageConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
@@ -186,7 +186,7 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   public void prepareLocations(@NonNull List<String> locations) {
-    folderPreparer.accept(locations);
+    folderPreparer.prepareLocations(locations);
   }
 
   @Override

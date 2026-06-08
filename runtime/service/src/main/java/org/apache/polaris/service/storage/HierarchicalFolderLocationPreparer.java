@@ -22,10 +22,10 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.polaris.core.storage.StorageLocationPreparer;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * resolve folder hierarchies, group by bucket, and delegate to {@link
  * #createFoldersForBucket(String, List)}.
  */
-public abstract class HierarchicalFolderLocationPreparer implements Consumer<List<String>> {
+public abstract class HierarchicalFolderLocationPreparer implements StorageLocationPreparer {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(HierarchicalFolderLocationPreparer.class);
@@ -64,10 +64,6 @@ public abstract class HierarchicalFolderLocationPreparer implements Consumer<Lis
   protected abstract void createFoldersForBucket(String bucketName, List<FolderToCreate> folders);
 
   @Override
-  public final void accept(List<String> storageLocations) {
-    prepareLocations(storageLocations);
-  }
-
   public void prepareLocations(List<String> storageLocations) {
     List<FolderToCreate> allFolders =
         storageLocations.stream()

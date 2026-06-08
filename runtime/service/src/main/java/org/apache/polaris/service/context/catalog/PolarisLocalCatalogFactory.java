@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -55,6 +56,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
   private final PolarisMetaStoreManager metaStoreManager;
   private final CallContext callContext;
   private final PolarisPrincipal principal;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
 
   @Inject
   public PolarisLocalCatalogFactory(
@@ -67,7 +69,8 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
       PolarisEventMetadataFactory eventMetadataFactory,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
-      PolarisPrincipal principal) {
+      PolarisPrincipal principal,
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.taskExecutor = taskExecutor;
@@ -78,6 +81,32 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
     this.metaStoreManager = metaStoreManager;
     this.callContext = callContext;
     this.principal = principal;
+    this.storageIntegrationProvider = storageIntegrationProvider;
+  }
+
+  public PolarisLocalCatalogFactory(
+      PolarisDiagnostics diagnostics,
+      ResolverFactory resolverFactory,
+      TaskExecutor taskExecutor,
+      StorageAccessConfigProvider storageAccessConfigProvider,
+      FileIOFactory fileIOFactory,
+      PolarisEventDispatcher polarisEventDispatcher,
+      PolarisEventMetadataFactory eventMetadataFactory,
+      PolarisMetaStoreManager metaStoreManager,
+      CallContext callContext,
+      PolarisPrincipal principal) {
+    this(
+        diagnostics,
+        resolverFactory,
+        taskExecutor,
+        storageAccessConfigProvider,
+        fileIOFactory,
+        polarisEventDispatcher,
+        eventMetadataFactory,
+        metaStoreManager,
+        callContext,
+        principal,
+        resolvedEntityPath -> null);
   }
 
   @Override
@@ -101,7 +130,8 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
             storageAccessConfigProvider,
             fileIOFactory,
             polarisEventDispatcher,
-            eventMetadataFactory);
+            eventMetadataFactory,
+            storageIntegrationProvider);
 
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getBaseLocation();

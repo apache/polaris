@@ -161,9 +161,12 @@ public class GcsStorageLocationPreparer extends HierarchicalFolderLocationPrepar
           CreateFolderRequest.newBuilder().setParent(parent).setFolderId(folderPath).build();
 
       controlClient.createFolder(request);
-      LOGGER.atDebug().addKeyValue("folder", folderPath).log("Created HNS folder");
+      LOGGER.atDebug().addKeyValue("folder", folderPath).log("Created HNS folder: {}", folderPath);
     } catch (AlreadyExistsException e) {
-      LOGGER.atDebug().addKeyValue("folder", folderPath).log("HNS folder already exists, skipping");
+      LOGGER
+          .atDebug()
+          .addKeyValue("folder", folderPath)
+          .log("HNS folder already exists, skipping: {}", folderPath);
     } catch (Exception e) {
       throw new RuntimeException(
           String.format("Failed to create HNS folder '%s': %s", folderPath, e.getMessage()), e);
