@@ -84,12 +84,15 @@ public interface PolarisEventListenerConfiguration {
 
     /**
      * The thread pool size. The default is -1, which is interpreted as the number of available
-     * cores.
+     * listeners, capped by the number of cores
      */
     @WithDefault("-1")
     int poolSize();
 
-    /** The queue size. The default is -1, which is interpreted as unbounded. */
+    /**
+     * The queue size. The default is -1, which is interpreted as unbounded. This limit is applied
+     * both globally (for all listeners), and per listener.
+     */
     @WithDefault("-1")
     int queueSize();
   }
