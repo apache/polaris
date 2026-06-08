@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -138,8 +139,14 @@ public class ServiceProducers {
       RealmContext realmContext,
       RealmConfigurationSource configurationSource,
       MetaStoreManagerFactory metaStoreManagerFactory) {
-    BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStoreSession, configurationSource);
+    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    // When the backend implements both SPIs on the same instance (e.g. JDBC, in-memory), reuse the
+    // session instead of building a second persistence instance per request.
+    MetricsPersistence metricsPersistence =
+        (metaStore instanceof MetricsPersistence mp)
+            ? mp
+            : metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
+    return new PolarisCallContext(realmContext, metaStore, metricsPersistence, configurationSource);
   }
 
   @Produces

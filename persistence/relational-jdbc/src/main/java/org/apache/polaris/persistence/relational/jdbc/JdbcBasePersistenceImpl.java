@@ -57,6 +57,7 @@ import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -82,7 +83,8 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
+public class JdbcBasePersistenceImpl
+    implements BasePersistence, IntegrationPersistence, MetricsPersistence {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 

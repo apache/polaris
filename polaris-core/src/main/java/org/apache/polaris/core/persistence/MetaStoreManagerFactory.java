@@ -26,6 +26,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 
 /** Configuration interface for configuring the {@link PolarisMetaStoreManager}. */
 public interface MetaStoreManagerFactory {
@@ -33,6 +34,13 @@ public interface MetaStoreManagerFactory {
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
 
   BasePersistence getOrCreateSession(RealmContext realmContext);
+
+  /**
+   * Returns the per-realm {@link MetricsPersistence}. This SPI is decoupled from {@link
+   * BasePersistence} so backends that do not implement metrics persistence can simply return a
+   * no-op instance.
+   */
+  MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext);
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig);
 
