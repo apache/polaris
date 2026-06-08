@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.enterprise.inject.Any;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -53,7 +52,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject PolarisAuthorizer authorizer;
   @Inject ReservedProperties reservedProperties;
   @Inject CatalogHandlerUtils catalogHandlerUtils;
-  @Inject @Any ResolvingFederatedCatalogFactory federatedCatalogFactory;
+  @Inject ResolvingFederatedCatalogFactory federatedCatalogFactory;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject EventAttributeMap eventAttributeMap;
   @Inject PolarisMetricsReporter metricsReporter;
