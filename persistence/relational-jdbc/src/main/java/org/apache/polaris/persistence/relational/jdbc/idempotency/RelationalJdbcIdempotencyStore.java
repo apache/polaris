@@ -20,74 +20,36 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import javax.sql.DataSource;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyPersistenceException;
 import org.apache.polaris.core.persistence.IdempotencyStore;
+import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
-import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelIdempotencyRecord;
 import org.jspecify.annotations.NonNull;
 
+/**
+ * JDBC-backed {@link IdempotencyStore}.
+ *
+ * <p>Implements the "optimistic commit" model: a row is inserted only after the originating
+ * operation has finalized. Race conditions between concurrent retries are detected via the table's
+ * {@code (realm_id, idempotency_key)} primary key — a duplicate INSERT surfaces as a constraint
+ * violation, which we translate into a {@link RecordResultType#DUPLICATE} along with the existing
+ * row.
+ */
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
 
-  public RelationalJdbcIdempotencyStore(
-      @NonNull DataSource dataSource, @NonNull RelationalJdbcConfiguration cfg)
-      throws SQLException {
-    this.datasourceOperations = new DatasourceOperations(dataSource, cfg);
-  }
-
-  @Override
-  public ReserveResult reserve(
-      String realmId,
-      String idempotencyKey,
-      String operationType,
-      String normalizedResourceId,
-      Instant expiresAt,
-      String executorId,
-      Instant now) {
-    try {
-      // Build insert values directly to avoid requiring an Immutables-generated model type.
-      Map<String, Object> insertMap = new LinkedHashMap<>();
-      insertMap.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
-      insertMap.put(ModelIdempotencyRecord.OPERATION_TYPE, operationType);
-      insertMap.put(ModelIdempotencyRecord.RESOURCE_ID, normalizedResourceId);
-      insertMap.put(ModelIdempotencyRecord.HTTP_STATUS, null);
-      insertMap.put(ModelIdempotencyRecord.ERROR_SUBTYPE, null);
-      insertMap.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, null);
-      insertMap.put(ModelIdempotencyRecord.RESPONSE_HEADERS, null);
-      insertMap.put(ModelIdempotencyRecord.FINALIZED_AT, null);
-      insertMap.put(ModelIdempotencyRecord.CREATED_AT, Timestamp.from(now));
-      insertMap.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(now));
-      insertMap.put(ModelIdempotencyRecord.HEARTBEAT_AT, Timestamp.from(now));
-      insertMap.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
-      insertMap.put(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(expiresAt));
-
-      List<Object> values = insertMap.values().stream().toList();
-      QueryGenerator.PreparedQuery insert =
-          QueryGenerator.generateInsertQuery(
-              ModelIdempotencyRecord.ALL_COLUMNS,
-              ModelIdempotencyRecord.TABLE_NAME,
-              values,
-              realmId);
-      datasourceOperations.executeUpdate(insert);
-      return new ReserveResult(ReserveResultType.OWNED, Optional.empty());
-    } catch (SQLException e) {
-      if (datasourceOperations.isUniquenessConstraintViolation(e)) {
-        return new ReserveResult(ReserveResultType.DUPLICATE, load(realmId, idempotencyKey));
-      }
-      throw new IdempotencyPersistenceException("Failed to reserve idempotency key", e);
-    }
+  public RelationalJdbcIdempotencyStore(@NonNull DatasourceOperations datasourceOperations) {
+    this.datasourceOperations = datasourceOperations;
   }
 
   @Override
@@ -98,10 +60,8 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
               ModelIdempotencyRecord.ALL_COLUMNS,
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(
-                  ModelIdempotencyRecord.REALM_ID,
-                  realmId,
-                  ModelIdempotencyRecord.IDEMPOTENCY_KEY,
-                  idempotencyKey));
+                  ModelIdempotencyRecord.REALM_ID, realmId,
+                  ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey));
       List<IdempotencyRecord> results =
           datasourceOperations.executeSelect(
               query,
@@ -112,8 +72,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
                 }
 
                 @Override
-                public Map<String, Object> toMap(
-                    org.apache.polaris.persistence.relational.jdbc.DatabaseType databaseType) {
+                public Map<String, Object> toMap(DatabaseType databaseType) {
                   throw new UnsupportedOperationException("Not used for SELECT conversion");
                 }
               });
@@ -134,99 +93,56 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public HeartbeatResult updateHeartbeat(
-      String realmId, String idempotencyKey, String executorId, Instant now) {
-    Optional<IdempotencyRecord> existing = load(realmId, idempotencyKey);
-    if (existing.isEmpty()) {
-      return HeartbeatResult.NOT_FOUND;
-    }
-
-    IdempotencyRecord record = existing.get();
-    if (record.httpStatus() != null) {
-      return HeartbeatResult.FINALIZED;
-    }
-    if (record.executorId() == null || !record.executorId().equals(executorId)) {
-      return HeartbeatResult.LOST_OWNERSHIP;
-    }
-
-    QueryGenerator.PreparedQuery update =
-        QueryGenerator.generateUpdateQuery(
-            ModelIdempotencyRecord.ALL_COLUMNS,
-            ModelIdempotencyRecord.TABLE_NAME,
-            Map.of(
-                ModelIdempotencyRecord.HEARTBEAT_AT,
-                Timestamp.from(now),
-                ModelIdempotencyRecord.UPDATED_AT,
-                Timestamp.from(now)),
-            Map.of(
-                ModelIdempotencyRecord.REALM_ID,
-                realmId,
-                ModelIdempotencyRecord.IDEMPOTENCY_KEY,
-                idempotencyKey,
-                ModelIdempotencyRecord.EXECUTOR_ID,
-                executorId),
-            Map.of(),
-            Map.of(),
-            Set.of(ModelIdempotencyRecord.HTTP_STATUS),
-            Set.of());
-
-    try {
-      int updated = datasourceOperations.executeUpdate(update);
-      if (updated > 0) {
-        return HeartbeatResult.UPDATED;
-      }
-    } catch (SQLException e) {
-      throw new IdempotencyPersistenceException("Failed to update idempotency heartbeat", e);
-    }
-
-    // Raced with finalize/ownership loss; re-check to return a meaningful result.
-    Optional<IdempotencyRecord> after = load(realmId, idempotencyKey);
-    if (after.isEmpty()) {
-      return HeartbeatResult.NOT_FOUND;
-    }
-    if (after.get().httpStatus() != null) {
-      return HeartbeatResult.FINALIZED;
-    }
-    return HeartbeatResult.LOST_OWNERSHIP;
-  }
-
-  @Override
-  public boolean finalizeRecord(
+  public RecordResult recordIfAbsent(
       String realmId,
       String idempotencyKey,
-      Integer httpStatus,
-      String errorSubtype,
-      String responseSummary,
-      String responseHeaders,
-      Instant finalizedAt) {
-    // Use ordered/set maps so we can include nullable values (Map.of disallows nulls).
-    Map<String, Object> setClause = new LinkedHashMap<>();
-    setClause.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
-    setClause.put(ModelIdempotencyRecord.ERROR_SUBTYPE, errorSubtype);
-    setClause.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, responseSummary);
-    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeaders);
-    setClause.put(ModelIdempotencyRecord.FINALIZED_AT, Timestamp.from(finalizedAt));
-    setClause.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(finalizedAt));
-
-    Map<String, Object> whereEquals = new HashMap<>();
-    whereEquals.put(ModelIdempotencyRecord.REALM_ID, realmId);
-    whereEquals.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
-
-    QueryGenerator.PreparedQuery update =
-        QueryGenerator.generateUpdateQuery(
-            ModelIdempotencyRecord.ALL_COLUMNS,
-            ModelIdempotencyRecord.TABLE_NAME,
-            setClause,
-            whereEquals,
-            Map.of(),
-            Map.of(),
-            Set.of(ModelIdempotencyRecord.HTTP_STATUS),
-            Set.of());
-
+      String operationType,
+      String resourceHash,
+      String principalHash,
+      int httpStatus,
+      String metadataLocation,
+      Instant createdAt,
+      Instant expiresAt) {
     try {
-      return datasourceOperations.executeUpdate(update) > 0;
+      Map<String, Object> insertMap = new LinkedHashMap<>();
+      insertMap.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
+      insertMap.put(ModelIdempotencyRecord.OPERATION_TYPE, operationType);
+      insertMap.put(ModelIdempotencyRecord.RESOURCE_HASH, resourceHash);
+      insertMap.put(ModelIdempotencyRecord.PRINCIPAL_HASH, principalHash);
+      insertMap.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
+      insertMap.put(ModelIdempotencyRecord.METADATA_LOCATION, metadataLocation);
+      insertMap.put(ModelIdempotencyRecord.CREATED_AT, Timestamp.from(createdAt));
+      insertMap.put(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(expiresAt));
+
+      List<Object> values = insertMap.values().stream().toList();
+      QueryGenerator.PreparedQuery insert =
+          QueryGenerator.generateInsertQuery(
+              ModelIdempotencyRecord.ALL_COLUMNS,
+              ModelIdempotencyRecord.TABLE_NAME,
+              values,
+              realmId);
+      datasourceOperations.executeUpdate(insert);
+      return new RecordResult(RecordResultType.OWNED, Optional.empty());
     } catch (SQLException e) {
-      throw new IdempotencyPersistenceException("Failed to finalize idempotency record", e);
+      if (datasourceOperations.isUniquenessConstraintViolation(e)) {
+        Optional<IdempotencyRecord> existing = load(realmId, idempotencyKey);
+        if (existing.isEmpty()) {
+          // The insert lost the race on the (realm_id, idempotency_key) constraint, yet the winning
+          // row is no longer visible (e.g. purged or rolled back between the conflict and this
+          // reload). Surface a persistence error rather than a DUPLICATE without a record, which
+          // the
+          // handler layer treats as an invariant violation.
+          throw new IdempotencyPersistenceException(
+              "Insert for realm/key "
+                  + realmId
+                  + "/"
+                  + idempotencyKey
+                  + " conflicted on the unique constraint but the existing record could not be"
+                  + " reloaded");
+        }
+        return new RecordResult(RecordResultType.DUPLICATE, existing);
+      }
+      throw new IdempotencyPersistenceException("Failed to record idempotency entry", e);
     }
   }
 

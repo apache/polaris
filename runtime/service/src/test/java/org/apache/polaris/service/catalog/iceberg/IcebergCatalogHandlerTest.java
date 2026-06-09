@@ -65,6 +65,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributeMap;
+import org.apache.polaris.service.idempotency.IdempotencyHandlerSupport;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.junit.jupiter.api.Test;
 
@@ -129,6 +130,7 @@ class IcebergCatalogHandlerTest {
         .metricsReporter(mock(PolarisMetricsReporter.class))
         .clock(mock(Clock.class))
         .accessDelegationModeResolver(accessDelegationModeResolver)
+        .idempotencySupport(mock(IdempotencyHandlerSupport.class))
         .build();
   }
 

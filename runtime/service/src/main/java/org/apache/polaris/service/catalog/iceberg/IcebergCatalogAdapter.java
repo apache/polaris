@@ -61,6 +61,7 @@ import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyHandlerSupport;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -81,17 +82,38 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
+  private final IdempotencyHandlerSupport idempotencySupport;
 
   @Inject
   public IcebergCatalogAdapter(
       CallContext callContext,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      IcebergCatalogHandlerFactory handlerFactory) {
+      IcebergCatalogHandlerFactory handlerFactory,
+      IdempotencyHandlerSupport idempotencySupport) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
+    this.idempotencySupport = idempotencySupport;
+  }
+
+  /**
+   * Validates the {@code Idempotency-Key} parameter auto-bound from the request header by the
+   * OpenAPI-generated stub. Returns the normalised key string when present and idempotency is
+   * enabled; otherwise {@link Optional#empty()}.
+   *
+   * @throws BadRequestException if the header is present but not a valid UUIDv7
+   */
+  private Optional<String> validatedIdempotencyKey(UUID idempotencyKey) {
+    if (idempotencyKey == null) {
+      return Optional.empty();
+    }
+    try {
+      return idempotencySupport.validatedKey(idempotencyKey.toString());
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException("%s", e.getMessage());
+    }
   }
 
   /**
@@ -298,7 +320,11 @@ public class IcebergCatalogAdapter
           } else {
             LoadTableResponse response =
                 catalog.createTableDirect(
-                    ns, createTableRequest, delegationModes, refreshCredentialsEndpoint);
+                    ns,
+                    createTableRequest,
+                    delegationModes,
+                    refreshCredentialsEndpoint,
+                    validatedIdempotencyKey(idempotencyKey));
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();

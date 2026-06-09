@@ -97,6 +97,7 @@ import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
+import org.apache.polaris.service.idempotency.IdempotencyHandlerSupport;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
@@ -148,6 +149,7 @@ public record TestServices(
     private StsClient stsClient;
     private boolean useEventDelegator = false;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
+    private IdempotencyHandlerSupport idempotencySupport;
     private final PolarisEventMetadataFactory eventMetadataFactory =
         new PolarisEventMetadataFactory() {
           @Override
@@ -199,6 +201,15 @@ public record TestServices(
 
     public Builder withEventDelegator(boolean useEventDelegator) {
       this.useEventDelegator = useEventDelegator;
+      return this;
+    }
+
+    /**
+     * Wires a specific {@link IdempotencyHandlerSupport} into the handler and adapter. When unset,
+     * idempotency is disabled (the default for the vast majority of tests).
+     */
+    public Builder idempotencySupport(IdempotencyHandlerSupport idempotencySupport) {
+      this.idempotencySupport = idempotencySupport;
       return this;
     }
 
@@ -337,6 +348,12 @@ public record TestServices(
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
+      // Tests run with idempotency disabled by default; opt in via Builder#idempotencySupport.
+      IdempotencyHandlerSupport idempotencySupport =
+          this.idempotencySupport != null
+              ? this.idempotencySupport
+              : IdempotencyHandlerSupport.disabled();
+
       IcebergCatalogHandlerFactory handlerFactory =
           new IcebergCatalogHandlerFactory() {
             @Override
@@ -363,13 +380,18 @@ public record TestServices(
                   .clock(clock)
                   .accessDelegationModeResolver(
                       new DefaultAccessDelegationModeResolver(realmConfig))
+                  .idempotencySupport(idempotencySupport)
                   .build();
             }
           };
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
-              callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
+              callContext,
+              new DefaultCatalogPrefixParser(),
+              reservedProperties,
+              handlerFactory,
+              idempotencySupport);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;
