@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.RawEventAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +47,7 @@ public class PolarisEventListeners {
   @Inject EventBus eventBus;
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
+  @Inject EventSanitizer eventSanitizer;
 
   @Inject
   @Identifier("event-listener-executor")
@@ -102,12 +104,14 @@ public class PolarisEventListeners {
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
     LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
     try {
+      PolarisEvent toDeliver =
+          (listener instanceof RawEventAccess) ? event : eventSanitizer.sanitize(event);
       executor.execute(
           () -> {
             LOGGER.debug(
                 "Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
             try {
-              listener.onEvent(event);
+              listener.onEvent(toDeliver);
             } catch (Exception e) {
               LOGGER.error(
                   "Error while delivering {} event to listener '{}' ({})",

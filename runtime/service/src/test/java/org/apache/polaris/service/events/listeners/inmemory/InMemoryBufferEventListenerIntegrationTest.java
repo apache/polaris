@@ -192,9 +192,11 @@ class InMemoryBufferEventListenerIntegrationTest {
                 },
                 e -> e.size() >= 2);
 
-    // FIXME: check before events when they get persisted
-
-    PolarisEvent e1 = events.getFirst();
+    PolarisEvent e1 =
+        events.stream()
+            .filter(e -> e.getEventType().equals("AFTER_CREATE_CATALOG"))
+            .findFirst()
+            .orElseThrow();
     assertThat(e1.getCatalogId()).isEqualTo(catalogName);
     assertThat(e1.getResourceType()).isEqualTo(PolarisEvent.ResourceType.CATALOG);
     assertThat(e1.getResourceIdentifier()).isEqualTo(catalogName);
@@ -207,7 +209,11 @@ class InMemoryBufferEventListenerIntegrationTest {
         .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
         .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
 
-    PolarisEvent e2 = events.getLast();
+    PolarisEvent e2 =
+        events.stream()
+            .filter(e -> e.getEventType().equals("AFTER_CREATE_TABLE"))
+            .findFirst()
+            .orElseThrow();
     assertThat(e2.getCatalogId()).isEqualTo(catalogName);
     assertThat(e2.getResourceType()).isEqualTo(PolarisEvent.ResourceType.TABLE);
     assertThat(e2.getResourceIdentifier()).isEqualTo("db1.t1");
@@ -215,7 +221,9 @@ class InMemoryBufferEventListenerIntegrationTest {
     assertThat(e2.getPrincipalName()).isEqualTo("root");
     assertThat(e2.getRequestId()).isEqualTo("456789");
     assertThat(e2.getAdditionalPropertiesAsMap())
-        .containsKey("table-uuid")
+        .containsEntry("catalog_name", catalogName)
+        .containsEntry("table_name", "t1")
+        .containsKey("namespace")
         .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
         .containsEntry("otel.sampled", "true")
         .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
