@@ -806,7 +806,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // Note: this check must come after authorizeLoadTable because baseCatalog is
     // initialized lazily during authorization.
     if (!(baseCatalog instanceof IcebergCatalog)) {
-      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
+      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint, actionsRequested);
     }
 
     IcebergTableLikeEntity entity = getTableEntity(tableIdentifier);
@@ -825,7 +825,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               "Entity missing location in internal properties, requires backfill "
                   + "as it was likely not updated with stored property changes. "
                   + "Falling back to full loadTable path");
-      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
+      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint, actionsRequested);
     }
 
     Set<String> tableLocations =
@@ -906,6 +906,22 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
+    return loadTableWithResolvedAuthorization(
+        tableIdentifier,
+        snapshots,
+        ifNoneMatch,
+        actionsRequested,
+        resolvedMode,
+        refreshCredentialsEndpoint);
+  }
+
+  private Optional<LoadTableResponse> loadTableWithResolvedAuthorization(
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      IfNoneMatch ifNoneMatch,
+      Set<PolarisStorageActions> actionsRequested,
+      Optional<AccessDelegationMode> resolvedMode,
+      Optional<String> refreshCredentialsEndpoint) {
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
       IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
@@ -1545,9 +1561,20 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   private ImmutableLoadCredentialsResponse fallbackToFullLoadTable(
-      TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
+      TableIdentifier tableIdentifier,
+      Optional<String> refreshCredentialsEndpoint,
+      Set<PolarisStorageActions> actionsRequested) {
+    Optional<AccessDelegationMode> resolvedMode =
+        resolveAccessDelegationModes(EnumSet.of(VENDED_CREDENTIALS));
     LoadTableResponse loadTableResponse =
-        loadTableWithAccessDelegation(tableIdentifier, "all", refreshCredentialsEndpoint);
+        loadTableWithResolvedAuthorization(
+                tableIdentifier,
+                "all",
+                null,
+                actionsRequested,
+                resolvedMode,
+                refreshCredentialsEndpoint)
+            .orElseThrow();
     return ImmutableLoadCredentialsResponse.builder()
         .credentials(loadTableResponse.credentials())
         .build();
