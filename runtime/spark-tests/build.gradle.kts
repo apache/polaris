@@ -77,7 +77,7 @@ dependencies {
   testImplementation(enforcedPlatform(libs.scala212.lang.library))
   testImplementation(enforcedPlatform(libs.scala212.lang.reflect))
   testImplementation(libs.javax.servlet.api)
-  testImplementation(libs.antlr4.runtime)
+  testImplementation(libs.antlr4.runtime.spark35)
 }
 
 tasks.named<Test>("intTest").configure {

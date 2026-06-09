@@ -68,7 +68,8 @@ public abstract class PolarisAuthzTestsFactory {
 
   private static void runInFreshRequestContext(Runnable action) {
     ManagedContext requestContext = Arc.container().requestContext();
-    if (requestContext.isActive()) {
+    boolean wasActive = requestContext.isActive();
+    if (wasActive) {
       requestContext.terminate();
     }
 
@@ -77,6 +78,9 @@ public abstract class PolarisAuthzTestsFactory {
       action.run();
     } finally {
       requestContext.terminate();
+      if (wasActive) {
+        requestContext.activate();
+      }
     }
   }
 

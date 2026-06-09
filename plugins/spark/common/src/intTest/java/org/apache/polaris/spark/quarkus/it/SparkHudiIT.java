@@ -64,7 +64,7 @@ public class SparkHudiIT extends SparkIntegrationBase {
         .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2")
         .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
         .config("spark.kryo.registrator", "org.apache.spark.HoodieSparkKryoRegistrar")
-        // for intial integration test have disabled for now, to revisit enabling in future
+        // for initial integration test have disabled for now, to revisit enabling in future
         .config("hoodie.metadata.enable", "false")
         .getOrCreate();
   }

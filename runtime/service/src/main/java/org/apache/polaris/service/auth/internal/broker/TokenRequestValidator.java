@@ -67,11 +67,11 @@ final class TokenRequestValidator {
     String[] scopes = scope.split(" ");
     for (String s : scopes) {
       if (!s.startsWith(POLARIS_ROLE_PREFIX)) {
-        LOGGER.info("Invalid scope provided. scopes=" + s + "scopes=" + scope);
+        LOGGER.info("Invalid scope provided. scope=" + s + ", scopes=" + scope);
         return Optional.of(OAuthError.invalid_scope);
       }
       if (s.replaceFirst(POLARIS_ROLE_PREFIX, "").isEmpty()) {
-        LOGGER.info("Invalid scope provided. scopes=" + s + "scopes=" + scope);
+        LOGGER.info("Invalid scope provided. scope=" + s + ", scopes=" + scope);
         return Optional.of(OAuthError.invalid_scope);
       }
     }

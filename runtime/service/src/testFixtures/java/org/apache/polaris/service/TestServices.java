@@ -42,6 +42,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -49,7 +50,6 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -61,7 +61,6 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -237,26 +236,33 @@ public record TestServices(
           .resolveAuthorizationInputs(any(), any());
 
       // Application level
+      StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
+      StorageCredentialCache storageCredentialCache =
+          new StorageCredentialCache(storageCredentialCacheConfig);
+
+      RealmConfig realmConfig = new RealmConfigImpl(configurationSource, realmContext);
+
       PolarisStorageIntegrationProviderImpl storageIntegrationProvider =
           new PolarisStorageIntegrationProviderImpl(
               (destination) -> stsClient,
               Optional.empty(),
-              () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
+              () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())),
+              storageCredentialCache,
+              realmConfig,
+              diagnostics);
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
               clock, diagnostics, storageIntegrationProvider, RootCredentialsSet.EMPTY);
 
-      StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
-      StorageCredentialCache storageCredentialCache =
-          new StorageCredentialCache(diagnostics, storageCredentialCacheConfig);
-
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
-      BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
       CallContext callContext =
-          new PolarisCallContext(realmContext, metaStoreSession, configurationSource);
-      RealmConfig realmConfig = callContext.getRealmConfig();
+          new PolarisCallContext(
+              realmContext,
+              metaStoreManagerFactory.getOrCreateSession(realmContext),
+              metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
+              configurationSource);
 
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -328,11 +334,9 @@ public record TestServices(
       PolarisCredentialManager credentialManager =
           new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
 
-      StorageCredentialsVendor storageCredentialsVendor =
-          new StorageCredentialsVendor(metaStoreManager, callContext);
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              storageCredentialCache, storageCredentialsVendor, principal, realmContext);
+              callContext, principal, realmContext, storageIntegrationProvider);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
@@ -512,7 +516,10 @@ public record TestServices(
   }
 
   public PolarisCallContext newCallContext() {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore, configurationSource);
+    return new PolarisCallContext(
+        realmContext,
+        metaStoreManagerFactory.getOrCreateSession(realmContext),
+        metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
+        configurationSource);
   }
 }

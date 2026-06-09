@@ -204,7 +204,8 @@
 
 This product bundles and includes code from Apache Iceberg.
 
-* plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/PolarisRESTCatalog.java
+* plugins/spark/common/src/main/java/org/apache/polaris/spark/PolarisRESTCatalog.java
+* plugins/spark/common/src/main/java/org/apache/polaris/spark/BasePolarisSparkCatalog.java
 * plugins/spark/v3.5/spark/src/main/java/org/apache/polaris/spark/SparkCatalog.java
 
 Copyright: 2017-2025 The Apache Software Foundation

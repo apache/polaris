@@ -33,6 +33,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.concurrent.Executor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +46,12 @@ public class PolarisEventListeners {
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
 
-  private final EnumSet<PolarisEventType> enabledEventTypes = EnumSet.allOf(PolarisEventType.class);
+  @Inject
+  @Identifier("event-listener-executor")
+  Executor executor;
+
+  private final EnumSet<PolarisEventType> eventTypesWithListeners =
+      EnumSet.noneOf(PolarisEventType.class);
 
   public void onStartup(@Observes StartupEvent event) {
     var listenerTypeSet = configuration.types().orElseGet(HashSet::new);
@@ -71,7 +77,7 @@ public class PolarisEventListeners {
       Handler<Message<PolarisEvent>> handler =
           message -> deliverEvent(message.body(), enabledEventListener, listener);
       for (var polarisEventType : supportedTypes) {
-        enabledEventTypes.add(polarisEventType);
+        eventTypesWithListeners.add(polarisEventType);
         eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
       }
     }
@@ -81,7 +87,23 @@ public class PolarisEventListeners {
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
     LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
     try {
-      listener.onEvent(event);
+      executor.execute(
+          () -> {
+            LOGGER.debug(
+                "Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
+            try {
+              listener.onEvent(event);
+            } catch (Exception e) {
+              LOGGER.error(
+                  "Error while delivering {} event to listener '{}' ({})",
+                  event.type(),
+                  listenerName,
+                  listener,
+                  e);
+            }
+            LOGGER.debug(
+                "Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
+          });
     } catch (Exception e) {
       LOGGER.error(
           "Error while delivering {} event to listener '{}' ({})",
@@ -90,10 +112,9 @@ public class PolarisEventListeners {
           listener,
           e);
     }
-    LOGGER.debug("Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
   }
 
-  public boolean hasListeners(PolarisEventType polarisEventType) {
-    return enabledEventTypes.contains(polarisEventType);
+  public boolean hasListeners(PolarisEventType eventType) {
+    return eventTypesWithListeners.contains(eventType);
   }
 }
