@@ -97,7 +97,6 @@ dependencies {
     api(project(":polaris-extensions-auth-opa"))
     api(project(":polaris-extensions-auth-opa-tests"))
     api(project(":polaris-extensions-auth-ranger"))
-    api(project(":polaris-extensions-auth-ranger-tests"))
     api(project(":polaris-extensions-federation-bigquery"))
     api(project(":polaris-extensions-federation-hadoop"))
     api(project(":polaris-extensions-federation-hive"))
