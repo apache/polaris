@@ -51,7 +51,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class IcebergCatalogTest {
+class LocalIcebergCatalogTest {
 
   @Mock ResolverFactory resolverFactory;
   @Mock CallContext callContext;
@@ -66,7 +66,7 @@ class IcebergCatalogTest {
 
   private final PolarisPrincipal principal = PolarisPrincipal.of("test", Map.of(), Set.of());
 
-  private IcebergCatalog catalog;
+  private LocalIcebergCatalog catalog;
   private ResolvedPolarisEntity rns1 = new ResolvedPolarisEntity(ns1, List.of(), List.of());
   private ResolvedPolarisEntity rns2 = new ResolvedPolarisEntity(ns2, List.of(), List.of());
   private ResolvedPolarisEntity rt3 = new ResolvedPolarisEntity(table3, List.of(), List.of());
@@ -82,7 +82,7 @@ class IcebergCatalogTest {
     rt3 = new ResolvedPolarisEntity(table3, List.of(), List.of());
 
     catalog =
-        new IcebergCatalog(
+        new LocalIcebergCatalog(
             diagnostics,
             resolverFactory,
             null,

@@ -23,19 +23,15 @@ import static org.apache.polaris.service.catalog.Profiles.NOSQL_IN_MEM;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 
 @QuarkusTest
-@TestProfile(IcebergViewCatalogNoSqlInMemTest.Profile.class)
-public class IcebergViewCatalogNoSqlInMemTest extends AbstractIcebergCatalogViewTest {
+@TestProfile(LocalIcebergCatalogNoSqlInMemTest.Profile.class)
+public class LocalIcebergCatalogNoSqlInMemTest extends AbstractLocalIcebergCatalogTest {
 
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-
-  public static class Profile extends AbstractIcebergCatalogViewTest.Profile {
+  public static class Profile extends AbstractLocalIcebergCatalogTest.Profile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()

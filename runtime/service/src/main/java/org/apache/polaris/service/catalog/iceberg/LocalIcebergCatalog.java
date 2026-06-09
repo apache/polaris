@@ -151,9 +151,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
-public class IcebergCatalog extends BaseMetastoreViewCatalog
+public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     implements SupportsNamespaces, SupportsNotifications, Closeable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalog.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalIcebergCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
 
@@ -202,7 +202,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    *     this catalog instance only interacts with authorized resolved paths.
    * @param taskExecutor Executor we use to register cleanup task handlers
    */
-  public IcebergCatalog(
+  public LocalIcebergCatalog(
       PolarisDiagnostics diagnostics,
       ResolverFactory resolverFactory,
       PolarisMetaStoreManager metaStoreManager,
@@ -688,7 +688,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         .reversed()
         .stream()
         .map(entity -> baseLocation(diagnostics, entity))
-        .map(IcebergCatalog::stripLeadingTrailingSlash)
+        .map(LocalIcebergCatalog::stripLeadingTrailingSlash)
         .collect(Collectors.joining("/"));
   }
 
@@ -1509,7 +1509,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     public PolarisIcebergCatalogViewBuilder(TableIdentifier identifier) {
       super(identifier);
       withProperties(
-          PropertyUtil.propertiesWithPrefix(IcebergCatalog.this.properties(), "table-default."));
+          PropertyUtil.propertiesWithPrefix(
+              LocalIcebergCatalog.this.properties(), "table-default."));
       this.identifier = identifier;
     }
 
@@ -1520,8 +1521,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * An implementation of {@link TableOperations} that integrates with {@link IcebergCatalog}. Much
-   * of this code was originally copied from {@link
+   * An implementation of {@link TableOperations} that integrates with {@link LocalIcebergCatalog}.
+   * Much of this code was originally copied from {@link
    * org.apache.iceberg.BaseMetastoreTableOperations}. CODE_COPIED_TO_POLARIS From Apache Iceberg
    * Version: 1.8
    */
@@ -1984,9 +1985,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * An implementation of {@link ViewOperations} that integrates with {@link IcebergCatalog}. Much
-   * of this code was originally copied from {@link org.apache.iceberg.view.BaseViewOperations}.
-   * CODE_COPIED_TO_POLARIS From Apache Iceberg Version: 1.8
+   * An implementation of {@link ViewOperations} that integrates with {@link LocalIcebergCatalog}.
+   * Much of this code was originally copied from {@link
+   * org.apache.iceberg.view.BaseViewOperations}. CODE_COPIED_TO_POLARIS From Apache Iceberg
+   * Version: 1.8
    */
   private class BasePolarisViewOperations extends PolarisOperationsBase<ViewMetadata>
       implements ViewOperations {
