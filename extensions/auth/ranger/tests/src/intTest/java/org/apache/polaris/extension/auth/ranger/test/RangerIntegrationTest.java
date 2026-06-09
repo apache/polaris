@@ -20,8 +20,6 @@ package org.apache.polaris.extension.auth.ranger.test;
 
 import static io.restassured.RestAssured.given;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import java.nio.file.Path;
 import java.util.List;
@@ -30,8 +28,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-@QuarkusTest
-@TestProfile(RangerTestProfiles.EmbeddedPolicy.class)
 public class RangerIntegrationTest extends RangerIntegrationTestBase {
 
   @Test
