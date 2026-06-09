@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.spark.it;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
 import org.apache.polaris.service.it.test.PolarisSparkIntegrationTest;
 
-@QuarkusIntegrationTest
 public class SparkIT extends PolarisSparkIntegrationTest {}
