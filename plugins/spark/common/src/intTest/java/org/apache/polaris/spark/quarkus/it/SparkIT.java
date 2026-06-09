@@ -21,7 +21,6 @@ package org.apache.polaris.spark.quarkus.it;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
@@ -30,7 +29,6 @@ import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-@QuarkusIntegrationTest
 public class SparkIT extends SparkIntegrationBase {
   @Test
   public void testNamespaces() {

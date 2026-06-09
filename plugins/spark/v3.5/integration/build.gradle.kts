@@ -17,10 +17,11 @@
  * under the License.
  */
 
+import org.gradle.api.plugins.jvm.JvmTestSuite
+
 plugins {
-  alias(libs.plugins.quarkus)
-  id("org.kordamp.gradle.jandex")
-  id("polaris-runtime")
+  id("polaris-java")
+  id("polaris-server-test-runner")
 }
 
 // get version information
@@ -34,140 +35,111 @@ val scalaLibraryVersion =
   } else {
     libs.versions.scala213.get()
   }
+val errorProneAnnotationsVersion = libs.errorprone.get().versionConstraint.requiredVersion
+
+dependencies { polarisServer(project(path = ":polaris-server", configuration = "quarkusRunner")) }
+
+testing {
+  suites {
+    register<JvmTestSuite>("intTest") {
+      dependencies {
+        implementation(
+          "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
+        )
+        implementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
+
+        implementation(project(":polaris-api-management-model"))
+
+        implementation(project(":polaris-runtime-test-common"))
+
+        implementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}")
+
+        // Add spark-hive for Hudi integration - provides HiveExternalCatalog that Hudi needs
+        runtimeOnly("org.apache.spark:spark-hive_${scalaVersion}:${spark35Version}")
+        // Delta and Hudi initialize Log4j classes from the Spark runtime. Keep Log4j Core aligned
+        // with the version used by the Spark tests instead of relying on older Hive transitive
+        // deps.
+        runtimeOnly("org.apache.logging.log4j:log4j-core:2.26.0")
+
+        implementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
+        implementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:1.1.1")
+
+        // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
+        // manageable
+        // This matches what Spark 3.5 distribution provides (hive-exec-2.3.10-core.jar)
+        implementation("org.apache.hive:hive-exec:2.3.10:core")
+
+        implementation(platform(libs.jackson.bom))
+        implementation("com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider")
+        implementation(libs.jakarta.ws.rs.api)
+        compileOnly("com.google.errorprone:error_prone_annotations:${errorProneAnnotationsVersion}")
+
+        implementation(testFixtures(project(":polaris-runtime-service")))
+
+        implementation(platform(libs.awssdk.bom))
+        implementation("software.amazon.awssdk:glue")
+        implementation("software.amazon.awssdk:kms")
+        implementation("software.amazon.awssdk:dynamodb")
+
+        implementation(platform(libs.testcontainers.bom))
+        implementation("org.testcontainers:testcontainers")
+        implementation(libs.s3mock.testcontainers)
+
+        // Required for Spark integration tests
+        implementation(enforcedPlatform("org.scala-lang:scala-library:${scalaLibraryVersion}"))
+        implementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
+        implementation(libs.javax.servlet.api)
+        implementation(libs.antlr4.runtime.spark35)
+      }
+
+      targets.all {
+        testTask.configure {
+          environment(
+            "AWS_REGION",
+            providers.environmentVariable("AWS_REGION").getOrElse("us-west-2"),
+          )
+          jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
+          // Need to allow a java security manager after Java 21, for Subject.getSubject to work
+          // "getSubject is supported only if a security manager is allowed".
+          systemProperty("java.security.manager", "allow")
+          val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
+          // delete files from previous runs
+          doFirst {
+            // delete log files written by Polaris
+            logsDir.deleteRecursively()
+          }
+          withPolarisServer(configurations.polarisServer) {
+            environment.put(
+              "AWS_REGION",
+              providers.environmentVariable("AWS_REGION").orElse("us-west-2"),
+            )
+            environment.put(
+              "AWS_ACCESS_KEY_ID",
+              providers.environmentVariable("AWS_ACCESS_KEY_ID").orElse("ap1"),
+            )
+            environment.put(
+              "AWS_SECRET_ACCESS_KEY",
+              providers.environmentVariable("AWS_SECRET_ACCESS_KEY").orElse("s3cr3t"),
+            )
+            environment.put("AWS_EC2_METADATA_DISABLED", "true")
+            environment.put("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+            systemProperties.put("quarkus.profile", "it")
+            systemProperties.put(
+              "quarkus.log.file.path",
+              logsDir.resolve("polaris.log").absolutePath,
+            )
+          }
+          // For Spark integration tests
+          addSparkJvmOptions()
+        }
+      }
+    }
+  }
+}
 
 sourceSets {
   named("intTest") {
     java { srcDir("../../common/src/intTest/java") }
     resources { srcDir("../../common/src/intTest/resources") }
   }
-}
-
-dependencies {
-  // must be enforced to get a consistent and validated set of dependencies
-  implementation(enforcedPlatform(libs.quarkus.bom)) {
-    exclude(group = "org.antlr", module = "antlr4-runtime")
-    exclude(group = "org.scala-lang", module = "scala-library")
-    exclude(group = "org.scala-lang", module = "scala-reflect")
-  }
-
-  implementation(project(":polaris-runtime-service"))
-
-  testImplementation(
-    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
-  )
-  testImplementation(project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}"))
-
-  testImplementation(project(":polaris-api-management-model"))
-
-  testImplementation(project(":polaris-runtime-test-common"))
-
-  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
-    // exclude log4j dependencies. Explicit dependencies for the log4j libraries are
-    // enforced below to ensure the version compatibility
-    exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
-    exclude("org.apache.logging.log4j", "log4j-1.2-api")
-    exclude("org.apache.logging.log4j", "log4j-core")
-    exclude("org.slf4j", "jul-to-slf4j")
-  }
-
-  // Add spark-hive for Hudi integration - provides HiveExternalCatalog that Hudi needs
-  testRuntimeOnly("org.apache.spark:spark-hive_${scalaVersion}:${spark35Version}") {
-    // exclude log4j dependencies to match spark-sql exclusions
-    exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
-    exclude("org.apache.logging.log4j", "log4j-1.2-api")
-    exclude("org.apache.logging.log4j", "log4j-core")
-    exclude("org.slf4j", "jul-to-slf4j")
-    // exclude old slf4j 1.x to log4j 2.x bridge that conflicts with slf4j 2.x bridge
-    exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
-  }
-  // enforce the usage of log4j 2.24.3. This is for the log4j-api compatibility
-  // of spark-sql dependency
-  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.26.0")
-
-  testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
-  testImplementation(
-    "org.apache.hudi:hudi-spark${sparkMajorVersion}-bundle_${scalaVersion}:1.1.1"
-  ) {
-    // exclude log4j dependencies to match spark-sql exclusions
-    // exclude log4j dependencies to match spark-sql exclusions and prevent version conflicts
-    exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
-    exclude("org.apache.logging.log4j", "log4j-1.2-api")
-    exclude("org.apache.logging.log4j", "log4j-core")
-    exclude("org.slf4j", "jul-to-slf4j")
-    exclude("org.slf4j", "slf4j-log4j12")
-    exclude("org.slf4j", "slf4j-reload4j")
-    exclude("ch.qos.reload4j", "reload4j")
-    exclude("log4j", "log4j")
-    // exclude old slf4j 1.x to log4j 2.x bridge that conflicts with slf4j 2.x bridge
-    exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
-  }
-
-  // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
-  // manageable
-  // This matches what Spark 3.5 distribution provides (hive-exec-2.3.10-core.jar)
-  testImplementation("org.apache.hive:hive-exec:2.3.10:core") {
-    // Exclude conflicting dependencies to use Spark's versions
-    exclude("org.apache.hadoop", "*")
-    exclude("org.apache.commons", "*")
-    exclude("org.slf4j", "*")
-    exclude("log4j", "*")
-    exclude("org.apache.logging.log4j", "*")
-    exclude("org.pentaho", "*")
-    exclude("org.apache.calcite", "*")
-    exclude("org.apache.tez", "*")
-  }
-
-  testImplementation(platform(libs.jackson.bom))
-  testImplementation("com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider")
-
-  testImplementation(testFixtures(project(":polaris-runtime-service")))
-
-  testImplementation(platform(libs.quarkus.bom))
-  testImplementation("io.quarkus:quarkus-junit")
-  testImplementation("io.quarkus:quarkus-rest-client")
-  testImplementation("io.quarkus:quarkus-rest-client-jackson")
-
-  testImplementation(platform(libs.awssdk.bom))
-  testImplementation("software.amazon.awssdk:glue")
-  testImplementation("software.amazon.awssdk:kms")
-  testImplementation("software.amazon.awssdk:dynamodb")
-
-  testImplementation(platform(libs.testcontainers.bom))
-  testImplementation("org.testcontainers:testcontainers")
-  testImplementation(libs.s3mock.testcontainers)
-
-  // Required for Spark integration tests
-  testImplementation(enforcedPlatform("org.scala-lang:scala-library:${scalaLibraryVersion}"))
-  testImplementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
-  testImplementation(libs.javax.servlet.api)
-  testImplementation(libs.antlr4.runtime.spark35)
-}
-
-tasks.named<Test>("intTest").configure {
-  if (System.getenv("AWS_REGION") == null) {
-    environment("AWS_REGION", "us-west-2")
-  }
-  // Note: the test secrets are referenced in
-  // org.apache.polaris.service.it.ServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
-  jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
-  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
-  // "getSubject is supported only if a security manager is allowed".
-  systemProperty("java.security.manager", "allow")
-  // Same issue as above: allow a java security manager after Java 21
-  // (this setting is for the application under test, while the setting above is for test code).
-  systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")
-  val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
-  // delete files from previous runs
-  doFirst {
-    // delete log files written by Polaris
-    logsDir.deleteRecursively()
-    // delete quarkus.log file (captured Polaris stdout/stderr)
-    project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
-  }
-  // This property is not honored in a per-profile application.properties file,
-  // so we need to set it here.
-  systemProperty("quarkus.log.file.path", logsDir.resolve("polaris.log").absolutePath)
-  // For Spark integration tests
-  addSparkJvmOptions()
 }

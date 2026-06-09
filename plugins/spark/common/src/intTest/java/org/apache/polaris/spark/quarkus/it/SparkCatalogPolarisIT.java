@@ -18,7 +18,5 @@
  */
 package org.apache.polaris.spark.quarkus.it;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
 
-@QuarkusIntegrationTest
 public class SparkCatalogPolarisIT extends SparkCatalogBaseIT {}
