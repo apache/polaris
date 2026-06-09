@@ -37,7 +37,7 @@ This command supports bootstrapping new environments and exporting existing conf
 If you already have an Apache Polaris environment, you can export its current state to a YAML file using the `export` subcommand:
 
 ```bash
-polaris setup export > polaris_bootstrap.yaml
+polaris setup export --client-id ${CLIENT_ID} --client-secret ${CLIENT_SECRET} > polaris_bootstrap.yaml
 ```
 
 This generates a readable YAML file containing principals, principal roles, catalogs, and their associated namespaces and catalog roles.
@@ -87,13 +87,13 @@ catalogs:
 Before making any changes, you can preview what will be executed using the `--dry-run` flag:
 
 ```bash
-polaris setup apply --dry-run site/content/guides/assets/polaris/simple-setup-config.yaml
+polaris setup apply --client-id ${CLIENT_ID} --client-secret ${CLIENT_SECRET} --dry-run site/content/guides/assets/polaris/simple-setup-config.yaml
 ```
 
 Once satisfied, run the command to apply the changes:
 
 ```bash
-polaris setup apply site/content/guides/assets/polaris/simple-setup-config.yaml
+polaris setup apply --client-id ${CLIENT_ID} --client-secret ${CLIENT_SECRET} site/content/guides/assets/polaris/simple-setup-config.yaml
 ```
 
 ## Known Limitations
