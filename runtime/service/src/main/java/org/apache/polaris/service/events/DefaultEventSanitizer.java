@@ -120,8 +120,7 @@ public class DefaultEventSanitizer implements EventSanitizer {
     }
   }
 
-  @SuppressWarnings("unchecked")
   private static <T> void putUnchecked(EventAttributeMap map, AttributeKey<T> key, Object value) {
-    map.put(key, (T) value);
+    map.put(key, key.cast(value));
   }
 }
