@@ -82,7 +82,7 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
     exclude("org.slf4j", "jul-to-slf4j")
   }
-  testImplementation("org.apache.logging.log4j:log4j-api:2.24.3")
+  testImplementation("org.apache.logging.log4j:log4j-api:2.26.0")
 }
 
 tasks.register<ShadowJar>("createPolarisSparkJar") {
