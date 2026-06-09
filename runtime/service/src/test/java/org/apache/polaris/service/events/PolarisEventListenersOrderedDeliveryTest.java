@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -102,7 +103,7 @@ public class PolarisEventListenersOrderedDeliveryTest {
         return;
       }
       try {
-        pauseLatch.await();
+        assertThat(pauseLatch.await(30, TimeUnit.SECONDS)).isTrue();
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -128,14 +129,20 @@ public class PolarisEventListenersOrderedDeliveryTest {
   @Test
   public void testOrderedEventDelivery() {
 
+    // listener1 is unblocked before event submission begins
+    orderedEventListener1.pauseLatch.countDown();
+
     for (int i = 0; i < EVENTS_COUNT; i++) {
       var attrs = new EventAttributeMap().put(OrderedEventListener.SEQ, i);
       eventDispatcher.dispatch(
           new PolarisEvent(PolarisEventType.AFTER_SEND_NOTIFICATION, null, attrs));
+      // listener2 is unblocked midway through event submission
+      if (i == EVENTS_COUNT / 2) {
+        orderedEventListener2.pauseLatch.countDown();
+      }
     }
 
-    orderedEventListener1.pauseLatch.countDown();
-    orderedEventListener2.pauseLatch.countDown();
+    // listener3 is unblocked after all events have been submitted
     orderedEventListener3.pauseLatch.countDown();
 
     await().until(() -> orderedEventListener1.receivedEventCount.get() == EVENTS_COUNT);

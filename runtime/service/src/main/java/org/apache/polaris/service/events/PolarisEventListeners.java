@@ -182,7 +182,12 @@ public class PolarisEventListeners {
         throw new RejectedExecutionException("Event listener queue is full");
       }
       if (draining.compareAndSet(false, true)) {
-        delegate.execute(this::drain);
+        try {
+          delegate.execute(this::drain);
+        } catch (Exception e) {
+          draining.set(false);
+          throw e;
+        }
       }
     }
 
@@ -197,7 +202,13 @@ public class PolarisEventListeners {
         // A producer may have enqueued a task between the last poll() and the set(false) above,
         // and seen draining=true so it did not schedule a drain. Catch that here.
         if (!queue.isEmpty() && draining.compareAndSet(false, true)) {
-          delegate.execute(this::drain); // re-schedule for fairness
+          try {
+            // re-schedule for fairness
+            delegate.execute(this::drain);
+          } catch (Exception e) {
+            draining.set(false);
+            // tasks remain in queue; next submission will trigger a new drain
+          }
         }
       }
     }
