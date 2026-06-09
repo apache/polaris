@@ -37,7 +37,7 @@ CLIENT_ID=root \
 CLIENT_SECRET=s3cr3t \
 DEFAULT_BASE_LOCATION=gs://my-ml-bucket/predictions/  \
 SERVICE_ACCOUNT=serviceAccount:my-service-account@my-project.iam.gserviceaccount.com \
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   catalogs \

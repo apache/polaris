@@ -63,8 +63,8 @@ class SetupCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris setup apply setup-config.yaml
-        * ./polaris setup export
+        * polaris setup apply setup-config.yaml
+        * polaris setup export
     """
 
     setup_subcommand: str

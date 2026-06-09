@@ -49,7 +49,6 @@ RUN apt-get update && \
 
 COPY --chown=spark:spark ./regtests/setup.sh ./regtests/pyspark-setup.sh ./regtests/requirements.txt /home/spark/polaris/regtests/
 COPY --chown=spark:spark ./client/python /home/spark/polaris/client/python
-COPY --chown=spark:spark ./polaris /home/spark/polaris/polaris
 COPY --chown=spark:spark ./spec /home/spark/polaris/spec
 COPY --chown=spark:spark ./regtests /home/spark/polaris/regtests
 

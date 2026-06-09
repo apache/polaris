@@ -24,6 +24,12 @@ weight: 103
 
 This guide serves as an introduction to several key entities that can be managed with Apache Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark&trade;.
 
+If you only need the Polaris CLI, you can install it without cloning the repository:
+
+```shell
+pip install apache-polaris
+```
+
 # Prerequisites
 
 This guide covers building Polaris, deploying it locally or via [Docker](https://www.docker.com/), and interacting with it using the command-line interface and [Apache Spark](https://spark.apache.org/). Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here.

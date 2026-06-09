@@ -42,10 +42,10 @@ class PolarisCli:
     available in the Python client API.
 
     Example usage:
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principals create example_user
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principal-roles create example_role
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} catalog-roles list
-    * ./polaris --client-id ${id} --client-secret ${secret} --base-url https://custom-polaris-domain.example.com/service-prefix catalogs list
+    * polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principals create example_user
+    * polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principal-roles create example_role
+    * polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} catalog-roles list
+    * polaris --client-id ${id} --client-secret ${secret} --base-url https://custom-polaris-domain.example.com/service-prefix catalogs list
     """
 
     # Can be enabled if the client is able to authenticate directly without first fetching a token
