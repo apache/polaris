@@ -10,7 +10,7 @@ but of course, it can be any valid catalog name.&lt;/p&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#000"&gt;REGION&lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;us-west-2
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#000"&gt;EXTERNAL_ID&lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#0000cf;font-weight:bold"&gt;12345678901234567890&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;./polaris &lt;span style="color:#4e9a06"&gt;\
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;polaris &lt;span style="color:#4e9a06"&gt;\
 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; --client-id &lt;span style="color:#4e9a06"&gt;${&lt;/span&gt;&lt;span style="color:#000"&gt;CLIENT_ID&lt;/span&gt;&lt;span style="color:#4e9a06"&gt;}&lt;/span&gt; &lt;span style="color:#4e9a06"&gt;\
 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; --client-secret &lt;span style="color:#4e9a06"&gt;${&lt;/span&gt;&lt;span style="color:#000"&gt;CLIENT_SECRET&lt;/span&gt;&lt;span style="color:#4e9a06"&gt;}&lt;/span&gt; &lt;span style="color:#4e9a06"&gt;\
 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; catalogs &lt;span style="color:#4e9a06"&gt;\
