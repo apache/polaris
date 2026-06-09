@@ -96,7 +96,7 @@ Generates the JSON Schema from model classes.
 ./gradlew :polaris-extensions-auth-opa:generateOpaSchema
 ```
 
-**Output**: `extensions/auth/opa/impl/opa-input-schema.json`
+**Output**: `extensions/auth/opa/opa-input-schema.json`
 
 ### `validateOpaSchema`
 Validates that committed schema matches the code.

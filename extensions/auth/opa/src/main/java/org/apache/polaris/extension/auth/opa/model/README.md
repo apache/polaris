@@ -33,7 +33,7 @@ Run the Gradle task to regenerate the schema:
 ./gradlew :polaris-extensions-auth-opa:generateOpaSchema
 ```
 
-The schema will be generated at: `extensions/auth/opa/impl/opa-input-schema.json`
+The schema will be generated at: `extensions/auth/opa/opa-input-schema.json`
 
 ## Model Classes
 
