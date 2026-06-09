@@ -20,8 +20,10 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.when;
 
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -290,6 +293,7 @@ class IcebergCatalogHandlerTest {
 
     // Missing LOCATION on the entity must force the fallback — loadTable is the proof.
     verify(icebergCatalog).loadTable(TABLE2);
+    verify(accessDelegationModeResolver).resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any());
     assertThat(response.credentials())
         .singleElement()
         .satisfies(
@@ -297,5 +301,32 @@ class IcebergCatalogHandlerTest {
               assertThat(c.prefix()).isEqualTo(tableLocation);
               assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
             });
+  }
+
+  @Test
+  void loadCredentialsFallbackPreservesDelegationModeValidation() {
+    PolarisEntity leafEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity.Builder()
+                .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+                .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+                .name(TABLE2.name())
+                .internalPropertiesAsMap(Map.of())
+                .build());
+    when(resolvedPath.getRawLeafEntity()).thenReturn(leafEntity);
+
+    IcebergCatalog icebergCatalog = mock(IcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+
+    when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
+        .thenThrow(new IllegalArgumentException("credential vending disabled"));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(() -> handler.loadCredentials(TABLE2, Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("credential vending disabled");
+    verify(icebergCatalog, never()).loadTable(any());
   }
 }

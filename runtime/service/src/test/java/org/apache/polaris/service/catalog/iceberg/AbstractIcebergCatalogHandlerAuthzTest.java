@@ -77,6 +77,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.admin.PolarisAuthzTestsFactory;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -103,6 +104,11 @@ import org.mockito.Mockito;
  */
 @SuppressWarnings("resource")
 public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
+
+  @Override
+  protected PolarisAuthzTestsFactory.Builder authzTestsBuilder(String operationName) {
+    return super.authzTestsBuilder(operationName).useFreshRequestContext(true);
+  }
 
   @Inject LocalCatalogFactory localCatalogFactory;
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
