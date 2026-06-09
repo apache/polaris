@@ -52,6 +52,10 @@ public final class PolarisApiEndpoints implements Serializable {
     return baseUri.resolve(baseUri.getRawPath() + "/api/management").normalize();
   }
 
+  public URI openLineageApiEndpoint() {
+    return baseUri.resolve(baseUri.getRawPath() + "/api/v1").normalize();
+  }
+
   public String realmId() {
     return realmId;
   }
