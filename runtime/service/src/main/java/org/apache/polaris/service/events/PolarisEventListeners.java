@@ -33,6 +33,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
@@ -79,8 +80,8 @@ public class PolarisEventListeners {
       PolarisEventListenerConfiguration.ListenerConfiguration listenerConfiguration) {
     // Missing or empty per-listener filters mean that the listener receives all event types.
     if (listenerConfiguration == null
-        || (listenerConfiguration.enabledEventCategories().isEmpty()
-            && listenerConfiguration.enabledEventTypes().isEmpty())) {
+        || (listenerConfiguration.enabledEventCategories().orElse(Set.of()).isEmpty()
+            && listenerConfiguration.enabledEventTypes().orElse(Set.of()).isEmpty())) {
       return EnumSet.allOf(PolarisEventType.class);
     }
 
