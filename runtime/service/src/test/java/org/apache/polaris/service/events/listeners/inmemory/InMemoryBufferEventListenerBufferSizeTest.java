@@ -20,6 +20,7 @@
 package org.apache.polaris.service.events.listeners.inmemory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -29,6 +30,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.mutiny.subscription.BackPressureFailure;
+import java.time.Duration;
 import java.util.Map;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.junit.jupiter.api.Test;
@@ -87,10 +89,14 @@ class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListe
   @Test
   void testProcessorFailureRecovery() {
     producer.processEvent("test1", event());
-    var test1 = producer.processors.get("test1");
+    var test1 = producer.processor("test1");
     assertThat(test1).isNotNull();
     // emulate backpressure error; will drop the event and invalidate the processor
     test1.processor.onError(new BackPressureFailure("error"));
+    // wait for the processor to be evicted from the cache
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(() -> assertThat(producer.hasProcessor("test1")).isFalse());
     // will create a new processor and recover
     sendAsync("test1", 10);
     assertRows("test1", 10);
