@@ -175,7 +175,7 @@ This workflow can only be run from the `release/[major].[minor].x` branch for wh
 
 ### Manual steps on dist.apache.org
 
-The workflow does not move artifacts from the dist dev to the dist release SVN repository, because the credentials used by the workflow do not have write access to the release area. A PMC member (or release manager with Apache SVN credentials) must run the following commands manually after the workflow completes.
+The workflow does not move artifacts from the dist dev to the dist release SVN repository, because the credentials used by the workflow do not have write access to the release area. A PMC member must run the following commands manually after the workflow completes.
 
 Move the release artifacts, Helm chart, and Python client from `dev/polaris` to `release/polaris`:
 
