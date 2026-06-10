@@ -340,7 +340,11 @@ gradle.sharedServices.registerIfAbsent(
 abstract class TestingParallelismHelper : BuildService<BuildServiceParameters.None>
 
 tasks.withType<Test>().configureEach {
+  val isTestTask = name == "test"
   val constraintName =
-    if ("test" == name) "testParallelismConstraint" else "intTestParallelismConstraint"
+    if (isTestTask) "testParallelismConstraint" else "intTestParallelismConstraint"
   usesService(gradle.sharedServices.registrations.named(constraintName).get().service)
+  if (project.hasProperty("noIntegrationTests") && !isTestTask) {
+    enabled = false
+  }
 }
