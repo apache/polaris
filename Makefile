@@ -157,8 +157,7 @@ client-setup-env: $(VENV_DIR) ## Set up Python client environment (venv + depend
 	@$(ACTIVATE_AND_CD) && uv lock && uv sync --active --all-extras
 	@echo "--- Python client environment setup complete ---"
 
-.PHONY: client-integration-test
-client-integration-test: build-server client-setup-env ## Run client integration tests
+_client-integration-test: client-setup-env
 	@echo "--- Starting client integration tests ---"
 	@echo "Ensuring Docker Compose services are stopped and removed..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml kill || true # `|| true` prevents make from failing if containers don't exist
@@ -175,6 +174,9 @@ client-integration-test: build-server client-setup-env ## Run client integration
 	@echo "--- Client integration tests complete ---"
 	@echo "Tearing down Docker Compose services..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
+
+.PHONY: client-integration-test
+client-integration-test: build-server _client-integration-test ## Run client integration tests
 
 .PHONY: client-license-check
 client-license-check: client-setup-env ## Run license compliance check
