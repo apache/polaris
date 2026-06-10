@@ -245,7 +245,8 @@ listOf("intTest", "cloudTest")
           // Example: to attach a debugger to the spawned JVM running Quarkus, add
           // -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
           // to your test configuration.
-          val explicitQuarkusTestArgLine = System.getProperty("quarkus.test.arg-line")
+          val explicitQuarkusTestArgLine =
+            providers.systemProperty("quarkus.test.arg-line").getOrNull()
           var quarkusTestArgLine =
             if (explicitQuarkusTestArgLine != null)
               "$explicitQuarkusTestArgLine $securityManagerAllow"
@@ -257,13 +258,11 @@ listOf("intTest", "cloudTest")
           args.add("-Dquarkus.log.file.path=${logsDir.resolve("polaris.log").absolutePath}")
 
           // Add `quarkus.*` system properties, other than the ones explicitly set above
-          System.getProperties()
-            .filter {
-              it.key.toString().startsWith("quarkus.") &&
-                !"quarkus.test.arg-line".equals(it.key) &&
-                !"quarkus.log.file.path".equals(it.key)
-            }
-            .forEach { args.add("${it.key}=${it.value}") }
+          providers
+            .systemPropertiesPrefixedBy("quarkus.")
+            .get()
+            .filter { e -> "quarkus.test.arg-line" != e.key && "quarkus.log.file.path" != e.key }
+            .forEach { e -> args.add("${e.key}=${e.value}") }
 
           args
         }

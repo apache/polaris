@@ -57,7 +57,7 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
   polarisProject(name as String, file(directory as String))
 }
 
-val ideaActive = System.getProperty("idea.active").toBoolean()
+val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
 
 // load the polaris spark plugin projects
 val polarisSparkDir = "plugins/spark"
