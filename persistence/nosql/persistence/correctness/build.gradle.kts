@@ -76,9 +76,9 @@ testing {
         // `o.a.p.persistence.api.BackendConfigurer.defaultBackendConfigurer` using smallrye-config.
         targets.all {
           testTask.configure {
-            System.getProperties()
-              .filter { p -> p.key.toString().startsWith("polaris.") }
-              .forEach { p -> systemProperty(p.key.toString(), p.value) }
+            providers.systemPropertiesPrefixedBy("polaris").get().forEach { (k, v) ->
+              systemProperty(k, v)
+            }
           }
         }
       }
