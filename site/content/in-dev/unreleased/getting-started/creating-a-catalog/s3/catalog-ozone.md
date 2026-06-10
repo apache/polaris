@@ -45,7 +45,7 @@ CLIENT_ID=root
 CLIENT_SECRET=s3cr3t
 DEFAULT_BASE_LOCATION=s3://example-bucket/my_data
 
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   catalogs \

@@ -24,6 +24,12 @@ weight: 401
 
 ## Setup
 
+Install the Polaris CLI from PyPI:
+
+```shell
+pip install apache-polaris
+```
+
 Ensure your `CLIENT_ID` & `CLIENT_SECRET` variables are already defined, as they were required for starting the Polaris server earlier.
 
 ```shell
@@ -47,21 +53,21 @@ Additionally, if Polaris is running somewhere other than `localhost:8181`, you c
 With a catalog created, we can create a [principal]({{% relref "../../entities#principal" %}}) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs]({{% relref "../../command-line-interface" %}}).
 
 ```shell
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   principals \
   create \
   quickstart_user
 
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   principal-roles \
   create \
   quickstart_user_role
 
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   catalog-roles \
@@ -75,7 +81,7 @@ Be sure to provide the necessary credentials, hostname, and port as before.
 When the `principals create` command completes successfully, it will return the credentials for this new principal. Export them for future use. For example:
 
 ```shell
-./polaris ... principals create example
+polaris ... principals create example
 {"clientId": "XXXX", "clientSecret": "YYYY"}
 export USER_CLIENT_ID=XXXX
 export USER_CLIENT_SECRET=YYYY
@@ -84,7 +90,7 @@ export USER_CLIENT_SECRET=YYYY
 Now, we grant the principal the [principal role]({{% relref "../../entities#principal-role" %}}) we created, and grant the [catalog role]({{% relref "../../entities#catalog-role" %}}) the principal role we created. For more information on these entities, please refer to the linked documentation.
 
 ```shell
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   principal-roles \
@@ -92,7 +98,7 @@ Now, we grant the principal the [principal role]({{% relref "../../entities#prin
   --principal quickstart_user \
   quickstart_user_role
 
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   catalog-roles \
@@ -109,7 +115,7 @@ Now, we’ve linked our principal to the catalog via roles like so:
 In order to give this principal the ability to interact with the catalog, we must assign some [privileges]({{% relref "../../entities#privilege" %}}). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:
 
 ```shell
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   privileges \
@@ -202,7 +208,7 @@ SELECT * FROM quickstart_table;
 If at any time access is revoked...
 
 ```shell
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   privileges \
@@ -250,7 +256,7 @@ SELECT * FROM iceberg.quickstart_schema.quickstart_table;
 If at any time access is revoked...
 
 ```shell
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   privileges \

@@ -35,7 +35,6 @@ import org.apache.polaris.test.minio.Minio;
 import org.apache.polaris.test.minio.MinioAccess;
 import org.apache.polaris.test.minio.MinioExtension;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
@@ -94,16 +93,5 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
             .setAllowedLocations(List.of(storageBase.toString()));
 
     return storageConfig.build();
-  }
-
-  @Override
-  protected Map<String, String> extraCatalogProperties(TestInfo testInfo) {
-    if (testInfo.getTestMethod().orElseThrow().getName().equals("testRegisterTable")) {
-      // This test registers a table – operation that doesn't support access delegation –
-      // then attempts to use the table's FileIO. This can only work if the client has its
-      // own S3 credentials.
-      return s3Properties;
-    }
-    return Map.of();
   }
 }

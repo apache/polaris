@@ -44,17 +44,17 @@ import com.google.cloud.storage.StorageOptions;
 import com.google.protobuf.Timestamp;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
-import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
@@ -80,6 +80,21 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               JsonInclude.Value.construct(
                   JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
           .build();
+
+  private static List<LocationGrant> toGrants(
+      Set<String> readLocations, Set<String> listLocations, Set<String> writeLocations) {
+    List<LocationGrant> grants = new ArrayList<>();
+    if (!readLocations.isEmpty()) {
+      grants.add(new LocationGrant(readLocations, Set.of(PolarisStorageActions.READ)));
+    }
+    if (!listLocations.isEmpty()) {
+      grants.add(new LocationGrant(listLocations, Set.of(PolarisStorageActions.LIST)));
+    }
+    if (!writeLocations.isEmpty()) {
+      grants.add(new LocationGrant(writeLocations, Set.of(PolarisStorageActions.WRITE)));
+    }
+    return grants;
+  }
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
@@ -185,17 +200,17 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     GcpCredentialsStorageIntegration gcpCredsIntegration =
         new GcpCredentialsStorageIntegration(
-            gcpConfig,
             GoogleCredentials.getApplicationDefault(),
-            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
-    return gcpCredsIntegration.getSubscopedCreds(
-        EMPTY_REALM_CONFIG,
-        allowListAction,
-        new HashSet<>(allowedReadLoc),
-        new HashSet<>(allowedWriteLoc),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
+            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
+            gcpConfig,
+            EMPTY_REALM_CONFIG);
+    return gcpCredsIntegration.getStorageAccessConfig(
+        toGrants(
+            new HashSet<>(allowedReadLoc),
+            allowListAction ? new HashSet<>(allowedReadLoc) : Set.of(),
+            new HashSet<>(allowedWriteLoc)),
         Optional.of(REFRESH_ENDPOINT),
-        CredentialVendingContext.empty());
+        org.apache.polaris.core.storage.CredentialVendingContext.empty());
   }
 
   private JsonNode readResource(String name) throws IOException {
@@ -224,7 +239,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundary() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            true, Set.of("gs://bucket1/path/to/data"), Set.of("gs://bucket1/path/to/data"));
+            Set.of("gs://bucket1/path/to/data"),
+            Set.of("gs://bucket1/path/to/data"),
+            Set.of("gs://bucket1/path/to/data"));
     assertThat(credentialAccessBoundary).isNotNull();
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules = readResource("gcp-testGenerateAccessBoundary.json");
@@ -235,7 +252,10 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundaryWithMultipleBuckets() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            true,
+            Set.of(
+                "gs://bucket1/normal/path/to/data",
+                "gs://bucket1/awesome/path/to/data",
+                "gs://bucket2/a/super/path/to/data"),
             Set.of(
                 "gs://bucket1/normal/path/to/data",
                 "gs://bucket1/awesome/path/to/data",
@@ -251,8 +271,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundaryWithoutList() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            false,
             Set.of("gs://bucket1/path/to/data", "gs://bucket1/another/path/to/data"),
+            Set.of(),
             Set.of("gs://bucket1/path/to/data"));
     assertThat(credentialAccessBoundary).isNotNull();
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
@@ -264,8 +284,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundaryWithoutWrites() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            false,
             Set.of("gs://bucket1/normal/path/to/data", "gs://bucket1/awesome/path/to/data"),
+            Set.of(),
             Set.of());
     assertThat(credentialAccessBoundary).isNotNull();
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
@@ -278,7 +298,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String path = "a'b\"c\\d";
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            true, Set.of("gs://bucket1/" + path), Set.of("gs://bucket1/" + path));
+            Set.of("gs://bucket1/" + path),
+            Set.of("gs://bucket1/" + path),
+            Set.of("gs://bucket1/" + path));
 
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
     assertThat(parsedRules.path("accessBoundaryRules")).hasSize(2);
@@ -369,7 +391,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Assertions.assertThatThrownBy(
             () ->
                 GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-                    true, Set.of("gs://bucket1/a\u001fb"), Set.of()))
+                    Set.of("gs://bucket1/a\u001fb"), Set.of("gs://bucket1/a\u001fb"), Set.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unsupported control character");
   }
@@ -378,7 +400,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundaryPreservesLiteralQuestionMarksInPath() {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            true, Set.of("gs://bucket1/path/to/data?with?question"), Set.of());
+            Set.of("gs://bucket1/path/to/data?with?question"),
+            Set.of("gs://bucket1/path/to/data?with?question"),
+            Set.of());
 
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
 
@@ -429,31 +453,31 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     GoogleCredentials mockCreds = Mockito.mock(GoogleCredentials.class);
     Mockito.when(mockCreds.createScoped(Mockito.any(String.class))).thenReturn(mockCreds);
 
-    GcpCredentialsStorageIntegration integration =
-        new GcpCredentialsStorageIntegration(
-            config,
-            mockCreds,
-            ServiceOptions.getFromServiceLoader(
-                HttpTransportFactory.class, NetHttpTransport::new)) {
+    GcpCredentialOps testOps =
+        new GcpCredentialOps() {
           @Override
-          protected IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
+          public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
             return mockIamClient;
           }
 
           @Override
-          protected AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
             return new AccessToken("downscoped-token", new Date());
           }
         };
+    GcpCredentialsStorageIntegration integration =
+        new GcpCredentialsStorageIntegration(
+            mockCreds,
+            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
+            config,
+            EMPTY_REALM_CONFIG,
+            testOps);
 
-    integration.getSubscopedCreds(
-        EMPTY_REALM_CONFIG,
-        true,
-        Set.of("gs://bucket/path"),
-        Set.of("gs://bucket/path"),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
+    integration.getStorageAccessConfig(
+        toGrants(
+            Set.of("gs://bucket/path"), Set.of("gs://bucket/path"), Set.of("gs://bucket/path")),
         Optional.empty(),
-        CredentialVendingContext.empty());
+        org.apache.polaris.core.storage.CredentialVendingContext.empty());
 
     Mockito.verify(mockIamClient)
         .generateAccessToken(

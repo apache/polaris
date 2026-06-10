@@ -125,7 +125,8 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -327,14 +328,19 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         .sessionToken(SESSION_TOKEN)
                         .build())
                 .build());
-    PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
+    AwsStorageConfigurationInfo mockAwsConfig =
+        AwsStorageConfigurationInfo.builder()
+            .roleARN("arn:aws:iam::012345678901:role/mock")
+            .build();
+    AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (AwsStorageConfigurationInfo)
-                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
-            stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
-        .thenReturn((PolarisStorageIntegration) storageIntegration);
+            (destination) -> stsClient,
+            config -> Optional.empty(),
+            storageCredentialCache,
+            mockAwsConfig,
+            callContext.getRealmConfig());
+    when(storageIntegrationProvider.getStorageIntegration(Mockito.anyList()))
+        .thenReturn(storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
@@ -1873,20 +1879,15 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
+    var integration = storageIntegrationProvider.getStorageIntegration(List.of(taskEntity));
     Map<String, String> credentials =
-        metaStoreManager
-            .getSubscopedCredsForEntity(
-                polarisContext,
-                0,
-                taskEntity.getId(),
-                taskEntity.getType(),
-                true,
-                Set.of(tableMetadata.location()),
-                Set.of(tableMetadata.location()),
-                authenticatedRoot,
+        integration
+            .getStorageAccessConfig(
+                List.of(
+                    new LocationGrant(
+                        Set.of(tableMetadata.location()), Set.of(PolarisStorageActions.ALL))),
                 Optional.empty(),
                 CredentialVendingContext.empty())
-            .getStorageAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()

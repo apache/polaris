@@ -528,12 +528,11 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegration(
-          @NonNull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+  public PolarisStorageIntegration createStorageIntegration(
+      @NonNull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     return runInTransaction(
         callCtx,
         () ->
@@ -543,25 +542,15 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
+  public void persistStorageIntegrationIfNeeded(
       @NonNull PolarisCallContext callCtx,
       @NonNull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration) {
+      @Nullable PolarisStorageIntegration storageIntegration) {
     runActionInTransaction(
         callCtx,
         () ->
             this.persistStorageIntegrationIfNeededInCurrentTxn(
                 callCtx, entity, storageIntegration));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  @Nullable
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
-    return runInReadTransaction(
-        callCtx, () -> this.loadPolarisStorageIntegrationInCurrentTxn(callCtx, entity));
   }
 
   //

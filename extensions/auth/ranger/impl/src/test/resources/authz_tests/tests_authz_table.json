@@ -121,6 +121,14 @@
       "result":  { "isAllowed": true }
     },
     {
+      "request": { "authzOp": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
       "request": { "authzOp": "DROP_VIEW", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:POLARIS/catalog1/namespace1/view1" },
       "result":  { "isAllowed": true }
     },

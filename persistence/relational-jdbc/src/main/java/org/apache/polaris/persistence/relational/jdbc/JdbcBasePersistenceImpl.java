@@ -46,11 +46,11 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
@@ -58,6 +58,7 @@ import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -83,7 +84,8 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
+public class JdbcBasePersistenceImpl
+    implements BasePersistence, IntegrationPersistence, MetricsPersistence {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
@@ -814,11 +816,20 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       if (!results.isEmpty()) {
         StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
         for (PolarisBaseEntity result : results) {
-          StorageLocation potentialSiblingLocation =
-              StorageLocation.of(((LocationBasedEntity) result).getBaseLocation());
-          if (entityLocation.isChildOf(potentialSiblingLocation)
-              || potentialSiblingLocation.isChildOf(entityLocation)) {
-            return Optional.of(Optional.of(potentialSiblingLocation.toString()));
+          // JDBC materializes persisted rows as PolarisBaseEntity. Resolve the sibling location
+          // via PolarisEntityUtils instead of casting to LocationBasedEntity.
+          Optional<String> overlappingSiblingLocation =
+              PolarisEntityUtils.asLocationBasedEntity(PolarisEntity.of(result))
+                  .map(LocationBasedEntity::getBaseLocation)
+                  .filter(location -> location != null && !location.isBlank())
+                  .map(StorageLocation::of)
+                  .filter(
+                      potentialSiblingLocation ->
+                          entityLocation.isChildOf(potentialSiblingLocation)
+                              || potentialSiblingLocation.isChildOf(entityLocation))
+                  .map(StorageLocation::toString);
+          if (overlappingSiblingLocation.isPresent()) {
+            return Optional.of(overlappingSiblingLocation);
           }
         }
       }
@@ -1266,31 +1277,23 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nullable
   @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegration(
-          @NonNull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegrationForConfig(
-        polarisStorageConfigurationInfo);
+  public PolarisStorageIntegration createStorageIntegration(
+      @NonNull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+    // No-op in OSS: the storage integration is resolved at credential-vending time via
+    // PolarisStorageIntegrationProvider.getStorageIntegration(resolvedEntityPath). This hook
+    // remains available for custom deployments that need to allocate/lease external state
+    // atomically with the catalog-creation transaction.
+    return null;
   }
 
   @Override
-  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
+  public void persistStorageIntegrationIfNeeded(
       @NonNull PolarisCallContext callContext,
       @NonNull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration) {}
-
-  @Nullable
-  @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @NonNull PolarisCallContext callContext, @NonNull PolarisBaseEntity entity) {
-    PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
-  }
+      @Nullable PolarisStorageIntegration storageIntegration) {}
 
   @FunctionalInterface
   private interface QueryAction {

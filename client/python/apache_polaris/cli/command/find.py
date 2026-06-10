@@ -40,10 +40,10 @@ class FindCommand(Command):
     and catalog entities (namespaces, tables, views) using fuzzy matching.
 
     Example commands:
-        * ./polaris find my_table
-        * ./polaris find ns1.my_table
-        * ./polaris find --catalog my_catalog my_table
-        * ./polaris find my_table --type table
+        * polaris find my_table
+        * polaris find ns1.my_table
+        * polaris find --catalog my_catalog my_table
+        * polaris find my_table --type table
     """
 
     identifier: str
