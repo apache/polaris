@@ -125,8 +125,8 @@ tasks.named<JcstressTask>("jcstress") {
   inputs.property("availableProcessors", Runtime.getRuntime().availableProcessors())
   inputs.property("jcstressMode", jcstressMode.get())
   inputs.property("jcstressSplitPerActor", jcstressSplitPerActor.get())
-  inputs.files(jcstressRuntime)
-  inputs.files(configurations.runtimeClasspath)
+  inputs.files(jcstressRuntime).withNormalizer(ClasspathNormalizer::class.java)
+  inputs.files(configurations.runtimeClasspath).withNormalizer(ClasspathNormalizer::class.java)
   outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
   outputs.cacheIf { true }
 

@@ -247,7 +247,9 @@ tasks.withType<Javadoc>().configureEach {
 tasks.register("printRuntimeClasspath").configure {
   group = "help"
   description = "Print the classpath as a path string to be used when running tools like 'jol'"
-  inputs.files(configurations.named("runtimeClasspath"))
+  inputs
+    .files(configurations.named("runtimeClasspath"))
+    .withNormalizer(ClasspathNormalizer::class.java)
   doLast {
     val cp = configurations.getByName("runtimeClasspath")
     val def = configurations.getByName("runtimeElements")
