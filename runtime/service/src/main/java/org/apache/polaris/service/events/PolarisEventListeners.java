@@ -114,6 +114,7 @@ public class PolarisEventListeners {
     return supportedTypes;
   }
 
+  // Executed on a Vert.x event loop thread
   private void scheduleEventDelivery(
       PolarisEvent event,
       String listenerName,
@@ -138,6 +139,7 @@ public class PolarisEventListeners {
     }
   }
 
+  // Executed on the blocking shared executor
   private void deliverEvent(
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
     LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
@@ -184,9 +186,9 @@ public class PolarisEventListeners {
       if (draining.compareAndSet(false, true)) {
         try {
           delegate.execute(this::drain);
-        } catch (Exception e) {
+        } catch (Throwable t) {
           draining.set(false);
-          throw e;
+          throw t;
         }
       }
     }
@@ -206,8 +208,9 @@ public class PolarisEventListeners {
             // re-schedule for fairness
             delegate.execute(this::drain);
           } catch (Exception e) {
-            draining.set(false);
             // tasks remain in queue; next submission will trigger a new drain
+            draining.set(false);
+            LOGGER.warn("Failed to reschedule listener executor drain; tasks may be delayed", e);
           }
         }
       }
