@@ -30,6 +30,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
+- Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
+  - `polaris.event-listener.executor.pool-size` configures the thread pool size.
+  - `polaris.event-listener.executor.queue-size` configures the queue size for pending events when all threads are busy.
 
 ### Breaking changes
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
@@ -45,6 +48,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `hostUsers` support in Helm chart.
 - Added documentation for BigQuery Metastore Catalog federation. Build with `-PNonRESTCatalogs=BIGQUERY` to include the BigQueryMetastoreCatalog federation extension. See `site/content/in-dev/unreleased/federation/bigquery-metastore-federation.md`.
 - Support for view registration has been added.
+- Python client: added support for Python 3.14
+- Added support for `register table` overwrite semantics in the Iceberg REST catalog flow (`overwrite=true`) for internal Polaris catalogs. With overwrite enabled, existing table pointers can be updated to a new metadata location while preserving default behavior for `overwrite=false`.
+- Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
+- Added Polaris Spark 4.0 client.
 
 ### Changes
 - Added REPL support to Polaris CLI.
@@ -55,6 +62,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 - `RateLimiterFilter` now returns an Iceberg-compatible `ErrorResponse` JSON body on HTTP 429, with `Content-Type: application/json`. Previously the body was empty, causing Iceberg REST clients to surface an opaque error.
+- The admin tool `purge` command now prints the underlying exception stack trace to stderr when a purge fails unexpectedly, matching the `bootstrap` command. Previously a failed purge printed only a generic message, giving operators no diagnostic information.
 
 ## [1.5.0]
 

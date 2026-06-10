@@ -86,6 +86,11 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TAB
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.NAMESPACE_EXISTS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
@@ -184,6 +189,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_POLIC
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DROP;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
@@ -287,6 +293,15 @@ record RbacOperationSemantics(
     register(CREATE_TABLE_STAGED, TABLE_CREATE);
     register(CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION, EnumSet.of(TABLE_CREATE, TABLE_WRITE_DATA));
     register(REGISTER_TABLE, TABLE_CREATE);
+    register(REGISTER_TABLE_OVERWRITE, TABLE_FULL_METADATA);
+    register(REGISTER_TABLE_WITH_READ_DELEGATION, EnumSet.of(TABLE_CREATE, TABLE_READ_DATA));
+    register(REGISTER_TABLE_WITH_WRITE_DELEGATION, EnumSet.of(TABLE_CREATE, TABLE_WRITE_DATA));
+    register(
+        REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+        EnumSet.of(TABLE_FULL_METADATA, TABLE_READ_DATA));
+    register(
+        REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+        EnumSet.of(TABLE_FULL_METADATA, TABLE_WRITE_DATA));
     register(LOAD_TABLE, TABLE_READ_PROPERTIES);
     register(LOAD_TABLE_WITH_READ_DELEGATION, TABLE_READ_DATA);
     register(LOAD_TABLE_WITH_WRITE_DELEGATION, TABLE_WRITE_DATA);

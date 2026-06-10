@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.common;
 
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionWithSameNameForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.entityNameForSubType;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
@@ -211,6 +212,66 @@ public abstract class CatalogHandler {
             op,
             target,
             null /* secondary */);
+
+    initializeCatalog();
+  }
+
+  /**
+   * Authorizes a register-table-with-overwrite operation. If the table already exists, {@code
+   * overwriteOp} is authorized against the table entity. If the table does not exist, {@code
+   * fallbackOp} is authorized against the parent namespace.
+   */
+  protected void authorizeRegisterTableOverwriteOrThrow(
+      PolarisAuthorizableOperation overwriteOp,
+      PolarisAuthorizableOperation fallbackOp,
+      TableIdentifier identifier) {
+    Namespace namespace = identifier.namespace();
+    resolutionManifest = newResolutionManifest();
+    resolutionManifest.addPath(
+        new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE));
+    resolutionManifest.addPassthroughPath(
+        new ResolverPath(
+            PolarisCatalogHelpers.tableIdentifierToList(identifier),
+            PolarisEntityType.TABLE_LIKE,
+            true /* optional */));
+    resolutionManifest.resolveAll();
+
+    // Early check so that a caller that has table-level REGISTER_TABLE_OVERWRITE but not
+    // namespace-level REGISTER_TABLE doesn't get a permission error instead of
+    // "View with same name already exists"
+    PolarisEntitySubType leafSubType =
+        resolutionManifest.getLeafSubType(ResolvedPathKey.ofTableLike(identifier));
+    if (leafSubType == PolarisEntitySubType.ICEBERG_VIEW) {
+      throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
+          identifier, PolarisEntitySubType.ICEBERG_VIEW);
+    }
+
+    PolarisResolvedPathWrapper tableTarget =
+        resolutionManifest.getResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE, true);
+
+    if (tableTarget != null) {
+      authorizer()
+          .authorizeOrThrow(
+              polarisPrincipal(),
+              resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+              overwriteOp,
+              tableTarget,
+              null /* secondary */);
+    } else {
+      PolarisResolvedPathWrapper namespaceTarget =
+          resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(namespace), true);
+      if (namespaceTarget == null) {
+        throw noSuchNamespaceException(namespace);
+      }
+      authorizer()
+          .authorizeOrThrow(
+              polarisPrincipal(),
+              resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+              fallbackOp, // normal register-table operation
+              namespaceTarget,
+              null /* secondary */);
+    }
 
     initializeCatalog();
   }

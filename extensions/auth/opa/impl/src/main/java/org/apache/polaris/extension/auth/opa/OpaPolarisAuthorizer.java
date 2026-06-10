@@ -40,6 +40,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
@@ -47,6 +48,13 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
+import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
+import org.apache.polaris.core.auth.RenameAuthorizationIntent;
+import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
+import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -117,17 +125,52 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   @NonNull
   public AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    boolean allowed =
-        queryOpa(
-            buildOpaAuthorizationInput(
-                request.getPrincipal(),
-                request.getOperation(),
-                toResourceEntitiesFromSecurables(request.getTargets()),
-                toResourceEntitiesFromSecurables(request.getSecondaries())));
-    return allowed
-        ? AuthorizationDecision.allow()
-        : AuthorizationDecision.deny(
-            "OPA denied authorization for " + request.formatForAuthorizationMessage());
+    for (AuthorizationIntent intent : request.intents()) {
+      PolarisAuthorizableOperation operation = intent.getOperation();
+      List<ResourceEntity> targets;
+      List<ResourceEntity> secondaries;
+      switch (intent) {
+        case TargetlessAuthorizationIntent ignored -> {
+          targets = List.of();
+          secondaries = List.of();
+        }
+        case SingleTargetAuthorizationIntent singleTargetIntent -> {
+          targets = toResourceEntitiesFromSecurable(singleTargetIntent.target());
+          secondaries = List.of();
+        }
+        case RenameAuthorizationIntent renameIntent -> {
+          targets = toResourceEntitiesFromSecurable(renameIntent.from());
+          secondaries = toResourceEntitiesFromSecurable(renameIntent.to());
+        }
+        case PolicyAttachmentAuthorizationIntent policyAttachmentIntent -> {
+          targets = toResourceEntitiesFromSecurable(policyAttachmentIntent.policy());
+          secondaries = toResourceEntitiesFromSecurable(policyAttachmentIntent.attachedTo());
+        }
+        case RoleAssignmentAuthorizationIntent roleAssignmentIntent -> {
+          targets = toResourceEntitiesFromSecurable(roleAssignmentIntent.role());
+          secondaries = toResourceEntitiesFromSecurable(roleAssignmentIntent.assignee());
+        }
+        case PrivilegeGrantAuthorizationIntent privilegeGrantIntent -> {
+          targets = toResourceEntitiesFromSecurable(privilegeGrantIntent.grantTarget());
+          secondaries = toResourceEntitiesFromSecurable(privilegeGrantIntent.grantee());
+        }
+        case RootPrivilegeGrantAuthorizationIntent rootPrivilegeGrantIntent -> {
+          targets = List.of();
+          secondaries = toResourceEntitiesFromSecurable(rootPrivilegeGrantIntent.grantee());
+        }
+      }
+      boolean allowed =
+          queryOpa(
+              buildOpaAuthorizationInput(request.principal(), operation, targets, secondaries));
+      if (!allowed) {
+        return AuthorizationDecision.deny(
+            "OPA denied authorization for principal="
+                + request.principal().getName()
+                + " operation="
+                + operation);
+      }
+    }
+    return AuthorizationDecision.allow();
   }
 
   /**
@@ -296,9 +339,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
   private ImmutableResource buildResource(
       List<ResourceEntity> targets, List<ResourceEntity> secondaries) {
-    // Backward compatibility: keep the existing OPA input shape with separate target and
-    // secondary lists. Future work can align this with AuthorizationTargetBinding semantics
-    // using binding tuples like [(target, secondary), ...].
+    // Keep the existing OPA input shape by always emitting target and secondary lists, using
+    // empty lists when an intent does not carry that slot. Future work can revisit the payload
+    // shape if OPA starts consuming intent subtype distinctions directly.
     return ImmutableResource.builder().targets(targets).secondaries(secondaries).build();
   }
 
@@ -361,17 +404,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     return entities;
   }
 
-  @NonNull
-  private List<ResourceEntity> toResourceEntitiesFromSecurables(
-      @Nullable List<PolarisSecurable> securables) {
-    if (securables == null || securables.isEmpty()) {
-      return List.of();
-    }
-
-    List<ResourceEntity> entities = new ArrayList<>();
-    for (PolarisSecurable securable : securables) {
-      entities.add(buildResourceEntity(securable));
-    }
-    return entities;
+  private List<ResourceEntity> toResourceEntitiesFromSecurable(
+      @Nullable PolarisSecurable securable) {
+    return securable == null ? List.of() : List.of(buildResourceEntity(securable));
   }
 }

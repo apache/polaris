@@ -105,6 +105,7 @@ public record RangerPolarisOperationSemantics(
   private static final String TABLE_SET_STATISTICS = "table-statistics-set";
   private static final String TABLE_REMOVE_STATISTICS = "table-statistics-remove";
   private static final String TABLE_REMOVE_PARTITION_SPECS = "table-partition-specs-remove";
+  private static final String TABLE_METADATA_FULL = "table-metadata-full";
 
   private static final String VIEW_CREATE = "view-create";
   private static final String VIEW_DROP = "view-drop";
@@ -165,6 +166,26 @@ public record RangerPolarisOperationSemantics(
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.REGISTER_TABLE,
         new RangerPolarisOperationSemantics(toSet(TABLE_CREATE), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_METADATA_FULL), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_CREATE, TABLE_READ_DATA), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_CREATE, TABLE_WRITE_DATA), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_METADATA_FULL, TABLE_READ_DATA), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_METADATA_FULL, TABLE_WRITE_DATA), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LOAD_TABLE,
         new RangerPolarisOperationSemantics(

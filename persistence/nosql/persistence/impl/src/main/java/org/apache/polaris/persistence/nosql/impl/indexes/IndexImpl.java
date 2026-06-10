@@ -20,12 +20,14 @@ package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.primitives.Ints.checkedCast;
 import static java.util.Collections.binarySearch;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.deserializeKey;
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.indexElement;
 import static org.apache.polaris.persistence.varint.VarInt.putVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.readVarInt;
+import static org.apache.polaris.persistence.varint.VarInt.varIntLen;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.AbstractIterator;
@@ -339,27 +341,59 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public List<IndexSpi<V>> divide(int parts) {
-    var elems = elements;
-    var size = elems.size();
+  public List<IndexSpi<V>> splitByTargetSize(long targetSerializedSize) {
     checkArgument(
-        parts > 0 && parts <= size,
-        "Number of parts %s must be greater than 0 and less or equal to number of elements %s",
-        parts,
-        size);
-    var partSize = size / parts;
-    var serializedMax = originalSerializedSize + estimatedSerializedSizeDiff;
+        targetSerializedSize > 0,
+        "Target serialized size %s must be greater than 0",
+        targetSerializedSize);
 
-    var result = new ArrayList<IndexSpi<V>>(parts);
-    var index = 0;
-    for (var i = 0; i < parts; i++) {
-      var end = i < parts - 1 ? index + partSize : elems.size();
-      var partElements = new ArrayList<>(elements.subList(index, end));
-      var part = new IndexImpl<>(partElements, serializedMax, serializer, true);
-      result.add(part);
-      index = end;
+    if (elements.isEmpty()) {
+      return List.of();
     }
+    if (elements.size() == 1) {
+      return List.of(this);
+    }
+
+    var result = new ArrayList<IndexSpi<V>>();
+    var currentElements = new ArrayList<InternalIndexElement<V>>();
+    long currentSerializedSize = INDEX_SERIALIZATION_HEADER_SIZE;
+
+    for (var element : elements) {
+      var elementSerializedSize =
+          addElementDiff(element, element.contentSerializedSize(serializer));
+      if (!currentElements.isEmpty()
+          && currentSerializedSize + elementSerializedSize > targetSerializedSize) {
+        result.add(newSplitPart(currentElements, currentSerializedSize));
+        currentElements = new ArrayList<>();
+        currentSerializedSize = INDEX_SERIALIZATION_HEADER_SIZE;
+      }
+
+      currentElements.add(element);
+      currentSerializedSize += elementSerializedSize;
+
+      if (currentElements.size() == 1 && currentSerializedSize > targetSerializedSize) {
+        result.add(newSplitPart(currentElements, currentSerializedSize));
+        currentElements = new ArrayList<>();
+        currentSerializedSize = INDEX_SERIALIZATION_HEADER_SIZE;
+      }
+    }
+
+    if (!currentElements.isEmpty()) {
+      result.add(newSplitPart(currentElements, currentSerializedSize));
+    }
+
     return result;
+  }
+
+  private IndexSpi<V> newSplitPart(
+      List<InternalIndexElement<V>> partElements, long estimatedSerializedSize) {
+    var adjustedEstimatedSerializedSize =
+        estimatedSerializedSize
+            - INDEX_SERIALIZATION_HEADER_SIZE
+            + 1L
+            + varIntLen(partElements.size());
+    return new IndexImpl<>(
+        partElements, checkedCast(adjustedEstimatedSerializedSize), serializer, true);
   }
 
   @Override

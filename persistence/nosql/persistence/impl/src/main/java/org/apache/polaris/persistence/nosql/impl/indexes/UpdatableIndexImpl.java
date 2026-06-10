@@ -19,7 +19,6 @@
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.primitives.Ints.checkedCast;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.persistence.nosql.api.index.IndexStripe.indexStripe;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
@@ -185,18 +184,16 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
       if (stripe.hasElements()) {
         var serSize = stripe.estimatedSerializedSize();
         var maxStripeSize = params.maxIndexStripeSize().asLong();
-        var desiredSplits = checkedCast((serSize - 1L) / maxStripeSize + 1L);
-        if (desiredSplits > 1) {
-          desiredSplits = Math.min(desiredSplits, stripe.asKeyList().size());
-        }
-        if (desiredSplits > 1) {
+        if (serSize > maxStripeSize) {
           // The stripe became too big, needs to be split further
+          var splitStripes = stripe.splitByTargetSize(maxStripeSize);
           LOGGER.debug(
-              "Splitting index stripe {}, modified={}, into {} parts",
+              "Splitting index stripe {}, modified={}, into {} stripes for target size {}",
               stripe.getObjId(),
               stripe.isModified(),
-              desiredSplits);
-          survivingStripes.addAll(stripe.divide(desiredSplits));
+              splitStripes.size(),
+              maxStripeSize);
+          survivingStripes.addAll(splitStripes);
         } else {
           LOGGER.debug(
               "Keeping index stripe {}, modified={}", stripe.getObjId(), stripe.isModified());
@@ -313,7 +310,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   }
 
   @Override
-  public List<IndexSpi<V>> divide(int parts) {
+  public List<IndexSpi<V>> splitByTargetSize(long targetSerializedSize) {
     throw unsupported();
   }
 

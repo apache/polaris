@@ -376,6 +376,9 @@ public class RestCatalogRustFSSpecialIT {
   }
 
   private void assertLoadTableWithVendedCredentialsFailsWithKmsError(TableIdentifier id) {
+    // RustFS's STS shim rejects the AssumeRole call when the inline policy contains the
+    // wildcard KMS resource generated for kms-enabled configs; it returns a 400 without a
+    // descriptive body, so we can only pin the error to the STS client path.
     assertThatThrownBy(
             () ->
                 catalogApi.loadTable(
@@ -383,7 +386,7 @@ public class RestCatalogRustFSSpecialIT {
                     id,
                     "ALL",
                     Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
-        .hasMessageContaining("Failed to get subscoped credentials")
+        .hasMessageContaining("Service: Sts")
         .hasMessageContaining("Status Code: 400");
   }
 

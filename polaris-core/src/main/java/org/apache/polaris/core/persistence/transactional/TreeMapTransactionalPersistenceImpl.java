@@ -42,7 +42,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -127,11 +126,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   /** {@inheritDoc} */
   @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      void persistStorageIntegrationIfNeededInCurrentTxn(
-          @NonNull PolarisCallContext callContext,
-          @NonNull PolarisBaseEntity entity,
-          @Nullable PolarisStorageIntegration<T> storageIntegration) {
+  public void persistStorageIntegrationIfNeededInCurrentTxn(
+      @NonNull PolarisCallContext callContext,
+      @NonNull PolarisBaseEntity entity,
+      @Nullable PolarisStorageIntegration storageIntegration) {
     // not implemented for in-memory store
   }
 
@@ -540,24 +538,16 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @NonNull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegrationForConfig(
-        polarisStorageConfigurationInfo);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
-          @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
-    PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(getDiagnostics(), entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+  public @Nullable PolarisStorageIntegration createStorageIntegrationInCurrentTxn(
+      @NonNull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+    // No-op in OSS: the storage integration is resolved at credential-vending time via
+    // PolarisStorageIntegrationProvider.getStorageIntegration(resolvedEntityPath). This hook
+    // remains available for custom deployments that need to allocate/lease external state
+    // atomically with the catalog-creation transaction.
+    return null;
   }
 
   @Override

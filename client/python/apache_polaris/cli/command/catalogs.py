@@ -68,9 +68,9 @@ class CatalogsCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris catalogs create cat_name --storage-type s3 --default-base-location s3://bucket/path --role-arn ...
-        * ./polaris catalogs update cat_name --default-base-location s3://new-bucket/new-location
-        * ./polaris catalogs list
+        * polaris catalogs create cat_name --storage-type s3 --default-base-location s3://bucket/path --role-arn ...
+        * polaris catalogs update cat_name --default-base-location s3://new-bucket/new-location
+        * polaris catalogs list
     """
 
     catalogs_subcommand: str

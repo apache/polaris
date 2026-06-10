@@ -20,7 +20,6 @@ package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
@@ -68,19 +67,6 @@ public interface PolarisSecurable {
     Preconditions.checkState(
         !pathSegments.isEmpty(), "PathSegments must contain at least one segment");
     return pathSegments.subList(0, pathSegments.size() - 1);
-  }
-
-  /**
-   * Returns a stable debug string for authorization messages.
-   *
-   * <p>For example, a table securable may render as {@code
-   * CATALOG:catalog1.NAMESPACE:ns1.TABLE_LIKE:table1}.
-   */
-  @NonNull
-  default String formatForAuthorizationMessage() {
-    return getPathSegments().stream()
-        .map(segment -> segment.entityType() + ":" + segment.name())
-        .collect(Collectors.joining("."));
   }
 
   @Value.Check

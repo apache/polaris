@@ -23,10 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -54,12 +52,10 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -315,31 +311,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   public @NonNull EntitiesResult loadTasks(
       @NonNull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
     throw illegalMethodError("loadTasks");
-  }
-
-  @Override
-  public @NonNull ScopedCredentialsResult getSubscopedCredsForEntity(
-      @NonNull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      @NonNull PolarisEntityType entityType,
-      boolean allowListOperation,
-      @NonNull Set<String> allowedReadLocations,
-      @NonNull Set<String> allowedWriteLocations,
-      @NonNull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @NonNull CredentialVendingContext credentialVendingContext) {
-    return delegate.getSubscopedCredsForEntity(
-        callCtx,
-        catalogId,
-        entityId,
-        entityType,
-        allowListOperation,
-        allowedReadLocations,
-        allowedWriteLocations,
-        polarisPrincipal,
-        refreshCredentialsEndpoint,
-        credentialVendingContext);
   }
 
   @Override

@@ -45,13 +45,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
-import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
@@ -350,15 +349,21 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
             .tenantId(tenantId)
             .build();
     AzureCredentialsStorageIntegration azureCredsIntegration =
-        new AzureCredentialsStorageIntegration(azureConfig);
-    return azureCredsIntegration.getSubscopedCreds(
-        EMPTY_REALM_CONFIG,
-        allowListAction,
-        new HashSet<>(allowedReadLoc),
-        new HashSet<>(allowedWriteLoc),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
-        Optional.empty(),
-        CredentialVendingContext.empty());
+        new AzureCredentialsStorageIntegration(azureConfig, EMPTY_REALM_CONFIG);
+    List<LocationGrant> grants = new ArrayList<>();
+    if (!allowedReadLoc.isEmpty()) {
+      Set<PolarisStorageActions> actions =
+          allowListAction
+              ? Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST)
+              : Set.of(PolarisStorageActions.READ);
+      grants.add(new LocationGrant(new HashSet<>(allowedReadLoc), actions));
+    }
+    if (!allowedWriteLoc.isEmpty()) {
+      grants.add(
+          new LocationGrant(new HashSet<>(allowedWriteLoc), Set.of(PolarisStorageActions.WRITE)));
+    }
+    return azureCredsIntegration.getStorageAccessConfig(
+        grants, Optional.empty(), org.apache.polaris.core.storage.CredentialVendingContext.empty());
   }
 
   private BlobContainerClient createContainerClient(

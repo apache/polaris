@@ -125,7 +125,8 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -327,14 +328,19 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         .sessionToken(SESSION_TOKEN)
                         .build())
                 .build());
-    PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
+    AwsStorageConfigurationInfo mockAwsConfig =
+        AwsStorageConfigurationInfo.builder()
+            .roleARN("arn:aws:iam::012345678901:role/mock")
+            .build();
+    AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (AwsStorageConfigurationInfo)
-                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
-            stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
-        .thenReturn((PolarisStorageIntegration) storageIntegration);
+            (destination) -> stsClient,
+            config -> Optional.empty(),
+            storageCredentialCache,
+            mockAwsConfig,
+            callContext.getRealmConfig());
+    when(storageIntegrationProvider.getStorageIntegration(Mockito.anyList()))
+        .thenReturn(storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
@@ -1873,20 +1879,15 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
+    var integration = storageIntegrationProvider.getStorageIntegration(List.of(taskEntity));
     Map<String, String> credentials =
-        metaStoreManager
-            .getSubscopedCredsForEntity(
-                polarisContext,
-                0,
-                taskEntity.getId(),
-                taskEntity.getType(),
-                true,
-                Set.of(tableMetadata.location()),
-                Set.of(tableMetadata.location()),
-                authenticatedRoot,
+        integration
+            .getStorageAccessConfig(
+                List.of(
+                    new LocationGrant(
+                        Set.of(tableMetadata.location()), Set.of(PolarisStorageActions.ALL))),
                 Optional.empty(),
                 CredentialVendingContext.empty())
-            .getStorageAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()
@@ -2278,6 +2279,178 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             () -> catalog.registerTable(TABLE, "metadata_location_without_slashes"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid metadata file location");
+  }
+
+  @Test
+  public void testRegisterTableOverwriteUpdatesMetadataLocation() {
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_update");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    // Create initial table
+    Table created = catalog.buildTable(table, SCHEMA).create();
+    TableMetadata currentMetadata = ((BaseTable) created).operations().current();
+    String currentMetadataLocation = currentMetadata.metadataFileLocation();
+    String oldTableUuid = currentMetadata.uuid();
+    String newTableUuid = UUID.randomUUID().toString();
+    String metadataDir =
+        currentMetadataLocation.substring(0, currentMetadataLocation.lastIndexOf('/') + 1);
+    String newMetadataLocation = metadataDir + "overwrite-v1.metadata.json";
+    String updatedMetadataJson =
+        TableMetadataParser.toJson(currentMetadata).replace(oldTableUuid, newTableUuid);
+    fileIO.addFile(newMetadataLocation, updatedMetadataJson.getBytes(UTF_8));
+
+    // Register with overwrite=true should update the metadata location
+    Table overwritten = catalog.registerTable(table, newMetadataLocation, true);
+
+    EntityResult entityResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            namespace.toString());
+    Assertions.assertThat(entityResult).returns(true, EntityResult::isSuccess);
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, entityResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            table.name());
+    Assertions.assertThat(tableResult).returns(true, EntityResult::isSuccess);
+    Assertions.assertThat(IcebergTableLikeEntity.of(tableResult.getEntity()).getMetadataLocation())
+        .isEqualTo(newMetadataLocation);
+
+    Assertions.assertThat(((BaseTable) overwritten).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
+    Assertions.assertThat(((BaseTable) overwritten).operations().current().uuid())
+        .isEqualTo(newTableUuid);
+    Assertions.assertThat(
+            ((BaseTable) catalog.loadTable(table)).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
+    Assertions.assertThat(((BaseTable) catalog.loadTable(table)).operations().current().uuid())
+        .isEqualTo(newTableUuid);
+  }
+
+  @Test
+  public void testRegisterTableOverwriteUpdatesBaseLocation() {
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_base_location");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table created = catalog.buildTable(table, SCHEMA).create();
+    TableMetadata currentMetadata = ((BaseTable) created).operations().current();
+    String oldTableLocation = currentMetadata.location();
+    String newTableLocation = STORAGE_LOCATION + "/register_overwrite_base_location/table_moved/";
+
+    String newMetadataLocation = newTableLocation + "metadata/overwrite-moved.metadata.json";
+    String movedMetadataJson =
+        TableMetadataParser.toJson(currentMetadata).replace(oldTableLocation, newTableLocation);
+    fileIO.addFile(newMetadataLocation, movedMetadataJson.getBytes(UTF_8));
+
+    Table overwritten = catalog.registerTable(table, newMetadataLocation, true);
+
+    EntityResult entityResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            namespace.toString());
+    Assertions.assertThat(entityResult).returns(true, EntityResult::isSuccess);
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, entityResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            table.name());
+    Assertions.assertThat(tableResult).returns(true, EntityResult::isSuccess);
+    Assertions.assertThat(IcebergTableLikeEntity.of(tableResult.getEntity()).getBaseLocation())
+        .isEqualTo(newTableLocation);
+
+    Assertions.assertThat(((BaseTable) overwritten).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
+    Assertions.assertThat(
+            ((BaseTable) catalog.loadTable(table)).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
+  }
+
+  @Test
+  public void testRegisterTableOverwriteCreatesWhenMissing() {
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_create");
+    TableIdentifier sourceTable = TableIdentifier.of(namespace, "source_table");
+    TableIdentifier targetTable = TableIdentifier.of(namespace, "target_table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    // Create source table and get its metadata location
+    Table source = catalog.buildTable(sourceTable, SCHEMA).create();
+    String metadataLocation = ((BaseTable) source).operations().current().metadataFileLocation();
+
+    // Register target table with overwrite=true when it doesn't exist should create it
+    Table registered = catalog.registerTable(targetTable, metadataLocation, true);
+
+    Assertions.assertThat(registered).isInstanceOf(BaseTable.class);
+    Assertions.assertThat(
+            ((BaseTable) catalog.loadTable(targetTable))
+                .operations()
+                .current()
+                .metadataFileLocation())
+        .isEqualTo(metadataLocation);
+  }
+
+  @Test
+  public void testRegisterTableOverwriteFalseRejectsExistingTable() {
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_conflict");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    // Create table and try to register with overwrite=false should throw
+    catalog.buildTable(table, SCHEMA).create();
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(table, "s3://bucket/path", false))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Table already exists");
+  }
+
+  @Test
+  public void testRegisterTableRejectsExistingView() {
+    // Note: there exists a similar test in ViewCatalogTests.registerTableThatAlreadyExistsAsView,
+    // but it doesn't cover register with overwrite
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_view_conflict");
+    TableIdentifier identifier = TableIdentifier.of(namespace, "entity");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    catalog
+        .buildView(identifier)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(namespace)
+        .withQuery("spark", "SELECT * FROM ns.tbl")
+        .create();
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(identifier, "s3://bucket/path", true))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("View with same name already exists");
+    Assertions.assertThatThrownBy(
+            () -> catalog.registerTable(identifier, "s3://bucket/path", false))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("View with same name already exists");
   }
 
   @Test

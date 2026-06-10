@@ -83,7 +83,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       datasourceOperations.executeUpdate(insert);
       return new ReserveResult(ReserveResultType.OWNED, Optional.empty());
     } catch (SQLException e) {
-      if (datasourceOperations.isConstraintViolation(e)) {
+      if (datasourceOperations.isUniquenessConstraintViolation(e)) {
         return new ReserveResult(ReserveResultType.DUPLICATE, load(realmId, idempotencyKey));
       }
       throw new IdempotencyPersistenceException("Failed to reserve idempotency key", e);

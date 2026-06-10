@@ -253,7 +253,7 @@ class Command(ABC):
             return command
         else:
             raise CliError(
-                "Please specify a command or run ./polaris --help to view the available commands"
+                "Please specify a command or run 'polaris --help' to view the available commands"
             )
 
     def execute(self, api: PolarisDefaultApi) -> None:

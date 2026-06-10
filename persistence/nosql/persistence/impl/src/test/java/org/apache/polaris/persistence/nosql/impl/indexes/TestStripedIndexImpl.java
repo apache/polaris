@@ -55,7 +55,7 @@ public class TestStripedIndexImpl {
   public void isLoadedReflectedLazy() {
     IndexSpi<ObjRef> reference = KeyIndexTestSet.basicIndexTestSet().keyIndex();
 
-    var originalStripesList = reference.divide(5);
+    var originalStripesList = splitIntoStripeCountForTest(reference, 5);
     Supplier<List<IndexSpi<ObjRef>>> stripesSupplier =
         () ->
             originalStripesList.stream()
@@ -120,7 +120,7 @@ public class TestStripedIndexImpl {
   public void isLoadedReflectedEager() {
     var reference = KeyIndexTestSet.basicIndexTestSet().keyIndex();
 
-    var originalStripes = reference.divide(5);
+    var originalStripes = splitIntoStripeCountForTest(reference, 5);
     var firstLastKeys =
         originalStripes.stream()
             .flatMap(s -> Stream.of(s.first(), s.last()))
@@ -140,7 +140,7 @@ public class TestStripedIndexImpl {
   public void isModifiedReflected(boolean lazyStripes) {
     var reference = KeyIndexTestSet.basicIndexTestSet().keyIndex();
 
-    var originalStripesList = reference.divide(5);
+    var originalStripesList = splitIntoStripeCountForTest(reference, 5);
     Supplier<List<IndexSpi<ObjRef>>> stripesSupplier =
         () ->
             originalStripesList.stream()
@@ -218,7 +218,8 @@ public class TestStripedIndexImpl {
   public void stripedLazy(int numStripes) {
     var indexTestSet = basicIndexTestSet();
 
-    var striped = indexFromStripes(indexTestSet.keyIndex().divide(numStripes));
+    var striped =
+        indexFromStripes(splitIntoStripeCountForTest(indexTestSet.keyIndex(), numStripes));
     var stripes = striped.stripes();
 
     // Sanity checks
@@ -396,7 +397,8 @@ public class TestStripedIndexImpl {
     var indexTestSet = basicIndexTestSet();
 
     var source = indexTestSet.keyIndex();
-    var striped = indexFromStripes(indexTestSet.keyIndex().divide(numStripes));
+    var striped =
+        indexFromStripes(splitIntoStripeCountForTest(indexTestSet.keyIndex(), numStripes));
 
     // Sanity checks
     soft.assertThat(striped.stripes()).hasSize(numStripes);
@@ -457,11 +459,11 @@ public class TestStripedIndexImpl {
   @Test
   public void stateRelated() {
     var indexTestSet = basicIndexTestSet();
-    var striped = indexFromStripes(indexTestSet.keyIndex().divide(3));
+    var striped = indexFromStripes(splitIntoStripeCountForTest(indexTestSet.keyIndex(), 3));
 
     soft.assertThat(striped.asMutableIndex()).isSameAs(striped);
     soft.assertThat(striped.isMutable()).isTrue();
-    soft.assertThatThrownBy(() -> striped.divide(3))
+    soft.assertThatThrownBy(() -> striped.splitByTargetSize(3))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
@@ -471,7 +473,7 @@ public class TestStripedIndexImpl {
     var indexTestSet = basicIndexTestSet();
     var source = indexTestSet.keyIndex();
 
-    var striped = indexFromStripes(indexTestSet.keyIndex().divide(3));
+    var striped = indexFromStripes(splitIntoStripeCountForTest(indexTestSet.keyIndex(), 3));
     if (lazy) {
       var lazyStripes =
           striped.stripes().stream()
@@ -514,7 +516,7 @@ public class TestStripedIndexImpl {
       indexOdd.add(elements.get(i));
     }
 
-    var striped = indexFromStripes(indexEven.divide(4));
+    var striped = indexFromStripes(splitIntoStripeCountForTest(indexEven, 4));
     if (lazy) {
       var lazyStripes =
           striped.stripes().stream()
@@ -534,5 +536,22 @@ public class TestStripedIndexImpl {
     soft.assertThat(striped.asKeyList().size())
         .isEqualTo(source.asKeyList().size())
         .isEqualTo(elements.size());
+  }
+
+  private static List<IndexSpi<ObjRef>> splitIntoStripeCountForTest(
+      IndexSpi<ObjRef> index, int parts) {
+    var elements = newArrayList(index.elementIterator());
+    var size = elements.size();
+    var partSize = size / parts;
+    var stripes = new ArrayList<IndexSpi<ObjRef>>(parts);
+    var from = 0;
+    for (var i = 0; i < parts; i++) {
+      var to = i < parts - 1 ? from + partSize : size;
+      var stripe = newStoreIndex(OBJ_REF_SERIALIZER);
+      elements.subList(from, to).forEach(stripe::add);
+      stripes.add(stripe);
+      from = to;
+    }
+    return stripes;
   }
 }

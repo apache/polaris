@@ -37,6 +37,13 @@ val scalaLibraryVersion =
     libs.versions.scala213.get()
   }
 
+sourceSets {
+  named("intTest") {
+    java { srcDir("../../common/src/intTest/java") }
+    resources { srcDir("../../common/src/intTest/resources") }
+  }
+}
+
 dependencies {
   // must be enforced to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
@@ -97,7 +104,7 @@ dependencies {
 
   // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
   // manageable
-  // This matches what Spark 3.5 distribution provides (hive-exec-2.3.9-core.jar)
+  // This matches what Spark 3.5 distribution provides (hive-exec-2.3.10-core.jar)
   testImplementation("org.apache.hive:hive-exec:2.3.10:core") {
     // Exclude conflicting dependencies to use Spark's versions
     exclude("org.apache.hadoop", "*")
@@ -133,7 +140,7 @@ dependencies {
   testImplementation(enforcedPlatform("org.scala-lang:scala-library:${scalaLibraryVersion}"))
   testImplementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
   testImplementation(libs.javax.servlet.api)
-  testImplementation(libs.antlr4.runtime)
+  testImplementation(libs.antlr4.runtime.spark35)
 }
 
 evaluationDependsOn(":polaris-spark-${sparkMajorVersion}_${scalaVersion}")

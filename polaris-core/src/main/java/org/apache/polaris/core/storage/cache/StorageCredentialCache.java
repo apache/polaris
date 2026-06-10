@@ -23,40 +23,29 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import org.apache.iceberg.exceptions.UnprocessableEntityException;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Storage subscoped credential cache. */
+/**
+ * Storage subscoped credential cache. The cache loader is key-driven: on miss, {@link
+ * StorageCredentialCacheKey#load()} is invoked to mint a fresh {@link StorageAccessConfig} from the
+ * key's own data fields and the auxiliary deps it carries. This guarantees the cached value is a
+ * function of the key alone, so two equal keys are logically equivalent.
+ */
 public class StorageCredentialCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
-  private final PolarisDiagnostics diagnostics;
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache(
-      PolarisDiagnostics diagnostics, StorageCredentialCacheConfig cacheConfig) {
-    this.diagnostics = diagnostics;
+  public StorageCredentialCache(StorageCredentialCacheConfig cacheConfig) {
     cache =
         Caffeine.newBuilder()
             .maximumSize(cacheConfig.maxEntries())
@@ -73,8 +62,10 @@ public class StorageCredentialCache {
                     }))
             .build(
                 key -> {
-                  // the load happen at getOrGenerateSubScopeCreds()
-                  return null;
+                  LOGGER.atDebug().log("StorageCredentialCache::load");
+                  StorageAccessConfig accessConfig = key.load();
+                  return new StorageCredentialCacheEntry(
+                      accessConfig, maxCacheDurationMs(key.realmConfig()));
                 });
   }
 
@@ -96,103 +87,11 @@ public class StorageCredentialCache {
   }
 
   /**
-   * Either get from the cache or generate a new entry for a scoped creds
-   *
-   * @param storageCredentialsVendor the credential vendor used to generate a new scoped creds if
-   *     needed
-   * @param polarisEntity the polaris entity that is going to scoped creds
-   * @param allowListOperation whether allow list action on the provided read and write locations
-   * @param allowedReadLocations a set of allowed to read locations
-   * @param allowedWriteLocations a set of allowed to write locations.
-   * @param polarisPrincipal the principal requesting credentials
-   * @param refreshCredentialsEndpoint optional endpoint for credential refresh
-   * @param credentialVendingContext context containing metadata for session tags (catalog,
-   *     namespace, table, roles) for audit/correlation purposes
-   * @return the a map of string containing the scoped creds information
+   * Return the cached {@link StorageAccessConfig} for {@code key}, loading it via {@link
+   * StorageCredentialCacheKey#load()} on miss.
    */
-  public StorageAccessConfig getOrGenerateSubScopeCreds(
-      @NonNull StorageCredentialsVendor storageCredentialsVendor,
-      @NonNull PolarisEntity polarisEntity,
-      boolean allowListOperation,
-      @NonNull Set<String> allowedReadLocations,
-      @NonNull Set<String> allowedWriteLocations,
-      @NonNull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @NonNull CredentialVendingContext credentialVendingContext) {
-    RealmContext realmContext = storageCredentialsVendor.getRealmContext();
-    RealmConfig realmConfig = storageCredentialsVendor.getRealmConfig();
-    if (!isTypeSupported(polarisEntity.getType())) {
-      diagnostics.fail(
-          "entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
-    }
-
-    boolean includePrincipalNameInSubscopedCredential =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    List<String> sessionTagFields =
-        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
-    boolean includeSessionTags = !sessionTagFields.isEmpty();
-    List<String> sessionNameFields =
-        realmConfig.getConfig(FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL);
-    // Session name fields that pull from CredentialVendingContext (realm/catalog/namespace/table)
-    // require the context to be part of the cache key so different request contexts don't share
-    // a cached credential that was stamped with another context's session name.
-    boolean sessionNameNeedsContext =
-        sessionNameFields.stream()
-            .anyMatch(f -> Set.of("realm", "catalog", "namespace", "table").contains(f));
-    boolean sessionNameNeedsPrincipal = sessionNameFields.contains("principal");
-
-    // The cache key must include the principal whenever any feature encodes it into credentials
-    // (session tags include polaris:principal; session name can include the principal field;
-    // INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL sets the legacy role session name).
-    boolean includePrincipalInCacheKey =
-        includePrincipalNameInSubscopedCredential
-            || includeSessionTags
-            || sessionNameNeedsPrincipal;
-    // Include the full context in the cache key when session tags or session name fields draw from
-    // context-varying dimensions (realm/catalog/namespace/table). Without this, two requests for
-    // different tables could share a cached credential stamped with the wrong session name.
-    CredentialVendingContext contextForCacheKey =
-        (includeSessionTags || sessionNameNeedsContext)
-            ? credentialVendingContext
-            : CredentialVendingContext.empty();
-    StorageCredentialCacheKey key =
-        StorageCredentialCacheKey.of(
-            realmContext.getRealmIdentifier(),
-            polarisEntity,
-            allowListOperation,
-            allowedReadLocations,
-            allowedWriteLocations,
-            refreshCredentialsEndpoint,
-            includePrincipalInCacheKey ? Optional.of(polarisPrincipal) : Optional.empty(),
-            contextForCacheKey);
-    Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
-        k -> {
-          LOGGER.atDebug().log("StorageCredentialCache::load");
-          // Use credentialVendingContext from the cache key for correctness.
-          // This ensures we use the same context that was used for cache key comparison.
-          ScopedCredentialsResult scopedCredentialsResult =
-              storageCredentialsVendor.getSubscopedCredsForEntity(
-                  polarisEntity,
-                  allowListOperation,
-                  allowedReadLocations,
-                  allowedWriteLocations,
-                  polarisPrincipal,
-                  refreshCredentialsEndpoint,
-                  k.credentialVendingContext());
-          if (scopedCredentialsResult.isSuccess()) {
-            long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
-            return new StorageCredentialCacheEntry(
-                scopedCredentialsResult.getStorageAccessConfig(), maxCacheDurationMs);
-          }
-          LOGGER
-              .atDebug()
-              .addKeyValue("errorMessage", scopedCredentialsResult.getExtraInformation())
-              .log("Failed to get subscoped credentials");
-          throw new UnprocessableEntityException(
-              "Failed to get subscoped credentials: %s",
-              scopedCredentialsResult.getExtraInformation());
-        };
-    return cache.get(key, loader).toAccessConfig();
+  public StorageAccessConfig getOrLoad(StorageCredentialCacheKey key) {
+    return cache.get(key).toAccessConfig();
   }
 
   @VisibleForTesting
@@ -204,13 +103,6 @@ public class StorageCredentialCache {
   Optional<StorageAccessConfig> getAccessConfig(StorageCredentialCacheKey key) {
     return Optional.ofNullable(cache.getIfPresent(key))
         .map(StorageCredentialCacheEntry::toAccessConfig);
-  }
-
-  private boolean isTypeSupported(PolarisEntityType type) {
-    return type == PolarisEntityType.CATALOG
-        || type == PolarisEntityType.NAMESPACE
-        || type == PolarisEntityType.TABLE_LIKE
-        || type == PolarisEntityType.TASK;
   }
 
   @VisibleForTesting

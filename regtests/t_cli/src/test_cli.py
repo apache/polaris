@@ -43,8 +43,9 @@ def cli(access_token):
     def cli_inner(*args) -> Callable[[], str]:
         def f() -> str:
             result = subprocess.run([
-                'bash',
-                f'{CLI_PYTHONPATH}/../../polaris',
+                sys.executable,
+                '-m',
+                'apache_polaris.cli.polaris_cli',
                 '--access-token',
                 access_token,
                 '--host',

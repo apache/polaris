@@ -43,7 +43,7 @@ if (!project.extra.has("duplicated-project-sources")) {
   }
 }
 
-if (System.getProperty("idea.sync.active").toBoolean()) {
+if (providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean()) {
   idea {
     module {
       isDownloadJavadoc = false // was 'true', but didn't work

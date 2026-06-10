@@ -60,6 +60,7 @@ import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.RESTException;
@@ -746,7 +747,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       resolvingFileIO.setConf(new Configuration());
       String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
-      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
+      // Use the REST API directly to bypass requesting vended credentials, otherwise the
+      // register-table operation would fail like the load-table one below.
+      catalogApi.registerTable(currentCatalogName, ns1, "my_table", fileLocation, false);
       try {
         Assertions.assertThatThrownBy(
                 () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
@@ -930,6 +933,308 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
               .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
         }
 
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Build an Iceberg table, then invoke a subsequent register table call that overwrites the
+   * existing table metadata. Verifies that the overwrite is applied and the catalog reflects the
+   * updated metadata.
+   */
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", ""})
+  @Test
+  public void testRegisterTableOverwrite() {
+    Namespace ns = Namespace.of("ns_overwrite_rest");
+    restCatalog.createNamespace(ns);
+
+    // Create a source table and capture its metadata location
+    TableIdentifier ident = TableIdentifier.of(ns, "source_table");
+    Table source = restCatalog.buildTable(ident, SCHEMA).create();
+    String currentMetadataLocation =
+        ((BaseTable) source).operations().current().metadataFileLocation();
+    String metadataDir =
+        currentMetadataLocation.substring(0, currentMetadataLocation.lastIndexOf('/') + 1);
+    String newMetadataLocation = metadataDir + "overwrite-v1.metadata.json";
+
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+
+      // Write a new metadata file (re-using the current metadata contents)
+      TableMetadataParser.write(
+          ((BaseTable) source).operations().current(),
+          resolvingFileIO.newOutputFile(newMetadataLocation));
+
+      try {
+        // register with overwrite=true
+        restCatalog.registerTable(ident, newMetadataLocation, true);
+
+        // Reload the table via REST client and verify metadata-location updated
+        Table loaded = restCatalog.loadTable(ident);
+        assertThat(((BaseTable) loaded).operations().current().metadataFileLocation())
+            .isEqualTo(newMetadataLocation);
+      } finally {
+        // Clean up the old metadata file
+        resolvingFileIO.deleteFile(currentMetadataLocation);
+      }
+    }
+  }
+
+  /**
+   * Attempt to invoke registerTable with overwrite=true against an EXTERNAL (federated) catalog.
+   * Polaris only supports the overwrite path for its internal IcebergCatalog; EXTERNAL catalogs
+   * must receive a 400 Bad Request.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", ""})
+  @Test
+  public void testRegisterTableOverwriteRejectedForExternalCatalog() {
+    Namespace ns = Namespace.of("ns_overwrite_ext");
+    restCatalog.createNamespace(ns);
+
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            externalCatalogBaseLocation + "/ns_overwrite_ext/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+
+      String fileLocation =
+          externalCatalogBaseLocation + "/ns_overwrite_ext/my_table/metadata/v1.metadata.json";
+      try {
+        TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+
+        // Register the table without overwrite first (must succeed)
+        restCatalog.registerTable(TableIdentifier.of(ns, "my_table"), fileLocation);
+
+        // Now attempt to register again with overwrite=true — must be rejected with 400
+        assertThatThrownBy(
+                () ->
+                    restCatalog.registerTable(
+                        TableIdentifier.of(ns, "my_table"), fileLocation, true))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining(
+                "Register table overwrite is only supported for internal Polaris catalogs");
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an INTERNAL catalog. Register a table WITH access delegation and verify that the
+   * registerTable response contains vended credentials (when supported by the storage type).
+   */
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testRegisterTableWithAccessDelegation() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            catalogBaseLocation + "/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = catalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      try {
+        LoadTableResponse registerResponse =
+            catalogApi.registerTableWithAccessDelegation(
+                currentCatalogName, ns1, "my_table", fileLocation, false);
+
+        assertThat(registerResponse).isNotNull();
+        assertThat(registerResponse.tableMetadata()).isNotNull();
+        assertThat(registerResponse.tableMetadata().location()).isEqualTo(tableMetadata.location());
+        assertThat(registerResponse.metadataLocation()).isEqualTo(fileLocation);
+
+        if (getStorageConfigInfo().getStorageType() != StorageConfigInfo.StorageTypeEnum.FILE) {
+          assertThat(registerResponse.credentials())
+              .as("Cloud storage should vend credentials")
+              .isNotEmpty();
+        }
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an EXTERNAL catalog with credential vending enabled. Register a table WITH access
+   * delegation and verify that the registerTable response contains vended credentials (when
+   * supported by the storage type).
+   */
+  @CatalogConfig(
+      value = Catalog.TypeEnum.EXTERNAL,
+      properties = {"polaris.config.enable.credential.vending", "true"})
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testRegisterTableWithAccessDelegationForExternalCatalog() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            externalCatalogBaseLocation + "/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      try {
+        LoadTableResponse registerResponse =
+            catalogApi.registerTableWithAccessDelegation(
+                currentCatalogName, ns1, "my_table", fileLocation, false);
+
+        assertThat(registerResponse).isNotNull();
+        assertThat(registerResponse.tableMetadata()).isNotNull();
+        assertThat(registerResponse.tableMetadata().location()).isEqualTo(tableMetadata.location());
+        assertThat(registerResponse.metadataLocation()).isEqualTo(fileLocation);
+
+        if (getStorageConfigInfo().getStorageType() != StorageConfigInfo.StorageTypeEnum.FILE) {
+          assertThat(registerResponse.credentials())
+              .as("Cloud storage should vend credentials")
+              .isNotEmpty();
+        }
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
+   * EXTERNAL catalogs, so try to register a table with the REST client configured to try to fetch
+   * vended credentials. Expect an IllegalArgumentException (HTTP 400 Bad Request).
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testRegisterTableWithAccessDelegationForExternalCatalogWithConfigDisabled() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            externalCatalogBaseLocation + "/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      try {
+        assertThatThrownBy(
+                () ->
+                    restCatalog.registerTable(
+                        TableIdentifier.of(ns1, "my_table"), fileLocation, false))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("is not enabled for this external catalog")
+            .hasMessageContaining(
+                FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an INTERNAL catalog. Register a table WITH access delegation + overwrite and verify that
+   * the registerTable response contains vended credentials (when supported by the storage type).
+   */
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testRegisterTableOverwriteWithAccessDelegation() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+
+    // Create a source table and capture its metadata location
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns1, "tbl1");
+    Table source = restCatalog.createTable(tableIdentifier, SCHEMA);
+    assertThat(source.location()).isNotNull();
+    TableMetadata tableMetadata = ((BaseTable) source).operations().current();
+    String currentMetadataLocation =
+        ((BaseTable) source).operations().current().metadataFileLocation();
+    String metadataDir =
+        currentMetadataLocation.substring(0, currentMetadataLocation.lastIndexOf('/') + 1);
+    String newMetadataLocation = metadataDir + "overwrite-v1.metadata.json";
+
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+
+      // Write a new metadata file (re-using the current metadata contents)
+      TableMetadataParser.write(
+          ((BaseTable) source).operations().current(),
+          resolvingFileIO.newOutputFile(newMetadataLocation));
+
+      try {
+
+        LoadTableResponse registerResponse =
+            catalogApi.registerTableWithAccessDelegation(
+                currentCatalogName, ns1, "tbl1", tableMetadata.metadataFileLocation(), true);
+
+        assertThat(registerResponse).isNotNull();
+        assertThat(registerResponse.tableMetadata()).isNotNull();
+        assertThat(registerResponse.tableMetadata().location()).isEqualTo(tableMetadata.location());
+        assertThat(registerResponse.metadataLocation())
+            .isEqualTo(tableMetadata.metadataFileLocation());
+
+        if (getStorageConfigInfo().getStorageType() != StorageConfigInfo.StorageTypeEnum.FILE) {
+          assertThat(registerResponse.credentials())
+              .as("Cloud storage should vend credentials")
+              .isNotEmpty();
+        }
+
+      } finally {
+        // Clean up the old metadata file
+        resolvingFileIO.deleteFile(currentMetadataLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an EXTERNAL catalog. Try to register with overwrite a table and request fetch vended
+   * credentials. Expect an IllegalArgumentException (HTTP 400 Bad Request) because overwrite is not
+   * enabled for external catalogs.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testRegisterTableOverwriteWithAccessDelegationForExternalCatalogForbidden() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            externalCatalogBaseLocation + "/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      try {
+        assertThatThrownBy(
+                () ->
+                    restCatalog.registerTable(
+                        TableIdentifier.of(ns1, "my_table"), fileLocation, true))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining(
+                "Register table overwrite is only supported for internal Polaris catalogs");
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
@@ -1494,7 +1799,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
                 "v1/{cat}/namespaces/{ns}/views/{view}",
                 Map.of("cat", currentCatalogName, "ns", namespace.toString(), "view", viewName))
             .head()) {
-      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
+      assertThat(response).returns(NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
     // New view should exist
@@ -1537,7 +1842,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       GenericTable createResponse =
           genericTableApi.createGenericTable(
               currentCatalogName, tableIdentifier, "format", Map.of());
-      Assertions.assertThat(createResponse.getFormat()).isEqualTo("format");
+      assertThat(createResponse.getFormat()).isEqualTo("format");
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
     }
@@ -1554,7 +1859,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
       GenericTable loadResponse =
           genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
-      Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
+      assertThat(loadResponse.getFormat()).isEqualTo("format");
 
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
@@ -1575,9 +1880,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       List<TableIdentifier> identifiers =
           genericTableApi.listGenericTables(currentCatalogName, namespace);
 
-      Assertions.assertThat(identifiers).hasSize(2);
-      Assertions.assertThat(identifiers)
-          .containsExactlyInAnyOrder(tableIdentifier1, tableIdentifier2);
+      assertThat(identifiers).hasSize(2);
+      assertThat(identifiers).containsExactlyInAnyOrder(tableIdentifier1, tableIdentifier2);
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
     }
@@ -1594,7 +1898,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
       GenericTable loadResponse =
           genericTableApi.getGenericTable(currentCatalogName, tableIdentifier);
-      Assertions.assertThat(loadResponse.getFormat()).isEqualTo("format");
+      assertThat(loadResponse.getFormat()).isEqualTo("format");
 
       genericTableApi.dropGenericTable(currentCatalogName, tableIdentifier);
 
@@ -1769,8 +2073,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
                         .setDoc("doc")
                         .setProperties(Map.of("polaris.reserved", "true"))
                         .build()))) {
-      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-      Assertions.assertThat(res.readEntity(String.class)).contains("reserved prefix");
+      assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertThat(res.readEntity(String.class)).contains("reserved prefix");
     }
 
     genericTableApi.purge(currentCatalogName, namespace);
@@ -1783,7 +2087,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
             () -> {
               restCatalog.createNamespace(namespace, ImmutableMap.of("polaris.reserved", "true"));
             })
-        .isInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
+        .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("reserved prefix");
   }
 
@@ -1792,11 +2096,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace, ImmutableMap.of("a", "b"));
     restCatalog.setProperties(namespace, ImmutableMap.of("c", "d"));
-    Assertions.assertThatCode(
+    assertThatCode(
             () -> {
               restCatalog.setProperties(namespace, ImmutableMap.of("polaris.reserved", "true"));
             })
-        .isInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
+        .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("reserved prefix");
     genericTableApi.purge(currentCatalogName, namespace);
   }
@@ -1806,11 +2110,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace, ImmutableMap.of("a", "b"));
     restCatalog.removeProperties(namespace, Sets.newHashSet("a"));
-    Assertions.assertThatCode(
+    assertThatCode(
             () -> {
               restCatalog.removeProperties(namespace, Sets.newHashSet("polaris.reserved"));
             })
-        .isInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
+        .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("reserved prefix");
     genericTableApi.purge(currentCatalogName, namespace);
   }
@@ -1820,7 +2124,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace);
     TableIdentifier identifier = TableIdentifier.of(namespace, "t1");
-    Assertions.assertThatCode(
+    assertThatCode(
             () -> {
               restCatalog.createTable(
                   identifier,
@@ -1839,7 +2143,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     restCatalog.createNamespace(namespace);
     TableIdentifier identifier = TableIdentifier.of(namespace, "t1");
     restCatalog.createTable(identifier, SCHEMA);
-    Assertions.assertThatCode(
+    assertThatCode(
             () -> {
               var txn =
                   restCatalog.newReplaceTableTransaction(
@@ -1966,7 +2270,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
     try (Response response = invocation.invoke()) {
       // Should return 404 Not Found regardless of If-None-Match header
-      assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
     }
   }
 
@@ -2334,8 +2638,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
 
     try {
-      Assertions.assertThat(catalogApi.listNamespaces(currentCatalogName, Namespace.empty()))
-          .hasSize(20);
+      assertThat(catalogApi.listNamespaces(currentCatalogName, Namespace.empty())).hasSize(20);
       for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 2000)) {
         int total = 0;
         String pageToken = null;
@@ -2343,13 +2646,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
           ListNamespacesResponse response =
               catalogApi.listNamespaces(
                   currentCatalogName, Namespace.empty(), pageToken, String.valueOf(pageSize));
-          Assertions.assertThat(response.namespaces().size()).isLessThanOrEqualTo(pageSize);
+          assertThat(response.namespaces().size()).isLessThanOrEqualTo(pageSize);
           total += response.namespaces().size();
           pageToken = response.nextPageToken();
         } while (pageToken != null);
-        Assertions.assertThat(total)
-            .as("Total paginated results for pageSize = " + pageSize)
-            .isEqualTo(20);
+        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(20);
       }
     } finally {
       for (int i = 0; i < 20; i++) {
@@ -2369,7 +2670,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
 
     try {
-      Assertions.assertThat(catalogApi.listTables(currentCatalogName, namespace)).hasSize(20);
+      assertThat(catalogApi.listTables(currentCatalogName, namespace)).hasSize(20);
       for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 2000)) {
         int total = 0;
         String pageToken = null;
@@ -2377,13 +2678,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
           ListTablesResponse response =
               catalogApi.listTables(
                   currentCatalogName, namespace, pageToken, String.valueOf(pageSize));
-          Assertions.assertThat(response.identifiers().size()).isLessThanOrEqualTo(pageSize);
+          assertThat(response.identifiers().size()).isLessThanOrEqualTo(pageSize);
           total += response.identifiers().size();
           pageToken = response.nextPageToken();
         } while (pageToken != null);
-        Assertions.assertThat(total)
-            .as("Total paginated results for pageSize = " + pageSize)
-            .isEqualTo(20);
+        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(20);
       }
     } finally {
       for (int i = 0; i < 20; i++) {

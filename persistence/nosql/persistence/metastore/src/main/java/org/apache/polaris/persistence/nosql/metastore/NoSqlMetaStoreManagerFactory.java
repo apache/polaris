@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -49,6 +50,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
@@ -62,6 +64,9 @@ import org.slf4j.LoggerFactory;
 @Identifier("nosql")
 class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(NoSqlMetaStoreManagerFactory.class);
+
+  // Stateless no-op; reused for every realm since NoSQL does not implement metrics persistence.
+  private static final MetricsPersistence NO_OP_METRICS_PERSISTENCE = new MetricsPersistence() {};
 
   private final Map<String, Persistence> realmPersistenceMap = new ConcurrentHashMap<>();
   private final RealmManagement realmManagement;
@@ -134,6 +139,12 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public BasePersistence getOrCreateSession(RealmContext realmContext) {
     return newPersistenceMetaStore(initializedRealmPersistence(realmContext.getRealmIdentifier()));
+  }
+
+  @Override
+  public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
+    // NoSQL backend does not implement metrics persistence.
+    return NO_OP_METRICS_PERSISTENCE;
   }
 
   @Override
@@ -271,7 +282,12 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
             rootCredentialsSet,
             clock);
 
-    PolarisCallContext ctx = new PolarisCallContext(() -> realmId, metaStore);
+    PolarisCallContext ctx =
+        new PolarisCallContext(
+            () -> realmId,
+            metaStore,
+            NO_OP_METRICS_PERSISTENCE,
+            RealmConfigurationSource.EMPTY_CONFIG);
     var secretsResult = createPolarisPrincipalForRealm(metaStoreManager, ctx);
 
     realmManagement.update(

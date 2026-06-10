@@ -168,7 +168,7 @@ public abstract class PolarisStorageConfigurationInfo {
             });
   }
 
-  private static @NonNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
+  public static @NonNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
       List<PolarisEntity> entityPath) {
     for (int i = entityPath.size() - 1; i >= 0; i--) {
       PolarisEntity e = entityPath.get(i);

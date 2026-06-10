@@ -24,6 +24,12 @@ weight: 100
 
 This guide describes how to use the `setup` command to manage Apache Polaris configuration using an infrastructure-as-code approach. Define your Polaris configuration in a single YAML file and apply it with a single command.
 
+The Polaris CLI can be installed from PyPI:
+
+```shell
+pip install apache-polaris
+```
+
 This command supports bootstrapping new environments and exporting existing configurations for reuse or version control.
 
 ## Exporting Your Configuration

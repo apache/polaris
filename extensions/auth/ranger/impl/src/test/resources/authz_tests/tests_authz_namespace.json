@@ -45,6 +45,14 @@
       "result":  { "isAllowed": true }
     },
     {
+      "request": { "authzOp": "REGISTER_TABLE_WITH_READ_DELEGATION", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REGISTER_TABLE_WITH_WRITE_DELEGATION", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
+      "result":  { "isAllowed": true }
+    },
+    {
       "request": { "authzOp": "UPDATE_TABLE_FOR_STAGED_CREATE", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
