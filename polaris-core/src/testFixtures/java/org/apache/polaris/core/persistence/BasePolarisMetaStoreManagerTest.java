@@ -129,11 +129,9 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .isNotNull()
         .hasSize(2)
         .extracting(PolarisEntity::toCore)
-        .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
+        .containsExactlyInAnyOrder(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
-    // JSONB backends may rewrite JSON formatting; equals() on raw strings would fail here.
-    PolarisPersistenceTestSupport.assertEntitiesEquivalentInAnyOrder(
-        createdEntities, listedEntities);
+    Assertions.assertThat(createdEntities).containsExactlyInAnyOrderElementsOf(listedEntities);
   }
 
   @Test
@@ -169,7 +167,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
                 "principal_test")
             .getEntity();
 
-    PolarisPersistenceTestSupport.assertEntitiesEquivalent(principalEntity, fetchedPrincipal);
+    Assertions.assertThat(principalEntity).isEqualTo(fetchedPrincipal);
   }
 
   @Test

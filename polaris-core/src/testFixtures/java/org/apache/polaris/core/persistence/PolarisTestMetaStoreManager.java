@@ -1218,24 +1218,8 @@ public class PolarisTestMetaStoreManager {
             policy.getPolicyTypeCode(),
             parameters);
     long policyMappingCount =
-        policyMappingRecords.stream()
-            .filter(record -> policyMappingRecordSemanticallyEquals(record, expected))
-            .count();
+        policyMappingRecords.stream().filter(record -> expected.equals(record)).count();
     return policyMappingCount == 1;
-  }
-
-  /**
-   * Like {@link PolarisPolicyMappingRecord#equals(Object)} but compares {@code parameters} by
-   * parsed map content rather than raw serialized JSON.
-   */
-  private static boolean policyMappingRecordSemanticallyEquals(
-      PolarisPolicyMappingRecord record, PolarisPolicyMappingRecord expected) {
-    return record.getTargetCatalogId() == expected.getTargetCatalogId()
-        && record.getTargetId() == expected.getTargetId()
-        && record.getPolicyCatalogId() == expected.getPolicyCatalogId()
-        && record.getPolicyId() == expected.getPolicyId()
-        && record.getPolicyTypeCode() == expected.getPolicyTypeCode()
-        && Objects.equals(record.getParametersAsMap(), expected.getParametersAsMap());
   }
 
   /**
@@ -2565,7 +2549,7 @@ public class PolarisTestMetaStoreManager {
               newName);
 
       // what is returned should be same has what has been loaded
-      PolarisPersistenceTestSupport.assertEntitiesEquivalent(renamedEntity, renamedEntityOut);
+      Assertions.assertThat(renamedEntity).isEqualTo(renamedEntityOut);
 
       // ensure properties have been updated
       Assertions.assertThat(renamedEntityOut.getInternalPropertiesAsMap())

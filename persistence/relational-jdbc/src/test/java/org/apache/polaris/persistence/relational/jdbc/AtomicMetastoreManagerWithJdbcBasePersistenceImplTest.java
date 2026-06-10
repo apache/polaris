@@ -185,27 +185,4 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
       return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
     }
   }
-
-  private static class H2JdbcConfiguration implements RelationalJdbcConfiguration {
-
-    @Override
-    public Optional<Integer> maxRetries() {
-      return Optional.of(2);
-    }
-
-    @Override
-    public Optional<Long> maxDurationInMs() {
-      return Optional.of(100L);
-    }
-
-    @Override
-    public Optional<Long> initialDelayInMs() {
-      return Optional.of(100L);
-    }
-
-    @Override
-    public Optional<String> databaseType() {
-      return Optional.of("h2");
-    }
-  }
 }

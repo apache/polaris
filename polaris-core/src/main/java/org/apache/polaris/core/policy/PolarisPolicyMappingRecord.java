@@ -205,11 +205,12 @@ public class PolarisPolicyMappingRecord {
         && policyCatalogId == that.policyCatalogId
         && policyId == that.policyId
         && policyTypeCode == that.policyTypeCode
-        && Objects.equals(parameters, that.parameters);
+        && Objects.equals(getParametersAsMap(), that.getParametersAsMap());
   }
 
   @Override
   public int hashCode() {
-    return java.util.Objects.hash(targetId, policyId, policyCatalogId, policyTypeCode, parameters);
+    return Objects.hash(
+        targetCatalogId, targetId, policyCatalogId, policyId, policyTypeCode, getParametersAsMap());
   }
 }
