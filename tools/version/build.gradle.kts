@@ -73,8 +73,8 @@ sourceSets.main.configure {
 val jarTestJar by
   tasks.registering(Jar::class) {
     archiveClassifier.set("jarTest")
-    from(sourceSets.main.get().output)
-    from(sourceSets.getByName("jarTest").output)
+    from(sourceSets.main.map { it.output })
+    from(sourceSets.named("jarTest").map { it.output })
   }
 
 // Add a test-suite to run against the built polaris-version*.jar, not the classes/, because we
@@ -82,7 +82,7 @@ val jarTestJar by
 testing {
   suites {
     register<JvmTestSuite>("jarTest") {
-      dependencies { runtimeOnly(files(jarTestJar.get().archiveFile.get().asFile)) }
+      dependencies { runtimeOnly(files(jarTestJar.map { it.archiveFile })) }
 
       targets.all {
         testTask.configure {
