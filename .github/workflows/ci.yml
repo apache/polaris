@@ -433,7 +433,7 @@ jobs:
       - name: Generated Client Tests
         run: make client-unit-test
       - name: Integration Tests
-        run: make _client-integration-test
+        run: make run-client-integration-test
       - name: Run Polaris Client help manual
         run: .venv/bin/polaris --help
 
