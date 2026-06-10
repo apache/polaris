@@ -190,6 +190,10 @@ testing {
   suites {
     register("sparkBundleTest") {
       useJUnitJupiter()
+      sources {
+        java.srcDir("../../common/src/sparkBundleTest/java")
+        resources.srcDir("../../common/src/sparkBundleTest/resources")
+      }
       dependencies {
         implementation(platform(libs.quarkus.bom)) {
           exclude(group = "jakarta.servlet", module = "jakarta.servlet-api")
@@ -229,6 +233,7 @@ testing {
           )
           systemProperty("polaris.version", project.version.toString())
           systemProperty("polaris.scala.version", scalaVersion)
+          systemProperty("polaris.spark.major.version", sparkMajorVersion)
           dependsOn(":publishToMavenLocal")
           dependsOn(":polaris-core:publishMavenPublicationToMavenLocal")
           dependsOn(
