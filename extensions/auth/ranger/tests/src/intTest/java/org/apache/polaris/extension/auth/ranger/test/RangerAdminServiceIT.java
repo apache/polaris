@@ -36,20 +36,21 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusTest
 @TestProfile(RangerTestProfiles.EmbeddedPolicy.class)
 public class RangerAdminServiceIT extends RangerIntegrationTestBase {
 
+  private @TempDir Path baseCatalogLocationPath;
   private String baseCatalogName;
-  private String baseCatalogLocation;
   private String baseRootToken;
 
   @BeforeEach
-  void setupBaseCatalog() throws Exception {
+  void setupBaseCatalog() {
     baseRootToken = getRootToken();
     baseCatalogName = "ranger-base-cat-" + UUID.randomUUID().toString().replace("-", "");
-    baseCatalogLocation = Files.createTempDirectory("ranger-base-cat").toUri().toString();
+    var baseCatalogLocation = baseCatalogLocationPath.toUri().toString();
     createFileCatalog(
         baseRootToken, baseCatalogName, baseCatalogLocation, List.of(baseCatalogLocation));
   }
@@ -117,12 +118,12 @@ public class RangerAdminServiceIT extends RangerIntegrationTestBase {
   }
 
   @Test
-  void createCatalogAuthorization() throws Exception {
+  void createCatalogAuthorization(@TempDir Path baseLocationPath) {
     String rootToken = getRootToken();
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
 
     String catalogName = "ranger-cat-create-" + UUID.randomUUID().toString().replace("-", "");
-    String baseLocation = Files.createTempDirectory("ranger-cat-create").toUri().toString();
+    String baseLocation = baseLocationPath.toUri().toString();
     Map<String, Object> createCatalogRequest =
         Map.of(
             "type",
@@ -160,7 +161,7 @@ public class RangerAdminServiceIT extends RangerIntegrationTestBase {
   }
 
   @Test
-  void grantTablePrivilegesAuthorization() throws Exception {
+  void grantTablePrivilegesAuthorization(@TempDir Path tempDir) throws Exception {
     String rootToken = baseRootToken;
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String catalogName = "ranger-grant-cat-" + UUID.randomUUID().toString().replace("-", "");
@@ -168,7 +169,6 @@ public class RangerAdminServiceIT extends RangerIntegrationTestBase {
     String tableName = "tbl_" + UUID.randomUUID().toString().replace("-", "");
     String catalogRole = "role_" + UUID.randomUUID().toString().replace("-", "");
 
-    Path tempDir = Files.createTempDirectory("ranger-grant");
     String baseLocation = tempDir.toUri().toString();
     String allowedPrefix = baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
     createFileCatalog(
@@ -288,7 +288,7 @@ public class RangerAdminServiceIT extends RangerIntegrationTestBase {
   }
 
   @Test
-  void listGrantsForCatalogRole() throws Exception {
+  void listGrantsForCatalogRole(@TempDir Path tempDir) throws Exception {
     String rootToken = baseRootToken;
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String catalogName = "ranger-grant-list-cat-" + UUID.randomUUID().toString().replace("-", "");
@@ -296,7 +296,6 @@ public class RangerAdminServiceIT extends RangerIntegrationTestBase {
     String tableName = "tbl_" + UUID.randomUUID().toString().replace("-", "");
     String catalogRole = "role_" + UUID.randomUUID().toString().replace("-", "");
 
-    Path tempDir = Files.createTempDirectory("ranger-grant-list");
     String baseLocation = tempDir.toUri().toString();
     String allowedPrefix = baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
     createFileCatalog(
