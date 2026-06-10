@@ -79,11 +79,12 @@ class IdempotencyHandlerSupportTest {
             return Duration.ofDays(1);
           }
         };
+    realmContext = () -> REALM;
     support = new IdempotencyHandlerSupport();
     support.configuration = config;
     support.storeFactory = new InMemoryIdempotencyStoreFactory();
+    support.realmContext = realmContext;
     support.clock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
-    realmContext = () -> REALM;
   }
 
   @Test
@@ -137,49 +138,46 @@ class IdempotencyHandlerSupportTest {
 
   @Test
   void preflight_emptyStoreReturnsOwned() {
-    IdempotencyHandlerSupport.Outcome o = support.preflight(realmContext, UUID_V7, OP, RID, "ph-A");
+    IdempotencyHandlerSupport.Outcome o = support.preflight(UUID_V7, OP, RID, "ph-A");
     assertThat(o).isInstanceOf(IdempotencyHandlerSupport.Outcome.Owned.class);
   }
 
   @Test
   void preflight_existingMatchingRecordReturnsDuplicate() {
-    support.recordOutcome(realmContext, UUID_V7, OP, RID, "ph-A", 200, null);
-    IdempotencyHandlerSupport.Outcome o = support.preflight(realmContext, UUID_V7, OP, RID, "ph-A");
+    support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
+    IdempotencyHandlerSupport.Outcome o = support.preflight(UUID_V7, OP, RID, "ph-A");
     assertThat(o).isInstanceOf(IdempotencyHandlerSupport.Outcome.Duplicate.class);
   }
 
   @Test
   void preflight_differentPrincipalRaisesConflict() {
-    support.recordOutcome(realmContext, UUID_V7, OP, RID, "ph-A", 200, null);
-    assertThatThrownBy(() -> support.preflight(realmContext, UUID_V7, OP, RID, "ph-OTHER"))
+    support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
+    assertThatThrownBy(() -> support.preflight(UUID_V7, OP, RID, "ph-OTHER"))
         .isInstanceOf(IdempotencyHandlerSupport.ConflictException.class);
   }
 
   @Test
   void preflight_differentResourceRaisesConflict() {
-    support.recordOutcome(realmContext, UUID_V7, OP, RID, "ph-A", 200, null);
-    assertThatThrownBy(
-            () ->
-                support.preflight(realmContext, UUID_V7, OP, "catalogs/c1/tables/ns.other", "ph-A"))
+    support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
+    assertThatThrownBy(() -> support.preflight(UUID_V7, OP, "catalogs/c1/tables/ns.other", "ph-A"))
         .isInstanceOf(IdempotencyHandlerSupport.ConflictException.class);
   }
 
   @Test
   void recordOutcome_secondCallWithSameBindingReturnsDuplicate() {
     IdempotencyHandlerSupport.Outcome first =
-        support.recordOutcome(realmContext, UUID_V7, OP, RID, "ph-A", 200, null);
+        support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
     assertThat(first).isInstanceOf(IdempotencyHandlerSupport.Outcome.Owned.class);
 
     IdempotencyHandlerSupport.Outcome second =
-        support.recordOutcome(realmContext, UUID_V7, OP, RID, "ph-A", 200, null);
+        support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
     assertThat(second).isInstanceOf(IdempotencyHandlerSupport.Outcome.Duplicate.class);
   }
 
   @Test
   void recordOutcome_raceWithDifferentPrincipalRaisesConflict() {
-    support.recordOutcome(realmContext, UUID_V7, OP, RID, "ph-A", 200, null);
-    assertThatThrownBy(
-            () -> support.recordOutcome(realmContext, UUID_V7, OP, RID, "ph-OTHER", 200, null))
+    support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
+    assertThatThrownBy(() -> support.recordOutcome(UUID_V7, OP, RID, "ph-OTHER", 200, null))
         .isInstanceOf(IdempotencyHandlerSupport.ConflictException.class);
   }
 }

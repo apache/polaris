@@ -555,8 +555,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     try {
       IdempotencyHandlerSupport.Outcome preflight =
           idempotencySupport()
-              .preflight(
-                  realmContext(), idempotencyKey, operationType, resourceHash, principalHash);
+              .preflight(idempotencyKey, operationType, resourceHash, principalHash);
       if (preflight instanceof IdempotencyHandlerSupport.Outcome.Duplicate dup) {
         return replayCreateTableDirect(
             namespace, request, resolvedMode, refreshCredentialsEndpoint, dup.existing());
@@ -593,7 +592,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       IdempotencyHandlerSupport.Outcome recordOutcome =
           idempotencySupport()
               .recordOutcome(
-                  realmContext(),
                   idempotencyKey,
                   operationType,
                   resourceHash,
@@ -630,8 +628,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     for (int attempt = 0; attempt < CONCURRENT_REPLAY_MAX_ATTEMPTS; attempt++) {
       IdempotencyHandlerSupport.Outcome outcome =
           idempotencySupport()
-              .preflight(
-                  realmContext(), idempotencyKey, operationType, resourceHash, principalHash);
+              .preflight(idempotencyKey, operationType, resourceHash, principalHash);
       if (outcome instanceof IdempotencyHandlerSupport.Outcome.Duplicate dup) {
         return Optional.of(dup.existing());
       }

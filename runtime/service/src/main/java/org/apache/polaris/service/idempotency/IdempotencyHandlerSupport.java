@@ -20,7 +20,7 @@ package org.apache.polaris.service.idempotency;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import java.nio.charset.StandardCharsets;
@@ -53,11 +53,13 @@ import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
  *       on win and {@link Outcome#duplicate(IdempotencyRecord)} on a race-driven duplicate.
  * </ul>
  *
- * <p>The actual store is fetched per-realm from {@link IdempotencyStoreFactory}, which is selected
- * via the {@code polaris.idempotency.type} configuration. No response body is stored — duplicate
+ * <p>This bean is {@link RequestScoped}: a single request operates within one realm, so the
+ * realm-scoped {@link IdempotencyStore} is resolved once (lazily) from {@link
+ * IdempotencyStoreFactory} for the request's {@link RealmContext}. When idempotency is disabled the
+ * store is never resolved — the bean is an inert shell. No response body is stored; duplicate
  * responses are rebuilt from authoritative catalog state by the handler itself.
  */
-@ApplicationScoped
+@RequestScoped
 public class IdempotencyHandlerSupport {
 
   // RFC 9562 UUID v7 has version nibble 7 in time_hi_and_version.
@@ -68,7 +70,11 @@ public class IdempotencyHandlerSupport {
 
   @Inject IdempotencyConfiguration configuration;
   @Inject IdempotencyStoreFactory storeFactory;
+  @Inject RealmContext realmContext;
   @Inject Clock clock;
+
+  // Resolved lazily on first use within the request; never resolved when idempotency is disabled.
+  private IdempotencyStore store;
 
   /**
    * Returns an instance with idempotency permanently disabled. Useful for test fixtures that need a
@@ -161,18 +167,13 @@ public class IdempotencyHandlerSupport {
    * response from current catalog state.
    *
    * <p>If no record exists, this returns {@link Outcome.Owned}; the handler should perform the
-   * operation and then call {@link #recordOutcome(RealmContext, String, String, String, String,
-   * int, String)} to commit a record.
+   * operation and then call {@link #recordOutcome(String, String, String, String, int, String)} to
+   * commit a record.
    */
   public Outcome preflight(
-      RealmContext realmContext,
-      String idempotencyKey,
-      String operationType,
-      String resourceHash,
-      String principalHash) {
-    IdempotencyStore store = storeFor(realmContext);
+      String idempotencyKey, String operationType, String resourceHash, String principalHash) {
     Optional<IdempotencyRecord> existing =
-        store.load(realmContext.getRealmIdentifier(), idempotencyKey);
+        store().load(realmContext.getRealmIdentifier(), idempotencyKey);
     if (existing.isEmpty()) {
       return Outcome.owned();
     }
@@ -187,27 +188,26 @@ public class IdempotencyHandlerSupport {
    * equivalent response from current state.
    */
   public Outcome recordOutcome(
-      RealmContext realmContext,
       String idempotencyKey,
       String operationType,
       String resourceHash,
       String principalHash,
       int httpStatus,
       @Nullable String metadataLocation) {
-    IdempotencyStore store = storeFor(realmContext);
     Instant now = clock.instant();
     Instant expiresAt = now.plus(configuration.ttl());
     IdempotencyStore.RecordResult result =
-        store.recordIfAbsent(
-            realmContext.getRealmIdentifier(),
-            idempotencyKey,
-            operationType,
-            resourceHash,
-            principalHash,
-            httpStatus,
-            metadataLocation,
-            now,
-            expiresAt);
+        store()
+            .recordIfAbsent(
+                realmContext.getRealmIdentifier(),
+                idempotencyKey,
+                operationType,
+                resourceHash,
+                principalHash,
+                httpStatus,
+                metadataLocation,
+                now,
+                expiresAt);
     if (result.type() == IdempotencyStore.RecordResultType.OWNED) {
       return Outcome.owned();
     }
@@ -218,8 +218,16 @@ public class IdempotencyHandlerSupport {
     return matchOrConflict(existing, operationType, resourceHash, principalHash);
   }
 
-  IdempotencyStore storeFor(RealmContext realmContext) {
-    return storeFactory.getOrCreateIdempotencyStore(realmContext);
+  /**
+   * Resolves (once per request) the realm-scoped {@link IdempotencyStore} for the request's realm.
+   * Only called from the idempotency code paths, so it is never invoked when the feature is
+   * disabled.
+   */
+  private IdempotencyStore store() {
+    if (store == null) {
+      store = storeFactory.getOrCreateIdempotencyStore(realmContext);
+    }
+    return store;
   }
 
   private static Outcome matchOrConflict(

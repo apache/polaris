@@ -298,6 +298,9 @@ public class IdempotencyCreateTableTest {
     IdempotencyHandlerSupport support = new IdempotencyHandlerSupport();
     support.configuration = configuration;
     support.storeFactory = new InMemoryIdempotencyStoreFactory();
+    // Must match TestServices' realm (TestServices.TEST_REALM) so records and replays share a
+    // realm.
+    support.realmContext = () -> "test-realm";
     support.clock = Clock.systemUTC();
     return support;
   }
