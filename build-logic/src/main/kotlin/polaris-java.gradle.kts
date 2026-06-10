@@ -22,9 +22,12 @@ import java.util.Properties
 import kotlin.jvm.java
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.api.file.FileCollection
+import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.named
+import org.gradle.process.CommandLineArgumentProvider
 import org.kordamp.gradle.plugin.jandex.JandexExtension
 import org.kordamp.gradle.plugin.jandex.JandexPlugin
 import publishing.PublishingHelperPlugin
@@ -188,14 +191,17 @@ dependencies {
   mockitoAgent(mockitoCoreLib) { isTransitive = false }
 }
 
+private class MockitoJavaAgentArgumentProvider(@get:Classpath val mockitoAgent: FileCollection) :
+  CommandLineArgumentProvider {
+  override fun asArguments(): Iterable<String> = listOf("-javaagent:${mockitoAgent.asPath}")
+}
+
 tasks.withType<Test>().configureEach {
   systemProperty("file.encoding", "UTF-8")
   systemProperty("user.language", "en")
   systemProperty("user.country", "US")
   systemProperty("user.variant", "")
-  jvmArgumentProviders.add(
-    CommandLineArgumentProvider { listOf("-javaagent:${mockitoAgent.asPath}") }
-  )
+  jvmArgumentProviders.add(MockitoJavaAgentArgumentProvider(mockitoAgent))
 }
 
 tasks.withType<Jar>().configureEach {
