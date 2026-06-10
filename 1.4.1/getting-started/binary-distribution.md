@@ -34,7 +34,7 @@ Use this guide to quickly start running Polaris using the pre-built binary distr
 Download and extract the binary distribution:
 
 ```bash
-curl -L https://downloads.apache.org/polaris/1.4.1/polaris-bin-1.4.1.tgz | tar xz
+curl -L https://archive.apache.org/dist/polaris/1.4.1/polaris-bin-1.4.1.tgz | tar xz
 cd polaris-bin-1.4.1
 ```
 
