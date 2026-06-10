@@ -23,22 +23,19 @@ import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpec
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
- * PostgreSQL integration coverage for {@link
- * org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest#testGrantRecordWriteIsIdempotent()}.
- * Complements {@link JdbcGrantRecordsIdempotencyTest}, which exercises the JDBC insert path on H2
- * across schema versions v1–v4.
+ * Runs {@link org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest} integration
+ * tests against PostgreSQL schema v4 via Testcontainers.
  */
 @Testcontainers
-public class AtomicMetastoreManagerWithJdbcPostgresIT {
+public class AtomicMetastoreManagerWithJdbcPostgresIT
+    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
 
   @Container
   private static final PostgreSQLContainer POSTGRES =
@@ -47,61 +44,35 @@ public class AtomicMetastoreManagerWithJdbcPostgresIT {
               .dockerImageName(null)
               .asCompatibleSubstituteFor("postgres"));
 
-  private static PostgresMetaStoreManagerHarness harness;
+  private static DataSource dataSource;
 
   @BeforeAll
-  static void startPostgres() {
-    POSTGRES.start();
-    PGSimpleDataSource dataSource = new PGSimpleDataSource();
-    dataSource.setURL(POSTGRES.getJdbcUrl());
-    dataSource.setUser(POSTGRES.getUsername());
-    dataSource.setPassword(POSTGRES.getPassword());
-    harness = new PostgresMetaStoreManagerHarness(dataSource);
+  static void setupPostgres() {
+    PGSimpleDataSource pgDataSource = new PGSimpleDataSource();
+    pgDataSource.setURL(POSTGRES.getJdbcUrl());
+    pgDataSource.setUser(POSTGRES.getUsername());
+    pgDataSource.setPassword(POSTGRES.getPassword());
+    dataSource = pgDataSource;
   }
 
-  @AfterAll
-  static void stopPostgres() {
-    POSTGRES.stop();
+  @Override
+  public int schemaVersion() {
+    return 4;
   }
 
-  @Test
-  void testGrantRecordWriteIsIdempotentOnPostgres() {
-    harness.runGrantRecordWriteIsIdempotentTest();
+  @Override
+  protected DataSource createDataSource() {
+    return dataSource;
   }
 
-  private static final class PostgresMetaStoreManagerHarness
-      extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
+  @Override
+  protected DatabaseType databaseType() {
+    return DatabaseType.POSTGRES;
+  }
 
-    private final DataSource dataSource;
-
-    private PostgresMetaStoreManagerHarness(DataSource dataSource) {
-      this.dataSource = dataSource;
-    }
-
-    void runGrantRecordWriteIsIdempotentTest() {
-      setupPolarisMetaStoreManager();
-      testGrantRecordWriteIsIdempotent();
-    }
-
-    @Override
-    public int schemaVersion() {
-      return 4;
-    }
-
-    @Override
-    protected DataSource createDataSource() {
-      return dataSource;
-    }
-
-    @Override
-    protected DatabaseType databaseType() {
-      return DatabaseType.POSTGRES;
-    }
-
-    @Override
-    protected RelationalJdbcConfiguration createJdbcConfiguration() {
-      return new PostgresJdbcConfiguration();
-    }
+  @Override
+  protected RelationalJdbcConfiguration createJdbcConfiguration() {
+    return new PostgresJdbcConfiguration();
   }
 
   private static final class PostgresJdbcConfiguration implements RelationalJdbcConfiguration {
