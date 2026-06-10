@@ -55,7 +55,7 @@ cel-bom = { module = "org.projectnessie.cel:cel-bom", version = "0.6.0" }
 checkstyle = { module = "com.puppycrawl.tools:checkstyle", version.ref = "checkstyle" } # required by the polaris-java plugin
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
-errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.49.0" } # required by the polaris-java plugin
+errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.50.0" } # required by the polaris-java plugin
 google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.93.0" }
 graalvm-js-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "ranger-graalvm" }
 graalvm-polyglot-js = { module = "org.graalvm.polyglot:js", version.ref = "ranger-graalvm" }
