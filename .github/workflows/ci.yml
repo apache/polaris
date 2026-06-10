@@ -57,7 +57,7 @@ jobs:
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-runtime-service:test \
             -x :polaris-admin:test \
-            -x intTest \
+            -PnoIntegrationTests \
             --continue
       - name: Verify configuration reference is up to date
         run: |
