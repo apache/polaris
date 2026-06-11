@@ -18,13 +18,10 @@
  */
 package org.apache.polaris.service.idempotency;
 
-import com.google.common.hash.Hashing;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
@@ -32,6 +29,7 @@ import java.util.Optional;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.apache.polaris.core.DigestUtils;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.IdempotencyRecord;
@@ -145,7 +143,7 @@ public class IdempotencyHandlerSupport {
     sb.append("realm=").append(realmContext.getRealmIdentifier()).append('|');
     sb.append("roles=");
     new TreeSet<>(principal.getRoles()).forEach(r -> sb.append(r).append(','));
-    return sha256Hex(sb.toString());
+    return DigestUtils.sha256Hex(sb.toString());
   }
 
   /**
@@ -159,7 +157,7 @@ public class IdempotencyHandlerSupport {
     for (String component : components) {
       sb.append(':').append(component == null ? "" : component);
     }
-    return sha256Hex(sb.toString());
+    return DigestUtils.sha256Hex(sb.toString());
   }
 
   /**
@@ -247,10 +245,6 @@ public class IdempotencyHandlerSupport {
           "Idempotency-Key already used with a different binding (caller, operation, or resource)");
     }
     return Outcome.duplicate(existing);
-  }
-
-  private static String sha256Hex(@Nonnull String input) {
-    return Hashing.sha256().hashString(input, StandardCharsets.UTF_8).toString();
   }
 
   private static String summarizeKey(String key) {
