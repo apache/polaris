@@ -43,10 +43,23 @@ import org.gradle.api.publish.maven.MavenPublication
  * must be exactly the same when built by a release manager and by someone else to verify the built
  * artifact(s).
  */
-internal fun configurePom(project: Project, mavenPublication: MavenPublication, task: Task) =
+internal data class ParentPomCoordinates(
+  val groupId: String,
+  val artifactId: String,
+  val version: String,
+)
+
+internal fun configurePom(
+  project: Project,
+  parentPomCoordinates: ParentPomCoordinates?,
+  mavenPublication: MavenPublication,
+  task: Task,
+) =
   mavenPublication.run {
     pom {
-      if (project != project.rootProject) {
+      if (parentPomCoordinates != null) {
+        // Non-root Gradle projects.
+
         // Add the license to every pom to make it easier for downstream projects to retrieve the
         // license.
         licenses {
@@ -54,11 +67,6 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
             name.set("Apache-2.0") // SPDX identifier
           }
         }
-
-        val parent = project.parent!!
-        val parentGroup = parent.group
-        val parentName = parent.name
-        val parentVersion = parent.version
 
         withXml {
           val projectNode = asNode()
@@ -79,14 +87,17 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
               }
             }
           }
+
           // Add GAV to <parent> element
-          parentNode.appendNode("groupId", parentGroup)
-          parentNode.appendNode("artifactId", parentName)
-          parentNode.appendNode("version", parentVersion)
+          parentNode.appendNode("groupId", parentPomCoordinates.groupId)
+          parentNode.appendNode("artifactId", parentPomCoordinates.artifactId)
+          parentNode.appendNode("version", parentPomCoordinates.version)
 
           verifyMandatoryDependencyVersions(projectNode)
         }
       } else {
+        // Root Gradle projects.
+
         val mavenPom = this
         val effectiveAsfProject = project.provider { EffectiveAsfProject.forProject(project) }
         val projectVersion = project.version.toString()

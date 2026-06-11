@@ -210,7 +210,7 @@ internal fun configureOnRootProject(project: Project) =
       sourceTarball.configure { finalizedBy(releaseEmailTemplate) }
     }
 
-    afterEvaluate {
-      tasks.named("closeApacheStagingRepository") { mustRunAfter(releaseEmailTemplate) }
-    }
+    tasks
+      .matching { task -> task.name == "closeApacheStagingRepository" }
+      .configureEach { mustRunAfter(releaseEmailTemplate) }
   }
