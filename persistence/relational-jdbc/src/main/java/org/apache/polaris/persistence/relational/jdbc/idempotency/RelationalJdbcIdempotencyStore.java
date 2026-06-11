@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyPersistenceException;
 import org.apache.polaris.core.persistence.IdempotencyStore;
@@ -59,15 +60,17 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public Optional<IdempotencyRecord> load(String idempotencyKey) {
+  public Optional<IdempotencyRecord> load(UUID idempotencyKey) {
     try {
       QueryGenerator.PreparedQuery query =
           QueryGenerator.generateSelectQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(
-                  ModelIdempotencyRecord.REALM_ID, realmId,
-                  ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey));
+                  ModelIdempotencyRecord.REALM_ID,
+                  realmId,
+                  ModelIdempotencyRecord.IDEMPOTENCY_KEY,
+                  idempotencyKey.toString()));
       List<IdempotencyRecord> results =
           datasourceOperations.executeSelect(
               query,
@@ -100,7 +103,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   @Override
   public RecordResult recordIfAbsent(
-      String idempotencyKey,
+      UUID idempotencyKey,
       String operationType,
       String resourceHash,
       String principalHash,
@@ -110,7 +113,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       Instant expiresAt) {
     try {
       Map<String, Object> insertMap = new LinkedHashMap<>();
-      insertMap.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
+      insertMap.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey.toString());
       insertMap.put(ModelIdempotencyRecord.OPERATION_TYPE, operationType);
       insertMap.put(ModelIdempotencyRecord.RESOURCE_HASH, resourceHash);
       insertMap.put(ModelIdempotencyRecord.PRINCIPAL_HASH, principalHash);

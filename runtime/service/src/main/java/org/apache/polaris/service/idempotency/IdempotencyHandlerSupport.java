@@ -21,14 +21,11 @@ package org.apache.polaris.service.idempotency;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.HttpHeaders;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import org.apache.polaris.core.DigestUtils;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
@@ -44,10 +41,13 @@ import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
  * <ul>
  *   <li>Read and validate the {@code Idempotency-Key} request header (UUIDv7 only).
  *   <li>Compute the principal/resource hashes that form the binding stored alongside each record.
- *   <li>Pre-flight: look up an existing record for the same {@code (realm, key)} and dispatch into
- *       {@link Outcome#owned()} or {@link Outcome#duplicate(IdempotencyRecord)} for the handler.
- *   <li>Record the terminal outcome after a successful operation, returning {@link Outcome#owned()}
- *       on win and {@link Outcome#duplicate(IdempotencyRecord)} on a race-driven duplicate.
+ *   <li>Pre-flight: from the raw request inputs, decide whether idempotency applies and, if so,
+ *       look up an existing record for the same {@code (realm, key)}, returning an {@link
+ *       IdempotencyOutcome} for the handler to branch on.
+ *   <li>Record the terminal outcome after a successful operation, returning {@link
+ *       IdempotencyOutcome.Owned} on win and {@link IdempotencyOutcome.Duplicate} on a race-driven
+ *       duplicate.
+ *   <li>Resolve a concurrent create-table race by polling for the winner's record.
  * </ul>
  *
  * <p>This bean is {@link RequestScoped}: a single request operates within one realm, so the
@@ -59,11 +59,14 @@ import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
 @RequestScoped
 public class IdempotencyHandlerSupport {
 
-  // RFC 9562 UUID v7 has version nibble 7 in time_hi_and_version.
-  private static final Pattern UUID_V7_PATTERN =
-      Pattern.compile(
-          "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-          Pattern.CASE_INSENSITIVE);
+  // Bounded lookup for the idempotency record written by a concurrent create-table race winner,
+  // which records only after committing the table (so a loser may briefly not see it yet). Backoff
+  // is exponential: 5+10+20+40+80 = 155ms total budget across 5 attempts. If the winner's record is
+  // still not visible after that (e.g. a long GC pause or slow store write), the original 409
+  // surfaces instead of a replay — correct but not ideal; widen the budget if this proves too
+  // tight.
+  private static final int CONCURRENT_REPLAY_MAX_ATTEMPTS = 5;
+  private static final long CONCURRENT_REPLAY_INITIAL_BACKOFF_MILLIS = 5;
 
   @Inject IdempotencyConfiguration configuration;
   @Inject IdempotencyStoreFactory storeFactory;
@@ -89,43 +92,25 @@ public class IdempotencyHandlerSupport {
   }
 
   /**
-   * Reads and validates the idempotency key from the request headers using the deploy-time
-   * configured header name from {@link IdempotencyConfiguration#keyHeader()}.
+   * Validates that the {@code Idempotency-Key} is a UUIDv7. UUIDv7 is required so the key carries a
+   * timestamp and enough entropy to be a meaningful idempotency boundary. The header is already
+   * parsed into a {@link UUID} upstream (the JAX-RS binding), so this only enforces the version.
    *
-   * @return validated key, or {@link Optional#empty()} if {@code httpHeaders} is null, the header
-   *     is absent / blank, or idempotency is disabled
-   * @throws IllegalArgumentException if the header is present but not a valid UUIDv7 (callers
-   *     translate this into a 400 Bad Request)
+   * @return the key, or {@link Optional#empty()} if {@code idempotencyKey} is null or idempotency
+   *     is disabled
+   * @throws IllegalArgumentException if the key is not a UUIDv7 (callers translate this into a 400
+   *     Bad Request)
    */
-  public Optional<String> validatedKey(@Nullable HttpHeaders httpHeaders) {
-    if (httpHeaders == null) {
+  public Optional<UUID> validatedKey(@Nullable UUID idempotencyKey) {
+    if (!isEnabled() || idempotencyKey == null) {
       return Optional.empty();
     }
-    return validatedKey(httpHeaders.getHeaderString(configuration.keyHeader()));
-  }
-
-  /**
-   * Validates a raw header value. UUIDv7 is required so that the key has enough entropy to be a
-   * meaningful idempotency boundary.
-   */
-  public Optional<String> validatedKey(@Nullable String headerValue) {
-    if (!isEnabled() || headerValue == null) {
-      return Optional.empty();
-    }
-    String trimmed = headerValue.trim();
-    if (trimmed.isEmpty()) {
-      return Optional.empty();
-    }
-    if (!UUID_V7_PATTERN.matcher(trimmed).matches()) {
+    // RFC 9562 UUIDv7: version 7 with the RFC 4122/9562 variant (2).
+    if (idempotencyKey.version() != 7 || idempotencyKey.variant() != 2) {
       throw new IllegalArgumentException(
-          "Idempotency-Key must be a UUIDv7; got: " + summarizeKey(trimmed));
+          "Idempotency-Key must be a UUIDv7; got: " + idempotencyKey);
     }
-    try {
-      UUID.fromString(trimmed);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Idempotency-Key must be a valid UUID");
-    }
-    return Optional.of(trimmed.toLowerCase(Locale.ROOT));
+    return Optional.of(idempotencyKey);
   }
 
   /**
@@ -161,64 +146,112 @@ public class IdempotencyHandlerSupport {
   }
 
   /**
-   * Pre-flight: look up an existing record for {@code (realm, key)} and dispatch the handler.
+   * Pre-flight: decide whether idempotency applies to this request and, if so, look up an existing
+   * record for {@code (realm, key)}.
    *
-   * <p>If an existing record is found, the binding is validated against the current request and a
-   * mismatch raises {@link IdempotencyConflictException} (mapped to HTTP 422). If the binding
-   * matches, the existing record is returned as a {@link Outcome.Duplicate} so the handler can
-   * rebuild the response from current catalog state.
+   * <p>All of the work lives here: if idempotency is disabled or no key was supplied, this returns
+   * {@link IdempotencyOutcome.Disabled} and the handler runs its plain path. Otherwise the
+   * principal/resource hashes are computed from the raw inputs and the store is consulted:
    *
-   * <p>If no record exists, this returns {@link Outcome.Owned}; the handler should perform the
-   * operation and then call {@link #recordOutcome(IdempotentOperation, String, String, String, int,
-   * String)} to commit a record.
+   * <ul>
+   *   <li>No record → {@link IdempotencyOutcome.Owned} (carrying the computed binding); the handler
+   *       performs the operation and then calls {@link #recordOutcome}.
+   *   <li>Matching record → {@link IdempotencyOutcome.Duplicate}; the handler rebuilds the response
+   *       from current catalog state.
+   *   <li>Record with a different binding → {@link IdempotencyConflictException} (mapped to 422).
+   * </ul>
+   *
+   * @param idempotencyKey the validated key, or {@link Optional#empty()} when absent/disabled
+   * @param principal the calling principal (hashed into the binding)
+   * @param operation the idempotent operation being attempted
+   * @param resourceComponents the stable resource-identity components (e.g. namespace, name,
+   *     resolved access-delegation mode)
    */
-  public Outcome preflight(
-      String idempotencyKey,
+  public IdempotencyOutcome preflight(
+      Optional<UUID> idempotencyKey,
+      PolarisPrincipal principal,
       IdempotentOperation operation,
-      String resourceHash,
-      String principalHash) {
-    Optional<IdempotencyRecord> existing = store().load(idempotencyKey);
-    if (existing.isEmpty()) {
-      return Outcome.owned();
+      String... resourceComponents) {
+    if (!isEnabled() || idempotencyKey.isEmpty()) {
+      return IdempotencyOutcome.disabled();
     }
-    return matchOrConflict(existing.get(), operation, resourceHash, principalHash);
+    IdempotencyOutcome.Owned owned =
+        IdempotencyOutcome.owned(
+            idempotencyKey.get(),
+            operation,
+            resourceHash(operation, resourceComponents),
+            principalHash(principal));
+    return lookup(owned);
   }
 
   /**
-   * Records the terminal outcome of an operation that just completed.
+   * Records the terminal outcome of an operation that just completed, using the binding carried by
+   * the {@link IdempotencyOutcome.Owned} returned from {@link #preflight}.
    *
    * <p>The insert is atomic on {@code (realm, key)}; if another caller raced ahead and inserted
-   * first, the returned {@link Outcome} carries that existing record so the handler can rebuild an
-   * equivalent response from current state.
+   * first, this returns {@link IdempotencyOutcome.Duplicate} carrying that existing record so the
+   * handler can rebuild an equivalent response from current state. Otherwise the same {@code owned}
+   * outcome is returned to signal a clean win.
    */
-  public Outcome recordOutcome(
-      String idempotencyKey,
-      IdempotentOperation operation,
-      String resourceHash,
-      String principalHash,
-      int httpStatus,
-      @Nullable String metadataLocation) {
+  public IdempotencyOutcome recordOutcome(
+      IdempotencyOutcome.Owned owned, int httpStatus, @Nullable String metadataLocation) {
     Instant now = clock.instant();
     Instant expiresAt = now.plus(configuration.ttl());
     IdempotencyStore.RecordResult result =
         store()
             .recordIfAbsent(
-                idempotencyKey,
-                operation.wireName(),
-                resourceHash,
-                principalHash,
+                owned.idempotencyKey(),
+                owned.operation().wireName(),
+                owned.resourceHash(),
+                owned.principalHash(),
                 httpStatus,
                 metadataLocation,
                 now,
                 expiresAt);
     if (result.type() == IdempotencyStore.RecordResultType.OWNED) {
-      return Outcome.owned();
+      return owned;
     }
     IdempotencyRecord existing =
         result
             .existing()
             .orElseThrow(() -> new IllegalStateException("DUPLICATE result without record"));
-    return matchOrConflict(existing, operation, resourceHash, principalHash);
+    return matchOrConflict(existing, owned);
+  }
+
+  /**
+   * After a concurrent {@code createTable} loses the catalog race (AlreadyExistsException), checks
+   * whether the race winner recorded a matching idempotency outcome so this caller can replay it.
+   *
+   * <p>The winner records its outcome only after committing the table, so a loser may observe the
+   * conflict slightly before the record is visible; this polls a bounded number of times. A binding
+   * mismatch surfaces as {@link IdempotencyConflictException} (mapped to 422). Returns empty if no
+   * matching record appears, meaning the conflict was a genuine pre-existing table rather than a
+   * same-key retry.
+   */
+  public Optional<IdempotencyRecord> resolveConcurrentDuplicate(IdempotencyOutcome.Owned owned) {
+    long backoffMillis = CONCURRENT_REPLAY_INITIAL_BACKOFF_MILLIS;
+    for (int attempt = 0; attempt < CONCURRENT_REPLAY_MAX_ATTEMPTS; attempt++) {
+      if (lookup(owned) instanceof IdempotencyOutcome.Duplicate dup) {
+        return Optional.of(dup.existing());
+      }
+      try {
+        Thread.sleep(backoffMillis);
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+      backoffMillis *= 2;
+    }
+    return Optional.empty();
+  }
+
+  /** Single store lookup: returns {@code owned} if no record exists, else matches or conflicts. */
+  private IdempotencyOutcome lookup(IdempotencyOutcome.Owned owned) {
+    Optional<IdempotencyRecord> existing = store().load(owned.idempotencyKey());
+    if (existing.isEmpty()) {
+      return owned;
+    }
+    return matchOrConflict(existing.get(), owned);
   }
 
   /**
@@ -233,47 +266,15 @@ public class IdempotencyHandlerSupport {
     return store;
   }
 
-  private static Outcome matchOrConflict(
-      IdempotencyRecord existing,
-      IdempotentOperation expectedOperation,
-      String expectedResourceHash,
-      String expectedPrincipalHash) {
-    if (!expectedPrincipalHash.equals(existing.principalHash())
-        || !expectedResourceHash.equals(existing.resourceHash())
-        || !expectedOperation.wireName().equals(existing.operationType())) {
+  private static IdempotencyOutcome matchOrConflict(
+      IdempotencyRecord existing, IdempotencyOutcome.Owned expected) {
+    if (!expected.principalHash().equals(existing.principalHash())
+        || !expected.resourceHash().equals(existing.resourceHash())
+        || !expected.operation().wireName().equals(existing.operationType())) {
       throw new IdempotencyConflictException(
           "Idempotency-Key already used with a different binding (caller, operation, or resource)");
     }
-    return Outcome.duplicate(existing);
-  }
-
-  private static String summarizeKey(String key) {
-    if (key.length() <= 8) {
-      return key;
-    }
-    return key.substring(0, 4) + "..." + key.substring(key.length() - 4);
-  }
-
-  /** Result of {@link #preflight} and {@link #recordOutcome}. */
-  public sealed interface Outcome permits Outcome.Owned, Outcome.Duplicate {
-
-    static Outcome owned() {
-      return Owned.INSTANCE;
-    }
-
-    static Outcome duplicate(IdempotencyRecord existing) {
-      return new Duplicate(existing);
-    }
-
-    /** This caller may proceed with the operation (no prior record found, or insert succeeded). */
-    final class Owned implements Outcome {
-      private static final Owned INSTANCE = new Owned();
-
-      private Owned() {}
-    }
-
-    /** Another caller already recorded an outcome for this key. Handler must rebuild a response. */
-    record Duplicate(IdempotencyRecord existing) implements Outcome {}
+    return IdempotencyOutcome.duplicate(existing);
   }
 
   /** Minimal {@link IdempotencyConfiguration} returning {@code enabled=false}; used by tests. */
@@ -288,11 +289,6 @@ public class IdempotencyHandlerSupport {
     @Override
     public String type() {
       return "in-memory";
-    }
-
-    @Override
-    public String keyHeader() {
-      return "Idempotency-Key";
     }
 
     @Override

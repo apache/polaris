@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
@@ -133,8 +134,8 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.idempotency.IdempotencyConflictException;
 import org.apache.polaris.service.idempotency.IdempotencyHandlerSupport;
+import org.apache.polaris.service.idempotency.IdempotencyOutcome;
 import org.apache.polaris.service.idempotency.IdempotentOperation;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -242,14 +243,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   private static final String SNAPSHOTS_ALL = "all";
   private static final String SNAPSHOTS_REFS = "refs";
 
-  // Bounded lookup for the idempotency record written by a concurrent create-table race winner,
-  // which records only after committing the table (so a loser may briefly not see it yet). Backoff
-  // is exponential: 5+10+20+40+80 = 155ms total budget across 5 attempts. If the winner's record is
-  // still not visible after that (e.g. a long GC pause or slow store write), the original 409
-  // surfaces instead of a replay — correct but not ideal; widen the budget if this proves too
-  // tight.
-  private static final int CONCURRENT_REPLAY_MAX_ATTEMPTS = 5;
-  private static final long CONCURRENT_REPLAY_INITIAL_BACKOFF_MILLIS = 5;
+  private static final Set<PolarisStorageActions> CREATE_TABLE_STORAGE_ACTIONS =
+      Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE, PolarisStorageActions.LIST);
 
   private CatalogEntity getResolvedCatalogEntity() {
     CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
@@ -514,38 +509,35 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       CreateTableRequest request,
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint,
-      Optional<String> idempotencyKey) {
+      Optional<UUID> idempotencyKey) {
 
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
 
-    // Idempotency is opt-in per request (key present) and per deployment (feature enabled). When
-    // off, the pre-flight / race-resolution / record steps below are simply skipped, leaving the
-    // plain create path. A binding mismatch surfaces as IdempotencyConflictException, which
-    // IcebergExceptionMapper maps to HTTP 422 — no inline translation needed.
-    boolean idempotent = idempotencyKey.isPresent() && idempotencySupport().isEnabled();
-    IdempotentOperation operation = IdempotentOperation.CREATE_TABLE;
-    String key = idempotencyKey.orElse(null);
-    String principalHash =
-        idempotent ? idempotencySupport().principalHash(polarisPrincipal()) : null;
-    String resourceHash =
-        idempotent
-            ? idempotencySupport()
-                .resourceHash(
-                    operation,
-                    namespace.toString(),
-                    request.name(),
-                    resolvedMode.map(Enum::name).orElse("none"))
-            : null;
-
-    // Pre-flight: replay a prior success for this key.
-    if (idempotent) {
-      IdempotencyHandlerSupport.Outcome preflight =
-          idempotencySupport().preflight(key, operation, resourceHash, principalHash);
-      if (preflight instanceof IdempotencyHandlerSupport.Outcome.Duplicate dup) {
-        return replayCreateTableDirect(
-            namespace, request, resolvedMode, refreshCredentialsEndpoint, dup.existing());
-      }
+    // Pre-flight owns the full idempotency decision: it returns Disabled when the feature is off or
+    // no key was supplied (plain create path), Duplicate to replay a prior success, or Owned to
+    // proceed. Authorization already ran above, so a replay reloads current catalog state (no
+    // response body is stored) and re-vends credentials for this caller;
+    // buildLoadTableResponseForExistingTable raises 422 if the table has advanced beyond the
+    // metadata location captured when the key was recorded. A binding mismatch surfaces as
+    // IdempotencyConflictException, which IcebergExceptionMapper maps to HTTP 422.
+    IdempotencyOutcome preflight =
+        idempotencySupport()
+            .preflight(
+                idempotencyKey,
+                polarisPrincipal(),
+                IdempotentOperation.CREATE_TABLE,
+                namespace.toString(),
+                request.name(),
+                resolvedMode.map(Enum::name).orElse("none"));
+    if (preflight instanceof IdempotencyOutcome.Duplicate dup) {
+      return buildLoadTableResponseForExistingTable(
+          tableIdentifier,
+          resolvedMode,
+          CREATE_TABLE_STORAGE_ACTIONS,
+          refreshCredentialsEndpoint,
+          dup.existing().metadataLocation());
     }
 
     // Run the operation. A concurrent request carrying the same key can win the catalog-level race
@@ -555,12 +547,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     try {
       response = doCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
     } catch (AlreadyExistsException e) {
-      if (idempotent) {
+      if (preflight instanceof IdempotencyOutcome.Owned owned) {
         Optional<IdempotencyRecord> raceWinner =
-            resolveConcurrentDuplicate(key, operation, resourceHash, principalHash);
+            idempotencySupport().resolveConcurrentDuplicate(owned);
         if (raceWinner.isPresent()) {
-          return replayCreateTableDirect(
-              namespace, request, resolvedMode, refreshCredentialsEndpoint, raceWinner.get());
+          return buildLoadTableResponseForExistingTable(
+              tableIdentifier,
+              resolvedMode,
+              CREATE_TABLE_STORAGE_ACTIONS,
+              refreshCredentialsEndpoint,
+              raceWinner.get().metadataLocation());
         }
       }
       // Not a same-key retry: the table genuinely pre-existed, so this is a real conflict.
@@ -568,52 +564,22 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     // Record the successful outcome. If a concurrent caller recorded first, replay theirs.
-    if (idempotent) {
+    if (preflight instanceof IdempotencyOutcome.Owned owned) {
       String metadataLocation = response.tableMetadata().metadataFileLocation();
-      IdempotencyHandlerSupport.Outcome recordOutcome =
-          idempotencySupport()
-              .recordOutcome(key, operation, resourceHash, principalHash, 200, metadataLocation);
-      if (recordOutcome instanceof IdempotencyHandlerSupport.Outcome.Duplicate dup) {
+      IdempotencyOutcome recordOutcome =
+          idempotencySupport().recordOutcome(owned, 200, metadataLocation);
+      if (recordOutcome instanceof IdempotencyOutcome.Duplicate dup) {
         // Another caller raced ahead and recorded first. Replay so the response is the same shape
         // (and credentials are freshly vended for this caller) as what the race winner returned.
-        return replayCreateTableDirect(
-            namespace, request, resolvedMode, refreshCredentialsEndpoint, dup.existing());
+        return buildLoadTableResponseForExistingTable(
+            tableIdentifier,
+            resolvedMode,
+            CREATE_TABLE_STORAGE_ACTIONS,
+            refreshCredentialsEndpoint,
+            dup.existing().metadataLocation());
       }
     }
     return response;
-  }
-
-  /**
-   * After a concurrent {@code createTable} loses the catalog race (AlreadyExistsException), checks
-   * whether the race winner recorded a matching idempotency outcome so this caller can replay it.
-   *
-   * <p>The winner records its outcome only after committing the table, so a loser may observe the
-   * conflict slightly before the record is visible; this retries the lookup a bounded number of
-   * times. A binding mismatch surfaces as {@link IdempotencyConflictException} (mapped to 422).
-   * Returns empty if no matching record appears, meaning the conflict was a genuine pre-existing
-   * table rather than a same-key retry.
-   */
-  private Optional<IdempotencyRecord> resolveConcurrentDuplicate(
-      String idempotencyKey,
-      IdempotentOperation operation,
-      String resourceHash,
-      String principalHash) {
-    long backoffMillis = CONCURRENT_REPLAY_INITIAL_BACKOFF_MILLIS;
-    for (int attempt = 0; attempt < CONCURRENT_REPLAY_MAX_ATTEMPTS; attempt++) {
-      IdempotencyHandlerSupport.Outcome outcome =
-          idempotencySupport().preflight(idempotencyKey, operation, resourceHash, principalHash);
-      if (outcome instanceof IdempotencyHandlerSupport.Outcome.Duplicate dup) {
-        return Optional.of(dup.existing());
-      }
-      try {
-        Thread.sleep(backoffMillis);
-      } catch (InterruptedException ie) {
-        Thread.currentThread().interrupt();
-        break;
-      }
-      backoffMillis *= 2;
-    }
-    return Optional.empty();
   }
 
   private LoadTableResponse doCreateTableDirect(
@@ -647,10 +613,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               tableIdentifier,
               tableMetadata,
               resolvedMode,
-              Set.of(
-                  PolarisStorageActions.READ,
-                  PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST),
+              CREATE_TABLE_STORAGE_ACTIONS,
               refreshCredentialsEndpoint)
           .build();
     } else if (table instanceof BaseMetadataTable) {
@@ -663,43 +626,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   /**
-   * Replay path for an idempotent {@code createTableDirect}: load the existing table and rebuild a
-   * response with freshly-vended credentials for the current caller. No credentials from the
-   * original call are stored or returned.
-   *
-   * <p>Authorization is not repeated here: {@link #authorizeCreateTableDirect} already ran for the
-   * current caller in {@link #createTableDirect} before the idempotency lookup, and the duplicate
-   * was matched on the same {@code principalHash} and request binding.
-   *
-   * <p>The replay reflects <em>current</em> catalog state rather than the original response bytes
-   * (no response body is stored). To avoid silently returning a materially different table, if the
-   * table has advanced beyond the metadata location captured when the key was recorded, this raises
-   * 422 instead of returning divergent state.
-   */
-  private LoadTableResponse replayCreateTableDirect(
-      Namespace namespace,
-      CreateTableRequest request,
-      Optional<AccessDelegationMode> resolvedMode,
-      Optional<String> refreshCredentialsEndpoint,
-      IdempotencyRecord existing) {
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
-    // If the original create succeeded but the table is no longer there (manual drop, retention,
-    // etc.), loadTable raises NoSuchTableException, surfacing the same not-found the client would
-    // get from a regular load. The recorded metadata location is passed so the load fails with 422
-    // if the table has advanced beyond the originally-created state.
-    return buildLoadTableResponseForExistingTable(
-        tableIdentifier,
-        resolvedMode,
-        Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE, PolarisStorageActions.LIST),
-        refreshCredentialsEndpoint,
-        existing.metadataLocation());
-  }
-
-  /**
    * Loads {@code tableIdentifier} from the base catalog and builds a {@link LoadTableResponse} with
    * freshly-vended delegation credentials. Shared by the regular {@link #loadTable} path and the
    * idempotent {@code createTable} replay path; it performs no authorization itself (callers
-   * authorize first).
+   * authorize first). If the table no longer exists, {@code loadTable} raises {@code
+   * NoSuchTableException}, surfacing the same not-found a regular load would.
    *
    * <p>When {@code expectedMetadataLocation} is non-null, the load fails with 422 if the table's
    * current metadata location has advanced past it — used by idempotent replay to avoid returning a

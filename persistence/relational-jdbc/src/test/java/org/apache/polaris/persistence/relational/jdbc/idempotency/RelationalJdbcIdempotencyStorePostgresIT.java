@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
@@ -103,7 +104,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Test
   void recordFirstWinnerAndDuplicate() {
-    String key = "K1";
+    UUID key = UUID.randomUUID();
     String op = "create-table";
     String rid = "catalogs/1/tables/ns.tbl";
     String principalHash = "principal-hash-A";
@@ -131,7 +132,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Test
   void loadReturnsRecordedEntry() {
-    String key = "K2";
+    UUID key = UUID.randomUUID();
     String op = "create-table";
     String rid = "catalogs/1/tables/ns.tbl2";
     Instant now = Instant.now();
@@ -149,7 +150,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Test
   void purgeExpired() {
-    String key = "K3";
+    UUID key = UUID.randomUUID();
     String op = "drop-table";
     String rid = "catalogs/1/tables/ns.tbl3";
     Instant now = Instant.now();
@@ -162,7 +163,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Test
   void duplicateAcrossDifferentPrincipalsReturnsOriginal() {
-    String key = "K4";
+    UUID key = UUID.randomUUID();
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 

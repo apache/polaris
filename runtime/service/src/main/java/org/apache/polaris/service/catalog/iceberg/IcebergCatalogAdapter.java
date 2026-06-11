@@ -99,21 +99,6 @@ public class IcebergCatalogAdapter
   }
 
   /**
-   * Validates the {@code Idempotency-Key} parameter auto-bound from the request header by the
-   * OpenAPI-generated stub. Returns the normalised key string when present and idempotency is
-   * enabled; otherwise {@link Optional#empty()}.
-   *
-   * <p>If the header is present but not a valid UUIDv7, validation throws {@link
-   * IllegalArgumentException}, which {@code IcebergExceptionMapper} maps to HTTP 400.
-   */
-  private Optional<String> validatedIdempotencyKey(UUID idempotencyKey) {
-    if (idempotencyKey == null) {
-      return Optional.empty();
-    }
-    return idempotencySupport.validatedKey(idempotencyKey.toString());
-  }
-
-  /**
    * Execute operations on a catalog wrapper and ensure we close the BaseCatalog afterward. This
    * will typically ensure the underlying FileIO is closed.
    */
@@ -321,7 +306,7 @@ public class IcebergCatalogAdapter
                     createTableRequest,
                     delegationModes,
                     refreshCredentialsEndpoint,
-                    validatedIdempotencyKey(idempotencyKey));
+                    idempotencySupport.validatedKey(idempotencyKey));
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();

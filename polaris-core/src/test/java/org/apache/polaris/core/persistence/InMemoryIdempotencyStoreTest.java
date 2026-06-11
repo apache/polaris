@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,12 @@ class InMemoryIdempotencyStoreTest {
   private static final String OP = "create-table";
   private static final String RID = "catalogs/c1/tables/ns.t1";
   private static final String PH = "ph-A";
+  private static final UUID K1 = UUID.randomUUID();
+  private static final UUID K2 = UUID.randomUUID();
+  private static final UUID K3 = UUID.randomUUID();
+  private static final UUID EXPIRED = UUID.randomUUID();
+  private static final UUID LIVE = UUID.randomUUID();
+  private static final UUID OTHER_REALM_KEY = UUID.randomUUID();
 
   private InMemoryIdempotencyStore store;
 
@@ -47,12 +54,12 @@ class InMemoryIdempotencyStoreTest {
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     IdempotencyStore.RecordResult first =
-        store.recordIfAbsent("k1", OP, RID, PH, 200, null, now, exp);
+        store.recordIfAbsent(K1, OP, RID, PH, 200, null, now, exp);
     assertThat(first.type()).isEqualTo(IdempotencyStore.RecordResultType.OWNED);
     assertThat(first.existing()).isEmpty();
 
     IdempotencyStore.RecordResult second =
-        store.recordIfAbsent("k1", OP, RID, "ph-other", 200, null, now, exp);
+        store.recordIfAbsent(K1, OP, RID, "ph-other", 200, null, now, exp);
     assertThat(second.type()).isEqualTo(IdempotencyStore.RecordResultType.DUPLICATE);
     assertThat(second.existing()).isPresent();
     // First-writer-wins: the stored record reflects the original caller's binding.
@@ -63,13 +70,13 @@ class InMemoryIdempotencyStoreTest {
   void load_returnsRecordAfterRecord() {
     Instant now = Instant.parse("2025-01-01T00:00:00Z");
     Instant exp = now.plus(Duration.ofMinutes(5));
-    store.recordIfAbsent("k2", OP, RID, PH, 201, null, now, exp);
+    store.recordIfAbsent(K2, OP, RID, PH, 201, null, now, exp);
 
-    Optional<IdempotencyRecord> loaded = store.load("k2");
+    Optional<IdempotencyRecord> loaded = store.load(K2);
     assertThat(loaded).isPresent();
     IdempotencyRecord r = loaded.get();
     assertThat(r.realmId()).isEqualTo(REALM);
-    assertThat(r.idempotencyKey()).isEqualTo("k2");
+    assertThat(r.idempotencyKey()).isEqualTo(K2);
     assertThat(r.operationType()).isEqualTo(OP);
     assertThat(r.resourceHash()).isEqualTo(RID);
     assertThat(r.principalHash()).isEqualTo(PH);
@@ -83,11 +90,11 @@ class InMemoryIdempotencyStoreTest {
   void load_isScopedByRealmInstance() {
     Instant now = Instant.parse("2025-01-01T00:00:00Z");
     Instant exp = now.plus(Duration.ofMinutes(5));
-    store.recordIfAbsent("k3", OP, RID, PH, 200, null, now, exp);
+    store.recordIfAbsent(K3, OP, RID, PH, 200, null, now, exp);
 
     InMemoryIdempotencyStore otherRealm = new InMemoryIdempotencyStore("realm-B");
-    assertThat(otherRealm.load("k3")).isEmpty();
-    assertThat(store.load("k3")).isPresent();
+    assertThat(otherRealm.load(K3)).isEmpty();
+    assertThat(store.load(K3)).isPresent();
   }
 
   @Test
@@ -96,16 +103,16 @@ class InMemoryIdempotencyStoreTest {
     Instant past = now.minus(Duration.ofMinutes(1));
     Instant future = now.plus(Duration.ofMinutes(5));
 
-    store.recordIfAbsent("expired", OP, RID, PH, 200, null, now, past);
-    store.recordIfAbsent("live", OP, RID, PH, 200, null, now, future);
+    store.recordIfAbsent(EXPIRED, OP, RID, PH, 200, null, now, past);
+    store.recordIfAbsent(LIVE, OP, RID, PH, 200, null, now, future);
     InMemoryIdempotencyStore otherRealm = new InMemoryIdempotencyStore("realm-B");
-    otherRealm.recordIfAbsent("expired-other-realm", OP, RID, PH, 200, null, now, past);
+    otherRealm.recordIfAbsent(OTHER_REALM_KEY, OP, RID, PH, 200, null, now, past);
 
     int purged = store.purgeExpired(now);
     assertThat(purged).isEqualTo(1);
-    assertThat(store.load("expired")).isEmpty();
-    assertThat(store.load("live")).isPresent();
+    assertThat(store.load(EXPIRED)).isEmpty();
+    assertThat(store.load(LIVE)).isPresent();
     // Another realm's store is a separate instance and is untouched by this purge.
-    assertThat(otherRealm.load("expired-other-realm")).isPresent();
+    assertThat(otherRealm.load(OTHER_REALM_KEY)).isPresent();
   }
 }

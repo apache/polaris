@@ -19,6 +19,7 @@ package org.apache.polaris.core.persistence;
 import com.google.common.annotations.Beta;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 
 /**
@@ -29,8 +30,8 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  * transitions:
  *
  * <ul>
- *   <li>{@link #load(String)} to detect a duplicate request before doing any work;
- *   <li>{@link #recordIfAbsent(String, String, String, String, int, String, Instant, Instant)} to
+ *   <li>{@link #load(UUID)} to detect a duplicate request before doing any work;
+ *   <li>{@link #recordIfAbsent(UUID, String, String, String, int, String, Instant, Instant)} to
  *       atomically insert the record after the operation has finalized, returning {@link
  *       RecordResult#OWNED} when the caller wins the race and {@link RecordResult#DUPLICATE} (with
  *       the existing record) when another caller raced ahead.
@@ -59,9 +60,9 @@ public interface IdempotencyStore {
   }
 
   /**
-   * Result of {@link #recordIfAbsent(String, String, String, String, int, String, Instant,
-   * Instant)}, including the outcome and, when {@link RecordResultType#DUPLICATE}, the existing
-   * record so the caller can compare bindings without an extra round-trip.
+   * Result of {@link #recordIfAbsent(UUID, String, String, String, int, String, Instant, Instant)},
+   * including the outcome and, when {@link RecordResultType#DUPLICATE}, the existing record so the
+   * caller can compare bindings without an extra round-trip.
    *
    * <p>Invariant: when {@link #type()} is {@link RecordResultType#DUPLICATE}, {@link #existing()}
    * is always present. Implementations that cannot reload the conflicting record must raise an
@@ -72,9 +73,9 @@ public interface IdempotencyStore {
   /**
    * Loads an existing record for the given key in this store's realm, if present.
    *
-   * @param idempotencyKey application-provided idempotency key
+   * @param idempotencyKey application-provided idempotency key (a UUIDv7)
    */
-  Optional<IdempotencyRecord> load(String idempotencyKey);
+  Optional<IdempotencyRecord> load(UUID idempotencyKey);
 
   /**
    * Atomically inserts an idempotency record if no record exists yet for {@code idempotencyKey} in
@@ -83,7 +84,7 @@ public interface IdempotencyStore {
    * <p>This is the only "write" path in the SPI. It is invoked after the originating operation has
    * succeeded, so {@code httpStatus} is always set.
    *
-   * @param idempotencyKey application-provided idempotency key
+   * @param idempotencyKey application-provided idempotency key (a UUIDv7)
    * @param operationType logical operation name (e.g. {@code "create-table"})
    * @param resourceHash opaque hash of the request-derived resource binding (not a human-readable
    *     identifier, and not the request payload); persisted so replay can detect reuse of the same
@@ -98,7 +99,7 @@ public interface IdempotencyStore {
    * @param expiresAt timestamp after which the record is eligible for purging
    */
   RecordResult recordIfAbsent(
-      String idempotencyKey,
+      UUID idempotencyKey,
       String operationType,
       String resourceHash,
       String principalHash,

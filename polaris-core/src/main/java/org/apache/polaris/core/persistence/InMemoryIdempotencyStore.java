@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.polaris.core.entity.IdempotencyRecord;
@@ -35,20 +36,20 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
 public final class InMemoryIdempotencyStore implements IdempotencyStore {
 
   private final String realmId;
-  private final ConcurrentMap<String, IdempotencyRecord> records = new ConcurrentHashMap<>();
+  private final ConcurrentMap<UUID, IdempotencyRecord> records = new ConcurrentHashMap<>();
 
   public InMemoryIdempotencyStore(String realmId) {
     this.realmId = realmId;
   }
 
   @Override
-  public Optional<IdempotencyRecord> load(String idempotencyKey) {
+  public Optional<IdempotencyRecord> load(UUID idempotencyKey) {
     return Optional.ofNullable(records.get(idempotencyKey));
   }
 
   @Override
   public RecordResult recordIfAbsent(
-      String idempotencyKey,
+      UUID idempotencyKey,
       String operationType,
       String resourceHash,
       String principalHash,
@@ -77,9 +78,9 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
   @Override
   public int purgeExpired(Instant before) {
     int purged = 0;
-    for (Iterator<Map.Entry<String, IdempotencyRecord>> it = records.entrySet().iterator();
+    for (Iterator<Map.Entry<UUID, IdempotencyRecord>> it = records.entrySet().iterator();
         it.hasNext(); ) {
-      Map.Entry<String, IdempotencyRecord> entry = it.next();
+      Map.Entry<UUID, IdempotencyRecord> entry = it.next();
       Instant expires = entry.getValue().expiresAt();
       if (expires != null && expires.isBefore(before)) {
         it.remove();

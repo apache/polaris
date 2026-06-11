@@ -17,6 +17,7 @@
 package org.apache.polaris.core.entity;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Immutable snapshot of a recorded idempotency outcome.
@@ -33,7 +34,7 @@ import java.time.Instant;
  * resource/principal.
  *
  * @param realmId Logical tenant / realm identifier.
- * @param idempotencyKey Client-provided idempotency key.
+ * @param idempotencyKey Client-provided idempotency key (a UUIDv7).
  * @param operationType Logical operation type (e.g. {@code "create-table"}).
  * @param resourceHash Opaque hash of the request-derived resource binding (e.g. namespace, name and
  *     access-delegation modes). Not a human-readable identifier, and intentionally does not include
@@ -50,7 +51,7 @@ import java.time.Instant;
  */
 public record IdempotencyRecord(
     String realmId,
-    String idempotencyKey,
+    UUID idempotencyKey,
     String operationType,
     String resourceHash,
     String principalHash,

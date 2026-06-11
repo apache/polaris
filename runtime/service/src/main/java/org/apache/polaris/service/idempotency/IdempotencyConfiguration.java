@@ -54,10 +54,6 @@ public interface IdempotencyConfiguration {
   @WithDefault("in-memory")
   String type();
 
-  /** Request header name containing the client-provided idempotency key. */
-  @WithDefault("Idempotency-Key")
-  String keyHeader();
-
   /**
    * TTL for newly recorded idempotency keys. After this duration the record is eligible for purge
    * by the background maintenance task.

@@ -25,10 +25,10 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.InMemoryIdempotencyStoreFactory;
@@ -41,6 +41,11 @@ class IdempotencyHandlerSupportTest {
   private static final IdempotentOperation OP = IdempotentOperation.CREATE_TABLE;
   private static final String RID = "catalogs/c1/tables/ns.t1";
   private static final String UUID_V7 = "0190f7f4-21d9-7e8b-9c8a-3c4f0a3e8b21";
+  private static final UUID KEY = UUID.fromString(UUID_V7);
+  private static final PolarisPrincipal PRINCIPAL =
+      PolarisPrincipal.of("alice", Map.of(), Set.of("r1"));
+  private static final PolarisPrincipal OTHER_PRINCIPAL =
+      PolarisPrincipal.of("bob", Map.of(), Set.of("r1"));
 
   private IdempotencyHandlerSupport support;
   private RealmContext realmContext;
@@ -57,11 +62,6 @@ class IdempotencyHandlerSupportTest {
           @Override
           public String type() {
             return "in-memory";
-          }
-
-          @Override
-          public String keyHeader() {
-            return "Idempotency-Key";
           }
 
           @Override
@@ -88,31 +88,30 @@ class IdempotencyHandlerSupportTest {
   }
 
   @Test
-  void validatedKey_acceptsUuidV7AndLowercasesIt() {
-    Optional<String> v = support.validatedKey(UUID_V7.toUpperCase(Locale.ROOT));
-    assertThat(v).contains(UUID_V7);
+  void validatedKey_acceptsUuidV7() {
+    Optional<UUID> v = support.validatedKey(KEY);
+    assertThat(v).contains(KEY);
   }
 
   @Test
   void validatedKey_rejectsNonUuidV7() {
     // UUIDv4 has version nibble 4, not 7.
-    String uuidV4 = "00000000-0000-4000-8000-000000000000";
+    UUID uuidV4 = UUID.fromString("00000000-0000-4000-8000-000000000000");
     assertThatThrownBy(() -> support.validatedKey(uuidV4))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("UUIDv7");
   }
 
   @Test
-  void validatedKey_emptyOrNullReturnsEmpty() {
-    assertThat(support.validatedKey((String) null)).isEmpty();
-    assertThat(support.validatedKey("   ")).isEmpty();
+  void validatedKey_nullReturnsEmpty() {
+    assertThat(support.validatedKey((UUID) null)).isEmpty();
   }
 
   @Test
   void validatedKey_returnsEmptyWhenDisabled() {
     IdempotencyHandlerSupport disabled = IdempotencyHandlerSupport.disabled();
     assertThat(disabled.isEnabled()).isFalse();
-    assertThat(disabled.validatedKey(UUID_V7)).isEmpty();
+    assertThat(disabled.validatedKey(KEY)).isEmpty();
   }
 
   @Test
@@ -143,47 +142,66 @@ class IdempotencyHandlerSupportTest {
   }
 
   @Test
+  void preflight_disabledWhenKeyAbsent() {
+    assertThat(support.preflight(Optional.empty(), PRINCIPAL, OP, RID))
+        .isInstanceOf(IdempotencyOutcome.Disabled.class);
+  }
+
+  @Test
+  void preflight_disabledWhenFeatureDisabled() {
+    IdempotencyHandlerSupport disabled = IdempotencyHandlerSupport.disabled();
+    assertThat(disabled.preflight(Optional.of(KEY), PRINCIPAL, OP, RID))
+        .isInstanceOf(IdempotencyOutcome.Disabled.class);
+  }
+
+  @Test
   void preflight_emptyStoreReturnsOwned() {
-    IdempotencyHandlerSupport.Outcome o = support.preflight(UUID_V7, OP, RID, "ph-A");
-    assertThat(o).isInstanceOf(IdempotencyHandlerSupport.Outcome.Owned.class);
+    IdempotencyOutcome o = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
+    assertThat(o).isInstanceOf(IdempotencyOutcome.Owned.class);
   }
 
   @Test
   void preflight_existingMatchingRecordReturnsDuplicate() {
-    support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
-    IdempotencyHandlerSupport.Outcome o = support.preflight(UUID_V7, OP, RID, "ph-A");
-    assertThat(o).isInstanceOf(IdempotencyHandlerSupport.Outcome.Duplicate.class);
+    IdempotencyOutcome first = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
+    support.recordOutcome((IdempotencyOutcome.Owned) first, 200, null);
+    IdempotencyOutcome o = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
+    assertThat(o).isInstanceOf(IdempotencyOutcome.Duplicate.class);
   }
 
   @Test
   void preflight_differentPrincipalRaisesConflict() {
-    support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
-    assertThatThrownBy(() -> support.preflight(UUID_V7, OP, RID, "ph-OTHER"))
+    IdempotencyOutcome first = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
+    support.recordOutcome((IdempotencyOutcome.Owned) first, 200, null);
+    assertThatThrownBy(() -> support.preflight(Optional.of(KEY), OTHER_PRINCIPAL, OP, RID))
         .isInstanceOf(IdempotencyConflictException.class);
   }
 
   @Test
   void preflight_differentResourceRaisesConflict() {
-    support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
-    assertThatThrownBy(() -> support.preflight(UUID_V7, OP, "catalogs/c1/tables/ns.other", "ph-A"))
+    IdempotencyOutcome first = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
+    support.recordOutcome((IdempotencyOutcome.Owned) first, 200, null);
+    assertThatThrownBy(
+            () -> support.preflight(Optional.of(KEY), PRINCIPAL, OP, "catalogs/c1/tables/ns.other"))
         .isInstanceOf(IdempotencyConflictException.class);
   }
 
   @Test
   void recordOutcome_secondCallWithSameBindingReturnsDuplicate() {
-    IdempotencyHandlerSupport.Outcome first =
-        support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
-    assertThat(first).isInstanceOf(IdempotencyHandlerSupport.Outcome.Owned.class);
+    IdempotencyOutcome.Owned owned = IdempotencyOutcome.owned(KEY, OP, "rh", "ph-A");
+    IdempotencyOutcome first = support.recordOutcome(owned, 200, null);
+    assertThat(first).isInstanceOf(IdempotencyOutcome.Owned.class);
 
-    IdempotencyHandlerSupport.Outcome second =
-        support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
-    assertThat(second).isInstanceOf(IdempotencyHandlerSupport.Outcome.Duplicate.class);
+    IdempotencyOutcome second = support.recordOutcome(owned, 200, null);
+    assertThat(second).isInstanceOf(IdempotencyOutcome.Duplicate.class);
   }
 
   @Test
   void recordOutcome_raceWithDifferentPrincipalRaisesConflict() {
-    support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
-    assertThatThrownBy(() -> support.recordOutcome(UUID_V7, OP, RID, "ph-OTHER", 200, null))
+    support.recordOutcome(IdempotencyOutcome.owned(KEY, OP, "rh", "ph-A"), 200, null);
+    assertThatThrownBy(
+            () ->
+                support.recordOutcome(
+                    IdempotencyOutcome.owned(KEY, OP, "rh", "ph-OTHER"), 200, null))
         .isInstanceOf(IdempotencyConflictException.class);
   }
 }

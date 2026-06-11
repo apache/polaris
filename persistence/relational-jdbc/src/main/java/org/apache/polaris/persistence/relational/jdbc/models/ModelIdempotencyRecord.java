@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.jspecify.annotations.Nullable;
@@ -91,7 +92,7 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
    * call context (so callers can project only {@link #ALL_COLUMNS}).
    */
   static IdempotencyRecord fromRow(String realmId, ResultSet rs) throws SQLException {
-    String idempotencyKey = rs.getString(IDEMPOTENCY_KEY);
+    UUID idempotencyKey = UUID.fromString(rs.getString(IDEMPOTENCY_KEY));
     String operationType = rs.getString(OPERATION_TYPE);
     String resourceHash = rs.getString(RESOURCE_HASH);
     String principalHash = rs.getString(PRINCIPAL_HASH);

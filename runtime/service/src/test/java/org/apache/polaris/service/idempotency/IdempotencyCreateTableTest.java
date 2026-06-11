@@ -277,11 +277,6 @@ public class IdempotencyCreateTableTest {
           }
 
           @Override
-          public String keyHeader() {
-            return "Idempotency-Key";
-          }
-
-          @Override
           public Duration ttl() {
             return Duration.ofMinutes(5);
           }
