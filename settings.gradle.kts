@@ -17,7 +17,9 @@
  * under the License.
  */
 
+import com.gradle.develocity.agent.gradle.scan.BuildScanPublishingConfiguration
 import java.util.Properties
+import org.gradle.api.specs.Spec
 
 includeBuild("build-logic") { name = "polaris-build-logic" }
 
@@ -148,6 +150,7 @@ gradle.beforeProject {
 }
 
 val isCI = System.getenv("CI") != null
+val isBuildScanRequested = gradle.startParameter.isBuildScan
 
 develocity {
   val isApachePolarisGitHub = "apache/polaris" == System.getenv("GITHUB_REPOSITORY")
@@ -162,13 +165,13 @@ develocity {
     projectId = "polaris"
     buildScan {
       uploadInBackground = !isCI
-      publishing.onlyIf { it.isAuthenticated }
+      publishing.onlyIf(AuthenticatedBuildScanPublishingSpec())
       obfuscation { ipAddresses { addresses -> addresses.map { _ -> "0.0.0.0" } } }
     }
   } else {
     // In all other cases, especially PR CI runs, use Gradle's public Develocity instance.
     var cfgPrjId: String? = System.getenv("DEVELOCITY_PROJECT_ID")
-    projectId = if (cfgPrjId == null || cfgPrjId.isEmpty()) "polaris" else cfgPrjId
+    projectId = if (cfgPrjId.isNullOrEmpty()) "polaris" else cfgPrjId
     buildScan {
       val isGradleTosAccepted = "true" == System.getenv("GRADLE_TOS_ACCEPTED")
       val isGitHubPullRequest = gitHubRef?.startsWith("refs/pull/") ?: false
@@ -186,13 +189,25 @@ develocity {
         System.getenv("GITHUB_SERVER_URL")?.run {
           val ghUrl = this
           val ghRepo = System.getenv("GITHUB_REPOSITORY")
-          val prNumber = gitHubRef!!.substringAfter("refs/pull/").substringBefore("/merge")
+          val prNumber = gitHubRef.substringAfter("refs/pull/").substringBefore("/merge")
           link("GitHub pull request", "$ghUrl/$ghRepo/pull/$prNumber")
         }
       }
       uploadInBackground = !isCI
-      publishing.onlyIf { isCI || gradle.startParameter.isBuildScan }
+      publishing.onlyIf(RequestedBuildScanPublishingSpec(isCI || isBuildScanRequested))
       obfuscation { ipAddresses { addresses -> addresses.map { _ -> "0.0.0.0" } } }
     }
   }
+}
+
+class AuthenticatedBuildScanPublishingSpec :
+  Spec<BuildScanPublishingConfiguration.PublishingContext> {
+  override fun isSatisfiedBy(context: BuildScanPublishingConfiguration.PublishingContext): Boolean =
+    context.isAuthenticated
+}
+
+class RequestedBuildScanPublishingSpec(private val enabled: Boolean) :
+  Spec<BuildScanPublishingConfiguration.PublishingContext> {
+  override fun isSatisfiedBy(context: BuildScanPublishingConfiguration.PublishingContext): Boolean =
+    enabled
 }
