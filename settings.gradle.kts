@@ -38,7 +38,16 @@ if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
 
 rootProject.name = "polaris"
 
-val baseVersion = file("version.txt").readText().trim()
+val baseVersion = layout.rootDirectory.file("version.txt").asFile.readText().trim()
+
+gradle.beforeProject {
+  version = baseVersion
+  group = "org.apache.polaris"
+
+  if (noSourceChecksProjects.contains(this.path)) {
+    project.extra["duplicated-project-sources"] = true
+  }
+}
 
 fun loadProperties(file: File): Properties {
   val props = Properties()
@@ -100,12 +109,6 @@ for (sparkVersion in sparkVersions) {
   }
 }
 
-gradle.beforeProject {
-  if (noSourceChecksProjects.contains(this.path)) {
-    project.extra["duplicated-project-sources"] = true
-  }
-}
-
 pluginManagement {
   repositories {
     mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
@@ -142,11 +145,6 @@ dependencyResolutionManagement {
     }
     gradlePluginPortal()
   }
-}
-
-gradle.beforeProject {
-  version = baseVersion
-  group = "org.apache.polaris"
 }
 
 val isCI = System.getenv("CI") != null
