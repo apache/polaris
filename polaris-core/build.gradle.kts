@@ -70,6 +70,9 @@ dependencies {
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
   implementation(libs.google.cloud.iamcredentials)
+  // Signs short-lived attribution JWTs for GCS principal attribution via Workload Identity
+  // Federation (see GcpFederatedCredentialsExchanger).
+  implementation(libs.auth0.jwt)
 
   testCompileOnly(project(":polaris-immutables"))
   testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))

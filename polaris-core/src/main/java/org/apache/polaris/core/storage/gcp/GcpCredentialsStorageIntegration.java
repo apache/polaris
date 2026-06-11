@@ -33,6 +33,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -46,6 +47,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -176,6 +178,14 @@ public class GcpCredentialsStorageIntegration
       @NonNull Set<String> writeLocations,
       @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
+    // Principal attribution makes the vended token per-principal, so the principal must
+    // participate in cache identity; otherwise it is left empty to preserve cross-principal cache
+    // reuse. Attribution requires a service account to impersonate and a principal to attribute.
+    String principalName = "";
+    if (principalAttributionConfigured(realmConfig())
+        && storageConfig().getGcpServiceAccount() != null) {
+      principalName = context.principalName().orElse("");
+    }
     return GcpStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         storageConfig(),
@@ -183,10 +193,27 @@ public class GcpCredentialsStorageIntegration
         listLocations,
         writeLocations,
         refreshEndpoint,
+        principalName,
         sourceCredentials,
         transportFactory,
         realmConfig(),
         credentialOps);
+  }
+
+  /**
+   * Returns true when GCS principal attribution is fully configured (WIF audience, token issuer,
+   * and signing key file all set). There is intentionally no separate on/off flag.
+   */
+  private static boolean principalAttributionConfigured(RealmConfig realmConfig) {
+    return !realmConfig
+            .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE)
+            .isEmpty()
+        && !realmConfig
+            .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER)
+            .isEmpty()
+        && !realmConfig
+            .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE)
+            .isEmpty();
   }
 
   /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
@@ -206,7 +233,7 @@ public class GcpCredentialsStorageIntegration
     }
 
     GoogleCredentials credentialsToDownscope =
-        getBaseCredentials(gcpStorageConfig, sourceCredentials, credentialOps);
+        baseCredentialsForVending(key, gcpStorageConfig, sourceCredentials, credentialOps);
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(readLocations, listLocations, writeLocations);
@@ -244,6 +271,42 @@ public class GcpCredentialsStorageIntegration
                 accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint));
 
     return accessConfig.build();
+  }
+
+  /**
+   * Returns the credential to be used as the source for downscoping.
+   *
+   * <p>When GCS principal attribution is configured and a principal is present (so the cache key
+   * carries it), the impersonation source is a federated identity whose subject is {@code
+   * <realm>/<principal>}, which surfaces the principal in {@code serviceAccountDelegationInfo} of
+   * GCS Data Access audit logs. Otherwise this is the standard path: impersonate the configured
+   * service account from the ambient source credentials, or use those credentials directly.
+   */
+  private static GoogleCredentials baseCredentialsForVending(
+      GcpStorageCredentialCacheKey key,
+      GcpStorageConfigurationInfo storageConfig,
+      GoogleCredentials sourceCredentials,
+      GcpCredentialOps credentialOps) {
+    RealmConfig realmConfig = key.realmConfig();
+    String serviceAccount = storageConfig.getGcpServiceAccount();
+    if (serviceAccount != null
+        && !key.principalName().isEmpty()
+        && principalAttributionConfigured(realmConfig)) {
+      String subject =
+          GcpAttributionSubjectBuilder.buildSubject(key.realmId(), key.principalName());
+      GcpFederatedCredentialsExchanger exchanger =
+          new GcpFederatedCredentialsExchanger(
+              realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER),
+              realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE),
+              Path.of(
+                  realmConfig.getConfig(
+                      FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE)),
+              realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID),
+              key.transportFactory());
+      GoogleCredentials federated = exchanger.federatedCredentials(subject, key.realmId());
+      return createImpersonatedCredentials(federated, serviceAccount, credentialOps);
+    }
+    return getBaseCredentials(storageConfig, sourceCredentials, credentialOps);
   }
 
   /**
