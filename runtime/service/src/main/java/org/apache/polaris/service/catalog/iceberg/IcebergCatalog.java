@@ -2400,8 +2400,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider.getStorageAccessConfig(
             identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
-    // Reload fileIO based on table specific context
-    FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, tableProperties);
+    // Catalog-level FileIO properties (e.g. s3.access-key-id / s3.secret-access-key for
+    // S3-compatible storage with stsUnavailable=true) form the base; the caller's
+    // tableProperties overlay on top, and DefaultFileIOFactory further overlays
+    // storageAccessConfig so STS-vended subscoped credentials always take precedence
+    // over static catalog credentials when STS is available.
+    Map<String, String> mergedProperties = new HashMap<>(catalogProperties);
+    mergedProperties.putAll(tableProperties);
+    FileIO fileIO =
+        fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, mergedProperties);
     // ensure the new fileIO is closed when the catalog is closed
     closeableGroup.addCloseable(fileIO);
     return fileIO;

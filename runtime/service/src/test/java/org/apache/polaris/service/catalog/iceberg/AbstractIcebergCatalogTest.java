@@ -177,6 +177,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import software.amazon.awssdk.core.exception.NonRetryableException;
@@ -1007,6 +1008,59 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Fake failure applying downscoped credentials");
+  }
+
+  @Test
+  public void testCatalogStaticS3CredentialsAreForwardedToFileIO() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    // Static S3 credentials set on the catalog (the stsUnavailable=true case for
+    // S3-compatible storage) must reach the server-side FileIO. Without this they
+    // would be dropped and S3FileIO would fall back to the AWS default credentials
+    // provider chain.
+    final String tableLocation = "s3://externally-owned-bucket/static_creds_table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+    FileIOFactory spiedFileIOFactory = spy(this.fileIOFactory);
+    IcebergCatalog catalog =
+        newIcebergCatalog(catalog().name(), metaStoreManager, spiedFileIOFactory);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL,
+            "org.apache.iceberg.inmemory.InMemoryFileIO",
+            "s3.access-key-id",
+            "static-access-key",
+            "s3.secret-access-key",
+            "static-secret-key"));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.VALIDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    Assertions.assertThat(catalog.sendNotification(table, request))
+        .as("VALIDATE notification should succeed")
+        .isTrue();
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> propsCaptor = ArgumentCaptor.forClass(Map.class);
+    Mockito.verify(spiedFileIOFactory).loadFileIO(any(), any(), propsCaptor.capture());
+    assertThat(propsCaptor.getValue())
+        .containsEntry("s3.access-key-id", "static-access-key")
+        .containsEntry("s3.secret-access-key", "static-secret-key");
   }
 
   @Test
