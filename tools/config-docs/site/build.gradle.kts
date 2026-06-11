@@ -66,14 +66,15 @@ val generatedMarkdownDocs = tasks.register<JavaExec>("generatedMarkdownDocs") {
 
   mainClass = "org.apache.polaris.docs.generator.ReferenceConfigDocsGenerator"
 
+  val genMdDocsDir= generatedMarkdownDocsDir.map { it.asFile.relativeTo(projectDir) }
   outputs.cacheIf { true }
-  outputs.dir(generatedMarkdownDocsDir)
-  inputs.files(doclet)
-  inputs.files(genProjects)
-  inputs.files(genSources)
+  outputs.dir(genMdDocsDir)
+  inputs.files(doclet).withNormalizer(ClasspathNormalizer::class.java)
+  inputs.files(genProjects).withNormalizer(ClasspathNormalizer::class.java)
+  inputs.files(genSources).withNormalizer(ClasspathNormalizer::class.java)
 
   doFirst {
-    delete(generatedMarkdownDocsDir)
+    delete(genMdDocsDir)
   }
 
   argumentProviders.add(CommandLineArgumentProvider {
@@ -93,7 +94,7 @@ val generatedMarkdownDocs = tasks.register<JavaExec>("generatedMarkdownDocs") {
             ?: a.variant.attributes.getAttribute(categoryAttributeAsString)
         category != null && category.toString() == Category.LIBRARY
       }
-      .map { a -> a.file }
+      .map { a -> a.file.relativeTo(projectDir) }
 
     val sources = genSources.incoming.artifacts
       .filter { a ->
@@ -110,12 +111,12 @@ val generatedMarkdownDocs = tasks.register<JavaExec>("generatedMarkdownDocs") {
           verificationType.name == VerificationType.MAIN_SOURCES &&
           a.file.name != "resources"
       }
-      .map { a -> a.file }
+      .map { a -> a.file.relativeTo(projectDir) }
 
     listOf(
       "--classpath", classes.joinToString(":"),
       "--sourcepath", sources.joinToString(":"),
-      "--destination", generatedMarkdownDocsDir.get().toString()
+      "--destination", genMdDocsDir.get().toString()
     ) + (if (logger.isInfoEnabled) listOf("--verbose") else listOf())
   })
 
