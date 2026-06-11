@@ -298,6 +298,15 @@ If true, the generic-tables endpoints are enabled
 
 ---
 
+##### `polaris.features."ENABLE_LINEAGE"`
+
+If true, lineage services are enabled
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENABLE_POLICY_STORE"`
 
 If true, the policy-store endpoints are enabled
