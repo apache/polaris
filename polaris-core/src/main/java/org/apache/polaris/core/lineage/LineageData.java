@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.lineage;
 
-import jakarta.annotation.Nullable;
 import java.util.Objects;
 import java.util.OptionalLong;
 
@@ -28,7 +27,7 @@ public record LineageData(
     OptionalLong datasetId,
     String namespace,
     String name,
-    @Nullable String subType,
+    String subType,
     OptionalLong createdAt,
     OptionalLong updatedAt) {
   public LineageData {
@@ -45,7 +44,7 @@ public record LineageData(
       long datasetId,
       String namespace,
       String name,
-      @Nullable String subType,
+      String subType,
       long createdAt,
       long updatedAt) {
     this(

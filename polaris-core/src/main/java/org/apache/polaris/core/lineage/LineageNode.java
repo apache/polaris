@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.lineage;
 
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 
@@ -26,7 +25,7 @@ import java.util.Objects;
 public record LineageNode(
     String id,
     LineageNodeType type,
-    @Nullable LineageData data,
+    LineageData data,
     boolean opaque,
     List<LineageFieldMapping> fieldMappings) {
   public LineageNode {
@@ -35,19 +34,18 @@ public record LineageNode(
     fieldMappings = List.copyOf(fieldMappings);
   }
 
-  public LineageNode(String id, LineageNodeType type, @Nullable LineageData data, boolean opaque) {
+  public LineageNode(String id, LineageNodeType type, LineageData data, boolean opaque) {
     this(id, type, data, opaque, List.of());
   }
 
-  public LineageNode(
-      String id, LineageNodeType type, @Nullable LineageDataset dataset, boolean opaque) {
+  public LineageNode(String id, LineageNodeType type, LineageDataset dataset, boolean opaque) {
     this(id, type, dataset == null ? null : new LineageData(dataset), opaque);
   }
 
   public LineageNode(
       String id,
       LineageNodeType type,
-      @Nullable LineageDataset dataset,
+      LineageDataset dataset,
       boolean opaque,
       List<LineageFieldMapping> fieldMappings) {
     this(id, type, dataset == null ? null : new LineageData(dataset), opaque, fieldMappings);
