@@ -17,8 +17,6 @@
  * under the License.
  */
 
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
@@ -143,12 +141,21 @@ dependencies {
   testImplementation(libs.antlr4.runtime.spark35)
 }
 
-evaluationDependsOn(":polaris-spark-${sparkMajorVersion}_${scalaVersion}")
+val SparkBundleClasspath: Configuration by
+  configurations.creating {
+    description = "Resolves the shaded polaris-spark bundle jar."
+    isCanBeConsumed = false
+    isCanBeResolved = true
+  }
 
-val sparkBundleJarTask =
-  project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}")
-    .tasks
-    .named<ShadowJar>("createPolarisSparkJar")
+dependencies {
+  SparkBundleClasspath(
+    project(
+      path = ":polaris-spark-${sparkMajorVersion}_${scalaVersion}",
+      configuration = "sparkBundle",
+    )
+  )
+}
 
 tasks.named<Test>("intTest").configure {
   if (System.getenv("AWS_REGION") == null) {
@@ -196,7 +203,7 @@ testing {
         )
         implementation(enforcedPlatform("org.scala-lang:scala-library:${scalaLibraryVersion}"))
         implementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
-        implementation(libs.antlr4.runtime)
+        implementation(libs.antlr4.runtime.spark35)
         implementation(libs.javax.servlet.api)
         runtimeOnly("org.apache.logging.log4j:log4j-core:2.26.0")
 
@@ -211,11 +218,10 @@ testing {
         testTask.configure {
           systemProperty("build.output.directory", layout.buildDirectory.asFile.get())
           dependsOn(tasks.named("quarkusBuild"))
-          dependsOn(sparkBundleJarTask)
-          systemProperty(
-            "polaris.spark.bundle.jar",
-            sparkBundleJarTask.flatMap { it.archiveFile }.get().asFile.absolutePath,
-          )
+          inputs.files(SparkBundleClasspath).withPropertyName("polarisSparkBundle")
+          doFirst {
+            systemProperty("polaris.spark.bundle.jar", SparkBundleClasspath.singleFile.absolutePath)
+          }
           systemProperty("polaris.version", project.version.toString())
           systemProperty("polaris.scala.version", scalaVersion)
           dependsOn(":publishToMavenLocal")

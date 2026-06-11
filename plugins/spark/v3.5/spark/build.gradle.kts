@@ -138,3 +138,12 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
 tasks.named("assemble") { dependsOn("createPolarisSparkJar") }
 
 tasks.named("build") { dependsOn("createPolarisSparkJar") }
+
+val sparkBundle by
+  configurations.creating {
+    description = "Shaded uber bundle jar for spark-submit --jars."
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
+artifacts.add(sparkBundle.name, tasks.named<ShadowJar>("createPolarisSparkJar"))
