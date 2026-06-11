@@ -20,6 +20,8 @@ package org.apache.polaris.service.entity;
 
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,6 +55,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
@@ -584,5 +587,61 @@ public class CatalogEntityTest {
 
     b.setHierarchical(true);
     assertThat(MAPPER.writeValueAsString(b.build())).contains("hierarchical");
+  }
+
+  @ParameterizedTest(name = "[{index}] base={1} within allowed={0}")
+  @CsvSource({"s3://bucket/, s3://bucket/path/to/data", "s3://bucket/, s3://bucket/"})
+  public void testBaseWithinAllowed_accepted(String allowed, String base) {
+    assertThatCode(
+            () -> CatalogEntity.validateBaseLocationAgainstAllowedList(List.of(allowed), base))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testAcceptedUnderAnyOfMultipleAllowedLocations() {
+    assertThatCode(
+            () ->
+                CatalogEntity.validateBaseLocationAgainstAllowedList(
+                    List.of("s3://bucket-a/", "s3://bucket-b/warehouse/"),
+                    "s3://bucket-b/warehouse/data"))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testBaseOutsideAllowed_rejected() {
+    assertThatThrownBy(
+            () ->
+                CatalogEntity.validateBaseLocationAgainstAllowedList(
+                    List.of("s3://bucket/"), "s3://other-bucket/data"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("s3://other-bucket/data")
+        .hasMessageContaining("s3://bucket/");
+  }
+
+  @Test
+  public void testDifferentSchemeRejected() {
+    assertThatThrownBy(
+            () ->
+                CatalogEntity.validateBaseLocationAgainstAllowedList(
+                    List.of("s3://bucket/"), "gs://bucket/data"))
+        .isInstanceOf(BadRequestException.class);
+  }
+
+  @Test
+  public void testEmptyAllowedList_rejected() {
+    assertThatThrownBy(
+            () -> CatalogEntity.validateBaseLocationAgainstAllowedList(List.of(), "s3://anything/"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("empty")
+        .hasMessageContaining("s3://anything/");
+  }
+
+  @Test
+  public void testNullAllowedList_rejected() {
+    assertThatThrownBy(
+            () -> CatalogEntity.validateBaseLocationAgainstAllowedList(null, "s3://anything/"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("null")
+        .hasMessageContaining("s3://anything/");
   }
 }

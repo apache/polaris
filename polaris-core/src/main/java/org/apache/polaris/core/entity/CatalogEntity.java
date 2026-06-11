@@ -304,6 +304,28 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return this;
     }
 
+    public Builder validateDefaultBaseLocation() {
+      String defaultBaseLocation = properties.get(DEFAULT_BASE_LOCATION_KEY);
+      if (defaultBaseLocation == null) {
+        return this;
+      }
+      String configStr =
+          internalProperties.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+      if (configStr == null) {
+        return this;
+      }
+      PolarisStorageConfigurationInfo storageConfig =
+          PolarisStorageConfigurationInfo.deserialize(configStr);
+      if (storageConfig == null) {
+        return this;
+      }
+      List<String> allowedLocations = storageConfig.getAllowedLocations();
+      if (allowedLocations != null && !allowedLocations.isEmpty()) {
+        validateBaseLocationAgainstAllowedList(allowedLocations, defaultBaseLocation);
+      }
+      return this;
+    }
+
     public Builder setStorageConfigurationInfo(
         RealmConfig realmConfig, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
       if (storageConfigModel != null) {

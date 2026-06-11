@@ -921,27 +921,21 @@ public class PolarisAdminService {
     // caller supplied none), updates that touch storage_config must declare allowed-locations
     // explicitly. This prevents silent loss of an existing allowed-locations list during a
     // partial storage_config update (e.g. role rotation).
-    if (defaultBaseLocation != null) {
-      if (updateRequest.getStorageConfigInfo() != null) {
-        List<String> submittedAllowedLocations =
-            updateRequest.getStorageConfigInfo().getAllowedLocations();
-        if (submittedAllowedLocations == null || submittedAllowedLocations.isEmpty()) {
-          throw new BadRequestException(
-              "Cannot update Catalog %s: when updating storage_config, allowed-locations must"
-                  + " be specified explicitly (omitting it would silently lose the catalog's"
-                  + " existing allowed-locations list)",
-              name);
-        }
-        CatalogEntity.validateBaseLocationAgainstAllowedList(
-            submittedAllowedLocations, defaultBaseLocation);
-      } else if (currentCatalogEntity.getStorageConfigurationInfo() != null) {
-        List<String> currentAllowedLocations =
-            currentCatalogEntity.getStorageConfigurationInfo().getAllowedLocations();
-        if (currentAllowedLocations != null && !currentAllowedLocations.isEmpty()) {
-          CatalogEntity.validateBaseLocationAgainstAllowedList(
-              currentAllowedLocations, defaultBaseLocation);
-        }
+    if (defaultBaseLocation != null && updateRequest.getStorageConfigInfo() != null) {
+      List<String> submittedAllowedLocations =
+          updateRequest.getStorageConfigInfo().getAllowedLocations();
+      if (submittedAllowedLocations == null || submittedAllowedLocations.isEmpty()) {
+        throw new BadRequestException(
+            "Cannot update Catalog %s: when updating storage_config, allowed-locations must"
+                + " be specified explicitly (omitting it would silently lose the catalog's"
+                + " existing allowed-locations list)",
+            name);
       }
+      // default-base-location/allowed-locations consistency is enforced inside
+      // Builder.setStorageConfigurationInfo() below.
+    }
+    if (defaultBaseLocation != null && updateRequest.getStorageConfigInfo() == null) {
+      updateBuilder.validateDefaultBaseLocation();
     }
 
     if (updateRequest.getStorageConfigInfo() != null) {
