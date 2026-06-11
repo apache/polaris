@@ -38,6 +38,7 @@ plugins {
   `java-test-fixtures`
   `jvm-test-suite`
   checkstyle
+  id("polaris-base")
   id("polaris-spotless")
   id("polaris-reproducible")
   id("jacoco-report-aggregation")

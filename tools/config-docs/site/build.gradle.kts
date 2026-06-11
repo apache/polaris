@@ -19,6 +19,7 @@
 
 plugins {
   `java-library`
+  id("polaris-base")
   id("polaris-reproducible")
 }
 

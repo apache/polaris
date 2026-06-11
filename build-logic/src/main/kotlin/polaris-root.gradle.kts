@@ -17,7 +17,6 @@
  * under the License.
  */
 
-import copiedcode.CopiedCodeCheckerPlugin
 import org.jetbrains.gradle.ext.copyright
 import org.jetbrains.gradle.ext.encodings
 import org.jetbrains.gradle.ext.settings
@@ -25,13 +24,12 @@ import publishing.PublishingHelperExtension
 import publishing.PublishingHelperPlugin
 
 plugins {
+  id("polaris-base")
   id("com.diffplug.spotless")
   id("org.jetbrains.gradle.plugin.idea-ext")
 }
 
 apply<PublishingHelperPlugin>()
-
-apply<CopiedCodeCheckerPlugin>()
 
 if (!project.extra.has("duplicated-project-sources")) {
   spotless {
