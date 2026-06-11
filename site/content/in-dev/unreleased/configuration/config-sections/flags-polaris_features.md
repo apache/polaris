@@ -335,6 +335,42 @@ The maximum weight for the entity cache. This is a heuristic value without any p
 
 ---
 
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE"`
+
+Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs (RS256). The corresponding public key must be published in the Workload Identity Pool provider's uploaded JWKS. Empty (default) disables principal attribution.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID"`
+
+Key ID (kid) written into the header of GCS attribution JWTs so the Workload Identity Pool provider can select the right public key from its JWKS during key rotation (when the JWKS holds both the old and new keys). Must match the kid of the JWKS entry for the configured signing key. Empty omits the header (only safe with a single-key JWKS).
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER"`
+
+Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer configured on the Workload Identity Pool OIDC provider. The provider verifies signatures against its uploaded JWKS, so no public discovery endpoint is required. Empty (default) disables principal attribution.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE"`
+
+Full resource name of the Workload Identity Pool provider used for GCS principal attribution, e.g. //iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>. Used as both the attribution JWT 'aud' claim and the STS token-exchange audience. Empty (default) disables principal attribution.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
 ##### `polaris.features."ICEBERG_COMMIT_MAX_RETRIES"`
 
 The max number of times to try committing to an Iceberg table
