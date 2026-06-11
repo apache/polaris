@@ -30,12 +30,13 @@ import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_KEY_ID;
 import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_SECRET_KEY;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
+import static org.apache.polaris.test.commons.MinioRustProfile.ACCESS_KEY;
+import static org.apache.polaris.test.commons.MinioRustProfile.SECRET_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,6 +73,7 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.test.commons.MinioRustProfile;
 import org.apache.polaris.test.rustfs.Rustfs;
 import org.apache.polaris.test.rustfs.RustfsAccess;
 import org.apache.polaris.test.rustfs.RustfsExtension;
@@ -95,29 +97,15 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
  * with some S3-specific options.
  */
 @QuarkusIntegrationTest
-@TestProfile(RestCatalogRustFSSpecialIT.Profile.class)
+@TestProfile(MinioRustProfile.class)
 @ExtendWith(RustfsExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class RestCatalogRustFSSpecialIT {
 
   private static final String BUCKET_URI_PREFIX = "/rustfs-test";
-  private static final String RUSTFS_ACCESS_KEY = "test-ak-123";
-  private static final String RUSTFS_SECRET_KEY = "test-sk-123";
   private static final String TEST_REGION = "us-west-2";
   private static final String TEST_ROLE_ARN = "arn:aws:iam::000000000000:role/polaris-access-role";
   private static String adminToken;
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .put("polaris.storage.aws.access-key", RUSTFS_ACCESS_KEY)
-          .put("polaris.storage.aws.secret-key", RUSTFS_SECRET_KEY)
-          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
-          .build();
-    }
-  }
 
   private static final Schema SCHEMA =
       new Schema(
@@ -139,8 +127,7 @@ public class RestCatalogRustFSSpecialIT {
   @BeforeAll
   static void setup(
       PolarisApiEndpoints apiEndpoints,
-      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY)
-          RustfsAccess rustfsAccess,
+      @Rustfs(accessKey = ACCESS_KEY, secretKey = SECRET_KEY) RustfsAccess rustfsAccess,
       ClientCredentials credentials) {
     s3Client = rustfsAccess.s3Client();
     endpoints = apiEndpoints;
@@ -232,10 +219,8 @@ public class RestCatalogRustFSSpecialIT {
     CatalogProperties.Builder catalogProps =
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
     if (!stsEnabled) {
-      catalogProps.addProperty(
-          TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), RUSTFS_ACCESS_KEY);
-      catalogProps.addProperty(
-          TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), RUSTFS_SECRET_KEY);
+      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), ACCESS_KEY);
+      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), SECRET_KEY);
     }
     Catalog catalog =
         PolarisCatalog.builder()
@@ -263,8 +248,8 @@ public class RestCatalogRustFSSpecialIT {
 
     if (delegationMode.isEmpty()) {
       // Use local credentials on the client side
-      propertiesBuilder.put("s3.access-key-id", RUSTFS_ACCESS_KEY);
-      propertiesBuilder.put("s3.secret-access-key", RUSTFS_SECRET_KEY);
+      propertiesBuilder.put("s3.access-key-id", ACCESS_KEY);
+      propertiesBuilder.put("s3.secret-access-key", SECRET_KEY);
     }
 
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
