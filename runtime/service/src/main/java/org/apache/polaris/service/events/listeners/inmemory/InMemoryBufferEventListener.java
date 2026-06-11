@@ -108,11 +108,10 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
     }
   }
 
-  @VisibleForTesting
-  final LoadingCache<String, EventProcessor> processors =
+  private final LoadingCache<String, EventProcessor> processors =
       Caffeine.newBuilder()
           .expireAfterAccess(Duration.ofHours(1))
-          .evictionListener(
+          .removalListener(
               (String realmId, EventProcessor processor, RemovalCause cause) -> {
                 if (processor != null) {
                   processor.onComplete();
@@ -157,8 +156,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
     shutdownLock.writeLock().lock();
     try {
       shutdown = true;
-      processors.asMap().values().forEach(EventProcessor::onComplete);
-      processors.invalidateAll(); // doesn't call the eviction listener
+      processors.invalidateAll();
     } finally {
       shutdownLock.writeLock().unlock();
     }
@@ -186,5 +184,15 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
         realmId,
         error);
     processors.invalidate(realmId);
+  }
+
+  @VisibleForTesting
+  EventProcessor processor(String realmId) {
+    return processors.get(realmId);
+  }
+
+  @VisibleForTesting
+  boolean hasProcessor(String realmId) {
+    return processors.getIfPresent(realmId) != null;
   }
 }
