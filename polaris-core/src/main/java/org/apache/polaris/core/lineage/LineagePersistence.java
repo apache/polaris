@@ -46,8 +46,7 @@ public interface LineagePersistence {
    * <p>Implementations should treat {@code (realm, source_dataset, target_dataset)} as unique and
    * update the edge timestamp when the same relationship is asserted again.
    */
-  void upsertDatasetEdges(
-      RealmContext realmContext, List<LineageEdge> edges, Instant lastEventAt);
+  void upsertDatasetEdges(RealmContext realmContext, List<LineageEdge> edges, Instant lastEventAt);
 
   /**
    * Upserts directed column-level lineage edges.
