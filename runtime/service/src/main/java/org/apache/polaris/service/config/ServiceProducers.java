@@ -151,6 +151,12 @@ public class ServiceProducers {
 
   @Produces
   @RequestScoped
+  public MetricsPersistence metricsPersistence(CallContext callContext) {
+    return callContext.getPolarisCallContext().getMetricsPersistence();
+  }
+
+  @Produces
+  @RequestScoped
   public RealmConfig realmConfig(
       RealmContext realmContext, RealmConfigurationSource configurationSource) {
     return new RealmConfigImpl(configurationSource, realmContext);
