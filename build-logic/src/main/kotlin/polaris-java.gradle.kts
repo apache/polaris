@@ -17,12 +17,14 @@
  * under the License.
  */
 
-import asf.AsfProject.Companion.unsafeCast
 import java.util.Properties
 import kotlin.jvm.java
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.file.FileCollection
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
@@ -275,16 +277,32 @@ class BannedDependencies(
 }
 
 fun bannedDependencies(): BannedDependencies {
-  return if (rootProject.extra.has("bannedDependencies")) {
-    unsafeCast(rootProject.extra["bannedDependencies"]) as BannedDependencies
-  } else {
-    val bannedDependencies =
-      BannedDependencies(
-        BannedDependency.parseList(rootProject.file("gradle/banned-dependencies.txt")),
-        BannedDependency.parseList(rootProject.file("gradle/banned-quarkus-prod-dependencies.txt")),
+  val service =
+    gradle.sharedServices.registerIfAbsent(
+      "bannedDependencies",
+      BannedDependenciesService::class.java,
+    ) {
+      parameters.globallyBannedFile.set(
+        rootProject.layout.projectDirectory.file("gradle/banned-dependencies.txt")
       )
-    rootProject.extra["bannedDependencies"] = bannedDependencies
-    bannedDependencies
+      parameters.quarkusProdBannedFile.set(
+        rootProject.layout.projectDirectory.file("gradle/banned-quarkus-prod-dependencies.txt")
+      )
+    }
+  return service.get().bannedDependencies
+}
+
+abstract class BannedDependenciesService : BuildService<BannedDependenciesService.Parameters> {
+  interface Parameters : BuildServiceParameters {
+    val globallyBannedFile: RegularFileProperty
+    val quarkusProdBannedFile: RegularFileProperty
+  }
+
+  val bannedDependencies: BannedDependencies by lazy {
+    BannedDependencies(
+      BannedDependency.parseList(parameters.globallyBannedFile.asFile.get()),
+      BannedDependency.parseList(parameters.quarkusProdBannedFile.asFile.get()),
+    )
   }
 }
 
