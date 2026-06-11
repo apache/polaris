@@ -103,17 +103,14 @@ public class IcebergCatalogAdapter
    * OpenAPI-generated stub. Returns the normalised key string when present and idempotency is
    * enabled; otherwise {@link Optional#empty()}.
    *
-   * @throws BadRequestException if the header is present but not a valid UUIDv7
+   * <p>If the header is present but not a valid UUIDv7, validation throws {@link
+   * IllegalArgumentException}, which {@code IcebergExceptionMapper} maps to HTTP 400.
    */
   private Optional<String> validatedIdempotencyKey(UUID idempotencyKey) {
     if (idempotencyKey == null) {
       return Optional.empty();
     }
-    try {
-      return idempotencySupport.validatedKey(idempotencyKey.toString());
-    } catch (IllegalArgumentException e) {
-      throw new BadRequestException("%s", e.getMessage());
-    }
+    return idempotencySupport.validatedKey(idempotencyKey.toString());
   }
 
   /**

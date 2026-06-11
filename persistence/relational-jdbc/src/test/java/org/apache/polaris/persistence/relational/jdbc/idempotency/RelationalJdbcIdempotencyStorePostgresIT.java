@@ -47,6 +47,8 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
               .dockerImageName(null)
               .asCompatibleSubstituteFor("postgres"));
 
+  private static final String REALM = "test-realm";
+
   private static RelationalJdbcIdempotencyStore store;
 
   @BeforeAll
@@ -91,7 +93,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
       ops.executeScript(is);
     }
 
-    store = new RelationalJdbcIdempotencyStore(ops);
+    store = new RelationalJdbcIdempotencyStore(ops, REALM);
   }
 
   @AfterAll
@@ -101,7 +103,6 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Test
   void recordFirstWinnerAndDuplicate() {
-    String realm = "test-realm";
     String key = "K1";
     String op = "create-table";
     String rid = "catalogs/1/tables/ns.tbl";
@@ -110,16 +111,16 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     IdempotencyStore.RecordResult r1 =
-        store.recordIfAbsent(realm, key, op, rid, principalHash, 200, null, now, exp);
+        store.recordIfAbsent(key, op, rid, principalHash, 200, null, now, exp);
     assertThat(r1.type()).isEqualTo(IdempotencyStore.RecordResultType.OWNED);
     assertThat(r1.existing()).isEmpty();
 
     IdempotencyStore.RecordResult r2 =
-        store.recordIfAbsent(realm, key, op, rid, "principal-hash-B", 200, null, now, exp);
+        store.recordIfAbsent(key, op, rid, "principal-hash-B", 200, null, now, exp);
     assertThat(r2.type()).isEqualTo(IdempotencyStore.RecordResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();
-    assertThat(rec.realmId()).isEqualTo(realm);
+    assertThat(rec.realmId()).isEqualTo(REALM);
     assertThat(rec.idempotencyKey()).isEqualTo(key);
     assertThat(rec.operationType()).isEqualTo(op);
     assertThat(rec.resourceHash()).isEqualTo(rid);
@@ -130,16 +131,15 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Test
   void loadReturnsRecordedEntry() {
-    String realm = "test-realm";
     String key = "K2";
     String op = "create-table";
     String rid = "catalogs/1/tables/ns.tbl2";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    store.recordIfAbsent(realm, key, op, rid, "ph", 200, null, now, exp);
+    store.recordIfAbsent(key, op, rid, "ph", 200, null, now, exp);
 
-    Optional<IdempotencyRecord> rec = store.load(realm, key);
+    Optional<IdempotencyRecord> rec = store.load(key);
     assertThat(rec).isPresent();
     assertThat(rec.get().operationType()).isEqualTo(op);
     assertThat(rec.get().resourceHash()).isEqualTo(rid);
@@ -149,36 +149,26 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Test
   void purgeExpired() {
-    String realm = "test-realm";
     String key = "K3";
     String op = "drop-table";
     String rid = "catalogs/1/tables/ns.tbl3";
     Instant now = Instant.now();
     Instant expPast = now.minus(Duration.ofMinutes(1));
 
-    store.recordIfAbsent(realm, key, op, rid, "ph", 204, null, now, expPast);
-    int purged = store.purgeExpired(realm, Instant.now());
+    store.recordIfAbsent(key, op, rid, "ph", 204, null, now, expPast);
+    int purged = store.purgeExpired(Instant.now());
     assertThat(purged).isEqualTo(1);
   }
 
   @Test
   void duplicateAcrossDifferentPrincipalsReturnsOriginal() {
-    String realm = "test-realm";
     String key = "K4";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     IdempotencyStore.RecordResult r1 =
         store.recordIfAbsent(
-            realm,
-            key,
-            "create-table",
-            "catalogs/1/tables/ns.tbl4",
-            "principal-A",
-            200,
-            null,
-            now,
-            exp);
+            key, "create-table", "catalogs/1/tables/ns.tbl4", "principal-A", 200, null, now, exp);
     assertThat(r1.type()).isEqualTo(IdempotencyStore.RecordResultType.OWNED);
 
     // Cross-principal reuse of the same key on a different operation: the second call must NOT
@@ -186,15 +176,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     // principalHash); the handler layer will detect the mismatch and surface 422.
     IdempotencyStore.RecordResult r2 =
         store.recordIfAbsent(
-            realm,
-            key,
-            "drop-table",
-            "catalogs/1/tables/ns.tbl5",
-            "principal-B",
-            204,
-            null,
-            now,
-            exp);
+            key, "drop-table", "catalogs/1/tables/ns.tbl5", "principal-B", 204, null, now, exp);
     assertThat(r2.type()).isEqualTo(IdempotencyStore.RecordResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();

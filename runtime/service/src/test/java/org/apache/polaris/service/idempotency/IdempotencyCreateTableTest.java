@@ -97,11 +97,12 @@ public class IdempotencyCreateTableTest {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
-    // Same key bound to a different resource -> 422 (binding mismatch).
+    // Same key bound to a different resource -> binding mismatch (IcebergExceptionMapper maps this
+    // to HTTP 422).
     CreateTableRequest second =
         CreateTableRequest.builder().withName("tbl_two").withSchema(SCHEMA).build();
     assertThatThrownBy(() -> createTable(services, second))
-        .isInstanceOf(UnprocessableEntityException.class);
+        .isInstanceOf(IdempotencyConflictException.class);
   }
 
   @Test

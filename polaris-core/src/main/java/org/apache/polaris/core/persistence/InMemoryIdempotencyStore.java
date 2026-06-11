@@ -28,22 +28,26 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
 /**
  * In-memory {@link IdempotencyStore} backed by a {@link ConcurrentHashMap}.
  *
- * <p>Suitable for dev/test and the in-memory Polaris deployment. Not durable across restarts.
+ * <p>Suitable for dev/test and the in-memory Polaris deployment. Not durable across restarts. Each
+ * instance is bound to a single realm; {@link InMemoryIdempotencyStoreFactory} vends one instance
+ * per realm.
  */
 public final class InMemoryIdempotencyStore implements IdempotencyStore {
 
-  private record Key(String realmId, String idempotencyKey) {}
+  private final String realmId;
+  private final ConcurrentMap<String, IdempotencyRecord> records = new ConcurrentHashMap<>();
 
-  private final ConcurrentMap<Key, IdempotencyRecord> records = new ConcurrentHashMap<>();
+  public InMemoryIdempotencyStore(String realmId) {
+    this.realmId = realmId;
+  }
 
   @Override
-  public Optional<IdempotencyRecord> load(String realmId, String idempotencyKey) {
-    return Optional.ofNullable(records.get(new Key(realmId, idempotencyKey)));
+  public Optional<IdempotencyRecord> load(String idempotencyKey) {
+    return Optional.ofNullable(records.get(idempotencyKey));
   }
 
   @Override
   public RecordResult recordIfAbsent(
-      String realmId,
       String idempotencyKey,
       String operationType,
       String resourceHash,
@@ -52,7 +56,6 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
       String metadataLocation,
       Instant createdAt,
       Instant expiresAt) {
-    Key key = new Key(realmId, idempotencyKey);
     IdempotencyRecord candidate =
         new IdempotencyRecord(
             realmId,
@@ -64,7 +67,7 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
             metadataLocation,
             createdAt,
             expiresAt);
-    IdempotencyRecord existing = records.putIfAbsent(key, candidate);
+    IdempotencyRecord existing = records.putIfAbsent(idempotencyKey, candidate);
     if (existing == null) {
       return new RecordResult(RecordResultType.OWNED, Optional.empty());
     }
@@ -72,14 +75,11 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public int purgeExpired(String realmId, Instant before) {
+  public int purgeExpired(Instant before) {
     int purged = 0;
-    for (Iterator<Map.Entry<Key, IdempotencyRecord>> it = records.entrySet().iterator();
+    for (Iterator<Map.Entry<String, IdempotencyRecord>> it = records.entrySet().iterator();
         it.hasNext(); ) {
-      Map.Entry<Key, IdempotencyRecord> entry = it.next();
-      if (!entry.getKey().realmId().equals(realmId)) {
-        continue;
-      }
+      Map.Entry<String, IdempotencyRecord> entry = it.next();
       Instant expires = entry.getValue().expiresAt();
       if (expires != null && expires.isBefore(before)) {
         it.remove();

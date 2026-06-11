@@ -96,7 +96,7 @@ public class IdempotencyMaintenance {
     for (String realm : realmContextConfiguration.realms()) {
       try {
         IdempotencyStore store = storeFactory.getOrCreateIdempotencyStore(() -> realm);
-        int purged = store.purgeExpired(realm, cutoff);
+        int purged = store.purgeExpired(cutoff);
         if (purged > 0) {
           LOGGER.debug("Purged {} expired idempotency records for realm {}", purged, realm);
         }

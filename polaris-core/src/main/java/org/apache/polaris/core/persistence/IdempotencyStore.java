@@ -29,11 +29,11 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  * transitions:
  *
  * <ul>
- *   <li>{@link #load(String, String)} to detect a duplicate request before doing any work;
- *   <li>{@link #recordIfAbsent(String, String, String, String, String, int, String, Instant,
- *       Instant)} to atomically insert the record after the operation has finalized, returning
- *       {@link RecordResult#OWNED} when the caller wins the race and {@link RecordResult#DUPLICATE}
- *       (with the existing record) when another caller raced ahead.
+ *   <li>{@link #load(String)} to detect a duplicate request before doing any work;
+ *   <li>{@link #recordIfAbsent(String, String, String, String, int, String, Instant, Instant)} to
+ *       atomically insert the record after the operation has finalized, returning {@link
+ *       RecordResult#OWNED} when the caller wins the race and {@link RecordResult#DUPLICATE} (with
+ *       the existing record) when another caller raced ahead.
  * </ul>
  *
  * <p>There is no in-progress / lease / heartbeat state in this design, and no response body is
@@ -43,7 +43,9 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  * need to enforce identity itself; it only needs to persist {@code principalHash} so the handler
  * can validate it on replay and reject cross-principal cache hits.
  *
- * <p>Implementations must be thread-safe.
+ * <p>A store instance is bound to a single realm at construction (see {@link
+ * IdempotencyStoreFactory#getOrCreateIdempotencyStore}), so the realm is not part of any method
+ * signature. Implementations must be thread-safe.
  */
 @Beta
 public interface IdempotencyStore {
@@ -52,12 +54,12 @@ public interface IdempotencyStore {
   enum RecordResultType {
     /** The caller successfully inserted a new idempotency record. */
     OWNED,
-    /** A record already exists for the same {@code (realm, key)}; the caller did not insert. */
+    /** A record already exists for the same key in this realm; the caller did not insert. */
     DUPLICATE
   }
 
   /**
-   * Result of {@link #recordIfAbsent(String, String, String, String, String, int, String, Instant,
+   * Result of {@link #recordIfAbsent(String, String, String, String, int, String, Instant,
    * Instant)}, including the outcome and, when {@link RecordResultType#DUPLICATE}, the existing
    * record so the caller can compare bindings without an extra round-trip.
    *
@@ -68,21 +70,19 @@ public interface IdempotencyStore {
   record RecordResult(RecordResultType type, Optional<IdempotencyRecord> existing) {}
 
   /**
-   * Loads an existing record for the given realm and key, if present.
+   * Loads an existing record for the given key in this store's realm, if present.
    *
-   * @param realmId logical tenant or realm identifier
    * @param idempotencyKey application-provided idempotency key
    */
-  Optional<IdempotencyRecord> load(String realmId, String idempotencyKey);
+  Optional<IdempotencyRecord> load(String idempotencyKey);
 
   /**
-   * Atomically inserts an idempotency record if no record exists yet for {@code (realmId,
-   * idempotencyKey)}; otherwise returns the existing record.
+   * Atomically inserts an idempotency record if no record exists yet for {@code idempotencyKey} in
+   * this store's realm; otherwise returns the existing record.
    *
    * <p>This is the only "write" path in the SPI. It is invoked after the originating operation has
    * succeeded, so {@code httpStatus} is always set.
    *
-   * @param realmId logical tenant or realm identifier
    * @param idempotencyKey application-provided idempotency key
    * @param operationType logical operation name (e.g. {@code "create-table"})
    * @param resourceHash opaque hash of the request-derived resource binding (not a human-readable
@@ -98,7 +98,6 @@ public interface IdempotencyStore {
    * @param expiresAt timestamp after which the record is eligible for purging
    */
   RecordResult recordIfAbsent(
-      String realmId,
       String idempotencyKey,
       String operationType,
       String resourceHash,
@@ -109,11 +108,11 @@ public interface IdempotencyStore {
       Instant expiresAt);
 
   /**
-   * Purges records in a given realm whose expiration time is strictly before the given instant.
+   * Purges records in this store's realm whose expiration time is strictly before the given
+   * instant.
    *
-   * @param realmId logical tenant or realm identifier
    * @param before cutoff instant; records expiring before this time may be removed
    * @return number of records that were purged
    */
-  int purgeExpired(String realmId, Instant before);
+  int purgeExpired(Instant before);
 }

@@ -18,14 +18,13 @@
  */
 package org.apache.polaris.service.idempotency;
 
+import com.google.common.hash.Hashing;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
@@ -132,52 +131,59 @@ public class IdempotencyHandlerSupport {
   }
 
   /**
-   * SHA-256 (hex) of the calling principal's identity, bound to the realm. The input is the
-   * principal name, the realm id, and the activated role set, canonicalised so the hash is
+   * SHA-256 (hex) of the calling principal's identity, bound to the request's realm. The input is
+   * the principal name, the realm id, and the activated role set, canonicalised so the hash is
    * deterministic and order-independent.
    *
    * <p>Roles are part of the binding so two callers that share a name but differ in activated roles
    * do not collide. Principal properties are intentionally excluded: they are admin-mutable and not
    * authentication context.
    */
-  public String principalHash(PolarisPrincipal principal, String realmId) {
+  public String principalHash(PolarisPrincipal principal) {
     StringBuilder sb = new StringBuilder();
     sb.append("name=").append(principal.getName()).append('|');
-    sb.append("realm=").append(realmId).append('|');
+    sb.append("realm=").append(realmContext.getRealmIdentifier()).append('|');
     sb.append("roles=");
     new TreeSet<>(principal.getRoles()).forEach(r -> sb.append(r).append(','));
     return sha256Hex(sb.toString());
   }
 
   /**
-   * SHA-256 hex of an arbitrary string used as the resource binding component. The caller supplies
-   * a stable resource identity (e.g. operation, namespace, name and access-delegation modes); the
-   * request payload itself is intentionally not part of the binding.
+   * SHA-256 hex of the resource-binding component, built from the operation and its stable resource
+   * identity components (e.g. namespace, name, resolved access-delegation mode). The canonical
+   * format lives here so all binding/hashing logic stays in one place; callers only supply the
+   * identity components. The request payload itself is intentionally not part of the binding.
    */
-  public String resourceHash(String value) {
-    return sha256Hex(value);
+  public String resourceHash(IdempotentOperation operation, String... components) {
+    StringBuilder sb = new StringBuilder(operation.wireName());
+    for (String component : components) {
+      sb.append(':').append(component == null ? "" : component);
+    }
+    return sha256Hex(sb.toString());
   }
 
   /**
    * Pre-flight: look up an existing record for {@code (realm, key)} and dispatch the handler.
    *
    * <p>If an existing record is found, the binding is validated against the current request and a
-   * mismatch raises {@link ConflictException} (handler maps to HTTP 422). If the binding matches,
-   * the existing record is returned as a {@link Outcome.Duplicate} so the handler can rebuild the
-   * response from current catalog state.
+   * mismatch raises {@link IdempotencyConflictException} (mapped to HTTP 422). If the binding
+   * matches, the existing record is returned as a {@link Outcome.Duplicate} so the handler can
+   * rebuild the response from current catalog state.
    *
    * <p>If no record exists, this returns {@link Outcome.Owned}; the handler should perform the
-   * operation and then call {@link #recordOutcome(String, String, String, String, int, String)} to
-   * commit a record.
+   * operation and then call {@link #recordOutcome(IdempotentOperation, String, String, String, int,
+   * String)} to commit a record.
    */
   public Outcome preflight(
-      String idempotencyKey, String operationType, String resourceHash, String principalHash) {
-    Optional<IdempotencyRecord> existing =
-        store().load(realmContext.getRealmIdentifier(), idempotencyKey);
+      String idempotencyKey,
+      IdempotentOperation operation,
+      String resourceHash,
+      String principalHash) {
+    Optional<IdempotencyRecord> existing = store().load(idempotencyKey);
     if (existing.isEmpty()) {
       return Outcome.owned();
     }
-    return matchOrConflict(existing.get(), operationType, resourceHash, principalHash);
+    return matchOrConflict(existing.get(), operation, resourceHash, principalHash);
   }
 
   /**
@@ -189,7 +195,7 @@ public class IdempotencyHandlerSupport {
    */
   public Outcome recordOutcome(
       String idempotencyKey,
-      String operationType,
+      IdempotentOperation operation,
       String resourceHash,
       String principalHash,
       int httpStatus,
@@ -199,9 +205,8 @@ public class IdempotencyHandlerSupport {
     IdempotencyStore.RecordResult result =
         store()
             .recordIfAbsent(
-                realmContext.getRealmIdentifier(),
                 idempotencyKey,
-                operationType,
+                operation.wireName(),
                 resourceHash,
                 principalHash,
                 httpStatus,
@@ -215,7 +220,7 @@ public class IdempotencyHandlerSupport {
         result
             .existing()
             .orElseThrow(() -> new IllegalStateException("DUPLICATE result without record"));
-    return matchOrConflict(existing, operationType, resourceHash, principalHash);
+    return matchOrConflict(existing, operation, resourceHash, principalHash);
   }
 
   /**
@@ -232,33 +237,20 @@ public class IdempotencyHandlerSupport {
 
   private static Outcome matchOrConflict(
       IdempotencyRecord existing,
-      String expectedOperationType,
+      IdempotentOperation expectedOperation,
       String expectedResourceHash,
       String expectedPrincipalHash) {
-    if (!expectedPrincipalHash.equals(existing.principalHash())) {
-      throw new ConflictException(
-          "Idempotency-Key already used by a different caller for the same key");
-    }
-    if (!expectedResourceHash.equals(existing.resourceHash())
-        || !expectedOperationType.equals(existing.operationType())) {
-      throw new ConflictException(
-          "Idempotency-Key already used for a different operation or resource");
+    if (!expectedPrincipalHash.equals(existing.principalHash())
+        || !expectedResourceHash.equals(existing.resourceHash())
+        || !expectedOperation.wireName().equals(existing.operationType())) {
+      throw new IdempotencyConflictException(
+          "Idempotency-Key already used with a different binding (caller, operation, or resource)");
     }
     return Outcome.duplicate(existing);
   }
 
   private static String sha256Hex(@Nonnull String input) {
-    try {
-      MessageDigest md = MessageDigest.getInstance("SHA-256");
-      byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
-      StringBuilder sb = new StringBuilder(digest.length * 2);
-      for (byte b : digest) {
-        sb.append(String.format("%02x", b));
-      }
-      return sb.toString();
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("SHA-256 not available", e);
-    }
+    return Hashing.sha256().hashString(input, StandardCharsets.UTF_8).toString();
   }
 
   private static String summarizeKey(String key) {
@@ -288,13 +280,6 @@ public class IdempotencyHandlerSupport {
 
     /** Another caller already recorded an outcome for this key. Handler must rebuild a response. */
     record Duplicate(IdempotencyRecord existing) implements Outcome {}
-  }
-
-  /** Thrown when the idempotency key is reused with a different binding. Maps to HTTP 422. */
-  public static final class ConflictException extends RuntimeException {
-    public ConflictException(String message) {
-      super(message);
-    }
   }
 
   /** Minimal {@link IdempotencyConfiguration} returning {@code enabled=false}; used by tests. */

@@ -28,22 +28,24 @@ import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
  * {@link IdempotencyStoreFactory} backed by the same JDBC {@link DatasourceOperations} used by the
  * primary metastore.
  *
- * <p>The store is stateless and shared across realms — realm scoping is enforced inside SQL via the
+ * <p>Each call vends a lightweight {@link RelationalJdbcIdempotencyStore} bound to the requested
+ * realm (mirroring {@code JdbcBasePersistenceImpl}); realm scoping is enforced inside SQL via the
  * {@code realm_id} column.
  */
 @ApplicationScoped
 @Identifier("relational-jdbc")
 public class RelationalJdbcIdempotencyStoreFactory implements IdempotencyStoreFactory {
 
-  private final RelationalJdbcIdempotencyStore store;
+  private final DatasourceOperations datasourceOperations;
 
   @Inject
   public RelationalJdbcIdempotencyStoreFactory(DatasourceOperations datasourceOperations) {
-    this.store = new RelationalJdbcIdempotencyStore(datasourceOperations);
+    this.datasourceOperations = datasourceOperations;
   }
 
   @Override
   public IdempotencyStore getOrCreateIdempotencyStore(RealmContext realmContext) {
-    return store;
+    return new RelationalJdbcIdempotencyStore(
+        datasourceOperations, realmContext.getRealmIdentifier());
   }
 }

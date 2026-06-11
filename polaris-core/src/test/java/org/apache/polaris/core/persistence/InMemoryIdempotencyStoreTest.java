@@ -38,7 +38,7 @@ class InMemoryIdempotencyStoreTest {
 
   @BeforeEach
   void setUp() {
-    store = new InMemoryIdempotencyStore();
+    store = new InMemoryIdempotencyStore(REALM);
   }
 
   @Test
@@ -47,12 +47,12 @@ class InMemoryIdempotencyStoreTest {
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     IdempotencyStore.RecordResult first =
-        store.recordIfAbsent(REALM, "k1", OP, RID, PH, 200, null, now, exp);
+        store.recordIfAbsent("k1", OP, RID, PH, 200, null, now, exp);
     assertThat(first.type()).isEqualTo(IdempotencyStore.RecordResultType.OWNED);
     assertThat(first.existing()).isEmpty();
 
     IdempotencyStore.RecordResult second =
-        store.recordIfAbsent(REALM, "k1", OP, RID, "ph-other", 200, null, now, exp);
+        store.recordIfAbsent("k1", OP, RID, "ph-other", 200, null, now, exp);
     assertThat(second.type()).isEqualTo(IdempotencyStore.RecordResultType.DUPLICATE);
     assertThat(second.existing()).isPresent();
     // First-writer-wins: the stored record reflects the original caller's binding.
@@ -63,9 +63,9 @@ class InMemoryIdempotencyStoreTest {
   void load_returnsRecordAfterRecord() {
     Instant now = Instant.parse("2025-01-01T00:00:00Z");
     Instant exp = now.plus(Duration.ofMinutes(5));
-    store.recordIfAbsent(REALM, "k2", OP, RID, PH, 201, null, now, exp);
+    store.recordIfAbsent("k2", OP, RID, PH, 201, null, now, exp);
 
-    Optional<IdempotencyRecord> loaded = store.load(REALM, "k2");
+    Optional<IdempotencyRecord> loaded = store.load("k2");
     assertThat(loaded).isPresent();
     IdempotencyRecord r = loaded.get();
     assertThat(r.realmId()).isEqualTo(REALM);
@@ -80,30 +80,32 @@ class InMemoryIdempotencyStoreTest {
   }
 
   @Test
-  void load_isScopedByRealm() {
+  void load_isScopedByRealmInstance() {
     Instant now = Instant.parse("2025-01-01T00:00:00Z");
     Instant exp = now.plus(Duration.ofMinutes(5));
-    store.recordIfAbsent(REALM, "k3", OP, RID, PH, 200, null, now, exp);
+    store.recordIfAbsent("k3", OP, RID, PH, 200, null, now, exp);
 
-    assertThat(store.load("realm-B", "k3")).isEmpty();
-    assertThat(store.load(REALM, "k3")).isPresent();
+    InMemoryIdempotencyStore otherRealm = new InMemoryIdempotencyStore("realm-B");
+    assertThat(otherRealm.load("k3")).isEmpty();
+    assertThat(store.load("k3")).isPresent();
   }
 
   @Test
-  void purgeExpired_onlyRemovesExpiredRowsInRealm() {
+  void purgeExpired_onlyRemovesExpiredRowsInThisRealm() {
     Instant now = Instant.parse("2025-01-01T00:00:00Z");
     Instant past = now.minus(Duration.ofMinutes(1));
     Instant future = now.plus(Duration.ofMinutes(5));
 
-    store.recordIfAbsent(REALM, "expired", OP, RID, PH, 200, null, now, past);
-    store.recordIfAbsent(REALM, "live", OP, RID, PH, 200, null, now, future);
-    store.recordIfAbsent("realm-B", "expired-other-realm", OP, RID, PH, 200, null, now, past);
+    store.recordIfAbsent("expired", OP, RID, PH, 200, null, now, past);
+    store.recordIfAbsent("live", OP, RID, PH, 200, null, now, future);
+    InMemoryIdempotencyStore otherRealm = new InMemoryIdempotencyStore("realm-B");
+    otherRealm.recordIfAbsent("expired-other-realm", OP, RID, PH, 200, null, now, past);
 
-    int purged = store.purgeExpired(REALM, now);
+    int purged = store.purgeExpired(now);
     assertThat(purged).isEqualTo(1);
-    assertThat(store.load(REALM, "expired")).isEmpty();
-    assertThat(store.load(REALM, "live")).isPresent();
-    // Other realm's expired row is untouched by a purge scoped to REALM.
-    assertThat(store.load("realm-B", "expired-other-realm")).isPresent();
+    assertThat(store.load("expired")).isEmpty();
+    assertThat(store.load("live")).isPresent();
+    // Another realm's store is a separate instance and is untouched by this purge.
+    assertThat(otherRealm.load("expired-other-realm")).isPresent();
   }
 }

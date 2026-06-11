@@ -35,6 +35,6 @@ public class InMemoryIdempotencyStoreFactory implements IdempotencyStoreFactory 
   @Override
   public IdempotencyStore getOrCreateIdempotencyStore(RealmContext realmContext) {
     return perRealm.computeIfAbsent(
-        realmContext.getRealmIdentifier(), k -> new InMemoryIdempotencyStore());
+        realmContext.getRealmIdentifier(), InMemoryIdempotencyStore::new);
   }
 }

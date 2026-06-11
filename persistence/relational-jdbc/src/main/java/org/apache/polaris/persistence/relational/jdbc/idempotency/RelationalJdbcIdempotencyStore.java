@@ -43,17 +43,23 @@ import org.jspecify.annotations.NonNull;
  * {@code (realm_id, idempotency_key)} primary key — a duplicate INSERT surfaces as a constraint
  * violation, which we translate into a {@link RecordResultType#DUPLICATE} along with the existing
  * row.
+ *
+ * <p>Following the {@code JdbcBasePersistenceImpl} pattern, an instance is bound to a single realm
+ * at construction; realm scoping is then applied to every query via the {@code realm_id} column.
  */
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
+  private final String realmId;
 
-  public RelationalJdbcIdempotencyStore(@NonNull DatasourceOperations datasourceOperations) {
+  public RelationalJdbcIdempotencyStore(
+      @NonNull DatasourceOperations datasourceOperations, @NonNull String realmId) {
     this.datasourceOperations = datasourceOperations;
+    this.realmId = realmId;
   }
 
   @Override
-  public Optional<IdempotencyRecord> load(String realmId, String idempotencyKey) {
+  public Optional<IdempotencyRecord> load(String idempotencyKey) {
     try {
       QueryGenerator.PreparedQuery query =
           QueryGenerator.generateSelectQuery(
@@ -94,7 +100,6 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   @Override
   public RecordResult recordIfAbsent(
-      String realmId,
       String idempotencyKey,
       String operationType,
       String resourceHash,
@@ -125,7 +130,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       return new RecordResult(RecordResultType.OWNED, Optional.empty());
     } catch (SQLException e) {
       if (datasourceOperations.isUniquenessConstraintViolation(e)) {
-        Optional<IdempotencyRecord> existing = load(realmId, idempotencyKey);
+        Optional<IdempotencyRecord> existing = load(idempotencyKey);
         if (existing.isEmpty()) {
           // The insert lost the race on the (realm_id, idempotency_key) constraint, yet the winning
           // row is no longer visible (e.g. purged or rolled back between the conflict and this
@@ -147,7 +152,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public int purgeExpired(String realmId, Instant before) {
+  public int purgeExpired(Instant before) {
     try {
       QueryGenerator.PreparedQuery delete =
           QueryGenerator.generateDeleteQuery(

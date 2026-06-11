@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
 class IdempotencyHandlerSupportTest {
 
   private static final String REALM = "realm-A";
-  private static final String OP = "create-table";
+  private static final IdempotentOperation OP = IdempotentOperation.CREATE_TABLE;
   private static final String RID = "catalogs/c1/tables/ns.t1";
   private static final String UUID_V7 = "0190f7f4-21d9-7e8b-9c8a-3c4f0a3e8b21";
 
@@ -121,8 +121,8 @@ class IdempotencyHandlerSupportTest {
         PolarisPrincipal.of("alice", Map.of(), new java.util.LinkedHashSet<>(Set.of("r1", "r2")));
     PolarisPrincipal p2 =
         PolarisPrincipal.of("alice", Map.of(), new java.util.LinkedHashSet<>(Set.of("r2", "r1")));
-    String h1 = support.principalHash(p1, REALM);
-    String h2 = support.principalHash(p2, REALM);
+    String h1 = support.principalHash(p1);
+    String h2 = support.principalHash(p2);
     assertThat(h1).isEqualTo(h2);
   }
 
@@ -130,10 +130,16 @@ class IdempotencyHandlerSupportTest {
   void principalHash_differsAcrossPrincipalsAndRealms() {
     PolarisPrincipal alice = PolarisPrincipal.of("alice", Map.of(), Set.of("r1"));
     PolarisPrincipal bob = PolarisPrincipal.of("bob", Map.of(), Set.of("r1"));
-    String hAlice = support.principalHash(alice, REALM);
-    String hBob = support.principalHash(bob, REALM);
+    String hAlice = support.principalHash(alice);
+    String hBob = support.principalHash(bob);
     assertThat(hAlice).isNotEqualTo(hBob);
-    assertThat(support.principalHash(alice, "realm-B")).isNotEqualTo(hAlice);
+
+    // The realm is part of the binding: the same principal under a different realm hashes
+    // differently. principalHash only depends on the injected RealmContext, so a second instance
+    // bound to another realm is sufficient.
+    IdempotencyHandlerSupport supportRealmB = new IdempotencyHandlerSupport();
+    supportRealmB.realmContext = () -> "realm-B";
+    assertThat(supportRealmB.principalHash(alice)).isNotEqualTo(hAlice);
   }
 
   @Test
@@ -153,14 +159,14 @@ class IdempotencyHandlerSupportTest {
   void preflight_differentPrincipalRaisesConflict() {
     support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
     assertThatThrownBy(() -> support.preflight(UUID_V7, OP, RID, "ph-OTHER"))
-        .isInstanceOf(IdempotencyHandlerSupport.ConflictException.class);
+        .isInstanceOf(IdempotencyConflictException.class);
   }
 
   @Test
   void preflight_differentResourceRaisesConflict() {
     support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
     assertThatThrownBy(() -> support.preflight(UUID_V7, OP, "catalogs/c1/tables/ns.other", "ph-A"))
-        .isInstanceOf(IdempotencyHandlerSupport.ConflictException.class);
+        .isInstanceOf(IdempotencyConflictException.class);
   }
 
   @Test
@@ -178,6 +184,6 @@ class IdempotencyHandlerSupportTest {
   void recordOutcome_raceWithDifferentPrincipalRaisesConflict() {
     support.recordOutcome(UUID_V7, OP, RID, "ph-A", 200, null);
     assertThatThrownBy(() -> support.recordOutcome(UUID_V7, OP, RID, "ph-OTHER", 200, null))
-        .isInstanceOf(IdempotencyHandlerSupport.ConflictException.class);
+        .isInstanceOf(IdempotencyConflictException.class);
   }
 }
