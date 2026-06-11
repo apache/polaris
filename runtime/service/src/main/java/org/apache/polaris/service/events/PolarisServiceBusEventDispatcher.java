@@ -31,6 +31,10 @@ public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher 
   /** The address of the event bus channel where Polaris service events are published. */
   public static final String POLARIS_EVENT_CHANNEL = "polaris-events";
 
+  public static String eventAddress(PolarisEventType eventType) {
+    return POLARIS_EVENT_CHANNEL + "." + eventType;
+  }
+
   @Inject EventBus eventBus;
   @Inject PolarisEventListeners polarisEventListeners;
 
@@ -42,7 +46,7 @@ public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher 
   @Override
   public void dispatch(PolarisEvent event) {
     if (hasListeners(event.type())) {
-      eventBus.publish(POLARIS_EVENT_CHANNEL + "." + event.type(), event);
+      eventBus.publish(eventAddress(event.type()), event);
     }
   }
 

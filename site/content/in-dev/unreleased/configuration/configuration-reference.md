@@ -138,6 +138,10 @@ All properties listed here are **runtime** properties and can be changed without
 
 {{% include-config-section "smallrye-polaris_event_listener_aws_cloudwatch" %}}
 
+### `polaris.event-filter`
+
+{{% include-config-section "smallrye-polaris_event_filter" %}}
+
 ## Operational
 
 ### `polaris.tasks`
@@ -181,4 +185,3 @@ All properties listed here are **runtime** properties and can be changed without
 ### `polaris.realm-context`
 
 {{% include-config-section "smallrye-polaris_realm_context" %}}
-
