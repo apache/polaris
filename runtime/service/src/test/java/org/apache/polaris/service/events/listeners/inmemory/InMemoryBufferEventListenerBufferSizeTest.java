@@ -28,10 +28,8 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
 import io.smallrye.mutiny.subscription.BackPressureFailure;
 import java.util.Map;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -89,10 +87,10 @@ class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListe
   @Test
   void testProcessorFailureRecovery() {
     producer.processEvent("test1", event());
-    UnicastProcessor<PolarisEvent> test1 = producer.processors.get("test1");
+    var test1 = producer.processors.get("test1");
     assertThat(test1).isNotNull();
     // emulate backpressure error; will drop the event and invalidate the processor
-    test1.onError(new BackPressureFailure("error"));
+    test1.processor.onError(new BackPressureFailure("error"));
     // will create a new processor and recover
     sendAsync("test1", 10);
     assertRows("test1", 10);

@@ -32,6 +32,8 @@ import jakarta.inject.Inject;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -51,56 +53,115 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject InMemoryBufferEventListenerConfiguration configuration;
 
+  /**
+   * Thrown by {@link EventProcessor#onNext} when the wrapped processor has already completed (for
+   * example, it was evicted between the cache lookup and the {@code onNext} call). {@link
+   * #processEvent} catches it and retries with a freshly loaded processor.
+   */
+  private static final class CompletedException extends IllegalStateException {}
+
+  /**
+   * Wraps a {@link UnicastProcessor} together with its own lock, so that mutual exclusion between
+   * {@code onNext} (from {@link #processEvent}) and {@code onComplete} (from eviction or shutdown)
+   * does not depend on smallrye-mutiny's internal {@code synchronized} on {@code
+   * UnicastProcessor.onNext}.
+   */
+  protected final class EventProcessor {
+
+    @VisibleForTesting final UnicastProcessor<PolarisEvent> processor;
+    private final ReentrantLock lock = new ReentrantLock();
+    private boolean completed = false; // guarded by lock
+
+    EventProcessor(String realmId) {
+      processor = UnicastProcessor.create();
+      processor
+          .emitOn(Infrastructure.getDefaultWorkerPool())
+          .group()
+          .intoLists()
+          .of(configuration.maxBufferSize(), configuration.bufferTime())
+          .subscribe()
+          .with(events -> flush(realmId, events), error -> onProcessorError(realmId, error));
+    }
+
+    void onNext(PolarisEvent event) {
+      lock.lock();
+      try {
+        if (completed) {
+          throw new CompletedException();
+        }
+        processor.onNext(event);
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    void onComplete() {
+      lock.lock();
+      try {
+        if (!completed) {
+          completed = true;
+          processor.onComplete();
+        }
+      } finally {
+        lock.unlock();
+      }
+    }
+  }
+
   @VisibleForTesting
-  final LoadingCache<String, UnicastProcessor<PolarisEvent>> processors =
+  final LoadingCache<String, EventProcessor> processors =
       Caffeine.newBuilder()
           .expireAfterAccess(Duration.ofHours(1))
           .evictionListener(
-              (String realmId, UnicastProcessor<?> processor, RemovalCause cause) ->
-                  completeSynchronized(processor))
+              (String realmId, EventProcessor processor, RemovalCause cause) -> {
+                if (processor != null) {
+                  processor.onComplete();
+                }
+              })
           .build(this::createProcessor);
+
+  // Construct via a method (not EventProcessor::new) so that when the cache lives on a CDI client
+  // proxy, the call is delegated to the contextual bean instance, whose injected configuration is
+  // non-null. A direct inner-class instantiation would capture the proxy as the enclosing instance
+  // and read its uninjected (null) configuration.
+  protected EventProcessor createProcessor(String realmId) {
+    return new EventProcessor(realmId);
+  }
+
+  private final ReentrantReadWriteLock shutdownLock = new ReentrantReadWriteLock();
+  private boolean shutdown = false; // guarded by shutdownLock
 
   @Override
   protected void processEvent(String realmId, PolarisEvent event) {
-    var processor = Objects.requireNonNull(processors.get(realmId));
-    // UnicastProcessor.onNext() is internally synchronized (smallrye-mutiny
-    // UnicastProcessor declares onNext as `public synchronized void`), so concurrent
-    // processEvent() calls for the same realm serialize on the processor's intrinsic
-    // lock without an external guard.
-    processor.onNext(event);
+    shutdownLock.readLock().lock();
+    try {
+      if (shutdown) {
+        return;
+      }
+      while (true) {
+        var processor = Objects.requireNonNull(processors.get(realmId));
+        try {
+          processor.onNext(event);
+          return;
+        } catch (CompletedException ignored) {
+          // processor was evicted between the cache lookup and onNext; retry with a fresh one
+        }
+      }
+    } finally {
+      shutdownLock.readLock().unlock();
+    }
   }
 
   @PreDestroy
   public void shutdown() {
-    processors.asMap().values().forEach(InMemoryBufferEventListener::completeSynchronized);
-    processors.invalidateAll(); // doesn't call the eviction listener
-  }
-
-  /**
-   * Calls {@link UnicastProcessor#onComplete()} while holding the processor's intrinsic monitor.
-   *
-   * <p>smallrye-mutiny's {@code UnicastProcessor.onNext} is method-{@code synchronized} on the
-   * processor instance; {@code onComplete} is not. Acquiring the same intrinsic monitor here
-   * restores symmetric mutual exclusion between concurrent {@code onNext} (from {@code
-   * processEvent}) and {@code onComplete} (from eviction or shutdown). Wrapping the pattern as an
-   * invariant keeps the synchronization requirement structurally visible to future maintainers.
-   */
-  private static void completeSynchronized(UnicastProcessor<?> processor) {
-    synchronized (processor) {
-      processor.onComplete();
+    shutdownLock.writeLock().lock();
+    try {
+      shutdown = true;
+      processors.asMap().values().forEach(EventProcessor::onComplete);
+      processors.invalidateAll(); // doesn't call the eviction listener
+    } finally {
+      shutdownLock.writeLock().unlock();
     }
-  }
-
-  protected UnicastProcessor<PolarisEvent> createProcessor(String realmId) {
-    UnicastProcessor<PolarisEvent> processor = UnicastProcessor.create();
-    processor
-        .emitOn(Infrastructure.getDefaultWorkerPool())
-        .group()
-        .intoLists()
-        .of(configuration.maxBufferSize(), configuration.bufferTime())
-        .subscribe()
-        .with(events -> flush(realmId, events), error -> onProcessorError(realmId, error));
-    return processor;
   }
 
   @Retry(maxRetries = 5, delay = 1000, jitter = 100)
