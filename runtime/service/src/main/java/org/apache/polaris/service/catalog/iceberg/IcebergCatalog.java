@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -74,6 +75,7 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
+import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
@@ -156,6 +158,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
+
+  // Bounds for the randomized backoff between rename retries. Small enough to keep latency
+  // negligible for the common single-retry case; the upper bound ensures even a saturated
+  // retry loop won't keep a request alive for more than a few hundred ms in the worst case.
+  private static final long RENAME_RETRY_MIN_BACKOFF_MS = 5L;
+  private static final long RENAME_RETRY_MAX_BACKOFF_MS = 25L;
 
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
@@ -2439,8 +2447,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
-    final IcebergTableLikeEntity toEntity;
     List<PolarisEntity> newCatalogPath = null;
+    Long newParentId = null;
     if (!from.namespace().equals(to.namespace())) {
       PolarisResolvedPathWrapper resolvedNewParentEntities =
           resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(to.namespace()));
@@ -2449,32 +2457,86 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             "Cannot rename %s to %s. Namespace does not exist: %s", from, to, to.namespace());
       }
       newCatalogPath = resolvedNewParentEntities.getRawFullPath();
-
-      // the "to" table has a new parent and a new name / namespace path
-      toEntity =
-          new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(leafEntity))
-              .setTableIdentifier(to)
-              .setParentId(resolvedNewParentEntities.getResolvedLeafEntity().getEntity().getId())
-              .build();
-    } else {
-      // only the name of the entity is changed
-      toEntity =
-          new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(leafEntity))
-              .setTableIdentifier(to)
-              .build();
+      newParentId = resolvedNewParentEntities.getResolvedLeafEntity().getEntity().getId();
     }
 
-    // rename the entity now
-    EntityResult returnedEntityResult =
-        getMetaStoreManager()
-            .renameEntity(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                leafEntity,
-                PolarisEntity.toCoreList(newCatalogPath),
-                toEntity);
+    // Server-side retry on concurrent modification of the source entity. Two simultaneous
+    // renames against the same entity would otherwise leak as a retriable error to the
+    // client (see FeatureConfiguration#RENAME_RETRY_MAX_ATTEMPTS). The first call counts
+    // as attempt 1; a config value of 0 means "no retries" (single attempt only).
+    int maxAttempts =
+        Math.max(0, realmConfig.getConfig(FeatureConfiguration.RENAME_RETRY_MAX_ATTEMPTS)) + 1;
 
-    // handle error
+    PolarisEntity currentLeaf = leafEntity;
+    EntityResult returnedEntityResult = null;
+    IcebergTableLikeEntity toEntity = null;
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      IcebergTableLikeEntity.Builder builder =
+          new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(currentLeaf))
+              .setTableIdentifier(to);
+      if (newParentId != null) {
+        builder.setParentId(newParentId);
+      }
+      toEntity = builder.build();
+
+      returnedEntityResult =
+          getMetaStoreManager()
+              .renameEntity(
+                  getCurrentPolarisContext(),
+                  PolarisEntity.toCoreList(catalogPath),
+                  currentLeaf,
+                  PolarisEntity.toCoreList(newCatalogPath),
+                  toEntity);
+
+      if (returnedEntityResult.isSuccess()
+          || returnedEntityResult.getReturnStatus()
+              != BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED) {
+        break;
+      }
+
+      if (attempt >= maxAttempts) {
+        LOGGER.info(
+            "Concurrent modification persisted across {} attempt(s) renaming {} to {}",
+            attempt,
+            from,
+            to);
+        break;
+      }
+
+      // Refresh the source entity so the next attempt sees its latest version. If the entity
+      // was concurrently dropped, surface as ENTITY_NOT_FOUND through the existing handling.
+      EntityResult reloaded =
+          getMetaStoreManager()
+              .loadEntity(
+                  getCurrentPolarisContext(),
+                  leafEntity.getCatalogId(),
+                  leafEntity.getId(),
+                  leafEntity.getType());
+      if (!reloaded.isSuccess() || reloaded.getEntity() == null) {
+        returnedEntityResult = new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+        break;
+      }
+      currentLeaf = PolarisEntity.of(reloaded.getEntity());
+      LOGGER.debug(
+          "Concurrent modification renaming {} to {}; retrying with refreshed entity"
+              + " (attempt {} of {})",
+          from,
+          to,
+          attempt + 1,
+          maxAttempts);
+
+      // Small randomized backoff (5-25ms) to spread out competing retries against the same
+      // entity and avoid a tight retry storm under high concurrency.
+      try {
+        Thread.sleep(
+            ThreadLocalRandom.current()
+                .nextLong(RENAME_RETRY_MIN_BACKOFF_MS, RENAME_RETRY_MAX_BACKOFF_MS));
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+        break;
+      }
+    }
+
     if (!returnedEntityResult.isSuccess()) {
       LOGGER.debug(
           "Rename error {} trying to rename {} to {}. Checking existing object.",
@@ -2494,16 +2556,24 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
           throw new NotFoundException("Cannot rename %s to %s. %s does not exist", from, to, from);
 
-        // this is temporary. Should throw a special error that will be caught and retried
+        // Server-side retries exhausted; surface as a retriable 503 so the client can back
+        // off and retry. We avoid 409 here because the Iceberg rename endpoint reserves it
+        // for "target already exists" (handled by the ENTITY_ALREADY_EXISTS case above).
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
-        case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
-          throw new RuntimeException("concurrent update detected, please retry");
+          throw new ServiceUnavailableException(
+              "Concurrent modification on rename of %s to %s after %d attempt(s)",
+              from, to, maxAttempts);
 
-        // some entities cannot be renamed
+        // Source or destination path was concurrently dropped. This is non-retriable: the
+        // client must observe the new namespace state before issuing another rename.
+        case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          throw new NoSuchNamespaceException(
+              "Cannot rename %s to %s. Source or destination path could not be resolved", from, to);
+
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
           throw new BadRequestException("Cannot rename built-in object %s", leafEntity.getName());
 
-        // some entities cannot be renamed
         default:
           throw new IllegalStateException(
               "Unknown error status " + returnedEntityResult.getReturnStatus());

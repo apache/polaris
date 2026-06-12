@@ -63,6 +63,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Fixes
 - `RateLimiterFilter` now returns an Iceberg-compatible `ErrorResponse` JSON body on HTTP 429, with `Content-Type: application/json`. Previously the body was empty, causing Iceberg REST clients to surface an opaque error.
 - The admin tool `purge` command now prints the underlying exception stack trace to stderr when a purge fails unexpectedly, matching the `bootstrap` command. Previously a failed purge printed only a generic message, giving operators no diagnostic information.
+- `renameTable` and `renameView` now retry server-side with a small randomized backoff when the target entity is concurrently modified, refreshing the entity between attempts. Only after the configured number of retries (`RENAME_RETRY_MAX_ATTEMPTS`, default `3`) do they surface the conflict to the client as a retriable HTTP 503 (`ServiceUnavailableException`). Previously every transient race surfaced as an opaque HTTP 500.
+- `renameTable` and `renameView` now return HTTP 404 (`NoSuchNamespaceException`) when the source or destination path cannot be resolved (`ENTITY_CANNOT_BE_RESOLVED`, `CATALOG_PATH_CANNOT_BE_RESOLVED`), instead of HTTP 500. A concurrently dropped namespace is non-retriable, so it now surfaces correctly to the client.
 
 ## [1.5.0]
 

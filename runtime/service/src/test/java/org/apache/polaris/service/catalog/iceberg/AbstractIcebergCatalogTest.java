@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -88,6 +89,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
+import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
@@ -175,6 +177,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
@@ -2527,6 +2530,125 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitConflictException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  @Test
+  public void testRenameTableRetriesOnConcurrentModificationAndSucceeds() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    final IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    createNonExistingNamespaces(namespace);
+
+    final TableIdentifier source = TableIdentifier.of(namespace, "rename_retry_src");
+    final TableIdentifier dest = TableIdentifier.of(namespace, "rename_retry_dst");
+    catalog.buildTable(source, SCHEMA).create();
+
+    // Inject a transient concurrency conflict on the first two rename attempts; the third
+    // attempt delegates to the real implementation and is expected to succeed. This exercises
+    // the server-side retry path and refresh-via-loadEntity logic in renameTableLike.
+    AtomicInteger attempts = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (attempts.incrementAndGet() <= 2) {
+                return new EntityResult(
+                    BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spyMetaStore)
+        .renameEntity(any(), any(), any(), any(), any());
+
+    catalog.renameTable(source, dest);
+
+    Assertions.assertThat(attempts.get()).isEqualTo(3);
+    Assertions.assertThat(catalog.tableExists(dest)).isTrue();
+    Assertions.assertThat(catalog.tableExists(source)).isFalse();
+  }
+
+  @Test
+  public void testRenameTableExhaustsRetriesAndReturns503() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    final IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    createNonExistingNamespaces(namespace);
+
+    final TableIdentifier source = TableIdentifier.of(namespace, "rename_retry_exhaust_src");
+    final TableIdentifier dest = TableIdentifier.of(namespace, "rename_retry_exhaust_dst");
+    catalog.buildTable(source, SCHEMA).create();
+
+    doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .when(spyMetaStore)
+        .renameEntity(any(), any(), any(), any(), any());
+
+    int maxAttempts = realmConfig.getConfig(FeatureConfiguration.RENAME_RETRY_MAX_ATTEMPTS) + 1;
+
+    Assertions.assertThatThrownBy(() -> catalog.renameTable(source, dest))
+        .isInstanceOf(ServiceUnavailableException.class)
+        .hasMessageContaining("Concurrent modification on rename");
+
+    Mockito.verify(spyMetaStore, Mockito.times(maxAttempts))
+        .renameEntity(any(), any(), any(), any(), any());
+    Assertions.assertThat(catalog.tableExists(source)).isTrue();
+    Assertions.assertThat(catalog.tableExists(dest)).isFalse();
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = BaseResult.ReturnStatus.class,
+      names = {"ENTITY_CANNOT_BE_RESOLVED", "CATALOG_PATH_CANNOT_BE_RESOLVED"})
+  public void testRenameTableUnresolvablePathThrowsNoSuchNamespace(BaseResult.ReturnStatus status) {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    final IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    createNonExistingNamespaces(namespace);
+
+    final TableIdentifier source = TableIdentifier.of(namespace, "rename_unresolvable_src");
+    final TableIdentifier dest = TableIdentifier.of(namespace, "rename_unresolvable_dst");
+    catalog.buildTable(source, SCHEMA).create();
+
+    doReturn(new EntityResult(status, null))
+        .when(spyMetaStore)
+        .renameEntity(any(), any(), any(), any(), any());
+
+    Assertions.assertThatThrownBy(() -> catalog.renameTable(source, dest))
+        .isInstanceOf(NoSuchNamespaceException.class)
+        .hasMessageContaining("could not be resolved");
+
+    // Path-resolution failures are non-retriable: the call should hit renameEntity exactly once.
+    Mockito.verify(spyMetaStore, Mockito.times(1)).renameEntity(any(), any(), any(), any(), any());
   }
 
   @Test

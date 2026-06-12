@@ -393,6 +393,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(2)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Integer> RENAME_RETRY_MAX_ATTEMPTS =
+      PolarisConfiguration.<Integer>builder()
+          .key("RENAME_RETRY_MAX_ATTEMPTS")
+          .description(
+              "How many times to retry a renameTable / renameView when the target entity is\n"
+                  + "concurrently modified before surfacing the error to the client. The first\n"
+                  + "attempt is not counted as a retry, so a value of 0 disables retries entirely.\n"
+                  + "After all retries are exhausted, the server returns a retriable\n"
+                  + "ServiceUnavailableException (HTTP 503).")
+          .defaultValue(3)
+          .buildFeatureConfiguration();
+
   public static final PolarisConfiguration<Boolean> LIST_PAGINATION_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("LIST_PAGINATION_ENABLED")
