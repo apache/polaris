@@ -20,12 +20,9 @@ package org.apache.polaris.service.lineage;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import java.time.Instant;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.lineage.LineageGraph;
-import org.apache.polaris.core.lineage.LineageIngestRequest;
-import org.apache.polaris.core.lineage.LineagePersistence;
 import org.apache.polaris.core.lineage.LineageQueryRequest;
 import org.apache.polaris.core.lineage.LineageService;
 
@@ -33,30 +30,17 @@ import org.apache.polaris.core.lineage.LineageService;
 public class DefaultLineageService implements LineageService {
   private final CallContext callContext;
   private final LineageConfiguration configuration;
-  private final LineagePersistence persistence;
 
   @Inject
-  public DefaultLineageService(
-      CallContext callContext, LineageConfiguration configuration, LineagePersistence persistence) {
+  public DefaultLineageService(CallContext callContext, LineageConfiguration configuration) {
     this.callContext = callContext;
     this.configuration = configuration;
-    this.persistence = persistence;
-  }
-
-  @Override
-  public void ingest(LineageIngestRequest request) {
-    ensureEnabled();
-    Instant lastEventAt = request.eventTime().orElseGet(Instant::now);
-    persistence.upsertDatasets(callContext.getRealmContext(), request.datasets());
-    persistence.upsertDatasetEdges(callContext.getRealmContext(), request.edges(), lastEventAt);
-    persistence.upsertColumnEdges(
-        callContext.getRealmContext(), request.columnEdges(), lastEventAt);
   }
 
   @Override
   public LineageGraph query(LineageQueryRequest request) {
     ensureEnabled();
-    return persistence.loadLineage(callContext.getRealmContext(), request);
+    throw new UnsupportedOperationException("Lineage query is not implemented yet.");
   }
 
   private void ensureEnabled() {
@@ -67,12 +51,9 @@ public class DefaultLineageService implements LineageService {
 
     if (!callContext.getRealmConfig().getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
       throw new UnsupportedOperationException(
-          "Feature not enabled: " + FeatureConfiguration.ENABLE_LINEAGE.key());
-    }
-
-    if (!configuration.persistence().enabled()) {
-      throw new UnsupportedOperationException(
-          "Lineage persistence is disabled: set polaris.lineage.persistence.enabled=true.");
+          "Lineage realm feature is disabled: enable "
+              + FeatureConfiguration.ENABLE_LINEAGE.key()
+              + " in the realm feature configuration.");
     }
   }
 }
