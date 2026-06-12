@@ -32,7 +32,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -89,8 +89,8 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
     String catalogKey = realm + "/" + catalogName;
     LOGGER.debug("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
-    IcebergCatalog catalogInstance =
-        new IcebergCatalog(
+    LocalIcebergCatalog catalogInstance =
+        new LocalIcebergCatalog(
             diagnostics,
             resolverFactory,
             metaStoreManager,

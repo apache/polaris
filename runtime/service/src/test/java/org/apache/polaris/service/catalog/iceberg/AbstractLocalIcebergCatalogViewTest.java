@@ -79,7 +79,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
-public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
+public abstract class AbstractLocalIcebergCatalogViewTest
+    extends ViewCatalogTests<LocalIcebergCatalog> {
   static {
     Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
   }
@@ -126,7 +127,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject FileIOFactory fileIOFactory;
 
-  private IcebergCatalog catalog;
+  private LocalIcebergCatalog catalog;
 
   private String realmName;
   private PolarisCallContext polarisContext;
@@ -205,7 +206,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     testPolarisEventListener.clear();
     this.catalog =
-        new IcebergCatalog(
+        new LocalIcebergCatalog(
             diagServices,
             resolverFactory,
             metaStoreManager,
@@ -232,7 +233,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   }
 
   @Override
-  protected IcebergCatalog catalog() {
+  protected LocalIcebergCatalog catalog() {
     return catalog;
   }
 
@@ -248,7 +249,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
   @Test
   public void testEventsAreEmitted() {
-    IcebergCatalog catalog = catalog();
+    LocalIcebergCatalog catalog = catalog();
     catalog.createNamespace(TestData.NAMESPACE);
     View view =
         catalog
