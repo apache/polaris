@@ -2972,14 +2972,51 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   }
 
   @Test
+  public void stagedCreateUsesUniqueTableLocationWhenEnabled() {
+    IcebergCatalog uniqueCatalog =
+        initCatalog(
+            "staged_unique_catalog",
+            ImmutableMap.of(CatalogProperties.UNIQUE_TABLE_LOCATION, "true"));
+    if (requiresNamespaceCreate()) {
+      uniqueCatalog.createNamespace(NS);
+    }
+
+    String stagedLocation =
+        uniqueCatalog
+            .buildTable(TableIdentifier.of(NS, "staged_unique_table"), SCHEMA)
+            .createTransaction()
+            .table()
+            .location();
+
+    assertThat(stagedLocation).contains("staged_unique_table-");
+    assertThat(stagedLocation).doesNotEndWith("/staged_unique_table");
+  }
+
+  @Test
+  public void viewDefaultLocationIgnoresUniqueTableLocationProperty() {
+    IcebergCatalog uniqueCatalog =
+        initCatalog(
+            "view_unique_catalog",
+            ImmutableMap.of(CatalogProperties.UNIQUE_TABLE_LOCATION, "true"));
+    uniqueCatalog.createNamespace(NS);
+
+    TableIdentifier viewId = TableIdentifier.of(NS, "unique_loc_view");
+    uniqueCatalog
+        .buildView(viewId)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    assertThat(uniqueCatalog.loadView(viewId).location()).endsWith("/unique_loc_view");
+    assertThat(uniqueCatalog.loadView(viewId).location())
+        .doesNotMatch(".*\\/unique_loc_view-[0-9a-f]+");
+  }
+
+  @Test
   @Disabled("Test is not compatible with REST catalogs")
   @Override
   public void testLoadTableWithMissingMetadataFile(@TempDir Path tempDir) {}
-
-  @Test
-  @Disabled("Feature is not implemented yet")
-  @Override
-  public void createTableInUniqueLocation() {}
 
   @Test
   @Disabled(

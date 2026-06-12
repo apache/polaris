@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
@@ -60,6 +61,7 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.TableProperties;
+import org.apache.iceberg.Transaction;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -182,6 +184,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   private final AtomicBoolean loggedPrefixOverlapWarning = new AtomicBoolean(false);
+
+  /**
+   * Set while a {@link TableBuilder} is deriving a default table location so {@link
+   * #defaultWarehouseLocation} can honor {@link CatalogProperties#UNIQUE_TABLE_LOCATION} without
+   * applying unique suffixes to view default locations (views use the same Iceberg hook).
+   */
+  private final ThreadLocal<Boolean> deriveTableDefaultLocationWithUniqueSuffix =
+      ThreadLocal.withInitial(() -> false);
 
   private String ioImplClassName;
   private FileIO catalogFileIO;
@@ -458,9 +468,23 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
+    boolean useUniqueTableLocation =
+        useUniqueTableLocation() && deriveTableDefaultLocationWithUniqueSuffix.get();
+    return resolveDefaultWarehouseLocation(tableIdentifier, useUniqueTableLocation);
+  }
+
+  private boolean useUniqueTableLocation() {
+    return PropertyUtil.propertyAsBoolean(
+        properties(),
+        CatalogProperties.UNIQUE_TABLE_LOCATION,
+        CatalogProperties.UNIQUE_TABLE_LOCATION_DEFAULT);
+  }
+
+  private String resolveDefaultWarehouseLocation(
+      TableIdentifier tableIdentifier, boolean useUniqueTableLocation) {
+    String tableLocation = LocationUtil.tableLocation(tableIdentifier, useUniqueTableLocation);
     if (tableIdentifier.namespace().isEmpty()) {
-      return SLASH.join(
-          defaultNamespaceLocation(tableIdentifier.namespace()), tableIdentifier.name());
+      return SLASH.join(defaultNamespaceLocation(tableIdentifier.namespace()), tableLocation);
     } else {
       PolarisResolvedPathWrapper resolvedNamespace =
           resolvedEntityView.getResolvedPath(
@@ -470,7 +494,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
       List<PolarisEntity> namespacePath = resolvedNamespace.getRawFullPath();
       String namespaceLocation = resolveLocationForPath(diagnostics, namespacePath);
-      return SLASH.join(namespaceLocation, tableIdentifier.name());
+      return SLASH.join(namespaceLocation, tableLocation);
     }
   }
 
@@ -1094,7 +1118,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     locationBuilder
         .append("/")
-        .append(URLEncoder.encode(tableIdentifier.name(), Charset.defaultCharset()))
+        .append(
+            URLEncoder.encode(
+                LocationUtil.tableLocation(tableIdentifier, useUniqueTableLocation()),
+                Charset.defaultCharset()))
         .append("/");
     return locationBuilder.toString();
   }
@@ -1500,6 +1527,35 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     @Override
     public TableBuilder withLocation(String newLocation) {
       return super.withLocation(transformTableLikeLocation(identifier, newLocation));
+    }
+
+    @Override
+    public Table create() {
+      return withUniqueTableDefaultLocation(super::create);
+    }
+
+    @Override
+    public Transaction createTransaction() {
+      return withUniqueTableDefaultLocation(super::createTransaction);
+    }
+
+    @Override
+    public Transaction replaceTransaction() {
+      return withUniqueTableDefaultLocation(super::replaceTransaction);
+    }
+
+    @Override
+    public Transaction createOrReplaceTransaction() {
+      return withUniqueTableDefaultLocation(super::createOrReplaceTransaction);
+    }
+  }
+
+  private <T> T withUniqueTableDefaultLocation(Supplier<T> action) {
+    deriveTableDefaultLocationWithUniqueSuffix.set(true);
+    try {
+      return action.get();
+    } finally {
+      deriveTableDefaultLocationWithUniqueSuffix.remove();
     }
   }
 
