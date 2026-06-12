@@ -21,6 +21,18 @@ import com.gradle.develocity.agent.gradle.scan.BuildScanPublishingConfiguration
 import java.util.Properties
 import org.gradle.api.specs.Spec
 
+// Fail early and hard when Gradle's configuration cache is used in CI.
+// Using the configuration cache in CI can leak secrets to the persisted configuration cache and
+// from there anywhere.
+if (
+  gradle.startParameter.isConfigurationCacheRequested &&
+    providers.environmentVariable("CI").map(String::toBoolean).getOrElse(false)
+) {
+  throw GradleException(
+    "Gradle configuration cache must not be enabled in CI because it can persist build configuration state to disk."
+  )
+}
+
 includeBuild("build-logic") { name = "polaris-build-logic" }
 
 if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
