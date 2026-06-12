@@ -16,24 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.nosql;
 
+package org.apache.polaris.test.commons;
+
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.Map;
 
-public final class NoSqlTesting {
-  private NoSqlTesting() {}
-
-  public static class PersistenceInMemoryProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
+public class NoSqlInMemoryProfile implements QuarkusTestProfile {
+  public static final Map<String, String> NOSQL_PERSISTENCE =
+      Map.of(
           "polaris.persistence.type",
           "nosql",
           "polaris.persistence.nosql.backend",
           "InMemory",
           "polaris.persistence.auto-bootstrap-types",
           "nosql");
-    }
+
+  @Override
+  public Map<String, String> getConfigOverrides() {
+    return ImmutableMap.<String, String>builder()
+        .putAll(NOSQL_PERSISTENCE)
+        .putAll(MinioRustProfile.CONFIG_OVERRIDES)
+        .build();
   }
 }

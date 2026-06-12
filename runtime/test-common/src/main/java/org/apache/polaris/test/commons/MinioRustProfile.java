@@ -16,13 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.nosql;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
-import org.apache.polaris.test.commons.NoSqlInMemoryProfile;
+package org.apache.polaris.test.commons;
 
-@QuarkusIntegrationTest
-@TestProfile(value = NoSqlInMemoryProfile.class)
-public class NoSqlManagementServiceIT extends PolarisManagementServiceIntegrationTest {}
+import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.Map;
+
+public class MinioRustProfile implements QuarkusTestProfile {
+  public static final String SECRET_KEY = "test-sk-123";
+  public static final String ACCESS_KEY = "test-ak-123";
+  public static final Map<String, String> CONFIG_OVERRIDES =
+      ImmutableMap.<String, String>builder()
+          .put("polaris.storage.aws.access-key", ACCESS_KEY)
+          .put("polaris.storage.aws.secret-key", SECRET_KEY)
+          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
+          .build();
+
+  @Override
+  public Map<String, String> getConfigOverrides() {
+    return CONFIG_OVERRIDES;
+  }
+}
