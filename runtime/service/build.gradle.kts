@@ -224,55 +224,80 @@ tasks.withType(Test::class.java).configureEach {
   systemProperty("java.security.manager", "allow")
 }
 
-listOf("intTest", "cloudTest")
-  .map { tasks.named<Test>(it) }
-  .forEach {
-    it.configure {
-      maxParallelForks = 1
+val buildDir = project.layout.buildDirectory
 
-      val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
+// Same issue as above: allow a java security manager after Java 21
+// (this setting is for the application under test, while the setting above is for test
+// code).
+val securityManagerAllow = "-Djava.security.manager=allow"
 
-      // JVM arguments provider does not interfere with Gradle's cache keys
-      jvmArgumentProviders.add(
-        CommandLineArgumentProvider {
-          // Same issue as above: allow a java security manager after Java 21
-          // (this setting is for the application under test, while the setting above is for test
-          // code).
-          val securityManagerAllow = "-Djava.security.manager=allow"
+// Example: to attach a debugger to the spawned JVM running Quarkus, add
+// -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+// to your test configuration.
+val quarkusTestArgLine =
+  providers
+    .systemProperty("quarkus.test.arg-line")
+    .map { "$it $securityManagerAllow" }
+    .orElse(securityManagerAllow)
+    .get()
 
-          val args = mutableListOf<String>()
+val quarkusProperties = providers.systemPropertiesPrefixedBy("quarkus.")
 
-          // Example: to attach a debugger to the spawned JVM running Quarkus, add
-          // -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
-          // to your test configuration.
-          val explicitQuarkusTestArgLine =
-            providers.systemProperty("quarkus.test.arg-line").getOrNull()
-          var quarkusTestArgLine =
-            if (explicitQuarkusTestArgLine != null)
-              "$explicitQuarkusTestArgLine $securityManagerAllow"
-            else securityManagerAllow
+listOf("intTest", "cloudTest").forEach {
+  tasks.named<Test>(it).configure(IntTestConfig(buildDir, quarkusProperties, quarkusTestArgLine))
+}
 
-          args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
-          // This property is not honored in a per-profile application.properties file,
-          // so we need to set it here.
-          args.add("-Dquarkus.log.file.path=${logsDir.resolve("polaris.log").absolutePath}")
+class IntTestConfig(
+  @get:Internal val buildDir: DirectoryProperty,
+  @get:Input val quarkusProperties: Provider<Map<String, String>>,
+  @get:Input val quarkusTestArgLine: String,
+) : Action<Test> {
+  override fun execute(t: Test) {
+    t.maxParallelForks = 1
 
-          // Add `quarkus.*` system properties, other than the ones explicitly set above
-          providers
-            .systemPropertiesPrefixedBy("quarkus.")
-            .get()
-            .filter { e -> "quarkus.test.arg-line" != e.key && "quarkus.log.file.path" != e.key }
-            .forEach { e -> args.add("${e.key}=${e.value}") }
+    val logsDir = buildDir.map { b -> b.asFile.resolve("logs") }
 
-          args
-        }
-      )
-      // delete files from previous runs
-      doFirst {
-        // delete log files written by Polaris
-        logsDir.deleteRecursively()
-        // delete quarkus.log file (captured Polaris stdout/stderr)
-        project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
-      }
-    }
+    // JVM arguments provider does not interfere with Gradle's cache keys
+    t.jvmArgumentProviders.add(
+      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine)
+    )
+
+    // delete files from previous runs
+    t.doFirst(IntTestCleanup(logsDir, buildDir))
   }
+}
+
+class IntTestCleanup(
+  @get:Internal val logsDir: Provider<File>,
+  @get:Internal val buildDir: DirectoryProperty,
+) : Action<Task> {
+  override fun execute(t: Task) {
+    // delete log files written by Polaris
+    logsDir.get().deleteRecursively()
+    // delete quarkus.log file (captured Polaris stdout/stderr)
+    buildDir.get().asFile.resolve("quarkus.log").delete()
+  }
+}
+
+class IntTestArgumentProvider(
+  @get:Internal val logsDir: Provider<File>,
+  @get:Input val quarkusProperties: Provider<Map<String, String>>,
+  @get:Input val quarkusTestArgLine: String,
+) : CommandLineArgumentProvider {
+  override fun asArguments(): Iterable<String?> {
+    val args = mutableListOf<String>()
+
+    args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
+    // This property is not honored in a per-profile application.properties file,
+    // so we need to set it here.
+    args.add("-Dquarkus.log.file.path=${logsDir.get().resolve("polaris.log").absolutePath}")
+
+    // Add `quarkus.*` system properties, other than the ones explicitly set above
+    quarkusProperties
+      .get()
+      .filter { e -> "quarkus.test.arg-line" != e.key && "quarkus.log.file.path" != e.key }
+      .forEach { e -> args.add("${e.key}=${e.value}") }
+
+    return args
+  }
+}
