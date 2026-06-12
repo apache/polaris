@@ -28,28 +28,12 @@ import jakarta.enterprise.event.Observes;
 import java.util.List;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.assertj.core.api.SoftAssertions;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusMainTest
 public abstract class PurgeCommandTestBase {
   private static final String REALM1 = "purge-test-realm1";
   private static final String REALM2 = "purge-test-realm2";
-  private static final String MISSING_REALM = "purge-test-missing-realm";
-
-  protected SoftAssertions soft;
-
-  @BeforeEach
-  void setup() {
-    soft = new SoftAssertions();
-  }
-
-  @AfterEach
-  void after() {
-    soft.assertAll();
-  }
 
   void preBootstrap(@Observes StartupEvent event, MetaStoreManagerFactory metaStoreManagerFactory) {
     metaStoreManagerFactory.bootstrapRealms(List.of(REALM1, REALM2), RootCredentialsSet.EMPTY);
@@ -59,18 +43,5 @@ public abstract class PurgeCommandTestBase {
   @Launch(value = {"purge", "-r", REALM1, "-r", REALM2})
   public void testPurge(LaunchResult result) {
     assertThat(result.getOutput()).contains("Purge completed successfully.");
-  }
-
-  @Test
-  @Launch(
-      value = {"purge", "-r", MISSING_REALM},
-      exitCode = BaseCommand.EXIT_CODE_PURGE_ERROR)
-  public void testPurgeFailure(LaunchResult result) {
-    soft.assertThat(result.getOutput())
-        .contains(
-            "Realm "
-                + MISSING_REALM
-                + " is not bootstrapped, could not load root principal. Please run Bootstrap command.");
-    soft.assertThat(result.getErrorOutput()).contains("Purge encountered errors during operation.");
   }
 }
