@@ -119,6 +119,8 @@ jcstress {
 }
 
 tasks.named<JcstressTask>("jcstress") {
+  notCompatibleWithConfigurationCache("Jcstress plugin is not compatible with configuration cache")
+
   listOf("os.name", "os.arch", "os.version", "java.runtime.name", "java.runtime.version").forEach {
     inputs.property(it, providers.systemProperty(it).orElse(""))
   }
