@@ -83,19 +83,23 @@ fun addAdditionalJarContent(project: Project): Unit =
       val generatePomProperties =
         tasks.register("generatePomProperties", GeneratePomProperties::class.java) {}
 
-      tasks.withType(Jar::class).configureEach {
-        // Only add the pom.xml to jars for 'release' builds, but not for developer/snapshot builds.
-        // Letting jars depend on the pom.xml (Gradle's `GenerateMavenPom` task, annotated with
-        // `@UntrackedTask`) breaks up-to-date checks for all jars and dependent project
-        // dependencies, leading to unnecessarily long build times.
-        val includePom =
-          rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")
-        if (includePom) {
-          from(tasks.named<GenerateMavenPom>("generatePomFileForMavenPublication")) {
+      // Only add the pom.xml to jars for 'release' builds, but not for developer/snapshot builds.
+      // Letting jars depend on the pom.xml (Gradle's `GenerateMavenPom` task, annotated with
+      // `@UntrackedTask`) breaks up-to-date checks for all jars and dependent project
+      // dependencies, leading to unnecessarily long build times.
+      if (rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")) {
+        val pomPath = "META-INF/maven/${project.group}/${project.name}/pom.xml"
+        val generatePomFileTask =
+          tasks.named<GenerateMavenPom>("generatePomFileForMavenPublication")
+        tasks.withType(Jar::class).configureEach {
+          from(generatePomFileTask) {
             include("pom-default.xml")
-            eachFile { path = "META-INF/maven/${project.group}/${project.name}/pom.xml" }
+            eachFile { path = pomPath }
           }
         }
+      }
+
+      tasks.withType(Jar::class).configureEach {
         from(generatePomProperties) {
           include("**")
           eachFile { path = sourcePath }
