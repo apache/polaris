@@ -56,15 +56,4 @@ public record LineageData(
         OptionalLong.of(createdAt),
         OptionalLong.of(updatedAt));
   }
-
-  public LineageData(LineageDataset dataset) {
-    this(
-        OptionalLong.empty(),
-        dataset.polarisEntityId(),
-        dataset.namespace(),
-        dataset.name(),
-        null,
-        OptionalLong.empty(),
-        OptionalLong.empty());
-  }
 }

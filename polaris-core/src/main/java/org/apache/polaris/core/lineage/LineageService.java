@@ -20,7 +20,5 @@ package org.apache.polaris.core.lineage;
 
 /** Service boundary for lineage operations used by transport-layer adapters. */
 public interface LineageService {
-  void ingest(LineageIngestRequest request);
-
   LineageGraph query(LineageQueryRequest request);
 }
