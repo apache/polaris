@@ -26,6 +26,3 @@ build:
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
 | `polaris.lineage.enabled` | `false` | `boolean` |  |
-| `polaris.lineage.persistence.enabled` | `false` | `boolean` |  |
-| `polaris.lineage.persistence.type` | `relational-jdbc` | `string` |  |
-| `polaris.lineage.dataset-resolution.enabled` | `false` | `boolean` |  |

@@ -26,7 +26,7 @@ public record LineageGraph(
     LineageNode node, List<LineageNode> upstream, List<LineageNode> downstream) {
   public LineageGraph {
     Objects.requireNonNull(node, "node must be non-null");
-    upstream = List.copyOf(upstream);
-    downstream = List.copyOf(downstream);
+    upstream = List.copyOf(Objects.requireNonNull(upstream, "upstream must be non-null"));
+    downstream = List.copyOf(Objects.requireNonNull(downstream, "downstream must be non-null"));
   }
 }
