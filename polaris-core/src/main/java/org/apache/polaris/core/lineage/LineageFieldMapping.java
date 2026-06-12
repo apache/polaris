@@ -26,8 +26,4 @@ public record LineageFieldMapping(String sourceField, String targetField) {
     Objects.requireNonNull(sourceField, "sourceField must be non-null");
     Objects.requireNonNull(targetField, "targetField must be non-null");
   }
-
-  public LineageFieldMapping(LineageColumnEdge edge) {
-    this(edge.source().field(), edge.target().field());
-  }
 }
