@@ -22,5 +22,5 @@ import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.admintool.AdminProfiles;
 import org.apache.polaris.admintool.PurgeCommandTestBase;
 
-@TestProfile(AdminProfiles.PreBootstrappedNoSqlInMemory.class)
+@TestProfile(AdminProfiles.NoSqlInMemory.class)
 class NoSqlInMemoryPurgeCommandTest extends PurgeCommandTestBase {}
