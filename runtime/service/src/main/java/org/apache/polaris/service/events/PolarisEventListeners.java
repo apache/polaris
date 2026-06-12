@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
@@ -179,18 +180,27 @@ public class PolarisEventListeners {
     }
 
     @Override
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void execute(@NonNull Runnable task) {
       if (!queue.offer(task)) {
         throw new RejectedExecutionException("Event listener queue is full");
       }
-      if (draining.compareAndSet(false, true)) {
+      maybeScheduleDrain();
+    }
+
+    private CompletableFuture<Void> maybeScheduleDrain() {
+      if (!queue.isEmpty() && draining.compareAndSet(false, true)) {
         try {
-          delegate.execute(this::drain);
+          return CompletableFuture.runAsync(this::drain, delegate)
+              // if tasks arrived in the interim, schedule another drain for fairness
+              .thenCompose(v -> maybeScheduleDrain())
+              .exceptionally(this::onError);
         } catch (Throwable t) {
           draining.set(false);
-          throw t;
+          return CompletableFuture.failedFuture(t);
         }
       }
+      return CompletableFuture.completedFuture(null);
     }
 
     private void drain() {
@@ -201,19 +211,13 @@ public class PolarisEventListeners {
         }
       } finally {
         draining.set(false);
-        // A producer may have enqueued a task between the last poll() and the set(false) above,
-        // and seen draining=true so it did not schedule a drain. Catch that here.
-        if (!queue.isEmpty() && draining.compareAndSet(false, true)) {
-          try {
-            // re-schedule for fairness
-            delegate.execute(this::drain);
-          } catch (Exception e) {
-            // tasks remain in queue; next submission will trigger a new drain
-            draining.set(false);
-            LOGGER.warn("Failed to reschedule listener executor drain; tasks may be delayed", e);
-          }
-        }
       }
+    }
+
+    private Void onError(Throwable error) {
+      draining.set(false);
+      LOGGER.warn("Failed to drain listener backlog; task delivery may be delayed", error);
+      return null;
     }
   }
 }
