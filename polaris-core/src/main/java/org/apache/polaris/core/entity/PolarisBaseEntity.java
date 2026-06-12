@@ -343,8 +343,8 @@ public class PolarisBaseEntity extends PolarisEntityCore {
         && toPurgeTimestamp == that.toPurgeTimestamp
         && lastUpdateTimestamp == that.lastUpdateTimestamp
         && grantRecordsVersion == that.grantRecordsVersion
-        && Objects.equals(properties, that.properties)
-        && Objects.equals(internalProperties, that.internalProperties);
+        && Objects.equals(getPropertiesAsMap(), that.getPropertiesAsMap())
+        && Objects.equals(getInternalPropertiesAsMap(), that.getInternalPropertiesAsMap());
   }
 
   @Override
@@ -362,8 +362,8 @@ public class PolarisBaseEntity extends PolarisEntityCore {
         purgeTimestamp,
         toPurgeTimestamp,
         lastUpdateTimestamp,
-        properties,
-        internalProperties,
+        getPropertiesAsMap(),
+        getInternalPropertiesAsMap(),
         grantRecordsVersion);
   }
 
