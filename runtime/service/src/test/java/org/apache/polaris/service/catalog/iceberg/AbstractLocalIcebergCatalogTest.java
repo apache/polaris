@@ -89,6 +89,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
+import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
@@ -2552,6 +2553,57 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitConflictException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  static Stream<Arguments> renameFailureStatuses() {
+    return Stream.of(
+        // Transient conflict: entity present but concurrently modified -> 503, retryable.
+        Arguments.of(
+            BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+            ServiceUnavailableException.class),
+        // Source path could not be resolved (e.g. concurrently dropped) -> 404, not retryable.
+        Arguments.of(
+            BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, NoSuchNamespaceException.class),
+        // Target path could not be resolved (e.g. concurrently dropped) -> 404, not retryable.
+        Arguments.of(
+            BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED,
+            NoSuchNamespaceException.class));
+  }
+
+  @ParameterizedTest
+  @MethodSource("renameFailureStatuses")
+  public void testConcurrencyConflictRenameTable(
+      BaseResult.ReturnStatus renameStatus, Class<? extends Throwable> expectedException) {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    // Use a spy so that resolution succeeds normally, but the final rename reports the given
+    // failure status. The mapping must distinguish a transient conflict
+    // (TARGET_ENTITY_CONCURRENTLY_MODIFIED -> 503, retryable) from resolution failures
+    // (ENTITY_CANNOT_BE_RESOLVED / CATALOG_PATH_CANNOT_BE_RESOLVED -> 404), rather than failing
+    // with an opaque 500.
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    final LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("rename_conflict_ns");
+    catalog.createNamespace(namespace);
+
+    final TableIdentifier from = TableIdentifier.of(namespace, "rename_from");
+    final TableIdentifier to = TableIdentifier.of(namespace, "rename_to");
+    catalog.buildTable(from, SCHEMA).create();
+
+    doReturn(new EntityResult(renameStatus, null))
+        .when(spyMetaStore)
+        .renameEntity(any(), any(), any(), any(), any());
+
+    Assertions.assertThatThrownBy(() -> catalog.renameTable(from, to))
+        .isInstanceOf(expectedException)
+        .hasMessageContaining("rename_from");
   }
 
   @Test

@@ -74,6 +74,7 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
+import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
@@ -2496,10 +2497,22 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
           throw new NotFoundException("Cannot rename %s to %s. %s does not exist", from, to, from);
 
-        // this is temporary. Should throw a special error that will be caught and retried
-        case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
+        // The source path (ENTITY_CANNOT_BE_RESOLVED) or the target path
+        // (CATALOG_PATH_CANNOT_BE_RESOLVED) could not be resolved, e.g. because it was concurrently
+        // dropped. This is not retriable, so surface it as 404.
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
-          throw new RuntimeException("concurrent update detected, please retry");
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          throw new NoSuchNamespaceException(
+              "Cannot rename %s to %s because the source or target path could not be resolved",
+              from, to);
+
+        // The entity is still present but was concurrently modified: a genuine transient conflict.
+        // Surface as 503 so clients can retry. We avoid 409 because the rename endpoint reserves
+        // 409 for "target already exists" (handled by the ENTITY_ALREADY_EXISTS case above).
+        case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
+          throw new ServiceUnavailableException(
+              "Cannot rename %s to %s because it was concurrently modified; please retry",
+              from, to);
 
         // some entities cannot be renamed
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
