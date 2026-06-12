@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
-import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.types.Types;
@@ -536,10 +535,10 @@ public abstract class PolarisAuthzTestBase {
     }
 
     @Override
-    public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
+    public IcebergCatalog createCatalog(PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
-      Catalog catalog = super.createCatalog(resolvedManifest);
+      IcebergCatalog catalog = super.createCatalog(resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(

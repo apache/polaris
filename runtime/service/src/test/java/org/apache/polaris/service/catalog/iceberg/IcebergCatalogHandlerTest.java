@@ -27,7 +27,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
@@ -43,8 +42,11 @@ import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
@@ -81,12 +83,13 @@ class IcebergCatalogHandlerTest {
   private final CallContext callContext = mock(CallContext.class);
   private final RealmConfig realmConfig = mock(RealmConfig.class);
   private final LocalCatalogFactory localCatalogFactory = mock(LocalCatalogFactory.class);
+  private final FederatedCatalogFactory federatedCatalogFactory =
+      mock(FederatedCatalogFactory.class);
   private final AccessDelegationModeResolver accessDelegationModeResolver =
       mock(AccessDelegationModeResolver.class);
   private final StorageAccessConfigProvider storageAccessConfigProvider =
       mock(StorageAccessConfigProvider.class);
 
-  @SuppressWarnings({"unchecked"})
   private IcebergCatalogHandler newHandler() {
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(callContext.getRealmContext()).thenReturn(mock(RealmContext.class));
@@ -118,7 +121,7 @@ class IcebergCatalogHandlerTest {
         .authorizer(mock(PolarisAuthorizer.class))
         .diagnostics(mock(PolarisDiagnostics.class))
         .credentialManager(mock(PolarisCredentialManager.class))
-        .federatedCatalogFactories(mock(Instance.class))
+        .federatedCatalogFactory(federatedCatalogFactory)
         .prefixParser(mock(CatalogPrefixParser.class))
         .resolverFactory(mock(ResolverFactory.class))
         .localCatalogFactory(localCatalogFactory)
@@ -135,7 +138,8 @@ class IcebergCatalogHandlerTest {
   /**
    * For external (non-Polaris) catalogs, loadCredentials must skip the optimized
    * entity-properties-based path and fall through to a full loadTable on the underlying catalog,
-   * propagating the credentials the storage provider returns for that table.
+   * propagating the credentials the storage provider returns for that table. External catalogs are
+   * federated: they are produced by the federated factory and leave {@code localCatalog} null.
    */
   @Test
   void loadCredentialsFallsBackForExternalCatalog() {
@@ -153,7 +157,6 @@ class IcebergCatalogHandlerTest {
 
     Catalog externalCatalog = mock(Catalog.class);
     when(externalCatalog.loadTable(TABLE2)).thenReturn(table);
-    when(localCatalogFactory.createCatalog(any())).thenReturn(externalCatalog);
 
     // VENDED_CREDENTIALS is what triggers the handler to attach credentials to the response.
     when(accessDelegationModeResolver.resolve(any(), any()))
@@ -169,6 +172,18 @@ class IcebergCatalogHandlerTest {
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
+
+    // A non-null connection config routes initializeCatalog() through the federated factory,
+    // leaving localCatalog null so loadCredentials falls back to a full loadTable on the remote
+    // catalog. Stubbed after newHandler() to override its default (local-path) null config.
+    when(catalogEntity.getConnectionConfigInfoDpo())
+        .thenReturn(mock(ConnectionConfigInfoDpo.class));
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_CATALOG_FEDERATION)).thenReturn(true);
+    // Credential vending for federated catalogs is gated behind this feature flag.
+    when(realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity))
+        .thenReturn(true);
+    when(federatedCatalogFactory.createCatalog(any(), any(), any())).thenReturn(externalCatalog);
 
     ImmutableLoadCredentialsResponse response = handler.loadCredentials(TABLE2, Optional.empty());
 

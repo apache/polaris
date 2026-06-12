@@ -61,7 +61,6 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -95,6 +94,7 @@ import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.LocalIcebergCatalog;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -152,7 +152,7 @@ import org.slf4j.LoggerFactory;
 
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
 public class IcebergCatalog extends BaseMetastoreViewCatalog
-    implements SupportsNamespaces, SupportsNotifications, Closeable {
+    implements LocalIcebergCatalog, SupportsNotifications, Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
@@ -282,6 +282,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
   }
 
+  @Override
   public void setMetaStoreManager(PolarisMetaStoreManager newMetaStoreManager) {
     this.metaStoreManager = newMetaStoreManager;
   }
@@ -565,6 +566,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listTables(namespace, PageToken.readEverything()).items();
   }
 
+  @Override
   public Page<TableIdentifier> listTables(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
@@ -911,6 +913,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listNamespaces(namespace, PageToken.readEverything()).items();
   }
 
+  @Override
   public Page<Namespace> listNamespaces(Namespace namespace, PageToken pageToken)
       throws NoSuchNamespaceException {
     PolarisResolvedPathWrapper resolvedEntities =
@@ -948,6 +951,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listViews(namespace, PageToken.readEverything()).items();
   }
 
+  @Override
   public Page<TableIdentifier> listViews(Namespace namespace, PageToken pageToken) {
     if (!namespaceExists(namespace)) {
       throw new NoSuchNamespaceException(
@@ -1158,11 +1162,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * base location for a TableLike entity, produces the transformed location if applicable, or else
    * the unaltered specified location.
    */
+  @Override
   public String transformTableLikeLocation(TableIdentifier tableIdentifier, String location) {
     return applyDefaultLocationObjectStoragePrefix(tableIdentifier, location);
   }
 
-  void validateStagedTableCreate(TableIdentifier tableIdentifier, TableMetadata tableMetadata) {
+  @Override
+  public void validateStagedTableCreate(
+      TableIdentifier tableIdentifier, TableMetadata tableMetadata) {
     PolarisResolvedPathWrapper resolvedStorageEntity =
         CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier);
     if (resolvedStorageEntity == null) {

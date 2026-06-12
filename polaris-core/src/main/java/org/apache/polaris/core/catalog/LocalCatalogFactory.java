@@ -18,10 +18,9 @@
  */
 package org.apache.polaris.core.catalog;
 
-import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
 public interface LocalCatalogFactory {
 
-  Catalog createCatalog(PolarisResolutionManifest resolvedManifest);
+  LocalIcebergCatalog createCatalog(PolarisResolutionManifest resolvedManifest);
 }

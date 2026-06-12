@@ -330,10 +330,12 @@ public record TestServices(
 
       CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(realmConfig);
 
+      FederatedCatalogFactory federatedCatalogFactory = Mockito.mock(FederatedCatalogFactory.class);
+
       @SuppressWarnings("unchecked")
-      Instance<FederatedCatalogFactory> federatedCatalogFactory = Mockito.mock(Instance.class);
-      Mockito.when(federatedCatalogFactory.select(any())).thenReturn(federatedCatalogFactory);
-      Mockito.when(federatedCatalogFactory.isUnsatisfied()).thenReturn(true);
+      Instance<FederatedCatalogFactory> federatedCatalogFactories = Mockito.mock(Instance.class);
+      Mockito.when(federatedCatalogFactories.select(any())).thenReturn(federatedCatalogFactories);
+      Mockito.when(federatedCatalogFactories.isUnsatisfied()).thenReturn(true);
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
@@ -356,7 +358,7 @@ public record TestServices(
                   .authorizer(authorizer)
                   .reservedProperties(reservedProperties)
                   .catalogHandlerUtils(catalogHandlerUtils)
-                  .federatedCatalogFactories(federatedCatalogFactory)
+                  .federatedCatalogFactory(federatedCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
                   .eventAttributeMap(eventAttributeMap)
                   .metricsReporter(new DefaultMetricsReporter())
@@ -404,7 +406,7 @@ public record TestServices(
                   .metaStoreManager(metaStoreManager)
                   .authorizer(authorizer)
                   .credentialManager(credentialManager)
-                  .federatedCatalogFactories(federatedCatalogFactory)
+                  .federatedCatalogFactories(federatedCatalogFactories)
                   .build();
             }
           };

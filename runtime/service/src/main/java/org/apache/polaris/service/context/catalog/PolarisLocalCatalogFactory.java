@@ -23,7 +23,6 @@ import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
@@ -81,7 +80,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
   }
 
   @Override
-  public Catalog createCatalog(final PolarisResolutionManifest resolvedManifest) {
+  public IcebergCatalog createCatalog(final PolarisResolutionManifest resolvedManifest) {
     CatalogEntity catalog = resolvedManifest.getResolvedCatalogEntity();
     String catalogName = catalog.getName();
 
