@@ -18,12 +18,14 @@
  */
 package org.apache.polaris.service.idempotency;
 
+import org.apache.polaris.core.exceptions.PolarisException;
+
 /**
  * Thrown when an {@code Idempotency-Key} is reused with a binding (caller, operation, or resource)
  * that differs from the one originally recorded for that key. Mapped to HTTP 422 (Unprocessable
- * Entity) by {@code IcebergExceptionMapper}.
+ * Entity) by {@code PolarisExceptionMapper}.
  */
-public class IdempotencyConflictException extends RuntimeException {
+public class IdempotencyConflictException extends PolarisException {
   public IdempotencyConflictException(String message) {
     super(message);
   }

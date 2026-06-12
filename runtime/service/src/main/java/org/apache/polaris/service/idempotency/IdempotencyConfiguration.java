@@ -55,21 +55,25 @@ public interface IdempotencyConfiguration {
   String type();
 
   /**
-   * TTL for newly recorded idempotency keys. After this duration the record is eligible for purge
-   * by the background maintenance task.
+   * TTL for newly recorded idempotency keys. After this duration the record is expired and eligible
+   * for reclamation. Reclamation of expired rows is handled separately (outside the request path).
    */
   @WithDefault("PT5M")
   Duration ttl();
 
-  /** Whether the background purge timer is enabled. */
-  @WithDefault("false")
-  boolean purgeEnabled();
+  /**
+   * Maximum number of times a create-table caller that lost the catalog race polls for the race
+   * winner's idempotency record before giving up and surfacing the original conflict. The winner
+   * records its outcome only after committing, so a brief, bounded poll lets the loser replay
+   * instead of returning a 409.
+   */
+  @WithDefault("5")
+  int concurrentReplayMaxAttempts();
 
   /**
-   * Purge interval. Defaults to {@code P1D} since records expire on their own {@link #ttl()} and
-   * the timer only controls how often dead rows are reclaimed; operators with very high churn can
-   * lower it. Examples: {@code P1D}, {@code PT1H}, {@code PT15M}.
+   * Initial backoff between race-winner lookups; it doubles after each attempt. With the defaults
+   * ({@code 5} attempts, {@code PT0.005S}) the total budget is ~155ms (5+10+20+40+80).
    */
-  @WithDefault("P1D")
-  Duration purgeInterval();
+  @WithDefault("PT0.005S")
+  Duration concurrentReplayInitialBackoff();
 }

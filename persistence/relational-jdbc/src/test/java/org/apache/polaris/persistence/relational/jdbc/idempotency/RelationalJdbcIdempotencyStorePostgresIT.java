@@ -106,26 +106,23 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
   void recordFirstWinnerAndDuplicate() {
     UUID key = UUID.randomUUID();
     String op = "create-table";
-    String rid = "catalogs/1/tables/ns.tbl";
-    String principalHash = "principal-hash-A";
+    String binding = "binding-A";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    IdempotencyStore.RecordResult r1 =
-        store.recordIfAbsent(key, op, rid, principalHash, 200, null, now, exp);
+    IdempotencyStore.RecordResult r1 = store.recordIfAbsent(key, op, binding, 200, null, now, exp);
     assertThat(r1.type()).isEqualTo(IdempotencyStore.RecordResultType.OWNED);
     assertThat(r1.existing()).isEmpty();
 
     IdempotencyStore.RecordResult r2 =
-        store.recordIfAbsent(key, op, rid, "principal-hash-B", 200, null, now, exp);
+        store.recordIfAbsent(key, op, "binding-B", 200, null, now, exp);
     assertThat(r2.type()).isEqualTo(IdempotencyStore.RecordResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();
     assertThat(rec.realmId()).isEqualTo(REALM);
     assertThat(rec.idempotencyKey()).isEqualTo(key);
     assertThat(rec.operationType()).isEqualTo(op);
-    assertThat(rec.resourceHash()).isEqualTo(rid);
-    assertThat(rec.principalHash()).isEqualTo(principalHash);
+    assertThat(rec.bindingHash()).isEqualTo(binding);
     assertThat(rec.httpStatus()).isEqualTo(200);
     assertThat(rec.metadataLocation()).isNull();
   }
@@ -134,17 +131,16 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
   void loadReturnsRecordedEntry() {
     UUID key = UUID.randomUUID();
     String op = "create-table";
-    String rid = "catalogs/1/tables/ns.tbl2";
+    String binding = "binding-load";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    store.recordIfAbsent(key, op, rid, "ph", 200, null, now, exp);
+    store.recordIfAbsent(key, op, binding, 200, null, now, exp);
 
     Optional<IdempotencyRecord> rec = store.load(key);
     assertThat(rec).isPresent();
     assertThat(rec.get().operationType()).isEqualTo(op);
-    assertThat(rec.get().resourceHash()).isEqualTo(rid);
-    assertThat(rec.get().principalHash()).isEqualTo("ph");
+    assertThat(rec.get().bindingHash()).isEqualTo(binding);
     assertThat(rec.get().httpStatus()).isEqualTo(200);
   }
 
@@ -152,37 +148,33 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
   void purgeExpired() {
     UUID key = UUID.randomUUID();
     String op = "drop-table";
-    String rid = "catalogs/1/tables/ns.tbl3";
     Instant now = Instant.now();
     Instant expPast = now.minus(Duration.ofMinutes(1));
 
-    store.recordIfAbsent(key, op, rid, "ph", 204, null, now, expPast);
+    store.recordIfAbsent(key, op, "binding-purge", 204, null, now, expPast);
     int purged = store.purgeExpired(Instant.now());
     assertThat(purged).isEqualTo(1);
   }
 
   @Test
-  void duplicateAcrossDifferentPrincipalsReturnsOriginal() {
+  void duplicateWithDifferentBindingReturnsOriginal() {
     UUID key = UUID.randomUUID();
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     IdempotencyStore.RecordResult r1 =
-        store.recordIfAbsent(
-            key, "create-table", "catalogs/1/tables/ns.tbl4", "principal-A", 200, null, now, exp);
+        store.recordIfAbsent(key, "create-table", "binding-A", 200, null, now, exp);
     assertThat(r1.type()).isEqualTo(IdempotencyStore.RecordResultType.OWNED);
 
-    // Cross-principal reuse of the same key on a different operation: the second call must NOT
-    // overwrite the original binding. The store returns DUPLICATE with the original (op, resource,
-    // principalHash); the handler layer will detect the mismatch and surface 422.
+    // Reuse of the same key with a different binding: the second call must NOT overwrite the
+    // original. The store returns DUPLICATE with the original (operation_type, binding_hash); the
+    // handler layer detects the binding mismatch and surfaces 422.
     IdempotencyStore.RecordResult r2 =
-        store.recordIfAbsent(
-            key, "drop-table", "catalogs/1/tables/ns.tbl5", "principal-B", 204, null, now, exp);
+        store.recordIfAbsent(key, "drop-table", "binding-B", 204, null, now, exp);
     assertThat(r2.type()).isEqualTo(IdempotencyStore.RecordResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();
     assertThat(rec.operationType()).isEqualTo("create-table");
-    assertThat(rec.resourceHash()).isEqualTo("catalogs/1/tables/ns.tbl4");
-    assertThat(rec.principalHash()).isEqualTo("principal-A");
+    assertThat(rec.bindingHash()).isEqualTo("binding-A");
   }
 }

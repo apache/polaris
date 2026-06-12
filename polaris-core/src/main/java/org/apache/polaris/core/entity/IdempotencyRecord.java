@@ -28,20 +28,19 @@ import java.util.UUID;
  * equivalent response from authoritative catalog state. Failed outcomes are not recorded, so a
  * retry after a failure simply re-runs the operation.
  *
- * <p>The {@code (realm_id, idempotency_key)} pair is the logical primary key; {@code
- * operation_type}, {@code resource_hash}, and {@code principal_hash} together form the "binding"
- * that callers compare against on replay to detect reuse of the same key for a different
- * resource/principal.
+ * <p>The {@code (realm_id, idempotency_key)} pair is the logical primary key; {@code binding_hash}
+ * is the single value callers compare against on replay to detect reuse of the same key for a
+ * different caller, operation, or resource. {@code operation_type} is retained separately purely as
+ * a human-readable label for debugging/observability and is not part of the comparison.
  *
  * @param realmId Logical tenant / realm identifier.
  * @param idempotencyKey Client-provided idempotency key (a UUIDv7).
- * @param operationType Logical operation type (e.g. {@code "create-table"}).
- * @param resourceHash Opaque hash of the request-derived resource binding (e.g. namespace, name and
- *     access-delegation modes). Not a human-readable identifier, and intentionally does not include
- *     the request payload; compared on replay to detect reuse of the same key for a different
- *     resource.
- * @param principalHash Hash of the caller principal identity bound to this record. Compared on
- *     replay to prevent cross-principal cache hits.
+ * @param operationType Logical operation type (e.g. {@code "create-table"}), kept human-readable
+ *     for debugging only.
+ * @param bindingHash Opaque hash over the full binding (caller principal, operation, and the
+ *     request-derived resource identity such as namespace, name and access-delegation modes). Not a
+ *     human-readable identifier, and intentionally does not include the request payload; compared
+ *     on replay to detect reuse of the same key for a different caller/operation/resource.
  * @param httpStatus HTTP status code that was returned to the client for the originating request.
  * @param metadataLocation Resource state pointer captured when the record was written (for tables,
  *     the metadata-file location). Used on replay to detect that the resource has advanced beyond
@@ -53,8 +52,7 @@ public record IdempotencyRecord(
     String realmId,
     UUID idempotencyKey,
     String operationType,
-    String resourceHash,
-    String principalHash,
+    String bindingHash,
     int httpStatus,
     String metadataLocation,
     Instant createdAt,

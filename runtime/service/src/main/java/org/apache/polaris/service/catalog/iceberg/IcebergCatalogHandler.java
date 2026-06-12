@@ -521,7 +521,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // response body is stored) and re-vends credentials for this caller;
     // buildLoadTableResponseForExistingTable raises 422 if the table has advanced beyond the
     // metadata location captured when the key was recorded. A binding mismatch surfaces as
-    // IdempotencyConflictException, which IcebergExceptionMapper maps to HTTP 422.
+    // IdempotencyConflictException, which PolarisExceptionMapper maps to HTTP 422.
     IdempotencyOutcome preflight =
         idempotencySupport()
             .preflight(
@@ -547,38 +547,28 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     try {
       response = doCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
     } catch (AlreadyExistsException e) {
-      if (preflight instanceof IdempotencyOutcome.Owned owned) {
-        Optional<IdempotencyRecord> raceWinner =
-            idempotencySupport().resolveConcurrentDuplicate(owned);
-        if (raceWinner.isPresent()) {
-          return buildLoadTableResponseForExistingTable(
-              tableIdentifier,
-              resolvedMode,
-              CREATE_TABLE_STORAGE_ACTIONS,
-              refreshCredentialsEndpoint,
-              raceWinner.get().metadataLocation());
-        }
-      }
-      // Not a same-key retry: the table genuinely pre-existed, so this is a real conflict.
-      throw e;
-    }
-
-    // Record the successful outcome. If a concurrent caller recorded first, replay theirs.
-    if (preflight instanceof IdempotencyOutcome.Owned owned) {
-      String metadataLocation = response.tableMetadata().metadataFileLocation();
-      IdempotencyOutcome recordOutcome =
-          idempotencySupport().recordOutcome(owned, 200, metadataLocation);
-      if (recordOutcome instanceof IdempotencyOutcome.Duplicate dup) {
-        // Another caller raced ahead and recorded first. Replay so the response is the same shape
-        // (and credentials are freshly vended for this caller) as what the race winner returned.
+      Optional<IdempotencyRecord> raceWinner =
+          idempotencySupport().resolveConcurrentDuplicate(preflight);
+      if (raceWinner.isPresent()) {
         return buildLoadTableResponseForExistingTable(
             tableIdentifier,
             resolvedMode,
             CREATE_TABLE_STORAGE_ACTIONS,
             refreshCredentialsEndpoint,
-            dup.existing().metadataLocation());
+            raceWinner.get().metadataLocation());
       }
+      // Not a same-key retry: the table genuinely pre-existed, so this is a real conflict.
+      throw e;
     }
+
+    // Record the successful outcome. recordOutcome is a no-op unless idempotency is in effect, and
+    // throws (422) if the key was reused with a different binding. A concurrent same-key,
+    // same-table
+    // create cannot also reach this point — the loser fails the catalog create above and replays
+    // via
+    // resolveConcurrentDuplicate — so there is no winner-recorded-first case to replay here.
+    String metadataLocation = response.tableMetadata().metadataFileLocation();
+    idempotencySupport().recordOutcome(preflight, 200, metadataLocation);
     return response;
   }
 

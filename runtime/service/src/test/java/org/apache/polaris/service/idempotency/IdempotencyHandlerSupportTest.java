@@ -70,13 +70,13 @@ class IdempotencyHandlerSupportTest {
           }
 
           @Override
-          public boolean purgeEnabled() {
-            return false;
+          public int concurrentReplayMaxAttempts() {
+            return 5;
           }
 
           @Override
-          public Duration purgeInterval() {
-            return Duration.ofDays(1);
+          public Duration concurrentReplayInitialBackoff() {
+            return Duration.ofMillis(5);
           }
         };
     realmContext = () -> REALM;
@@ -115,30 +115,30 @@ class IdempotencyHandlerSupportTest {
   }
 
   @Test
-  void principalHash_isStableAndRoleOrderIndependent() {
+  void bindingHash_isStableAndRoleOrderIndependent() {
     PolarisPrincipal p1 =
         PolarisPrincipal.of("alice", Map.of(), new java.util.LinkedHashSet<>(Set.of("r1", "r2")));
     PolarisPrincipal p2 =
         PolarisPrincipal.of("alice", Map.of(), new java.util.LinkedHashSet<>(Set.of("r2", "r1")));
-    String h1 = support.principalHash(p1);
-    String h2 = support.principalHash(p2);
-    assertThat(h1).isEqualTo(h2);
+    assertThat(support.bindingHash(OP, p1, RID)).isEqualTo(support.bindingHash(OP, p2, RID));
   }
 
   @Test
-  void principalHash_differsAcrossPrincipalsAndRealms() {
+  void bindingHash_differsAcrossPrincipalsRealmsAndResources() {
     PolarisPrincipal alice = PolarisPrincipal.of("alice", Map.of(), Set.of("r1"));
     PolarisPrincipal bob = PolarisPrincipal.of("bob", Map.of(), Set.of("r1"));
-    String hAlice = support.principalHash(alice);
-    String hBob = support.principalHash(bob);
-    assertThat(hAlice).isNotEqualTo(hBob);
+    String hAlice = support.bindingHash(OP, alice, RID);
+    assertThat(hAlice).isNotEqualTo(support.bindingHash(OP, bob, RID));
 
-    // The realm is part of the binding: the same principal under a different realm hashes
-    // differently. principalHash only depends on the injected RealmContext, so a second instance
-    // bound to another realm is sufficient.
+    // A different resource for the same caller/operation hashes differently.
+    assertThat(hAlice).isNotEqualTo(support.bindingHash(OP, alice, "catalogs/c1/tables/ns.other"));
+
+    // The realm is part of the binding: the same caller/operation/resource under a different realm
+    // hashes differently. bindingHash only depends on the injected RealmContext, so a second
+    // instance bound to another realm is sufficient.
     IdempotencyHandlerSupport supportRealmB = new IdempotencyHandlerSupport();
     supportRealmB.realmContext = () -> "realm-B";
-    assertThat(supportRealmB.principalHash(alice)).isNotEqualTo(hAlice);
+    assertThat(supportRealmB.bindingHash(OP, alice, RID)).isNotEqualTo(hAlice);
   }
 
   @Test
@@ -155,15 +155,15 @@ class IdempotencyHandlerSupportTest {
   }
 
   @Test
-  void preflight_emptyStoreReturnsOwned() {
+  void preflight_emptyStoreReturnsNew() {
     IdempotencyOutcome o = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
-    assertThat(o).isInstanceOf(IdempotencyOutcome.Owned.class);
+    assertThat(o).isInstanceOf(IdempotencyOutcome.New.class);
   }
 
   @Test
   void preflight_existingMatchingRecordReturnsDuplicate() {
     IdempotencyOutcome first = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
-    support.recordOutcome((IdempotencyOutcome.Owned) first, 200, null);
+    support.recordOutcome(first, 200, null);
     IdempotencyOutcome o = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
     assertThat(o).isInstanceOf(IdempotencyOutcome.Duplicate.class);
   }
@@ -171,7 +171,7 @@ class IdempotencyHandlerSupportTest {
   @Test
   void preflight_differentPrincipalRaisesConflict() {
     IdempotencyOutcome first = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
-    support.recordOutcome((IdempotencyOutcome.Owned) first, 200, null);
+    support.recordOutcome(first, 200, null);
     assertThatThrownBy(() -> support.preflight(Optional.of(KEY), OTHER_PRINCIPAL, OP, RID))
         .isInstanceOf(IdempotencyConflictException.class);
   }
@@ -179,29 +179,35 @@ class IdempotencyHandlerSupportTest {
   @Test
   void preflight_differentResourceRaisesConflict() {
     IdempotencyOutcome first = support.preflight(Optional.of(KEY), PRINCIPAL, OP, RID);
-    support.recordOutcome((IdempotencyOutcome.Owned) first, 200, null);
+    support.recordOutcome(first, 200, null);
     assertThatThrownBy(
             () -> support.preflight(Optional.of(KEY), PRINCIPAL, OP, "catalogs/c1/tables/ns.other"))
         .isInstanceOf(IdempotencyConflictException.class);
   }
 
   @Test
-  void recordOutcome_secondCallWithSameBindingReturnsDuplicate() {
-    IdempotencyOutcome.Owned owned = IdempotencyOutcome.owned(KEY, OP, "rh", "ph-A");
-    IdempotencyOutcome first = support.recordOutcome(owned, 200, null);
-    assertThat(first).isInstanceOf(IdempotencyOutcome.Owned.class);
+  void recordOutcome_disabledOutcomeIsNoOp() {
+    assertThat(support.recordOutcome(IdempotencyOutcome.disabled(), 200, null))
+        .isInstanceOf(IdempotencyOutcome.Disabled.class);
+  }
 
-    IdempotencyOutcome second = support.recordOutcome(owned, 200, null);
+  @Test
+  void recordOutcome_secondCallWithSameBindingReturnsDuplicate() {
+    IdempotencyOutcome.New newOutcome = new IdempotencyOutcome.New(KEY, OP, "binding-A");
+    IdempotencyOutcome first = support.recordOutcome(newOutcome, 200, null);
+    assertThat(first).isInstanceOf(IdempotencyOutcome.New.class);
+
+    IdempotencyOutcome second = support.recordOutcome(newOutcome, 200, null);
     assertThat(second).isInstanceOf(IdempotencyOutcome.Duplicate.class);
   }
 
   @Test
-  void recordOutcome_raceWithDifferentPrincipalRaisesConflict() {
-    support.recordOutcome(IdempotencyOutcome.owned(KEY, OP, "rh", "ph-A"), 200, null);
+  void recordOutcome_raceWithDifferentBindingRaisesConflict() {
+    support.recordOutcome(new IdempotencyOutcome.New(KEY, OP, "binding-A"), 200, null);
     assertThatThrownBy(
             () ->
                 support.recordOutcome(
-                    IdempotencyOutcome.owned(KEY, OP, "rh", "ph-OTHER"), 200, null))
+                    new IdempotencyOutcome.New(KEY, OP, "binding-OTHER"), 200, null))
         .isInstanceOf(IdempotencyConflictException.class);
   }
 }

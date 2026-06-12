@@ -32,8 +32,7 @@ class InMemoryIdempotencyStoreTest {
 
   private static final String REALM = "realm-A";
   private static final String OP = "create-table";
-  private static final String RID = "catalogs/c1/tables/ns.t1";
-  private static final String PH = "ph-A";
+  private static final String BH = "binding-A";
   private static final UUID K1 = UUID.randomUUID();
   private static final UUID K2 = UUID.randomUUID();
   private static final UUID K3 = UUID.randomUUID();
@@ -53,24 +52,23 @@ class InMemoryIdempotencyStoreTest {
     Instant now = Instant.parse("2025-01-01T00:00:00Z");
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    IdempotencyStore.RecordResult first =
-        store.recordIfAbsent(K1, OP, RID, PH, 200, null, now, exp);
+    IdempotencyStore.RecordResult first = store.recordIfAbsent(K1, OP, BH, 200, null, now, exp);
     assertThat(first.type()).isEqualTo(IdempotencyStore.RecordResultType.OWNED);
     assertThat(first.existing()).isEmpty();
 
     IdempotencyStore.RecordResult second =
-        store.recordIfAbsent(K1, OP, RID, "ph-other", 200, null, now, exp);
+        store.recordIfAbsent(K1, OP, "binding-other", 200, null, now, exp);
     assertThat(second.type()).isEqualTo(IdempotencyStore.RecordResultType.DUPLICATE);
     assertThat(second.existing()).isPresent();
     // First-writer-wins: the stored record reflects the original caller's binding.
-    assertThat(second.existing().get().principalHash()).isEqualTo(PH);
+    assertThat(second.existing().get().bindingHash()).isEqualTo(BH);
   }
 
   @Test
   void load_returnsRecordAfterRecord() {
     Instant now = Instant.parse("2025-01-01T00:00:00Z");
     Instant exp = now.plus(Duration.ofMinutes(5));
-    store.recordIfAbsent(K2, OP, RID, PH, 201, null, now, exp);
+    store.recordIfAbsent(K2, OP, BH, 201, null, now, exp);
 
     Optional<IdempotencyRecord> loaded = store.load(K2);
     assertThat(loaded).isPresent();
@@ -78,8 +76,7 @@ class InMemoryIdempotencyStoreTest {
     assertThat(r.realmId()).isEqualTo(REALM);
     assertThat(r.idempotencyKey()).isEqualTo(K2);
     assertThat(r.operationType()).isEqualTo(OP);
-    assertThat(r.resourceHash()).isEqualTo(RID);
-    assertThat(r.principalHash()).isEqualTo(PH);
+    assertThat(r.bindingHash()).isEqualTo(BH);
     assertThat(r.httpStatus()).isEqualTo(201);
     assertThat(r.metadataLocation()).isNull();
     assertThat(r.createdAt()).isEqualTo(now);
@@ -90,7 +87,7 @@ class InMemoryIdempotencyStoreTest {
   void load_isScopedByRealmInstance() {
     Instant now = Instant.parse("2025-01-01T00:00:00Z");
     Instant exp = now.plus(Duration.ofMinutes(5));
-    store.recordIfAbsent(K3, OP, RID, PH, 200, null, now, exp);
+    store.recordIfAbsent(K3, OP, BH, 200, null, now, exp);
 
     InMemoryIdempotencyStore otherRealm = new InMemoryIdempotencyStore("realm-B");
     assertThat(otherRealm.load(K3)).isEmpty();
@@ -103,10 +100,10 @@ class InMemoryIdempotencyStoreTest {
     Instant past = now.minus(Duration.ofMinutes(1));
     Instant future = now.plus(Duration.ofMinutes(5));
 
-    store.recordIfAbsent(EXPIRED, OP, RID, PH, 200, null, now, past);
-    store.recordIfAbsent(LIVE, OP, RID, PH, 200, null, now, future);
+    store.recordIfAbsent(EXPIRED, OP, BH, 200, null, now, past);
+    store.recordIfAbsent(LIVE, OP, BH, 200, null, now, future);
     InMemoryIdempotencyStore otherRealm = new InMemoryIdempotencyStore("realm-B");
-    otherRealm.recordIfAbsent(OTHER_REALM_KEY, OP, RID, PH, 200, null, now, past);
+    otherRealm.recordIfAbsent(OTHER_REALM_KEY, OP, BH, 200, null, now, past);
 
     int purged = store.purgeExpired(now);
     assertThat(purged).isEqualTo(1);

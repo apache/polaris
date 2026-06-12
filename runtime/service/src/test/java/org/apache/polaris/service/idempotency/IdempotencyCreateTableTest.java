@@ -97,7 +97,7 @@ public class IdempotencyCreateTableTest {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
-    // Same key bound to a different resource -> binding mismatch (IcebergExceptionMapper maps this
+    // Same key bound to a different resource -> binding mismatch (PolarisExceptionMapper maps this
     // to HTTP 422).
     CreateTableRequest second =
         CreateTableRequest.builder().withName("tbl_two").withSchema(SCHEMA).build();
@@ -282,13 +282,13 @@ public class IdempotencyCreateTableTest {
           }
 
           @Override
-          public boolean purgeEnabled() {
-            return false;
+          public int concurrentReplayMaxAttempts() {
+            return 5;
           }
 
           @Override
-          public Duration purgeInterval() {
-            return Duration.ofDays(1);
+          public Duration concurrentReplayInitialBackoff() {
+            return Duration.ofMillis(5);
           }
         };
     IdempotencyHandlerSupport support = new IdempotencyHandlerSupport();

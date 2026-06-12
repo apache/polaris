@@ -46,8 +46,7 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
   String REALM_ID = "realm_id";
   String IDEMPOTENCY_KEY = "idempotency_key";
   String OPERATION_TYPE = "operation_type";
-  String RESOURCE_HASH = "resource_hash";
-  String PRINCIPAL_HASH = "principal_hash";
+  String BINDING_HASH = "binding_hash";
   String HTTP_STATUS = "http_status";
   String METADATA_LOCATION = "metadata_location";
   String CREATED_AT = "created_at";
@@ -57,8 +56,7 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
       List.of(
           IDEMPOTENCY_KEY,
           OPERATION_TYPE,
-          RESOURCE_HASH,
-          PRINCIPAL_HASH,
+          BINDING_HASH,
           HTTP_STATUS,
           METADATA_LOCATION,
           CREATED_AT,
@@ -70,9 +68,7 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   String getOperationType();
 
-  String getResourceHash();
-
-  String getPrincipalHash();
+  String getBindingHash();
 
   int getHttpStatus();
 
@@ -94,8 +90,7 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
   static IdempotencyRecord fromRow(String realmId, ResultSet rs) throws SQLException {
     UUID idempotencyKey = UUID.fromString(rs.getString(IDEMPOTENCY_KEY));
     String operationType = rs.getString(OPERATION_TYPE);
-    String resourceHash = rs.getString(RESOURCE_HASH);
-    String principalHash = rs.getString(PRINCIPAL_HASH);
+    String bindingHash = rs.getString(BINDING_HASH);
     int httpStatus = rs.getInt(HTTP_STATUS);
     String metadataLocation = rs.getString(METADATA_LOCATION);
     Instant createdAt = rs.getTimestamp(CREATED_AT).toInstant();
@@ -104,8 +99,7 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
         realmId,
         idempotencyKey,
         operationType,
-        resourceHash,
-        principalHash,
+        bindingHash,
         httpStatus,
         metadataLocation,
         createdAt,
@@ -117,8 +111,7 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put(IDEMPOTENCY_KEY, getIdempotencyKey());
     map.put(OPERATION_TYPE, getOperationType());
-    map.put(RESOURCE_HASH, getResourceHash());
-    map.put(PRINCIPAL_HASH, getPrincipalHash());
+    map.put(BINDING_HASH, getBindingHash());
     map.put(HTTP_STATUS, getHttpStatus());
     map.put(METADATA_LOCATION, getMetadataLocation());
     map.put(CREATED_AT, Timestamp.from(getCreatedAt()));

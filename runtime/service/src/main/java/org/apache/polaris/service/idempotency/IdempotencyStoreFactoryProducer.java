@@ -23,7 +23,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
-import jakarta.inject.Singleton;
 import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
 
 /**
@@ -34,7 +33,7 @@ import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
 public class IdempotencyStoreFactoryProducer {
 
   @Produces
-  @Singleton
+  @ApplicationScoped
   public IdempotencyStoreFactory idempotencyStoreFactory(
       IdempotencyConfiguration configuration, @Any Instance<IdempotencyStoreFactory> factories) {
     if (!configuration.enabled()) {

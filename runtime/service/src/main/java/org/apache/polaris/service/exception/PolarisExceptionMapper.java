@@ -33,6 +33,7 @@ import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.apache.polaris.service.idempotency.IdempotencyConflictException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -46,38 +47,48 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisExceptionMapper.class);
 
-  private Response.Status getStatus(PolarisException exception) {
+  // 422 has no constant in jakarta.ws.rs Response.Status, so status codes are modeled as ints.
+  private static final int UNPROCESSABLE_ENTITY = 422;
+
+  private int getStatusCode(PolarisException exception) {
     return switch (exception) {
-      case AlreadyExistsException alreadyExistsException -> Response.Status.CONFLICT;
-      case CommitConflictException commitConflictException -> Response.Status.CONFLICT;
-      case InvalidPolicyException invalidPolicyException -> Response.Status.BAD_REQUEST;
-      case PolicyAttachException policyAttachException -> Response.Status.BAD_REQUEST;
-      case NoSuchPolicyException noSuchPolicyException -> Response.Status.NOT_FOUND;
+      case AlreadyExistsException alreadyExistsException ->
+          Response.Status.CONFLICT.getStatusCode();
+      case CommitConflictException commitConflictException ->
+          Response.Status.CONFLICT.getStatusCode();
+      case InvalidPolicyException invalidPolicyException ->
+          Response.Status.BAD_REQUEST.getStatusCode();
+      case PolicyAttachException policyAttachException ->
+          Response.Status.BAD_REQUEST.getStatusCode();
+      case NoSuchPolicyException noSuchPolicyException -> Response.Status.NOT_FOUND.getStatusCode();
       case PolicyVersionMismatchException policyVersionMismatchException ->
-          Response.Status.CONFLICT;
+          Response.Status.CONFLICT.getStatusCode();
       case PolicyMappingAlreadyExistsException policyMappingAlreadyExistsException ->
-          Response.Status.CONFLICT;
-      case PolicyInUseException policyInUseException -> Response.Status.BAD_REQUEST;
-      default -> Response.Status.INTERNAL_SERVER_ERROR;
+          Response.Status.CONFLICT.getStatusCode();
+      case PolicyInUseException policyInUseException -> Response.Status.BAD_REQUEST.getStatusCode();
+      case IdempotencyConflictException idempotencyConflictException -> UNPROCESSABLE_ENTITY;
+      default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
     };
   }
 
   @Override
   public Response toResponse(PolarisException exception) {
-    Response.Status status = getStatus(exception);
+    int statusCode = getStatusCode(exception);
     getLogger()
         .atLevel(
-            status.getFamily() == Response.Status.Family.SERVER_ERROR ? Level.INFO : Level.DEBUG)
+            Response.Status.Family.familyOf(statusCode) == Response.Status.Family.SERVER_ERROR
+                ? Level.INFO
+                : Level.DEBUG)
         .setCause(exception)
         .log("Full PolarisException");
 
     ErrorResponse errorResponse =
         ErrorResponse.builder()
-            .responseCode(status.getStatusCode())
+            .responseCode(statusCode)
             .withType(exception.getClass().getSimpleName())
             .withMessage(exception.getMessage())
             .build();
-    return Response.status(status)
+    return Response.status(statusCode)
         .entity(errorResponse)
         .type(MediaType.APPLICATION_JSON_TYPE)
         .build();

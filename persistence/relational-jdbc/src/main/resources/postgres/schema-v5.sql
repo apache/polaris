@@ -19,7 +19,7 @@
 -- Changes from v4:
 --  * Reshaped `idempotency_records` table for the optimistic-commit (record-after-success)
 --    idempotency model: dropped the in-progress/lease and stored-response columns, added
---    `resource_hash`, `principal_hash`, `metadata_location`, and made `http_status`/`expires_at`
+--    `binding_hash`, `metadata_location`, and made `http_status`/`expires_at`
 --    NOT NULL. v4's `idempotency_records` was never wired to request handling, so there is no
 --    data migration; existing v4 installs must re-bootstrap at v5 (or apply equivalent DDL) to
 --    enable idempotency.
@@ -152,9 +152,8 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE TABLE IF NOT EXISTS idempotency_records (
     realm_id TEXT NOT NULL,
     idempotency_key TEXT NOT NULL,
-    operation_type TEXT NOT NULL,         -- logical operation, e.g. create-table
-    resource_hash TEXT NOT NULL,          -- opaque hash of the request-derived resource binding (operation, namespace, name, delegation modes); does not include the request payload; checked on replay to detect reuse of the key for a different resource
-    principal_hash TEXT NOT NULL,         -- hash of caller principal + realm; checked on replay to prevent cross-principal cache hits
+    operation_type TEXT NOT NULL,         -- logical operation, e.g. create-table (human-readable label only)
+    binding_hash TEXT NOT NULL,           -- opaque hash over the full binding (caller principal + realm + roles, operation, and request-derived resource identity: namespace, name, delegation modes); does not include the request payload; checked on replay to detect reuse of the key for a different caller/operation/resource
     http_status INTEGER NOT NULL,         -- terminal HTTP status recorded for the originating (successful) request
     metadata_location TEXT,               -- table metadata pointer captured at record time; replay returns 422 if the table has advanced beyond it
     created_at TIMESTAMP NOT NULL,        -- when the record was inserted

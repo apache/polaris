@@ -105,8 +105,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   public RecordResult recordIfAbsent(
       UUID idempotencyKey,
       String operationType,
-      String resourceHash,
-      String principalHash,
+      String bindingHash,
       int httpStatus,
       String metadataLocation,
       Instant createdAt,
@@ -115,8 +114,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       Map<String, Object> insertMap = new LinkedHashMap<>();
       insertMap.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey.toString());
       insertMap.put(ModelIdempotencyRecord.OPERATION_TYPE, operationType);
-      insertMap.put(ModelIdempotencyRecord.RESOURCE_HASH, resourceHash);
-      insertMap.put(ModelIdempotencyRecord.PRINCIPAL_HASH, principalHash);
+      insertMap.put(ModelIdempotencyRecord.BINDING_HASH, bindingHash);
       insertMap.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
       insertMap.put(ModelIdempotencyRecord.METADATA_LOCATION, metadataLocation);
       insertMap.put(ModelIdempotencyRecord.CREATED_AT, Timestamp.from(createdAt));

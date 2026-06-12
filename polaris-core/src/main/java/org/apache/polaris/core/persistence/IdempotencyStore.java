@@ -31,18 +31,19 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  *
  * <ul>
  *   <li>{@link #load(UUID)} to detect a duplicate request before doing any work;
- *   <li>{@link #recordIfAbsent(UUID, String, String, String, int, String, Instant, Instant)} to
- *       atomically insert the record after the operation has finalized, returning {@link
- *       RecordResult#OWNED} when the caller wins the race and {@link RecordResult#DUPLICATE} (with
- *       the existing record) when another caller raced ahead.
+ *   <li>{@link #recordIfAbsent(UUID, String, String, int, String, Instant, Instant)} to atomically
+ *       insert the record after the operation has finalized, returning {@link RecordResult#OWNED}
+ *       when the caller wins the race and {@link RecordResult#DUPLICATE} (with the existing record)
+ *       when another caller raced ahead.
  * </ul>
  *
  * <p>There is no in-progress / lease / heartbeat state in this design, and no response body is
  * stored — duplicate requests rebuild an equivalent response from authoritative catalog state.
  *
  * <p>The handler-level idempotency design always runs after authorization, so the store does not
- * need to enforce identity itself; it only needs to persist {@code principalHash} so the handler
- * can validate it on replay and reject cross-principal cache hits.
+ * need to enforce identity itself; it only needs to persist {@code bindingHash} (which folds in the
+ * caller principal) so the handler can validate it on replay and reject reuse of the same key for a
+ * different caller, operation, or resource.
  *
  * <p>A store instance is bound to a single realm at construction (see {@link
  * IdempotencyStoreFactory#getOrCreateIdempotencyStore}), so the realm is not part of any method
@@ -60,7 +61,7 @@ public interface IdempotencyStore {
   }
 
   /**
-   * Result of {@link #recordIfAbsent(UUID, String, String, String, int, String, Instant, Instant)},
+   * Result of {@link #recordIfAbsent(UUID, String, String, int, String, Instant, Instant)},
    * including the outcome and, when {@link RecordResultType#DUPLICATE}, the existing record so the
    * caller can compare bindings without an extra round-trip.
    *
@@ -85,12 +86,12 @@ public interface IdempotencyStore {
    * succeeded, so {@code httpStatus} is always set.
    *
    * @param idempotencyKey application-provided idempotency key (a UUIDv7)
-   * @param operationType logical operation name (e.g. {@code "create-table"})
-   * @param resourceHash opaque hash of the request-derived resource binding (not a human-readable
-   *     identifier, and not the request payload); persisted so replay can detect reuse of the same
-   *     key for a different resource
-   * @param principalHash hash of the caller principal identity; persisted so replay can verify the
-   *     same caller and reject cross-principal cache hits
+   * @param operationType logical operation name (e.g. {@code "create-table"}), persisted as a
+   *     human-readable label only
+   * @param bindingHash opaque hash over the full binding (caller principal, operation, and the
+   *     request-derived resource identity); not a human-readable identifier, and not the request
+   *     payload; persisted so replay can detect reuse of the same key for a different
+   *     caller/operation/resource
    * @param httpStatus HTTP status code returned to the client
    * @param metadataLocation resource state pointer captured at record time (for tables, the
    *     metadata-file location); used on replay to detect the resource advancing beyond the
@@ -101,8 +102,7 @@ public interface IdempotencyStore {
   RecordResult recordIfAbsent(
       UUID idempotencyKey,
       String operationType,
-      String resourceHash,
-      String principalHash,
+      String bindingHash,
       int httpStatus,
       String metadataLocation,
       Instant createdAt,
