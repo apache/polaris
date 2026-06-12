@@ -80,7 +80,7 @@ public class PolarisEventListeners {
       var supportedTypes = resolveSupportedTypes(listenerConfiguration);
       var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
       var listenerExecutor =
-          new ListenerExecutor(sharedExecutor, configuration.executor().queueSize());
+          new ListenerExecutor(sharedExecutor, configuration.listenerBacklog().queueSize());
       // Reuse the same handler for every selected event type for this listener.
       Handler<Message<PolarisEvent>> handler =
           message ->
