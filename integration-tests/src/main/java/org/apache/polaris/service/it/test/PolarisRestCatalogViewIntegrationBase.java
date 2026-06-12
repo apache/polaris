@@ -124,6 +124,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
             .addProperty(
                 FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+            .addProperty(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "false")
             .build();
     Catalog catalog =
         PolarisCatalog.builder()
