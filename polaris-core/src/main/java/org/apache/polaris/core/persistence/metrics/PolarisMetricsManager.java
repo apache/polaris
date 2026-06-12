@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.metrics;
 
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -56,7 +57,10 @@ public interface PolarisMetricsManager {
    */
   default void writeScanMetrics(
       @NonNull PolarisCallContext callCtx, @NonNull ScanMetricsRecord record) {
-    callCtx.getMetricsPersistence().writeScanReport(record);
+    BasePersistence metaStore = callCtx.getMetaStore();
+    if (metaStore instanceof MetricsPersistence metricsPersistence) {
+      metricsPersistence.writeScanReport(record);
+    }
   }
 
   /**
@@ -73,6 +77,9 @@ public interface PolarisMetricsManager {
    */
   default void writeCommitMetrics(
       @NonNull PolarisCallContext callCtx, @NonNull CommitMetricsRecord record) {
-    callCtx.getMetricsPersistence().writeCommitReport(record);
+    BasePersistence metaStore = callCtx.getMetaStore();
+    if (metaStore instanceof MetricsPersistence metricsPersistence) {
+      metricsPersistence.writeCommitReport(record);
+    }
   }
 }
