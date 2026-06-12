@@ -115,6 +115,8 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -207,6 +209,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
 
+  protected abstract PolarisStorageIntegrationProvider storageIntegrationProvider();
+
   protected abstract EventAttributeMap eventAttributeMap();
 
   protected abstract PolarisMetricsReporter metricsReporter();
@@ -238,6 +242,31 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
     diagnostics().checkNotNull(catalogEntity, "No catalog available");
     return catalogEntity;
+  }
+
+  /**
+   * Pre-createTable hook: asks the storage integration to materialize any folders that must exist
+   * before the table's files can be written (e.g. GCS HNS folder objects). For storage types
+   * without this requirement the underlying call is a no-op.
+   *
+   * <p>Uses the {@link TableMetadata} produced by Iceberg table creation so implicit locations are
+   * the actual namespace-aware locations Iceberg will use, not a handler-side guess.
+   */
+  private void prepareStorageForTable(
+      TableIdentifier tableIdentifier, TableMetadata tableMetadata) {
+    PolarisResolvedPathWrapper resolvedStoragePath =
+        CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
+    if (resolvedStoragePath == null) {
+      return;
+    }
+    PolarisStorageIntegration integration =
+        storageIntegrationProvider().getStorageIntegration(resolvedStoragePath.getRawFullPath());
+    if (integration == null) {
+      return;
+    }
+    integration.prepareLocations(
+        StorageUtil.getLocationsToPrepareForTable(
+            tableMetadata.location(), tableMetadata.properties()));
   }
 
   private boolean shouldDecodeToken() {
@@ -595,6 +624,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
       polarisCatalog.validateStagedTableCreate(ident, metadata);
+      prepareStorageForTable(ident, metadata);
     }
 
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);

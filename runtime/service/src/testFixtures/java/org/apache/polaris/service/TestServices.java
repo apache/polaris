@@ -358,6 +358,7 @@ public record TestServices(
                   .catalogHandlerUtils(catalogHandlerUtils)
                   .federatedCatalogFactories(federatedCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
+                  .storageIntegrationProvider(storageIntegrationProvider)
                   .eventAttributeMap(eventAttributeMap)
                   .metricsReporter(new DefaultMetricsReporter())
                   .clock(clock)

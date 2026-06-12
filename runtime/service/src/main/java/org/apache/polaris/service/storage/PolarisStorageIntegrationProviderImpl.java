@@ -48,6 +48,7 @@ import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.service.storage.gcs.GcsStorageLocationPreparer;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -99,7 +100,12 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     this.gcpFactory =
         storageConfig ->
             new GcpCredentialsStorageIntegration(
-                gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
+                gcpCredsProvider.get(),
+                gcpTransportFactory,
+                cache,
+                storageConfig,
+                realmConfig,
+                new GcsStorageLocationPreparer(gcpCredsProvider));
     this.azureFactory =
         storageConfig -> new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
   }
@@ -121,7 +127,12 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     this.gcpFactory =
         storageConfig ->
             new GcpCredentialsStorageIntegration(
-                gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
+                gcpCredsProvider.get(),
+                gcpTransportFactory,
+                cache,
+                storageConfig,
+                realmConfig,
+                new GcsStorageLocationPreparer(gcpCredsProvider));
     this.azureFactory =
         storageConfig -> new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
   }

@@ -21,21 +21,32 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.SortOrder;
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
@@ -43,6 +54,8 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,6 +72,8 @@ class IcebergCatalogTest {
   @Mock CatalogEntity catalogEntity;
   @Mock PolarisDiagnostics diagnostics;
   @Mock Resolver resolver;
+  @Mock PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Mock PolarisStorageIntegration storageIntegration;
 
   @Mock PolarisEntity ns1;
   @Mock PolarisEntity ns2;
@@ -73,9 +88,11 @@ class IcebergCatalogTest {
 
   @BeforeEach
   void initMocks() {
-    when(resolvedEntityView.getResolvedCatalogEntity()).thenReturn(catalogEntity);
-    when(resolverFactory.createResolver(any(), any())).thenReturn(resolver);
-    when(resolver.resolveAll()).thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
+    lenient().when(resolvedEntityView.getResolvedCatalogEntity()).thenReturn(catalogEntity);
+    lenient().when(resolverFactory.createResolver(any(), any())).thenReturn(resolver);
+    lenient()
+        .when(resolver.resolveAll())
+        .thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
 
     rns1 = new ResolvedPolarisEntity(ns1, List.of(), List.of());
     rns2 = new ResolvedPolarisEntity(ns2, List.of(), List.of());
@@ -93,7 +110,42 @@ class IcebergCatalogTest {
             null,
             null,
             null,
-            null);
+            null,
+            storageIntegrationProvider);
+  }
+
+  @Test
+  void prepareStorageForTableCreationUsesActualMetadataLocations() {
+    PolarisResolvedPathWrapper resolvedStorageEntity = mock(PolarisResolvedPathWrapper.class);
+    when(resolvedStorageEntity.getRawFullPath()).thenReturn(List.of(ns1));
+    when(storageIntegrationProvider.getStorageIntegration(List.of(ns1)))
+        .thenReturn(storageIntegration);
+
+    TableMetadata metadata =
+        TableMetadata.newTableMetadata(
+            new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get())),
+            PartitionSpec.unpartitioned(),
+            SortOrder.unsorted(),
+            "gs://bucket/ns-location/table1",
+            Map.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                "gs://bucket/custom-metadata/table1",
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+                "gs://bucket/custom-data/table1"));
+
+    catalog.prepareStorageForTableCreation(
+        TableIdentifier.of(Namespace.of("ns"), "table1"), metadata, resolvedStorageEntity);
+
+    verify(storageIntegration)
+        .prepareLocations(
+            argThat(
+                locations ->
+                    Set.copyOf(locations)
+                        .equals(
+                            Set.of(
+                                "gs://bucket/ns-location/table1",
+                                "gs://bucket/custom-metadata/table1",
+                                "gs://bucket/custom-data/table1"))));
   }
 
   @Test

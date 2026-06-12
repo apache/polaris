@@ -502,4 +502,121 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .path("expression")
         .asText();
   }
+
+  // ── HNS folder-rule tests (predicate-driven) ──────────────────────────────────────
+
+  @Test
+  public void testGenerateAccessBoundaryHnsSingleBucketEmitsFolderRule() throws IOException {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true,
+            Set.of("gs://bucket1/path/to/data"),
+            Set.of("gs://bucket1/path/to/data"),
+            bucket -> true);
+    assertThat(credentialAccessBoundary).isNotNull();
+    // read + write + folder
+    assertThat(credentialAccessBoundary.getAccessBoundaryRules()).hasSize(3);
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules = readResource("gcp-testGenerateAccessBoundaryHnsEnabled.json");
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryHnsMultipleBucketsPartialWrites() throws IOException {
+    // Two buckets read, one written. Only the written bucket gets a folder rule.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true,
+            Set.of("gs://bucket1/normal/path/to/data", "gs://bucket1/awesome/path/to/data"),
+            Set.of("gs://bucket1/normal/path/to/data"),
+            bucket -> true);
+    assertThat(credentialAccessBoundary).isNotNull();
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules = readResource("gcp-testGenerateAccessBoundaryHnsWithMultipleBuckets.json");
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryHnsWithoutWritesNoFolderRules() throws IOException {
+    // Read-only locations: no write rule, no folder rule, even with HNS predicate=true.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true, Set.of("gs://bucket1/path/to/data"), Set.of(), bucket -> true);
+    assertThat(credentialAccessBoundary).isNotNull();
+    assertThat(credentialAccessBoundary.getAccessBoundaryRules()).hasSize(1);
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules = readResource("gcp-testGenerateAccessBoundaryHnsWithoutWrites.json");
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryHnsSeparateMetadataAndDataBuckets() throws IOException {
+    // Metadata and data on different buckets. Both are HNS — expect folder rule on each.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true,
+            Set.of("gs://metadata-bucket/ns/table/metadata/", "gs://data-bucket/ns/table/data/"),
+            Set.of("gs://metadata-bucket/ns/table/metadata/", "gs://data-bucket/ns/table/data/"),
+            bucket -> true);
+    assertThat(credentialAccessBoundary).isNotNull();
+    // 2 reads + 2 writes + 2 folder rules
+    assertThat(credentialAccessBoundary.getAccessBoundaryRules()).hasSize(6);
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryHnsPredicateGating() {
+    // Mixed catalog: bucket1 is HNS, bucket2 is not. Only bucket1 gets a folder rule.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true,
+            Set.of("gs://bucket1/data", "gs://bucket2/data"),
+            Set.of("gs://bucket1/data", "gs://bucket2/data"),
+            bucket -> bucket.equals("bucket1"));
+    assertThat(credentialAccessBoundary).isNotNull();
+    // 2 reads + 2 writes + 1 folder rule (only bucket1)
+    assertThat(credentialAccessBoundary.getAccessBoundaryRules()).hasSize(5);
+    long folderRuleCount =
+        credentialAccessBoundary.getAccessBoundaryRules().stream()
+            .filter(
+                rule ->
+                    rule.getAvailablePermissions().stream()
+                        .anyMatch(p -> p.startsWith("storage.folders.")))
+            .count();
+    assertThat(folderRuleCount).isEqualTo(1);
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryFolderRuleUsesNarrowPermissions() {
+    // Verify we grant only folders.create + folders.get, not roles/storage.folderAdmin.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true, Set.of("gs://b/p"), Set.of("gs://b/p"), bucket -> true);
+    CredentialAccessBoundary.AccessBoundaryRule folderRule =
+        credentialAccessBoundary.getAccessBoundaryRules().stream()
+            .filter(
+                rule ->
+                    rule.getAvailablePermissions().stream()
+                        .anyMatch(p -> p.startsWith("storage.folders.")))
+            .findFirst()
+            .orElseThrow();
+    assertThat(folderRule.getAvailablePermissions())
+        .containsExactlyInAnyOrder("storage.folders.create", "storage.folders.get");
+    // Scope is the folder hierarchy, never the managedFolders/ resource.
+    assertThat(folderRule.getAvailabilityCondition().getExpression())
+        .contains("folders/p")
+        .doesNotContain("managedFolders");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryNonHnsOmitsFolderRule() {
+    // With predicate=false (or default 3-arg signature), no folder rule should be emitted.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true, Set.of("gs://b/p"), Set.of("gs://b/p"), bucket -> false);
+    assertThat(credentialAccessBoundary.getAccessBoundaryRules()).hasSize(2);
+    assertThat(
+            credentialAccessBoundary.getAccessBoundaryRules().stream()
+                .flatMap(rule -> rule.getAvailablePermissions().stream()))
+        .noneMatch(p -> p.startsWith("storage.folders."));
+  }
 }

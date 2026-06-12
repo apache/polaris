@@ -76,6 +76,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Fixed `renameTable` to return HTTP 204 (No Content) instead of 200, as per the Iceberg REST Catalog spec.
 
 ### New Features
+- Added Hierarchical Namespace (HNS) support for GCS catalogs. Iceberg table creation and Spark
+  ingestion now work against HNS-enabled GCS buckets via a two-part design:
+    - A new `prepareLocations` hook on `PolarisStorageIntegration` runs before table creation and
+      pre-materializes the table's top-level folders (`table/`, `metadata/`, `data/`) on HNS
+      buckets via the GCS Storage Control API. Non-GCS storage types use a no-op default.
+    - GCS credential vending now adds a narrowly-scoped folder rule (permissions
+      `storage.folders.create` + `storage.folders.get`, conditioned on the write paths) for
+      HNS-enabled buckets only, letting Spark create partition subfolders at write time without
+      admin credentials. HNS status is auto-detected per bucket at credential-vending time; no
+      manual flag is required, and non-HNS buckets receive no additional permissions
+      (least-privilege preserved).
 - Added `envFrom` support in Helm chart.
 - Added summarize subcommand to Polaris CLI.
 - Added find and tables options to Polaris CLI.
