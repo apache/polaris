@@ -18,32 +18,19 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.service.catalog.Profiles.NOSQL_IN_MEM;
-
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.util.List;
-import java.util.Map;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.service.Profiles;
 
 @QuarkusTest
-@TestProfile(LocalIcebergViewCatalogNoSqlInMemTest.Profile.class)
+@TestProfile(Profiles.NoSqlIcebergCatalogProfile.class)
 public class LocalIcebergViewCatalogNoSqlInMemTest extends AbstractLocalIcebergCatalogViewTest {
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-
-  public static class Profile extends AbstractLocalIcebergCatalogViewTest.Profile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .putAll(NOSQL_IN_MEM)
-          .build();
-    }
-  }
 
   @Override
   protected void bootstrapRealm(String realmName) {
