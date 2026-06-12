@@ -89,6 +89,15 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   @Value.Auxiliary
   GcpCredentialOps credentialOps();
 
+  /**
+   * Pre-computed attribution config parameters, present only when GCS principal attribution is
+   * fully configured and a principal is available. Computed at cache key build time so {@code
+   * compute()} can use these values directly without re-reading realm config.
+   */
+  @Value.Parameter(order = 12)
+  @Value.Auxiliary
+  Optional<GcpAttributionParams> attributionParams();
+
   @Override
   default StorageAccessConfig load() {
     return GcpCredentialsStorageIntegration.compute(this);
@@ -105,7 +114,8 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
       RealmConfig realmConfig,
-      GcpCredentialOps credentialOps) {
+      GcpCredentialOps credentialOps,
+      Optional<GcpAttributionParams> attributionParams) {
     return ImmutableGcpStorageCredentialCacheKey.of(
         realmId,
         storageConfig,
@@ -117,6 +127,7 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
         sourceCredentials,
         transportFactory,
         realmConfig,
-        credentialOps);
+        credentialOps,
+        attributionParams);
   }
 }

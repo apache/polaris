@@ -51,7 +51,8 @@ class GcpStorageCredentialCacheKeyTest {
         CREDS,
         TRANSPORT,
         REALM_CONFIG,
-        GcpCredentialOps.DEFAULT);
+        GcpCredentialOps.DEFAULT,
+        Optional.empty());
   }
 
   @Test

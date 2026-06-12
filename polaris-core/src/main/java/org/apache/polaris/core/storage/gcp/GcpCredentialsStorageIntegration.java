@@ -182,9 +182,23 @@ public class GcpCredentialsStorageIntegration
     // participate in cache identity; otherwise it is left empty to preserve cross-principal cache
     // reuse. Attribution requires a service account to impersonate and a principal to attribute.
     String principalName = "";
+    Optional<GcpAttributionParams> attributionParams = Optional.empty();
     if (principalAttributionConfigured(realmConfig())
         && storageConfig().getGcpServiceAccount() != null) {
       principalName = context.principalName().orElse("");
+      if (!principalName.isEmpty()) {
+        attributionParams =
+            Optional.of(
+                GcpAttributionParams.of(
+                    realmConfig()
+                        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER),
+                    realmConfig()
+                        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE),
+                    realmConfig()
+                        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE),
+                    realmConfig()
+                        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID)));
+      }
     }
     return GcpStorageCredentialCacheKey.of(
         context.realm().orElse(""),
@@ -197,7 +211,8 @@ public class GcpCredentialsStorageIntegration
         sourceCredentials,
         transportFactory,
         realmConfig(),
-        credentialOps);
+        credentialOps,
+        attributionParams);
   }
 
   /**
@@ -277,34 +292,32 @@ public class GcpCredentialsStorageIntegration
    * Returns the credential to be used as the source for downscoping.
    *
    * <p>When GCS principal attribution is configured and a principal is present (so the cache key
-   * carries it), the impersonation source is a federated identity whose subject is {@code
-   * <realm>/<principal>}, which surfaces the principal in {@code serviceAccountDelegationInfo} of
-   * GCS Data Access audit logs. Otherwise this is the standard path: impersonate the configured
-   * service account from the ambient source credentials, or use those credentials directly.
+   * carries pre-computed {@link GcpAttributionParams}), the impersonation source is a federated
+   * identity whose subject is {@code <realm>/<principal>}, which surfaces the principal in {@code
+   * serviceAccountDelegationInfo} of GCS Data Access audit logs. Otherwise this is the standard
+   * path: impersonate the configured service account from the ambient source credentials, or use
+   * those credentials directly.
    */
   private static GoogleCredentials baseCredentialsForVending(
       GcpStorageCredentialCacheKey key,
       GcpStorageConfigurationInfo storageConfig,
       GoogleCredentials sourceCredentials,
       GcpCredentialOps credentialOps) {
-    RealmConfig realmConfig = key.realmConfig();
-    String serviceAccount = storageConfig.getGcpServiceAccount();
-    if (serviceAccount != null
-        && !key.principalName().isEmpty()
-        && principalAttributionConfigured(realmConfig)) {
+    Optional<GcpAttributionParams> attributionParams = key.attributionParams();
+    if (attributionParams.isPresent()) {
+      GcpAttributionParams params = attributionParams.get();
       String subject =
           GcpAttributionSubjectBuilder.buildSubject(key.realmId(), key.principalName());
       GcpFederatedCredentialsExchanger exchanger =
           new GcpFederatedCredentialsExchanger(
-              realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER),
-              realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE),
-              Path.of(
-                  realmConfig.getConfig(
-                      FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE)),
-              realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID),
+              params.tokenIssuer(),
+              params.wifAudience(),
+              Path.of(params.signingKeyFile()),
+              params.signingKeyId(),
               key.transportFactory());
       GoogleCredentials federated = exchanger.federatedCredentials(subject, key.realmId());
-      return createImpersonatedCredentials(federated, serviceAccount, credentialOps);
+      return createImpersonatedCredentials(
+          federated, storageConfig.getGcpServiceAccount(), credentialOps);
     }
     return getBaseCredentials(storageConfig, sourceCredentials, credentialOps);
   }
