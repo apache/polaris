@@ -80,6 +80,9 @@ services:
       polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS": "true"
       polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION": "true"
       polaris.features."ENABLE_CATALOG_FEDERATION": "true"
+      # Regression tests assert on deterministic table locations (e.g. direct S3 access scoped to
+      # `.../<table>/`), so keep the legacy layout instead of the unique-suffix default.
+      polaris.features."DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED": "false"
       polaris.readiness.ignore-severe-issues: "true"
     volumes:
       - ./credentials:/tmp/credentials/

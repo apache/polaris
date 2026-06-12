@@ -30,9 +30,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
+### Upgrade notes
 - Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
   - `polaris.event-listener.executor.pool-size` configures the thread pool size.
   - `polaris.event-listener.executor.queue-size` configures the queue size for pending events when all threads are busy.
+- Tables and views created without an explicit location now use a unique, unpredictable location by default: Polaris
+  appends a unique suffix to the generated location (controlled by the `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` feature flag,
+  on by default), so no two tables share a path prefix. Existing tables and views are unaffected, and caller-specified
+  locations are still honored by default. To keep the previous layout for new tables, set
+  `polaris.config.default-unique-table-location.enabled=false` (per realm or per catalog).
 
 ### Breaking changes
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
@@ -44,6 +50,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
     - Names containing any of these characters: <code>/\:*?"<>|#+`</code>
 
 ### New Features
+- Added the `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` feature flag (on by default). When enabled, a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix.
+- Added the `ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION` feature flag (on by default). When set to false, a caller-specified location (the `location` field, a `SetLocation` update, or the `write.data.path` / `write.metadata.path` properties) on a create-table/create-view, update-table/replace-view, or commit-transaction request is rejected, forcing Polaris to manage all locations. Federated catalogs, staged-create commits, and `register table` / `register view` are unaffected.
 - Added `SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL` feature flag for AWS credential vending. Operators can now configure an ordered list of fields (`realm`, `catalog`, `namespace`, `table`, `principal`) to compose structured STS role session names (e.g. `p-acme-hr_catalog-employee-etl_writer`). Session names are sanitized and proportionally truncated to the AWS 64-character limit. When unset, existing `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` behaviour is preserved.
 - Added `hostUsers` support in Helm chart.
 - Added documentation for BigQuery Metastore Catalog federation. Build with `-PNonRESTCatalogs=BIGQUERY` to include the BigQueryMetastoreCatalog federation extension. See `site/content/in-dev/unreleased/federation/bigquery-metastore-federation.md`.
