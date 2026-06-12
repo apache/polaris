@@ -33,13 +33,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.DataFile;
+import org.apache.iceberg.DataFiles;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.inmemory.InMemoryCatalog;
 import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -295,5 +303,45 @@ class IcebergCatalogHandlerTest {
               assertThat(c.prefix()).isEqualTo(tableLocation);
               assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
             });
+  }
+
+  @Test
+  void filterResponseToSnapshotsRefsPreservesMetadataLocation() throws Exception {
+    try (InMemoryCatalog catalog = new InMemoryCatalog()) {
+      catalog.initialize("test", Map.of());
+      catalog.createNamespace(NS1);
+      Schema schema = new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get()));
+      Table table = catalog.createTable(TABLE2, schema);
+      table.newFastAppend().appendFile(dataFile("file:/tmp/data/f1.parquet")).commit();
+      table.newFastAppend().appendFile(dataFile("file:/tmp/data/f2.parquet")).commit();
+
+      TableMetadata metadata = ((BaseTable) catalog.loadTable(TABLE2)).operations().current();
+      assertThat(metadata.snapshots()).hasSize(2);
+
+      LoadTableResponse response = LoadTableResponse.builder().withTableMetadata(metadata).build();
+      String metadataLocation = response.metadataLocation();
+      assertThat(metadataLocation)
+          .as("precondition: the unfiltered (snapshots=all) response carries a metadata-location")
+          .isNotNull();
+
+      @SuppressWarnings("resource")
+      IcebergCatalogHandler handler = newHandler();
+      LoadTableResponse filtered = handler.filterResponseToSnapshots(response, "refs");
+
+      assertThat(filtered.tableMetadata().snapshots())
+          .as("snapshots=refs must still drop the historical (non-ref) snapshot")
+          .hasSize(1);
+      assertThat(filtered.metadataLocation())
+          .as("metadata-location must be preserved when filtering snapshots=refs")
+          .isEqualTo(metadataLocation);
+    }
+  }
+
+  private static DataFile dataFile(String path) {
+    return DataFiles.builder(PartitionSpec.unpartitioned())
+        .withPath(path)
+        .withFileSizeInBytes(10L)
+        .withRecordCount(1L)
+        .build();
   }
 }
