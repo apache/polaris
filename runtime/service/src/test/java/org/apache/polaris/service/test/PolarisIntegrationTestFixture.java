@@ -107,7 +107,6 @@ public class PolarisIntegrationTestFixture {
         new PolarisCallContext(
             realmContext,
             helper.metaStoreManagerFactory.getOrCreateSession(realmContext),
-            helper.metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
             helper.configurationSource);
     PolarisMetaStoreManager metaStoreManager =
         helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);

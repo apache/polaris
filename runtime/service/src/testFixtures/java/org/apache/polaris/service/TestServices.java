@@ -232,7 +232,6 @@ public record TestServices(
           new PolarisCallContext(
               realmContext,
               metaStoreManagerFactory.getOrCreateSession(realmContext),
-              metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
               configurationSource);
 
       PolarisMetaStoreManager metaStoreManager =
@@ -471,7 +470,6 @@ public record TestServices(
     return new PolarisCallContext(
         realmContext,
         metaStoreManagerFactory.getOrCreateSession(realmContext),
-        metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
         configurationSource);
   }
 }

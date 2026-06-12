@@ -283,11 +283,7 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
             clock);
 
     PolarisCallContext ctx =
-        new PolarisCallContext(
-            () -> realmId,
-            metaStore,
-            NO_OP_METRICS_PERSISTENCE,
-            RealmConfigurationSource.EMPTY_CONFIG);
+        new PolarisCallContext(() -> realmId, metaStore, RealmConfigurationSource.EMPTY_CONFIG);
     var secretsResult = createPolarisPrincipalForRealm(metaStoreManager, ctx);
 
     realmManagement.update(
