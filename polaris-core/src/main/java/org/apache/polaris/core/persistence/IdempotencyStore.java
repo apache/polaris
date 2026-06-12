@@ -45,9 +45,8 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  * caller principal) so the handler can validate it on replay and reject reuse of the same key for a
  * different caller, operation, or resource.
  *
- * <p>A store instance is bound to a single realm at construction (see {@link
- * IdempotencyStoreFactory#getOrCreateIdempotencyStore}), so the realm is not part of any method
- * signature. Implementations must be thread-safe.
+ * <p>A store instance is bound to a single realm at construction, so the realm is not part of any
+ * method signature. Implementations must be thread-safe.
  */
 @Beta
 public interface IdempotencyStore {

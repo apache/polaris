@@ -30,8 +30,7 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  * In-memory {@link IdempotencyStore} backed by a {@link ConcurrentHashMap}.
  *
  * <p>Suitable for dev/test and the in-memory Polaris deployment. Not durable across restarts. Each
- * instance is bound to a single realm; {@link InMemoryIdempotencyStoreFactory} vends one instance
- * per realm.
+ * instance is bound to a single realm.
  */
 public final class InMemoryIdempotencyStore implements IdempotencyStore {
 

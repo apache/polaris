@@ -31,7 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.InMemoryIdempotencyStoreFactory;
+import org.apache.polaris.core.persistence.InMemoryIdempotencyStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -82,7 +82,7 @@ class IdempotencyHandlerSupportTest {
     realmContext = () -> REALM;
     support = new IdempotencyHandlerSupport();
     support.configuration = config;
-    support.storeFactory = new InMemoryIdempotencyStoreFactory();
+    support.store = new InMemoryIdempotencyStore(REALM);
     support.realmContext = realmContext;
     support.clock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
   }

@@ -46,10 +46,10 @@ public interface IdempotencyConfiguration {
   boolean enabled();
 
   /**
-   * The {@link org.apache.polaris.core.persistence.IdempotencyStoreFactory} backend identifier to
-   * use when {@link #enabled()} is {@code true}. Must match an {@link
-   * io.smallrye.common.annotation.Identifier} registered for {@link
-   * org.apache.polaris.core.persistence.IdempotencyStoreFactory}.
+   * The idempotency store backend to use when {@link #enabled()} is {@code true}. Must match an
+   * {@link io.smallrye.common.annotation.Identifier} on a registered {@link
+   * org.apache.polaris.core.persistence.IdempotencyStore} producer (e.g. {@code in-memory}, {@code
+   * relational-jdbc}).
    */
   @WithDefault("in-memory")
   String type();

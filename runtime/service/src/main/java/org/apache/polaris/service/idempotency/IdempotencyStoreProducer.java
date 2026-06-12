@@ -20,36 +20,37 @@ package org.apache.polaris.service.idempotency;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
-import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
+import org.apache.polaris.core.persistence.IdempotencyStore;
 
 /**
- * Produces the active {@link IdempotencyStoreFactory} by selecting the registered backend whose
- * {@link Identifier} matches {@link IdempotencyConfiguration#type()}.
+ * Produces the request-scoped {@link IdempotencyStore} that {@link IdempotencyHandlerSupport}
+ * injects directly (no factory, no lazy init).
+ *
+ * <p>When idempotency is disabled this yields {@link NoOpIdempotencyStore}; handlers short-circuit
+ * on {@link IdempotencyHandlerSupport#isEnabled()} and never touch it. Otherwise the backend whose
+ * {@link Identifier} matches {@link IdempotencyConfiguration#type()} is selected from the
+ * registered {@code @Identifier} store producers. Each backend self-registers via CDI, so adding a
+ * backend requires no change here — and {@code relational-jdbc} stays a runtime-only dependency.
  */
 @ApplicationScoped
-public class IdempotencyStoreFactoryProducer {
+public class IdempotencyStoreProducer {
 
   @Produces
-  @ApplicationScoped
-  public IdempotencyStoreFactory idempotencyStoreFactory(
-      IdempotencyConfiguration configuration, @Any Instance<IdempotencyStoreFactory> factories) {
+  @RequestScoped
+  public IdempotencyStore idempotencyStore(
+      IdempotencyConfiguration configuration, @Any Instance<IdempotencyStore> stores) {
     if (!configuration.enabled()) {
-      // When idempotency is disabled the handlers short-circuit on isEnabled() and never request a
-      // store, so backend selection must not run: otherwise a misspelled/unavailable
-      // polaris.idempotency.type would fail application startup even though the feature is off.
-      return realmContext -> {
-        throw new IllegalStateException(
-            "Idempotency is disabled; no idempotency store should be requested");
-      };
+      return NoOpIdempotencyStore.INSTANCE;
     }
-    Instance<IdempotencyStoreFactory> selected =
-        factories.select(Identifier.Literal.of(configuration.type()));
+    Instance<IdempotencyStore> selected =
+        stores.select(Identifier.Literal.of(configuration.type()));
     if (!selected.isResolvable()) {
       throw new IllegalStateException(
-          "No IdempotencyStoreFactory registered for polaris.idempotency.type='"
+          "No IdempotencyStore backend registered for polaris.idempotency.type='"
               + configuration.type()
               + "'");
     }

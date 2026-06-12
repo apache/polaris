@@ -40,7 +40,7 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.persistence.InMemoryIdempotencyStoreFactory;
+import org.apache.polaris.core.persistence.InMemoryIdempotencyStore;
 import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -293,9 +293,9 @@ public class IdempotencyCreateTableTest {
         };
     IdempotencyHandlerSupport support = new IdempotencyHandlerSupport();
     support.configuration = configuration;
-    support.storeFactory = new InMemoryIdempotencyStoreFactory();
     // Must match TestServices' realm (TestServices.TEST_REALM) so records and replays share a
     // realm.
+    support.store = new InMemoryIdempotencyStore("test-realm");
     support.realmContext = () -> "test-realm";
     support.clock = Clock.systemUTC();
     return support;
