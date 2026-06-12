@@ -52,6 +52,8 @@ public class PolarisEntityConstants {
   private static final String STORAGE_INTEGRATION_IDENTIFIER_PROPERTY_NAME =
       "storage_integration_identifier";
 
+  private static final String STORAGE_NAME_OVERRIDE_PROPERTY_NAME = "storage_name_override";
+
   private static final String CONNECTION_CONFIGURATION_INFO_PROPERTY_NAME =
       "connection_configuration_info";
 
@@ -105,6 +107,15 @@ public class PolarisEntityConstants {
 
   public static String getStorageConfigInfoPropertyName() {
     return STORAGE_CONFIGURATION_INFO_PROPERTY_NAME;
+  }
+
+  /**
+   * Internal-properties key holding a string reference to a server-configured named storage
+   * profile. Set by namespace/table writes when {@code polaris.storage.name} is provided. Resolved
+   * leaf-to-root at credential-vending time to override the catalog's base storage name.
+   */
+  public static String getStorageNameOverridePropertyName() {
+    return STORAGE_NAME_OVERRIDE_PROPERTY_NAME;
   }
 
   public static String getConnectionConfigInfoPropertyName() {

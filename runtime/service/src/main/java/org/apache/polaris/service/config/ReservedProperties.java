@@ -67,7 +67,12 @@ public interface ReservedProperties {
    * prefix
    */
   default Set<String> allowlist() {
-    return PolarisConfiguration.getAllCatalogConfigs();
+    Set<String> allowlist = new HashSet<>(PolarisConfiguration.getAllCatalogConfigs());
+    // polaris.storage.name selects a server-configured named storage profile and is processed
+    // by IcebergCatalog before being mapped to the internal storage_name_override property; the
+    // user-facing key must survive the reserved-prefix filter.
+    allowlist.add("polaris.storage.name");
+    return allowlist;
   }
 
   /** If true, attempts to modify a reserved property should throw an exception. */

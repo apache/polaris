@@ -128,6 +128,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.storage.StorageNameValidator;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
@@ -156,6 +157,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
+
+  /**
+   * User-facing property key on namespaces and tables that selects a server-configured named
+   * storage profile to use for credential vending. Validated and translated into the internal
+   * property {@link PolarisEntityConstants#getStorageNameOverridePropertyName()}.
+   */
+  static final String POLARIS_STORAGE_NAME_PROPERTY = "polaris.storage.name";
 
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
@@ -418,6 +426,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     IcebergTableLikeEntity existingEntity = IcebergTableLikeEntity.of(rawEntity);
 
     Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
+    String priorTableOverride =
+        existingEntity
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageNameOverridePropertyName());
+    if (priorTableOverride != null) {
+      storedProperties.put(
+          PolarisEntityConstants.getStorageNameOverridePropertyName(), priorTableOverride);
+    }
+    // Validate / flag-gate / translate polaris.storage.name from the incoming metadata properties
+    // into the internal storage_name_override key on storedProperties. The mutated copy of the
+    // user-facing properties is discarded; only the storedProperties side-effect is load-bearing.
+    processStorageNameOverrideOnWrite(
+        new HashMap<>(metadata.properties()), storedProperties, priorTableOverride);
     IcebergTableLikeEntity updatedEntity =
         new IcebergTableLikeEntity.Builder(existingEntity)
             .setInternalProperties(storedProperties)
@@ -621,15 +642,22 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       baseLocation += "/";
     }
 
-    NamespaceEntity entity =
+    Map<String, String> userProperties = new HashMap<>(metadata);
+    Map<String, String> additionalInternalProperties = new HashMap<>();
+    processStorageNameOverrideOnWrite(userProperties, additionalInternalProperties, null);
+
+    NamespaceEntity.Builder entityBuilder =
         new NamespaceEntity.Builder(namespace)
             .setCatalogId(getCatalogId())
             .setId(getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
             .setParentId(resolvedParent.getRawLeafEntity().getId())
-            .setProperties(metadata)
+            .setProperties(userProperties)
             .setCreateTimestamp(System.currentTimeMillis())
-            .setBaseLocation(baseLocation)
-            .build();
+            .setBaseLocation(baseLocation);
+    // Add any storage-name override into internalProperties without clobbering the
+    // parent-namespace key that NamespaceEntity.Builder's constructor already set.
+    additionalInternalProperties.forEach(entityBuilder::addInternalProperty);
+    NamespaceEntity entity = entityBuilder.build();
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(entity, resolvedParent.getRawFullPath());
@@ -813,11 +841,22 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     PolarisEntity entity = resolvedEntities.getRawLeafEntity();
     Map<String, String> newProperties = new HashMap<>(entity.getPropertiesAsMap());
+    Map<String, String> updatedInternalProperties =
+        new HashMap<>(entity.getInternalPropertiesAsMap());
 
-    // Merge new properties into existing map.
-    newProperties.putAll(properties);
+    // Merge new properties into existing map. Process the polaris.storage.name override on a
+    // mutable copy of the incoming properties so the user-facing key is stripped before the merge
+    // and the corresponding internal storage_name_override is updated atomically.
+    Map<String, String> incoming = new HashMap<>(properties);
+    String priorOverride =
+        updatedInternalProperties.get(PolarisEntityConstants.getStorageNameOverridePropertyName());
+    processStorageNameOverrideOnWrite(incoming, updatedInternalProperties, priorOverride);
+    newProperties.putAll(incoming);
     PolarisEntity updatedEntity =
-        new PolarisEntity.Builder(entity).setProperties(newProperties).build();
+        new PolarisEntity.Builder(entity)
+            .setProperties(newProperties)
+            .setInternalProperties(updatedInternalProperties)
+            .build();
 
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
@@ -862,9 +901,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     Map<String, String> updatedProperties = new HashMap<>(entity.getPropertiesAsMap());
     properties.forEach(updatedProperties::remove);
+    Map<String, String> updatedInternalProperties =
+        new HashMap<>(entity.getInternalPropertiesAsMap());
+    String priorOverride =
+        updatedInternalProperties.get(PolarisEntityConstants.getStorageNameOverridePropertyName());
+    processStorageNameOverrideOnRemove(properties, updatedInternalProperties, priorOverride);
 
     PolarisEntity updatedEntity =
-        new PolarisEntity.Builder(entity).setProperties(updatedProperties).build();
+        new PolarisEntity.Builder(entity)
+            .setProperties(updatedProperties)
+            .setInternalProperties(updatedInternalProperties)
+            .build();
 
     List<PolarisEntity> parentPath = resolvedEntities.getRawFullPath();
     PolarisEntity returnedEntity =
@@ -1769,6 +1816,24 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
+      // Process polaris.storage.name on the table commit's properties: validate, gate against
+      // ALLOW_STORAGE_NAME_OVERRIDE when changing, and translate into the internal
+      // storage_name_override key on `storedProperties`. The override survives across commits
+      // because we seed `storedProperties` with the prior persisted value before processing. The
+      // mutated copy of the user-facing properties is discarded; only the storedProperties
+      // side-effect is load-bearing.
+      String priorTableOverride =
+          entity == null
+              ? null
+              : entity
+                  .getInternalPropertiesAsMap()
+                  .get(PolarisEntityConstants.getStorageNameOverridePropertyName());
+      if (priorTableOverride != null) {
+        storedProperties.put(
+            PolarisEntityConstants.getStorageNameOverridePropertyName(), priorTableOverride);
+      }
+      processStorageNameOverrideOnWrite(
+          new HashMap<>(metadata.properties()), storedProperties, priorTableOverride);
       String existingLocation;
       if (null == entity) {
         existingLocation = null;
@@ -1935,6 +2000,88 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           meta,
           String.format(Locale.ROOT, "%05d-%s%s", newVersion, UUID.randomUUID(), fileExtension));
     }
+  }
+
+  /**
+   * Process the user-facing {@link #POLARIS_STORAGE_NAME_PROPERTY} on a write request: validate the
+   * value, gate against {@link FeatureConfiguration#ALLOW_STORAGE_NAME_OVERRIDE} when the value
+   * would change, write the resolved value into the internal-property map (or remove it when
+   * cleared), and strip the user-facing key from the user property map.
+   *
+   * <p>The flag is only enforced when the requested value would actually mutate the persisted
+   * {@code storage_name_override}. An idempotent re-set with the prior value is always allowed, so
+   * flipping the flag off does not break existing entities.
+   *
+   * <p>Property semantics:
+   *
+   * <ul>
+   *   <li>{@code polaris.storage.name=foo} (and {@code foo} is non-blank, valid) sets the override.
+   *   <li>{@code polaris.storage.name=""} (or whitespace) clears the override.
+   *   <li>Property absent from the user map: no change to the override.
+   * </ul>
+   *
+   * @param userProperties user-facing property map being persisted; the {@link
+   *     #POLARIS_STORAGE_NAME_PROPERTY} key is removed in place if present.
+   * @param internalProperties internal-property map that will be persisted onto the entity; the
+   *     {@code storage_name_override} key is set or removed in place based on the request.
+   * @param priorOverride the override value already persisted on the entity (or {@code null} for a
+   *     fresh create). Used to decide whether the request is an idempotent re-set.
+   */
+  @VisibleForTesting
+  void processStorageNameOverrideOnWrite(
+      Map<String, String> userProperties,
+      Map<String, String> internalProperties,
+      @Nullable String priorOverride) {
+    if (!userProperties.containsKey(POLARIS_STORAGE_NAME_PROPERTY)) {
+      return;
+    }
+    String rawValue = userProperties.remove(POLARIS_STORAGE_NAME_PROPERTY);
+    String requested;
+    try {
+      requested = StorageNameValidator.normalizeAndValidate(rawValue);
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException(
+          e, "Invalid %s: %s", POLARIS_STORAGE_NAME_PROPERTY, e.getMessage());
+    }
+    boolean changing = !Objects.equal(priorOverride, requested);
+    if (changing && !realmConfig.getConfig(FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE)) {
+      throw new BadRequestException(
+          "Setting %s requires feature %s to be enabled",
+          POLARIS_STORAGE_NAME_PROPERTY, FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE.key());
+    }
+    String storageOverrideKey = PolarisEntityConstants.getStorageNameOverridePropertyName();
+    if (requested == null) {
+      internalProperties.remove(storageOverrideKey);
+    } else {
+      internalProperties.put(storageOverrideKey, requested);
+    }
+  }
+
+  /**
+   * Handle removal of {@link #POLARIS_STORAGE_NAME_PROPERTY} via the namespace removeProperties
+   * path: gate against the feature flag if the override is currently set, then clear the internal
+   * {@code storage_name_override} key in {@code internalProperties}. Caller is expected to also
+   * remove the user-facing key from the entity's user properties.
+   *
+   * @param requestedKeys the set of property keys the user asked to remove
+   * @param internalProperties internal-property map to mutate
+   * @param priorOverride the override value already persisted on the entity (or {@code null})
+   */
+  @VisibleForTesting
+  void processStorageNameOverrideOnRemove(
+      Set<String> requestedKeys,
+      Map<String, String> internalProperties,
+      @Nullable String priorOverride) {
+    if (!requestedKeys.contains(POLARIS_STORAGE_NAME_PROPERTY)) {
+      return;
+    }
+    if (priorOverride != null
+        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE)) {
+      throw new BadRequestException(
+          "Removing %s requires feature %s to be enabled",
+          POLARIS_STORAGE_NAME_PROPERTY, FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE.key());
+    }
+    internalProperties.remove(PolarisEntityConstants.getStorageNameOverridePropertyName());
   }
 
   private static Map<String, String> buildTableMetadataPropertiesMap(TableMetadata metadata) {

@@ -33,13 +33,13 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageConfigOverrideResolver;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
@@ -129,8 +129,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   @Override
   public @Nullable PolarisStorageIntegration getStorageIntegration(
       @NonNull List<PolarisEntity> resolvedEntityPath) {
-    return PolarisStorageConfigurationInfo.findStorageInfoFromHierarchy(resolvedEntityPath)
-        .map(entity -> BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity))
+    return StorageConfigOverrideResolver.resolveEffectiveConfig(resolvedEntityPath)
         .map(this::createIntegration)
         .orElse(null);
   }
