@@ -31,23 +31,11 @@ public record LineageNode(
   public LineageNode {
     Objects.requireNonNull(id, "id must be non-null");
     Objects.requireNonNull(type, "type must be non-null");
-    fieldMappings = List.copyOf(fieldMappings);
+    fieldMappings =
+        List.copyOf(Objects.requireNonNull(fieldMappings, "fieldMappings must be non-null"));
   }
 
   public LineageNode(String id, LineageNodeType type, LineageData data, boolean opaque) {
     this(id, type, data, opaque, List.of());
-  }
-
-  public LineageNode(String id, LineageNodeType type, LineageDataset dataset, boolean opaque) {
-    this(id, type, dataset == null ? null : new LineageData(dataset), opaque);
-  }
-
-  public LineageNode(
-      String id,
-      LineageNodeType type,
-      LineageDataset dataset,
-      boolean opaque,
-      List<LineageFieldMapping> fieldMappings) {
-    this(id, type, dataset == null ? null : new LineageData(dataset), opaque, fieldMappings);
   }
 }
