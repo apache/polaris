@@ -50,10 +50,11 @@ if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
 
 rootProject.name = "polaris"
 
-val baseVersion = layout.rootDirectory.file("version.txt").asFile.readText().trim()
+val baseVersion =
+  providers.fileContents(layout.rootDirectory.file("version.txt")).asText.map { it.trim() }
 
 gradle.beforeProject {
-  version = baseVersion
+  version = baseVersion.get()
   group = "org.apache.polaris"
 }
 
@@ -149,12 +150,13 @@ dependencyResolutionManagement {
   }
 }
 
-val isCI = System.getenv("CI") != null
+val isCI = providers.environmentVariable("CI").isPresent
 val isBuildScanRequested = gradle.startParameter.isBuildScan
 
 develocity {
-  val isApachePolarisGitHub = "apache/polaris" == System.getenv("GITHUB_REPOSITORY")
-  val gitHubRef: String? = System.getenv("GITHUB_REF")
+  val isApachePolarisGitHub =
+    "apache/polaris" == providers.environmentVariable("GITHUB_REPOSITORY").orNull
+  val gitHubRef: String? = providers.environmentVariable("GITHUB_REF").orNull
   val isGitHubBranchOrTag =
     gitHubRef != null && (gitHubRef.startsWith("refs/heads/") || gitHubRef.startsWith("refs/tags/"))
   if (isApachePolarisGitHub && isGitHubBranchOrTag) {
@@ -170,25 +172,29 @@ develocity {
     }
   } else {
     // In all other cases, especially PR CI runs, use Gradle's public Develocity instance.
-    var cfgPrjId: String? = System.getenv("DEVELOCITY_PROJECT_ID")
-    projectId = if (cfgPrjId.isNullOrEmpty()) "polaris" else cfgPrjId
+    projectId =
+      providers
+        .environmentVariable("DEVELOCITY_PROJECT_ID")
+        .filter { it.isNotBlank() }
+        .getOrElse("polaris")
     buildScan {
-      val isGradleTosAccepted = "true" == System.getenv("GRADLE_TOS_ACCEPTED")
+      val isGradleTosAccepted =
+        "true" == providers.environmentVariable("GRADLE_TOS_ACCEPTED").orNull
       val isGitHubPullRequest = gitHubRef?.startsWith("refs/pull/") ?: false
       if (isGradleTosAccepted || (isCI && isGitHubPullRequest && isApachePolarisGitHub)) {
         // Leave TOS agreement to the user, if not running in CI.
         termsOfUseUrl = "https://gradle.com/terms-of-service"
         termsOfUseAgree = "yes"
       }
-      System.getenv("DEVELOCITY_SERVER")?.run {
-        if (isNotEmpty()) {
-          server = this
-        }
-      }
+      providers
+        .environmentVariable("DEVELOCITY_SERVER")
+        .filter { it.isNotBlank() }
+        .orNull
+        ?.run { server = this }
       if (isGitHubPullRequest) {
-        System.getenv("GITHUB_SERVER_URL")?.run {
+        providers.environmentVariable("GITHUB_SERVER_URL").orNull?.run {
           val ghUrl = this
-          val ghRepo = System.getenv("GITHUB_REPOSITORY")
+          val ghRepo = providers.environmentVariable("GITHUB_REPOSITORY").get()
           val prNumber = gitHubRef.substringAfter("refs/pull/").substringBefore("/merge")
           link("GitHub pull request", "$ghUrl/$ghRepo/pull/$prNumber")
         }

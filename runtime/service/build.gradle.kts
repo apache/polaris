@@ -231,9 +231,7 @@ val quarkusTestArgLine =
 val quarkusProperties = providers.systemPropertiesPrefixedBy("quarkus.")
 
 tasks.withType(Test::class.java).configureEach {
-  if (System.getenv("AWS_REGION") == null) {
-    environment("AWS_REGION", "us-west-2")
-  }
+  environment("AWS_REGION", providers.environmentVariable("AWS_REGION").getOrElse("us-west-2"))
   // Note: the test secrets are referenced in
   // org.apache.polaris.service.it.ServerManager
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")

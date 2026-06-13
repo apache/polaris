@@ -29,19 +29,21 @@ import org.gradle.api.java.archives.Attributes
  */
 internal class MemoizedJarInfo {
   companion object {
-    fun applyJarManifestAttributes(rootProject: Project, attribs: Attributes) {
-      val props = jarManifestAttributes(rootProject)
+    fun applyJarManifestAttributes(project: Project, attribs: Attributes) {
+      val props = jarManifestAttributes(project)
       attribs.putAll(props)
     }
 
-    private fun jarManifestAttributes(rootProject: Project): Map<String, String> {
-      val version = rootProject.version.toString()
-      val javaSpecificationVersion = System.getProperty("java.specification.version")
+    private fun jarManifestAttributes(project: Project): Map<String, String> {
+      val version = project.version.toString()
+      val javaSpecificationVersion =
+        project.providers.systemProperty("java.specification.version").get()
       val includeGitInformation =
-        rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")
+        project.providers.gradleProperty("release").isPresent ||
+          project.providers.gradleProperty("jarWithGitInfo").isPresent
 
       return if (includeGitInformation) {
-        val gi = GitInfo.memoized(rootProject)
+        val gi = GitInfo.memoized(project)
         mapOf(
           "Implementation-Version" to version,
           "Apache-Polaris-Version" to version,

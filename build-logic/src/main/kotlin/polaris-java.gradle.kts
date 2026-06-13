@@ -72,7 +72,7 @@ checkstyle {
       .orElseThrow { GradleException("checkstyle version not found in libs.versions.toml") }
       .requiredVersion
   toolVersion = checkstyleVersion
-  configFile = rootProject.file("codestyle/checkstyle.xml")
+  configFile = layout.settingsDirectory.file("codestyle/checkstyle.xml").asFile
   isIgnoreFailures = false
   maxErrors = 0
   maxWarnings = 0
@@ -95,8 +95,7 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.errorprone.disableWarningsInGeneratedCode = true
   options.errorprone.excludedPaths =
     ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated(-openapi)?/.*"
-  val errorproneRules =
-    rootProject.layout.projectDirectory.file("codestyle/errorprone-rules.properties")
+  val errorproneRules = layout.settingsDirectory.file("codestyle/errorprone-rules.properties")
   inputs.file(errorproneRules).withPathSensitivity(PathSensitivity.RELATIVE)
   options.errorprone.checks.putAll(
     provider {
@@ -309,10 +308,10 @@ fun bannedDependencies(): BannedDependencies {
       BannedDependenciesService::class.java,
     ) {
       parameters.globallyBannedFile.set(
-        rootProject.layout.projectDirectory.file("gradle/banned-dependencies.txt")
+        layout.settingsDirectory.file("gradle/banned-dependencies.txt")
       )
       parameters.quarkusProdBannedFile.set(
-        rootProject.layout.projectDirectory.file("gradle/banned-quarkus-prod-dependencies.txt")
+        layout.settingsDirectory.file("gradle/banned-quarkus-prod-dependencies.txt")
       )
     }
   return service.get().bannedDependencies
@@ -365,7 +364,7 @@ tasks.withType<Test>().configureEach {
   val constraintName =
     if (isTestTask) "testParallelismConstraint" else "intTestParallelismConstraint"
   usesService(gradle.sharedServices.registrations.named(constraintName).get().service)
-  if (project.hasProperty("noIntegrationTests") && !isTestTask) {
+  if (providers.gradleProperty("noIntegrationTests").isPresent && !isTestTask) {
     enabled = false
   }
 }
