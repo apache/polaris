@@ -55,10 +55,6 @@ val baseVersion = layout.rootDirectory.file("version.txt").asFile.readText().tri
 gradle.beforeProject {
   version = baseVersion
   group = "org.apache.polaris"
-
-  if (noSourceChecksProjects.contains(this.path)) {
-    project.extra["duplicated-project-sources"] = true
-  }
 }
 
 fun loadProperties(file: File): Properties {
@@ -87,9 +83,6 @@ val polarisSparkDir = "plugins/spark"
 val sparkScalaVersions = loadProperties(file("${polarisSparkDir}/spark-scala.properties"))
 val sparkVersions = sparkScalaVersions["sparkVersions"].toString().split(",").map { it.trim() }
 
-// records the spark projects that maps to the same project dir
-val noSourceChecksProjects = mutableSetOf<String>()
-
 for (sparkVersion in sparkVersions) {
   val scalaVersionsKey = "scalaVersions.${sparkVersion}"
   val scalaVersionsStr = sparkScalaVersions[scalaVersionsKey].toString()
@@ -108,9 +101,6 @@ for (sparkVersion in sparkVersions) {
     )
     if (first) {
       first = false
-    } else {
-      noSourceChecksProjects.add(":$sparkArtifactId")
-      noSourceChecksProjects.add(":$sparkIntArtifactId")
     }
     // Skip all duplicated spark client projects while using Intelij IDE.
     // This is to avoid problems during dependency analysis and sync when
