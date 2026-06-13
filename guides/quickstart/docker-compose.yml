@@ -89,7 +89,7 @@ services:
         echo Bucket setup complete.
 
   polaris-setup:
-    image: alpine/curl:8.19.0
+    image: alpine/curl:8.20.0
     depends_on:
       polaris:
         condition: service_healthy

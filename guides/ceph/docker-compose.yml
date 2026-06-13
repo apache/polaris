@@ -183,7 +183,7 @@ services:
       start_period: 10s
 
   polaris-setup:
-    image: alpine/curl:8.19.0
+    image: alpine/curl:8.20.0
     depends_on:
       polaris:
         condition: service_healthy
