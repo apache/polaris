@@ -33,7 +33,7 @@ plugins {
 val projectName = rootProject.file("ide-name.txt").readText().trim()
 val ideName = "$projectName ${rootProject.version.toString().replace("^([0-9.]+).*", "\\1")}"
 
-if (System.getProperty("idea.sync.active").toBoolean()) {
+if (providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean()) {
   // There's no proper way to set the name of the IDEA project (when "just importing" or
   // syncing the Gradle project)
   val ideaDir = rootProject.layout.projectDirectory.dir(".idea")

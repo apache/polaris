@@ -33,6 +33,7 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.jspecify.annotations.NonNull;
@@ -160,6 +161,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
+  public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
+    return getOrCreateSession(realmContext);
+  }
+
+  @Override
   public synchronized EntityCache getOrCreateEntityCache(
       RealmContext realmContext, RealmConfig realmConfig) {
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
@@ -182,7 +188,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     // CallContext may not have been resolved yet.
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+    TransactionalPersistence metaStore =
+        sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
     PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
     Optional<PrincipalEntity> preliminaryRootPrincipal =
@@ -212,7 +219,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+    TransactionalPersistence metaStore =
+        sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
     PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);

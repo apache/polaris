@@ -38,7 +38,7 @@ ROLE_ARN=arn:aws:iam::111122223333:role/ExampleCorpRole
 REGION=us-west-2
 EXTERNAL_ID=12345678901234567890
 
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   catalogs \

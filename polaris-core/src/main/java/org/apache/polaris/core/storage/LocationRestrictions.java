@@ -98,7 +98,7 @@ public class LocationRestrictions {
       Set<String> requestLocations,
       TableIdentifier identifier) {
     var validationResults =
-        InMemoryStorageIntegration.validateAllowedLocations(
+        StorageLocationValidator.validateAllowedLocations(
             realmConfig, allowedLocations, Set.of(PolarisStorageActions.ALL), requestLocations);
     validationResults
         .values()

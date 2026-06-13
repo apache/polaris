@@ -76,7 +76,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
@@ -197,7 +197,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected RealmContextHolder realmContextHolder;
   @Inject protected PolarisEventDispatcher polarisEventDispatcher;
 
-  protected IcebergCatalog baseCatalog;
+  protected LocalIcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
   protected PolicyCatalog policyCatalog;
   protected PolarisAdminService adminService;
@@ -215,7 +215,10 @@ public abstract class PolarisAuthzTestBase {
         new PolarisStorageIntegrationProviderImpl(
             destination -> stsClient,
             Optional.empty(),
-            () -> GoogleCredentials.create(new AccessToken("abc", new Date())));
+            () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
+            null,
+            null,
+            new org.apache.polaris.core.PolarisDefaultDiagServiceImpl());
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
@@ -476,7 +479,7 @@ public abstract class PolarisAuthzTestBase {
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     this.baseCatalog =
-        new IcebergCatalog(
+        new LocalIcebergCatalog(
             diagServices,
             resolverFactory,
             metaStoreManager,

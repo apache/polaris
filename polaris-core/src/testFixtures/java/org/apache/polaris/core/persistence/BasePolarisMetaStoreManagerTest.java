@@ -129,7 +129,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .isNotNull()
         .hasSize(2)
         .extracting(PolarisEntity::toCore)
-        .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
+        .containsExactlyInAnyOrder(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
     Assertions.assertThat(createdEntities).containsExactlyInAnyOrderElementsOf(listedEntities);
   }

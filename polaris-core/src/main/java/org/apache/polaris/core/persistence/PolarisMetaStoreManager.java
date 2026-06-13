@@ -52,7 +52,6 @@ import org.apache.polaris.core.persistence.metrics.PolarisMetricsManager;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -63,7 +62,6 @@ import org.jspecify.annotations.Nullable;
 public interface PolarisMetaStoreManager
     extends PolarisSecretsManager,
         PolarisGrantManager,
-        PolarisCredentialVendor,
         PolarisPolicyMappingManager,
         PolarisEventManager,
         PolarisMetricsManager {

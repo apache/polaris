@@ -23,10 +23,10 @@
 
 <suppressions>
   <!--
-   Suppress IllegalImport in all files under plugins/spark/v3.5/spark.
+   Suppress IllegalImport in all files under plugins/spark/v3.5/spark and common.
    The spark client relies on the shaded libraries from iceberg-spark-runtime,
    and therefore uses imports like org.apache.iceberg.shaded.* in the code,
    which is intended.
   -->
-  <suppress checks="IllegalImport" files="plugins/spark/v3.5/spark/.*"/>
+  <suppress checks="IllegalImport" files="plugins/spark/(v3.5/spark|common)/.*"/>
 </suppressions>

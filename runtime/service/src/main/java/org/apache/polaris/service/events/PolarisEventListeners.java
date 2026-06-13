@@ -33,7 +33,10 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.Executor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.RawEventAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,44 +47,82 @@ public class PolarisEventListeners {
   @Inject EventBus eventBus;
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
+  @Inject EventSanitizer eventSanitizer;
 
-  private final EnumSet<PolarisEventType> enabledEventTypes = EnumSet.allOf(PolarisEventType.class);
+  @Inject
+  @Identifier("event-listener-executor")
+  Executor executor;
 
+  private final EnumSet<PolarisEventType> eventTypesWithListeners =
+      EnumSet.noneOf(PolarisEventType.class);
+
+  /**
+   * Registers configured Polaris event listeners with the local Vert.x event bus at startup.
+   *
+   * <p>Each listener may enable event categories, individual event types, or both. When no
+   * per-listener filters are configured, the listener receives every Polaris event type.
+   */
   public void onStartup(@Observes StartupEvent event) {
     var listenerTypeSet = configuration.types().orElseGet(HashSet::new);
     for (String enabledEventListener : listenerTypeSet) {
       var listenerConfiguration = configuration.listenerConfig().get(enabledEventListener);
-      var supportedTypes =
-          listenerConfiguration == null
-                  || (listenerConfiguration.enabledEventCategories().isEmpty()
-                      && listenerConfiguration.enabledEventTypes().isEmpty())
-              ? EnumSet.allOf(PolarisEventType.class)
-              : EnumSet.noneOf(PolarisEventType.class);
-      if (listenerConfiguration != null) {
-        if (listenerConfiguration.enabledEventCategories().isPresent()) {
-          for (var enabledEventCategory : listenerConfiguration.enabledEventCategories().get()) {
-            supportedTypes.addAll(PolarisEventType.typesOfCategory(enabledEventCategory));
-          }
-        }
-        if (listenerConfiguration.enabledEventTypes().isPresent()) {
-          supportedTypes.addAll(listenerConfiguration.enabledEventTypes().get());
-        }
-      }
+      var supportedTypes = resolveSupportedTypes(listenerConfiguration);
       var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
+      // Reuse the same handler for every selected event type for this listener.
       Handler<Message<PolarisEvent>> handler =
           message -> deliverEvent(message.body(), enabledEventListener, listener);
       for (var polarisEventType : supportedTypes) {
-        enabledEventTypes.add(polarisEventType);
+        eventTypesWithListeners.add(polarisEventType);
         eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
       }
     }
+  }
+
+  private static EnumSet<PolarisEventType> resolveSupportedTypes(
+      PolarisEventListenerConfiguration.ListenerConfiguration listenerConfiguration) {
+    // Missing or empty per-listener filters mean that the listener receives all event types.
+    if (listenerConfiguration == null
+        || (listenerConfiguration.enabledEventCategories().orElse(Set.of()).isEmpty()
+            && listenerConfiguration.enabledEventTypes().orElse(Set.of()).isEmpty())) {
+      return EnumSet.allOf(PolarisEventType.class);
+    }
+
+    // Category and type filters are additive: a listener receives the union of both.
+    var supportedTypes = EnumSet.noneOf(PolarisEventType.class);
+    if (listenerConfiguration.enabledEventCategories().isPresent()) {
+      for (var enabledEventCategory : listenerConfiguration.enabledEventCategories().get()) {
+        supportedTypes.addAll(PolarisEventType.typesOfCategory(enabledEventCategory));
+      }
+    }
+    if (listenerConfiguration.enabledEventTypes().isPresent()) {
+      supportedTypes.addAll(listenerConfiguration.enabledEventTypes().get());
+    }
+    return supportedTypes;
   }
 
   private void deliverEvent(
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
     LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
     try {
-      listener.onEvent(event);
+      PolarisEvent toDeliver =
+          (listener instanceof RawEventAccess) ? event : eventSanitizer.sanitize(event);
+      executor.execute(
+          () -> {
+            LOGGER.debug(
+                "Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
+            try {
+              listener.onEvent(toDeliver);
+            } catch (Exception e) {
+              LOGGER.error(
+                  "Error while delivering {} event to listener '{}' ({})",
+                  event.type(),
+                  listenerName,
+                  listener,
+                  e);
+            }
+            LOGGER.debug(
+                "Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
+          });
     } catch (Exception e) {
       LOGGER.error(
           "Error while delivering {} event to listener '{}' ({})",
@@ -90,10 +131,9 @@ public class PolarisEventListeners {
           listener,
           e);
     }
-    LOGGER.debug("Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
   }
 
-  public boolean hasListeners(PolarisEventType polarisEventType) {
-    return enabledEventTypes.contains(polarisEventType);
+  public boolean hasListeners(PolarisEventType eventType) {
+    return eventTypesWithListeners.contains(eventType);
   }
 }

@@ -43,9 +43,9 @@ class CatalogRolesCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris catalog-roles create --catalog bronze_catalog cat_role
-        * ./polaris catalog-roles list --catalog bronze_catalog --principal-role data-analyst
-        * ./polaris catalog-roles grant --catalog bronze_catalog --principal-role data-engineer etl_role
+        * polaris catalog-roles create --catalog bronze_catalog cat_role
+        * polaris catalog-roles list --catalog bronze_catalog --principal-role data-analyst
+        * polaris catalog-roles grant --catalog bronze_catalog --principal-role data-engineer etl_role
     """
 
     catalog_roles_subcommand: str

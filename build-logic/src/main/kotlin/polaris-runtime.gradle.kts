@@ -15,8 +15,18 @@
  */
 
 import org.gradle.api.plugins.jvm.JvmTestSuite
+import org.gradle.api.tasks.Input
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
+import org.gradle.process.CommandLineArgumentProvider
+
+class QuarkusProfileArgumentProvider(private val profile: String) : CommandLineArgumentProvider {
+  @get:Input
+  val inputProfile: String
+    get() = profile
+
+  override fun asArguments(): Iterable<String> = listOf("-Dquarkus.profile=$profile")
+}
 
 plugins { id("polaris-server") }
 
@@ -44,7 +54,7 @@ testing {
             systemProperty("build.output.directory", layout.buildDirectory.asFile.get())
             dependsOn(tasks.named("quarkusBuild"))
             // Set the 'it' profile explicitly
-            jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-Dquarkus.profile=it") })
+            jvmArgumentProviders.add(QuarkusProfileArgumentProvider("it"))
           }
         }
         tasks.named(sources.compileJavaTaskName).configure {

@@ -49,13 +49,18 @@ dependencies {
 // test-backend names to be exercised.
 var dbs = mapOf("inmemory" to listOf("InMemory"), "mongodb" to listOf("MongoDb"))
 
+tasks.register<Test>("intTest") {
+  description = "Runs all integration tests."
+  group = LifecycleBasePlugin.VERIFICATION_GROUP
+}
+
 testing {
   suites {
     dbs.forEach { prjDbs ->
       val prj = prjDbs.key
       prjDbs.value.forEach { db ->
-        val dbTaskName = db.replace("-", "")
-        register<JvmTestSuite>("correctness${dbTaskName}Test") {
+        val dbTaskName = "correctness${db.replace("-", "")}Test"
+        register<JvmTestSuite>(dbTaskName) {
           dependencies {
             runtimeOnly(project(":polaris-persistence-nosql-$prj"))
             implementation(testFixtures(project(":polaris-persistence-nosql-$prj")))
@@ -63,6 +68,8 @@ testing {
 
           targets.all { testTask.configure { systemProperty("polaris.testBackend.name", db) } }
         }
+
+        tasks.named("intTest") { dependsOn(dbTaskName) }
       }
     }
 
@@ -76,9 +83,9 @@ testing {
         // `o.a.p.persistence.api.BackendConfigurer.defaultBackendConfigurer` using smallrye-config.
         targets.all {
           testTask.configure {
-            System.getProperties()
-              .filter { p -> p.key.toString().startsWith("polaris.") }
-              .forEach { p -> systemProperty(p.key.toString(), p.value) }
+            providers.systemPropertiesPrefixedBy("polaris").get().forEach { (k, v) ->
+              systemProperty(k, v)
+            }
           }
         }
       }

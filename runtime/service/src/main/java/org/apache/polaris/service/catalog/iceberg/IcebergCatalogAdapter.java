@@ -433,12 +433,20 @@ public class IcebergCatalogAdapter
     registerTableRequest.validate();
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, registerTableRequest.name()));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, registerTableRequest.name());
+    EntityNameValidator.validateIdentifier(tableIdentifier);
+    EnumSet<AccessDelegationMode> delegationModes =
+        parseAccessDelegationModes(accessDelegationMode);
     return withCatalog(
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse response = catalog.registerTable(ns, registerTableRequest);
+          LoadTableResponse response =
+              catalog.registerTable(
+                  ns,
+                  registerTableRequest,
+                  delegationModes,
+                  getRefreshCredentialsEndpoint(delegationModes, prefix, tableIdentifier));
           return tryInsertETagHeader(
                   Response.ok(response), response, namespace, registerTableRequest.name())
               .build();

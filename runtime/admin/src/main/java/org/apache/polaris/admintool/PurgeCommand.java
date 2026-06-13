@@ -59,6 +59,7 @@ public class PurgeCommand extends BaseMetaStoreCommand {
       spec.commandLine().getErr().printf("Purge encountered errors during operation.");
       return EXIT_CODE_PURGE_ERROR;
     } catch (Exception e) {
+      e.printStackTrace(spec.commandLine().getErr());
       spec.commandLine().getErr().println("Purge encountered errors during operation.");
       return EXIT_CODE_PURGE_ERROR;
     }

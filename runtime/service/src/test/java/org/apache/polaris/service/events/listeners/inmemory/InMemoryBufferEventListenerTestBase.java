@@ -41,6 +41,7 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 abstract class InMemoryBufferEventListenerTestBase {
 
@@ -64,6 +65,8 @@ abstract class InMemoryBufferEventListenerTestBase {
 
   @Inject
   @Identifier("persistence-in-memory-buffer")
+  Instance<InMemoryBufferEventListener> producerInstance;
+
   InMemoryBufferEventListener producer;
 
   @InjectSpy
@@ -78,10 +81,15 @@ abstract class InMemoryBufferEventListenerTestBase {
 
   @Inject Instance<DataSource> dataSource;
 
+  @BeforeEach
+  void resolveProducer() {
+    producer = producerInstance.get();
+  }
+
   @AfterEach
   void clearEvents() throws Exception {
     reset(metaStoreManagerFactory);
-    producer.shutdown();
+    producerInstance.destroy(producer);
     try (Connection connection = dataSource.get().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("DELETE FROM polaris_schema.events");

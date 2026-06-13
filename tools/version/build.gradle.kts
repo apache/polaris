@@ -32,9 +32,11 @@ description =
 val syncNoticeAndLicense by
   tasks.registering(Sync::class) {
     // Have to manually declare the inputs of this task here on top of the from/include below
-    inputs.files(
-      rootProject.fileTree(rootProject.rootDir) { include("NOTICE*", "LICENSE*", "version.txt") }
-    )
+    inputs
+      .files(
+        rootProject.fileTree(rootProject.rootDir) { include("NOTICE*", "LICENSE*", "version.txt") }
+      )
+      .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("version", project.version)
     destinationDir = project.layout.buildDirectory.dir("notice-licenses").get().asFile
     from(rootProject.rootDir) {
@@ -73,8 +75,8 @@ sourceSets.main.configure {
 val jarTestJar by
   tasks.registering(Jar::class) {
     archiveClassifier.set("jarTest")
-    from(sourceSets.main.get().output)
-    from(sourceSets.getByName("jarTest").output)
+    from(sourceSets.main.map { it.output })
+    from(sourceSets.named("jarTest").map { it.output })
   }
 
 // Add a test-suite to run against the built polaris-version*.jar, not the classes/, because we
@@ -82,7 +84,7 @@ val jarTestJar by
 testing {
   suites {
     register<JvmTestSuite>("jarTest") {
-      dependencies { runtimeOnly(files(jarTestJar.get().archiveFile.get().asFile)) }
+      dependencies { runtimeOnly(files(jarTestJar.map { it.archiveFile })) }
 
       targets.all {
         testTask.configure {

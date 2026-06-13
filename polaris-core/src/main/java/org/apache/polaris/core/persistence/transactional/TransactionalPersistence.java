@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.TransactionalPolicyMappingPersistence;
@@ -49,7 +50,10 @@ import org.jspecify.annotations.Nullable;
  * the BasePersistence methods in terms of lower-level methods that subclasses must implement.
  */
 public interface TransactionalPersistence
-    extends BasePersistence, IntegrationPersistence, TransactionalPolicyMappingPersistence {
+    extends BasePersistence,
+        IntegrationPersistence,
+        MetricsPersistence,
+        TransactionalPolicyMappingPersistence {
 
   /**
    * Run the specified transaction code (a Supplier lambda type) in a database read/write
@@ -294,27 +298,18 @@ public interface TransactionalPersistence
   /**
    * See {@link org.apache.polaris.core.persistence.IntegrationPersistence#createStorageIntegration}
    */
-  @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @NonNull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+  @Nullable PolarisStorageIntegration createStorageIntegrationInCurrentTxn(
+      @NonNull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
 
   /**
    * See {@link
    * org.apache.polaris.core.persistence.IntegrationPersistence#persistStorageIntegrationIfNeeded}
    */
-  <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeededInCurrentTxn(
+  void persistStorageIntegrationIfNeededInCurrentTxn(
       @NonNull PolarisCallContext callContext,
       @NonNull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration);
-
-  /**
-   * See {@link
-   * org.apache.polaris.core.persistence.IntegrationPersistence#loadPolarisStorageIntegration}
-   */
-  @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
-          @NonNull PolarisCallContext callContext, @NonNull PolarisBaseEntity entity);
+      @Nullable PolarisStorageIntegration storageIntegration);
 }

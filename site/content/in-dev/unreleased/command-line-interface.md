@@ -24,6 +24,16 @@ weight: 300
 
 In order to help administrators quickly set up and manage their Polaris server, Polaris provides a simple command-line interface (CLI) for common tasks.
 
+## Installation
+
+Install the latest release from PyPI:
+
+```shell
+pip install apache-polaris
+```
+
+For development, run `make client-setup-env` to set up the Python client environment.
+
 The basic syntax of the Polaris CLI is outlined below:
 
 ```
@@ -102,20 +112,6 @@ If your Polaris server is configured to use a realm other than the default, you 
 Also, if your Polaris server uses a custom realm header name, you can use the `--header` option to specify it. If `--header` is not provided, the CLI will check the `HEADER` environment variable. If neither is provided, the CLI will use default header name `Polaris-Realm`.
 
 Read [here]({{% ref "configuration/configuring-polaris.md" %}}) more about configuring polaris server to work with multiple realms.
-
-### PATH
-
-These examples assume the Polaris CLI is on the PATH and so can be invoked just by the command `polaris`. You can add the CLI to your PATH environment variable with a command like the following:
-
-```
-export PATH="$HOME/polaris:$PATH"
-```
-
-Alternatively, you can run the CLI by providing a path to it, such as with the following invocation:
-
-```
-~/polaris principals list
-```
 
 ## Commands
 

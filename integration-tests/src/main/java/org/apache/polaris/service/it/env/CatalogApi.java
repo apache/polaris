@@ -178,6 +178,66 @@ public class CatalogApi extends PolarisRestApi {
     }
   }
 
+  public LoadTableResponse registerTable(
+      String catalog,
+      Namespace namespace,
+      String tableName,
+      String metadataLocation,
+      boolean overwrite) {
+    return registerTable(catalog, namespace, tableName, metadataLocation, overwrite, Map.of());
+  }
+
+  public LoadTableResponse registerTableWithAccessDelegation(
+      String catalog,
+      Namespace namespace,
+      String tableName,
+      String metadataLocation,
+      boolean overwrite) {
+    return registerTable(
+        catalog,
+        namespace,
+        tableName,
+        metadataLocation,
+        overwrite,
+        Map.of("X-Iceberg-Access-Delegation", "vended-credentials"));
+  }
+
+  public LoadTableResponse registerTable(
+      String catalog,
+      Namespace namespace,
+      String tableName,
+      String metadataLocation,
+      boolean overwrite,
+      Map<String, String> headers) {
+    HashMap<String, String> allHeaders = new HashMap<>(defaultHeaders());
+    allHeaders.putAll(headers);
+
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    try (Response res =
+        request(
+                "v1/{cat}/namespaces/{ns}/register",
+                Map.of("cat", catalog, "ns", ns),
+                Map.of(),
+                allHeaders)
+            .post(
+                Entity.json(
+                    Map.of(
+                        "name",
+                        tableName,
+                        "metadata-location",
+                        metadataLocation,
+                        "overwrite",
+                        overwrite)))) {
+      if (res.getStatus() == Response.Status.OK.getStatusCode()) {
+        return res.readEntity(LoadTableResponse.class);
+      }
+      throw new RESTException(
+          "Unhandled error: %s",
+          ((ErrorHandler) ErrorHandlers.defaultErrorHandler())
+              .parseResponse(res.getStatus(), res.readEntity(String.class)));
+    }
+  }
+
   public LoadTableResponse loadTable(String catalog, TableIdentifier id, String snapshots) {
     return loadTable(catalog, id, snapshots, Map.of());
   }

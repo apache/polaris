@@ -44,6 +44,7 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   testImplementation(libs.mockito.junit.jupiter)
+  testImplementation(libs.jakarta.enterprise.cdi.api)
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
 

@@ -309,7 +309,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
     } else {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-      var results = ((IcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
+      var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
       return ListNamespacesResponse.builder()
           .addAll(results.items())
           .nextPageToken(results.encodedResponseToken())
@@ -400,7 +400,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return catalogHandlerUtils().listTables(baseCatalog, namespace, pageToken, pageSize);
     } else {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-      var results = ((IcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
+      var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
           .nextPageToken(results.encodedResponseToken())
@@ -527,7 +527,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         location = request.location();
       } else {
         location =
-            ((IcebergCatalog) baseCatalog).transformTableLikeLocation(ident, request.location());
+            ((LocalIcebergCatalog) baseCatalog)
+                .transformTableLikeLocation(ident, request.location());
       }
     } else {
       location =
@@ -593,7 +594,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
-    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+    if (baseCatalog instanceof LocalIcebergCatalog polarisCatalog) {
       polarisCatalog.validateStagedTableCreate(ident, metadata);
     }
 
@@ -613,46 +614,48 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    *
    * @param namespace The namespace to register the table in
    * @param request the register table request
+   * @param delegationModes the access delegation modes to use
+   * @param refreshCredentialsEndpoint the refresh credentials endpoint to use
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
-  public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
+  public LoadTableResponse registerTable(
+      Namespace namespace,
+      RegisterTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<String> refreshCredentialsEndpoint) {
+
+    request.validate();
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    boolean overwrite = request.overwrite();
 
-    if (request.overwrite()) {
-      authorizeRegisterTableOverwriteOrThrow(identifier);
-      return registerTableWithOverwrite(identifier, request);
-    }
+    Set<PolarisStorageActions> actionsRequested =
+        authorizeRegisterTable(identifier, delegationModes, overwrite);
 
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        PolarisAuthorizableOperation.REGISTER_TABLE, identifier);
-    return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
-  }
-
-  private LoadTableResponse registerTableWithOverwrite(
-      TableIdentifier identifier, RegisterTableRequest request) {
-
-    // For non-Polaris/federated catalogs, reject overwrite until this is
-    // supported by a common catalog contract.
-    CatalogEntity catalogEntity = getResolvedCatalogEntity();
-    if (catalogEntity.isExternal()) {
-      throw new BadRequestException(
-          "Register table overwrite is only supported for internal Polaris catalogs");
-    }
-
-    // Handle Polaris-specific overwrite logic.
-    if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-      // Use the overwrite-capable registration path for IcebergCatalog
-      Table table = icebergCatalog.registerTable(identifier, request.metadataLocation(), true);
-      if (table instanceof BaseTable baseTable) {
-        TableMetadata metadata = baseTable.operations().current();
-        return LoadTableResponse.builder().withTableMetadata(metadata).build();
+    if (overwrite) {
+      // For non-Polaris/federated catalogs, reject overwrite until this is
+      // supported by a common catalog contract.
+      CatalogEntity catalogEntity = getResolvedCatalogEntity();
+      if (catalogEntity.isExternal()) {
+        throw new BadRequestException(
+            "Register table overwrite is only supported for internal Polaris catalogs");
       }
-      throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
     }
 
-    throw new BadRequestException(
-        "Register table overwrite is only supported for internal Polaris catalogs; unsupported catalog type: %s",
-        baseCatalog.getClass().getName());
+    // Resolve the mode before registering the table to avoid registering a table and then failing
+    // to return credentials if the mode is invalid
+    Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
+
+    Table table = baseCatalog.registerTable(identifier, request.metadataLocation(), overwrite);
+
+    if (table instanceof BaseTable baseTable) {
+      TableMetadata tableMetadata = baseTable.operations().current();
+      return buildLoadTableResponseWithDelegationCredentials(
+              identifier, tableMetadata, resolvedMode, actionsRequested, refreshCredentialsEndpoint)
+          .build();
+    }
+
+    throw new IllegalStateException(
+        "Cannot register table %s: unknown table format".formatted(identifier));
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
@@ -801,7 +804,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // the remote catalog's actual table metadata.
     // Note: this check must come after authorizeLoadTable because baseCatalog is
     // initialized lazily during authorization.
-    if (!(baseCatalog instanceof IcebergCatalog)) {
+    if (!(baseCatalog instanceof LocalIcebergCatalog)) {
       return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
     }
 
@@ -887,6 +890,57 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     return actionsRequested;
+  }
+
+  private Set<PolarisStorageActions> authorizeRegisterTable(
+      TableIdentifier tableIdentifier,
+      EnumSet<AccessDelegationMode> delegationModes,
+      boolean overwrite) {
+
+    if (delegationModes.isEmpty()) {
+
+      if (overwrite) {
+        authorizeRegisterTableOverwriteOrThrow(
+            PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE,
+            PolarisAuthorizableOperation.REGISTER_TABLE,
+            tableIdentifier);
+      } else {
+        authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+            PolarisAuthorizableOperation.REGISTER_TABLE, tableIdentifier);
+      }
+
+      return Set.of();
+
+    } else {
+
+      Set<PolarisStorageActions> actionsRequested =
+          EnumSet.of(PolarisStorageActions.READ, PolarisStorageActions.LIST);
+
+      try {
+        if (overwrite) {
+          authorizeRegisterTableOverwriteOrThrow(
+              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+              tableIdentifier);
+        } else {
+          authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION, tableIdentifier);
+        }
+        actionsRequested.add(PolarisStorageActions.WRITE);
+      } catch (ForbiddenException e) {
+        if (overwrite) {
+          authorizeRegisterTableOverwriteOrThrow(
+              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+              tableIdentifier);
+        } else {
+          authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION, tableIdentifier);
+        }
+      }
+
+      return actionsRequested;
+    }
   }
 
   public Optional<LoadTableResponse> loadTable(
@@ -1043,7 +1097,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   if (!isFederated && update instanceof MetadataUpdate.SetLocation setLocation) {
                     String requestedLocation = setLocation.location();
                     String filteredLocation =
-                        ((IcebergCatalog) baseCatalog)
+                        ((LocalIcebergCatalog) baseCatalog)
                             .transformTableLikeLocation(identifier, requestedLocation);
                     return new MetadataUpdate.SetLocation(filteredLocation);
                   } else {
@@ -1157,7 +1211,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // validations.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
         new TransactionWorkspaceMetaStoreManager(diagnostics(), metaStoreManager());
-    ((IcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
+    ((LocalIcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
     // Group all changes by table identifier to handle them atomically.
     // This prevents conflicts when multiple changes target the same table entity.
@@ -1265,7 +1319,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           baseCatalog.getClass().getName());
     } else {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-      var results = ((IcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
+      var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
           .nextPageToken(results.encodedResponseToken())

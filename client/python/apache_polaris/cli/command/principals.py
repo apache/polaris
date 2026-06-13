@@ -45,10 +45,10 @@ class PrincipalsCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris principals create user
-        * ./polaris principals access user
-        * ./polaris principals list
-        * ./polaris principals list --principal-role filter-to-this-role
+        * polaris principals create user
+        * polaris principals access user
+        * polaris principals list
+        * polaris principals list --principal-role filter-to-this-role
     """
 
     principals_subcommand: str

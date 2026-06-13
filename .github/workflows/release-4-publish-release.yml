@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with: # zizmor: ignore[artipacked]
           # Fetch full history for proper branch operations
           fetch-depth: 0
@@ -492,6 +492,59 @@ jobs:
           ✅ Nexus staging repository released
           EOT
 
+      - name: Update previous release binary distribution URLs to archive
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          # Use a temporary worktree to operate on the versioned-docs branch without
+          # disturbing the current release-branch checkout.
+          versioned_docs_dir="${RUNNER_TEMP}/versioned-docs"
+          exec_process git fetch origin versioned-docs
+          exec_process git worktree add "${versioned_docs_dir}" origin/versioned-docs
+
+          # Find all binary-distribution.md files in version directories,
+          # skip the directory for the version being released right now
+          # (its docs haven't been added to versioned-docs yet, but we exclude
+          # it explicitly for safety).
+          changed_files=()
+          while IFS= read -r -d '' file; do
+            # Derive the version from the first path component inside the worktree
+            rel_path="${file#${versioned_docs_dir}/}"
+            version_dir="${rel_path%%/*}"
+            if [[ "${version_dir}" == "${version_without_rc}" ]]; then
+              continue
+            fi
+
+            # Replace both incubator and non-incubator downloads URLs with the
+            # archive equivalent, so old docs no longer point at the live CDN.
+            sed -i \
+              -e 's|https://downloads\.apache\.org/incubator/polaris/|https://archive.apache.org/dist/incubator/polaris/|g' \
+              -e 's|https://downloads\.apache\.org/polaris/|https://archive.apache.org/dist/polaris/|g' \
+              "${file}"
+
+            if ! git -C "${versioned_docs_dir}" diff --quiet -- "${rel_path}"; then
+              changed_files+=("${rel_path}")
+            fi
+          done < <(find "${versioned_docs_dir}" -path "*/getting-started/binary-distribution.md" -print0)
+
+          if [[ ${#changed_files[@]} -gt 0 ]]; then
+            exec_process git -C "${versioned_docs_dir}" add "${changed_files[@]}"
+            exec_process git -C "${versioned_docs_dir}" commit \
+              -m "Update binary distribution URLs to archive for releases superseded by ${version_without_rc}"
+            exec_process git -C "${versioned_docs_dir}" push origin HEAD:versioned-docs
+
+            echo "## Binary Distribution URL Updates" >> $GITHUB_STEP_SUMMARY
+            echo "Updated to archive URLs in:" >> $GITHUB_STEP_SUMMARY
+            for f in "${changed_files[@]}"; do
+              echo "- \`${f}\`" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "## Binary Distribution URL Updates" >> $GITHUB_STEP_SUMMARY
+            echo "No binary distribution URLs needed updating" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          exec_process git worktree remove "${versioned_docs_dir}" --force
+
       - name: Release summary
         run: |
           cat <<EOT >> $GITHUB_STEP_SUMMARY
@@ -507,6 +560,7 @@ jobs:
           | GitHub release | ✅ Created with artifacts attached |
           | Docker images | ✅ Published to Docker Hub |
           | Nexus repository | ✅ Released |
+          | Binary dist URL updates | ✅ Previous releases updated to archive URLs |
           | Version | \`${version_without_rc}\` |
           | Final release tag | \`${final_release_tag}\` |
           EOT
@@ -524,7 +578,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
           persist-credentials: false

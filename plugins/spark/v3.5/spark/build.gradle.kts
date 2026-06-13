@@ -29,6 +29,11 @@ checkstyle {
     )
 }
 
+sourceSets {
+  main { java { srcDir("../../common/src/main/java") } }
+  test { java { srcDir("../../common/src/test/java") } }
+}
+
 // get version information
 val sparkMajorVersion = "3.5"
 val scalaVersion = getAndUseScalaVersionForProject()
@@ -89,8 +94,8 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   isZip64 = true
 
   // pack both the source code and dependencies
-  from(sourceSets.main.get().output)
-  configurations = listOf(project.configurations.runtimeClasspath.get())
+  from(sourceSets.main.map { it.output })
+  configurations = provider { listOf(project.configurations.runtimeClasspath.get()) }
 
   // Includes _all_ duplicates (this is applied files processed by `ShadowJar`).
   duplicatesStrategy = DuplicatesStrategy.INCLUDE

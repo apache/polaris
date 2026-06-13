@@ -46,11 +46,11 @@ class ProfilesCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris profiles create dev
-        * ./polaris profiles delete dev
-        * ./polaris profiles update dev
-        * ./polaris profiles get dev
-        * ./polaris profiles list
+        * polaris profiles create dev
+        * polaris profiles delete dev
+        * polaris profiles update dev
+        * polaris profiles get dev
+        * polaris profiles list
     """
 
     profiles_subcommand: str

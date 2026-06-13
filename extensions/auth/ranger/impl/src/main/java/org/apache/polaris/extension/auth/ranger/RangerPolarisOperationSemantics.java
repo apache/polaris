@@ -171,6 +171,22 @@ public record RangerPolarisOperationSemantics(
         new RangerPolarisOperationSemantics(
             toSet(TABLE_METADATA_FULL), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_CREATE, TABLE_READ_DATA), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_CREATE, TABLE_WRITE_DATA), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_METADATA_FULL, TABLE_READ_DATA), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_METADATA_FULL, TABLE_WRITE_DATA), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LOAD_TABLE,
         new RangerPolarisOperationSemantics(
             toSet(TABLE_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
