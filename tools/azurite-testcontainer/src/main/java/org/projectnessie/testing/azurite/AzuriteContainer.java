@@ -21,7 +21,6 @@ import com.azure.storage.common.StorageSharedKeyCredential;
 import com.azure.storage.file.datalake.DataLakeServiceClient;
 import com.azure.storage.file.datalake.DataLakeServiceClientBuilder;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
@@ -157,30 +156,24 @@ public class AzuriteContainer extends GenericContainer<AzuriteContainer>
 
   @Override
   public Map<String, String> icebergProperties() {
-    Map<String, String> r = new HashMap<>();
-    r.put("io-impl", "org.apache.iceberg.azure.adlsv2.ADLSFileIO");
-    r.put("adls.connection-string." + accountFq, endpoint());
-    r.put("adls.auth.shared-key.account.name", account);
-    r.put("adls.auth.shared-key.account.key", secretBase64);
-    return r;
+    return Map.ofEntries(
+        Map.entry("io-impl", "org.apache.iceberg.azure.adlsv2.ADLSFileIO"),
+        Map.entry("adls.connection-string." + accountFq, endpoint()),
+        Map.entry("adls.auth.shared-key.account.name", account),
+        Map.entry("adls.auth.shared-key.account.key", secretBase64));
   }
 
   @Override
   public Map<String, String> hadoopConfig() {
-    Map<String, String> r = new HashMap<>();
-
-    r.put("fs.azure.impl", "org.apache.hadoop.fs.azure.AzureNativeFileSystemStore");
-    r.put("fs.AbstractFileSystem.azure.impl", "org.apache.hadoop.fs.azurebfs.Abfs");
-
-    r.put("fs.azure.always.use.https", "false");
-    r.put("fs.azure.abfs.endpoint", endpointHostPort());
-
-    r.put("fs.azure.test.emulator", "true");
-    r.put("fs.azure.storage.emulator.account.name", account);
-    r.put("fs.azure.account.auth.type", "SharedKey");
-    r.put("fs.azure.account.key." + accountFq, secretBase64);
-
-    return r;
+    return Map.ofEntries(
+        Map.entry("fs.azure.impl", "org.apache.hadoop.fs.azure.AzureNativeFileSystemStore"),
+        Map.entry("fs.AbstractFileSystem.azure.impl", "org.apache.hadoop.fs.azurebfs.Abfs"),
+        Map.entry("fs.azure.always.use.https", "false"),
+        Map.entry("fs.azure.abfs.endpoint", endpointHostPort()),
+        Map.entry("fs.azure.test.emulator", "true"),
+        Map.entry("fs.azure.storage.emulator.account.name", account),
+        Map.entry("fs.azure.account.auth.type", "SharedKey"),
+        Map.entry("fs.azure.account.key." + accountFq, secretBase64));
   }
 
   private static String randomString(String prefix) {

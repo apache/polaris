@@ -25,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -33,10 +32,12 @@ public class ConnectionCredentialsTest {
 
   @Test
   public void testMultipleExpirationTsThrows() {
-    Map<CatalogAccessProperty, String> properties = new HashMap<>();
-    properties.put(
-        AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(Instant.ofEpochMilli(1).toEpochMilli()));
-    properties.put(EXPIRES_AT_MS, String.valueOf(Instant.ofEpochMilli(1).toEpochMilli()));
+    Map<CatalogAccessProperty, String> properties =
+        Map.ofEntries(
+            Map.entry(
+                AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                String.valueOf(Instant.ofEpochMilli(1).toEpochMilli())),
+            Map.entry(EXPIRES_AT_MS, String.valueOf(Instant.ofEpochMilli(1).toEpochMilli())));
 
     assertThatThrownBy(() -> ConnectionCredentials.of(properties))
         .isInstanceOf(IllegalArgumentException.class)

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.rest;
 
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -33,9 +32,9 @@ public class PolarisResourcePathsTest {
 
   @BeforeEach
   public void setUp() {
-    Map<String, String> properties = new HashMap<>();
-    properties.put(PolarisResourcePaths.PREFIX, testPrefix);
-    paths = PolarisResourcePaths.forCatalogProperties(properties);
+    paths =
+        PolarisResourcePaths.forCatalogProperties(
+            Map.ofEntries(Map.entry(PolarisResourcePaths.PREFIX, testPrefix)));
   }
 
   @Test

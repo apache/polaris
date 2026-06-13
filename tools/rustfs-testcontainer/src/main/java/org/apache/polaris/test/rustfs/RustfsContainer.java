@@ -226,12 +226,11 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
 
   @Override
   public Map<String, String> hadoopConfig() {
-    Map<String, String> r = new HashMap<>();
-    r.put("fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem");
-    r.put("fs.s3a.access.key", accessKey());
-    r.put("fs.s3a.secret.key", secretKey());
-    r.put("fs.s3a.endpoint", s3endpoint());
-    return r;
+    return Map.ofEntries(
+        Map.entry("fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem"),
+        Map.entry("fs.s3a.access.key", accessKey()),
+        Map.entry("fs.s3a.secret.key", secretKey()),
+        Map.entry("fs.s3a.endpoint", s3endpoint()));
   }
 
   @Override

@@ -25,7 +25,6 @@ import static java.util.Locale.ROOT;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigInteger;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.eclipse.microprofile.config.spi.Converter;
@@ -57,20 +56,17 @@ public abstract class MemorySize {
   private static final Pattern MEMORY_SIZE_PATTERN =
       Pattern.compile("^(\\d+)([BbKkMmGgTtPpEeZzYy]?)$");
   private static final BigInteger KILO_BYTES = BigInteger.valueOf(1024);
-  private static final Map<String, BigInteger> MEMORY_SIZE_MULTIPLIERS;
+  private static final Map<String, BigInteger> MEMORY_SIZE_MULTIPLIERS =
+      Map.ofEntries(
+          Map.entry("K", KILO_BYTES),
+          Map.entry("M", KILO_BYTES.pow(2)),
+          Map.entry("G", KILO_BYTES.pow(3)),
+          Map.entry("T", KILO_BYTES.pow(4)),
+          Map.entry("P", KILO_BYTES.pow(5)),
+          Map.entry("E", KILO_BYTES.pow(6)),
+          Map.entry("Z", KILO_BYTES.pow(7)),
+          Map.entry("Y", KILO_BYTES.pow(8)));
   private static final char[] SUFFIXES = new char[] {'B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'};
-
-  static {
-    MEMORY_SIZE_MULTIPLIERS = new HashMap<>();
-    MEMORY_SIZE_MULTIPLIERS.put("K", KILO_BYTES);
-    MEMORY_SIZE_MULTIPLIERS.put("M", KILO_BYTES.pow(2));
-    MEMORY_SIZE_MULTIPLIERS.put("G", KILO_BYTES.pow(3));
-    MEMORY_SIZE_MULTIPLIERS.put("T", KILO_BYTES.pow(4));
-    MEMORY_SIZE_MULTIPLIERS.put("P", KILO_BYTES.pow(5));
-    MEMORY_SIZE_MULTIPLIERS.put("E", KILO_BYTES.pow(6));
-    MEMORY_SIZE_MULTIPLIERS.put("Z", KILO_BYTES.pow(7));
-    MEMORY_SIZE_MULTIPLIERS.put("Y", KILO_BYTES.pow(8));
-  }
 
   static final class MemorySizeLong extends MemorySize {
     private final long bytes;

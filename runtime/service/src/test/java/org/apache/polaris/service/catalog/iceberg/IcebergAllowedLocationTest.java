@@ -326,8 +326,9 @@ public class IcebergAllowedLocationTest {
     // update the view with allowed locations
     String customAllowedLocation3 = Paths.get(namespaceLocation, "custom-location3").toString();
 
-    Map<String, String> updatedProperties = new HashMap<>();
-    updatedProperties.put(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, customAllowedLocation3);
+    Map<String, String> updatedProperties =
+        Map.ofEntries(
+            Map.entry(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, customAllowedLocation3));
 
     UpdateTableRequest updateRequest =
         UpdateTableRequest.create(
@@ -381,8 +382,8 @@ public class IcebergAllowedLocationTest {
                 services.securityContext());
     assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
 
-    Map<String, String> updatedProperties = new HashMap<>();
-    updatedProperties.put(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, locationNotAllowed);
+    Map<String, String> updatedProperties =
+        Map.ofEntries(Map.entry(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, locationNotAllowed));
 
     var updateRequest =
         UpdateTableRequest.create(
@@ -434,14 +435,13 @@ public class IcebergAllowedLocationTest {
 
   private static @NotNull CreateViewRequest getCreateViewRequest(
       String writeMetadataPath, String viewName, String location) {
-    var properties = new HashMap<String, String>();
-    properties.put(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, writeMetadataPath);
     return ImmutableCreateViewRequest.builder()
         .name(viewName)
         .schema(SCHEMA)
         .viewVersion(VIEW_VERSION)
         .location(location)
-        .properties(properties)
+        .properties(
+            Map.ofEntries(Map.entry(USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, writeMetadataPath)))
         .build();
   }
 
@@ -476,8 +476,8 @@ public class IcebergAllowedLocationTest {
 
     // Update the table to set write.data.path to a subdirectory under the table's location
     String writeDataPath = tableLocation + "/alternative_data";
-    Map<String, String> updatedProperties = new HashMap<>();
-    updatedProperties.put("write.data.path", writeDataPath);
+    Map<String, String> updatedProperties =
+        Map.ofEntries(Map.entry("write.data.path", writeDataPath));
 
     var updateRequest =
         UpdateTableRequest.create(

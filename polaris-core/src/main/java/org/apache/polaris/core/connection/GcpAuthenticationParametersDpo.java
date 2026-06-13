@@ -19,7 +19,6 @@
 
 package org.apache.polaris.core.connection;
 
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -41,9 +40,7 @@ public class GcpAuthenticationParametersDpo extends AuthenticationParametersDpo 
   @Override
   public Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
-    HashMap<String, String> properties = new HashMap<>();
-    properties.put(AuthProperties.AUTH_TYPE, AuthProperties.AUTH_TYPE_GOOGLE);
-    return properties;
+    return Map.ofEntries(Map.entry(AuthProperties.AUTH_TYPE, AuthProperties.AUTH_TYPE_GOOGLE));
   }
 
   @NonNull
