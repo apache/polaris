@@ -98,8 +98,6 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
             val signingKey: String? by project
             val signingPassword: String? by project
             useInMemoryPgpKeys(signingKey, signingPassword)
-            val publishing = project.extensions.getByType(PublishingExtension::class.java)
-            afterEvaluate { sign(publishing.publications.getByName("maven")) }
 
             if (project.hasProperty("useGpgAgent")) {
               useGpgCmd()
@@ -120,32 +118,35 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
           publications {
             register<MavenPublication>("maven") {
               val mavenPublication = this
-              afterEvaluate {
-                // This MUST happen in an 'afterEvaluate' to ensure that the Shadow*Plugin has
-                // been applied.
-                if (project.plugins.hasPlugin(ShadowPlugin::class.java)) {
-                  configureShadowPublishing(project, mavenPublication, softwareComponentFactory)
-                } else {
-                  val component =
-                    components.firstOrNull { c -> c.name == "javaPlatform" || c.name == "java" }
-                  if (component is AdhocComponentWithVariants) {
-                    listOf("testFixturesApiElements", "testFixturesRuntimeElements").forEach { cfg
-                      ->
-                      configurations.findByName(cfg)?.apply {
-                        component.addVariantsFromConfiguration(this) { skip() }
-                      }
+              if (project.plugins.hasPlugin(ShadowPlugin::class.java)) {
+                configureShadowPublishing(project, mavenPublication, softwareComponentFactory)
+              } else {
+                val component =
+                  components.firstOrNull { c -> c.name == "javaPlatform" || c.name == "java" }
+                if (component is AdhocComponentWithVariants) {
+                  listOf("testFixturesApiElements", "testFixturesRuntimeElements").forEach { cfg ->
+                    configurations.findByName(cfg)?.apply {
+                      component.addVariantsFromConfiguration(this) { skip() }
                     }
                   }
+                }
+                if (component != null) {
                   from(component)
                 }
+              }
 
-                suppressPomMetadataWarningsFor("testFixturesApiElements")
-                suppressPomMetadataWarningsFor("testFixturesRuntimeElements")
+              suppressPomMetadataWarningsFor("testFixturesApiElements")
+              suppressPomMetadataWarningsFor("testFixturesRuntimeElements")
 
-                if (project.tasks.findByName("createPolarisSparkJar") != null) {
+              project.tasks
+                .matching { task -> task.name == "createPolarisSparkJar" }
+                .configureEach {
                   // if the project contains spark client jar, also publish the jar to maven
-                  artifact(project.tasks.named("createPolarisSparkJar").get())
+                  artifact(this)
                 }
+
+              if (project.isSigningEnabled()) {
+                configure<SigningExtension> { sign(mavenPublication) }
               }
 
               if (
@@ -170,7 +171,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
               }
 
               tasks.named("generatePomFileForMavenPublication").configure {
-                configurePom(project, mavenPublication, this)
+                configurePom(project, project.parentPomCoordinates(), mavenPublication, this)
               }
             }
           }
@@ -178,5 +179,12 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
       }
 
       addAdditionalJarContent(this)
+    }
+
+  private fun Project.parentPomCoordinates(): ParentPomCoordinates? =
+    if (this == rootProject) {
+      null
+    } else {
+      ParentPomCoordinates(group.toString(), "polaris", version.toString())
     }
 }

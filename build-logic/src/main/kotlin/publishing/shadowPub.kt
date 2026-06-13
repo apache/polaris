@@ -98,8 +98,9 @@ internal fun configureShadowPublishing(
     }
     // Sonatype requires the javadoc and sources jar to be present, but the
     // Shadow extension does not publish those.
-    component.addVariantsFromConfiguration(project.configurations.getByName("javadocElements")) {}
-    component.addVariantsFromConfiguration(project.configurations.getByName("sourcesElements")) {}
+    project.configurations
+      .matching { it.name == "javadocElements" || it.name == "sourcesElements" }
+      .configureEach { component.addVariantsFromConfiguration(this) {} }
     mavenPublication.from(component)
 
     // This a replacement to add dependencies to the pom, if necessary. Equivalent to
