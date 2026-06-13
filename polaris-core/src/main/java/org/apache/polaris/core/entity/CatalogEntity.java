@@ -448,6 +448,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     @Override
     public CatalogEntity build() {
+      validateDefaultBaseLocation();
       return new CatalogEntity(buildBase());
     }
   }

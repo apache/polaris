@@ -915,29 +915,6 @@ public class PolarisAdminService {
       }
     }
 
-    // Base-location validity is an invariant on every update. Update-side semantics are strict:
-    // unlike CatalogEntity.Builder.setStorageConfigurationInfo (which has a create-time
-    // convenience that auto-populates allowed-locations from default-base-location when the
-    // caller supplied none), updates that touch storage_config must declare allowed-locations
-    // explicitly. This prevents silent loss of an existing allowed-locations list during a
-    // partial storage_config update (e.g. role rotation).
-    if (defaultBaseLocation != null && updateRequest.getStorageConfigInfo() != null) {
-      List<String> submittedAllowedLocations =
-          updateRequest.getStorageConfigInfo().getAllowedLocations();
-      if (submittedAllowedLocations == null || submittedAllowedLocations.isEmpty()) {
-        throw new BadRequestException(
-            "Cannot update Catalog %s: when updating storage_config, allowed-locations must"
-                + " be specified explicitly (omitting it would silently lose the catalog's"
-                + " existing allowed-locations list)",
-            name);
-      }
-      // default-base-location/allowed-locations consistency is enforced inside
-      // Builder.setStorageConfigurationInfo() below.
-    }
-    if (defaultBaseLocation != null && updateRequest.getStorageConfigInfo() == null) {
-      updateBuilder.validateDefaultBaseLocation();
-    }
-
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(
           realmConfig, updateRequest.getStorageConfigInfo(), defaultBaseLocation);
