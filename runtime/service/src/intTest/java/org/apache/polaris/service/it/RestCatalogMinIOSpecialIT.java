@@ -36,6 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
@@ -44,6 +46,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.FileFormat;
@@ -76,10 +79,10 @@ import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.test.commons.MinioRustProfile;
 import org.apache.polaris.test.minio.Minio;
 import org.apache.polaris.test.minio.MinioAccess;
-import org.apache.polaris.test.minio.MinioExtension;
+import org.apache.polaris.test.minio.MinioConditionExtension;
+import org.apache.polaris.test.minio.MinioTestResource;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -98,7 +101,13 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
  */
 @QuarkusIntegrationTest
 @TestProfile(MinioRustProfile.class)
-@ExtendWith(MinioExtension.class)
+@QuarkusTestResource(
+    value = MinioTestResource.class,
+    initArgs = {
+      @ResourceArg(name = "accessKey", value = ACCESS_KEY),
+      @ResourceArg(name = "secretKey", value = SECRET_KEY)
+    })
+@ExtendWith(MinioConditionExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class RestCatalogMinIOSpecialIT {
 
@@ -112,6 +121,9 @@ public class RestCatalogMinIOSpecialIT {
           required(1, "id", Types.IntegerType.get(), "doc"),
           optional(2, "data", Types.StringType.get()));
 
+  @Minio static MinioAccess minioAccess;
+
+  private static final AtomicBoolean initialized = new AtomicBoolean(false);
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
@@ -124,27 +136,24 @@ public class RestCatalogMinIOSpecialIT {
   private PrincipalWithCredentials principalCredentials;
   private String catalogName;
 
-  @BeforeAll
-  static void setup(
-      PolarisApiEndpoints apiEndpoints,
-      @Minio(accessKey = ACCESS_KEY, secretKey = SECRET_KEY) MinioAccess minioAccess,
-      ClientCredentials credentials) {
-    s3Client = minioAccess.s3Client();
-    endpoints = apiEndpoints;
-    client = polarisClient(endpoints);
-    adminToken = client.obtainToken(credentials);
-    managementApi = client.managementApi(adminToken);
-    storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
-    endpoint = minioAccess.s3endpoint();
-  }
-
   @AfterAll
   static void close() throws Exception {
     client.close();
   }
 
   @BeforeEach
-  public void before(TestInfo testInfo) {
+  public void before(
+      TestInfo testInfo, PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+    if (initialized.compareAndSet(false, true)) {
+      endpoints = apiEndpoints;
+      s3Client = minioAccess.s3Client();
+      client = polarisClient(endpoints);
+      adminToken = client.obtainToken(credentials);
+      managementApi = client.managementApi(adminToken);
+      storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
+      endpoint = minioAccess.s3endpoint();
+    }
+
     String principalName = client.newEntityName("test-user");
     principalRoleName = client.newEntityName("test-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);

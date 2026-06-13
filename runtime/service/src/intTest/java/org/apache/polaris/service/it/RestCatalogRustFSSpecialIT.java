@@ -36,6 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
@@ -44,6 +46,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.FileFormat;
@@ -76,10 +79,10 @@ import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.test.commons.MinioRustProfile;
 import org.apache.polaris.test.rustfs.Rustfs;
 import org.apache.polaris.test.rustfs.RustfsAccess;
-import org.apache.polaris.test.rustfs.RustfsExtension;
+import org.apache.polaris.test.rustfs.RustfsConditionExtension;
+import org.apache.polaris.test.rustfs.RustfsTestResource;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -98,7 +101,13 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
  */
 @QuarkusIntegrationTest
 @TestProfile(MinioRustProfile.class)
-@ExtendWith(RustfsExtension.class)
+@QuarkusTestResource(
+    value = RustfsTestResource.class,
+    initArgs = {
+      @ResourceArg(name = "accessKey", value = ACCESS_KEY),
+      @ResourceArg(name = "secretKey", value = SECRET_KEY)
+    })
+@ExtendWith(RustfsConditionExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class RestCatalogRustFSSpecialIT {
 
@@ -112,6 +121,9 @@ public class RestCatalogRustFSSpecialIT {
           required(1, "id", Types.IntegerType.get(), "doc"),
           optional(2, "data", Types.StringType.get()));
 
+  @Rustfs static RustfsAccess rustfsAccess;
+
+  private static final AtomicBoolean initialized = new AtomicBoolean(false);
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
@@ -124,27 +136,24 @@ public class RestCatalogRustFSSpecialIT {
   private PrincipalWithCredentials principalCredentials;
   private String catalogName;
 
-  @BeforeAll
-  static void setup(
-      PolarisApiEndpoints apiEndpoints,
-      @Rustfs(accessKey = ACCESS_KEY, secretKey = SECRET_KEY) RustfsAccess rustfsAccess,
-      ClientCredentials credentials) {
-    s3Client = rustfsAccess.s3Client();
-    endpoints = apiEndpoints;
-    client = polarisClient(endpoints);
-    adminToken = client.obtainToken(credentials);
-    managementApi = client.managementApi(adminToken);
-    storageBase = rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX);
-    endpoint = rustfsAccess.s3endpoint();
-  }
-
   @AfterAll
   static void close() throws Exception {
     client.close();
   }
 
   @BeforeEach
-  public void before(TestInfo testInfo) {
+  public void before(
+      TestInfo testInfo, PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+    if (initialized.compareAndSet(false, true)) {
+      endpoints = apiEndpoints;
+      s3Client = rustfsAccess.s3Client();
+      client = polarisClient(endpoints);
+      adminToken = client.obtainToken(credentials);
+      managementApi = client.managementApi(adminToken);
+      storageBase = rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX);
+      endpoint = rustfsAccess.s3endpoint();
+    }
+
     String principalName = client.newEntityName("test-user");
     principalRoleName = client.newEntityName("test-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
