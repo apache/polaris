@@ -147,12 +147,7 @@ public class ServiceProducers {
   @RequestScoped
   public MetricsPersistence metricsPersistence(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    // When the backend implements both SPIs on the same instance (e.g. JDBC, in-memory), reuse the
-    // session instead of building a second persistence instance per request.
-    return (metaStore instanceof MetricsPersistence mp)
-        ? mp
-        : metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
+    return metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
   }
 
   @Produces
