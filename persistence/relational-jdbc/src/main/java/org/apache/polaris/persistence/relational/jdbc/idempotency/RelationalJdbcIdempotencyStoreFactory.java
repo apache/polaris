@@ -18,36 +18,35 @@ package org.apache.polaris.persistence.relational.jdbc.idempotency;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.RequestScoped;
-import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.IdempotencyStore;
+import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 
 /**
- * JDBC idempotency backend, selected via {@code polaris.idempotency.type=relational-jdbc}. Backed
- * by the same {@link DatasourceOperations} as the primary metastore.
+ * {@link IdempotencyStoreFactory} backed by the same JDBC {@link DatasourceOperations} used by the
+ * primary metastore.
  *
- * <p>Each request gets a lightweight {@link RelationalJdbcIdempotencyStore} bound to the request's
+ * <p>Each call vends a lightweight {@link RelationalJdbcIdempotencyStore} bound to the requested
  * realm (mirroring {@code JdbcBasePersistenceImpl}); realm scoping is enforced inside SQL via the
- * {@code realm_id} column. The {@code @Identifier} lets {@code IdempotencyStoreProducer} pick this
- * backend without a compile-time dependency on it.
+ * {@code realm_id} column. The realm arrives as a method argument, so this bean has no {@link
+ * RealmContext} dependency and stays deployable wherever the JDBC persistence is (including the
+ * Admin Tool, which has no request scope).
  */
 @ApplicationScoped
-public class RelationalJdbcIdempotencyStoreProducer {
+@Identifier("relational-jdbc")
+public class RelationalJdbcIdempotencyStoreFactory implements IdempotencyStoreFactory {
 
   private final DatasourceOperations datasourceOperations;
 
   @Inject
-  public RelationalJdbcIdempotencyStoreProducer(DatasourceOperations datasourceOperations) {
+  public RelationalJdbcIdempotencyStoreFactory(DatasourceOperations datasourceOperations) {
     this.datasourceOperations = datasourceOperations;
   }
 
-  @Produces
-  @RequestScoped
-  @Identifier("relational-jdbc")
-  public IdempotencyStore idempotencyStore(RealmContext realmContext) {
+  @Override
+  public IdempotencyStore getOrCreateIdempotencyStore(RealmContext realmContext) {
     return new RelationalJdbcIdempotencyStore(
         datasourceOperations, realmContext.getRealmIdentifier());
   }
