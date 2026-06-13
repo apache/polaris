@@ -73,6 +73,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.service.auth.DefaultAuthenticator;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
@@ -279,7 +280,7 @@ public abstract class PolarisAuthzTestBase {
                         AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
                     .setClientId("my-client-id")
                     .setClientSecret("my-client-secret")
-                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .setScopes(List.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL))
                     .build())
             .build();
     CatalogEntity externalCatalogEntity =

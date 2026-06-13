@@ -52,7 +52,7 @@ public interface KeycloakAccess {
 
   /**
    * Creates a new role in Keycloak with the specified name. The role should not have the {@code
-   * PRINCIPAL_ROLE:} prefix.
+   * PolarisAuthConstants#PRINCIPAL_ROLE_PREFIX} prefix.
    */
   void createRole(String name);
 
@@ -60,8 +60,8 @@ public interface KeycloakAccess {
   void createUser(String name);
 
   /**
-   * Assigns a role to a user in Keycloak. The role should not have the {@code PRINCIPAL_ROLE:}
-   * prefix. Both the role and the user must exist.
+   * Assigns a role to a user in Keycloak. The role should not have the {@code
+   * PolarisAuthConstants#PRINCIPAL_ROLE_PREFIX} prefix. Both the role and the user must exist.
    */
   void assignRoleToUser(String role, String user);
 
@@ -70,7 +70,7 @@ public interface KeycloakAccess {
 
   /**
    * Deletes a role in Keycloak with the specified name. The role should not have the {@code
-   * PRINCIPAL_ROLE:} prefix.
+   * PolarisAuthConstants#PRINCIPAL_ROLE_PREFIX} prefix.
    */
   void deleteRole(String name);
 

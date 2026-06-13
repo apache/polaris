@@ -27,6 +27,7 @@ import java.util.Optional;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.junit.jupiter.api.Assertions;
@@ -79,7 +80,9 @@ public class ConnectionConfigInfoDpoTest {
             + "        \"encryption-key\": \"z0y9x8\""
             + "      }"
             + "    },"
-            + "    \"scopes\": [\"PRINCIPAL_ROLE:ALL\"]"
+            + "    \"scopes\": [\""
+            + PolarisAuthConstants.PRINCIPAL_ROLE_ALL
+            + "\"]"
             + "  }"
             + "}";
     ConnectionConfigInfoDpo connectionConfigInfoDpo = ConnectionConfigInfoDpo.deserialize(json);
@@ -101,7 +104,9 @@ public class ConnectionConfigInfoDpoTest {
             + "    \"authenticationType\": \"OAUTH\","
             + "    \"tokenUri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog/v1/oauth/tokens\","
             + "    \"clientId\": \"client-id\","
-            + "    \"scopes\": [\"PRINCIPAL_ROLE:ALL\"]"
+            + "    \"scopes\": [\""
+            + PolarisAuthConstants.PRINCIPAL_ROLE_ALL
+            + "\"]"
             + "  }"
             + "}";
     Assertions.assertEquals(

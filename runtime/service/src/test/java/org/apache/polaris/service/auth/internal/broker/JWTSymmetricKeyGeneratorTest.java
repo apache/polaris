@@ -26,6 +26,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -54,12 +55,13 @@ public class JWTSymmetricKeyGeneratorTest {
         .thenReturn(Optional.of(principal));
     TokenBroker generator =
         new SymmetricKeyJWTBroker(metastoreManager, polarisCallContext, 666, () -> "polaris");
+    String scope = PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + "TEST";
     TokenResponse token =
         generator.generateFromClientSecrets(
             clientId,
             mainSecret,
             TokenRequestValidator.CLIENT_CREDENTIALS,
-            "PRINCIPAL_ROLE:TEST",
+            scope,
             TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
 
@@ -67,7 +69,7 @@ public class JWTSymmetricKeyGeneratorTest {
     DecodedJWT decodedJWT = verifier.verify(token.getAccessToken());
     assertThat(decodedJWT).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(666);
-    assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo("PRINCIPAL_ROLE:TEST");
+    assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo(scope);
     assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo(clientId);
   }
 }

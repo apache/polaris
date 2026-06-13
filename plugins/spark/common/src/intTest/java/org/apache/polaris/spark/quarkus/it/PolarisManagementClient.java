@@ -32,6 +32,7 @@ import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
@@ -88,7 +89,7 @@ public final class PolarisManagementClient implements AutoCloseable {
             restClient.withAuthSession(AuthSession.EMPTY),
             Map.of(),
             String.format("%s:%s", credentials.clientId(), credentials.clientSecret()),
-            "PRINCIPAL_ROLE:ALL",
+            PolarisAuthConstants.PRINCIPAL_ROLE_ALL,
             endpoints.catalogApiEndpoint() + "/v1/oauth/tokens",
             Map.of("grant_type", "client_credentials"));
     return response.token();

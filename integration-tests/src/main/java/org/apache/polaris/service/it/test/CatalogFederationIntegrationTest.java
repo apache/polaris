@@ -46,6 +46,7 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ManagementApi;
@@ -194,7 +195,7 @@ public class CatalogFederationIntegrationTest {
             .setTokenUri(endpoints.catalogApiEndpoint().toString() + "/v1/oauth/tokens")
             .setClientId(newUserCredentials.getCredentials().getClientId())
             .setClientSecret(newUserCredentials.getCredentials().getClientSecret())
-            .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+            .setScopes(List.of(PolarisAuthConstants.PRINCIPAL_ROLE_ALL))
             .build();
     ConnectionConfigInfo connectionConfig =
         IcebergRestConnectionConfigInfo.builder()

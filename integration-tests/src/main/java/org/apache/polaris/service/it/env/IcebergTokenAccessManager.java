@@ -19,6 +19,7 @@
 package org.apache.polaris.service.it.env;
 
 import jakarta.ws.rs.client.Client;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.service.it.ext.PolarisAccessManager;
 
 /**
@@ -38,6 +39,6 @@ public class IcebergTokenAccessManager implements PolarisAccessManager {
   @Override
   public String obtainAccessToken(PolarisApiEndpoints endpoints, ClientCredentials credentials) {
     OAuth2Api api = new OAuth2Api(client, endpoints.catalogApiEndpoint(), "v1/oauth/tokens");
-    return api.obtainAccessToken(credentials, "PRINCIPAL_ROLE:ALL");
+    return api.obtainAccessToken(credentials, PolarisAuthConstants.PRINCIPAL_ROLE_ALL);
   }
 }

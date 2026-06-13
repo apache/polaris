@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth.external;
 
+import static org.apache.polaris.service.auth.DefaultAuthenticator.PRINCIPAL_ROLE_ALL;
 import static org.apache.polaris.service.auth.external.tenant.OidcTenantResolvingAugmentor.getOidcTenantConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -79,7 +80,7 @@ class OidcTenantResolvingAugmentorTest {
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(oidcPrincipal)
-            .addRole("PRINCIPAL_ROLE:ALL")
+            .addRole(PRINCIPAL_ROLE_ALL)
             .build();
 
     OidcTenantConfiguration config = mock(OidcTenantConfiguration.class);
@@ -92,7 +93,7 @@ class OidcTenantResolvingAugmentorTest {
     // Then
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
-    assertThat(result.getRoles()).containsExactlyInAnyOrder("PRINCIPAL_ROLE:ALL");
+    assertThat(result.getRoles()).containsExactlyInAnyOrder(PRINCIPAL_ROLE_ALL);
     assertThat(getOidcTenantConfig(result)).isSameAs(config);
   }
 }

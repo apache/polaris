@@ -24,6 +24,7 @@ import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.List;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.RealmResource;
@@ -96,7 +97,7 @@ public class KeycloakContainer extends ExtendableKeycloakContainer<KeycloakConta
   public void createRole(String roleName) {
     RealmResource master = keycloakAdminClient.realms().realm("master");
     RoleRepresentation role = new RoleRepresentation();
-    role.setName("PRINCIPAL_ROLE:" + roleName);
+    role.setName(PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + roleName);
     master.roles().create(role);
   }
 
@@ -128,7 +129,7 @@ public class KeycloakContainer extends ExtendableKeycloakContainer<KeycloakConta
     List<UserRepresentation> users = master.users().search(user);
     UserResource userResource = master.users().get(users.getFirst().getId());
     RoleRepresentation roleRepresentation =
-        master.roles().get("PRINCIPAL_ROLE:" + role).toRepresentation();
+        master.roles().get(PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + role).toRepresentation();
     userResource.roles().realmLevel().add(List.of(roleRepresentation));
   }
 
@@ -150,7 +151,7 @@ public class KeycloakContainer extends ExtendableKeycloakContainer<KeycloakConta
   @Override
   public void deleteRole(String name) {
     RealmResource master = keycloakAdminClient.realms().realm("master");
-    master.roles().deleteRole("PRINCIPAL_ROLE:" + name);
+    master.roles().deleteRole(PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + name);
   }
 
   @Override

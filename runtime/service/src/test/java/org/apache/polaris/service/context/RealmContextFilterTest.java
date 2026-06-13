@@ -20,6 +20,7 @@
 package org.apache.polaris.service.context;
 
 import static io.restassured.RestAssured.given;
+import static org.apache.polaris.service.auth.DefaultAuthenticator.PRINCIPAL_ROLE_ALL;
 import static org.hamcrest.CoreMatchers.is;
 
 import io.quarkus.test.common.http.TestHTTPEndpoint;
@@ -104,7 +105,7 @@ class RealmContextFilterTest {
     return given()
         .contentType(ContentType.URLENC)
         .formParam("grant_type", "client_credentials")
-        .formParam("scope", "PRINCIPAL_ROLE:ALL")
+        .formParam("scope", PRINCIPAL_ROLE_ALL)
         .formParam("client_id", clientId)
         .formParam("client_secret", clientSecret);
   }

@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -49,7 +50,7 @@ class DefaultPrincipalRolesMapperTest {
     OidcTenantConfiguration.PrincipalRolesMapper.RegexMapping mapping =
         mock(OidcTenantConfiguration.PrincipalRolesMapper.RegexMapping.class);
     when(mapping.regex()).thenReturn("POLARIS_ROLE:(.*)");
-    when(mapping.replacement()).thenReturn("PRINCIPAL_ROLE:$1");
+    when(mapping.replacement()).thenReturn(PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + "$1");
     when(mapping.replace(any())).thenCallRealMethod();
     when(rolesMapper.mappings()).thenReturn(List.of(mapping));
     when(rolesMapper.filterPredicate()).thenCallRealMethod();
@@ -71,11 +72,16 @@ class DefaultPrincipalRolesMapperTest {
   static Stream<Arguments> mapPrincipalRoles() {
     return Stream.of(
         Arguments.of(Set.of(), Set.of()),
-        Arguments.of(Set.of("POLARIS_ROLE:role1"), Set.of("PRINCIPAL_ROLE:role1")),
+        Arguments.of(
+            Set.of("POLARIS_ROLE:role1"),
+            Set.of(PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + "role1")),
         Arguments.of(
             Set.of("POLARIS_ROLE:role1", "POLARIS_ROLE:role2"),
-            Set.of("PRINCIPAL_ROLE:role1", "PRINCIPAL_ROLE:role2")),
+            Set.of(
+                PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + "role1",
+                PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + "role2")),
         Arguments.of(
-            Set.of("POLARIS_ROLE:role1", "OTHER_ROLE:role2"), Set.of("PRINCIPAL_ROLE:role1")));
+            Set.of("POLARIS_ROLE:role1", "OTHER_ROLE:role2"),
+            Set.of(PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + "role1")));
   }
 }

@@ -30,6 +30,7 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -65,7 +66,7 @@ public class DefaultAuthenticator implements Authenticator {
    * credentials to explicitly indicate that the principal is requesting that all its roles be
    * activated upon authentication, without needing to specify each role individually.
    */
-  public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
+  public static final String PRINCIPAL_ROLE_ALL = PolarisAuthConstants.PRINCIPAL_ROLE_ALL;
 
   /**
    * The prefix for the roles in incoming credentials that are used to indicate that the principal
@@ -78,7 +79,7 @@ public class DefaultAuthenticator implements Authenticator {
    * ignored during the authentication process. If necessary, use {@code PrincipalRolesMapper} to
    * convert roles from the identity to Polaris-specific roles.
    */
-  public static final String PRINCIPAL_ROLE_PREFIX = "PRINCIPAL_ROLE:";
+  public static final String PRINCIPAL_ROLE_PREFIX = PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAuthenticator.class);
 
