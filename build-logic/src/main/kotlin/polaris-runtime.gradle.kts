@@ -33,7 +33,7 @@ plugins { id("polaris-server") }
 testing {
   suites {
     withType<JvmTestSuite> {
-      targets.all {
+      targets.configureEach {
         testTask.configure {
           systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
           // Enable automatic extension detection to execute GradleDuplicateLoggingWorkaround
@@ -44,7 +44,7 @@ testing {
       }
     }
     fun intTestSuiteConfigure(testSuite: JvmTestSuite) = testSuite.run {
-      targets.all {
+      targets.configureEach {
         testTask.configure {
           // For Quarkus...
           //
@@ -60,12 +60,12 @@ testing {
         dependsOn("compileQuarkusTestGeneratedSourcesJava")
       }
       configurations.named(sources.runtimeOnlyConfigurationName).configure {
-        extendsFrom(configurations.getByName("testRuntimeOnly"))
+        extendsFrom(configurations.named("testRuntimeOnly"))
       }
       configurations.named(sources.implementationConfigurationName).configure {
         // Let the test's implementation config extend testImplementation, so it also inherits the
         // project's "main" implementation dependencies (not just the "api" configuration)
-        extendsFrom(configurations.getByName("testImplementation"))
+        extendsFrom(configurations.named("testImplementation"))
       }
       sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
     }
@@ -81,7 +81,7 @@ dependencies {
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 }
 
-configurations.all {
+configurations.configureEach {
   // Validate that Logback dependencies are not used in Quarkus modules.
   dependencies.configureEach {
     if (group == "ch.qos.logback") {
@@ -94,7 +94,7 @@ configurations.all {
 }
 
 configurations.named("intTestRuntimeOnly").configure {
-  extendsFrom(configurations.getByName("testRuntimeOnly"))
+  extendsFrom(configurations.named("testRuntimeOnly"))
 }
 
 tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }

@@ -156,7 +156,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
               val testFixturesSourcesJar by
                 tasks.registering(org.gradle.api.tasks.bundling.Jar::class) {
                   val sourceSets: SourceSetContainer by project
-                  from(sourceSets.named("testFixtures").get().allSource)
+                  from(sourceSets.named("testFixtures").map { it.allSource })
                   archiveClassifier.set("test-fixtures-sources")
                 }
               tasks.named<Javadoc>("testFixturesJavadoc") { isFailOnError = false }

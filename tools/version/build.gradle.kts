@@ -86,7 +86,7 @@ testing {
     register<JvmTestSuite>("jarTest") {
       dependencies { runtimeOnly(files(jarTestJar.map { it.archiveFile })) }
 
-      targets.all {
+      targets.configureEach {
         testTask.configure {
           dependsOn("jar", jarTestJar)
           systemProperty("rootProjectDir", rootProject.rootDir.relativeTo(project.projectDir))

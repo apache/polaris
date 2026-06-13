@@ -164,7 +164,7 @@ testing {
       // Special handling for test-suites with names containing `manualtest`, which are intended to
       // be run on demand rather than implicitly via `check`.
       if (!name.lowercase().contains("manualtest")) {
-        targets.all {
+        targets.configureEach {
           if (testTask.name != "test") {
             testTask.configure { shouldRunAfter("test") }
             tasks.named("check").configure { dependsOn(testTask) }
@@ -298,7 +298,7 @@ class BannedDependencies(
   }
 
   fun applyTo(configurations: ConfigurationContainer) {
-    configurations.all { applyTo(this) }
+    configurations.configureEach { applyTo(this) }
   }
 }
 

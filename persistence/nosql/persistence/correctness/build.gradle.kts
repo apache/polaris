@@ -66,7 +66,9 @@ testing {
             implementation(testFixtures(project(":polaris-persistence-nosql-$prj")))
           }
 
-          targets.all { testTask.configure { systemProperty("polaris.testBackend.name", db) } }
+          targets.configureEach {
+            testTask.configure { systemProperty("polaris.testBackend.name", db) }
+          }
         }
 
         tasks.named("intTest") { dependsOn(dbTaskName) }
@@ -81,7 +83,7 @@ testing {
         // Pass system properties starting with `polaris.` down to the manually executed test(s) so
         // they can setup the backend via
         // `o.a.p.persistence.api.BackendConfigurer.defaultBackendConfigurer` using smallrye-config.
-        targets.all {
+        targets.configureEach {
           testTask.configure {
             providers.systemPropertiesPrefixedBy("polaris").get().forEach { (k, v) ->
               systemProperty(k, v)

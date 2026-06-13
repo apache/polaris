@@ -85,7 +85,6 @@ internal fun configureShadowPublishing(
       skip()
     }
   }
-  // component.addVariantsFromConfiguration(configurations.getByName("runtimeElements")) {
   component.addVariantsFromConfiguration(
     project.configurations.getByName("shadowRuntimeElements")
   ) {
