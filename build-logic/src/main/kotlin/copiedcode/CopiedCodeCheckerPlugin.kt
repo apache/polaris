@@ -18,13 +18,11 @@ package copiedcode
 
 import java.nio.file.Files
 import java.util.regex.Pattern
-import javax.inject.Inject
 import kotlin.collections.joinToString
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.component.SoftwareComponentFactory
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
@@ -69,18 +67,13 @@ import org.gradle.work.DisableCachingByDefault
  * space).
  */
 @Suppress("unused")
-class CopiedCodeCheckerPlugin
-@Inject
-constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Plugin<Project> {
+class CopiedCodeCheckerPlugin : Plugin<Project> {
   override fun apply(project: Project): Unit =
     project.run {
       val extension =
         extensions.create("copiedCodeChecks", CopiedCodeCheckerExtension::class.java, project)
 
       if (rootProject == this) {
-        // Apply this plugin to all projects
-        afterEvaluate { subprojects { plugins.apply(CopiedCodeCheckerPlugin::class.java) } }
-
         tasks.register(
           CHECK_COPIED_CODE_MENTIONS_EXIST_TASK_NAME,
           CheckCopiedCodeMentionsExistTask::class.java,
@@ -89,48 +82,15 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
           rootDirectory.convention(layout.projectDirectory)
         }
 
-        afterEvaluate {
-          tasks.named("check").configure { dependsOn(CHECK_COPIED_CODE_MENTIONS_EXIST_TASK_NAME) }
-        }
-      } else {
-        extension.excludedContentTypePatterns.convention(
-          provider {
-            rootProject.extensions
-              .getByType(CopiedCodeCheckerExtension::class.java)
-              .excludedContentTypePatterns
-              .get()
-          }
-        )
-        extension.includedContentTypePatterns.convention(
-          provider {
-            rootProject.extensions
-              .getByType(CopiedCodeCheckerExtension::class.java)
-              .includedContentTypePatterns
-              .get()
-          }
-        )
-        extension.includeUnrecognizedContentType.convention(
-          provider {
-            rootProject.extensions
-              .getByType(CopiedCodeCheckerExtension::class.java)
-              .includeUnrecognizedContentType
-              .get()
-          }
-        )
-        extension.licenseFile.convention(
-          provider {
-            rootProject.extensions
-              .getByType(CopiedCodeCheckerExtension::class.java)
-              .licenseFile
-              .get()
-          }
-        )
+        tasks
+          .matching { task -> task.name == "check" }
+          .configureEach { dependsOn(CHECK_COPIED_CODE_MENTIONS_EXIST_TASK_NAME) }
       }
 
       val checkForCopiedCode =
         tasks.register(CHECK_FOR_COPIED_CODE_TASK_NAME, CheckForCopiedCodeTask::class.java) {
           licenseFile.convention(extension.licenseFile)
-          rootDirectory.convention(rootProject.layout.projectDirectory)
+          rootDirectory.convention(layout.settingsDirectory)
           projectDirectory.convention(layout.projectDirectory)
           buildDirectory.convention(layout.buildDirectory)
           excludedContentTypePatterns.convention(extension.excludedContentTypePatterns)
@@ -153,9 +113,9 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
         }
       }
 
-      afterEvaluate {
-        tasks.named("check").configure { dependsOn(CHECK_FOR_COPIED_CODE_TASK_NAME) }
-      }
+      tasks
+        .matching { task -> task.name == "check" }
+        .configureEach { dependsOn(CHECK_FOR_COPIED_CODE_TASK_NAME) }
     }
 
   companion object {
