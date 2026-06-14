@@ -16,5 +16,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-org.apache.polaris.persistence.relational.jdbc.pagination.MetricsReportToken$MetricsReportTokenType
