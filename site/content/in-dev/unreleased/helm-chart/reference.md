@@ -347,3 +347,24 @@ weight: 900
 |-----|------|---------|-------------|
 | tasks.maxConcurrentTasks | int | `0` | The maximum number of concurrent tasks that can be executed at the same time. If unspecified or zero, defaults to the number of available cores. |
 | tasks.maxQueuedTasks | int | `0` | The maximum number of tasks that can be queued up for execution. If unspecified or zero, defaults to Integer.MAX_VALUE. |
+
+### Maintenance
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| maintenance | object | `{"annotations":{},"envFrom":[],"extraEnv":[],"extraVolumeMounts":[],"extraVolumes":[],"image":{"pullPolicy":"IfNotPresent","repository":"apache/polaris-admin-tool","tag":"latest"},"jobs":{"nosql-maintenance":{"args":["nosql","maintenance-run"],"concurrencyPolicy":"Forbid","enabled":false,"resources":{},"schedule":"0 2 * * *"}}}` | Configuration for maintenance tasks using as Kubernetes CronJob |
+| maintenance.annotations | object | `{}` | Annotations to add to every maintenance Cronjob object. |
+| maintenance.extraEnv | list | `[]` | Extra environment variables to add to every maintenance Cronjob object. |
+| maintenance.envFrom | list | `[]` | Bulk import environment variables from Secrets or ConfigMaps to every maintenance Cronjob object. |
+| maintenance.extraVolumes | list | `[]` | Extra volumes to add to every maintenance Cronjob object. |
+| maintenance.extraVolumeMounts | list | `[]` | Extra volume mounts to add to every maintenance Cronjob object. |
+| maintenance.image | object | `{"pullPolicy":"IfNotPresent","repository":"apache/polaris-admin-tool","tag":"latest"}` | The container image used by every maintenance Cronjob object. |
+| maintenance.image.repository | string | `"apache/polaris-admin-tool"` | The image repository to pull from for the Polaris admin tool. |
+| maintenance.image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
+| maintenance.image.tag | string | `"latest"` | The image tag. |
+| maintenance.jobs | object | `{"nosql-maintenance":{"args":["nosql","maintenance-run"],"concurrencyPolicy":"Forbid","enabled":false,"resources":{},"schedule":"0 2 * * *"}}` | Define maintenance CronJobs. The key is the name of the job. |
+| maintenance.jobs.nosql-maintenance.enabled | bool | `false` | Enable this maintenance job. |
+| maintenance.jobs.nosql-maintenance.schedule | string | `"0 2 * * *"` | The schedule in Cron format. |
+| maintenance.jobs.nosql-maintenance.args | list | `["nosql","maintenance-run"]` | The arguments to pass tothe admin tool. |
+| maintenance.jobs.nosql-maintenance.concurrencyPolicy | string | `"Forbid"` | The concurrency policy, Valid values are: Allow, Forbid, Replace. |
+| maintenance.jobs.nosql-maintenance.resources | object | `{}` | Configures the resources requests and limits for this job's container. |

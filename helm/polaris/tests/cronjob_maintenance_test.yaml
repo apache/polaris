@@ -1,0 +1,648 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+chart:
+  version: 1.2.3
+  appVersion: 4.5.6
+
+release:
+  name: polaris-release
+  namespace: polaris-ns
+
+templates:
+  - cronjob-maintenance.yaml
+
+tests:
+  - it: should not create any CronJob by default
+    template: cronjob-maintenance.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should always set quarkus.config.location to the mounted properties file
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: quarkus.config.locations
+            value: file:/deployments/config/application.properties
+
+  - it: should active the MongoDB client when persistence is nosql + MongoDb
+    template: cronjob-maintenance.yaml
+    set:
+      persistence:
+        type: nosql
+        nosql:
+          backend: MongoDb
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: quarkus.mongodb.active
+            value: "true"
+
+  - it: should not active the MongoDB client when nosql backend is not MongoDb
+    template: cronjob-maintenance.yaml
+    set:
+      persistence:
+        nosql:
+          backend: InMemory
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: quarkus.mongodb.active
+            value: "true"
+
+  - it: should not active the MongoDB client when persistence type is not nosql
+    template: cronjob-maintenance.yaml
+    set:
+      persistence:
+        type: relational-jdbc
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: quarkus.mongodb.active
+            value: "true"
+
+  - it: should not render a matching job when enabled is false
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create CronJob when enabled
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: CronJob
+      - equal:
+          path: metadata.name
+          value: polaris-release-maint-nosql-maintenance
+      - equal:
+          path: metadata.namespace
+          value: polaris-ns
+      - equal:
+          path: spec.schedule
+          value: "0 2 * * *"
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+
+  - it: should default concurrencyPolicy to Forbid when a custom job omits it
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          custom-job:
+            enabled: true
+            schedule: "0 4 * * *"
+    asserts:
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+
+  - it: should allow concurrencyPolicy override
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+            concurrencyPolicy: Allow
+    asserts:
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Allow
+
+  - it: should inherit global security context and node scheduling
+    template: cronjob-maintenance.yaml
+    set:
+      podSecurityContext:
+        fsGroup: 10001
+      containerSecurityContext:
+        runAsUser: 1234
+      nodeSelector:
+        disktype: ssd
+      tolerations:
+        - key: "key"
+          operator: "Equal"
+          value: "value"
+          effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: zone
+                    operator: In
+                    values:
+                      - zone1
+                      - zone2
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.securityContext.fsGroup
+          value: 10001
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1234
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.nodeSelector.disktype
+          value: ssd
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.tolerations[0].key
+          value: "key"
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.affinity
+          value:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: zone
+                        operator: In
+                        values:
+                          - zone1
+                          - zone2
+
+  - it: should render extraEnv after the database secret env vars
+    template: cronjob-maintenance.yaml
+    set:
+      persistence:
+        nosql:
+          secret:
+            name: my-nosql-secret
+      maintenance:
+        extraEnv:
+          - name: JAVA_TOOL_OPTIONS
+            value: "-XX:MaxRAMPercentage=75"
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: JAVA_TOOL_OPTIONS
+            value: "-XX:MaxRAMPercentage=75"
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: quarkus.mongodb.connection-string
+            valueFrom:
+              secretKeyRef:
+                name: my-nosql-secret
+                key: connectionString
+
+  - it: should render extraEnv even when no database secret is configured
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        extraEnv:
+          - name: FOO
+            value: bar
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: FOO
+            value: bar
+
+  - it: should render envFrom when set
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        envFrom:
+          - secretRef:
+              name: my-bulk-env-secret
+          - configMapRef:
+              name: my-bulk-env-cm
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].envFrom[0].secretRef.name
+          value: my-bulk-env-secret
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].envFrom[1].configMapRef.name
+          value: my-bulk-env-cm
+
+  - it: should render extraVolumes and extraVolumeMounts when set
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        extraVolumes:
+          - name: extra-volume
+            emptyDir: {}
+        extraVolumeMounts:
+          - name: extra-volume
+            mountPath: /extra
+            readOnly: false
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          content:
+            name: extra-volume
+            mountPath: /extra
+            readOnly: false
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: extra-volume
+            emptyDir: {}
+
+  - it: should not render extra blocks by default
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - notExists:
+          path: spec.jobTemplate.spec.template.spec.containers[0].envFrom
+      - lengthEqual:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          count: 2
+      - lengthEqual:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          count: 2
+
+  - it: should not project token-broker auth key material into the maintenance pod
+    template: cronjob-maintenance.yaml
+    set:
+      authentication:
+        tokenBroker:
+          type: rsa-key-pair
+          secret:
+            name: token-broker-secret
+            publicKey: public.pem
+            privateKey: private.pem
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.volumes[0].name
+          value: config-volume
+      - lengthEqual:
+          path: spec.jobTemplate.spec.template.spec.volumes[0].projected.sources
+          count: 1
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.volumes[0].projected.sources[0].configMap.items[0].key
+          value: application.properties
+
+  - it: should mount the config volume and pass database environment variables
+    template: cronjob-maintenance.yaml
+    set:
+      persistence:
+        nosql:
+          secret:
+            name: my-nosql-secret
+            connectionString: conn-str-key
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts[0].name
+          value: config-volume
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts[0].mountPath
+          value: /deployments/config
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: quarkus.mongodb.connection-string
+            valueFrom:
+              secretKeyRef:
+                name: my-nosql-secret
+                key: conn-str-key
+
+  - it: should honor an explicit maintenance image tag
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        image:
+          tag: "test-tag"
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: apache/polaris-admin-tool:test-tag
+
+  - it: should fail clearly when the CronJob name exceeds 52 chars
+    template: cronjob-maintenance.yaml
+    set:
+      fullnameOverride: "this-is-an-very-long-polaris-release-name-to-exceed-max-allowed-length"
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "must be <= 52"
+
+  - it: should default restartPolicy to Never and disable SA token automount
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.restartPolicy
+          value: Never
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.automountServiceAccountToken
+          value: false
+
+  - it: should allow restartPolicy override per job
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+            restartPolicy: OnFailure
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.restartPolicy
+          value: OnFailure
+
+  - it: should inherit global priorityClassName when set
+    template: cronjob-maintenance.yaml
+    set:
+      priorityClassName: low-priority-batch
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: low-priority-batch
+
+  - it: should not render priorityClassName by default
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+
+  - it: should render CronJob annotations and per-job pod annotations
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        annotations:
+          argocd.argoproj.io/sync-wave: "1"
+        jobs:
+          nosql-maintenance:
+            enabled: true
+            podAnnotations:
+              prometheus.io/scrape: "false"
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "1"
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.annotations["prometheus.io/scrape"]
+          value: "false"
+
+  - it: should not render annotations blocks by default
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - notExists:
+          path: metadata.annotations
+      - notExists:
+          path: spec.jobTemplate.spec.template.metadata.annotations
+
+  - it: should isolate pod labels from server selectors (PDB/Service/SM)
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: maintenance
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: polaris-maintenance
+      - notEqual:
+          path: spec.jobTemplate.spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: polaris
+
+  - it: should not render a resources block by default
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - notExists:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources
+
+  - it: should render per-job resources when set
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.requests.cpu
+          value: 100m
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.limits.memory
+          value: 512Mi
+
+  - it: should not inherit server-level .Values.resources
+    template: cronjob-maintenance.yaml
+    set:
+      resources:
+        requests:
+          cpu: "8"
+          memory: 16Gi
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - notExists:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources
+
+  - it: should render JDBC env vars when persistence is relational-jdbc
+    template: cronjob-maintenance.yaml
+    set:
+      persistence:
+        type: relational-jdbc
+        relationalJdbc:
+          secret:
+            name: my-jdbc-secret
+            username: u-key
+            password: p-key
+            jdbcUrl: url-key
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+          jdbc-maint:
+            enabled: true
+            schedule: "0 3 * * *"
+            args: ["purge-events"]
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.username
+            valueFrom:
+              secretKeyRef:
+                name: my-jdbc-secret
+                key: u-key
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.password
+            valueFrom:
+              secretKeyRef:
+                name: my-jdbc-secret
+                key: p-key
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.jdbc.url
+            valueFrom:
+              secretKeyRef:
+                name: my-jdbc-secret
+                key: url-key
+
+  - it: should not render backoffLimit or activeDeadlineSeconds by default
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - notExists:
+          path: spec.jobTemplate.spec.backoffLimit
+      - notExists:
+          path: spec.jobTemplate.spec.activeDeadlineSeconds
+
+  - it: should render backoffLimit and activeDeadlineSeconds when set
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+            backoffLimit: 0
+            activeDeadlineSeconds: 1800
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.backoffLimit
+          value: 0
+      - equal:
+          path: spec.jobTemplate.spec.activeDeadlineSeconds
+          value: 1800
+
+  - it: should render history limits when set
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+            successfulJobsHistoryLimit: 0
+            failedJobsHistoryLimit: 5
+    asserts:
+      - equal:
+          path: spec.successfulJobsHistoryLimit
+          value: 0
+      - equal:
+          path: spec.failedJobsHistoryLimit
+          value: 5

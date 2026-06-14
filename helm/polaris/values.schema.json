@@ -772,6 +772,115 @@
                 }
             }
         },
+        "maintenance": {
+            "description": "Configuration for maintenance tasks using as Kubernetes CronJob",
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "description": "Annotations to add to every maintenance Cronjob object.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "envFrom": {
+                    "description": "Bulk import environment variables from Secrets or ConfigMaps to every maintenance Cronjob object.",
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "extraEnv": {
+                    "description": "Extra environment variables to add to every maintenance Cronjob object.",
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "extraVolumeMounts": {
+                    "description": "Extra volume mounts to add to every maintenance Cronjob object.",
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "extraVolumes": {
+                    "description": "Extra volumes to add to every maintenance Cronjob object.",
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "image": {
+                    "description": "The container image used by every maintenance Cronjob object.",
+                    "type": "object",
+                    "properties": {
+                        "pullPolicy": {
+                            "description": "The image pull policy.",
+                            "type": "string",
+                            "enum": [
+                                "Always",
+                                "IfNotPresent",
+                                "Never"
+                            ]
+                        },
+                        "repository": {
+                            "description": "The image repository to pull from for the Polaris admin tool.",
+                            "type": "string"
+                        },
+                        "tag": {
+                            "description": "The image tag.",
+                            "type": "string"
+                        }
+                    }
+                },
+                "jobs": {
+                    "description": "Define maintenance CronJobs. The key is the name of the job.",
+                    "type": "object",
+                    "properties": {
+                        "nosql-maintenance": {
+                            "type": "object",
+                            "properties": {
+                                "args": {
+                                    "description": "The arguments to pass tothe admin tool.",
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "concurrencyPolicy": {
+                                    "description": "The concurrency policy, Valid values are: Allow, Forbid, Replace.",
+                                    "type": "string",
+                                    "enum": [
+                                        "Allow",
+                                        "Forbid",
+                                        "Replace"
+                                    ]
+                                },
+                                "enabled": {
+                                    "description": "Enable this maintenance job.",
+                                    "type": "boolean"
+                                },
+                                "resources": {
+                                    "description": "Configures the resources requests and limits for this job's container.",
+                                    "type": "object"
+                                },
+                                "schedule": {
+                                    "description": "The schedule in Cron format.",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                            "schedule"
+                        ]
+                    }
+                }
+            }
+        },
         "managementService": {
             "type": "object",
             "properties": {

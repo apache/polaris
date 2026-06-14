@@ -199,6 +199,23 @@ Prints the config volume definition for deployments and jobs.
 {{- end -}}
 
 {{/*
+Prints the config volume definition for maintenance jobs.
+Excludes token-broker key material (RSA keypair, symmetric keys) projected by
+polaris.configVolumeAuthenticationOptions — the admin tool talks to the
+database directly and does not authenticate API callers.
+*/}}
+{{- define "polaris.maintenanceConfigVolume" -}}
+- name: config-volume
+  projected:
+    sources:
+      - configMap:
+          name: {{ include "polaris.fullname" . }}
+          items:
+            - key: application.properties
+              path: application.properties
+{{- end -}}
+
+{{/*
 Prints an environment variable for a secret key reference.
 */}}
 {{- define "polaris.secretToEnv" -}}
@@ -213,6 +230,16 @@ Prints an environment variable for a secret key reference.
       name: {{ $secret.name }}
       key: {{ $key }}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Prints database/persistence connection environment variables.
+*/}}
+{{- define "polaris.persistenceEnv" -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "username" "quarkus.datasource.username") -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "password" "quarkus.datasource.password") -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "jdbcUrl" "quarkus.datasource.jdbc.url") -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.nosql.secret "connectionString" "quarkus.mongodb.connection-string") -}}
 {{- end -}}
 
 {{/*

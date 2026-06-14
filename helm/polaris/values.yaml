@@ -1167,3 +1167,104 @@ tasks:
   # -- The maximum number of tasks that can be queued up for execution. If unspecified or zero, defaults to Integer.MAX_VALUE.
   # @section -- Tasks
   maxQueuedTasks: 0  # 1000
+
+# @schema type: object
+# -- Configuration for maintenance tasks using as Kubernetes CronJob
+# @section -- Maintenance
+maintenance:
+  # @schema additionalProperties: {type: string}
+  # -- Annotations to add to every maintenance Cronjob object.
+  # @section -- Maintenance
+  annotations: {}
+
+  # @schema item: object
+  # -- Extra environment variables to add to every maintenance Cronjob object.
+  # @section -- Maintenance
+  extraEnv: []
+  #  - name: AWS_STORAGE_BUCKET
+  #    value: s3://xxxxx/
+  #  - name: AWS_ACCESS_KEY_ID
+  #    valueFrom:
+  #      secretKeyRef:
+  #        name: aws-secret
+  #        key: access_key_id
+  #  - name: AWS_SECRET_ACCESS_KEY
+  #    valueFrom:
+  #      secretKeyRef:
+  #        name: aws-secret
+  #        key: secret_access_key
+
+  # @schema item: object
+  # -- Bulk import environment variables from Secrets or ConfigMaps to every maintenance Cronjob object.
+  # @section -- Maintenance
+  envFrom: []
+  #  - secretRef:
+  #      name: polaris-env-secret
+  #  - configMapRef:
+  #      name: polaris-env-configmap
+
+  # @schema item: object
+  # -- Extra volumes to add to every maintenance Cronjob object.
+  # @section -- Maintenance
+  extraVolumes: []
+    # - name: extra-volume
+    #   emptyDir: {}
+
+  # @schema item: object
+  # -- Extra volume mounts to add to every maintenance Cronjob object.
+  # @section -- Maintenance
+  extraVolumeMounts: []
+    # - name: extra-volume
+    #   mountPath: /usr/share/extra-volume
+
+  # -- The container image used by every maintenance Cronjob object.
+  # @section -- Maintenance
+  image:
+    # -- The image repository to pull from for the Polaris admin tool.
+    # @section -- Maintenance
+    repository: apache/polaris-admin-tool
+    # @schema enum: [Always, IfNotPresent, Never]
+    # -- The image pull policy.
+    # @section -- Maintenance
+    pullPolicy: IfNotPresent
+    # -- The image tag.
+    # @section -- Maintenance
+    tag: "latest"  # This tag will be replaced with the chart version at release time.
+
+  # @schema additionalProperties: {type: object, required: [schedule]}
+  # -- Define maintenance CronJobs. The key is the name of the job.
+  # @section -- Maintenance
+  jobs:
+    nosql-maintenance:
+      # -- Enable this maintenance job.
+      # @section -- Maintenance
+      enabled: false
+      # -- The schedule in Cron format.
+      # @section -- Maintenance
+      schedule: "0 2 * * *"
+      # -- The arguments to pass tothe admin tool.
+      # @section -- Maintenance
+      args: ["nosql", "maintenance-run"]
+      # @schema enum: [Allow, Forbid, Replace]
+      # -- The concurrency policy, Valid values are: Allow, Forbid, Replace.
+      # @section -- Maintenance
+      concurrencyPolicy: Forbid
+      # @schema type: object
+      # -- Configures the resources requests and limits for this job's container.
+      # @section -- Maintenance
+      resources:
+        {}
+        # limits:
+        #   cpu: 100m
+        #   memory: 128Mi
+        # requests:
+        #   cpu: 100m
+        #   memory: 128Mi
+      # Optional per-job knobs (uncomment to use):
+      # restartPolicy: Never
+      # backoffLimit: 6
+      # activeDeadlineSeconds: 1800
+      # successfulJobsHistoryLimit: 3
+      # failedjobsHistoryLimit: 1
+      # podAnnotations:
+      #   prometheus.io/scrape: "false"
