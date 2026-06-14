@@ -26,9 +26,12 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.admin.PolarisAuthzTestsFactory;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
@@ -115,6 +118,49 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
 
     return authzTestsBuilder("dropGenericTable")
+        .action(() -> newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC))
+        .cleanupAction(
+            () ->
+                newWrapper(Set.of(PRINCIPAL_ROLE2))
+                    .createGenericTable(
+                        TABLE_NS1_1_GENERIC, "format", "file:///temp/", "doc", Map.of()))
+        .shouldPassWith(PolarisPrivilege.TABLE_DROP)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .createTests();
+  }
+
+  private PolarisAuthzTestsFactory.Builder tableLevelAuthzTestsBuilder(
+      String operationName, TableIdentifier tableId) {
+    return authzTestsBuilder(operationName)
+        .grantAction(
+            priv ->
+                adminService.grantPrivilegeOnTableToRole(
+                    CATALOG_NAME, CATALOG_ROLE1, tableId, priv))
+        .revokeAction(
+            priv -> {
+              PrivilegeResult res =
+                  adminService.revokePrivilegeOnTableFromRole(
+                      CATALOG_NAME, CATALOG_ROLE1, tableId, priv);
+              // After table drop + recreate, grants on the old entity no longer exist on the
+              // new entity. This is expected and equivalent to a successful revoke.
+              return res.isSuccess() ? res : new PrivilegeResult(new PolarisGrantRecord());
+            });
+  }
+
+  /**
+   * Tests that dropGenericTable works with table-level privilege grants. This verifies that the
+   * authorization resolves the table entity (not just the namespace), which is required for
+   * table-level grants to take effect.
+   */
+  @TestFactory
+  Stream<DynamicNode> testDropGenericTableWithTableLevelPrivileges() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
+
+    return tableLevelAuthzTestsBuilder("dropGenericTableWithTableLevelGrant", TABLE_NS1_1_GENERIC)
         .action(() -> newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC))
         .cleanupAction(
             () ->
