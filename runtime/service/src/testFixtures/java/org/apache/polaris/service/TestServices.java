@@ -357,7 +357,7 @@ public record TestServices(
                   .federatedCatalogFactories(federatedCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
                   .eventAttributeMap(eventAttributeMap)
-                  .metricsReporter((catalogName, catalogId, table, tableId, report, ts) -> {})
+                  .metricsReporter((_catName, _catId, _table, _tableId, _report, _ts) -> {})
                   .clock(clock)
                   .accessDelegationModeResolver(
                       new DefaultAccessDelegationModeResolver(realmConfig))
