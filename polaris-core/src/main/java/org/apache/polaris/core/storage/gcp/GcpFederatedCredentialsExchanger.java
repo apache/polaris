@@ -26,6 +26,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.IdentityPoolCredentials;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyFactory;
@@ -135,13 +136,19 @@ public class GcpFederatedCredentialsExchanger {
   }
 
   private RSAPrivateKey loadSigningKey() throws IOException {
-    RSAPrivateKey cached = SIGNING_KEY_CACHE.get(signingKeyPath);
-    if (cached != null) {
-      return cached;
+    try {
+      return SIGNING_KEY_CACHE.computeIfAbsent(
+          signingKeyPath,
+          path -> {
+            try {
+              return readPkcs8PrivateKey(path);
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          });
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
-    RSAPrivateKey key = readPkcs8PrivateKey(signingKeyPath);
-    SIGNING_KEY_CACHE.putIfAbsent(signingKeyPath, key);
-    return key;
   }
 
   /** Reads an RSA private key from a PKCS#8 PEM file. */
