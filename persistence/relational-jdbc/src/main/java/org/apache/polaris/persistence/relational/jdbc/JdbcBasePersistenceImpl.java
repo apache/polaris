@@ -78,8 +78,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JdbcBasePersistenceImpl
-    implements BasePersistence, IntegrationPersistence, MetricsPersistence {
+public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
