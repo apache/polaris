@@ -19,6 +19,7 @@
 package org.apache.polaris.service.auth.internal.broker;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -82,5 +83,29 @@ public class RSAKeyPairJWTBrokerTest {
     assertThat(decodedJWT).isNotNull();
     assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo("PRINCIPAL_ROLE:TEST");
     assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo("test-client-id");
+  }
+
+  @Test
+  public void testVerifyRejectsTokenWithWrongIssuer() throws Exception {
+    var keyPair = PemUtils.generateKeyPair();
+
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
+    PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
+    KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    TokenBroker tokenBroker =
+        new RSAKeyPairJWTBroker(metastoreManager, polarisCallContext, 420, provider);
+
+    String tokenWithWrongIssuer =
+        JWT.create()
+            .withIssuer("not-polaris")
+            .withSubject("principal")
+            .withClaim("active", true)
+            .sign(
+                Algorithm.RSA256(
+                    (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
+
+    assertThatThrownBy(() -> tokenBroker.verify(tokenWithWrongIssuer))
+        .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
+        .hasMessageContaining("Failed to verify the token");
   }
 }
