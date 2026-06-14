@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
  * org.apache.polaris.extension.metrics.reports} to {@code INFO}.
  */
 @ApplicationScoped
-@Identifier("log")
+@Identifier("default")
 public class LoggingMetricsReporter implements IcebergMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoggingMetricsReporter.class);
 

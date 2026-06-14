@@ -23,6 +23,6 @@ import io.smallrye.config.WithDefault;
 
 @ConfigMapping(prefix = "polaris.iceberg-metrics.reporting")
 public interface MetricsReportingConfiguration {
-  @WithDefault("no-op")
+  @WithDefault("default")
   String type();
 }
