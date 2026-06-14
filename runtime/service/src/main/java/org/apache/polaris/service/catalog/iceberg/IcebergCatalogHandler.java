@@ -38,6 +38,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,6 +67,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTCatalogProperties;
@@ -1221,6 +1223,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // See also the TODO in TransactionWorkspaceMetaStoreManager for a more general (but more
     // complex) alternative that would intercept at the MetaStoreManager layer.
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
+    Map<TableIdentifier, FileIO> tableFileIOs = new HashMap<>();
     changesByTable.forEach(
         (tableIdentifier, changes) -> {
           Table table = baseCatalog.loadTable(tableIdentifier);
@@ -1272,25 +1275,54 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           // Commit all accumulated changes for this table in a single atomic operation
           if (!currentMetadata.changes().isEmpty()) {
             tableOps.commit(baseMetadata, currentMetadata);
+            tableFileIOs.put(tableIdentifier, tableOps.io());
           }
 
           tableMetadataObjs.add(currentMetadata);
         });
 
-    // Commit the collected updates in a single atomic operation
+    // Extract newly written metadata locations from the buffered entity updates.
+    // We cannot use tableOps.current().metadataFileLocation() because requestRefresh()
+    // causes doRefresh() to read from the store where the entity hasn't been persisted yet.
+    // The pendingUpdates entities have the correct new location set by doCommit().
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
+    List<Map.Entry<FileIO, String>> writtenMetadataFiles =
+        pendingUpdates.stream()
+            .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
+            .filter(entity -> entity != null && entity.getMetadataLocation() != null)
+            .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
+            .map(
+                entity ->
+                    Map.entry(
+                        tableFileIOs.get(entity.getTableIdentifier()),
+                        entity.getMetadataLocation()))
+            .toList();
+
     EntitiesResult result =
         metaStoreManager()
             .updateEntitiesPropertiesIfNotChanged(
                 callContext().getPolarisCallContext(), pendingUpdates);
     if (!result.isSuccess()) {
-      // TODO: Retries and server-side cleanup on failure, review possible exceptions
+      // TODO: Retries on failure
+      cleanupWrittenMetadataFiles(writtenMetadataFiles);
       throw new CommitFailedException(
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());
     }
 
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
+  }
+
+  private static void cleanupWrittenMetadataFiles(
+      List<Map.Entry<FileIO, String>> writtenMetadataFiles) {
+    for (Map.Entry<FileIO, String> entry : writtenMetadataFiles) {
+      try {
+        entry.getKey().deleteFile(entry.getValue());
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to clean up metadata file {} after transaction failure", entry.getValue(), e);
+      }
+    }
   }
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
