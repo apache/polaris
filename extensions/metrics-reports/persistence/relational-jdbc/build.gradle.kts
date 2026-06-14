@@ -29,6 +29,11 @@ dependencies {
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
+  implementation("org.apache.iceberg:iceberg-core")
+
+  compileOnly(libs.jspecify)
+
+  compileOnly(libs.postgresql)
 
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
