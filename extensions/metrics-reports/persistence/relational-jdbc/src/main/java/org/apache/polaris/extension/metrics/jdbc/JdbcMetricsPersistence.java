@@ -39,8 +39,6 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsRep
 import org.apache.polaris.persistence.relational.jdbc.pagination.MetricsReportToken;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * JDBC implementation of {@link MetricsPersistence}.
@@ -55,8 +53,6 @@ import org.slf4j.LoggerFactory;
  */
 @ApplicationScoped
 public class JdbcMetricsPersistence implements MetricsPersistence {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetricsPersistence.class);
 
   private final DatasourceOperations datasourceOperations;
   private final RealmContext realmContext;

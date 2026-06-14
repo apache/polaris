@@ -43,8 +43,8 @@ import org.slf4j.LoggerFactory;
  * Persisting implementation of {@link IcebergMetricsReporter}.
  *
  * <p>Selected when {@code polaris.iceberg-metrics.reporting.type} is set to {@code "persisting"}.
- * Requires the {@code polaris-extensions-metrics-reports-jdbc} extension module on the classpath to
- * provide the {@link JdbcMetricsPersistence} bean.
+ * Requires a {@link MetricsPersistence} bean on the classpath (provided by the {@code
+ * polaris-extensions-metrics-reports-jdbc} extension module).
  *
  * <p>Converts Iceberg {@link ScanReport}/{@link CommitReport} objects to backend-agnostic SPI
  * records via {@link MetricsRecordConverter}, then delegates to {@link MetricsPersistence} for
@@ -56,13 +56,13 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PersistingMetricsReporter.class);
 
-  private final JdbcMetricsPersistence metricsPersistence;
+  private final MetricsPersistence metricsPersistence;
   private final Instance<PolarisPrincipal> polarisPrincipal;
   private final Instance<RequestIdSupplier> requestIdSupplier;
 
   @Inject
   public PersistingMetricsReporter(
-      JdbcMetricsPersistence metricsPersistence,
+      MetricsPersistence metricsPersistence,
       Instance<PolarisPrincipal> polarisPrincipal,
       Instance<RequestIdSupplier> requestIdSupplier) {
     this.metricsPersistence = metricsPersistence;
