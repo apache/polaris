@@ -406,7 +406,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               results.results().stream()
                   .map(EntityResult.class::cast)
                   .map(EntityResult::getEntity)
-                  .collect(Collectors.toList())));
+                  .toList()));
     }
 
     return new EntitiesResult(Page.fromItems(List.of()));

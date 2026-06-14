@@ -24,7 +24,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.testextension.PersistenceTestExtension;
@@ -62,8 +61,7 @@ public abstract class BaseTestCommitLogImpl {
 
     // Commit log in "reversed" (most recent commit last)
     var commits = persistence.commits();
-    var expectedPayloads =
-        IntStream.range(0, numCommits).mapToObj(i -> "commit #" + i).collect(Collectors.toList());
+    var expectedPayloads = IntStream.range(0, numCommits).mapToObj(i -> "commit #" + i).toList();
     soft.assertThatIterator(commits.commitLogReversed(refName, 0L, SimpleCommitTestObj.class))
         .toIterable()
         .extracting(SimpleCommitTestObj::payload)

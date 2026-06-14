@@ -28,7 +28,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -1800,14 +1799,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                     new PolarisEntityId(
                         grantRecord.getGranteeCatalogId(), grantRecord.getGranteeId()))
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
     List<PolarisBaseEntity> entities = ms.lookupEntitiesInCurrentTxn(callCtx, entityIds);
 
     // done, return the list of grants and their version
     return new LoadGrantsResult(
-        grantsVersion,
-        returnGrantRecords,
-        entities.stream().filter(Objects::nonNull).collect(Collectors.toList()));
+        grantsVersion, returnGrantRecords, entities.stream().filter(Objects::nonNull).toList());
   }
 
   /** {@inheritDoc} */
@@ -1855,14 +1852,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                     new PolarisEntityId(
                         grantRecord.getSecurableCatalogId(), grantRecord.getSecurableId()))
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
     List<PolarisBaseEntity> entities = ms.lookupEntitiesInCurrentTxn(callCtx, entityIds);
 
     // done, return the list of grants and their version
     return new LoadGrantsResult(
-        grantsVersion,
-        returnGrantRecords,
-        entities.stream().filter(Objects::nonNull).collect(Collectors.toList()));
+        grantsVersion, returnGrantRecords, entities.stream().filter(Objects::nonNull).toList());
   }
 
   /** {@inheritDoc} */
@@ -1996,7 +1991,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                         result.getReturnStatus(), result.getExtraInformation());
                   }
                 })
-            .collect(Collectors.toList());
+            .toList();
     return EntitiesResult.fromPage(Page.fromItems(loadedTasks));
   }
 
@@ -2180,7 +2175,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                   }
                 })
             .map(e -> toResolvedPolarisEntity(callCtx, e, ms))
-            .collect(Collectors.toList());
+            .toList();
     return new ResolvedEntitiesResult(ret);
   }
 
@@ -2527,7 +2522,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                         policyMappingRecord.getPolicyCatalogId(),
                         policyMappingRecord.getPolicyId()))
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
     return ms.lookupEntitiesInCurrentTxn(callCtx, policyEntityIds);
   }
 }

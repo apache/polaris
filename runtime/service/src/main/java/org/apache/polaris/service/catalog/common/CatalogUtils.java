@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.common;
 
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -86,7 +85,7 @@ public class CatalogUtils {
                     locations.stream()
                         .filter(
                             location -> location.startsWith("file:") || location.startsWith("http"))
-                        .collect(Collectors.toList());
+                        .toList();
                 if (!invalidLocations.isEmpty()) {
                   throw new ForbiddenException(
                       "Invalid locations '%s' for identifier '%s': File locations are not allowed",

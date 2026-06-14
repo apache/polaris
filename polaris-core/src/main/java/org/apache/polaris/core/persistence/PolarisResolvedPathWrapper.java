@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -62,7 +61,7 @@ public class PolarisResolvedPathWrapper {
     if (resolvedPath == null) {
       return null;
     }
-    return resolvedPath.stream().map(ResolvedPolarisEntity::getEntity).collect(Collectors.toList());
+    return resolvedPath.stream().map(ResolvedPolarisEntity::getEntity).toList();
   }
 
   public List<ResolvedPolarisEntity> getResolvedParentPath() {
@@ -76,9 +75,7 @@ public class PolarisResolvedPathWrapper {
     if (resolvedPath == null) {
       return null;
     }
-    return getResolvedParentPath().stream()
-        .map(ResolvedPolarisEntity::getEntity)
-        .collect(Collectors.toList());
+    return getResolvedParentPath().stream().map(ResolvedPolarisEntity::getEntity).toList();
   }
 
   /**

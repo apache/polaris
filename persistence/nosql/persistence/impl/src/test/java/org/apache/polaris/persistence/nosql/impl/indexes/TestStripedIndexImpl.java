@@ -60,19 +60,15 @@ public class TestStripedIndexImpl {
         () ->
             originalStripesList.stream()
                 .map(s -> deserializeStoreIndex(s.serialize(), OBJ_REF_SERIALIZER))
-                .collect(Collectors.toList());
+                .toList();
     var firstLastKeys =
-        stripesSupplier.get().stream()
-            .flatMap(s -> Stream.of(s.first(), s.last()))
-            .collect(Collectors.toList());
+        stripesSupplier.get().stream().flatMap(s -> Stream.of(s.first(), s.last())).toList();
 
     Supplier<IndexSpi<ObjRef>> stripedSupplier =
         () -> {
           var originalStripes = stripesSupplier.get();
           var stripes =
-              originalStripes.stream()
-                  .map(s -> lazyStoreIndex(() -> s, null, null))
-                  .collect(Collectors.toList());
+              originalStripes.stream().map(s -> lazyStoreIndex(() -> s, null, null)).toList();
           return IndexesInternal.indexFromStripes(
               stripes,
               firstLastKeys,
@@ -122,9 +118,7 @@ public class TestStripedIndexImpl {
 
     var originalStripes = splitIntoStripeCountForTest(reference, 5);
     var firstLastKeys =
-        originalStripes.stream()
-            .flatMap(s -> Stream.of(s.first(), s.last()))
-            .collect(Collectors.toList());
+        originalStripes.stream().flatMap(s -> Stream.of(s.first(), s.last())).toList();
 
     Supplier<IndexSpi<ObjRef>> stripedSupplier;
 
@@ -145,11 +139,9 @@ public class TestStripedIndexImpl {
         () ->
             originalStripesList.stream()
                 .map(s -> deserializeStoreIndex(s.serialize(), OBJ_REF_SERIALIZER))
-                .collect(Collectors.toList());
+                .toList();
     var firstLastKeys =
-        stripesSupplier.get().stream()
-            .flatMap(s -> Stream.of(s.first(), s.last()))
-            .collect(Collectors.toList());
+        stripesSupplier.get().stream().flatMap(s -> Stream.of(s.first(), s.last())).toList();
 
     Supplier<IndexSpi<ObjRef>> stripedSupplier =
         createStoreIndexSupplier(lazyStripes, stripesSupplier, firstLastKeys);
@@ -183,9 +175,7 @@ public class TestStripedIndexImpl {
           () -> {
             var originalStripes = stripesSupplier.get();
             var stripes =
-                originalStripes.stream()
-                    .map(s -> lazyStoreIndex(() -> s, null, null))
-                    .collect(Collectors.toList());
+                originalStripes.stream().map(s -> lazyStoreIndex(() -> s, null, null)).toList();
             return IndexesInternal.indexFromStripes(
                 stripes,
                 firstLastKeys,
@@ -228,8 +218,7 @@ public class TestStripedIndexImpl {
     var individualLoads = new boolean[numStripes];
     var bulkLoads = new boolean[numStripes];
 
-    var firstLastKeys =
-        stripes.stream().flatMap(s -> Stream.of(s.first(), s.last())).collect(Collectors.toList());
+    var firstLastKeys = stripes.stream().flatMap(s -> Stream.of(s.first(), s.last())).toList();
 
     // This supplier provides a striped-over-lazy-segments index. Individually loaded stripes
     // are marked in 'individualLoads' and bulk-loaded stripes in 'bulkLoads'.
@@ -476,9 +465,7 @@ public class TestStripedIndexImpl {
     var striped = indexFromStripes(splitIntoStripeCountForTest(indexTestSet.keyIndex(), 3));
     if (lazy) {
       var lazyStripes =
-          striped.stripes().stream()
-              .map(i -> lazyStoreIndex(() -> i, null, null))
-              .collect(Collectors.toList());
+          striped.stripes().stream().map(i -> lazyStoreIndex(() -> i, null, null)).toList();
       striped = indexFromStripes(lazyStripes);
     }
 
@@ -519,9 +506,7 @@ public class TestStripedIndexImpl {
     var striped = indexFromStripes(splitIntoStripeCountForTest(indexEven, 4));
     if (lazy) {
       var lazyStripes =
-          striped.stripes().stream()
-              .map(i -> lazyStoreIndex(() -> i, null, null))
-              .collect(Collectors.toList());
+          striped.stripes().stream().map(i -> lazyStoreIndex(() -> i, null, null)).toList();
       striped = indexFromStripes(lazyStripes);
     }
 

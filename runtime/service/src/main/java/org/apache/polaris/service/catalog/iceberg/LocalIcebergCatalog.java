@@ -1389,7 +1389,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   }
                   return siblingTablesResult.getEntities().stream()
                       .map(tbl -> TableIdentifier.of(ns.asNamespace(), tbl.getName()))
-                      .collect(Collectors.toList());
+                      .toList();
                 })
             .orElse(List.of());
 

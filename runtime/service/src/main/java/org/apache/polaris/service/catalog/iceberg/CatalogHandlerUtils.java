@@ -379,7 +379,7 @@ public class CatalogHandlerUtils {
       List<UpdateRequirement> invalidRequirements =
           request.requirements().stream()
               .filter(req -> !(req instanceof UpdateRequirement.AssertTableDoesNotExist))
-              .collect(Collectors.toList());
+              .toList();
       Preconditions.checkArgument(
           invalidRequirements.isEmpty(), "Invalid create requirements: %s", invalidRequirements);
     }

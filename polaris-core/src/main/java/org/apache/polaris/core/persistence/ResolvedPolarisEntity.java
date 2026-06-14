@@ -19,7 +19,6 @@
 package org.apache.polaris.core.persistence;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -79,13 +78,9 @@ public class ResolvedPolarisEntity {
     // Split the combined list of grant records into grantee vs securable grants since the main
     // usage pattern is to get the two lists separately.
     this.grantRecordsAsGrantee =
-        grantRecords.stream()
-            .filter(record -> record.getGranteeId() == entity.getId())
-            .collect(Collectors.toList());
+        grantRecords.stream().filter(record -> record.getGranteeId() == entity.getId()).toList();
     this.grantRecordsAsSecurable =
-        grantRecords.stream()
-            .filter(record -> record.getSecurableId() == entity.getId())
-            .collect(Collectors.toList());
+        grantRecords.stream().filter(record -> record.getSecurableId() == entity.getId()).toList();
   }
 
   public ResolvedPolarisEntity(
@@ -104,8 +99,7 @@ public class ResolvedPolarisEntity {
   }
 
   public @NonNull List<PolarisGrantRecord> getAllGrantRecords() {
-    return Stream.concat(grantRecordsAsGrantee.stream(), grantRecordsAsSecurable.stream())
-        .collect(Collectors.toList());
+    return Stream.concat(grantRecordsAsGrantee.stream(), grantRecordsAsSecurable.stream()).toList();
   }
 
   /** The grant records associated with this entity being the grantee of the record. */

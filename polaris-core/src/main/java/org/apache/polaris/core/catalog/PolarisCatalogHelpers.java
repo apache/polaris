@@ -21,7 +21,6 @@ package org.apache.polaris.core.catalog;
 import com.google.common.collect.ImmutableList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -99,6 +98,6 @@ public class PolarisCatalogHelpers {
     Namespace sharedNamespace = Namespace.of(parentNamespaces);
     return entities.stream()
         .map(entity -> TableIdentifier.of(sharedNamespace, entity.name()))
-        .collect(Collectors.toList());
+        .toList();
   }
 }
