@@ -96,6 +96,8 @@ class MetricsReportsServiceTest {
             (PolarisResolvedPathWrapper) isNull());
 
     service = new MetricsReportsService(authorizer, principal, factory);
+    realmContext = mock(RealmContext.class);
+    securityContext = mock(SecurityContext.class);
   }
 
   @Test
