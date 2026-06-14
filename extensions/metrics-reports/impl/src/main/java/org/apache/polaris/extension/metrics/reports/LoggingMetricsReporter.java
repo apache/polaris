@@ -16,37 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.reporting;
+package org.apache.polaris.extension.metrics.reports;
 
-import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
+import org.apache.polaris.core.metrics.IcebergMetricsReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default implementation of {@link PolarisMetricsReporter} that logs metrics to the configured
- * logger.
+ * Log-only implementation of {@link IcebergMetricsReporter}.
  *
- * <p>This implementation is selected when {@code polaris.iceberg-metrics.reporting.type} is set to
- * {@code "default"} (the default value).
+ * <p>Selected when {@code polaris.iceberg-metrics.reporting.type} is set to {@code "log"}.
  *
- * <p>By default, logging is disabled. To enable metrics logging, set the logger level for {@code
- * org.apache.polaris.service.reporting} to {@code INFO} in your logging configuration.
- *
- * @see PolarisMetricsReporter
+ * <p>Logging is at INFO level. Enable it by setting the logger level for {@code
+ * org.apache.polaris.extension.metrics.reports} to {@code INFO}.
  */
 @ApplicationScoped
-@Identifier("default")
-public class DefaultMetricsReporter implements PolarisMetricsReporter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultMetricsReporter.class);
+@Identifier("log")
+public class LoggingMetricsReporter implements IcebergMetricsReporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoggingMetricsReporter.class);
 
-  private final ReportConsumer reportConsumer;
-
-  /** Functional interface for consuming metrics reports with timestamp. */
   @FunctionalInterface
   interface ReportConsumer {
     void accept(
@@ -58,15 +51,15 @@ public class DefaultMetricsReporter implements PolarisMetricsReporter {
         Instant receivedTimestamp);
   }
 
-  /** Creates a new DefaultMetricsReporter that logs metrics to the class logger. */
-  public DefaultMetricsReporter() {
+  private final ReportConsumer reportConsumer;
+
+  public LoggingMetricsReporter() {
     this(
         (catalogName, catalogId, table, tableId, metricsReport, receivedTimestamp) ->
             LOGGER.info("{}.{} (ts={}): {}", catalogName, table, receivedTimestamp, metricsReport));
   }
 
-  @VisibleForTesting
-  DefaultMetricsReporter(ReportConsumer reportConsumer) {
+  LoggingMetricsReporter(ReportConsumer reportConsumer) {
     this.reportConsumer = reportConsumer;
   }
 

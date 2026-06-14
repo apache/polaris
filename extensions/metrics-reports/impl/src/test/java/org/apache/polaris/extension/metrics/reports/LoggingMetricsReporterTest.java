@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.reporting;
+package org.apache.polaris.extension.metrics.reports;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -26,13 +26,13 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.junit.jupiter.api.Test;
 
-public class DefaultMetricsReporterTest {
+public class LoggingMetricsReporterTest {
 
   @Test
   void testLogging() {
-    DefaultMetricsReporter.ReportConsumer mockConsumer =
-        mock(DefaultMetricsReporter.ReportConsumer.class);
-    DefaultMetricsReporter reporter = new DefaultMetricsReporter(mockConsumer);
+    LoggingMetricsReporter.ReportConsumer mockConsumer =
+        mock(LoggingMetricsReporter.ReportConsumer.class);
+    LoggingMetricsReporter reporter = new LoggingMetricsReporter(mockConsumer);
     String warehouse = "testWarehouse";
     long catalogId = 12345L;
     TableIdentifier table = TableIdentifier.of("testNamespace", "testTable");

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.reporting;
+package org.apache.polaris.core.metrics;
 
 import com.google.common.annotations.Beta;
 import java.time.Instant;
@@ -24,32 +24,27 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
 
 /**
- * SPI interface for reporting Iceberg metrics received by Polaris.
+ * SPI for reporting Iceberg metrics received by Polaris.
  *
- * <p>Implementations can be used to send metrics to external systems for analysis and monitoring.
- * Custom implementations can be annotated with appropriate {@code Quarkus} scope and {@link
- * io.smallrye.common.annotation.Identifier @Identifier("my-reporter-type")} for CDI discovery.
+ * <p>Implementations receive a resolved table context (catalog name/id and table name/id) along
+ * with the raw Iceberg {@link MetricsReport}. Custom implementations should be annotated with the
+ * appropriate CDI scope and {@code @Identifier("my-type")} for selection via the {@code
+ * polaris.iceberg-metrics.reporting.type} configuration property.
  *
- * <p>The implementation to use is selected via the {@code polaris.iceberg-metrics.reporting.type}
- * configuration property, which defaults to {@code "default"}.
- *
- * <p>Implementations can inject other CDI beans for context.
- *
- * @see DefaultMetricsReporter
- * @see MetricsReportingConfiguration
+ * <p>This interface is intentionally runtime/framework-agnostic. CDI and configuration concerns
+ * belong in the implementing class, not here.
  */
 @Beta
-public interface PolarisMetricsReporter {
+public interface IcebergMetricsReporter {
 
   /**
-   * Reports an Iceberg metrics report for a specific table.
+   * Reports an Iceberg metrics report for a resolved table.
    *
    * @param catalogName the name of the catalog containing the table
    * @param catalogId the internal Polaris ID of the catalog
    * @param table the identifier of the table the metrics are for
    * @param tableId the internal Polaris ID of the table entity
-   * @param metricsReport the Iceberg metrics report (e.g., {@link
-   *     org.apache.iceberg.metrics.ScanReport} or {@link org.apache.iceberg.metrics.CommitReport})
+   * @param metricsReport the Iceberg metrics report
    * @param receivedTimestamp the timestamp when the metrics were received by Polaris
    */
   void reportMetric(

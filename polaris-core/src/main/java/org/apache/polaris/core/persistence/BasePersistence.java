@@ -52,11 +52,6 @@ import org.jspecify.annotations.Nullable;
  * <p>Note that APIs to the actual persistence store are very basic, often point read or write to
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
- *
- * <p>Metrics-related persistence is intentionally decoupled and lives in {@code
- * MetricsPersistence}. A concrete backend may implement both SPIs on the same class, but callers
- * that only need metrics persistence should depend on {@code MetricsPersistence} directly rather
- * than on {@link BasePersistence}.
  */
 public interface BasePersistence extends PolicyMappingPersistence {
   /**

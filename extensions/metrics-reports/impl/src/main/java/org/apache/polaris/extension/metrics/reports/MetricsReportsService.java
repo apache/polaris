@@ -34,28 +34,26 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
-import org.apache.polaris.core.persistence.pagination.Page;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.metrics.api.PolarisCatalogsApiService;
 
 /**
  * Service implementation for the Metrics Reports API.
  *
- * <p>Resolves catalog/namespace/table names to internal IDs, performs authorization, and delegates
- * to the {@link org.apache.polaris.core.persistence.metrics.MetricsPersistence} layer to retrieve
- * persisted metrics reports.
+ * <p>Resolves catalog/namespace/table names to internal IDs and performs authorization. The read
+ * path currently returns empty results; durable query backing will be provided by the {@code
+ * extensions/metrics-reports/persistence/relational-jdbc} module in a follow-up.
+ *
+ * <p>TODO: wire durable metrics query in the follow-up durable extension PR.
  */
 @RequestScoped
 public class MetricsReportsService implements PolarisCatalogsApiService {
@@ -98,51 +96,18 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier identifier = TableIdentifier.of(ns, table);
 
-    // Resolve and authorize
-    PolarisResolvedPathWrapper tableWrapper =
-        resolveAndAuthorizeTableMetrics(catalogName, identifier);
-
-    PolarisEntity tableEntity = tableWrapper.getResolvedLeafEntity().getEntity();
-    long catalogId = tableEntity.getCatalogId();
-    long tableId = tableEntity.getId();
-
-    PageToken token = PageToken.build(pageToken, pageSize, () -> true);
+    resolveAndAuthorizeTableMetrics(catalogName, identifier);
 
     return switch (metricType) {
-      case "scan" -> {
-        Page<ScanMetricsRecord> page =
-            metaStoreManager.listScanMetrics(
-                callContext.getPolarisCallContext(),
-                catalogId,
-                tableId,
-                snapshotId,
-                principalName,
-                timestampFrom,
-                timestampTo,
-                token);
-        yield Response.ok(buildScanResponse(page)).build();
-      }
-      case "commit" -> {
-        Page<CommitMetricsRecord> page =
-            metaStoreManager.listCommitMetrics(
-                callContext.getPolarisCallContext(),
-                catalogId,
-                tableId,
-                snapshotId,
-                principalName,
-                timestampFrom,
-                timestampTo,
-                token);
-        yield Response.ok(buildCommitResponse(page)).build();
-      }
+      case "scan" -> Response.ok(new MetricsListResponse<>("scan", null, List.of())).build();
+      case "commit" -> Response.ok(new MetricsListResponse<>("commit", null, List.of())).build();
       default ->
           throw new IllegalArgumentException(
               "Invalid metricType: " + metricType + "; must be 'scan' or 'commit'");
     };
   }
 
-  private PolarisResolvedPathWrapper resolveAndAuthorizeTableMetrics(
-      String catalogName, TableIdentifier identifier) {
+  private void resolveAndAuthorizeTableMetrics(String catalogName, TableIdentifier identifier) {
     PolarisResolutionManifest manifest =
         resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
     manifest.addPassthroughPath(
@@ -176,97 +141,14 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
         PolarisAuthorizableOperation.LIST_TABLE_METRICS,
         tableWrapper,
         null);
-
-    return tableWrapper;
   }
 
   private static Namespace decodeNamespace(String encodedNamespace) {
     if (encodedNamespace == null || encodedNamespace.isEmpty()) {
       throw new IllegalArgumentException("namespace must not be empty");
     }
-    // Multi-level namespaces use unit separator (0x1F / %1F) between levels
-    String[] levels = encodedNamespace.split("\u001F", -1);
-    return Namespace.of(levels);
-  }
-
-  private static MetricsListResponse<ScanMetricsReport> buildScanResponse(
-      Page<ScanMetricsRecord> page) {
-    List<ScanMetricsReport> reports =
-        page.items().stream().map(MetricsReportsService::toScanReport).toList();
-    return new MetricsListResponse<>("scan", page.encodedResponseToken(), reports);
-  }
-
-  private static MetricsListResponse<CommitMetricsReport> buildCommitResponse(
-      Page<CommitMetricsRecord> page) {
-    List<CommitMetricsReport> reports =
-        page.items().stream().map(MetricsReportsService::toCommitReport).toList();
-    return new MetricsListResponse<>("commit", page.encodedResponseToken(), reports);
-  }
-
-  private static ScanMetricsReport toScanReport(ScanMetricsRecord r) {
-    MetricsReportActor actor = new MetricsReportActor(r.principalName());
-    MetricsReportRequest request =
-        new MetricsReportRequest(r.requestId(), r.otelTraceId(), r.otelSpanId());
-    ScanMetricsReport.TableObject object =
-        new ScanMetricsReport.TableObject(r.snapshotId().orElse(null));
-    ScanMetricsReport.Payload.Data data =
-        new ScanMetricsReport.Payload.Data(
-            r.schemaId().orElse(null),
-            r.filterExpression().orElse(null),
-            r.projectedFieldIds().isEmpty() ? null : r.projectedFieldIds(),
-            r.projectedFieldNames().isEmpty() ? null : r.projectedFieldNames(),
-            r.resultDataFiles(),
-            r.resultDeleteFiles(),
-            r.totalFileSizeBytes(),
-            r.totalDataManifests(),
-            r.totalDeleteManifests(),
-            r.scannedDataManifests(),
-            r.scannedDeleteManifests(),
-            r.skippedDataManifests(),
-            r.skippedDeleteManifests(),
-            r.skippedDataFiles(),
-            r.skippedDeleteFiles(),
-            r.totalPlanningDurationMs(),
-            r.equalityDeleteFiles(),
-            r.positionalDeleteFiles(),
-            r.indexedDeleteFiles(),
-            r.totalDeleteFileSizeBytes());
-    ScanMetricsReport.Payload payload =
-        new ScanMetricsReport.Payload("iceberg.metrics.scan", 1, data);
-    return new ScanMetricsReport(
-        r.reportId(), r.timestamp().toEpochMilli(), actor, request, object, payload);
-  }
-
-  private static CommitMetricsReport toCommitReport(CommitMetricsRecord r) {
-    MetricsReportActor actor = new MetricsReportActor(r.principalName());
-    MetricsReportRequest request =
-        new MetricsReportRequest(r.requestId(), r.otelTraceId(), r.otelSpanId());
-    CommitMetricsReport.TableObject object = new CommitMetricsReport.TableObject(r.snapshotId());
-    CommitMetricsReport.Payload.Data data =
-        new CommitMetricsReport.Payload.Data(
-            r.sequenceNumber().orElse(null),
-            r.operation(),
-            r.addedDataFiles(),
-            r.removedDataFiles(),
-            r.totalDataFiles(),
-            r.addedDeleteFiles(),
-            r.removedDeleteFiles(),
-            r.totalDeleteFiles(),
-            r.addedEqualityDeleteFiles(),
-            r.removedEqualityDeleteFiles(),
-            r.addedPositionalDeleteFiles(),
-            r.removedPositionalDeleteFiles(),
-            r.addedRecords(),
-            r.removedRecords(),
-            r.totalRecords(),
-            r.addedFileSizeBytes(),
-            r.removedFileSizeBytes(),
-            r.totalFileSizeBytes(),
-            r.totalDurationMs().orElse(null),
-            r.attempts());
-    CommitMetricsReport.Payload payload =
-        new CommitMetricsReport.Payload("iceberg.metrics.commit", 1, data);
-    return new CommitMetricsReport(
-        r.reportId(), r.timestamp().toEpochMilli(), actor, request, object, payload);
+    // JAX-RS @PathParam URL-decodes %1F -> U+001F before injection; split on the raw separator.
+    return NamespaceUtils.splitNamespace(
+        encodedNamespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
   }
 }
