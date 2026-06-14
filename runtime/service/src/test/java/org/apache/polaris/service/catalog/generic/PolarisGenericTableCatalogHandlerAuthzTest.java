@@ -29,6 +29,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.junit.jupiter.api.DynamicNode;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
 @QuarkusTest
@@ -125,5 +126,14 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
+  }
+
+  @Test
+  void dropGenericTableHonorsTableScopedGrant() {
+    assertSuccess(
+        adminService.grantPrivilegeOnTableToRole(
+            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1_GENERIC, PolarisPrivilege.TABLE_DROP));
+
+    newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC);
   }
 }
