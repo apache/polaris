@@ -23,18 +23,24 @@ import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
 
 /**
- * Service interface implemented by the runtime to handle OpenLineage ingest. Mirrors the pattern
- * used by other Polaris API modules where the JAX-RS resource sits in the API module and
- * delegates to a CDI-scoped service implementation in {@code polaris-runtime-service}.
+ * API/runtime delegation seam between the JAX-RS OpenLineage resource and the runtime. Mirrors the
+ * pattern used by other Polaris API modules where the JAX-RS resource sits in the API module and
+ * delegates to a CDI-scoped implementation in {@code polaris-runtime-service}.
+ *
+ * <p>This interface is the HTTP/runtime boundary: it accepts JAX-RS and runtime types ({@link
+ * PolarisLineageEvent}, {@link RealmContext}, {@link SecurityContext}) and returns a JAX-RS {@link
+ * Response}. It is intentionally <em>not</em> the extension point for downstream OpenLineage ingest
+ * behavior — that is {@link OpenLineageIngestProvider}.
  */
 public interface PolarisOpenLineageApiService {
 
   /**
-   * Handle an OpenLineage event accepted at the ingest endpoint.
+   * Handle an OpenLineage event accepted at the ingest endpoint. Implementations are responsible
+   * for translating the request into an {@link OpenLineageIngestRequest} and delegating to an
+   * {@link OpenLineageIngestProvider}.
    *
    * @param event the parsed OpenLineage event, dispatched to the correct {@code RunEvent}, {@code
-   *     JobEvent}, or {@code DatasetEvent} variant by Jackson based on the {@code schemaURL}
-   *     field.
+   *     JobEvent}, or {@code DatasetEvent} variant by Jackson based on the {@code schemaURL} field.
    * @return the JAX-RS response. OpenLineage clients expect {@code 201 Created} with no body on
    *     success.
    */

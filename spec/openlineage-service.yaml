@@ -120,8 +120,9 @@ components:
       type: oauth2
       description:
         OAuth2 client-credentials flow against the Polaris token endpoint.
-        The same client-id/secret used for catalog access is used here; only
-        an additional LINEAGE_INGEST privilege grant is required.
+        The same client-id/secret used for catalog access is used here.
+        # TODO: a dedicated LINEAGE_INGEST privilege grant will be required once
+        # privilege enforcement is implemented; the endpoint currently uses @RolesAllowed("**").
       flows:
         clientCredentials:
           tokenUrl: /v1/oauth/tokens
