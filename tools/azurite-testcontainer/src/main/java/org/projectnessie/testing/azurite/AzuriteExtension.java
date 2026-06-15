@@ -22,6 +22,7 @@ import static org.junit.platform.commons.util.AnnotationUtils.findAnnotatedField
 import static org.junit.platform.commons.util.ReflectionUtils.makeAccessible;
 
 import java.lang.reflect.Field;
+import org.apache.polaris.containerspec.TestcontainerConfig;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -112,10 +113,13 @@ public class AzuriteExtension
 
   private AzuriteAccess createContainer(Azurite azurite) {
     String bucket = nonDefault(azurite.storageContainer());
-    String account = nonDefault(azurite.storageContainer());
-    String secret = nonDefault(azurite.storageContainer());
+    String account = nonDefault(azurite.account());
+    String secret = nonDefault(azurite.secret());
+
     AzuriteContainer container =
-        new AzuriteContainer(null, bucket, account, secret).withStartupAttempts(5);
+        new AzuriteContainer(null, bucket, account, secret)
+            .withStartupAttempts(TestcontainerConfig.DEFAULT_STARTUP_ATTEMPTS);
+
     container.start();
     return container;
   }

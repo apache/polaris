@@ -22,12 +22,11 @@ import com.azure.storage.file.datalake.DataLakeServiceClient;
 import com.azure.storage.file.datalake.DataLakeServiceClientBuilder;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
+import org.apache.polaris.containerspec.TestcontainerNames;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
-import org.testcontainers.utility.Base58;
 
 public class AzuriteContainer extends GenericContainer<AzuriteContainer>
     implements AzuriteAccess, AutoCloseable {
@@ -51,13 +50,13 @@ public class AzuriteContainer extends GenericContainer<AzuriteContainer>
         ContainerSpecHelper.containerSpecHelper("azurite", AzuriteContainer.class)
             .dockerImageName(image));
     if (storageContainer == null) {
-      storageContainer = randomString("filesystem");
+      storageContainer = TestcontainerNames.randomPrefixed("filesystem");
     }
     if (account == null) {
-      account = randomString("account");
+      account = TestcontainerNames.randomPrefixed("account");
     }
     if (secret == null) {
-      secret = randomString("secret");
+      secret = TestcontainerNames.randomPrefixed("secret");
     }
     this.storageContainer = storageContainer;
     this.account = account;
@@ -181,10 +180,6 @@ public class AzuriteContainer extends GenericContainer<AzuriteContainer>
     r.put("fs.azure.account.key." + accountFq, secretBase64);
 
     return r;
-  }
-
-  private static String randomString(String prefix) {
-    return prefix + "-" + Base58.randomString(6).toLowerCase(Locale.ROOT);
   }
 
   @Override
