@@ -24,6 +24,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -32,7 +33,6 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -148,7 +148,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    *
    * @param events events to persist
    */
-  void writeEvents(@NonNull List<PolarisEvent> events);
+  void writeEvents(@NonNull List<EventEntity> events);
 
   /**
    * Delete this entity from the meta store.

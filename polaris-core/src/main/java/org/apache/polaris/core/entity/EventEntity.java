@@ -27,7 +27,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
-public class PolarisEvent {
+public class EventEntity {
   public static final String EMPTY_MAP_STRING = "{}";
 
   /**
@@ -118,7 +118,7 @@ public class PolarisEvent {
     return additionalProperties != null ? additionalProperties : EMPTY_MAP_STRING;
   }
 
-  public PolarisEvent(
+  public EventEntity(
       String catalogId,
       String id,
       @Nullable String requestId,

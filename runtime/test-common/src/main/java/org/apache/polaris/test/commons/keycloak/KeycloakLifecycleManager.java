@@ -48,10 +48,12 @@ public class KeycloakLifecycleManager
 
   @Override
   public void stop() {
-    KeycloakContainer k = keycloak;
-    try (k) {
-    } finally {
-      keycloak = null;
+    if (keycloak != null) {
+      try {
+        keycloak.stop();
+      } finally {
+        keycloak = null;
+      }
     }
   }
 }

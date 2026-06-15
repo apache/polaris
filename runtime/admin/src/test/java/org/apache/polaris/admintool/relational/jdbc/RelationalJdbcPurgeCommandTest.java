@@ -18,20 +18,9 @@
  */
 package org.apache.polaris.admintool.relational.jdbc;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
+import org.apache.polaris.admintool.AdminProfiles;
 import org.apache.polaris.admintool.PurgeCommandTestBase;
 
-@TestProfile(RelationalJdbcPurgeCommandTest.Profile.class)
-public class RelationalJdbcPurgeCommandTest extends PurgeCommandTestBase {
-  public static class Profile extends RelationalJdbcAdminProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("pre-bootstrap", "true")
-          .build();
-    }
-  }
-}
+@TestProfile(AdminProfiles.PreBootstrappedRelationalJdbc.class)
+public class RelationalJdbcPurgeCommandTest extends PurgeCommandTestBase {}

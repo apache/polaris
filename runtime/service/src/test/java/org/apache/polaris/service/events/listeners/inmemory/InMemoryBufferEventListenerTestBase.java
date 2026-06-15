@@ -19,7 +19,7 @@
 
 package org.apache.polaris.service.events.listeners.inmemory;
 
-import static org.apache.polaris.core.entity.PolarisEvent.ResourceType.CATALOG;
+import static org.apache.polaris.core.entity.EventEntity.ResourceType.CATALOG;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.reset;
@@ -38,7 +38,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
-import org.apache.polaris.core.entity.PolarisEvent;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -118,8 +118,8 @@ abstract class InMemoryBufferEventListenerTestBase {
             });
   }
 
-  static PolarisEvent event() {
+  static EventEntity event() {
     String id = UUID.randomUUID().toString();
-    return new PolarisEvent("test", id, null, "test", 0, null, CATALOG, "test");
+    return new EventEntity("test", id, null, "test", 0, null, CATALOG, "test");
   }
 }

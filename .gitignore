@@ -111,6 +111,8 @@ venv
 # And then use `./gradlew run -Dquarkus.profile=local` to run Polaris with dev profile.
 application-local.properties
 
+/.env
+
 # AI / Agentic Development Tools
 .agents/
 .aider/
