@@ -185,7 +185,7 @@ public class PolarisEventListeners {
       if (!queue.offer(task)) {
         throw new RejectedExecutionException("Event listener queue is full");
       }
-      maybeScheduleDrain();
+      maybeScheduleDrain().exceptionally(this::onError);
     }
 
     private CompletableFuture<Void> maybeScheduleDrain() {
@@ -196,7 +196,6 @@ public class PolarisEventListeners {
               .thenCompose(v -> maybeScheduleDrain())
               .exceptionally(this::onError);
         } catch (Throwable t) {
-          draining.set(false);
           return CompletableFuture.failedFuture(t);
         }
       }
