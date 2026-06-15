@@ -19,24 +19,47 @@
 package org.apache.polaris.service.lineage;
 
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.lineage.api.OpenLineageIngestProvider;
+import org.apache.polaris.service.lineage.api.OpenLineageIngestRequest;
+import org.apache.polaris.service.lineage.api.OpenLineageIngestResult;
 import org.apache.polaris.service.lineage.api.PolarisLineageEvent;
 import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
 
 /**
- * No-op implementation of the OpenLineage ingest endpoint.
+ * Adapter between the JAX-RS OpenLineage resource and the {@link OpenLineageIngestProvider}.
  *
- * <p>Accepts and discards events. Persistence, dataset resolution, and downstream forwarding will
- * land in follow-up PRs as described in the Polaris OpenLineage proposal.
+ * <p>Responsible for translating the HTTP request context into an {@link OpenLineageIngestRequest}
+ * and mapping the provider result back to a JAX-RS {@link Response}. Provider implementations do
+ * not interact with JAX-RS types.
  */
 @RequestScoped
 public class OpenLineageAdapter implements PolarisOpenLineageApiService {
 
+  private final OpenLineageIngestProvider provider;
+
+  @Inject
+  public OpenLineageAdapter(OpenLineageIngestProvider provider) {
+    this.provider = provider;
+  }
+
   @Override
   public Response sendLineageEvent(
       PolarisLineageEvent event, RealmContext realmContext, SecurityContext securityContext) {
-    return Response.status(Response.Status.CREATED).build();
+    OpenLineageIngestRequest request =
+        new OpenLineageIngestRequest(event.event(), realmContext.getRealmIdentifier());
+    OpenLineageIngestResult result = provider.ingest(request);
+    return toResponse(result);
+  }
+
+  private static Response toResponse(OpenLineageIngestResult result) {
+    return switch (result) {
+      case ACCEPTED -> Response.status(Response.Status.CREATED).build();
+      case REJECTED -> Response.status(Response.Status.BAD_REQUEST).build();
+      case UNAVAILABLE -> Response.status(Response.Status.SERVICE_UNAVAILABLE).build();
+    };
   }
 }
