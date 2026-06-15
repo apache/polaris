@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.metrics;
 
-import com.google.common.annotations.Beta;
 import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
@@ -34,7 +33,6 @@ import org.apache.iceberg.metrics.MetricsReport;
  * <p>This interface is intentionally runtime/framework-agnostic. CDI and configuration concerns
  * belong in the implementing class, not here.
  */
-@Beta
 public interface IcebergMetricsReporter {
 
   /**

@@ -25,6 +25,7 @@ plugins {
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-metrics-reports-service"))
+  implementation(project(":polaris-extensions-metrics-reports-spi"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
