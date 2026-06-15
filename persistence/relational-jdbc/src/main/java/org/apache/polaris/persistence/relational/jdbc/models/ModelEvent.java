@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
@@ -54,6 +55,8 @@ public interface ModelEvent extends Converter<PolarisEvent> {
           RESOURCE_TYPE,
           RESOURCE_IDENTIFIER,
           ADDITIONAL_PROPERTIES);
+
+  Set<String> JSON_COLUMNS = Set.of(ADDITIONAL_PROPERTIES);
 
   /**
    * Dummy instance to be used as a Converter when calling #fromResultSet().
@@ -128,11 +131,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
     map.put(PRINCIPAL_NAME, getPrincipalName());
     map.put(RESOURCE_TYPE, getResourceType().toString());
     map.put(RESOURCE_IDENTIFIER, getResourceIdentifier());
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put(ADDITIONAL_PROPERTIES, toJsonbPGobject(getAdditionalProperties()));
-    } else {
-      map.put(ADDITIONAL_PROPERTIES, getAdditionalProperties());
-    }
+    map.put(ADDITIONAL_PROPERTIES, wrapJsonForDatabase(getAdditionalProperties(), databaseType));
     return map;
   }
 

@@ -141,6 +141,9 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
       ":aggregated-license-report",
       ":polaris-config-docs-site",
       ":polaris-distribution",
+      // Integration-test-only module that pulls the GPL MySQL JDBC driver; it is not a
+      // published library, so it must not be referenced from the BOM.
+      ":polaris-relational-jdbc-mysql-tests",
     )
   )
 }

@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -103,6 +104,8 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
           INDEXED_DELETE_FILES,
           TOTAL_DELETE_FILE_SIZE_BYTES,
           METADATA);
+
+  Set<String> JSON_COLUMNS = Set.of(METADATA);
 
   // Getters
   String getReportId();
@@ -241,11 +244,8 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
     map.put(INDEXED_DELETE_FILES, getIndexedDeleteFiles());
     map.put(TOTAL_DELETE_FILE_SIZE_BYTES, getTotalDeleteFileSizeBytes());
 
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put(METADATA, toJsonbPGobject(getMetadata() != null ? getMetadata() : "{}"));
-    } else {
-      map.put(METADATA, getMetadata() != null ? getMetadata() : "{}");
-    }
+    map.put(
+        METADATA, wrapJsonForDatabase(getMetadata() != null ? getMetadata() : "{}", databaseType));
     return map;
   }
 

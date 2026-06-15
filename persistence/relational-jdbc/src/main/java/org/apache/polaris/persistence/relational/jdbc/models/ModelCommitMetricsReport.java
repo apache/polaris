@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
@@ -102,6 +103,8 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
           TOTAL_DURATION_MS,
           ATTEMPTS,
           METADATA);
+
+  Set<String> JSON_COLUMNS = Set.of(METADATA);
 
   // Getters
   String getReportId();
@@ -240,11 +243,8 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     map.put(TOTAL_DURATION_MS, getTotalDurationMs());
     map.put(ATTEMPTS, getAttempts());
 
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put(METADATA, toJsonbPGobject(getMetadata() != null ? getMetadata() : "{}"));
-    } else {
-      map.put(METADATA, getMetadata() != null ? getMetadata() : "{}");
-    }
+    map.put(
+        METADATA, wrapJsonForDatabase(getMetadata() != null ? getMetadata() : "{}", databaseType));
     return map;
   }
 
