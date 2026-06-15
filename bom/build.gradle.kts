@@ -90,7 +90,12 @@ dependencies {
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
+    api(project(":polaris-object-storage-mock"))
+
     api(project(":polaris-core"))
+
+    api(project(":polaris-storage-files-api"))
+    api(project(":polaris-storage-files-impl"))
 
     api(project(":polaris-relational-jdbc"))
 
