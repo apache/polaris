@@ -43,7 +43,9 @@ def format_profile_for_display(profile: dict) -> dict:
     return displayed
 
 
-def ensure_config_file_permissions(path: str = CONFIG_FILE) -> None:
+def ensure_config_file_permissions(path: str | None = None) -> None:
+    if path is None:
+        path = CONFIG_FILE
     if not os.path.exists(path):
         return
     current_mode = stat.S_IMODE(os.stat(path).st_mode)
