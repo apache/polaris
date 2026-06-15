@@ -460,7 +460,14 @@ public class ServiceProducers {
   @ApplicationScoped
   public IcebergMetricsReporter metricsReporter(
       MetricsReportingConfiguration config, @Any Instance<IcebergMetricsReporter> reporters) {
-    return reporters.select(Identifier.Literal.of(config.type())).get();
+    var selected = reporters.select(Identifier.Literal.of(config.type()));
+    if (selected.isUnsatisfied()) {
+      LOGGER.warn(
+          "No IcebergMetricsReporter found for type '{}'; Iceberg metrics will be dropped",
+          config.type());
+      return (catalogName, catalogId, table, tableId, metricsReport, receivedTimestamp) -> {};
+    }
+    return selected.get();
   }
 
   @Produces
