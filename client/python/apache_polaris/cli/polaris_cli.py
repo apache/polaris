@@ -33,6 +33,10 @@ from apache_polaris.cli.options.parser import Parser
 from apache_polaris.sdk.management import PolarisDefaultApi
 from apache_polaris.sdk.management.exceptions import ApiException
 from apache_polaris.cli.command.profiles import ProfilesCommand
+from apache_polaris.cli.log_sanitizer import (
+    safe_sanitize_body_for_log,
+    safe_sanitize_headers,
+)
 
 
 class PolarisCli:
@@ -93,23 +97,35 @@ class PolarisCli:
 
     @staticmethod
     def _enable_api_request_logging() -> None:
-        # Store the original urlopen method
+        # Debug logging mirrors HTTP traffic to stderr. Requests and responses are
+        # sanitized before writing so tokens, secrets, and realm headers cannot leak
+        # into CI logs or shared terminals (see log_sanitizer.py).
         if not hasattr(urllib3.PoolManager, "original_urlopen"):
             urllib3.PoolManager.original_urlopen = urllib3.PoolManager.urlopen
 
-        # Define the wrapper function
         @functools.wraps(urllib3.PoolManager.original_urlopen)
         def urlopen_wrapper(
             self: urllib3.PoolManager, method: str, url: str, **kwargs: Any
         ) -> Any:
             sys.stderr.write(f"Request: {method} {url}\n")
             if "headers" in kwargs:
-                sys.stderr.write(f"Headers: {kwargs['headers']}\n")
+                safe_headers = safe_sanitize_headers(kwargs["headers"])
+                sys.stderr.write(f"Headers: {safe_headers}\n")
             if "body" in kwargs:
-                sys.stderr.write(f"Body: {kwargs['body']}\n")
+                safe_body = safe_sanitize_body_for_log(kwargs["body"], url)
+                sys.stderr.write(f"Body: {safe_body}\n")
+
+            response = urllib3.PoolManager.original_urlopen(self, method, url, **kwargs)
+
+            sys.stderr.write(f"Response: {response.status}\n")
+            safe_response_headers = safe_sanitize_headers(response.headers)
+            sys.stderr.write(f"Response Headers: {safe_response_headers}\n")
+            response_body = getattr(response, "data", None)
+            if response_body:
+                safe_response_body = safe_sanitize_body_for_log(response_body, url)
+                sys.stderr.write(f"Response Body: {safe_response_body}\n")
             sys.stderr.write("\n")
-            # Call the original urlopen method
-            return urllib3.PoolManager.original_urlopen(self, method, url, **kwargs)
+            return response
 
         urllib3.PoolManager.urlopen = urlopen_wrapper
 
