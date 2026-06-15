@@ -63,6 +63,8 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
 
+  excludes.add(".env")
+
   excludes.add("**/LICENSE*")
   excludes.add("**/NOTICE*")
 
@@ -269,6 +271,7 @@ tasks.named<Wrapper>("wrapper") {
     val insertAtLine =
       scriptLines.indexOf("# Use the maximum available, or set MAX_FD != -1 to use that value.")
     scriptLines.add(insertAtLine, "")
+    scriptLines.add(insertAtLine, $$"[ -f \"${APP_HOME}/.env\" ] && . \"${APP_HOME}/.env\"")
     scriptLines.add(insertAtLine, $$". \"${APP_HOME}/gradle/gradlew-include.sh\"")
 
     scriptFile.writeText(scriptLines.joinToString("\n"))
