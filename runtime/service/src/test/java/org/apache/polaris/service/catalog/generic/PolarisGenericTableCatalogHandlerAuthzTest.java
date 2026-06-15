@@ -28,6 +28,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
@@ -144,8 +145,16 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
                   adminService.revokePrivilegeOnTableFromRole(
                       CATALOG_NAME, CATALOG_ROLE1, tableId, priv);
               // After table drop + recreate, grants on the old entity no longer exist on the
-              // new entity. This is expected and equivalent to a successful revoke.
-              return res.isSuccess() ? res : new PrivilegeResult(new PolarisGrantRecord());
+              // new entity. Only treat GRANT_NOT_FOUND or ENTITY_NOT_FOUND as acceptable —
+              // any other failure should propagate to avoid masking real errors.
+              if (!res.isSuccess()) {
+                BaseResult.ReturnStatus status = res.getReturnStatus();
+                if (status == BaseResult.ReturnStatus.GRANT_NOT_FOUND
+                    || status == BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+                  return new PrivilegeResult(new PolarisGrantRecord());
+                }
+              }
+              return res;
             });
   }
 
