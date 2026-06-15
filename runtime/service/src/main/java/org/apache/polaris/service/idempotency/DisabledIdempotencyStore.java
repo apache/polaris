@@ -25,15 +25,15 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 
 /**
- * Inert {@link IdempotencyStore} produced when idempotency is disabled. Handlers short-circuit on
- * {@link IdempotencyHandlerSupport#isEnabled()} and never touch the store, so every method here
- * fails fast: reaching one means a code path tried to use the store while the feature is off.
+ * {@link IdempotencyStore} produced when idempotency is disabled. Handlers short-circuit on {@link
+ * IdempotencyHandlerSupport#isEnabled()} and never touch the store, so every method here fails
+ * fast: reaching one means a code path tried to use the store while the feature is off.
  */
-final class NoOpIdempotencyStore implements IdempotencyStore {
+final class DisabledIdempotencyStore implements IdempotencyStore {
 
-  static final NoOpIdempotencyStore INSTANCE = new NoOpIdempotencyStore();
+  static final DisabledIdempotencyStore INSTANCE = new DisabledIdempotencyStore();
 
-  private NoOpIdempotencyStore() {}
+  private DisabledIdempotencyStore() {}
 
   @Override
   public Optional<IdempotencyRecord> load(UUID idempotencyKey) {

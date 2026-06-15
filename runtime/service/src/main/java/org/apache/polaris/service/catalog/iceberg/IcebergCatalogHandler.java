@@ -531,13 +531,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 namespace.toString(),
                 request.name(),
                 resolvedMode.map(Enum::name).orElse("none"));
-    if (preflight instanceof IdempotencyOutcome.Duplicate dup) {
+    if (preflight instanceof IdempotencyOutcome.Duplicate(IdempotencyRecord existing)) {
       return buildLoadTableResponseForExistingTable(
           tableIdentifier,
           resolvedMode,
           CREATE_TABLE_STORAGE_ACTIONS,
           refreshCredentialsEndpoint,
-          dup.existing().metadataLocation());
+          existing.metadataLocation());
     }
 
     // Run the operation. A concurrent request carrying the same key can win the catalog-level race

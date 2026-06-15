@@ -31,6 +31,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -89,5 +90,16 @@ public class AdminToolProducers {
     // Use a random realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
     String absentId = UUID.randomUUID().toString();
     return new RealmConfigImpl(configurationSource, () -> absentId);
+  }
+
+  @Produces
+  @ApplicationScoped
+  public RealmContext dummyRealmContext() {
+    // The admin tool serves no HTTP requests, so there is no real per-request realm. Persistence
+    // backends on the classpath (e.g. the relational-jdbc idempotency store) declare a RealmContext
+    // injection point; this satisfies CDI validation for those beans, which are never instantiated
+    // here.
+    String absentId = UUID.randomUUID().toString();
+    return () -> absentId;
   }
 }

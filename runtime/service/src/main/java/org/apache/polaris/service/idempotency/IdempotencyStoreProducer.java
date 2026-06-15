@@ -24,22 +24,20 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.IdempotencyStore;
-import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
 
 /**
- * Produces the request-scoped {@link IdempotencyStore} that {@link IdempotencyHandlerSupport}
- * injects directly — so the handler has no factory reference and no lazy-init logic.
+ * Produces the unqualified, request-scoped {@link IdempotencyStore} that {@link
+ * IdempotencyHandlerSupport} injects — selecting the backend whose {@link Identifier} matches
+ * {@link IdempotencyConfiguration#type()}.
  *
- * <p>This producer lives in the service runtime (which has a {@link RealmContext}), not in the
- * persistence backends: backends expose a realm-agnostic {@link IdempotencyStoreFactory} (realm as
- * a method argument) so they stay deployable where there is no request scope (e.g. the Admin Tool).
- * This producer binds the selected backend to the current request's realm.
+ * <p>Each backend registers an {@code @Identifier}-qualified {@link IdempotencyStore} producer that
+ * binds itself to the current request's realm (see {@code InMemoryIdempotencyStoreProducer} and
+ * {@code RelationalJdbcIdempotencyStoreProducer}). This selector mirrors how {@code
+ * AdminToolProducers} resolves the {@code MetaStoreManagerFactory} from configuration.
  *
- * <p>When idempotency is disabled it yields {@link NoOpIdempotencyStore}; handlers short-circuit on
- * {@link IdempotencyHandlerSupport#isEnabled()} and never touch it. Otherwise the factory whose
- * {@link Identifier} matches {@link IdempotencyConfiguration#type()} is selected.
+ * <p>When idempotency is disabled it yields {@link DisabledIdempotencyStore}; handlers
+ * short-circuit on {@link IdempotencyHandlerSupport#isEnabled()} and never touch it.
  */
 @ApplicationScoped
 public class IdempotencyStoreProducer {
@@ -47,20 +45,18 @@ public class IdempotencyStoreProducer {
   @Produces
   @RequestScoped
   public IdempotencyStore idempotencyStore(
-      IdempotencyConfiguration configuration,
-      RealmContext realmContext,
-      @Any Instance<IdempotencyStoreFactory> factories) {
+      IdempotencyConfiguration configuration, @Any Instance<IdempotencyStore> stores) {
     if (!configuration.enabled()) {
-      return NoOpIdempotencyStore.INSTANCE;
+      return DisabledIdempotencyStore.INSTANCE;
     }
-    Instance<IdempotencyStoreFactory> selected =
-        factories.select(Identifier.Literal.of(configuration.type()));
+    Instance<IdempotencyStore> selected =
+        stores.select(Identifier.Literal.of(configuration.type()));
     if (!selected.isResolvable()) {
       throw new IllegalStateException(
-          "No IdempotencyStoreFactory registered for polaris.idempotency.type='"
+          "No IdempotencyStore registered for polaris.idempotency.type='"
               + configuration.type()
               + "'");
     }
-    return selected.get().getOrCreateIdempotencyStore(realmContext);
+    return selected.get();
   }
 }

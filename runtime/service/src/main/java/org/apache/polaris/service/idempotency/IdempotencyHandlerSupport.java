@@ -52,8 +52,8 @@ import org.apache.polaris.core.persistence.IdempotencyStore;
  * <p>This bean is {@link RequestScoped}: a single request operates within one realm, so the
  * injected {@link IdempotencyStore} is already bound to the request's realm (see {@link
  * IdempotencyStoreProducer}). When idempotency is disabled the store is a {@link
- * NoOpIdempotencyStore} and is never touched. No response body is stored; duplicate responses are
- * rebuilt from authoritative catalog state by the handler itself.
+ * DisabledIdempotencyStore} and is never touched. No response body is stored; duplicate responses
+ * are rebuilt from authoritative catalog state by the handler itself.
  */
 @RequestScoped
 public class IdempotencyHandlerSupport {
