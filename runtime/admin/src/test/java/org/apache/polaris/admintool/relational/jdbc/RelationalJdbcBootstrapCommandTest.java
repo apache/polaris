@@ -23,10 +23,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainLauncher;
+import org.apache.polaris.admintool.AdminProfiles;
 import org.apache.polaris.admintool.BootstrapCommandTestBase;
 import org.junit.jupiter.api.Test;
 
-@TestProfile(RelationalJdbcAdminProfile.class)
+@TestProfile(AdminProfiles.RelationalJdbc.class)
 public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase {
 
   @Test

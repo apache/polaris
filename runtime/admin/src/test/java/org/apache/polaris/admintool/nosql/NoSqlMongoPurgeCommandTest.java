@@ -18,21 +18,9 @@
  */
 package org.apache.polaris.admintool.nosql;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
+import org.apache.polaris.admintool.AdminProfiles;
 import org.apache.polaris.admintool.PurgeCommandTestBase;
 
-@TestProfile(NoSqlMongoPurgeCommandTest.Profile.class)
-class NoSqlMongoPurgeCommandTest extends PurgeCommandTestBase {
-
-  public static class Profile extends NoSqlMongoProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("pre-bootstrap", "true")
-          .build();
-    }
-  }
-}
+@TestProfile(AdminProfiles.PreBootstrappedNoSqlMongo.class)
+class NoSqlMongoPurgeCommandTest extends PurgeCommandTestBase {}

@@ -19,7 +19,8 @@
 package org.apache.polaris.admintool.nosql;
 
 import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.admintool.AdminProfiles;
 import org.apache.polaris.admintool.BootstrapCommandTestBase;
 
-@TestProfile(NoSqlMongoProfile.class)
+@TestProfile(AdminProfiles.NoSqlMongo.class)
 class NoSqlMongoBootstrapCommandTest extends BootstrapCommandTestBase {}

@@ -23,9 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainLauncher;
+import org.apache.polaris.admintool.AdminProfiles;
 import org.junit.jupiter.api.Test;
 
-@TestProfile(CockroachJdbcAdminProfile.class)
+@TestProfile(AdminProfiles.CockroachJdbc.class)
 public class CockroachJdbcBootstrapCommandTest extends RelationalJdbcBootstrapCommandTest {
 
   @Override
