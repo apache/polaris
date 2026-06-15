@@ -26,14 +26,15 @@ from typing import Any, Dict
 from apache_polaris.cli.constants import CONFIG_DIR, CONFIG_FILE
 
 CONFIG_FILE_MODE = 0o600
+MASKED_CLIENT_SECRET = "********"
 
 
 def mask_client_secret(client_secret: str | None) -> str | None:
     if client_secret is None:
         return None
-    if len(client_secret) <= 4:
-        return "*" * len(client_secret)
-    return "*" * (len(client_secret) - 4) + client_secret[-4:]
+    if client_secret == "":
+        return ""
+    return MASKED_CLIENT_SECRET
 
 
 def format_profile_for_display(profile: dict) -> dict:

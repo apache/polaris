@@ -26,6 +26,7 @@ from unittest.mock import patch
 
 from apache_polaris.cli.profile_config import (
     CONFIG_FILE_MODE,
+    MASKED_CLIENT_SECRET,
     format_profile_for_display,
     load_profiles,
     save_profiles,
@@ -40,13 +41,13 @@ class TestProfileConfig(unittest.TestCase):
             "host": "localhost",
         }
         displayed = format_profile_for_display(profile)
-        self.assertEqual(displayed["client_secret"], "********3456")
+        self.assertEqual(displayed["client_secret"], MASKED_CLIENT_SECRET)
         self.assertEqual(profile["client_secret"], "abcdef123456")
 
     def test_format_profile_for_display_masks_short_secret(self) -> None:
         profile = {"client_secret": "abcd"}
         displayed = format_profile_for_display(profile)
-        self.assertEqual(displayed["client_secret"], "****")
+        self.assertEqual(displayed["client_secret"], MASKED_CLIENT_SECRET)
 
     def test_format_profile_for_display_preserves_none_secret(self) -> None:
         profile = {"client_id": "root", "client_secret": None}

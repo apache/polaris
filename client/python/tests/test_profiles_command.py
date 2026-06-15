@@ -61,7 +61,7 @@ class TestProfilesCommand(CLITestBase):
             self.mock_execute(mock_client, ["profiles", "get", "dev"])
             output = mock_stdout.getvalue()
             self.assertIn("Polaris profile dev:", output)
-            self.assertIn("**cr3t", output)
+            self.assertIn("********", output)
             self.assertNotIn("s3cr3t", output)
 
     @patch("apache_polaris.cli.command.profiles.save_profiles")
@@ -181,5 +181,5 @@ class TestProfilesCommand(CLITestBase):
             output = mock_stdout.getvalue()
             self.assertIn("Polaris profile dev updated successfully.", output)
         mock_getpass.assert_called_once()
-        self.assertIn("Polaris Client Secret [**cr3t]: ", mock_getpass.call_args[0][0])
+        self.assertIn("Polaris Client Secret [********]: ", mock_getpass.call_args[0][0])
         mock_save_profiles.assert_called_once()
