@@ -16,14 +16,12 @@
 #  specific language governing permissions and limitations
 #  under the License.
 #
-import json
 import os
 from argparse import Namespace
 from functools import cached_property
 from typing import Optional, Dict, Any
 
 from apache_polaris.cli.constants import (
-    CONFIG_FILE,
     CLIENT_PROFILE_ENV,
     CLIENT_ID_ENV,
     CLIENT_SECRET_ENV,
@@ -35,14 +33,8 @@ from apache_polaris.cli.constants import (
 )
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.options.option_tree import Argument
+from apache_polaris.cli.profile_config import load_profiles
 from apache_polaris.sdk.management import ApiClient, Configuration
-
-
-def _load_profiles() -> Dict[str, Dict[str, Any]]:
-    if not os.path.exists(CONFIG_FILE):
-        return {}
-    with open(CONFIG_FILE, "r") as f:
-        return json.load(f)
 
 
 class BuilderConfig:
@@ -56,7 +48,7 @@ class BuilderConfig:
         profile: Dict[str, Any] = {}
         client_profile = self.options.profile or os.getenv(CLIENT_PROFILE_ENV)
         if client_profile:
-            profiles = _load_profiles()
+            profiles = load_profiles()
             loaded_profile = profiles.get(client_profile)
             if loaded_profile is None:
                 raise CliError(f"Polaris profile {client_profile} not found")
