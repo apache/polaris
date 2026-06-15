@@ -33,7 +33,7 @@ dependencies {
   implementation(project(":polaris-extensions-metrics-reports-spi"))
 
   runtimeOnly(project(":polaris-relational-jdbc"))
-  testRuntimeOnly(project(":polaris-extensions-metrics-reports"))
+  runtimeOnly(project(":polaris-extensions-metrics-reports"))
 
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
