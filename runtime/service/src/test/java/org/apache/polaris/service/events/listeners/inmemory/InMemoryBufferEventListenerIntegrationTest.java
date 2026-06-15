@@ -57,7 +57,7 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.entity.PolarisEvent;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
@@ -174,17 +174,17 @@ class InMemoryBufferEventListenerIntegrationTest {
             + realm
             + "' ORDER BY timestamp_ms";
 
-    List<PolarisEvent> events =
+    List<EventEntity> events =
         await()
             .atMost(Duration.ofSeconds(10))
             .until(
                 () -> {
-                  ImmutableList.Builder<PolarisEvent> e = ImmutableList.builder();
+                  ImmutableList.Builder<EventEntity> e = ImmutableList.builder();
                   try (Connection connection = dataSource.get().getConnection();
                       Statement statement = connection.createStatement();
                       ResultSet rs = statement.executeQuery(query)) {
                     while (rs.next()) {
-                      PolarisEvent event = CONVERTER.fromResultSet(rs);
+                      EventEntity event = CONVERTER.fromResultSet(rs);
                       e.add(event);
                     }
                   }
@@ -192,13 +192,13 @@ class InMemoryBufferEventListenerIntegrationTest {
                 },
                 e -> e.size() >= 2);
 
-    PolarisEvent e1 =
+    EventEntity e1 =
         events.stream()
             .filter(e -> e.getEventType().equals("AFTER_CREATE_CATALOG"))
             .findFirst()
             .orElseThrow();
     assertThat(e1.getCatalogId()).isEqualTo(catalogName);
-    assertThat(e1.getResourceType()).isEqualTo(PolarisEvent.ResourceType.CATALOG);
+    assertThat(e1.getResourceType()).isEqualTo(EventEntity.ResourceType.CATALOG);
     assertThat(e1.getResourceIdentifier()).isEqualTo(catalogName);
     assertThat(e1.getEventType()).isEqualTo("AFTER_CREATE_CATALOG");
     assertThat(e1.getPrincipalName()).isEqualTo("root");
@@ -209,13 +209,13 @@ class InMemoryBufferEventListenerIntegrationTest {
         .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
         .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
 
-    PolarisEvent e2 =
+    EventEntity e2 =
         events.stream()
             .filter(e -> e.getEventType().equals("AFTER_CREATE_TABLE"))
             .findFirst()
             .orElseThrow();
     assertThat(e2.getCatalogId()).isEqualTo(catalogName);
-    assertThat(e2.getResourceType()).isEqualTo(PolarisEvent.ResourceType.TABLE);
+    assertThat(e2.getResourceType()).isEqualTo(EventEntity.ResourceType.TABLE);
     assertThat(e2.getResourceIdentifier()).isEqualTo("db1.t1");
     assertThat(e2.getEventType()).isEqualTo("AFTER_CREATE_TABLE");
     assertThat(e2.getPrincipalName()).isEqualTo("root");

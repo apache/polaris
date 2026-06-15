@@ -25,6 +25,7 @@ import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
@@ -32,7 +33,6 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
@@ -275,7 +275,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   }
 
   @Override
-  public void writeEvents(@NonNull List<PolarisEvent> events) {
+  public void writeEvents(@NonNull List<EventEntity> events) {
     throw new UnsupportedOperationException("Not implemented for transactional persistence.");
   }
 

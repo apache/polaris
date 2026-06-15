@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
-import org.apache.polaris.core.entity.PolarisEvent;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
@@ -49,8 +49,7 @@ public class ModelEventTest {
   private static final String TEST_EVENT_TYPE = "CREATE";
   private static final long TEST_TIMESTAMP_MS = 1234567890L;
   private static final String TEST_USER = "test-user";
-  private static final PolarisEvent.ResourceType TEST_RESOURCE_TYPE =
-      PolarisEvent.ResourceType.TABLE;
+  private static final EventEntity.ResourceType TEST_RESOURCE_TYPE = EventEntity.ResourceType.TABLE;
   private static final String TEST_RESOURCE_TYPE_STRING = "TABLE";
   private static final String TEST_RESOURCE_IDENTIFIER = "test-table";
   private static final String EMPTY_JSON = "{}";
@@ -71,7 +70,7 @@ public class ModelEventTest {
     when(mockResultSet.getString(ADDITIONAL_PROPERTIES)).thenReturn(EMPTY_JSON);
 
     // Act
-    PolarisEvent result = ModelEvent.CONVERTER.fromResultSet(mockResultSet);
+    EventEntity result = ModelEvent.CONVERTER.fromResultSet(mockResultSet);
 
     // Assert
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());
@@ -163,8 +162,8 @@ public class ModelEventTest {
   @Test
   public void testFromEvent() {
     // Arrange
-    PolarisEvent polarisEvent =
-        new PolarisEvent(
+    EventEntity polarisEvent =
+        new EventEntity(
             TEST_CATALOG_ID,
             TEST_EVENT_ID,
             TEST_REQUEST_ID,
@@ -207,7 +206,7 @@ public class ModelEventTest {
             .build();
 
     // Act
-    PolarisEvent result = ModelEvent.toEvent(modelEvent);
+    EventEntity result = ModelEvent.toEvent(modelEvent);
 
     // Assert
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());

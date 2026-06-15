@@ -30,7 +30,8 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.entity.PolarisEvent.ResourceType;
+import org.apache.polaris.core.entity.EventEntity;
+import org.apache.polaris.core.entity.EventEntity.ResourceType;
 import org.apache.polaris.service.events.AttributeKey;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
@@ -47,8 +48,8 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     ResourceType resourceType = resolveResourceType(event.type());
     String resourceIdentifier = resolveResourceIdentifier(event, resourceType, catalogName);
 
-    org.apache.polaris.core.entity.PolarisEvent polarisEvent =
-        new org.apache.polaris.core.entity.PolarisEvent(
+    EventEntity polarisEvent =
+        new EventEntity(
             catalogName,
             event.metadata().eventId().toString(),
             event.metadata().requestId().orElse(null),
@@ -67,10 +68,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
   }
 
   private static String resolveCatalogName(PolarisEvent event) {
-    return event
-        .attributes()
-        .get(EventAttributes.CATALOG_NAME)
-        .orElse(org.apache.polaris.core.entity.PolarisEvent.REALM_SCOPED);
+    return event.attributes().get(EventAttributes.CATALOG_NAME).orElse(EventEntity.REALM_SCOPED);
   }
 
   /**
@@ -236,7 +234,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
   }
 
   private static String fallbackResourceIdentifier(PolarisEvent event, String catalogName) {
-    if (!org.apache.polaris.core.entity.PolarisEvent.REALM_SCOPED.equals(catalogName)) {
+    if (!EventEntity.REALM_SCOPED.equals(catalogName)) {
       return catalogName;
     }
     return event.type().name();
@@ -307,6 +305,5 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     return summary;
   }
 
-  protected abstract void processEvent(
-      String realmId, org.apache.polaris.core.entity.PolarisEvent event);
+  protected abstract void processEvent(String realmId, EventEntity event);
 }

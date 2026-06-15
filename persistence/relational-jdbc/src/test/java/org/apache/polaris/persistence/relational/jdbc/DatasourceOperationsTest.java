@@ -38,7 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import javax.sql.DataSource;
-import org.apache.polaris.core.entity.PolarisEvent;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations.Operation;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
@@ -108,7 +108,7 @@ public class DatasourceOperationsTest {
     for (int i = 0; i < 1000; i++) {
       ModelEvent modelEvent =
           ImmutableModelEvent.builder()
-              .resourceType(PolarisEvent.ResourceType.CATALOG)
+              .resourceType(EventEntity.ResourceType.CATALOG)
               .resourceIdentifier("catalog_" + i)
               .catalogId("catalog_" + i)
               .eventId("event_" + i)
