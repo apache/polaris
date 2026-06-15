@@ -85,7 +85,7 @@ dependencies {
   // of spark-sql dependency
   testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.26.0")
 
-  testImplementation("io.delta:delta-spark_${scalaVersion}:4.0.1")
+  testImplementation("io.delta:delta-spark_4.0_${scalaVersion}:4.2.0")
   testImplementation("org.apache.hudi:hudi-spark4.0-bundle_${scalaVersion}:1.1.1") {
     // exclude log4j dependencies to match spark-sql exclusions
     // exclude log4j dependencies to match spark-sql exclusions and prevent version conflicts
