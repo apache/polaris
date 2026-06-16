@@ -86,14 +86,6 @@ public class AdminToolProducers {
 
   @Produces
   @ApplicationScoped
-  public RealmConfig dummyRealmConfig(RealmConfigurationSource configurationSource) {
-    // Use a random realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
-    String absentId = UUID.randomUUID().toString();
-    return new RealmConfigImpl(configurationSource, () -> absentId);
-  }
-
-  @Produces
-  @ApplicationScoped
   public RealmContext dummyRealmContext() {
     // The admin tool serves no HTTP requests, so there is no real per-request realm. Persistence
     // backends on the classpath (e.g. the relational-jdbc idempotency store) declare a RealmContext
@@ -101,5 +93,14 @@ public class AdminToolProducers {
     // here.
     String absentId = UUID.randomUUID().toString();
     return () -> absentId;
+  }
+
+  @Produces
+  @ApplicationScoped
+  public RealmConfig dummyRealmConfig(
+      RealmConfigurationSource configurationSource, RealmContext realmContext) {
+    // Reuse the dummy RealmContext's id so config and context agree on the (unpredictable) realm.
+    // The PolarisConfigurationStore is empty anyway.
+    return new RealmConfigImpl(configurationSource, realmContext::getRealmIdentifier);
   }
 }

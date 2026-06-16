@@ -20,21 +20,21 @@ package org.apache.polaris.service.idempotency;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 
 /**
- * Produces the unqualified, request-scoped {@link IdempotencyStore} that {@link
- * IdempotencyHandlerSupport} injects — selecting the backend whose {@link Identifier} matches
- * {@link IdempotencyConfiguration#type()}.
+ * Produces the unqualified {@link IdempotencyStore} that {@link IdempotencyHandlerSupport} injects
+ * — selecting the backend whose {@link Identifier} matches {@link IdempotencyConfiguration#type()}.
  *
- * <p>Each backend registers an {@code @Identifier}-qualified {@link IdempotencyStore} producer that
- * binds itself to the current request's realm (see {@code InMemoryIdempotencyStoreProducer} and
- * {@code RelationalJdbcIdempotencyStoreProducer}). This selector mirrors how {@code
- * AdminToolProducers} resolves the {@code MetaStoreManagerFactory} from configuration.
+ * <p>The selection runs once at startup: this is {@link ApplicationScoped}, and {@code
+ * selected.get()} returns the client proxy of the chosen {@code @RequestScoped} backend store,
+ * which delegates to the current request's realm-bound instance on every call (see {@code
+ * InMemoryIdempotencyStoreProducer} and {@code RelationalJdbcIdempotencyStoreProducer}). This
+ * mirrors how {@code AdminToolProducers} resolves the {@code MetaStoreManagerFactory} from
+ * configuration.
  *
  * <p>When idempotency is disabled it yields {@link DisabledIdempotencyStore}; handlers
  * short-circuit on {@link IdempotencyHandlerSupport#isEnabled()} and never touch it.
@@ -43,7 +43,7 @@ import org.apache.polaris.core.persistence.IdempotencyStore;
 public class IdempotencyStoreProducer {
 
   @Produces
-  @RequestScoped
+  @ApplicationScoped
   public IdempotencyStore idempotencyStore(
       IdempotencyConfiguration configuration, @Any Instance<IdempotencyStore> stores) {
     if (!configuration.enabled()) {
