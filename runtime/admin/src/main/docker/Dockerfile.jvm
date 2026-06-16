@@ -47,3 +47,5 @@ COPY --chown=polaris:polaris build/quarkus-app/app/ /deployments/app/
 COPY --chown=polaris:polaris build/quarkus-app/quarkus/ /deployments/quarkus/
 COPY --chown=polaris:polaris distribution/LICENSE /deployments/
 COPY --chown=polaris:polaris distribution/NOTICE /deployments/
+
+ENTRYPOINT ["/opt/jboss/container/java/run/run-java.sh"]
