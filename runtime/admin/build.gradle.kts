@@ -105,3 +105,10 @@ artifacts {
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
   add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
 }
+
+tasks.withType<Test>().configureEach {
+  forkEvery = 0
+
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
+}
