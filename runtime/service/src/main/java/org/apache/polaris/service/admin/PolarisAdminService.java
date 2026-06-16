@@ -930,18 +930,10 @@ public class PolarisAdminService {
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), cleanup);
 
-    // at least some handling of error
-    if (!dropEntityResult.isSuccess()) {
-      if (dropEntityResult.failedBecauseNotEmpty()) {
-        throw new BadRequestException(
-            "Catalog '%s' cannot be dropped, it is not empty", entity.getName());
-      } else {
-        throw new BadRequestException(
-            "Catalog '%s' cannot be dropped, concurrent modification detected. Please try "
-                + "again",
-            entity.getName());
-      }
-    }
+    DropEntityExceptionMapper.throwIfFailed(
+        dropEntityResult,
+        new DropEntityExceptionMapper.DropFailureContext(
+            String.format("Catalog '%s'", entity.getName()), null));
   }
 
   public @NonNull CatalogEntity getCatalog(String name) {
@@ -1125,16 +1117,10 @@ public class PolarisAdminService {
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), false);
 
-    // at least some handling of error
-    if (!dropEntityResult.isSuccess()) {
-      if (dropEntityResult.isEntityUnDroppable()) {
-        throw new BadRequestException("Root principal cannot be dropped");
-      } else {
-        throw new BadRequestException(
-            "Root principal cannot be dropped, concurrent modification "
-                + "detected. Please try again");
-      }
-    }
+    DropEntityExceptionMapper.throwIfFailed(
+        dropEntityResult,
+        new DropEntityExceptionMapper.DropFailureContext(
+            String.format("Principal '%s'", entity.getName()), "Root principal cannot be dropped"));
   }
 
   public @NonNull PrincipalEntity getPrincipal(String name) {
@@ -1378,16 +1364,11 @@ public class PolarisAdminService {
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), true); // cleanup grants
 
-    // at least some handling of error
-    if (!dropEntityResult.isSuccess()) {
-      if (dropEntityResult.isEntityUnDroppable()) {
-        throw new BadRequestException("Polaris service admin principal role cannot be dropped");
-      } else {
-        throw new BadRequestException(
-            "Polaris service admin principal role cannot be dropped, "
-                + "concurrent modification detected. Please try again");
-      }
-    }
+    DropEntityExceptionMapper.throwIfFailed(
+        dropEntityResult,
+        new DropEntityExceptionMapper.DropFailureContext(
+            String.format("Principal role '%s'", entity.getName()),
+            "Polaris service admin principal role cannot be dropped"));
   }
 
   public @NonNull PrincipalRoleEntity getPrincipalRole(String name) {
@@ -1498,16 +1479,11 @@ public class PolarisAdminService {
             Map.of(),
             true); // cleanup grants
 
-    // at least some handling of error
-    if (!dropEntityResult.isSuccess()) {
-      if (dropEntityResult.isEntityUnDroppable()) {
-        throw new BadRequestException("Catalog admin role cannot be dropped");
-      } else {
-        throw new BadRequestException(
-            "Catalog admin role cannot be dropped, concurrent "
-                + "modification detected. Please try again");
-      }
-    }
+    DropEntityExceptionMapper.throwIfFailed(
+        dropEntityResult,
+        new DropEntityExceptionMapper.DropFailureContext(
+            String.format("Catalog role '%s' in catalog '%s'", name, catalogName),
+            "Catalog admin role cannot be dropped"));
   }
 
   public @NonNull CatalogRoleEntity getCatalogRole(String catalogName, String name) {
