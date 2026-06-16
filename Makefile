@@ -98,6 +98,14 @@ build-spark-plugin-3.5-2.13: check-dependencies ## Build Spark plugin v3.5 with 
 		:polaris-spark-3.5_2.13:assemble
 	@echo "--- Spark plugin v3.5 with Scala v2.13 build complete ---"
 
+build-spark-plugin-4.0-2.13: DEPENDENCIES := java21
+.PHONY: build-spark-plugin-4.0-2.13
+build-spark-plugin-4.0-2.13: check-dependencies ## Build Spark plugin v4.0 with Scala v2.13
+	@echo "--- Building Spark plugin v4.0 with Scala v2.13 ---"
+	@./gradlew \
+		:polaris-spark-4.0_2.13:assemble
+	@echo "--- Spark plugin v4.0 with Scala v2.13 build complete ---"
+
 spotless-apply: DEPENDENCIES := java21
 .PHONY: spotless-apply
 spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradle plugin.
