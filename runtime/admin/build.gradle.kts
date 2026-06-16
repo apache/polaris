@@ -90,17 +90,15 @@ quarkus {
 }
 
 // Configuration to expose distribution artifacts
-val distributionElements by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-  }
+val distributionElements by configurations.creating {
+  isCanBeConsumed = true
+  isCanBeResolved = false
+}
 
-val licenseNoticeElements by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-  }
+val licenseNoticeElements by configurations.creating {
+  isCanBeConsumed = true
+  isCanBeResolved = false
+}
 
 // Register the quarkus app directory as an artifact
 artifacts {

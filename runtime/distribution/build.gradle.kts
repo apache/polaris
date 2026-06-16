@@ -37,23 +37,20 @@ val adminProject = project(":polaris-admin")
 val serverProject = project(":polaris-server")
 
 // Configurations to resolve artifacts from other projects
-val adminDistribution by
-  configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-  }
+val adminDistribution by configurations.creating {
+  isCanBeConsumed = false
+  isCanBeResolved = true
+}
 
-val serverDistribution by
-  configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-  }
+val serverDistribution by configurations.creating {
+  isCanBeConsumed = false
+  isCanBeResolved = true
+}
 
-val licenseNotice by
-  configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-  }
+val licenseNotice by configurations.creating {
+  isCanBeConsumed = false
+  isCanBeResolved = true
+}
 
 dependencies {
   adminDistribution(project(":polaris-admin", "distributionElements"))

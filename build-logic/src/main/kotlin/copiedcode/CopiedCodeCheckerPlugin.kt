@@ -68,55 +68,54 @@ import org.gradle.work.DisableCachingByDefault
  */
 @Suppress("unused")
 class CopiedCodeCheckerPlugin : Plugin<Project> {
-  override fun apply(project: Project): Unit =
-    project.run {
-      val extension =
-        extensions.create("copiedCodeChecks", CopiedCodeCheckerExtension::class.java, project)
+  override fun apply(project: Project): Unit = project.run {
+    val extension =
+      extensions.create("copiedCodeChecks", CopiedCodeCheckerExtension::class.java, project)
 
-      if (rootProject == this) {
-        tasks.register(
-          CHECK_COPIED_CODE_MENTIONS_EXIST_TASK_NAME,
-          CheckCopiedCodeMentionsExistTask::class.java,
-        ) {
-          licenseFile.convention(extension.licenseFile)
-          rootDirectory.convention(layout.projectDirectory)
-        }
-
-        tasks
-          .matching { task -> task.name == "check" }
-          .configureEach { dependsOn(CHECK_COPIED_CODE_MENTIONS_EXIST_TASK_NAME) }
-      }
-
-      val checkForCopiedCode =
-        tasks.register(CHECK_FOR_COPIED_CODE_TASK_NAME, CheckForCopiedCodeTask::class.java) {
-          licenseFile.convention(extension.licenseFile)
-          rootDirectory.convention(layout.settingsDirectory)
-          projectDirectory.convention(layout.projectDirectory)
-          buildDirectory.convention(layout.buildDirectory)
-          excludedContentTypePatterns.convention(extension.excludedContentTypePatterns)
-          includedContentTypePatterns.convention(extension.includedContentTypePatterns)
-          includeUnrecognizedContentType.convention(extension.includeUnrecognizedContentType)
-          magicWord.convention(extension.magicWord)
-        }
-
-      extension.scanDirectories.configureEach {
-        checkForCopiedCode.configure { sourceFiles.from(asFileTree) }
-      }
-
-      plugins.withType(JavaBasePlugin::class.java) {
-        extensions.getByType(SourceSetContainer::class.java).configureEach {
-          allSource.srcDirs
-            .filter { sourceDir -> !sourceDir.startsWith(layout.buildDirectory.get().asFile) }
-            .forEach { sourceDir ->
-              checkForCopiedCode.configure { sourceFiles.from(fileTree(sourceDir)) }
-            }
-        }
+    if (rootProject == this) {
+      tasks.register(
+        CHECK_COPIED_CODE_MENTIONS_EXIST_TASK_NAME,
+        CheckCopiedCodeMentionsExistTask::class.java,
+      ) {
+        licenseFile.convention(extension.licenseFile)
+        rootDirectory.convention(layout.projectDirectory)
       }
 
       tasks
         .matching { task -> task.name == "check" }
-        .configureEach { dependsOn(CHECK_FOR_COPIED_CODE_TASK_NAME) }
+        .configureEach { dependsOn(CHECK_COPIED_CODE_MENTIONS_EXIST_TASK_NAME) }
     }
+
+    val checkForCopiedCode =
+      tasks.register(CHECK_FOR_COPIED_CODE_TASK_NAME, CheckForCopiedCodeTask::class.java) {
+        licenseFile.convention(extension.licenseFile)
+        rootDirectory.convention(layout.settingsDirectory)
+        projectDirectory.convention(layout.projectDirectory)
+        buildDirectory.convention(layout.buildDirectory)
+        excludedContentTypePatterns.convention(extension.excludedContentTypePatterns)
+        includedContentTypePatterns.convention(extension.includedContentTypePatterns)
+        includeUnrecognizedContentType.convention(extension.includeUnrecognizedContentType)
+        magicWord.convention(extension.magicWord)
+      }
+
+    extension.scanDirectories.configureEach {
+      checkForCopiedCode.configure { sourceFiles.from(asFileTree) }
+    }
+
+    plugins.withType(JavaBasePlugin::class.java) {
+      extensions.getByType(SourceSetContainer::class.java).configureEach {
+        allSource.srcDirs
+          .filter { sourceDir -> !sourceDir.startsWith(layout.buildDirectory.get().asFile) }
+          .forEach { sourceDir ->
+            checkForCopiedCode.configure { sourceFiles.from(fileTree(sourceDir)) }
+          }
+      }
+    }
+
+    tasks
+      .matching { task -> task.name == "check" }
+      .configureEach { dependsOn(CHECK_FOR_COPIED_CODE_TASK_NAME) }
+  }
 
   companion object {
     private const val CHECK_FOR_COPIED_CODE_TASK_NAME = "checkForCopiedCode"

@@ -34,32 +34,31 @@ import org.gradle.kotlin.dsl.register
  * Configures Apache project specific publishing tasks on the root project, for example the
  * source-tarball related tasks.
  */
-internal fun configureOnRootProject(project: Project) =
-  project.run {
-    apply<NexusPublishPlugin>()
+internal fun configureOnRootProject(project: Project) = project.run {
+  apply<NexusPublishPlugin>()
 
-    val isRelease = project.hasProperty("release")
+  val isRelease = project.hasProperty("release")
 
-    val sourceTarball = tasks.register<Exec>("sourceTarball")
-    sourceTarball.configure {
-      group = "build"
-      description =
-        "Generate a source tarball for a release to be uploaded to dist.apache.org/repos/dist"
+  val sourceTarball = tasks.register<Exec>("sourceTarball")
+  sourceTarball.configure {
+    group = "build"
+    description =
+      "Generate a source tarball for a release to be uploaded to dist.apache.org/repos/dist"
 
-      outputs.upToDateWhen { false }
-      outputs.cacheIf { false }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
 
-      val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-      doFirst { mkdir(e.distributionDir) }
+    val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+    doFirst { mkdir(e.distributionDir) }
 
-      // Use a fixed mtime for reproducible tarballs, using the same timestamp as jars do.
-      // Also don't use the git-internal gzip as it's not stable, see
-      // https://reproducible-builds.org/docs/archives/.
-      commandLine =
-        listOf(
-          "bash",
-          "-c",
-          """
+    // Use a fixed mtime for reproducible tarballs, using the same timestamp as jars do.
+    // Also don't use the git-internal gzip as it's not stable, see
+    // https://reproducible-builds.org/docs/archives/.
+    commandLine =
+      listOf(
+        "bash",
+        "-c",
+        """
         git \
           archive \
           --prefix="${e.baseName.get()}/" \
@@ -67,88 +66,88 @@ internal fun configureOnRootProject(project: Project) =
           --mtime="1980-02-01 00:00:00 UTC" \
           HEAD | gzip -6 --no-name > "${e.sourceTarball.get().asFile.relativeTo(projectDir)}"
           """
-            .trimIndent(),
+          .trimIndent(),
+      )
+    workingDir(project.projectDir)
+
+    outputs.file(e.sourceTarball)
+  }
+
+  digestTaskOutputs(sourceTarball)
+
+  signTaskOutputs(sourceTarball)
+
+  val releaseEmailTemplate = tasks.register("releaseEmailTemplate")
+  releaseEmailTemplate.configure {
+    group = "publishing"
+    description =
+      "Generate release-vote email subject + body, including the staging repository URL, if run during the Maven release."
+
+    mustRunAfter("initializeApacheStagingRepository")
+
+    // Capture project-derived values at configuration time to avoid
+    // Task.getProject() at execution time (deprecated in Gradle 10).
+    val publishingHelperExt = project.extensions.getByType(PublishingHelperExtension::class.java)
+    val nexusPublishExt = project.extensions.getByType(NexusPublishExtension::class.java)
+    val rootProject = project.rootProject
+    val gradle = project.gradle
+    val projectVersion = project.version
+
+    doFirst {
+      val asfName = publishingHelperExt.asfProjectId.get()
+
+      val gitInfo = GitInfo.memoized(rootProject)
+      val gitCommitId = gitInfo.gitHead
+      val gitTag = gitInfo.gitDescribe
+      val rcNumber = Regex("-rc(\\d+)$").find(gitTag)?.groupValues?.get(1) ?: "<RC_NUMBER>"
+
+      val repos = nexusPublishExt.repositories
+      val repo = repos.iterator().next()
+
+      val stagingRepositoryUrlRegistryRegistration =
+        gradle.sharedServices.registrations.named<
+          BuildServiceRegistration<StagingRepositoryDescriptorRegistryBuildService, *>
+        >(
+          "stagingRepositoryUrlRegistry"
         )
-      workingDir(project.projectDir)
-
-      outputs.file(e.sourceTarball)
-    }
-
-    digestTaskOutputs(sourceTarball)
-
-    signTaskOutputs(sourceTarball)
-
-    val releaseEmailTemplate = tasks.register("releaseEmailTemplate")
-    releaseEmailTemplate.configure {
-      group = "publishing"
-      description =
-        "Generate release-vote email subject + body, including the staging repository URL, if run during the Maven release."
-
-      mustRunAfter("initializeApacheStagingRepository")
-
-      // Capture project-derived values at configuration time to avoid
-      // Task.getProject() at execution time (deprecated in Gradle 10).
-      val publishingHelperExt = project.extensions.getByType(PublishingHelperExtension::class.java)
-      val nexusPublishExt = project.extensions.getByType(NexusPublishExtension::class.java)
-      val rootProject = project.rootProject
-      val gradle = project.gradle
-      val projectVersion = project.version
-
-      doFirst {
-        val asfName = publishingHelperExt.asfProjectId.get()
-
-        val gitInfo = GitInfo.memoized(rootProject)
-        val gitCommitId = gitInfo.gitHead
-        val gitTag = gitInfo.gitDescribe
-        val rcNumber = Regex("-rc(\\d+)$").find(gitTag)?.groupValues?.get(1) ?: "<RC_NUMBER>"
-
-        val repos = nexusPublishExt.repositories
-        val repo = repos.iterator().next()
-
-        val stagingRepositoryUrlRegistryRegistration =
-          gradle.sharedServices.registrations.named<
-            BuildServiceRegistration<StagingRepositoryDescriptorRegistryBuildService, *>
-          >(
-            "stagingRepositoryUrlRegistry"
-          )
-        val stagingRepoUrl =
-          if (stagingRepositoryUrlRegistryRegistration.isPresent) {
-            val stagingRepositoryUrlRegistryBuildServiceRegistration =
-              stagingRepositoryUrlRegistryRegistration.get()
-            val stagingRepositoryUrlRegistryService =
-              stagingRepositoryUrlRegistryBuildServiceRegistration.getService()
-            if (stagingRepositoryUrlRegistryService.isPresent) {
-              val registry = stagingRepositoryUrlRegistryService.get().registry
-              try {
-                val stagingRepoDesc = registry.get(repo.name)
-                val stagingRepoId = stagingRepoDesc.stagingRepositoryId
-                "https://repository.apache.org/content/repositories/$stagingRepoId/"
-              } catch (e: IllegalStateException) {
-                "NO STAGING REPOSITORY ($e)"
-              }
-            } else {
-              "NO STAGING REPOSITORY (no registry service) !!"
+      val stagingRepoUrl =
+        if (stagingRepositoryUrlRegistryRegistration.isPresent) {
+          val stagingRepositoryUrlRegistryBuildServiceRegistration =
+            stagingRepositoryUrlRegistryRegistration.get()
+          val stagingRepositoryUrlRegistryService =
+            stagingRepositoryUrlRegistryBuildServiceRegistration.getService()
+          if (stagingRepositoryUrlRegistryService.isPresent) {
+            val registry = stagingRepositoryUrlRegistryService.get().registry
+            try {
+              val stagingRepoDesc = registry.get(repo.name)
+              val stagingRepoId = stagingRepoDesc.stagingRepositoryId
+              "https://repository.apache.org/content/repositories/$stagingRepoId/"
+            } catch (e: IllegalStateException) {
+              "NO STAGING REPOSITORY ($e)"
             }
           } else {
-            "NO STAGING REPOSITORY (no build service) !!"
+            "NO STAGING REPOSITORY (no registry service) !!"
           }
+        } else {
+          "NO STAGING REPOSITORY (no build service) !!"
+        }
 
-        val asfProject = AsfProject.memoized(rootProject, asfName)
-        val asfProjectName =
-          publishingHelperExt.overrideName.orElse("Apache ${asfProject.name}").get()
+      val asfProject = AsfProject.memoized(rootProject, asfName)
+      val asfProjectName =
+        publishingHelperExt.overrideName.orElse("Apache ${asfProject.name}").get()
 
-        val emailTemplatesDir = project.layout.buildDirectory.dir("email-templates").get().asFile
-        emailTemplatesDir.mkdirs()
-        val subjectFile =
-          emailTemplatesDir.resolve("${publishingHelperExt.baseName.get()}.vote-email-subject.txt")
-        val bodyFile =
-          emailTemplatesDir.resolve("${publishingHelperExt.baseName.get()}.vote-email-body.txt")
+      val emailTemplatesDir = project.layout.buildDirectory.dir("email-templates").get().asFile
+      emailTemplatesDir.mkdirs()
+      val subjectFile =
+        emailTemplatesDir.resolve("${publishingHelperExt.baseName.get()}.vote-email-subject.txt")
+      val bodyFile =
+        emailTemplatesDir.resolve("${publishingHelperExt.baseName.get()}.vote-email-body.txt")
 
-        val emailSubject = "[VOTE] Release $asfProjectName $projectVersion (rc$rcNumber)"
-        subjectFile.writeText(emailSubject)
+      val emailSubject = "[VOTE] Release $asfProjectName $projectVersion (rc$rcNumber)"
+      subjectFile.writeText(emailSubject)
 
-        val emailBody =
-          """
+      val emailBody =
+        """
               Hi everyone,
 
               I propose that we release the following RC as the official $asfProjectName $version release.
@@ -184,8 +183,8 @@ internal fun configureOnRootProject(project: Project) =
               This vote will pass if there are 3 binding +1 votes and more binding +1 votes than -1 votes.
             """
 
-        logger.lifecycle(
-          """
+      logger.lifecycle(
+        """
 
 
               The email for your release vote mail:
@@ -200,17 +199,17 @@ internal fun configureOnRootProject(project: Project) =
               $emailBody
 
               """
-            .trimIndent()
-        )
-        bodyFile.writeText(emailBody.trimIndent())
-      }
+          .trimIndent()
+      )
+      bodyFile.writeText(emailBody.trimIndent())
     }
-
-    if (isRelease) {
-      sourceTarball.configure { finalizedBy(releaseEmailTemplate) }
-    }
-
-    tasks
-      .matching { task -> task.name == "closeApacheStagingRepository" }
-      .configureEach { mustRunAfter(releaseEmailTemplate) }
   }
+
+  if (isRelease) {
+    sourceTarball.configure { finalizedBy(releaseEmailTemplate) }
+  }
+
+  tasks
+    .matching { task -> task.name == "closeApacheStagingRepository" }
+    .configureEach { mustRunAfter(releaseEmailTemplate) }
+}
