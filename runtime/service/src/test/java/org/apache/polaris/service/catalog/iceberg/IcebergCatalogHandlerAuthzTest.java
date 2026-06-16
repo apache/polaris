@@ -20,8 +20,8 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.Profiles;
 
 @QuarkusTest
-@TestProfile(PolarisAuthzTestBase.Profile.class)
+@TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class IcebergCatalogHandlerAuthzTest extends AbstractIcebergCatalogHandlerAuthzTest {}

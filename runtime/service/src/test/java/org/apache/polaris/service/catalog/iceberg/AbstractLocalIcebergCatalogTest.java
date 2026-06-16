@@ -135,7 +135,6 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
@@ -200,20 +199,6 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           .withPartitionPath("id_bucket=0") // easy way to set partition data for now
           .withRecordCount(1)
           .build();
-
-  public static class Profile extends Profiles.DefaultProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"", "true")
-          .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
-          .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
-          .put("polaris.test.rootAugmentor.enabled", "true")
-          .put("polaris.event-listener.types", "test")
-          .build();
-    }
-  }
 
   private static final String VIEW_QUERY = "select * from ns1.layer1_table";
 

@@ -27,12 +27,13 @@ import java.util.stream.Stream;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
 @QuarkusTest
-@TestProfile(PolarisAuthzTestBase.Profile.class)
+@TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Inject GenericTableCatalogHandlerFactory genericTableCatalogHandlerFactory;
