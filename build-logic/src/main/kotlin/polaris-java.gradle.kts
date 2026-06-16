@@ -89,22 +89,41 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.errorprone.disableWarningsInGeneratedCode = true
   options.errorprone.excludedPaths =
     ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated(-openapi)?/.*"
-  val errorproneRules = rootProject.projectDir.resolve("codestyle/errorprone-rules.properties")
+  val errorproneRules =
+    rootProject.layout.projectDirectory.file("codestyle/errorprone-rules.properties")
   inputs.file(errorproneRules).withPathSensitivity(PathSensitivity.RELATIVE)
-  options.errorprone.checks.putAll(provider { memoizedErrorproneRules(errorproneRules) })
+  options.errorprone.checks.putAll(
+    provider {
+      val service =
+        project.gradle.sharedServices.registerIfAbsent(
+          "errorProneConfig",
+          ErrorProneConfigService::class.java,
+        ) {
+          parameters.configFile = errorproneRules
+        }
+      service.get().errorproneConfig
+    }
+  )
 }
 
-private fun memoizedErrorproneRules(rulesFile: File): Map<String, CheckSeverity> =
-  rulesFile.reader().use {
-    val rules = Properties()
-    rules.load(it)
-    rules
-      .mapKeys { e -> (e.key as String).trim() }
-      .mapValues { e -> (e.value as String).trim() }
-      .filter { e -> e.key.isNotEmpty() && e.value.isNotEmpty() }
-      .mapValues { e -> CheckSeverity.valueOf(e.value) }
-      .toMap()
+abstract class ErrorProneConfigService : BuildService<ErrorProneConfigService.Parameters> {
+  interface Parameters : BuildServiceParameters {
+    val configFile: RegularFileProperty
   }
+
+  val errorproneConfig: Map<String, CheckSeverity> by lazy {
+    parameters.configFile.get().asFile.reader().use {
+      val rules = Properties()
+      rules.load(it)
+      rules
+        .mapKeys { e -> (e.key as String).trim() }
+        .mapValues { e -> (e.value as String).trim() }
+        .filter { e -> e.key.isNotEmpty() && e.value.isNotEmpty() }
+        .mapValues { e -> CheckSeverity.valueOf(e.value) }
+        .toMap()
+    }
+  }
+}
 
 tasks.register("compileAll") {
   group = "build"
