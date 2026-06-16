@@ -85,12 +85,16 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
   @Override
   public boolean handleTask(TaskEntity cleanupTask, CallContext callContext) {
-    IcebergTableLikeEntity tableEntity = tryGetTableEntity(cleanupTask).orElseThrow();
+    IcebergTableLikeEntity entity = tryGetTableEntity(cleanupTask).orElseThrow();
 
-    if (tableEntity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
-      return handleViewCleanup(cleanupTask, tableEntity);
+    if (entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+      return handleViewCleanup(cleanupTask, entity);
     }
+    return handleTableCleanup(cleanupTask, entity, callContext);
+  }
 
+  private boolean handleTableCleanup(
+      TaskEntity cleanupTask, IcebergTableLikeEntity tableEntity, CallContext callContext) {
     LOGGER
         .atInfo()
         .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
