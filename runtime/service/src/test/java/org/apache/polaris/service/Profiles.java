@@ -163,14 +163,12 @@ public final class Profiles {
       return Map.of(
           "polaris.metrics.tags.environment",
           "prod",
-          "polaris.realm-context.type",
-          "test",
+          "polaris.metrics.user-principal-tag.enable-in-api-metrics",
+          "false",
           "polaris.metrics.realm-id-tag.enable-in-api-metrics",
           "true",
           "polaris.metrics.realm-id-tag.enable-in-http-metrics",
-          "true",
-          "polaris.metrics.user-principal-tag.enable-in-api-metrics",
-          "false");
+          "true");
     }
   }
 
@@ -193,7 +191,14 @@ public final class Profiles {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.metrics.tags.environment", "prod", "polaris.realm-context.type", "test");
+          "polaris.metrics.tags.environment",
+          "prod",
+          "polaris.metrics.user-principal-tag.enable-in-api-metrics",
+          "false",
+          "polaris.metrics.realm-id-tag.enable-in-api-metrics",
+          "false",
+          "polaris.metrics.realm-id-tag.enable-in-http-metrics",
+          "false");
     }
   }
 
