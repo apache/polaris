@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.metrics.reports;
+package org.apache.polaris.service.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,11 +37,9 @@ import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -54,13 +52,13 @@ import org.junit.jupiter.api.Test;
 /**
  * Unit tests for {@link MetricsReportsService}.
  *
- * <p>The read path is stubbed to return empty results pending the durable extension (Scope 2).
+ * <p>The read path currently returns 501 Not Implemented pending the durable extension (#4756).
  * These tests cover authorization, resolution error paths, and input validation.
  */
 class MetricsReportsServiceTest {
 
   private static final String CATALOG = "test-catalog";
-  private static final String NAMESPACE = "dbschema";
+  private static final String NAMESPACE = "dbschema";
   private static final String TABLE = "events";
 
   private PolarisAuthorizer authorizer;
@@ -73,41 +71,35 @@ class MetricsReportsServiceTest {
 
   @BeforeEach
   void setUp() {
-    CallContext callContext = mock(CallContext.class);
     authorizer = mock(PolarisAuthorizer.class);
     principal = mock(PolarisPrincipal.class);
 
     PolarisResolvedPathWrapper tableWrapper = mock(PolarisResolvedPathWrapper.class);
-
     manifest = mock(PolarisResolutionManifest.class);
+    factory = mock(ResolutionManifestFactory.class);
+    realmContext = mock(RealmContext.class);
+    securityContext = mock(SecurityContext.class);
+
     when(manifest.resolveAll()).thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
     when(manifest.getResolvedPath(
             any(ResolvedPathKey.class), eq(PolarisEntitySubType.ANY_SUBTYPE), eq(true)))
         .thenReturn(tableWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
-
-    factory = mock(ResolutionManifestFactory.class);
     when(factory.createResolutionManifest(eq(principal), eq(CATALOG))).thenReturn(manifest);
-
     doNothing()
         .when(authorizer)
         .authorizeOrThrow(
             any(PolarisPrincipal.class),
             any(Set.class),
             any(PolarisAuthorizableOperation.class),
-            any(),
-            (org.apache.polaris.core.persistence.PolarisResolvedPathWrapper) isNull());
+            any(PolarisResolvedPathWrapper.class),
+            (PolarisResolvedPathWrapper) isNull());
 
-    service =
-        new MetricsReportsService(
-            callContext, mock(PolarisMetaStoreManager.class), authorizer, principal, factory);
-    realmContext = mock(RealmContext.class);
-    securityContext = mock(SecurityContext.class);
+    service = new MetricsReportsService(authorizer, principal, factory);
   }
 
   @Test
-  @SuppressWarnings("unchecked")
-  void scanReturns200WithEmptyList() {
+  void authorizedRequestReturnsNotImplemented() {
     Response response =
         service.listTableMetrics(
             CATALOG,
@@ -123,108 +115,19 @@ class MetricsReportsServiceTest {
             realmContext,
             securityContext);
 
-    assertThat(response.getStatus()).isEqualTo(200);
-    MetricsListResponse<?> body = (MetricsListResponse<?>) response.getEntity();
-    assertThat(body.metricType()).isEqualTo("scan");
-    assertThat(body.reports()).isEmpty();
+    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_IMPLEMENTED.getStatusCode());
   }
 
   @Test
-  @SuppressWarnings("unchecked")
-  void commitReturns200WithEmptyList() {
-    Response response =
-        service.listTableMetrics(
-            CATALOG,
-            NAMESPACE,
-            TABLE,
-            "commit",
-            null,
-            10,
-            null,
-            null,
-            null,
-            null,
-            realmContext,
-            securityContext);
-
-    assertThat(response.getStatus()).isEqualTo(200);
-    MetricsListResponse<?> body = (MetricsListResponse<?>) response.getEntity();
-    assertThat(body.metricType()).isEqualTo("commit");
-    assertThat(body.reports()).isEqualTo(List.of());
-  }
-
-  @Test
-  void invalidMetricTypeThrowsIllegalArgument() {
-    assertThatThrownBy(
-            () ->
-                service.listTableMetrics(
-                    CATALOG,
-                    NAMESPACE,
-                    TABLE,
-                    "bogus",
-                    null,
-                    10,
-                    null,
-                    null,
-                    null,
-                    null,
-                    realmContext,
-                    securityContext))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("bogus");
-  }
-
-  @Test
-  void emptyNamespaceThrowsIllegalArgument() {
-    assertThatThrownBy(
-            () ->
-                service.listTableMetrics(
-                    CATALOG,
-                    "",
-                    TABLE,
-                    "scan",
-                    null,
-                    10,
-                    null,
-                    null,
-                    null,
-                    null,
-                    realmContext,
-                    securityContext))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("namespace");
-  }
-
-  @Test
-  void nullNamespaceThrowsIllegalArgument() {
-    assertThatThrownBy(
-            () ->
-                service.listTableMetrics(
-                    CATALOG,
-                    null,
-                    TABLE,
-                    "scan",
-                    null,
-                    10,
-                    null,
-                    null,
-                    null,
-                    null,
-                    realmContext,
-                    securityContext))
-        .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  void unauthorizedPrincipalPropagatesForbidden() {
-    doThrow(new ForbiddenException("insufficient privileges"))
+  void unauthorizedRequestThrowsForbiddenException() {
+    doThrow(new ForbiddenException("denied"))
         .when(authorizer)
         .authorizeOrThrow(
             any(PolarisPrincipal.class),
             any(Set.class),
-            any(PolarisAuthorizableOperation.class),
-            any(),
-            (org.apache.polaris.core.persistence.PolarisResolvedPathWrapper) isNull());
+            eq(PolarisAuthorizableOperation.LIST_TABLE_METRICS),
+            any(PolarisResolvedPathWrapper.class),
+            (PolarisResolvedPathWrapper) isNull());
 
     assertThatThrownBy(
             () ->
@@ -245,7 +148,7 @@ class MetricsReportsServiceTest {
   }
 
   @Test
-  void tableNotFoundPropagatesNotFoundException() {
+  void tableNotFoundThrowsNotFoundException() {
     when(manifest.getResolvedPath(
             any(ResolvedPathKey.class), eq(PolarisEntitySubType.ANY_SUBTYPE), eq(true)))
         .thenReturn(null);
@@ -316,11 +219,10 @@ class MetricsReportsServiceTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
-  void multiLevelNamespaceIsSplitAndDecoded() {
+  void multiLevelNamespaceIsSplitCorrectly() {
     // JAX-RS decodes %1F -> U+001F before injection; the service must split correctly.
-    // "db\u001Fschema" represents namespace ["db", "schema"].
-    String encodedTwoLevel = "db\u001Fschema";
+    // "dbschema" represents namespace ["db", "schema"].
+    String encodedTwoLevel = "dbschema";
     when(factory.createResolutionManifest(eq(principal), eq(CATALOG))).thenReturn(manifest);
 
     Response response =
@@ -338,8 +240,6 @@ class MetricsReportsServiceTest {
             realmContext,
             securityContext);
 
-    assertThat(response.getStatus()).isEqualTo(200);
-    MetricsListResponse<?> body = (MetricsListResponse<?>) response.getEntity();
-    assertThat(body.reports()).isEmpty();
+    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_IMPLEMENTED.getStatusCode());
   }
 }

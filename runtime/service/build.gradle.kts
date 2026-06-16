@@ -30,6 +30,7 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
+  implementation(project(":polaris-api-metrics-reports-service"))
   implementation(project(":polaris-extensions-metrics-reports-spi"))
 
   runtimeOnly(project(":polaris-relational-jdbc"))
@@ -204,6 +205,10 @@ dependencies {
   testFixturesImplementation("com.azure:azure-core")
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
+
+  // Provides jakarta.ws.rs.ext.RuntimeDelegate needed to build Response objects in plain unit tests
+  testRuntimeOnly(enforcedPlatform(libs.quarkus.bom))
+  testRuntimeOnly("io.quarkus.resteasy.reactive:resteasy-reactive")
 
   // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
   // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.

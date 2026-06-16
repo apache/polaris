@@ -16,15 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.metrics.reports;
+package org.apache.polaris.service.metrics;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
-import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -32,11 +30,9 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -45,34 +41,29 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.metrics.api.PolarisCatalogsApiService;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Service implementation for the Metrics Reports API.
  *
- * <p>Resolves catalog/namespace/table names to internal IDs and performs authorization. The read
- * path currently returns empty results; durable query backing will be provided by the {@code
- * extensions/metrics-reports/persistence/relational-jdbc} module in a follow-up.
+ * <p>Resolves catalog/namespace/table names to internal IDs and performs authorization. In this
+ * release the read path returns HTTP 501 Not Implemented; durable query backing is provided by the
+ * {@code polaris-extensions-metrics-reports-jdbc} extension in a follow-up release.
  *
- * <p>TODO: wire durable metrics query in the follow-up durable extension PR.
+ * <p>TODO (#4756): wire durable metrics query provider when the extension is installed.
  */
 @RequestScoped
 public class MetricsReportsService implements PolarisCatalogsApiService {
 
-  private final CallContext callContext;
-  private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisAuthorizer authorizer;
   private final PolarisPrincipal polarisPrincipal;
   private final ResolutionManifestFactory resolutionManifestFactory;
 
   @Inject
   public MetricsReportsService(
-      @Nonnull CallContext callContext,
-      @Nonnull PolarisMetaStoreManager metaStoreManager,
-      @Nonnull PolarisAuthorizer authorizer,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull ResolutionManifestFactory resolutionManifestFactory) {
-    this.callContext = callContext;
-    this.metaStoreManager = metaStoreManager;
+      @NonNull PolarisAuthorizer authorizer,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull ResolutionManifestFactory resolutionManifestFactory) {
     this.authorizer = authorizer;
     this.polarisPrincipal = polarisPrincipal;
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -98,13 +89,11 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
 
     resolveAndAuthorizeTableMetrics(catalogName, identifier);
 
-    return switch (metricType) {
-      case "scan" -> Response.ok(new MetricsListResponse<>("scan", null, List.of())).build();
-      case "commit" -> Response.ok(new MetricsListResponse<>("commit", null, List.of())).build();
-      default ->
-          throw new IllegalArgumentException(
-              "Invalid metricType: " + metricType + "; must be 'scan' or 'commit'");
-    };
+    return Response.status(Response.Status.NOT_IMPLEMENTED)
+        .entity(
+            "Durable metrics query is not available in this deployment. "
+                + "Install the polaris-extensions-metrics-reports-jdbc extension to enable it.")
+        .build();
   }
 
   private void resolveAndAuthorizeTableMetrics(String catalogName, TableIdentifier identifier) {
@@ -147,7 +136,6 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     if (encodedNamespace == null || encodedNamespace.isEmpty()) {
       throw new IllegalArgumentException("namespace must not be empty");
     }
-    // JAX-RS @PathParam URL-decodes %1F -> U+001F before injection; split on the raw separator.
     return NamespaceUtils.splitNamespace(
         encodedNamespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
   }

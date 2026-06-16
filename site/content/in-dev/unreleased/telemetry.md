@@ -193,66 +193,31 @@ MDC context is propagated across threads, including in `TaskExecutor` threads.
 
 ## Iceberg Metrics Reports API
 
-Polaris can persist Iceberg scan and commit metrics reports submitted by clients to the database.
-To enable persistence, set the following property:
+Polaris collects Iceberg scan and commit metrics reports submitted by clients and routes them to a
+configured reporter. Two built-in reporters are provided:
+
+| Type | Description |
+|------|-------------|
+| `log` (default) | Logs each report at INFO level via SLF4J. |
+| `no-op` | Silently discards all reports. |
+
+The active reporter is selected with:
 
 ```properties
-polaris.iceberg-metrics.reporting.type=persisting
+polaris.iceberg-metrics.reporting.type=log
 ```
 
-Once enabled, persisted reports are queryable via the Metrics Reports API at
-`/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}`.
+### Durable persistence (extension)
 
-### Prerequisites
+Durable storage of metrics reports and querying via the REST API at
+`/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}` requires the
+`polaris-extensions-metrics-reports-jdbc` extension. Without it, the query endpoint returns HTTP
+501. See the extension documentation for installation and configuration details.
+
+### Prerequisites for the query API
 
 The caller must hold the `TABLE_READ_METRICS` privilege on the target table (or a privilege that
 implies it, such as `TABLE_READ_DATA`, `TABLE_FULL_METADATA`, or `CATALOG_MANAGE_CONTENT`).
-
-### Query parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `metricType` | string (required) | Either `scan` or `commit`. |
-| `pageToken` | string | Pagination cursor from a previous response's `nextPageToken`. |
-| `pageSize` | integer | Number of records per page (default: 100). |
-| `snapshotId` | long | Filter to reports for a specific snapshot. |
-| `principalName` | string | Filter to reports submitted by a specific principal. |
-| `timestampFrom` | long (epoch ms) | Include only reports at or after this timestamp. |
-| `timestampTo` | long (epoch ms) | Include only reports before this timestamp. |
-
-Results are returned in descending timestamp order. The response includes a `nextPageToken` field;
-pass its value as `pageToken` in the next request to retrieve the following page. A `null`
-`nextPageToken` indicates the last page.
-
-### Response envelope
-
-Each report follows a stable envelope structure that separates identity fields from type-specific
-metrics. This allows the payload schema to evolve independently without breaking clients that only
-need the envelope fields for pagination or correlation.
-
-```json
-{
-  "metricType": "scan",
-  "nextPageToken": null,
-  "reports": [{
-    "id": "report-uuid",
-    "timestampMs": 1709337612345,
-    "actor":   { "principalName": "alice" },
-    "request": { "requestId": "req-1", "otelTraceId": "abc123", "otelSpanId": "def456" },
-    "object":  { "snapshotId": 99 },
-    "payload": {
-      "type": "iceberg.metrics.scan",
-      "version": 1,
-      "data": {
-        "resultDataFiles": 150,
-        "totalFileSizeBytes": 1073741824,
-        "totalPlanningDurationMs": 250,
-        "..."
-      }
-    }
-  }]
-}
-```
 
 See the [Metrics Reports API specification]({{% relref "polaris-api-specs/polaris-metrics-reports-api" %}})
 for the full schema reference.

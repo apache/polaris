@@ -18,10 +18,28 @@
  */
 package org.apache.polaris.extension.metrics.reports;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import java.time.Instant;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.metrics.MetricsReport;
+import org.apache.polaris.core.metrics.IcebergMetricsReporter;
 
-/** Request context associated with a metrics report. */
-public record MetricsReportRequest(
-    @JsonProperty("requestId") String requestId,
-    @JsonProperty("otelTraceId") String otelTraceId,
-    @JsonProperty("otelSpanId") String otelSpanId) {}
+/**
+ * No-op implementation of {@link IcebergMetricsReporter} that silently discards all metrics.
+ *
+ * <p>Selected when {@code polaris.iceberg-metrics.reporting.type} is set to {@code "no-op"}.
+ */
+@ApplicationScoped
+@Identifier("no-op")
+public class NoOpMetricsReporter implements IcebergMetricsReporter {
+
+  @Override
+  public void reportMetric(
+      String catalogName,
+      long catalogId,
+      TableIdentifier table,
+      long tableId,
+      MetricsReport metricsReport,
+      Instant receivedTimestamp) {}
+}

@@ -19,13 +19,9 @@
 
 plugins {
   id("polaris-server")
-  id("org.kordamp.gradle.jandex")
 }
 
 dependencies {
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
-
-  compileOnly(libs.jakarta.enterprise.cdi.api)
-  implementation(libs.smallrye.common.annotation)
 }
