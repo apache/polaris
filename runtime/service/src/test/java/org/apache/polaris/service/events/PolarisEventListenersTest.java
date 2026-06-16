@@ -24,10 +24,10 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.quarkus.runtime.BlockingOperationControl;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.common.annotation.Identifier;
-import io.vertx.core.Context;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.HashSet;
@@ -61,7 +61,7 @@ public class PolarisEventListenersTest {
 
     @Override
     public void onEvent(PolarisEvent event) {
-      assertThat(Context.isOnEventLoopThread()).isFalse();
+      assertThat(BlockingOperationControl.isBlockingAllowed()).isTrue();
       if (predicate.test(event)) {
         expectedEvents.add(event);
       } else {

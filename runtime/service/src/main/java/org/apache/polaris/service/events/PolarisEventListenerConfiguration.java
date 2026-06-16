@@ -84,12 +84,30 @@ public interface PolarisEventListenerConfiguration {
 
     /**
      * The thread pool size. The default is -1, which is interpreted as the number of available
-     * cores.
+     * listeners, capped by the number of cores
      */
     @WithDefault("-1")
     int poolSize();
 
-    /** The queue size. The default is -1, which is interpreted as unbounded. */
+    /**
+     * The queue size. The default is -1, which is interpreted as unbounded. This limit is applied
+     * globally and affects all listeners. To configure the per-listener queue size, use {@code
+     * polaris.event-listener.listener-backlog.queue-size} instead.
+     */
+    @WithDefault("-1")
+    int queueSize();
+  }
+
+  /** Configuration for per-listener event backlogs. */
+  ListenerBacklog listenerBacklog();
+
+  interface ListenerBacklog {
+
+    /**
+     * The per-listener backlog queue size. The default is -1, which is interpreted as unbounded. A
+     * bounded backlog means event delivery is best-effort and events will be dropped/logged when
+     * the backlog is full.
+     */
     @WithDefault("-1")
     int queueSize();
   }
