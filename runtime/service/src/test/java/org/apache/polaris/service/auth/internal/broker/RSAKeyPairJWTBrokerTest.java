@@ -108,4 +108,27 @@ public class RSAKeyPairJWTBrokerTest {
         .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
         .hasMessageContaining("Failed to verify the token");
   }
+
+  @Test
+  public void testVerifyRejectsTokenWithMissingIssuer() throws Exception {
+    var keyPair = PemUtils.generateKeyPair();
+
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
+    PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
+    KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    TokenBroker tokenBroker =
+        new RSAKeyPairJWTBroker(metastoreManager, polarisCallContext, 420, provider);
+
+    String tokenWithoutIssuer =
+        JWT.create()
+            .withSubject("principal")
+            .withClaim("active", true)
+            .sign(
+                Algorithm.RSA256(
+                    (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
+
+    assertThatThrownBy(() -> tokenBroker.verify(tokenWithoutIssuer))
+        .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
+        .hasMessageContaining("Failed to verify the token");
+  }
 }
