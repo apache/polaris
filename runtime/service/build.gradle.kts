@@ -30,7 +30,9 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
-  implementation(project(":polaris-api-metrics-reports-service"))
+  // compileOnly — MetricsReportsService implements PolarisCatalogsApiService from this module but
+  // we keep it off the transitive dep graph; runtime/server adds it to the runtime classpath.
+  compileOnly(project(":polaris-api-metrics-reports-service"))
   implementation(project(":polaris-extensions-metrics-reports-spi"))
 
   runtimeOnly(project(":polaris-relational-jdbc"))
@@ -127,6 +129,7 @@ dependencies {
   }
 
   testImplementation(project(":polaris-api-management-model"))
+  testImplementation(project(":polaris-api-metrics-reports-service"))
   testImplementation(project(":polaris-relational-jdbc"))
 
   testImplementation(project(":polaris-minio-testcontainer"))

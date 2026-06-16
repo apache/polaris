@@ -23,7 +23,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
-import org.apache.polaris.core.metrics.IcebergMetricsReporter;
+import org.apache.polaris.extension.metrics.IcebergMetricsReporter;
 
 /**
  * No-op implementation of {@link IcebergMetricsReporter} that silently discards all metrics.
