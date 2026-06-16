@@ -21,6 +21,7 @@ package org.apache.polaris.service.events;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 import io.smallrye.config.WithParentName;
 import java.util.Map;
 import java.util.Optional;
@@ -45,6 +46,13 @@ public interface PolarisEventListenerConfiguration {
    * PolarisEventListener} identifier.
    */
   Optional<Set<String>> types();
+
+  /**
+   * Comma-separated list of additional EventAttributes key names to deny from downstream listeners.
+   * These are added to the built-in denylist in {@link DefaultEventSanitizer}.
+   */
+  @WithName("denylisted-attributes")
+  Optional<Set<String>> denylistedAttributes();
 
   /** Configuration of each event listener type. */
   @WithParentName

@@ -109,7 +109,7 @@ val licenseNoticeElements by
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.
 artifacts {
-  add(quarkusRunner.name, provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") }) {
+  add(quarkusRunner.name, quarkusBuild.map { it.fastJar.resolve("quarkus-run.jar") }) {
     builtBy(quarkusBuild)
   }
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }

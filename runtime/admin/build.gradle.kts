@@ -58,6 +58,7 @@ dependencies {
 
   testImplementation(project(":polaris-runtime-test-common"))
   testFixturesApi(project(":polaris-core"))
+  testFixturesImplementation(project(":polaris-runtime-test-common"))
 
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
   testFixturesApi("io.quarkus:quarkus-junit")

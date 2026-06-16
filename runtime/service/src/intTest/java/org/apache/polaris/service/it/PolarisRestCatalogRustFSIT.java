@@ -18,9 +18,11 @@
  */
 package org.apache.polaris.service.it;
 
+import static org.apache.polaris.test.commons.MinioRustProfile.ACCESS_KEY;
+import static org.apache.polaris.test.commons.MinioRustProfile.SECRET_KEY;
+
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import java.net.URI;
 import java.util.List;
@@ -30,6 +32,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationBase;
+import org.apache.polaris.test.commons.MinioRustProfile;
 import org.apache.polaris.test.rustfs.Rustfs;
 import org.apache.polaris.test.rustfs.RustfsAccess;
 import org.apache.polaris.test.rustfs.RustfsExtension;
@@ -38,34 +41,19 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
-@TestProfile(PolarisRestCatalogRustFSIT.Profile.class)
+@TestProfile(MinioRustProfile.class)
 @ExtendWith(RustfsExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisRestCatalogRustFSIT extends PolarisRestCatalogIntegrationBase {
 
   protected static final String BUCKET_URI_PREFIX = "/rustfs-test-polaris";
-  protected static final String RUSTFS_ACCESS_KEY = "test-ak-123-polaris";
-  protected static final String RUSTFS_SECRET_KEY = "test-sk-123-polaris";
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .put("polaris.storage.aws.access-key", RUSTFS_ACCESS_KEY)
-          .put("polaris.storage.aws.secret-key", RUSTFS_SECRET_KEY)
-          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
-          .build();
-    }
-  }
 
   private static URI storageBase;
   private static String endpoint;
 
   @BeforeAll
   static void setup(
-      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY)
-          RustfsAccess rustfsAccess) {
+      @Rustfs(accessKey = ACCESS_KEY, secretKey = SECRET_KEY) RustfsAccess rustfsAccess) {
     storageBase = rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX);
     endpoint = rustfsAccess.s3endpoint();
   }
@@ -75,8 +63,8 @@ public class PolarisRestCatalogRustFSIT extends PolarisRestCatalogIntegrationBas
     return super.clientFileIOProperties()
         .put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
         .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
-        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), RUSTFS_ACCESS_KEY)
-        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), RUSTFS_SECRET_KEY);
+        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), ACCESS_KEY)
+        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_KEY);
   }
 
   @Override
@@ -96,8 +84,8 @@ public class PolarisRestCatalogRustFSIT extends PolarisRestCatalogIntegrationBas
     return ImmutableMap.<String, String>builder()
         .put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
         .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
-        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), RUSTFS_ACCESS_KEY)
-        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), RUSTFS_SECRET_KEY)
+        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), ACCESS_KEY)
+        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_KEY)
         .build();
   }
 }

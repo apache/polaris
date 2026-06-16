@@ -21,9 +21,9 @@ package publishing
 
 import groovy.namespace.QName
 import groovy.util.Node
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
-import org.gradle.api.artifacts.component.ModuleComponentSelector
 import org.gradle.api.publish.maven.MavenPublication
 
 /**
@@ -43,10 +43,23 @@ import org.gradle.api.publish.maven.MavenPublication
  * must be exactly the same when built by a release manager and by someone else to verify the built
  * artifact(s).
  */
-internal fun configurePom(project: Project, mavenPublication: MavenPublication, task: Task) =
+internal data class ParentPomCoordinates(
+  val groupId: String,
+  val artifactId: String,
+  val version: String,
+)
+
+internal fun configurePom(
+  project: Project,
+  parentPomCoordinates: ParentPomCoordinates?,
+  mavenPublication: MavenPublication,
+  task: Task,
+) =
   mavenPublication.run {
     pom {
-      if (project != project.rootProject) {
+      if (parentPomCoordinates != null) {
+        // Non-root Gradle projects.
+
         // Add the license to every pom to make it easier for downstream projects to retrieve the
         // license.
         licenses {
@@ -74,20 +87,24 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
               }
             }
           }
-          val parent = project.parent!!
-          // Add GAV to <parent> element
-          parentNode.appendNode("groupId", parent.group)
-          parentNode.appendNode("artifactId", parent.name)
-          parentNode.appendNode("version", parent.version)
 
-          addMissingMandatoryDependencyVersions(project, projectNode)
+          // Add GAV to <parent> element
+          parentNode.appendNode("groupId", parentPomCoordinates.groupId)
+          parentNode.appendNode("artifactId", parentPomCoordinates.artifactId)
+          parentNode.appendNode("version", parentPomCoordinates.version)
+
+          verifyMandatoryDependencyVersions(projectNode)
         }
       } else {
+        // Root Gradle projects.
+
         val mavenPom = this
+        val effectiveAsfProject = project.provider { EffectiveAsfProject.forProject(project) }
+        val projectVersion = project.version.toString()
 
         task.doFirst {
           mavenPom.run {
-            val prj = EffectiveAsfProject.forProject(project)
+            val prj = effectiveAsfProject.get()
             val asfProjectId = prj.asfProject.apacheId
 
             organization {
@@ -120,10 +137,9 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
               connection.set("scm:git:$codeRepoString")
               developerConnection.set("scm:git:$codeRepoString")
               url.set("$codeRepoString/tree/main")
-              val version = project.version.toString()
-              if (!version.endsWith("-SNAPSHOT")) {
+              if (!projectVersion.endsWith("-SNAPSHOT")) {
                 val tagPrefix: String = prj.tagPrefix().get()
-                tag.set("$tagPrefix-$version")
+                tag.set("$tagPrefix-$projectVersion")
               }
             }
             issueManagement { url.set(prj.issueTracker()) }
@@ -141,32 +157,17 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
   }
 
 /**
- * Scans the generated `pom.xml` for `<dependencies>` in `<dependencyManagement>` that do not have a
- * `<version>` and adds one, if possible. Maven kinda requires `<version>` tags there, even if the
+ * Verifies that the generated `pom.xml` for `<dependencies>` in `<dependencyManagement>` all have
+ * the mandatory `<version>` element. Maven kinda requires `<version>` tags there, even if the
  * `<dependency>` without a `<version>` is a bom and that bom's version is available transitively.
  */
-fun addMissingMandatoryDependencyVersions(project: Project, projectNode: Node) {
+private fun verifyMandatoryDependencyVersions(projectNode: Node) {
   xmlNode(xmlNode(projectNode, "dependencyManagement"), "dependencies")?.children()?.forEach {
     val dependency = it as Node
     if (xmlNode(dependency, "version") == null) {
       val depGroup = xmlNode(dependency, "groupId")!!.text()
       val depName = xmlNode(dependency, "artifactId")!!.text()
-
-      var depResult =
-        findDependency(project.configurations.findByName("runtimeClasspath"), depGroup, depName)
-      if (depResult == null) {
-        depResult =
-          findDependency(
-            project.configurations.findByName("testRuntimeClasspath"),
-            depGroup,
-            depName,
-          )
-      }
-
-      if (depResult != null) {
-        val req = depResult.requested as ModuleComponentSelector
-        dependency.appendNode("version", req.version)
-      }
+      throw GradleException("Missing mandatory dependency version for $depGroup:$depName")
     }
   }
 }

@@ -86,7 +86,7 @@ sourceSets { main { java { srcDir(generatedOpenApiSrcDir) } } }
 tasks.named<GenerateTask>("openApiGenerate") {
   inputs.dir(templatesDir)
   inputs.dir(specsDir)
-  actions.addFirst { delete { delete(generatedDir) } }
+  cleanupOutput = true
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

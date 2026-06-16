@@ -98,12 +98,22 @@ internal fun configureShadowPublishing(
     }
     // Sonatype requires the javadoc and sources jar to be present, but the
     // Shadow extension does not publish those.
-    component.addVariantsFromConfiguration(project.configurations.getByName("javadocElements")) {}
-    component.addVariantsFromConfiguration(project.configurations.getByName("sourcesElements")) {}
+    project.configurations
+      .matching { it.name == "javadocElements" || it.name == "sourcesElements" }
+      .configureEach { component.addVariantsFromConfiguration(this) {} }
     mavenPublication.from(component)
 
     // This a replacement to add dependencies to the pom, if necessary. Equivalent to
     // 'shadowExtension.component(mavenPublication)', which we cannot use.
+
+    val pomDependencies =
+      project.provider {
+        project.configurations
+          .getByName("shadow")
+          .allDependencies
+          .filter { it is ProjectDependency }
+          .map { PomDependency(it.group, it.name, it.version) }
+      }
 
     mavenPublication.pom {
       withXml {
@@ -112,15 +122,15 @@ internal fun configureShadowPublishing(
         val dependenciesNode =
           if ((depNode as NodeList).isNotEmpty()) depNode[0] as Node
           else node.appendNode("dependencies")
-        project.configurations.getByName("shadow").allDependencies.forEach {
-          if (it is ProjectDependency) {
-            val dependencyNode = dependenciesNode.appendNode("dependency")
-            dependencyNode.appendNode("groupId", it.group)
-            dependencyNode.appendNode("artifactId", it.name)
-            dependencyNode.appendNode("version", it.version)
-            dependencyNode.appendNode("scope", "runtime")
-          }
+        pomDependencies.get().forEach {
+          val dependencyNode = dependenciesNode.appendNode("dependency")
+          dependencyNode.appendNode("groupId", it.group)
+          dependencyNode.appendNode("artifactId", it.name)
+          dependencyNode.appendNode("version", it.version)
+          dependencyNode.appendNode("scope", "runtime")
         }
       }
     }
   }
+
+private data class PomDependency(val group: String?, val name: String, val version: String?)

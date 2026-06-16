@@ -16,30 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
 
-import java.util.stream.Stream;
-import org.junit.jupiter.params.Parameter;
-import org.junit.jupiter.params.ParameterizedClass;
-import org.junit.jupiter.params.provider.MethodSource;
+package org.apache.polaris.test.commons;
 
-/**
- * Runs {@link org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest} integration
- * tests against every H2 schema version on the classpath.
- */
-@ParameterizedClass
-@MethodSource("schemaVersions")
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplSchemaTest
-    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
+import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.Map;
 
-  @Parameter int schemaVersion;
-
-  static Stream<Integer> schemaVersions() {
-    return H2SchemaVersions.discoverAsStream();
-  }
+public class MinioRustProfile implements QuarkusTestProfile {
+  public static final String SECRET_KEY = "test-sk-123";
+  public static final String ACCESS_KEY = "test-ak-123";
+  public static final Map<String, String> CONFIG_OVERRIDES =
+      ImmutableMap.<String, String>builder()
+          .put("polaris.storage.aws.access-key", ACCESS_KEY)
+          .put("polaris.storage.aws.secret-key", SECRET_KEY)
+          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
+          .build();
 
   @Override
-  public int schemaVersion() {
-    return schemaVersion;
+  public Map<String, String> getConfigOverrides() {
+    return CONFIG_OVERRIDES;
   }
 }

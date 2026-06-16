@@ -17,14 +17,19 @@
  * under the License.
  */
 
-import asf.AsfProject.Companion.unsafeCast
 import java.util.Properties
 import kotlin.jvm.java
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.api.file.FileCollection
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
+import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.named
+import org.gradle.process.CommandLineArgumentProvider
 import org.kordamp.gradle.plugin.jandex.JandexExtension
 import org.kordamp.gradle.plugin.jandex.JandexPlugin
 import publishing.PublishingHelperPlugin
@@ -35,6 +40,7 @@ plugins {
   `java-test-fixtures`
   `jvm-test-suite`
   checkstyle
+  id("polaris-base")
   id("polaris-spotless")
   id("polaris-reproducible")
   id("jacoco-report-aggregation")
@@ -43,15 +49,16 @@ plugins {
 
 apply<PublishingHelperPlugin>()
 
+private val libs: VersionCatalog by lazy { versionCatalogs.named("libs") }
+
+private fun requiredLib(name: String): Provider<MinimalExternalModuleDependency> =
+  libs.findLibrary(name).orElseThrow {
+    GradleException("$name version not found in libs.versions.toml")
+  }
+
 plugins.withType<JandexPlugin>().configureEach {
   extensions.getByType(JandexExtension::class).run {
-    version =
-      versionCatalogs
-        .named("libs")
-        .findLibrary("smallrye-jandex")
-        .orElseThrow { GradleException("jandex version not found in libs.versions.toml") }
-        .get()
-        .version
+    version = requiredLib("smallrye-jandex").get().version
     // https://smallrye.io/jandex/jandex/3.4.0/index.html#persistent_index_format_versions
     indexVersion = 12
   }
@@ -99,52 +106,34 @@ private fun memoizedErrorproneRules(rulesFile: File): Map<String, CheckSeverity>
       .toMap()
   }
 
-tasks.register("compileAll").configure {
+tasks.register("compileAll") {
   group = "build"
   description = "Runs all compilation and jar tasks"
   dependsOn(tasks.withType<AbstractCompile>(), tasks.withType<ProcessResources>())
 }
 
-tasks.register("format").configure {
+tasks.register("format") {
   group = "verification"
   description = "Runs all code formatting tasks"
   dependsOn("spotlessApply")
 }
 
-tasks.named<Test>("test").configure { jvmArgs("-Duser.language=en") }
+tasks.named<Test>("test") { jvmArgs("-Duser.language=en") }
 
 testing {
   suites {
+    @Suppress("UnstableApiUsage")
     withType<JvmTestSuite> {
-      val libs = versionCatalogs.named("libs")
-
-      useJUnitJupiter(
-        libs
-          .findLibrary("junit-bom")
-          .orElseThrow { GradleException("junit-bom not declared in libs.versions.toml") }
-          .map { it.version!! }
-      )
+      useJUnitJupiter(requiredLib("junit-bom").map { it.version!! })
 
       dependencies {
         implementation(project())
         implementation(testFixtures(project()))
         if (!plugins.hasPlugin("io.quarkus")) {
-          implementation(
-            libs.findLibrary("logback-classic").orElseThrow {
-              GradleException("logback-classic not declared in libs.versions.toml")
-            }
-          )
+          implementation(requiredLib("logback-classic"))
         }
-        implementation(
-          libs.findLibrary("assertj-core").orElseThrow {
-            GradleException("assertj-core not declared in libs.versions.toml")
-          }
-        )
-        implementation(
-          libs.findLibrary("mockito-core").orElseThrow {
-            GradleException("mockito-core not declared in libs.versions.toml")
-          }
-        )
+        implementation(requiredLib("assertj-core"))
+        implementation(requiredLib("mockito-core"))
       }
 
       // Special handling for test-suites with names containing `manualtest`, which are intended to
@@ -164,28 +153,19 @@ testing {
 val mockitoAgent = configurations.create("mockitoAgent")
 
 dependencies {
-  val libs = versionCatalogs.named("libs")
-  testFixturesImplementation(
-    platform(
-      libs.findLibrary("junit-bom").orElseThrow {
-        GradleException("junit-bom not declared in libs.versions.toml")
-      }
-    )
-  )
+  testFixturesImplementation(platform(requiredLib("junit-bom")))
   testFixturesImplementation("org.junit.jupiter:junit-jupiter")
-  testFixturesImplementation(
-    libs.findLibrary("assertj-core").orElseThrow {
-      GradleException("assertj-core not declared in libs.versions.toml")
-    }
-  )
-  val mockitoCoreLib =
-    libs.findLibrary("mockito-core").orElseThrow {
-      GradleException("mockito-core not declared in libs.versions.toml")
-    }
+  testFixturesImplementation(requiredLib("assertj-core"))
+  val mockitoCoreLib = requiredLib("mockito-core")
 
   testFixturesImplementation(mockitoCoreLib)
 
   mockitoAgent(mockitoCoreLib) { isTransitive = false }
+}
+
+private class MockitoJavaAgentArgumentProvider(@get:Classpath val mockitoAgent: FileCollection) :
+  CommandLineArgumentProvider {
+  override fun asArguments(): Iterable<String> = listOf("-javaagent:${mockitoAgent.asPath}")
 }
 
 tasks.withType<Test>().configureEach {
@@ -193,9 +173,7 @@ tasks.withType<Test>().configureEach {
   systemProperty("user.language", "en")
   systemProperty("user.country", "US")
   systemProperty("user.variant", "")
-  jvmArgumentProviders.add(
-    CommandLineArgumentProvider { listOf("-javaagent:${mockitoAgent.asPath}") }
-  )
+  jvmArgumentProviders.add(MockitoJavaAgentArgumentProvider(mockitoAgent))
 }
 
 tasks.withType<Jar>().configureEach {
@@ -228,7 +206,7 @@ tasks.withType<Jar>().configureEach {
   }
 }
 
-dependencies { errorprone(versionCatalogs.named("libs").findLibrary("errorprone").get()) }
+dependencies { errorprone(requiredLib("errorprone")) }
 
 java {
   withJavadocJar()
@@ -244,10 +222,12 @@ tasks.withType<Javadoc>().configureEach {
   }
 }
 
-tasks.register("printRuntimeClasspath").configure {
+tasks.register("printRuntimeClasspath") {
   group = "help"
   description = "Print the classpath as a path string to be used when running tools like 'jol'"
-  inputs.files(configurations.named("runtimeClasspath"))
+  inputs
+    .files(configurations.named("runtimeClasspath"))
+    .withNormalizer(ClasspathNormalizer::class.java)
   doLast {
     val cp = configurations.getByName("runtimeClasspath")
     val def = configurations.getByName("runtimeElements")
@@ -298,16 +278,32 @@ class BannedDependencies(
 }
 
 fun bannedDependencies(): BannedDependencies {
-  return if (rootProject.extra.has("bannedDependencies")) {
-    unsafeCast(rootProject.extra["bannedDependencies"]) as BannedDependencies
-  } else {
-    val bannedDependencies =
-      BannedDependencies(
-        BannedDependency.parseList(rootProject.file("gradle/banned-dependencies.txt")),
-        BannedDependency.parseList(rootProject.file("gradle/banned-quarkus-prod-dependencies.txt")),
+  val service =
+    gradle.sharedServices.registerIfAbsent(
+      "bannedDependencies",
+      BannedDependenciesService::class.java,
+    ) {
+      parameters.globallyBannedFile.set(
+        rootProject.layout.projectDirectory.file("gradle/banned-dependencies.txt")
       )
-    rootProject.extra["bannedDependencies"] = bannedDependencies
-    bannedDependencies
+      parameters.quarkusProdBannedFile.set(
+        rootProject.layout.projectDirectory.file("gradle/banned-quarkus-prod-dependencies.txt")
+      )
+    }
+  return service.get().bannedDependencies
+}
+
+abstract class BannedDependenciesService : BuildService<BannedDependenciesService.Parameters> {
+  interface Parameters : BuildServiceParameters {
+    val globallyBannedFile: RegularFileProperty
+    val quarkusProdBannedFile: RegularFileProperty
+  }
+
+  val bannedDependencies: BannedDependencies by lazy {
+    BannedDependencies(
+      BannedDependency.parseList(parameters.globallyBannedFile.asFile.get()),
+      BannedDependency.parseList(parameters.quarkusProdBannedFile.asFile.get()),
+    )
   }
 }
 
@@ -340,7 +336,11 @@ gradle.sharedServices.registerIfAbsent(
 abstract class TestingParallelismHelper : BuildService<BuildServiceParameters.None>
 
 tasks.withType<Test>().configureEach {
+  val isTestTask = name == "test"
   val constraintName =
-    if ("test" == name) "testParallelismConstraint" else "intTestParallelismConstraint"
+    if (isTestTask) "testParallelismConstraint" else "intTestParallelismConstraint"
   usesService(gradle.sharedServices.registrations.named(constraintName).get().service)
+  if (project.hasProperty("noIntegrationTests") && !isTestTask) {
+    enabled = false
+  }
 }

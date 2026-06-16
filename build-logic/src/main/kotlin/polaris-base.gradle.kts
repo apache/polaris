@@ -16,15 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.nosql;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.Map;
+import copiedcode.CopiedCodeCheckerExtension
+import copiedcode.CopiedCodeCheckerPlugin
 
-public class NoSqlInMemoryProfile implements QuarkusTestProfile {
-  @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of(
-        "polaris.persistence.type", "nosql", "polaris.persistence.nosql.backend", "InMemory");
-  }
+apply<CopiedCodeCheckerPlugin>()
+
+extensions.getByType<CopiedCodeCheckerExtension>().apply {
+  addDefaultContentTypes()
+  licenseFile.convention(layout.settingsDirectory.file("LICENSE"))
 }

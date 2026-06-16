@@ -22,5 +22,5 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 
 @QuarkusTest
-@TestProfile(AbstractIcebergCatalogViewTest.Profile.class)
-public class IcebergViewCatalogRelationalTest extends AbstractIcebergCatalogViewTest {}
+@TestProfile(AbstractLocalIcebergCatalogTest.Profile.class)
+public class LocalIcebergCatalogRelationalTest extends AbstractLocalIcebergCatalogTest {}
