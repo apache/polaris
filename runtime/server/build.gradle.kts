@@ -27,8 +27,9 @@ plugins {
   id("polaris-license-report")
 }
 
-val quarkusRunner by
-  configurations.creating { description = "Used to reference the generated runner-jar" }
+val quarkusRunner by configurations.creating {
+  description = "Used to reference the generated runner-jar"
+}
 
 dependencies {
   implementation(project(":polaris-runtime-service"))
@@ -94,17 +95,15 @@ tasks.named<QuarkusDev>("quarkusDev") {
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 
 // Configuration to expose distribution artifacts
-val distributionElements by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-  }
+val distributionElements by configurations.creating {
+  isCanBeConsumed = true
+  isCanBeResolved = false
+}
 
-val licenseNoticeElements by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-  }
+val licenseNoticeElements by configurations.creating {
+  isCanBeConsumed = true
+  isCanBeResolved = false
+}
 
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.

@@ -48,19 +48,18 @@ tasks.named<Test>("test") {
   // In theory, all 'org.gradle.category' attributes should use the type
   // org.gradle.api.attributes.Category, as Category.CATEGORY_ATTRIBUTE is defined.
   // BUT! Some attributes have an attribute type == String.class!
-  val libs =
-    genTesting.map {
-      it.incoming.artifacts
-        .filter { a ->
-          // dependencies:
-          //  org.gradle.category=library
-          val category =
-            a.variant.attributes.getAttribute(Category.CATEGORY_ATTRIBUTE)
-              ?: a.variant.attributes.getAttribute(categoryAttributeAsString)
-          category != null && category.toString() == Category.LIBRARY
-        }
-        .map { a -> a.file }
-    }
+  val libs = genTesting.map {
+    it.incoming.artifacts
+      .filter { a ->
+        // dependencies:
+        //  org.gradle.category=library
+        val category =
+          a.variant.attributes.getAttribute(Category.CATEGORY_ATTRIBUTE)
+            ?: a.variant.attributes.getAttribute(categoryAttributeAsString)
+        category != null && category.toString() == Category.LIBRARY
+      }
+      .map { a -> a.file }
+  }
   jvmArgumentProviders.add(ConfigDocsGenCommandLineArgumentProvider(libs))
 }
 
