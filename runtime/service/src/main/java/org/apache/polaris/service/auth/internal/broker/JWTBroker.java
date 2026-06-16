@@ -72,10 +72,7 @@ public class JWTBroker implements TokenBroker {
    * {@link TokenBrokerFactory} so the verifier can be reused across request-scoped brokers.
    */
   static JWTVerifier buildVerifier(Algorithm algorithm) {
-    return JWT.require(algorithm)
-        .withIssuer(ISSUER_KEY)
-        .withClaim(CLAIM_KEY_ACTIVE, true)
-        .build();
+    return JWT.require(algorithm).withIssuer(ISSUER_KEY).withClaim(CLAIM_KEY_ACTIVE, true).build();
   }
 
   @Override
