@@ -102,14 +102,9 @@ spec:
               resources:
                 {{- tpl (toYaml .) $ | nindent 16 }}
               {{- end }}
-              {{- $mongoActive := and (eq $.Values.persistence.type "nosql") (eq $.Values.persistence.nosql.backend "MongoDb") -}}
               {{- $persistenceEnv := include "polaris.persistenceEnv" $ -}}
-              {{- if or $mongoActive $persistenceEnv $.Values.maintenance.extraEnv }}
+              {{- if or $persistenceEnv $.Values.maintenance.extraEnv }}
               env:
-                {{- if $mongoActive }}
-                - name: quarkus.mongodb.active
-                  value: "true"
-                {{- end }}
                 {{- with $persistenceEnv }}
                 {{- . | nindent 16 }}
                 {{- end }}
