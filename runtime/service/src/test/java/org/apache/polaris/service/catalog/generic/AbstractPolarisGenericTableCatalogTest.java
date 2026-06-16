@@ -40,7 +40,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -62,6 +61,7 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -158,11 +158,10 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     adminService =
-        new PolarisAdminService(
+        PolarisAdminServiceTestSupport.newAdminService(
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
-            new AuthorizationState(),
             userSecretsManager,
             serviceIdentityProvider,
             authenticatedRoot,

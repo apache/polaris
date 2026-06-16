@@ -220,11 +220,9 @@ public abstract class CatalogHandler {
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE));
 
     // When creating an entity under a namespace, the authz target is the namespace, but we must
-    // also
-    // add the actual path that will be created as an "optional" passthrough resolution path to
-    // indicate that the underlying catalog is "allowed" to check the creation path for a
-    // conflicting
-    // entity.
+    // also add the actual path that will be created as an "optional" passthrough resolution path to
+    // indicate that the underlying catalog is "allowed" to check for a conflicting entity at the
+    // creation path.
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
@@ -239,11 +237,23 @@ public abstract class CatalogHandler {
                 List.of(
                     new SingleTargetAuthorizationIntent(
                         op, PolarisSecurableMapper.namespace(catalogName(), namespace)))));
+    authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+  }
+
+  protected void authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
+      PolarisAuthorizableOperation op, TableIdentifier identifier) {
+    if (resolutionManifest == null) {
+      throw new IllegalStateException(
+          "Resolved authorization requires resolveAuthorizationInputs to run first");
+    }
+
+    Namespace namespace = identifier.namespace();
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(namespace), true);
     if (target == null) {
       throw noSuchNamespaceException(namespace);
     }
+
     authorizer()
         .authorizeOrThrow(
             polarisPrincipal(),
@@ -273,7 +283,29 @@ public abstract class CatalogHandler {
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
             PolarisEntityType.TABLE_LIKE,
             true /* optional */));
-    resolutionManifest.resolveAll();
+    authorizationState().setResolutionManifest(resolutionManifest);
+    authorizer()
+        .resolveAuthorizationInputs(
+            authorizationState(),
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        overwriteOp,
+                        PolarisSecurableMapper.tableLike(catalogName(), identifier)))));
+    authorizeResolvedRegisterTableOverwriteOrThrow(overwriteOp, fallbackOp, identifier);
+  }
+
+  protected void authorizeResolvedRegisterTableOverwriteOrThrow(
+      PolarisAuthorizableOperation overwriteOp,
+      PolarisAuthorizableOperation fallbackOp,
+      TableIdentifier identifier) {
+    if (resolutionManifest == null) {
+      throw new IllegalStateException(
+          "Resolved authorization requires resolveAuthorizationInputs to run first");
+    }
+
+    Namespace namespace = identifier.namespace();
 
     // Early check so that a caller that has table-level REGISTER_TABLE_OVERWRITE but not
     // namespace-level REGISTER_TABLE doesn't get a permission error instead of

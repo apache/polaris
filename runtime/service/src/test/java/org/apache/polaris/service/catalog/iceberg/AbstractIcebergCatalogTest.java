@@ -101,6 +101,7 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -124,6 +125,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -134,12 +136,14 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
@@ -257,7 +261,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject FileIOFactory fileIOFactory;
   @Inject TaskFileIOSupplier taskFileIOSupplier;
   @Inject PolarisPrincipal authenticatedRoot;
-  @Inject PolarisAdminService adminService;
+  @Inject UserSecretsManager userSecretsManager;
+  @Inject PolarisAuthorizer authorizer;
+  @Inject ReservedProperties reservedProperties;
   @Inject ResolverFactory resolverFactory;
   @Inject PolarisEventDispatcher polarisEventDispatcher;
 
@@ -277,6 +283,18 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   }
 
   protected void bootstrapRealm(String realmName) {}
+
+  protected PolarisAdminService newAdminService() {
+    return PolarisAdminServiceTestSupport.newAdminService(
+        callContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        authenticatedRoot,
+        authorizer,
+        reservedProperties);
+  }
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -301,21 +319,24 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .setAllowedLocations(List.of(STORAGE_LOCATION, "s3://externally-owned-bucket"))
             .build();
     catalogEntity =
-        adminService.createCatalog(
-            new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setName(CATALOG_NAME)
-                    .setDefaultBaseLocation(STORAGE_LOCATION)
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-                        "true")
-                    .addProperty(
-                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, STORAGE_LOCATION)
-                    .build()
-                    .asCatalog(serviceIdentityProvider)));
+        newAdminService()
+            .createCatalog(
+                new CreateCatalogRequest(
+                    new CatalogEntity.Builder()
+                        .setName(CATALOG_NAME)
+                        .setDefaultBaseLocation(STORAGE_LOCATION)
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(),
+                            "true")
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                            "true")
+                        .addProperty(
+                            FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                        .setStorageConfigurationInfo(
+                            realmConfig, storageConfigModel, STORAGE_LOCATION)
+                        .build()
+                        .asCatalog(serviceIdentityProvider)));
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -1359,13 +1380,14 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     final String metadataLocation = "file:///etc/metadata.json/../passwd";
     String catalogWithoutStorage = "catalogWithoutStorage";
     PolarisEntity catalogEntity =
-        adminService.createCatalog(
-            new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setDefaultBaseLocation("file://")
-                    .setName(catalogWithoutStorage)
-                    .build()
-                    .asCatalog(serviceIdentityProvider)));
+        newAdminService()
+            .createCatalog(
+                new CreateCatalogRequest(
+                    new CatalogEntity.Builder()
+                        .setDefaultBaseLocation("file://")
+                        .setName(catalogWithoutStorage)
+                        .build()
+                        .asCatalog(serviceIdentityProvider)));
 
     IcebergCatalog catalog = newIcebergCatalog(catalogWithoutStorage);
     catalog.initialize(
@@ -1409,13 +1431,14 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         supportsNotifications(), "Only applicable if notifications are supported");
 
     String catalogName = "catalogForMaliciousDomain";
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setDefaultBaseLocation("http://maliciousdomain.com")
-                .setName(catalogName)
-                .build()
-                .asCatalog(serviceIdentityProvider)));
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setDefaultBaseLocation("http://maliciousdomain.com")
+                    .setName(catalogName)
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
 
     IcebergCatalog catalog = newIcebergCatalog(catalogName);
     catalog.initialize(
@@ -1913,20 +1936,23 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .build();
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setName(noPurgeCatalogName)
-                .setDefaultBaseLocation(storageLocation)
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
-                .setStorageConfigurationInfo(
-                    realmConfig, noPurgeStorageConfigModel, storageLocation)
-                .build()
-                .asCatalog(serviceIdentityProvider)));
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(noPurgeCatalogName)
+                    .setDefaultBaseLocation(storageLocation)
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
+                    .setStorageConfigurationInfo(
+                        realmConfig, noPurgeStorageConfigModel, storageLocation)
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
     IcebergCatalog noPurgeCatalog =
         newIcebergCatalog(noPurgeCatalogName, metaStoreManager, fileIOFactory);
     noPurgeCatalog.initialize(
@@ -2533,14 +2559,15 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   public void createCatalogWithReservedProperty() {
     Assertions.assertThatCode(
             () -> {
-              adminService.createCatalog(
-                  new CreateCatalogRequest(
-                      new CatalogEntity.Builder()
-                          .setDefaultBaseLocation("file://")
-                          .setName("createCatalogWithReservedProperty")
-                          .setProperties(ImmutableMap.of("polaris.reserved", "true"))
-                          .build()
-                          .asCatalog(serviceIdentityProvider)));
+              newAdminService()
+                  .createCatalog(
+                      new CreateCatalogRequest(
+                          new CatalogEntity.Builder()
+                              .setDefaultBaseLocation("file://")
+                              .setName("createCatalogWithReservedProperty")
+                              .setProperties(ImmutableMap.of("polaris.reserved", "true"))
+                              .build()
+                              .asCatalog(serviceIdentityProvider)));
             })
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
@@ -2548,26 +2575,28 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Test
   public void updateCatalogWithReservedProperty() {
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setDefaultBaseLocation("file://")
-                .setName("updateCatalogWithReservedProperty")
-                .setProperties(ImmutableMap.of("a", "b"))
-                .build()
-                .asCatalog(serviceIdentityProvider)));
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setDefaultBaseLocation("file://")
+                    .setName("updateCatalogWithReservedProperty")
+                    .setProperties(ImmutableMap.of("a", "b"))
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
     Assertions.assertThatCode(
             () -> {
-              adminService.updateCatalog(
-                  "updateCatalogWithReservedProperty",
-                  UpdateCatalogRequest.builder()
-                      .setCurrentEntityVersion(1)
-                      .setProperties(ImmutableMap.of("polaris.reserved", "true"))
-                      .build());
+              newAdminService()
+                  .updateCatalog(
+                      "updateCatalogWithReservedProperty",
+                      UpdateCatalogRequest.builder()
+                          .setCurrentEntityVersion(1)
+                          .setProperties(ImmutableMap.of("polaris.reserved", "true"))
+                          .build());
             })
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
-    adminService.deleteCatalog("updateCatalogWithReservedProperty");
+    newAdminService().deleteCatalog("updateCatalogWithReservedProperty");
   }
 
   @ParameterizedTest

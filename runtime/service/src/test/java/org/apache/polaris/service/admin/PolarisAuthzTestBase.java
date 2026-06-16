@@ -53,7 +53,6 @@ import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -247,11 +246,10 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(authenticatedRoot, PolarisPrincipal.class);
 
     this.adminService =
-        new PolarisAdminService(
+        PolarisAdminServiceTestSupport.newAdminService(
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
-            new AuthorizationState(),
             userSecretsManager,
             serviceIdentityProvider,
             authenticatedRoot,
@@ -562,11 +560,10 @@ public abstract class PolarisAuthzTestBase {
   }
 
   protected PolarisAdminService newRootAdminService() {
-    return new PolarisAdminService(
+    return PolarisAdminServiceTestSupport.newAdminService(
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
-        new AuthorizationState(),
         userSecretsManager,
         serviceIdentityProvider,
         authenticatedRoot,

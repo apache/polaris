@@ -38,7 +38,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -55,6 +54,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -131,6 +131,9 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
   private String realmName;
   private PolarisCallContext polarisContext;
+  private PolarisPrincipal authenticatedRoot;
+  private PolarisAuthorizer authorizer;
+  private ReservedProperties reservedProperties;
 
   private TestPolarisEventListener testPolarisEventListener;
 
@@ -151,6 +154,18 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
   protected void bootstrapRealm(String realmName) {}
 
+  protected PolarisAdminService newAdminService() {
+    return PolarisAdminServiceTestSupport.newAdminService(
+        polarisContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        authenticatedRoot,
+        authorizer,
+        reservedProperties);
+  }
+
   @BeforeEach
   public void before(TestInfo testInfo) {
     storageCredentialCache.invalidateAll();
@@ -166,39 +181,33 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
-    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
-    ReservedProperties reservedProperties = ReservedProperties.NONE;
+    authorizer = new PolarisAuthorizerImpl(realmConfig);
+    reservedProperties = ReservedProperties.NONE;
 
-    PolarisAdminService adminService =
-        new PolarisAdminService(
-            polarisContext,
-            resolutionManifestFactory,
-            metaStoreManager,
-            new AuthorizationState(),
-            userSecretsManager,
-            serviceIdentityProvider,
-            authenticatedRoot,
-            authorizer,
-            reservedProperties);
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                .setDefaultBaseLocation("file://tmp")
-                .setStorageConfigurationInfo(
-                    realmConfig,
-                    new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*"), null),
-                    "file://tmp")
-                .build()
-                .asCatalog(serviceIdentityProvider)));
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(CATALOG_NAME)
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                    .setDefaultBaseLocation("file://tmp")
+                    .setStorageConfigurationInfo(
+                        realmConfig,
+                        new FileStorageConfigInfo(
+                            StorageConfigInfo.StorageTypeEnum.FILE,
+                            List.of("file://", "/", "*"),
+                            null),
+                        "file://tmp")
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

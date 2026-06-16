@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -41,10 +43,15 @@ import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.credentials.Credential;
+import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
@@ -62,7 +69,9 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
@@ -70,13 +79,16 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class IcebergCatalogHandlerTest {
 
   private static final String CATALOG_NAME = "test";
   private static final Namespace NS1 = Namespace.of("ns1");
   private static final TableIdentifier TABLE2 = TableIdentifier.of(NS1, "table2");
+  private static final String TABLE_LOCATION = "s3://fake-bucket/tables/table2";
 
   private final PolarisResolutionManifest resolutionManifest =
       mock(PolarisResolutionManifest.class);
@@ -89,6 +101,18 @@ class IcebergCatalogHandlerTest {
       mock(AccessDelegationModeResolver.class);
   private final StorageAccessConfigProvider storageAccessConfigProvider =
       mock(StorageAccessConfigProvider.class);
+  private final PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
+
+  @BeforeEach
+  void setUp() {
+    StorageAccessConfig storageAccessConfig =
+        StorageAccessConfig.builder()
+            .putCredential("fake.access.key", "AKIAFAKE")
+            .putCredential("fake.secret.key", "fakeSecret")
+            .build();
+    when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
+        .thenReturn(storageAccessConfig);
+  }
 
   @SuppressWarnings({"unchecked"})
   private IcebergCatalogHandler newHandler() {
@@ -104,6 +128,7 @@ class IcebergCatalogHandlerTest {
     // Authorization path: any resolved path lookup returns a non-null wrapper so the
     // "not found" check in CatalogHandler#authorizeBasicTableLikeOperationsOrThrow passes.
     when(resolutionManifest.getResolvedPath(any(), any(), anyBoolean())).thenReturn(resolvedPath);
+    when(resolutionManifest.getResolvedPath(any(), anyBoolean())).thenReturn(resolvedPath);
     when(resolutionManifest.getResolvedPath(any(), any())).thenReturn(resolvedPath);
     when(resolutionManifest.getResolvedPath(any())).thenReturn(resolvedPath);
     when(resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
@@ -120,7 +145,7 @@ class IcebergCatalogHandlerTest {
         .authorizationState(new AuthorizationState())
         .metaStoreManager(mock(PolarisMetaStoreManager.class))
         .resolutionManifestFactory(resolutionManifestFactory)
-        .authorizer(mock(PolarisAuthorizer.class))
+        .authorizer(authorizer)
         .diagnostics(mock(PolarisDiagnostics.class))
         .credentialManager(mock(PolarisCredentialManager.class))
         .federatedCatalogFactories(mock(Instance.class))
@@ -137,6 +162,143 @@ class IcebergCatalogHandlerTest {
         .build();
   }
 
+  private Catalog mockRegisterTableCatalog(boolean overwrite) {
+    Catalog catalog = mock(Catalog.class);
+    BaseTable table = baseTable();
+    when(catalog.registerTable(TABLE2, TABLE_LOCATION, overwrite)).thenReturn(table);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    return catalog;
+  }
+
+  private static RegisterTableRequest registerTableRequest(boolean overwrite) {
+    return ImmutableRegisterTableRequest.builder()
+        .name(TABLE2.name())
+        .metadataLocation(TABLE_LOCATION)
+        .overwrite(overwrite)
+        .build();
+  }
+
+  private static BaseTable baseTable() {
+    TableMetadata metadata = mock(TableMetadata.class);
+    when(metadata.location()).thenReturn(TABLE_LOCATION);
+    when(metadata.properties()).thenReturn(Map.of());
+
+    TableOperations ops = mock(TableOperations.class);
+    when(ops.current()).thenReturn(metadata);
+
+    BaseTable table = mock(BaseTable.class);
+    when(table.operations()).thenReturn(ops);
+    return table;
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private void assertVendedActions(PolarisStorageActions... actions) {
+    ArgumentCaptor<Set<PolarisStorageActions>> actionsCaptor =
+        (ArgumentCaptor) ArgumentCaptor.forClass(Set.class);
+
+    verify(storageAccessConfigProvider)
+        .getStorageAccessConfig(
+            eq(TABLE2), any(), actionsCaptor.capture(), eq(Optional.empty()), eq(resolvedPath));
+    assertThat(actionsCaptor.getValue()).containsExactlyInAnyOrder(actions);
+  }
+
+  @Test
+  void registerTableWithVendedCredentialsVendsReadWriteActionsWhenWriteDelegationAuthorized() {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.registerTable(
+            NS1, registerTableRequest(false), EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
+    assertThat(response.credentials()).hasSize(1);
+    assertVendedActions(
+        PolarisStorageActions.READ, PolarisStorageActions.LIST, PolarisStorageActions.WRITE);
+  }
+
+  @Test
+  void registerTableWithVendedCredentialsVendsReadActionsWhenWriteDelegationFallsBackToRead() {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    doThrow(new ForbiddenException("write delegation denied"))
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(),
+            any(),
+            eq(PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION),
+            nullable(PolarisResolvedPathWrapper.class),
+            nullable(PolarisResolvedPathWrapper.class));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.registerTable(
+            NS1, registerTableRequest(false), EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
+    assertThat(response.credentials()).hasSize(1);
+    assertVendedActions(PolarisStorageActions.READ, PolarisStorageActions.LIST);
+  }
+
+  @Test
+  void registerTableOverwriteWithVendedCredentialsVendsReadWriteActionsWhenTableExists() {
+    Catalog catalog = mockRegisterTableCatalog(true);
+    when(catalogEntity.isExternal()).thenReturn(false);
+    when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.registerTable(
+            NS1, registerTableRequest(true), EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, true);
+    assertThat(response.credentials()).hasSize(1);
+    assertVendedActions(
+        PolarisStorageActions.READ, PolarisStorageActions.LIST, PolarisStorageActions.WRITE);
+  }
+
+  @Test
+  void registerTableOverwriteWithVendedCredentialsVendsReadActionsForMissingTable() {
+    Catalog catalog = mockRegisterTableCatalog(true);
+    when(catalogEntity.isExternal()).thenReturn(false);
+    when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    doThrow(new ForbiddenException("write delegation denied"))
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(),
+            any(),
+            eq(PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION),
+            nullable(PolarisResolvedPathWrapper.class),
+            nullable(PolarisResolvedPathWrapper.class));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    when(resolutionManifest.getResolvedPath(
+            eq(ResolvedPathKey.ofTableLike(TABLE2)),
+            eq(PolarisEntitySubType.ICEBERG_TABLE),
+            anyBoolean()))
+        .thenReturn(null);
+
+    LoadTableResponse response =
+        handler.registerTable(
+            NS1, registerTableRequest(true), EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, true);
+    assertThat(response.credentials()).hasSize(1);
+    assertVendedActions(PolarisStorageActions.READ, PolarisStorageActions.LIST);
+  }
+
   /**
    * For external (non-Polaris) catalogs, loadCredentials must skip the optimized
    * entity-properties-based path and fall through to a full loadTable on the underlying catalog,
@@ -144,12 +306,11 @@ class IcebergCatalogHandlerTest {
    */
   @Test
   void loadCredentialsFallsBackForExternalCatalog() {
-    String tableLocation = "s3://fake-bucket/tables/table2";
     Map<String, String> fakeCredentials =
         Map.of("fake.access.key", "AKIAFAKE", "fake.secret.key", "fakeSecret");
 
     TableMetadata metadata = mock(TableMetadata.class);
-    when(metadata.location()).thenReturn(tableLocation);
+    when(metadata.location()).thenReturn(TABLE_LOCATION);
     when(metadata.properties()).thenReturn(Map.of());
     TableOperations ops = mock(TableOperations.class);
     when(ops.current()).thenReturn(metadata);
@@ -182,7 +343,7 @@ class IcebergCatalogHandlerTest {
         .singleElement()
         .satisfies(
             (Credential c) -> {
-              assertThat(c.prefix()).isEqualTo(tableLocation);
+              assertThat(c.prefix()).isEqualTo(TABLE_LOCATION);
               assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
             });
   }

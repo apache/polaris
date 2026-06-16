@@ -32,14 +32,20 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,20 +69,26 @@ public class DefaultAuthenticatorTest {
   @SuppressWarnings("CdiInjectionPointsInspection")
   CurrentIdentityAssociation identityAssociation;
 
-  @Inject PolarisAdminService adminService;
   @Inject RealmContextHolder realmContextHolder;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
+  @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject UserSecretsManager userSecretsManager;
+  @Inject ServiceIdentityProvider serviceIdentityProvider;
+  @Inject PolarisAuthorizer authorizer;
+  @Inject ReservedProperties reservedProperties;
 
   private PrincipalEntity principalEntity;
   private PrincipalEntity principalEntityNoRoles;
+  private PolarisPrincipal authenticatedRoot;
 
   @BeforeEach
   public void setup(TestInfo testInfo) {
     realmContextHolder.set(() -> testInfo.getTestMethod().orElseThrow().getName());
-    PolarisPrincipal root =
+    authenticatedRoot =
         PolarisPrincipal.of(PolarisEntityConstants.getRootPrincipalName(), Map.of(), Set.of());
-    identityAssociation.setIdentity(QuarkusSecurityIdentity.builder().setPrincipal(root).build());
+    identityAssociation.setIdentity(
+        QuarkusSecurityIdentity.builder().setPrincipal(authenticatedRoot).build());
     principalEntity = createPrincipal(PRINCIPAL_NAME, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
     principalEntityNoRoles = createPrincipal(PRINCIPAL_NAME_NO_ROLES);
   }
@@ -306,7 +318,7 @@ public class DefaultAuthenticatorTest {
   private PrincipalEntity createPrincipal(String name, String... roles) {
 
     PrincipalWithCredentialsCredentials credentials =
-        adminService
+        newAdminService()
             .createPrincipal(new PrincipalEntity.Builder().setName(name).build())
             .getCredentials();
 
@@ -326,11 +338,24 @@ public class DefaultAuthenticatorTest {
             .orElseThrow();
 
     for (String role : roles) {
-      adminService.createPrincipalRole(new PrincipalRoleEntity.Builder().setName(role).build());
-      adminService.assignPrincipalRole(name, role);
+      newAdminService()
+          .createPrincipalRole(new PrincipalRoleEntity.Builder().setName(role).build());
+      newAdminService().assignPrincipalRole(name, role);
     }
 
     return principalEntity;
+  }
+
+  private PolarisAdminService newAdminService() {
+    return PolarisAdminServiceTestSupport.newAdminService(
+        callContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        authenticatedRoot,
+        authorizer,
+        reservedProperties);
   }
 
   private void assertPrincipal(PolarisPrincipal result, PrincipalEntity entity, String... roles) {

@@ -368,7 +368,6 @@ public record TestServices(
 
       Supplier<IcebergCatalogAdapter> catalogAdapterSupplier =
           () -> {
-            AuthorizationState authorizationState = new AuthorizationState();
             IcebergCatalogHandlerFactory handlerFactory =
                 new IcebergCatalogHandlerFactory() {
                   @Override
@@ -379,7 +378,7 @@ public record TestServices(
                         .polarisPrincipal(principal)
                         .diagnostics(diagnostics)
                         .callContext(callContext)
-                        .authorizationState(authorizationState)
+                        .authorizationState(new AuthorizationState())
                         .prefixParser(new DefaultCatalogPrefixParser())
                         .resolverFactory(resolverFactory)
                         .resolutionManifestFactory(resolutionManifestFactory)
@@ -434,7 +433,6 @@ public record TestServices(
 
       Supplier<PolarisCatalogGenericTableApi> genericTableApiSupplier =
           () -> {
-            AuthorizationState authorizationState = new AuthorizationState();
             GenericTableCatalogHandlerFactory genericHandlerFactory =
                 new GenericTableCatalogHandlerFactory() {
                   @Override
@@ -444,7 +442,7 @@ public record TestServices(
                         .catalogName(catalogName)
                         .polarisPrincipal(principal)
                         .callContext(callContext)
-                        .authorizationState(authorizationState)
+                        .authorizationState(new AuthorizationState())
                         .resolutionManifestFactory(resolutionManifestFactory)
                         .metaStoreManager(metaStoreManager)
                         .authorizer(authorizer)

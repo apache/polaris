@@ -28,7 +28,6 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -48,11 +47,10 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   private PolarisAdminService newTestAdminService(Set<String> activatedPrincipalRoles) {
     final PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
-    return new PolarisAdminService(
+    return PolarisAdminServiceTestSupport.newAdminService(
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
-        new AuthorizationState(),
         userSecretsManager,
         serviceIdentityProvider,
         authenticatedPrincipal,

@@ -95,6 +95,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -113,6 +114,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.core.rest.PolarisEndpoints;
@@ -921,25 +923,49 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Set<PolarisStorageActions> actionsRequested =
           EnumSet.of(PolarisStorageActions.READ, PolarisStorageActions.LIST);
 
+      Namespace namespace = tableIdentifier.namespace();
+      resolutionManifest = newResolutionManifest();
+      resolutionManifest.addPath(
+          new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE));
+      resolutionManifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */));
+
+      // Resolve once for the shared table target before auth fallback. Today resolution depends on
+      // the principal and target, not the register-table operation, so either delegation op is
+      // sufficient for building the manifest.
+      authorizationState().setResolutionManifest(resolutionManifest);
+      authorizer()
+          .resolveAuthorizationInputs(
+              authorizationState(),
+              new AuthorizationRequest(
+                  polarisPrincipal(),
+                  List.of(
+                      new SingleTargetAuthorizationIntent(
+                          PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+                          PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier)))));
+
       try {
         if (overwrite) {
-          authorizeRegisterTableOverwriteOrThrow(
+          authorizeResolvedRegisterTableOverwriteOrThrow(
               PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
               tableIdentifier);
         } else {
-          authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION, tableIdentifier);
         }
         actionsRequested.add(PolarisStorageActions.WRITE);
       } catch (ForbiddenException e) {
         if (overwrite) {
-          authorizeRegisterTableOverwriteOrThrow(
+          authorizeResolvedRegisterTableOverwriteOrThrow(
               PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
               tableIdentifier);
         } else {
-          authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION, tableIdentifier);
         }
       }
