@@ -144,10 +144,20 @@ class ApiClientBuilder:
                 "scope": "PRINCIPAL_ROLE:ALL",
             },
         ).response.data
-        if "access_token" not in json.loads(response):
-            # Distinct from validation errors: HTTP succeeded but body was not a usable token.
-            raise CliError("Failed to get access token", exit_code=CLI_ERROR_EXIT_CODE)
-        return json.loads(response)["access_token"]
+        data = json.loads(response)
+        if "access_token" in data:
+            return data["access_token"]
+
+        error = data.get("error")
+        error_description = data.get("error_description")
+        if error and error_description:
+            message = f"Failed to get access token: {error} - {error_description}"
+        elif error:
+            message = f"Failed to get access token: {error}"
+        else:
+            message = "Failed to get access token"
+        # Distinct from validation errors: HTTP succeeded but body was not a usable token.
+        raise CliError(message, exit_code=CLI_ERROR_EXIT_CODE)
 
     def _build(self) -> ApiClient:
         has_access_token = self.conf.access_token is not None
