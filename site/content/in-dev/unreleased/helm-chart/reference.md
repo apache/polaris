@@ -365,6 +365,6 @@ weight: 900
 | maintenance.jobs | object | `{"nosql-maintenance":{"args":["nosql","maintenance-run"],"concurrencyPolicy":"Forbid","enabled":false,"resources":{},"schedule":"0 2 * * *"}}` | Define maintenance CronJobs. The key is the name of the job. |
 | maintenance.jobs.nosql-maintenance.enabled | bool | `false` | Enable this maintenance job. |
 | maintenance.jobs.nosql-maintenance.schedule | string | `"0 2 * * *"` | The schedule in Cron format. |
-| maintenance.jobs.nosql-maintenance.args | list | `["nosql","maintenance-run"]` | The arguments to pass tothe admin tool. |
+| maintenance.jobs.nosql-maintenance.args | list | `["nosql","maintenance-run"]` | The arguments to pass to the admin tool. |
 | maintenance.jobs.nosql-maintenance.concurrencyPolicy | string | `"Forbid"` | The concurrency policy, Valid values are: Allow, Forbid, Replace. |
 | maintenance.jobs.nosql-maintenance.resources | object | `{}` | Configures the resources requests and limits for this job's container. |

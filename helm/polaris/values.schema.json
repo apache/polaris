@@ -842,7 +842,7 @@
                             "type": "object",
                             "properties": {
                                 "args": {
-                                    "description": "The arguments to pass tothe admin tool.",
+                                    "description": "The arguments to pass to the admin tool.",
                                     "type": "array",
                                     "items": {
                                         "type": "string"

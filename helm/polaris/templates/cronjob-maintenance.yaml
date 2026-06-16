@@ -102,11 +102,11 @@ spec:
               resources:
                 {{- tpl (toYaml .) $ | nindent 16 }}
               {{- end }}
+              {{- $mongoActive := and (eq $.Values.persistence.type "nosql") (eq $.Values.persistence.nosql.backend "MongoDb") -}}
+              {{- $persistenceEnv := include "polaris.persistenceEnv" $ -}}
+              {{- if or $mongoActive $persistenceEnv $.Values.maintenance.extraEnv }}
               env:
-                - name: quarkus.config.locations
-                  value: "file:{{ trimSuffix "/" $.Values.image.configDir }}/application.properties"
-                {{- $persistenceEnv := include "polaris.persistenceEnv" $ -}}
-                {{- if and (eq $.Values.persistence.type "nosql") (eq $.Values.persistence.nosql.backend "MongoDb") }}
+                {{- if $mongoActive }}
                 - name: quarkus.mongodb.active
                   value: "true"
                 {{- end }}
@@ -116,6 +116,7 @@ spec:
                 {{- with $.Values.maintenance.extraEnv }}
                 {{- tpl (toYaml .) $ | nindent 16 }}
                 {{- end }}
+              {{- end }}
               {{- with $.Values.maintenance.envFrom }}
               envFrom:
                 {{- tpl (toYaml .) $ | nindent 16 }}

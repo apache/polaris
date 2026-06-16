@@ -1242,7 +1242,7 @@ maintenance:
       # -- The schedule in Cron format.
       # @section -- Maintenance
       schedule: "0 2 * * *"
-      # -- The arguments to pass tothe admin tool.
+      # -- The arguments to pass to the admin tool.
       # @section -- Maintenance
       args: ["nosql", "maintenance-run"]
       # @schema enum: [Allow, Forbid, Replace]

@@ -35,20 +35,6 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: should always set quarkus.config.location to the mounted properties file
-    template: cronjob-maintenance.yaml
-    set:
-      maintenance:
-        jobs:
-          nosql-maintenance:
-            enabled: true
-    asserts:
-      - contains:
-          path: spec.jobTemplate.spec.template.spec.containers[0].env
-          content:
-            name: quarkus.config.locations
-            value: file:/deployments/config/application.properties
-
   - it: should active the MongoDB client when persistence is nosql + MongoDb
     template: cronjob-maintenance.yaml
     set:
