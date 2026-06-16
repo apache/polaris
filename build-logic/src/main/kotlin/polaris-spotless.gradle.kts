@@ -20,8 +20,20 @@
 plugins { id("com.diffplug.spotless") }
 
 // skip spotless check for duplicated projects
-if (!project.extra.has("duplicated-project-sources")) {
-  spotless {
+spotless {
+  if (project.path == ":") {
+    // Root project
+    kotlinGradle {
+      ktfmt().googleStyle()
+      target(
+        "*.gradle.kts",
+        "build-logic/*.gradle.kts",
+        "build-logic/src/**/*.kt*",
+        "gradle/server-test-runner/**/*.gradle.kts",
+        "gradle/server-test-runner/src/**/*.kt*",
+      )
+    }
+  } else if (!noSourceCheckProjects.contains(project.path)) {
     java {
       target("src/*/java/**/*.java")
       googleJavaFormat()

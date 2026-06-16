@@ -78,8 +78,14 @@ checkstyle {
   maxWarnings = 0
 }
 
-// Ensure Checkstyle runs after jandex to avoid task dependency issues
-tasks.withType<Checkstyle>().configureEach { tasks.findByName("jandex")?.let { mustRunAfter(it) } }
+tasks.withType<Checkstyle>().configureEach {
+  if (noSourceCheckProjects.contains(project.path)) {
+    enabled = false
+  } else {
+    // Ensure Checkstyle runs after jandex to avoid task dependency issues
+    tasks.findByName("jandex")?.let { mustRunAfter(it) }
+  }
+}
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(

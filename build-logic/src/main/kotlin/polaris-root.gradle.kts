@@ -25,21 +25,11 @@ import publishing.PublishingHelperPlugin
 
 plugins {
   id("polaris-base")
-  id("com.diffplug.spotless")
+  id("polaris-spotless")
   id("org.jetbrains.gradle.plugin.idea-ext")
 }
 
 apply<PublishingHelperPlugin>()
-
-if (!project.extra.has("duplicated-project-sources")) {
-  spotless {
-    kotlinGradle {
-      ktfmt().googleStyle()
-      // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-      target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kt*")
-    }
-  }
-}
 
 if (providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean()) {
   idea {
