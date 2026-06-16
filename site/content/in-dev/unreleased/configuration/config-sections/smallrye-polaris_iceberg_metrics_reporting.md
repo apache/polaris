@@ -25,4 +25,4 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.iceberg-metrics.reporting.type` | `default` | `string` |  |
+| `polaris.iceberg-metrics.reporting.type` | `no-op` | `string` |  |
