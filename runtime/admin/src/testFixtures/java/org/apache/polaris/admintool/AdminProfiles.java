@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.admintool;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +26,6 @@ import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement
 
 public final class AdminProfiles {
 
-  private static final Map<String, String> PRE_BOOTSTRAP_CONFIG = Map.of("pre-bootstrap", "true");
-
   private AdminProfiles() {}
 
   public static class NoSqlInMemory implements QuarkusTestProfile {
@@ -36,16 +33,6 @@ public final class AdminProfiles {
     public Map<String, String> getConfigOverrides() {
       return Map.of(
           "polaris.persistence.type", "nosql", "polaris.persistence.nosql.backend", "InMemory");
-    }
-  }
-
-  public static class PreBootstrappedNoSqlInMemory extends NoSqlInMemory {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .putAll(PRE_BOOTSTRAP_CONFIG)
-          .build();
     }
   }
 
@@ -59,16 +46,6 @@ public final class AdminProfiles {
     @Override
     public List<TestResourceEntry> testResources() {
       return List.of(new TestResourceEntry(MongoTestResourceLifecycleManager.class));
-    }
-  }
-
-  public static class PreBootstrappedNoSqlMongo extends NoSqlMongo {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .putAll(PRE_BOOTSTRAP_CONFIG)
-          .build();
     }
   }
 
@@ -93,16 +70,6 @@ public final class AdminProfiles {
     }
   }
 
-  public static class PreBootstrappedRelationalJdbc extends RelationalJdbc {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .putAll(PRE_BOOTSTRAP_CONFIG)
-          .build();
-    }
-  }
-
   public static class CockroachJdbc implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
@@ -123,16 +90,6 @@ public final class AdminProfiles {
     public List<TestResourceEntry> testResources() {
       return List.of(
           new TestResourceEntry(CockroachRelationalJdbcLifeCycleManagement.class, Map.of()));
-    }
-  }
-
-  public static class PreBootstrappedCockroachJdbc extends CockroachJdbc {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .putAll(PRE_BOOTSTRAP_CONFIG)
-          .build();
     }
   }
 }
