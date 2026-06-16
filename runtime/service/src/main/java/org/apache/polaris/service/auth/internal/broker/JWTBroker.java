@@ -69,7 +69,11 @@ public abstract class JWTBroker implements TokenBroker {
   }
 
   private InternalPolarisToken verifyInternal(String token) {
-    JWTVerifier verifier = JWT.require(getAlgorithm()).withClaim(CLAIM_KEY_ACTIVE, true).build();
+    JWTVerifier verifier =
+        JWT.require(getAlgorithm())
+            .withIssuer(ISSUER_KEY)
+            .withClaim(CLAIM_KEY_ACTIVE, true)
+            .build();
 
     try {
       DecodedJWT decodedJWT = verifier.verify(token);
