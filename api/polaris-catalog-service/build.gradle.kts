@@ -49,7 +49,17 @@ val policyManagementModels =
     "ListPoliciesResponse",
   )
 
-val models = (genericTableModels + policyManagementModels).joinToString(",")
+val semanticModelModels =
+  listOf(
+    "SemanticModelDocument",
+    "SemanticModelIdentifier",
+    "CreateSemanticModelRequest",
+    "UpdateSemanticModelRequest",
+    "LoadSemanticModelResponse",
+    "ListSemanticModelsResponse",
+  )
+
+val models = (genericTableModels + policyManagementModels + semanticModelModels).joinToString(",")
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -101,7 +111,7 @@ openApiGenerate {
   ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
   removeOperationIdPrefix.set(true)
   templateDir.set(provider { templatesDir.asFile.absolutePath })
-  globalProperties.put("apis", "GenericTableApi,PolicyApi")
+  globalProperties.put("apis", "GenericTableApi,PolicyApi,SemanticModelApi")
   globalProperties.put("models", models)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")

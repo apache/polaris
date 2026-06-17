@@ -42,6 +42,12 @@ public class PolarisResourcePaths {
       "/polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings";
   public static final String V1_APPLICABLE_POLICIES = "/polaris/v1/{prefix}/applicable-policies";
 
+  // Semantic Model endpoints
+  public static final String V1_SEMANTIC_MODELS =
+      "/polaris/v1/{prefix}/namespaces/{namespace}/semantic-models";
+  public static final String V1_SEMANTIC_MODEL =
+      "/polaris/v1/{prefix}/namespaces/{namespace}/semantic-models/{semantic-model-name}";
+
   private final String prefix;
 
   public PolarisResourcePaths(String prefix) {
