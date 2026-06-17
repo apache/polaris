@@ -26,6 +26,7 @@ import static org.junit.platform.commons.util.AnnotationUtils.findAnnotatedField
 import static org.junit.platform.commons.util.ReflectionUtils.makeAccessible;
 
 import java.lang.reflect.Field;
+import org.apache.polaris.containerspec.TestcontainerConfig;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -129,7 +130,8 @@ public class MinioExtension
     String bucket = nonDefault(minio.bucket());
     String region = nonDefault(minio.region());
     MinioContainer container =
-        new MinioContainer(null, accessKey, secretKey, bucket, region).withStartupAttempts(5);
+        new MinioContainer(null, accessKey, secretKey, bucket, region)
+            .withStartupAttempts(TestcontainerConfig.DEFAULT_STARTUP_ATTEMPTS);
     container.start();
     return container;
   }

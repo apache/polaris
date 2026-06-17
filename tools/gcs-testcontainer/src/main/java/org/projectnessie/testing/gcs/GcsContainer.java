@@ -29,11 +29,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
+import org.apache.polaris.containerspec.TestcontainerNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
-import org.testcontainers.utility.Base58;
 
 /**
  * Provides a test container for Google Cloud Storage, using the {@code
@@ -79,19 +79,19 @@ public class GcsContainer extends GenericContainer<GcsContainer>
             ? "127.0.0.1"
             : format("127.%d.%d.%d", rand.nextInt(256), rand.nextInt(256), rand.nextInt(1, 255));
     if (oauth2token == null) {
-      oauth2token = randomString("token");
+      oauth2token = TestcontainerNames.randomPrefixed("token");
     }
     if (bucket == null) {
-      bucket = randomString("bucket");
+      bucket = TestcontainerNames.randomPrefixed("bucket");
     }
     if (projectId == null) {
-      projectId = randomString("project");
+      projectId = TestcontainerNames.randomPrefixed("project");
     }
     this.oauth2token = oauth2token;
     this.bucket = bucket;
     this.projectId = projectId;
 
-    withNetworkAliases(randomString("fake-gcs"));
+    withNetworkAliases(TestcontainerNames.randomPrefixed("fake-gcs"));
     withLogConsumer(c -> LOGGER.info("[FAKE-GCS] {}", c.getUtf8StringWithoutLineEnding()));
     withCommand(
         "-scheme",
@@ -171,10 +171,6 @@ public class GcsContainer extends GenericContainer<GcsContainer>
 
   private int gcsPort() {
     return getMappedPort(PORT);
-  }
-
-  private static String randomString(String prefix) {
-    return prefix + "-" + Base58.randomString(6).toLowerCase(Locale.ROOT);
   }
 
   @Override

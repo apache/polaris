@@ -22,6 +22,7 @@ import static org.junit.platform.commons.util.AnnotationUtils.findAnnotatedField
 import static org.junit.platform.commons.util.ReflectionUtils.makeAccessible;
 
 import java.lang.reflect.Field;
+import org.apache.polaris.containerspec.TestcontainerConfig;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -113,7 +114,8 @@ public class GcsExtension
     String oauth2token = nonDefault(gcs.oauth2token());
     String bucket = nonDefault(gcs.bucket());
     GcsContainer container =
-        new GcsContainer(null, bucket, projectId, oauth2token).withStartupAttempts(5);
+        new GcsContainer(null, bucket, projectId, oauth2token)
+            .withStartupAttempts(TestcontainerConfig.DEFAULT_STARTUP_ATTEMPTS);
     container.start();
     return container;
   }

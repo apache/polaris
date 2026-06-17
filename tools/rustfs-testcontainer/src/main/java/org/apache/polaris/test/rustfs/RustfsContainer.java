@@ -31,12 +31,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
+import org.apache.polaris.containerspec.TestcontainerNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
-import org.testcontainers.utility.Base58;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
@@ -135,17 +135,21 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
     super(
         ContainerSpecHelper.containerSpecHelper("rustfs", RustfsContainer.class)
             .dockerImageName(image));
-    withNetworkAliases(randomString("rustfs"));
+    withNetworkAliases(TestcontainerNames.randomPrefixed("rustfs"));
     withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(RustfsContainer.class)));
     // RustFS requires the externally visible host/port to be declared in RUSTFS_SERVER_DOMAINS.
     addFixedExposedPort(hostS3ApiPort, S3_API_PORT);
     addExposedPort(CONSOLE_PORT);
-    this.accessKey = accessKey != null ? accessKey : randomString("access");
-    this.secretKey = secretKey != null ? secretKey : randomString("secret");
+    this.accessKey = accessKey != null ? accessKey : TestcontainerNames.randomPrefixed("access");
+
+    this.secretKey = secretKey != null ? secretKey : TestcontainerNames.randomPrefixed("secret");
+
     this.bucket =
         bucket != null
             ? validateBucketHost(bucket)
-            : (FIXED_BUCKET_NAME != null ? FIXED_BUCKET_NAME : randomString("bucket"));
+            : (FIXED_BUCKET_NAME != null
+                ? FIXED_BUCKET_NAME
+                : TestcontainerNames.randomPrefixed("bucket"));
     this.region = Optional.ofNullable(region);
     withEnv(RUSTFS_ACCESS_KEY, this.accessKey);
     withEnv(RUSTFS_SECRET_KEY, this.secretKey);
@@ -161,10 +165,6 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
   public RustfsContainer withRegion(String region) {
     this.region = Optional.of(region);
     return this;
-  }
-
-  private static String randomString(String prefix) {
-    return prefix + "-" + Base58.randomString(6).toLowerCase(Locale.ROOT);
   }
 
   private static int randomAvailablePort() {

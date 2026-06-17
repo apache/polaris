@@ -26,6 +26,7 @@ import static org.junit.platform.commons.util.AnnotationUtils.findAnnotatedField
 import static org.junit.platform.commons.util.ReflectionUtils.makeAccessible;
 
 import java.lang.reflect.Field;
+import org.apache.polaris.containerspec.TestcontainerConfig;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -129,7 +130,8 @@ public class RustfsExtension
     String bucket = nonDefault(rustfs.bucket());
     String region = nonDefault(rustfs.region());
     RustfsContainer container =
-        new RustfsContainer(null, accessKey, secretKey, bucket, region).withStartupAttempts(5);
+        new RustfsContainer(null, accessKey, secretKey, bucket, region)
+            .withStartupAttempts(TestcontainerConfig.DEFAULT_STARTUP_ATTEMPTS);
     container.start();
     return container;
   }
