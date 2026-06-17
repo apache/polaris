@@ -46,7 +46,6 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.FileFormat;
@@ -83,9 +82,11 @@ import org.apache.polaris.test.minio.MinioConditionExtension;
 import org.apache.polaris.test.minio.MinioTestResource;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -109,6 +110,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
     })
 @ExtendWith(MinioConditionExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class RestCatalogMinIOSpecialIT {
 
   private static final String BUCKET_URI_PREFIX = "/minio-test";
@@ -123,7 +125,6 @@ public class RestCatalogMinIOSpecialIT {
 
   @Minio static MinioAccess minioAccess;
 
-  private static final AtomicBoolean initialized = new AtomicBoolean(false);
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
@@ -136,24 +137,24 @@ public class RestCatalogMinIOSpecialIT {
   private PrincipalWithCredentials principalCredentials;
   private String catalogName;
 
+  @BeforeAll
+  void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+    endpoints = apiEndpoints;
+    s3Client = minioAccess.s3Client();
+    client = polarisClient(endpoints);
+    adminToken = client.obtainToken(credentials);
+    managementApi = client.managementApi(adminToken);
+    storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
+    endpoint = minioAccess.s3endpoint();
+  }
+
   @AfterAll
-  static void close() throws Exception {
+  void close() throws Exception {
     client.close();
   }
 
   @BeforeEach
-  public void before(
-      TestInfo testInfo, PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
-    if (initialized.compareAndSet(false, true)) {
-      endpoints = apiEndpoints;
-      s3Client = minioAccess.s3Client();
-      client = polarisClient(endpoints);
-      adminToken = client.obtainToken(credentials);
-      managementApi = client.managementApi(adminToken);
-      storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
-      endpoint = minioAccess.s3endpoint();
-    }
-
+  public void before(TestInfo testInfo) {
     String principalName = client.newEntityName("test-user");
     principalRoleName = client.newEntityName("test-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
