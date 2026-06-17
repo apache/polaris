@@ -71,10 +71,8 @@ class TestProfilesCommand(CLITestBase):
         return_value={},
     )
     @patch("builtins.input")
-    @patch("apache_polaris.cli.command.profiles.getpass")
     def test_profile_create(
         self,
-        mock_getpass: MagicMock,
         mock_input: MagicMock,
         mock_load_profiles: MagicMock,
         mock_exists: MagicMock,
@@ -82,9 +80,9 @@ class TestProfilesCommand(CLITestBase):
     ) -> None:
         mock_client = self.build_mock_client()
         mock_exists.return_value = False
-        mock_getpass.return_value = "s3cr3t"
         mock_input.side_effect = [
             "root",
+            "s3cr3t",
             "localhost",
             8181,
             "",
@@ -94,7 +92,7 @@ class TestProfilesCommand(CLITestBase):
             self.mock_execute(mock_client, ["profiles", "create", "dev"])
             output = mock_stdout.getvalue()
             self.assertIn("Polaris profile dev created successfully.", output)
-        mock_getpass.assert_called_once_with("Polaris Client Secret: ")
+        mock_input.assert_any_call("Polaris Client Secret: ")
         mock_save_profiles.assert_called_once()
 
     @patch("apache_polaris.cli.command.profiles.os.path.exists")
@@ -157,10 +155,8 @@ class TestProfilesCommand(CLITestBase):
         },
     )
     @patch("builtins.input")
-    @patch("apache_polaris.cli.command.profiles.getpass")
     def test_profile_update(
         self,
-        mock_getpass: MagicMock,
         mock_input: MagicMock,
         mock_load_profiles: MagicMock,
         mock_exists: MagicMock,
@@ -168,9 +164,9 @@ class TestProfilesCommand(CLITestBase):
     ) -> None:
         mock_client = self.build_mock_client()
         mock_exists.return_value = True
-        mock_getpass.return_value = "new-secret"
         mock_input.side_effect = [
             "new-id",
+            "new-secret",
             "newhost",
             9090,
             "myrealm",
@@ -180,6 +176,7 @@ class TestProfilesCommand(CLITestBase):
             self.mock_execute(mock_client, ["profiles", "update", "dev"])
             output = mock_stdout.getvalue()
             self.assertIn("Polaris profile dev updated successfully.", output)
-        mock_getpass.assert_called_once()
-        self.assertIn("Polaris Client Secret [********]: ", mock_getpass.call_args[0][0])
+        mock_input.assert_any_call(
+            "Enter Polaris Client Secret (empty to reuse previous value): "
+        )
         mock_save_profiles.assert_called_once()

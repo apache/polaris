@@ -20,7 +20,6 @@
 import os
 import sys
 from dataclasses import dataclass
-from getpass import getpass
 from typing import Dict, Optional, List, Any, cast
 
 from apache_polaris.cli.command import Command
@@ -72,7 +71,7 @@ class ProfilesCommand(Command):
         profiles = self._load_profiles()
         if name not in profiles:
             client_id = input("Polaris Client ID: ")
-            client_secret = getpass("Polaris Client Secret: ")
+            client_secret = input("Polaris Client Secret: ")
             host = input(f"Polaris Host [{DEFAULT_HOSTNAME}]: ") or DEFAULT_HOSTNAME
             port = input(f"Polaris Port [{DEFAULT_PORT}]: ") or DEFAULT_PORT
             realm = input("Polaris Context Realm: ")
@@ -116,15 +115,12 @@ class ProfilesCommand(Command):
             current_port = profiles[name].get("port")
             current_realm = profiles[name].get(Arguments.REALM)
             current_header = profiles[name].get(Arguments.HEADER)
-            masked_secret = format_profile_for_display(profiles[name]).get(
-                "client_secret"
-            )
 
             client_id = (
                 input(f"Polaris Client ID [{current_client_id}]: ") or current_client_id
             )
             client_secret = (
-                getpass(f"Polaris Client Secret [{masked_secret}]: ")
+                input("Enter Polaris Client Secret (empty to reuse previous value): ")
                 or current_client_secret
             )
             host = input(f"Polaris Host [{current_host}]: ") or current_host
