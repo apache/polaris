@@ -19,11 +19,7 @@
 
 package org.apache.polaris.test.minio;
 
-import java.net.URI;
-import java.util.Map;
-import java.util.Optional;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
+import org.apache.polaris.testcontainer.S3TestcontainerAccess;
 
 /**
  * Provides access to Minio via a preconfigured S3 client and providing the by default randomized
@@ -33,36 +29,4 @@ import software.amazon.awssdk.services.s3.S3Client;
  * Minio}.
  */
 // CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
-public interface MinioAccess {
-
-  /** Host and port, separated by '{@code :}'. */
-  String hostPort();
-
-  String accessKey();
-
-  String secretKey();
-
-  String bucket();
-
-  Optional<String> region();
-
-  /** HTTP protocol endpoint. */
-  String s3endpoint();
-
-  S3Client s3Client();
-
-  /** Properties needed by Apache Iceberg to access this instance. */
-  Map<String, String> icebergProperties();
-
-  /** Properties needed by Apache Hadoop to access this instance. */
-  Map<String, String> hadoopConfig();
-
-  /** S3 scheme URI including the bucket to access the given path. */
-  URI s3BucketUri(String path);
-
-  /** Convenience method to put an object into S3. */
-  @SuppressWarnings("resource")
-  default void s3put(String key, RequestBody body) {
-    s3Client().putObject(b -> b.bucket(bucket()).key(key), body);
-  }
-}
+public interface MinioAccess extends S3TestcontainerAccess {}
