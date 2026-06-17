@@ -272,7 +272,10 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   }
 
   public PolarisResolvedPathWrapper getResolvedRootContainerEntityAsPath() {
-    return new PolarisResolvedPathWrapper(List.of(getResolvedRootContainerEntity()));
+    ResolvedPolarisEntity root = getResolvedRootContainerEntity();
+    return root == null
+        ? new PolarisResolvedPathWrapper(List.of())
+        : new PolarisResolvedPathWrapper(List.of(root));
   }
 
   public PolarisResolvedPathWrapper getResolvedReferenceCatalogEntity(
@@ -290,8 +293,11 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
       // authorization chain.
       // TODO: Throw appropriate Catalog NOT_FOUND exception before any call to
       // getResolvedReferenceCatalogEntity().
-      return new PolarisResolvedPathWrapper(
-          List.of(getResolvedRootContainerEntity(), resolvedReferenceCatalog));
+      ResolvedPolarisEntity root = getResolvedRootContainerEntity();
+      if (root == null) {
+        return new PolarisResolvedPathWrapper(List.of(resolvedReferenceCatalog));
+      }
+      return new PolarisResolvedPathWrapper(List.of(root, resolvedReferenceCatalog));
     } else {
       return new PolarisResolvedPathWrapper(List.of(resolvedReferenceCatalog));
     }
@@ -342,7 +348,10 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
     List<ResolvedPolarisEntity> resolvedEntities = new ArrayList<>();
     if (prependRootContainer) {
-      resolvedEntities.add(getResolvedRootContainerEntity());
+      ResolvedPolarisEntity root = getResolvedRootContainerEntity();
+      if (root != null) {
+        resolvedEntities.add(root);
+      }
     }
     resolvedEntities.add(primaryResolver.getResolvedReferenceCatalog());
     resolvedPath.forEach(resolvedEntity -> resolvedEntities.add(resolvedEntity));
