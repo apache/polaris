@@ -1239,7 +1239,7 @@ public class JdbcBasePersistenceImpl
    * Connection-aware version for use inside runWithinTransaction (for inheritable policy check).
    */
   private List<PolarisPolicyMappingRecord> fetchPolicyMappingRecords(
-      QueryGenerator.PreparedQuery query, Connection connection) {
+      QueryGenerator.PreparedQuery query, @NonNull Connection connection) {
     try {
       var results =
           datasourceOperations.executeSelect(connection, query, new ModelPolicyMappingRecord());
@@ -1257,7 +1257,7 @@ public class JdbcBasePersistenceImpl
       long targetCatalogId,
       long targetId,
       int policyTypeCode,
-      Connection connection) {
+      @NonNull Connection connection) {
     Map<String, Object> params =
         Map.of(
             "target_catalog_id",

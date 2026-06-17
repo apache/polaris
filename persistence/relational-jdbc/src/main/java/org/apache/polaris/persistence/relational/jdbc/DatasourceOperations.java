@@ -191,7 +191,7 @@ public class DatasourceOperations {
 
   /** Connection-aware version for use inside runWithinTransaction. */
   public <T> void executeSelectOverStream(
-      Connection connection,
+      @NonNull Connection connection,
       @NonNull PreparedQuery query,
       @NonNull Converter<T> converterInstance,
       @NonNull Consumer<Stream<T>> consumer)
@@ -215,7 +215,9 @@ public class DatasourceOperations {
 
   /** Connection-aware version for use inside runWithinTransaction. */
   public <T> List<T> executeSelect(
-      Connection connection, @NonNull PreparedQuery query, @NonNull Converter<T> converterInstance)
+      @NonNull Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance)
       throws SQLException {
     ArrayList<T> results = new ArrayList<>();
     executeSelectOverStream(
