@@ -62,6 +62,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Deprecations
 
 ### Fixes
+- Fixed potential `NullPointerException` when root container resolution returns null in `PolarisResolutionManifest`. Calls to `getResolvedRootContainerEntityAsPath()` and paths prepending the root container now avoid passing null into `List.of()`.
 - Fixed `NullPointerException` during `dropEntity` when an entity referenced by a grant had been concurrently removed (or purged). `lookupEntities` can return null entries for dropped entities; these are now skipped safely.
 - `RateLimiterFilter` now returns an Iceberg-compatible `ErrorResponse` JSON body on HTTP 429, with `Content-Type: application/json`. Previously the body was empty, causing Iceberg REST clients to surface an opaque error.
 - The admin tool `purge` command now prints the underlying exception stack trace to stderr when a purge fails unexpectedly, matching the `bootstrap` command. Previously a failed purge printed only a generic message, giving operators no diagnostic information.
