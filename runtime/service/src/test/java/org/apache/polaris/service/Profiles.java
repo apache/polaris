@@ -50,6 +50,58 @@ public final class Profiles {
     }
   }
 
+  public static class ApplicationIntegrationProfile extends DefaultProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("quarkus.http.limits.max-body-size", "1000000")
+          .put("polaris.realm-context.realms", "POLARIS,OTHER")
+          .put("polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true")
+          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true")
+          .build();
+    }
+  }
+
+  public static class ManagementIntegrationProfile implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
+          "true",
+          "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
+          "true",
+          "polaris.storage.gcp.token",
+          "token",
+          "polaris.storage.gcp.lifespan",
+          "PT1H");
+    }
+  }
+
+  public static class RestCatalogFileIntegrationProfile extends DefaultProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("polaris.features.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"", "false")
+          .put("polaris.features.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
+          .build();
+    }
+  }
+
+  public static class RestCatalogViewFileIntegrationProfile implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
+          "true",
+          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\"]",
+          "polaris.readiness.ignore-severe-issues",
+          "true");
+    }
+  }
+
   public static class DefaultNoSqlProfile extends DefaultProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
