@@ -68,6 +68,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The access token carried in `PolarisCredential` is now redacted from its `toString()`, so it is no longer written to authentication logs (including at WARN level on failed authentication).
 - JWT verification now validates the issuer claim (`"polaris"`) in addition to the active claim. Tokens signed with the same key but carrying a different issuer are now rejected.
 - Inheritable policy mapping inserts in the JDBC backend now use the active transaction connection, so they roll back correctly with the surrounding transaction.
+- Generic table drop now accepts table-scoped `TABLE_DROP` privilege.
 
 ## [1.5.0]
 
