@@ -29,6 +29,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -45,7 +46,7 @@ public class RSAKeyPairJWTBrokerTest {
 
     final long principalId = 123L;
     final String clientId = "test-client-id";
-    final String scope = "PRINCIPAL_ROLE:TEST";
+    final String scope = PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + "TEST";
 
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
@@ -81,7 +82,7 @@ public class RSAKeyPairJWTBrokerTest {
             .build();
     DecodedJWT decodedJWT = verifier.verify(token.getAccessToken());
     assertThat(decodedJWT).isNotNull();
-    assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo("PRINCIPAL_ROLE:TEST");
+    assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo(scope);
     assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo("test-client-id");
   }
 

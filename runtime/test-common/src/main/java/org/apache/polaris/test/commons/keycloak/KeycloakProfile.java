@@ -21,6 +21,7 @@ package org.apache.polaris.test.commons.keycloak;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 
 public class KeycloakProfile implements QuarkusTestProfile {
 
@@ -36,7 +37,7 @@ public class KeycloakProfile implements QuarkusTestProfile {
         "polaris.oidc.principal-mapper.name-claim-path",
         KeycloakAccess.PRINCIPAL_NAME_CLAIM,
         "polaris.oidc.principal-roles-mapper.filter",
-        "PRINCIPAL_ROLE:.*");
+        PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX + ".*");
   }
 
   @Override

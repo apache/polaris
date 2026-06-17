@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.auth.internal.broker;
 
+import org.apache.polaris.core.auth.PolarisAuthConstants;
+import org.apache.polaris.service.auth.DefaultAuthenticator;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -69,7 +71,15 @@ public class TokenRequestValidatorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"null", "", ",", "ALL", "PRINCIPAL_ROLE:", "PRINCIPAL_ROLE"})
+  @ValueSource(
+      strings = {
+        "null",
+        "",
+        ",",
+        "ALL",
+        PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX,
+        "PRINCIPAL_ROLE"
+      })
   public void testValidateForClientCredentialsFlowInvalidScope(String scope) {
     Assertions.assertThat(
             new TokenRequestValidator()
@@ -84,7 +94,10 @@ public class TokenRequestValidatorTest {
     Assertions.assertThat(
             new TokenRequestValidator()
                 .validateForClientCredentialsFlow(
-                    "client-id", "client-secret", "client_credentials", "PRINCIPAL_ROLE:ALL"))
+                    "client-id",
+                    "client-secret",
+                    "client_credentials",
+                    DefaultAuthenticator.PRINCIPAL_ROLE_ALL))
         .isEmpty();
   }
 }

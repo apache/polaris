@@ -26,6 +26,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterEach;
@@ -54,7 +55,7 @@ public class SparkHudiIT extends SparkIntegrationBase {
             String.format("spark.sql.catalog.%s.uri", catalogName),
             endpoints.catalogApiEndpoint().toString())
         .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
-        .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
+        .config(String.format("spark.sql.catalog.%s.scope", catalogName), PolarisAuthConstants.PRINCIPAL_ROLE_ALL)
         .config(
             String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
         .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)

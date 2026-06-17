@@ -57,6 +57,7 @@ import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.auth.DefaultAuthenticator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.assertj.core.api.Assertions;
@@ -265,7 +266,7 @@ public class ManagementServiceTest {
                         AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
                     .setClientId("my-client-id")
                     .setClientSecret("my-client-secret")
-                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .setScopes(List.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL))
                     .build())
             .build();
     String catalogName = "mycatalog";
@@ -315,7 +316,7 @@ public class ManagementServiceTest {
                         AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
                     .setClientId("my-client-id")
                     .setClientSecret("my-client-secret")
-                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .setScopes(List.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL))
                     .build())
             .build();
     String catalogName = "mycatalog";

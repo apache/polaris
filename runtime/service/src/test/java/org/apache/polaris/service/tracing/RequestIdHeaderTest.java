@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.tracing;
 
+import static org.apache.polaris.service.auth.DefaultAuthenticator.PRINCIPAL_ROLE_ALL;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -75,7 +76,7 @@ public class RequestIdHeaderTest {
                           "grant_type",
                           "client_credentials",
                           "scope",
-                          "PRINCIPAL_ROLE:ALL",
+                          PRINCIPAL_ROLE_ALL,
                           "client_id",
                           CLIENT_ID,
                           "client_secret",

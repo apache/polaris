@@ -69,6 +69,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientPrincipal;
@@ -108,7 +109,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisApplicationIntegrationTest {
 
-  public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
+  public static final String PRINCIPAL_ROLE_ALL = PolarisAuthConstants.PRINCIPAL_ROLE_ALL;
 
   private static String realm;
 

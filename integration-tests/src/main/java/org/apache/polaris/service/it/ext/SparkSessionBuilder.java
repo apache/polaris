@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.spark.sql.SparkSession;
 
@@ -160,7 +161,8 @@ public class SparkSessionBuilder {
             String.format("spark.sql.catalog.%s.warehouse", catalog.catalogName),
             catalog.catalogName)
         .config(
-            String.format("spark.sql.catalog.%s.scope", catalog.catalogName), "PRINCIPAL_ROLE:ALL");
+            String.format("spark.sql.catalog.%s.scope", catalog.catalogName),
+            PolarisAuthConstants.PRINCIPAL_ROLE_ALL);
 
     // Add endpoint configuration
     Preconditions.checkNotNull(catalog.endpoints, "endpoints is required");

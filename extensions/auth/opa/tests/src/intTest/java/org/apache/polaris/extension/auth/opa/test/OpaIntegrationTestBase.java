@@ -19,6 +19,7 @@
 package org.apache.polaris.extension.auth.opa.test;
 
 import static io.restassured.RestAssured.given;
+import static org.apache.polaris.core.auth.PolarisAuthConstants.PRINCIPAL_ROLE_ALL;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -60,7 +61,7 @@ public abstract class OpaIntegrationTestBase {
             .formParam("grant_type", "client_credentials")
             .formParam("client_id", "test-admin")
             .formParam("client_secret", "test-secret")
-            .formParam("scope", "PRINCIPAL_ROLE:ALL")
+            .formParam("scope", PRINCIPAL_ROLE_ALL)
             .when()
             .post("/api/catalog/v1/oauth/tokens")
             .then()
@@ -117,7 +118,7 @@ public abstract class OpaIntegrationTestBase {
             .formParam("grant_type", "client_credentials")
             .formParam("client_id", clientId)
             .formParam("client_secret", clientSecret)
-            .formParam("scope", "PRINCIPAL_ROLE:ALL")
+            .formParam("scope", PRINCIPAL_ROLE_ALL)
             .when()
             .post("/api/catalog/v1/oauth/tokens")
             .then()

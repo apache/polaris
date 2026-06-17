@@ -21,6 +21,7 @@ package org.apache.polaris.service.tracing;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static io.restassured.RestAssured.given;
+import static org.apache.polaris.service.auth.DefaultAuthenticator.PRINCIPAL_ROLE_ALL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -79,7 +80,7 @@ public class TracingFilterTest {
     given()
         .contentType(ContentType.URLENC)
         .formParam("grant_type", "client_credentials")
-        .formParam("scope", "PRINCIPAL_ROLE:ALL")
+        .formParam("scope", PRINCIPAL_ROLE_ALL)
         .formParam("client_id", "test-admin")
         .formParam("client_secret", "test-secret")
         // W3C headers

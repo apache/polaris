@@ -21,6 +21,7 @@ package org.apache.polaris.service.auth.internal.broker;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
+import org.apache.polaris.core.auth.PolarisAuthConstants;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 
 final class TokenRequestValidator {
@@ -30,7 +31,6 @@ final class TokenRequestValidator {
   static final String TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
   static final String CLIENT_CREDENTIALS = "client_credentials";
   static final Set<String> ALLOWED_GRANT_TYPES = Set.of(CLIENT_CREDENTIALS, TOKEN_EXCHANGE);
-  static final String POLARIS_ROLE_PREFIX = "PRINCIPAL_ROLE:";
 
   /** Default constructor */
   TokenRequestValidator() {}
@@ -66,11 +66,11 @@ final class TokenRequestValidator {
     }
     String[] scopes = scope.split(" ");
     for (String s : scopes) {
-      if (!s.startsWith(POLARIS_ROLE_PREFIX)) {
+      if (!s.startsWith(PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX)) {
         LOGGER.info("Invalid scope provided. scope=" + s + ", scopes=" + scope);
         return Optional.of(OAuthError.invalid_scope);
       }
-      if (s.replaceFirst(POLARIS_ROLE_PREFIX, "").isEmpty()) {
+      if (s.replaceFirst(PolarisAuthConstants.PRINCIPAL_ROLE_PREFIX, "").isEmpty()) {
         LOGGER.info("Invalid scope provided. scope=" + s + ", scopes=" + scope);
         return Optional.of(OAuthError.invalid_scope);
       }

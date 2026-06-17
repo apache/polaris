@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.it;
 
+import static org.apache.polaris.service.auth.DefaultAuthenticator.PRINCIPAL_ROLE_ALL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -62,7 +63,7 @@ public class ApplicationIntegrationTest extends PolarisApplicationIntegrationTes
       var authConfig =
           AuthConfig.builder()
               .credential(credentialString)
-              .scope("PRINCIPAL_ROLE:ALL")
+              .scope(PRINCIPAL_ROLE_ALL)
               .oauth2ServerUri(path)
               .token(expiredToken)
               .build();
@@ -93,7 +94,7 @@ public class ApplicationIntegrationTest extends PolarisApplicationIntegrationTes
                   "grant_type",
                   "client_credentials",
                   "scope",
-                  "PRINCIPAL_ROLE:ALL",
+                  PRINCIPAL_ROLE_ALL,
                   "client_id",
                   clientCredentials.clientId(),
                   "client_secret",
@@ -105,7 +106,7 @@ public class ApplicationIntegrationTest extends PolarisApplicationIntegrationTes
       var authConfig =
           AuthConfig.builder()
               .credential(clientCredentials.clientId() + ":" + clientCredentials.clientSecret())
-              .scope("PRINCIPAL_ROLE:ALL")
+              .scope(PRINCIPAL_ROLE_ALL)
               .oauth2ServerUri(path)
               .token(token)
               .build();
@@ -134,7 +135,7 @@ public class ApplicationIntegrationTest extends PolarisApplicationIntegrationTes
                   "grant_type",
                   "client_credentials",
                   "scope",
-                  "PRINCIPAL_ROLE:ALL",
+                  PRINCIPAL_ROLE_ALL,
                   "client_id",
                   clientCredentials.clientId(),
                   "client_secret",
@@ -152,7 +153,7 @@ public class ApplicationIntegrationTest extends PolarisApplicationIntegrationTes
                           "grant_type",
                           "urn:ietf:params:oauth:grant-type:token-exchange",
                           "scope",
-                          "PRINCIPAL_ROLE:ALL",
+                          PRINCIPAL_ROLE_ALL,
                           "subject_token",
                           "invalid",
                           "subject_token_type",
