@@ -171,5 +171,20 @@ class JdbcBootstrapUtilsTest {
       int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
       assertEquals(-1, result);
     }
+
+    @Test
+    void latestResolvesToLatestSchemaVersion() {
+      // Simulates --schema-version LATEST: converter returns null → Optional.ofNullable(null)
+      when(mockSchemaOptions.schemaVersion()).thenReturn(Optional.ofNullable(null));
+      int requested = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
+      assertEquals(-1, requested);
+
+      // On a fresh DB with no realms, -1 should resolve to the latest schema version
+      for (DatabaseType dbType : DatabaseType.values()) {
+        int effective =
+            JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(dbType, 0, requested, false);
+        assertEquals(dbType.getLatestSchemaVersion(), effective);
+      }
+    }
   }
 }

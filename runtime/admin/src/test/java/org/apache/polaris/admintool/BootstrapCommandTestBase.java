@@ -101,6 +101,14 @@ public abstract class BootstrapCommandTestBase {
     assertThat(result.getOutput()).contains("realm: realm1 root principal credentials: ");
   }
 
+  @Test
+  @Launch(value = {"bootstrap", "-r", "realm1", "-c", "realm1,root,s3cr3t", "-v", "LATEST"})
+  public void testBootstrapSchemaVersionLatest(LaunchResult result) {
+    assertThat(result.getOutput())
+        .contains("Realm 'realm1' successfully bootstrapped.")
+        .contains("Bootstrap completed successfully.");
+  }
+
   private static Path copyResource(Path temp, String resource) throws IOException {
     URL source = Objects.requireNonNull(BootstrapCommandTestBase.class.getResource(resource));
     Path dest = temp.resolve(resource);
