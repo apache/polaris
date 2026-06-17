@@ -189,6 +189,40 @@ public class DatasourceOperations {
         });
   }
 
+  /** Connection-aware version for use inside runWithinTransaction. */
+  public <T> void executeSelectOverStream(
+      Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer)
+      throws SQLException {
+    withRetries(
+        () -> {
+          logQuery(query);
+          try (PreparedStatement statement = connection.prepareStatement(query.sql())) {
+            List<Object> params = query.parameters();
+            for (int i = 0; i < params.size(); i++) {
+              statement.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet resultSet = statement.executeQuery()) {
+              ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+              consumer.accept(iterator.toStream());
+              return null;
+            }
+          }
+        });
+  }
+
+  /** Connection-aware version for use inside runWithinTransaction. */
+  public <T> List<T> executeSelect(
+      Connection connection, @NonNull PreparedQuery query, @NonNull Converter<T> converterInstance)
+      throws SQLException {
+    ArrayList<T> results = new ArrayList<>();
+    executeSelectOverStream(
+        connection, query, converterInstance, stream -> stream.forEach(results::add));
+    return results;
+  }
+
   /**
    * Executes the UPDATE or INSERT Query
    *
