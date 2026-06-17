@@ -24,7 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.reset;
 
+import io.agroal.api.AgroalDataSource;
 import io.netty.channel.EventLoopGroup;
+import io.quarkus.agroal.DataSource;
 import io.quarkus.netty.MainEventLoopGroup;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import io.smallrye.common.annotation.Identifier;
@@ -35,7 +37,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.UUID;
-import javax.sql.DataSource;
 import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -59,7 +60,9 @@ abstract class InMemoryBufferEventListenerTestBase {
   @SuppressWarnings("CdiInjectionPointsInspection")
   EventLoopGroup eventLoopGroup;
 
-  @Inject Instance<DataSource> dataSource;
+  @Inject
+  @DataSource("h2")
+  Instance<AgroalDataSource> dataSource;
 
   @BeforeEach
   void resolveProducer() {

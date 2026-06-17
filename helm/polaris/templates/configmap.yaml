@@ -51,6 +51,9 @@ data:
 
     {{- /* Persistence */ -}}
     {{- $_ = set $map "polaris.persistence.type" .Values.persistence.type -}}
+    {{- if eq .Values.persistence.type "relational-jdbc" -}}
+    {{- $_ = set $map "polaris.persistence.relational.jdbc.datasource" .Values.persistence.relationalJdbc.datasource -}}
+    {{- end -}}
     {{- if eq .Values.persistence.type "nosql" -}}
     {{- $_ = set $map "polaris.persistence.nosql.backend" .Values.persistence.nosql.backend -}}
     {{- $_ = set $map "quarkus.mongodb.database" .Values.persistence.nosql.database -}}

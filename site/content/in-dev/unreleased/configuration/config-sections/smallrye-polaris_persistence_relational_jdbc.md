@@ -25,7 +25,8 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.persistence.relational.jdbc.max-retries` |  | `int` |  |
-| `polaris.persistence.relational.jdbc.max-duration-in-ms` |  | `long` |  |
-| `polaris.persistence.relational.jdbc.initial-delay-in-ms` |  | `long` |  |
-| `polaris.persistence.relational.jdbc.database-type` |  | `string` |  |
+| `polaris.persistence.relational.jdbc.max-retries` |  | `int` | The maximum number of retries before giving up the operation.  |
+| `polaris.persistence.relational.jdbc.max-duration-in-ms` |  | `long` | The maximum retry duration in milliseconds.  |
+| `polaris.persistence.relational.jdbc.initial-delay-in-ms` |  | `long` | The initial retry delay.  |
+| `polaris.persistence.relational.jdbc.database-type` |  | `string` | Explicitly configured database type. If not specified, the database type will be inferred from  the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"  |
+| `polaris.persistence.relational.jdbc.datasource` |  | `string` | The datasource name to use. Required. |

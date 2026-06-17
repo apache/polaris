@@ -43,6 +43,13 @@ public final class Profiles {
           "polaris.readiness.ignore-severe-issues",
           "true");
 
+  // TODO make JDBC+H2 the default persistence type for unit tests
+  public static final Map<String, String> RELATIONAL_JDBC_H2_PERSISTENCE =
+      Map.of(
+          "polaris.persistence.type", "relational-jdbc",
+          "polaris.persistence.auto-bootstrap-types", "relational-jdbc",
+          "polaris.persistence.relational.jdbc.datasource", "h2");
+
   public static class DefaultProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
@@ -51,10 +58,12 @@ public final class Profiles {
   }
 
   public static class ApplicationIntegrationProfile extends DefaultProfile {
+
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
           .putAll(super.getConfigOverrides())
+          .putAll(RELATIONAL_JDBC_H2_PERSISTENCE)
           .put("quarkus.http.limits.max-body-size", "1000000")
           .put("polaris.realm-context.realms", "POLARIS,OTHER")
           .put("polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true")
@@ -66,15 +75,15 @@ public final class Profiles {
   public static class ManagementIntegrationProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
-          "true",
-          "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
-          "true",
-          "polaris.storage.gcp.token",
-          "token",
-          "polaris.storage.gcp.lifespan",
-          "PT1H");
+      return ImmutableMap.<String, String>builder()
+          .putAll(RELATIONAL_JDBC_H2_PERSISTENCE)
+          .put("polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true")
+          .put(
+              "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
+              "true")
+          .put("polaris.storage.gcp.token", "token")
+          .put("polaris.storage.gcp.lifespan", "PT1H")
+          .build();
     }
   }
 
@@ -83,6 +92,7 @@ public final class Profiles {
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
           .putAll(super.getConfigOverrides())
+          .putAll(RELATIONAL_JDBC_H2_PERSISTENCE)
           .put("polaris.features.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"", "false")
           .put("polaris.features.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
           .build();
@@ -92,13 +102,12 @@ public final class Profiles {
   public static class RestCatalogViewFileIntegrationProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]",
-          "polaris.readiness.ignore-severe-issues",
-          "true");
+      return ImmutableMap.<String, String>builder()
+          .putAll(RELATIONAL_JDBC_H2_PERSISTENCE)
+          .put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true")
+          .put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]")
+          .put("polaris.readiness.ignore-severe-issues", "true")
+          .build();
     }
   }
 
@@ -171,13 +180,6 @@ public final class Profiles {
 
   static final Map<String, String> IN_MEMORY_BUFFER_EVENT_LISTENER_BASE_CONFIG =
       ImmutableMap.<String, String>builder()
-          .put("polaris.realm-context.realms", "test1,test2")
-          .put("polaris.persistence.type", "relational-jdbc")
-          .put("polaris.persistence.auto-bootstrap-types", "relational-jdbc")
-          .put("quarkus.datasource.db-kind", "h2")
-          .put(
-              "quarkus.datasource.jdbc.url",
-              "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE")
           .put("polaris.event-listener.type", "persistence-in-memory-buffer")
           .put(
               "quarkus.fault-tolerance.\"org.apache.polaris.service.events.listeners.inmemory.InMemoryBufferEventListener/flush\".retry.max-retries",
@@ -192,6 +194,8 @@ public final class Profiles {
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
           .putAll(IN_MEMORY_BUFFER_EVENT_LISTENER_BASE_CONFIG)
+          .putAll(RELATIONAL_JDBC_H2_PERSISTENCE)
+          .put("polaris.realm-context.realms", "test1,test2")
           .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "60s")
           .put("polaris.event-listener.persistence-in-memory-buffer.max-buffer-size", "10")
           .build();
@@ -203,9 +207,24 @@ public final class Profiles {
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
           .putAll(IN_MEMORY_BUFFER_EVENT_LISTENER_BASE_CONFIG)
+          .putAll(RELATIONAL_JDBC_H2_PERSISTENCE)
+          .put("polaris.realm-context.realms", "test1,test2")
           .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "100ms")
           .put("polaris.event-listener.persistence-in-memory-buffer.max-buffer-size", "1000")
           .build();
+    }
+  }
+
+  public static class InMemoryBufferEventListenerIntegrationProfile extends DefaultProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .putAll(IN_MEMORY_BUFFER_EVENT_LISTENER_BASE_CONFIG)
+          .putAll(RELATIONAL_JDBC_H2_PERSISTENCE)
+          .put("quarkus.otel.sdk.disabled", "false")
+          .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "100ms")
+          .buildKeepingLast();
     }
   }
 
@@ -276,26 +295,6 @@ public final class Profiles {
           .put(
               "polaris.event-listener.consume-catalog-and-after-notification-listener.enabled-event-types",
               "AFTER_SEND_NOTIFICATION")
-          .build();
-    }
-  }
-
-  public static class InMemoryBufferEventListenerIntegrationProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .put("polaris.persistence.type", "relational-jdbc")
-          .put("polaris.persistence.auto-bootstrap-types", "relational-jdbc")
-          .put("quarkus.datasource.db-kind", "h2")
-          .put("quarkus.otel.sdk.disabled", "false")
-          .put(
-              "quarkus.datasource.jdbc.url",
-              "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE")
-          .put("polaris.event-listener.type", "persistence-in-memory-buffer")
-          .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "100ms")
-          .put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true")
-          .put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\",\"S3\"]")
-          .put("polaris.readiness.ignore-severe-issues", "true")
           .build();
     }
   }

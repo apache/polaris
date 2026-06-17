@@ -33,9 +33,13 @@ dependencies {
 
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
-  runtimeOnly(project(":polaris-relational-jdbc"))
-  runtimeOnly("org.postgresql:postgresql")
+  implementation(enforcedPlatform(libs.quarkus.bom))
 
+  // JDBC persistence + backends
+  runtimeOnly(project(":polaris-relational-jdbc"))
+  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
+
+  // NoSQL persistence + backends
   implementation(project(":polaris-persistence-nosql-api"))
   implementation(project(":polaris-persistence-nosql-maintenance-api"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore"))
@@ -46,8 +50,6 @@ dependencies {
 
   runtimeOnly("io.quarkus:quarkus-mongodb-client")
 
-  implementation("io.quarkus:quarkus-jdbc-postgresql")
-  implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 

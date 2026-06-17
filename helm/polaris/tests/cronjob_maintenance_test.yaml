@@ -590,7 +590,7 @@ tests:
       - contains:
           path: spec.jobTemplate.spec.template.spec.containers[0].env
           content:
-            name: quarkus.datasource.username
+            name: quarkus.datasource.postgresql.username
             valueFrom:
               secretKeyRef:
                 name: my-jdbc-secret
@@ -598,7 +598,7 @@ tests:
       - contains:
           path: spec.jobTemplate.spec.template.spec.containers[0].env
           content:
-            name: quarkus.datasource.password
+            name: quarkus.datasource.postgresql.password
             valueFrom:
               secretKeyRef:
                 name: my-jdbc-secret
@@ -606,7 +606,7 @@ tests:
       - contains:
           path: spec.jobTemplate.spec.template.spec.containers[0].env
           content:
-            name: quarkus.datasource.jdbc.url
+            name: quarkus.datasource.postgresql.jdbc.url
             valueFrom:
               secretKeyRef:
                 name: my-jdbc-secret

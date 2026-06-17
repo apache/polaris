@@ -147,9 +147,10 @@ kubectl run polaris-bootstrap \
   --restart=Never \
   --rm -it \
   --env="polaris.persistence.type=relational-jdbc" \
-  --env="quarkus.datasource.username=$(kubectl get secret polaris-persistence -n polaris -o jsonpath='{.data.username}' | base64 --decode)" \
-  --env="quarkus.datasource.password=$(kubectl get secret polaris-persistence -n polaris -o jsonpath='{.data.password}' | base64 --decode)" \
-  --env="quarkus.datasource.jdbc.url=$(kubectl get secret polaris-persistence -n polaris -o jsonpath='{.data.jdbcUrl}' | base64 --decode)" \
+  --env="polaris.persistence.relational.jdbc.datasource=postgresql" \
+  --env="quarkus.datasource.postgresql.username=$(kubectl get secret polaris-persistence -n polaris -o jsonpath='{.data.username}' | base64 --decode)" \
+  --env="quarkus.datasource.postgresql.password=$(kubectl get secret polaris-persistence -n polaris -o jsonpath='{.data.password}' | base64 --decode)" \
+  --env="quarkus.datasource.postgresql.jdbc.url=$(kubectl get secret polaris-persistence -n polaris -o jsonpath='{.data.jdbcUrl}' | base64 --decode)" \
   -- \
   bootstrap -r POLARIS -c POLARIS,root,s3cr3t
 ```

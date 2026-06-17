@@ -65,7 +65,12 @@ dependencies {
   implementation("io.quarkus:quarkus-security")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
   implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
+
+  // JDBC backends
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
+  runtimeOnly("io.quarkus:quarkus-jdbc-h2") {
+    exclude(group = "org.locationtech.jts", module = "jts-core")
+  }
 
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
@@ -143,7 +148,10 @@ dependencies {
   testImplementation("io.quarkus:quarkus-junit-mockito")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
-  testImplementation("io.quarkus:quarkus-jdbc-h2")
+  testImplementation("io.quarkus:quarkus-agroal")
+  testImplementation("io.quarkus:quarkus-jdbc-h2") {
+    exclude(group = "org.locationtech.jts", module = "jts-core")
+  }
 
   testImplementation("io.opentelemetry:opentelemetry-sdk-testing")
 

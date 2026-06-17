@@ -154,5 +154,10 @@ class JdbcGrantRecordsIdempotencyTest {
     public Optional<String> databaseType() {
       return Optional.of("h2");
     }
+
+    @Override
+    public String dataSource() {
+      return "h2";
+    }
   }
 }

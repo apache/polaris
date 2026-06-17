@@ -38,6 +38,9 @@ dependencies {
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
+  runtimeOnly("io.quarkus:quarkus-jdbc-h2") {
+    exclude(group = "org.locationtech.jts", module = "jts-core")
+  }
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
   runtimeOnly(project(":polaris-extensions-auth-ranger"))

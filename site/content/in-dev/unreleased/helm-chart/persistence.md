@@ -84,11 +84,49 @@ Configure the chart to use the PostgreSQL metastore:
 persistence:
   type: relational-jdbc
   relationalJdbc:
+    datasource: "postgresql"    # Named datasource to activate (default: postgresql)
     secret:
       name: "polaris-persistence"
       username: "username"      # Key in secret containing the username
       password: "password"      # Key in secret containing the password
       jdbcUrl: "jdbcUrl"        # Key in secret containing the JDBC URL
+```
+
+The `datasource` field selects which [named Quarkus datasource](https://quarkus.io/guides/datasource#multiple-datasources)
+Polaris activates at runtime. The chart maps the secret keys to
+`quarkus.datasource.<name>.username`, `quarkus.datasource.<name>.password`, and
+`quarkus.datasource.<name>.jdbc.url` environment variables. Polaris automatically activates the
+selected datasource and deactivates all others — **do not set `quarkus.datasource.*.active` manually**.
+
+Two named datasources are built into the Polaris image:
+
+| `datasource` value | Database                    | Use case       |
+|--------------------|-----------------------------|----------------|
+| `postgresql`       | PostgreSQL (or CockroachDB) | Production use |
+| `h2`               | H2                          | Testing only   |
+
+For more details on the named datasource model, see the
+[Relational JDBC metastore]({{% ref "../metastores/relational-jdbc" %}}) page.
+
+### CockroachDB
+
+CockroachDB uses the PostgreSQL wire protocol and JDBC driver, so it works with the built-in
+`postgresql` named datasource. You must also set `database-type` to `cockroachdb` via
+`advancedConfig` so that Polaris uses the CockroachDB-specific schema DDL:
+
+```yaml
+persistence:
+  type: relational-jdbc
+  relationalJdbc:
+    datasource: postgresql
+    secret:
+      name: "polaris-persistence"
+      username: "username"
+      password: "password"
+      jdbcUrl: "jdbcUrl"   # e.g. jdbc:postgresql://<cockroachdb-host>:26257/<db-name>?sslmode=disable
+
+advancedConfig:
+  polaris.persistence.relational.jdbc.database-type: "cockroachdb"
 ```
 
 ### Connection Pool Settings
@@ -97,10 +135,10 @@ For production deployments, you may want to tune the connection pool settings us
 
 ```yaml
 advancedConfig:
-  quarkus.datasource.jdbc.min-size: "5"
-  quarkus.datasource.jdbc.max-size: "20"
-  quarkus.datasource.jdbc.acquisition-timeout: "30S"
-  quarkus.datasource.jdbc.idle-removal-interval: "5M"
+  quarkus.datasource.postgresql.jdbc.min-size: "5"
+  quarkus.datasource.postgresql.jdbc.max-size: "20"
+  quarkus.datasource.postgresql.jdbc.acquisition-timeout: "30S"
+  quarkus.datasource.postgresql.jdbc.idle-removal-interval: "5M"
 ```
 
 See the [Quarkus Datasource configuration reference](https://quarkus.io/guides/datasource#configuration-reference) for all available options.
