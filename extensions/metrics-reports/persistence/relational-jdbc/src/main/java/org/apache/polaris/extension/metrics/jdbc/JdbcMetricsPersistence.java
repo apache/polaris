@@ -29,6 +29,7 @@ import java.util.function.Function;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
+import org.apache.polaris.core.persistence.metrics.MetricsQuerySpi;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -52,7 +53,7 @@ import org.jspecify.annotations.Nullable;
  * absent the reporter falls back to no-op behavior.
  */
 @ApplicationScoped
-public class JdbcMetricsPersistence implements MetricsPersistence {
+public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQuerySpi {
 
   private final DatasourceOperations datasourceOperations;
   private final RealmContext realmContext;

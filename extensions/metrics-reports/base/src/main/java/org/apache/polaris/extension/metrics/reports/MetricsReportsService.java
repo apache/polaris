@@ -20,10 +20,13 @@ package org.apache.polaris.extension.metrics.reports;
 
 import com.google.common.annotations.Beta;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -32,9 +35,27 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.metrics.api.model.CommitMetricsObject;
+import org.apache.polaris.core.metrics.api.model.CommitMetricsReport;
+import org.apache.polaris.core.metrics.api.model.CommitPayload;
+import org.apache.polaris.core.metrics.api.model.CommitPayloadData;
+import org.apache.polaris.core.metrics.api.model.ListCommitMetricsResponse;
+import org.apache.polaris.core.metrics.api.model.ListScanMetricsResponse;
+import org.apache.polaris.core.metrics.api.model.MetricsActor;
+import org.apache.polaris.core.metrics.api.model.MetricsRequest;
+import org.apache.polaris.core.metrics.api.model.ScanMetricsObject;
+import org.apache.polaris.core.metrics.api.model.ScanMetricsReport;
+import org.apache.polaris.core.metrics.api.model.ScanPayload;
+import org.apache.polaris.core.metrics.api.model.ScanPayloadData;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsQuerySpi;
+import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
@@ -47,11 +68,8 @@ import org.jspecify.annotations.NonNull;
 /**
  * Service implementation for the Metrics Reports API.
  *
- * <p>Resolves catalog/namespace/table names to internal IDs and performs authorization. In this
- * release the read path returns HTTP 501 Not Implemented; durable query backing is provided by the
- * {@code polaris-extensions-metrics-reports-jdbc} extension in a follow-up release.
- *
- * <p>TODO (#4756): wire durable metrics query provider when the extension is installed.
+ * <p>Resolves catalog/namespace/table names to internal IDs, performs authorization, and delegates
+ * durable reads to {@link MetricsQuerySpi} when an implementation is available.
  */
 @Beta
 @RequestScoped
@@ -60,15 +78,18 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
   private final PolarisAuthorizer authorizer;
   private final PolarisPrincipal polarisPrincipal;
   private final ResolutionManifestFactory resolutionManifestFactory;
+  private final Instance<MetricsQuerySpi> queryProvider;
 
   @Inject
   public MetricsReportsService(
       @NonNull PolarisAuthorizer authorizer,
       @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull ResolutionManifestFactory resolutionManifestFactory) {
+      @NonNull ResolutionManifestFactory resolutionManifestFactory,
+      @Any Instance<MetricsQuerySpi> queryProvider) {
     this.authorizer = authorizer;
     this.polarisPrincipal = polarisPrincipal;
     this.resolutionManifestFactory = resolutionManifestFactory;
+    this.queryProvider = queryProvider;
   }
 
   @Override
@@ -89,16 +110,53 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier identifier = TableIdentifier.of(ns, table);
 
-    resolveAndAuthorizeTableMetrics(catalogName, identifier);
+    PolarisResolutionManifest manifest = resolveAndAuthorizeTableMetrics(catalogName, identifier);
 
-    return Response.status(Response.Status.NOT_IMPLEMENTED)
-        .entity(
-            "Durable metrics query is not available in this deployment. "
-                + "Install the polaris-extensions-metrics-reports-jdbc extension to enable it.")
+    if (!queryProvider.isResolvable()) {
+      return Response.status(Response.Status.NOT_IMPLEMENTED)
+          .entity(
+              "Durable metrics query is not available in this deployment. "
+                  + "Install the polaris-extensions-metrics-reports-jdbc extension to enable it.")
+          .build();
+    }
+
+    CatalogEntity catalogEntity = manifest.getResolvedCatalogEntity();
+    long catalogId = catalogEntity != null ? catalogEntity.getId() : -1L;
+    PolarisResolvedPathWrapper tableWrapper =
+        manifest.getResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE, true);
+    long tableId = tableWrapper.getRawLeafEntity().getId();
+
+    PageToken pt = PageToken.build(pageToken, pageSize, () -> true);
+    MetricsQuerySpi provider = queryProvider.get();
+
+    if ("commit".equalsIgnoreCase(metricType)) {
+      Page<CommitMetricsRecord> page =
+          provider.listCommitReports(
+              catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, pt);
+      List<CommitMetricsReport> reports =
+          page.items().stream().map(MetricsReportsService::toCommitReport).toList();
+      return Response.ok(
+              new ListCommitMetricsResponse(
+                  page.encodedResponseToken(),
+                  ListCommitMetricsResponse.MetricTypeEnum.COMMIT,
+                  reports))
+          .build();
+    }
+
+    Page<ScanMetricsRecord> page =
+        provider.listScanReports(
+            catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, pt);
+    List<ScanMetricsReport> reports =
+        page.items().stream().map(MetricsReportsService::toScanReport).toList();
+    return Response.ok(
+            new ListScanMetricsResponse(
+                page.encodedResponseToken(), ListScanMetricsResponse.MetricTypeEnum.SCAN, reports))
         .build();
   }
 
-  private void resolveAndAuthorizeTableMetrics(String catalogName, TableIdentifier identifier) {
+  private PolarisResolutionManifest resolveAndAuthorizeTableMetrics(
+      String catalogName, TableIdentifier identifier) {
     PolarisResolutionManifest manifest =
         resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
     manifest.addPassthroughPath(
@@ -132,6 +190,84 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
         PolarisAuthorizableOperation.LIST_TABLE_METRICS,
         tableWrapper,
         null);
+
+    return manifest;
+  }
+
+  private static ScanMetricsReport toScanReport(ScanMetricsRecord r) {
+    MetricsActor actor = r.principalName() != null ? new MetricsActor(r.principalName()) : null;
+    MetricsRequest request =
+        (r.requestId() != null || r.otelTraceId() != null || r.otelSpanId() != null)
+            ? new MetricsRequest(r.requestId(), r.otelTraceId(), r.otelSpanId())
+            : null;
+    ScanMetricsObject object = new ScanMetricsObject(r.snapshotId().orElse(null));
+    ScanPayloadData data =
+        ScanPayloadData.builder()
+            .setSchemaId(r.schemaId().orElse(null))
+            .setFilterExpression(r.filterExpression().orElse(null))
+            .setProjectedFieldIds(r.projectedFieldIds())
+            .setProjectedFieldNames(r.projectedFieldNames())
+            .setResultDataFiles(r.resultDataFiles())
+            .setResultDeleteFiles(r.resultDeleteFiles())
+            .setTotalFileSizeBytes(r.totalFileSizeBytes())
+            .setTotalDataManifests(r.totalDataManifests())
+            .setTotalDeleteManifests(r.totalDeleteManifests())
+            .setScannedDataManifests(r.scannedDataManifests())
+            .setScannedDeleteManifests(r.scannedDeleteManifests())
+            .setSkippedDataManifests(r.skippedDataManifests())
+            .setSkippedDeleteManifests(r.skippedDeleteManifests())
+            .setSkippedDataFiles(r.skippedDataFiles())
+            .setSkippedDeleteFiles(r.skippedDeleteFiles())
+            .setTotalPlanningDurationMs(r.totalPlanningDurationMs())
+            .setEqualityDeleteFiles(r.equalityDeleteFiles())
+            .setPositionalDeleteFiles(r.positionalDeleteFiles())
+            .setIndexedDeleteFiles(r.indexedDeleteFiles())
+            .setTotalDeleteFileSizeBytes(r.totalDeleteFileSizeBytes())
+            .build();
+    ScanPayload payload =
+        new ScanPayload(
+            ScanPayload.TypeEnum.ICEBERG_METRICS_SCAN, ScanPayload.VersionEnum.NUMBER_1, data);
+    return new ScanMetricsReport(
+        r.reportId(), r.timestamp().toEpochMilli(), actor, request, object, payload);
+  }
+
+  private static CommitMetricsReport toCommitReport(CommitMetricsRecord r) {
+    MetricsActor actor = r.principalName() != null ? new MetricsActor(r.principalName()) : null;
+    MetricsRequest request =
+        (r.requestId() != null || r.otelTraceId() != null || r.otelSpanId() != null)
+            ? new MetricsRequest(r.requestId(), r.otelTraceId(), r.otelSpanId())
+            : null;
+    CommitMetricsObject object = new CommitMetricsObject(r.snapshotId());
+    CommitPayloadData data =
+        CommitPayloadData.builder()
+            .setSequenceNumber(r.sequenceNumber().orElse(null))
+            .setOperation(r.operation())
+            .setAddedDataFiles(r.addedDataFiles())
+            .setRemovedDataFiles(r.removedDataFiles())
+            .setTotalDataFiles(r.totalDataFiles())
+            .setAddedDeleteFiles(r.addedDeleteFiles())
+            .setRemovedDeleteFiles(r.removedDeleteFiles())
+            .setTotalDeleteFiles(r.totalDeleteFiles())
+            .setAddedEqualityDeleteFiles(r.addedEqualityDeleteFiles())
+            .setRemovedEqualityDeleteFiles(r.removedEqualityDeleteFiles())
+            .setAddedPositionalDeleteFiles(r.addedPositionalDeleteFiles())
+            .setRemovedPositionalDeleteFiles(r.removedPositionalDeleteFiles())
+            .setAddedRecords(r.addedRecords())
+            .setRemovedRecords(r.removedRecords())
+            .setTotalRecords(r.totalRecords())
+            .setAddedFileSizeBytes(r.addedFileSizeBytes())
+            .setRemovedFileSizeBytes(r.removedFileSizeBytes())
+            .setTotalFileSizeBytes(r.totalFileSizeBytes())
+            .setTotalDurationMs(r.totalDurationMs().orElse(null))
+            .setAttempts(r.attempts())
+            .build();
+    CommitPayload payload =
+        new CommitPayload(
+            CommitPayload.TypeEnum.ICEBERG_METRICS_COMMIT,
+            CommitPayload.VersionEnum.NUMBER_1,
+            data);
+    return new CommitMetricsReport(
+        r.reportId(), r.timestamp().toEpochMilli(), actor, request, object, payload);
   }
 
   private static Namespace decodeNamespace(String encodedNamespace) {

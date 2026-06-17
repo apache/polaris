@@ -28,6 +28,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -41,6 +42,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.metrics.MetricsQuerySpi;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
@@ -68,6 +70,7 @@ class MetricsReportsServiceTest {
   private MetricsReportsService service;
   private RealmContext realmContext;
   private SecurityContext securityContext;
+  private Instance<MetricsQuerySpi> queryProvider;
 
   @BeforeEach
   void setUp() {
@@ -95,7 +98,12 @@ class MetricsReportsServiceTest {
             any(PolarisResolvedPathWrapper.class),
             (PolarisResolvedPathWrapper) isNull());
 
-    service = new MetricsReportsService(authorizer, principal, factory);
+    @SuppressWarnings("unchecked")
+    Instance<MetricsQuerySpi> noOpProvider = mock(Instance.class);
+    when(noOpProvider.isResolvable()).thenReturn(false);
+    queryProvider = noOpProvider;
+
+    service = new MetricsReportsService(authorizer, principal, factory, queryProvider);
     realmContext = mock(RealmContext.class);
     securityContext = mock(SecurityContext.class);
   }
