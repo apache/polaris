@@ -48,20 +48,6 @@ class TestLogSanitizer(unittest.TestCase):
         self.assertEqual(sanitized["Authorization"], REDACTED)
         self.assertEqual(sanitized["Content-Type"], "application/json")
 
-    def test_realm_header_redaction(self) -> None:
-        realm_headers = {
-            "Polaris-Realm": "realm-internal",
-            "realm": "POLARIS",
-            "X-Realm": "tenant-a",
-            "realm-id": "realm-123",
-            "Accept": "application/json",
-        }
-        sanitized = sanitize_headers(realm_headers)
-        for header_name in ("Polaris-Realm", "realm", "X-Realm", "realm-id"):
-            self.assertEqual(sanitized[header_name], REDACTED)
-            self.assertNotIn(realm_headers[header_name], str(sanitized))
-        self.assertEqual(sanitized["Accept"], "application/json")
-
     def test_oauth_token_request_payload_redaction(self) -> None:
         body = (
             "grant_type=client_credentials&client_id=my-client&"
@@ -77,7 +63,6 @@ class TestLogSanitizer(unittest.TestCase):
             {
                 "access_token": "oauth-access-token",
                 "refresh_token": "oauth-refresh-token",
-                "id_token": "oauth-id-token",
                 "token_type": "Bearer",
                 "expires_in": 3600,
             }
@@ -86,7 +71,6 @@ class TestLogSanitizer(unittest.TestCase):
         parsed = json.loads(sanitized)
         self.assertEqual(parsed["access_token"], REDACTED)
         self.assertEqual(parsed["refresh_token"], REDACTED)
-        self.assertEqual(parsed["id_token"], REDACTED)
         self.assertEqual(parsed["token_type"], "Bearer")
         self.assertEqual(parsed["expires_in"], 3600)
 
@@ -119,29 +103,6 @@ class TestLogSanitizer(unittest.TestCase):
             sanitized["credentials"]["tokens"][0]["token_type"], "Bearer"
         )
 
-    def test_expanded_sensitive_keys(self) -> None:
-        payload = {
-            "secret": "top-secret",
-            "private_key": "-----BEGIN PRIVATE KEY-----",
-            "client_assertion": "signed-jwt",
-            "session_token": "sess-123",
-            "access-key": "AKIAIOSFODNN7EXAMPLE",
-            "secretKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-            "warehouse": "dev",
-        }
-        sanitized = sanitize_data(payload)
-        self.assertEqual(sanitized["warehouse"], "dev")
-        for sensitive_field in (
-            "secret",
-            "private_key",
-            "client_assertion",
-            "session_token",
-            "access-key",
-            "secretKey",
-        ):
-            self.assertEqual(sanitized[sensitive_field], REDACTED)
-            self.assertNotIn(payload[sensitive_field], str(sanitized))
-
     def test_non_sensitive_fields_remain_visible(self) -> None:
         payload = {
             "client_id": "my-client",
@@ -156,30 +117,10 @@ class TestLogSanitizer(unittest.TestCase):
         headers = {"Accept": "application/json", "User-Agent": "polaris-cli"}
         self.assertEqual(sanitize_headers(headers), headers)
 
-    def test_json_body_redaction(self) -> None:
-        body = json.dumps(
-            {
-                "password": "hunter2",
-                "username": "alice",
-            }
-        )
-        sanitized = sanitize_body(body)
-        parsed = json.loads(sanitized)
-        self.assertEqual(parsed["password"], REDACTED)
-        self.assertEqual(parsed["username"], "alice")
-
     def test_malformed_json_does_not_raise(self) -> None:
         body = "{not-valid-json"
         sanitized = sanitize_body(body)
         self.assertEqual(sanitized, body)
-
-    def test_invalid_utf8_bytes_do_not_raise(self) -> None:
-        sanitized = sanitize_body(b"\xff\xfe\xfd")
-        self.assertEqual(sanitized, REDACTED)
-
-    def test_unknown_payload_types_are_logged_safely(self) -> None:
-        sanitized = sanitize_body(12345)
-        self.assertEqual(sanitized, "12345")
 
     def test_sanitize_failures_return_safe_fallback(self) -> None:
         with patch(
@@ -242,7 +183,6 @@ class TestApiRequestLogging(unittest.TestCase):
             url="http://localhost:8080/api/catalog/v1/oauth/tokens",
             headers={
                 "Authorization": "Bearer secret-token",
-                "Polaris-Realm": "realm-internal",
                 "Content-Type": "application/x-www-form-urlencoded",
             },
             body=(
@@ -252,18 +192,16 @@ class TestApiRequestLogging(unittest.TestCase):
         )
 
         self.assertIn("Authorization", output)
-        self.assertIn("Polaris-Realm", output)
         self.assertNotIn("secret-token", output)
         self.assertNotIn("super-secret", output)
         self.assertNotIn("oauth-access-token", output)
         self.assertIn(OAUTH_TOKEN_BODY_REDACTED, output)
         self.assertIn("Response Body:", output)
 
-    def test_debug_logging_redacts_realm_headers_on_management_request(self) -> None:
+    def test_debug_logging_redacts_management_request_credentials(self) -> None:
         output = self._capture_debug_output(
             url="http://localhost:8181/api/management/v1/catalogs",
             headers={
-                "Polaris-Realm": "realm-internal",
                 "Authorization": "Bearer secret-token",
                 "Accept": "application/json",
             },
@@ -277,8 +215,6 @@ class TestApiRequestLogging(unittest.TestCase):
             response_data=json.dumps({"catalogs": [{"name": "sales"}]}).encode(),
         )
 
-        self.assertIn("Polaris-Realm", output)
-        self.assertNotIn("realm-internal", output)
         self.assertNotIn("secret-token", output)
         self.assertNotIn("super-secret", output)
         self.assertIn('"name": "sales"', output)

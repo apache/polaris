@@ -98,8 +98,8 @@ class PolarisCli:
     @staticmethod
     def _enable_api_request_logging() -> None:
         # Debug logging mirrors HTTP traffic to stderr. Requests and responses are
-        # sanitized before writing so tokens, secrets, and realm headers cannot leak
-        # into CI logs or shared terminals (see log_sanitizer.py).
+        # sanitized before writing so OAuth credentials cannot leak into CI logs or
+        # shared terminals (see log_sanitizer.py).
         if not hasattr(urllib3.PoolManager, "original_urlopen"):
             urllib3.PoolManager.original_urlopen = urllib3.PoolManager.urlopen
 

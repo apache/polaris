@@ -19,18 +19,8 @@
 """
 Sanitize Polaris CLI debug log output.
 
-``polaris --debug`` logs HTTP traffic to stderr for troubleshooting. That output
-can end up in CI logs, support tickets, and shared terminals, so credentials must
-never be written verbatim.
-
-Sensitive data includes OAuth tokens, passwords, API keys, private keys, and
-realm authentication headers (for example ``Polaris-Realm``) that identify the
-tenancy/security context for a request.
-
-OAuth token endpoints (``/oauth/tokens``) are treated specially: request and
-response bodies are replaced with a fixed redaction message because those
-payloads are almost entirely authentication material with little troubleshooting
-value when partially redacted.
+``polaris --debug`` logs HTTP traffic to stderr. Known credential fields and
+OAuth token endpoint payloads are redacted before writing.
 """
 
 import json
@@ -41,76 +31,38 @@ from urllib.parse import parse_qsl, urlencode
 logger = logging.getLogger(__name__)
 
 REDACTED = "***REDACTED***"
-
-# JSON/form field names whose scalar values are always redacted. Matching is
-# case-insensitive and treats ``-``/``_`` interchangeably (``access-key``,
-# ``access_key``, ``accesskey`` all match ``access_key`` / ``accesskey``).
-SENSITIVE_KEYS = {
-    "authorization",
-    "client_secret",
-    "password",
-    "access_token",
-    "refresh_token",
-    "id_token",
-    "api_key",
-    "token",
-    "secret",
-    "bearer",
-    "credential",
-    "credentials",
-    "private_key",
-    "client_assertion",
-    "assertion",
-    "jwt",
-    "session_token",
-    "security_token",
-    "accesskey",
-    "secretkey",
-}
-
 OAUTH_TOKEN_BODY_REDACTED = "<redacted sensitive authentication payload>"
 SANITIZE_FAILURE_MESSAGE = "<redacted: unable to sanitize payload>"
+
+# Compared case-insensitively; ``-`` and ``_`` are treated interchangeably.
+SENSITIVE_HEADERS = {"authorization"}
+SENSITIVE_BODY_KEYS = {"client_secret", "access_token", "refresh_token"}
 
 
 def _normalize_key(key: str) -> str:
     return key.lower().replace("-", "_")
 
 
-def _collapsed_key(key: str) -> str:
-    return _normalize_key(key).replace("_", "")
-
-
-def _is_sensitive_key(key: str) -> bool:
-    normalized = _normalize_key(key)
-    return normalized in SENSITIVE_KEYS or _collapsed_key(key) in SENSITIVE_KEYS
-
-
-def _is_realm_header(key: str) -> bool:
-    # Polaris defaults to ``Polaris-Realm`` but deployments may use custom header
-    # names; any header name containing ``realm`` may carry tenancy context.
-    return "realm" in _collapsed_key(key)
+def _is_sensitive_body_key(key: str) -> bool:
+    return _normalize_key(key) in SENSITIVE_BODY_KEYS
 
 
 def _should_redact_header(key: str) -> bool:
-    return _is_sensitive_key(key) or _is_realm_header(key)
+    return _normalize_key(key) in SENSITIVE_HEADERS
 
 
-def redact_value(value: Any) -> str:
-    return REDACTED
-
-
-def _redact_sensitive_value(key: str, value: Any) -> Any:
-    if _is_sensitive_key(key) and isinstance(value, (dict, list, tuple)):
-        return sanitize_data(value)
-    if _is_sensitive_key(key):
-        return redact_value(value)
+def _redact_body_value(key: str, value: Any) -> Any:
+    if _is_sensitive_body_key(key):
+        if isinstance(value, (dict, list, tuple)):
+            return sanitize_data(value)
+        return REDACTED
     return sanitize_data(value)
 
 
 def sanitize_data(data: Any) -> Any:
     if isinstance(data, dict):
         return {
-            key: _redact_sensitive_value(str(key), value) for key, value in data.items()
+            key: _redact_body_value(str(key), value) for key, value in data.items()
         }
     if isinstance(data, list):
         return [sanitize_data(item) for item in data]
@@ -137,11 +89,11 @@ def sanitize_headers(headers: Any) -> Any:
         return headers
     if isinstance(headers, list):
         return [
-            (key, redact_value(value) if _should_redact_header(str(key)) else value)
+            (key, REDACTED if _should_redact_header(str(key)) else value)
             for key, value in items
         ]
     return {
-        key: redact_value(value) if _should_redact_header(str(key)) else value
+        key: REDACTED if _should_redact_header(str(key)) else value
         for key, value in items
     }
 
@@ -152,7 +104,7 @@ def is_oauth_token_endpoint(url: str) -> bool:
 
 def _sanitize_form_body(body: str) -> str:
     sanitized_pairs = [
-        (key, redact_value(value) if _is_sensitive_key(key) else value)
+        (key, REDACTED if _is_sensitive_body_key(key) else value)
         for key, value in parse_qsl(body, keep_blank_values=True)
     ]
     return urlencode(sanitized_pairs)
