@@ -59,8 +59,16 @@ public class RSAKeyPairJWTBrokerTest {
     Mockito.when(metastoreManager.findPrincipalById(polarisCallContext, principalId))
         .thenReturn(Optional.of(principal));
     KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    Algorithm algorithm =
+        Algorithm.RSA256(
+            (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey());
     TokenBroker tokenBroker =
-        new RSAKeyPairJWTBroker(metastoreManager, polarisCallContext, 420, provider);
+        new JWTBroker(
+            metastoreManager,
+            polarisCallContext,
+            420,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
             clientId,
@@ -92,8 +100,16 @@ public class RSAKeyPairJWTBrokerTest {
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    Algorithm algorithm =
+        Algorithm.RSA256(
+            (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey());
     TokenBroker tokenBroker =
-        new RSAKeyPairJWTBroker(metastoreManager, polarisCallContext, 420, provider);
+        new JWTBroker(
+            metastoreManager,
+            polarisCallContext,
+            420,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
 
     String tokenWithWrongIssuer =
         JWT.create()
@@ -116,8 +132,16 @@ public class RSAKeyPairJWTBrokerTest {
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    Algorithm algorithm =
+        Algorithm.RSA256(
+            (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey());
     TokenBroker tokenBroker =
-        new RSAKeyPairJWTBroker(metastoreManager, polarisCallContext, 420, provider);
+        new JWTBroker(
+            metastoreManager,
+            polarisCallContext,
+            420,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
 
     String tokenWithoutIssuer =
         JWT.create()
