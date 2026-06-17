@@ -61,9 +61,7 @@ def _redact_body_value(key: str, value: Any) -> Any:
 
 def sanitize_data(data: Any) -> Any:
     if isinstance(data, dict):
-        return {
-            key: _redact_body_value(str(key), value) for key, value in data.items()
-        }
+        return {key: _redact_body_value(str(key), value) for key, value in data.items()}
     if isinstance(data, list):
         return [sanitize_data(item) for item in data]
     if isinstance(data, tuple):
