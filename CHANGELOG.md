@@ -65,6 +65,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The admin tool `purge` command now prints the underlying exception stack trace to stderr when a purge fails unexpectedly, matching the `bootstrap` command. Previously a failed purge printed only a generic message, giving operators no diagnostic information.
 - The access token carried in `PolarisCredential` is now redacted from its `toString()`, so it is no longer written to authentication logs (including at WARN level on failed authentication).
 - JWT verification now validates the issuer claim (`"polaris"`) in addition to the active claim. Tokens signed with the same key but carrying a different issuer are now rejected.
+- Inheritable policy mapping inserts in the JDBC backend now use the active transaction connection, so they roll back correctly with the surrounding transaction.
 
 ## [1.5.0]
 
