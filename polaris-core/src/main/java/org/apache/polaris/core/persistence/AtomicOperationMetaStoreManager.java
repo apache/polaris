@@ -249,6 +249,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     List<PolarisBaseEntity> entities =
         ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
     for (PolarisBaseEntity originalEntity : entities) {
+      if (originalEntity == null) {
+        continue; // entity was concurrently dropped/purged after grants were removed
+      }
       PolarisBaseEntity entityGrantChanged =
           originalEntity.withGrantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1);
       ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
