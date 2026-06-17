@@ -141,7 +141,7 @@ public final class ContainerSpecHelper {
 
       if (explicitImage != null || explicitTag != null) {
         throw new IllegalArgumentException(
-            "Must specify either BOTH, image name AND tag via system properties or environment  or omit and leave it to the default "
+            "Must specify both image name and tag via system properties or environment variables, or omit both to use the default "
                 + fullImageName
                 + " from "
                 + dockerfile);
