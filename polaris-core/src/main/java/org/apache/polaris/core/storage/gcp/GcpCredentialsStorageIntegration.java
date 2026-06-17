@@ -216,19 +216,38 @@ public class GcpCredentialsStorageIntegration
   }
 
   /**
-   * Returns true when GCS principal attribution is fully configured (WIF audience, token issuer,
-   * and signing key file all set). There is intentionally no separate on/off flag.
+   * Returns true when GCS principal attribution is explicitly enabled and fully configured. Throws
+   * {@link IllegalStateException} if enabled but any required field is missing, so a misconfigured
+   * deployment fails fast on the first credential-vending attempt rather than silently falling back
+   * to unattributed credentials.
    */
   private static boolean principalAttributionConfigured(RealmConfig realmConfig) {
-    return !realmConfig
-            .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE)
-            .isEmpty()
-        && !realmConfig
-            .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER)
-            .isEmpty()
-        && !realmConfig
-            .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE)
-            .isEmpty();
+    if (!realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED)) {
+      return false;
+    }
+    List<String> missing = new ArrayList<>();
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE");
+    }
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER");
+    }
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE");
+    }
+    if (!missing.isEmpty()) {
+      throw new IllegalStateException(
+          "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but the following required config values are"
+              + " missing: "
+              + String.join(", ", missing));
+    }
+    return true;
   }
 
   /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */

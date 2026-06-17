@@ -335,6 +335,15 @@ The maximum weight for the entity cache. This is a heuristic value without any p
 
 ---
 
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_ENABLED"`
+
+Enables GCS principal attribution via Workload Identity Federation. When true, credential vending chains a catalog-signed JWT through an STS token exchange and service-account impersonation so the Polaris principal appears in GCS Data Access audit logs (serviceAccountDelegationInfo.principalSubject). Requires GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE, GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER, and GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE to also be set; a missing required value is a fatal configuration error. Also requires a gcpServiceAccount on the catalog StorageConfiguration. Default: false (attribution disabled).
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE"`
 
 Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs (RS256). The corresponding public key must be published in the Workload Identity Pool provider's uploaded JWKS. Empty (default) disables principal attribution.

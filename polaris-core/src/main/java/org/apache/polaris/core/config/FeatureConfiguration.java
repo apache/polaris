@@ -218,9 +218,27 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   // catalog-signed JWT -> STS token exchange -> per-catalog service-account impersonation, so the
   // principal appears in serviceAccountDelegationInfo of every GCS Data Access audit log entry.
   //
-  // Attribution activates automatically once the audience, issuer, and signing key file are all
-  // set (no on/off flag); it additionally requires a gcpServiceAccount on the storage config.
+  // Attribution must be explicitly enabled via GCS_PRINCIPAL_ATTRIBUTION_ENABLED. When enabled,
+  // WIF_AUDIENCE, TOKEN_ISSUER, and SIGNING_KEY_FILE are all required; Polaris will throw at the
+  // first credential-vending attempt if any are missing. Additionally requires a gcpServiceAccount
+  // on the per-catalog StorageConfiguration.
   // ---------------------------------------------------------------------------
+
+  public static final FeatureConfiguration<Boolean> GCS_PRINCIPAL_ATTRIBUTION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_ENABLED")
+          .description(
+              "Enables GCS principal attribution via Workload Identity Federation.\n"
+                  + "When true, credential vending chains a catalog-signed JWT through an STS token\n"
+                  + "exchange and service-account impersonation so the Polaris principal appears in GCS\n"
+                  + "Data Access audit logs (serviceAccountDelegationInfo.principalSubject).\n"
+                  + "Requires GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE, GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER,\n"
+                  + "and GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE to also be set;\n"
+                  + "a missing required value is a fatal configuration error.\n"
+                  + "Also requires a gcpServiceAccount on the catalog StorageConfiguration.\n"
+                  + "Default: false (attribution disabled).")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE =
       PolarisConfiguration.<String>builder()
