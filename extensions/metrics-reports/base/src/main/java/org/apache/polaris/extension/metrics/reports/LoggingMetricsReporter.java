@@ -23,7 +23,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
-import org.apache.polaris.extension.metrics.IcebergMetricsReporter;
+import org.apache.polaris.extension.metrics.spi.IcebergMetricsReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,4 +73,9 @@ public class LoggingMetricsReporter implements IcebergMetricsReporter {
       Instant receivedTimestamp) {
     reportConsumer.accept(catalogName, catalogId, table, tableId, metricsReport, receivedTimestamp);
   }
+
+  /** Backward-compatible alias for {@code "log"}; redirects the legacy {@code "default"} type. */
+  @ApplicationScoped
+  @Identifier("default")
+  public static class DefaultMetricsReporter extends LoggingMetricsReporter {}
 }

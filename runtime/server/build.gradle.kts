@@ -42,7 +42,6 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-auth-opa"))
   runtimeOnly(project(":polaris-extensions-auth-ranger"))
   runtimeOnly(project(":polaris-extensions-metrics-reports"))
-  runtimeOnly(project(":polaris-api-metrics-reports-service"))
 
   val nonRestCatalogs = providers.gradleProperty("NonRESTCatalogs").orNull
   if (nonRestCatalogs?.contains("HIVE") == true) {
