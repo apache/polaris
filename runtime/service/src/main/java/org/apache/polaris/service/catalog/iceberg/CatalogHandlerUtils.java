@@ -420,6 +420,7 @@ public class CatalogHandlerUtils {
           .run(
               taskOps -> {
                 TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
+                isRetry.set(true);
 
                 TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
                 TableMetadata newBase = base;
