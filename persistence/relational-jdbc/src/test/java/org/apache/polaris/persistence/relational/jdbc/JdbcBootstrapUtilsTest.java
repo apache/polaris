@@ -174,8 +174,8 @@ class JdbcBootstrapUtilsTest {
 
     @Test
     void latestResolvesToLatestSchemaVersion() {
-      // Simulates --schema-version LATEST: converter returns null → Optional.ofNullable(null)
-      when(mockSchemaOptions.schemaVersion()).thenReturn(Optional.ofNullable(null));
+      // Simulates --schema-version LATEST: converter returns -1 → Optional.of(-1)
+      when(mockSchemaOptions.schemaVersion()).thenReturn(Optional.of(-1));
       int requested = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
       assertEquals(-1, requested);
 

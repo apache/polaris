@@ -100,7 +100,7 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
       @Override
       public Integer convert(String value) {
         if ("LATEST".equalsIgnoreCase(value)) {
-          return null;
+          return -1;
         }
         return Integer.valueOf(value);
       }
