@@ -79,6 +79,7 @@ public class GcpCredentialsStorageIntegration
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
   private final GcpCredentialOps credentialOps;
+  private final Optional<GcpAttributionParams> attributionParams;
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
@@ -91,7 +92,8 @@ public class GcpCredentialsStorageIntegration
         null,
         storageConfig,
         realmConfig,
-        GcpCredentialOps.DEFAULT);
+        GcpCredentialOps.DEFAULT,
+        resolveAttributionParams(realmConfig));
   }
 
   public GcpCredentialsStorageIntegration(
@@ -106,7 +108,8 @@ public class GcpCredentialsStorageIntegration
         cache,
         storageConfig,
         realmConfig,
-        GcpCredentialOps.DEFAULT);
+        GcpCredentialOps.DEFAULT,
+        resolveAttributionParams(realmConfig));
   }
 
   public GcpCredentialsStorageIntegration(
@@ -115,7 +118,14 @@ public class GcpCredentialsStorageIntegration
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig,
       GcpCredentialOps credentialOps) {
-    this(sourceCredentials, transportFactory, null, storageConfig, realmConfig, credentialOps);
+    this(
+        sourceCredentials,
+        transportFactory,
+        null,
+        storageConfig,
+        realmConfig,
+        credentialOps,
+        resolveAttributionParams(realmConfig));
   }
 
   public GcpCredentialsStorageIntegration(
@@ -125,6 +135,29 @@ public class GcpCredentialsStorageIntegration
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig,
       GcpCredentialOps credentialOps) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        cache,
+        storageConfig,
+        realmConfig,
+        credentialOps,
+        resolveAttributionParams(realmConfig));
+  }
+
+  /**
+   * Full constructor accepting pre-resolved attribution params. Downstream integrations can pass
+   * their own {@link GcpAttributionParams} without depending on {@link
+   * org.apache.polaris.core.config.FeatureConfiguration}.
+   */
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps,
+      Optional<GcpAttributionParams> attributionParams) {
     super(cache, realmConfig, storageConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
@@ -132,6 +165,45 @@ public class GcpCredentialsStorageIntegration
         sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
     this.transportFactory = transportFactory;
     this.credentialOps = credentialOps;
+    this.attributionParams = attributionParams;
+  }
+
+  /**
+   * Resolves {@link GcpAttributionParams} from realm config. Returns empty when attribution is
+   * disabled; throws {@link IllegalStateException} when enabled but misconfigured.
+   */
+  public static Optional<GcpAttributionParams> resolveAttributionParams(RealmConfig realmConfig) {
+    if (!realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED)) {
+      return Optional.empty();
+    }
+    List<String> missing = new ArrayList<>();
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE");
+    }
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER");
+    }
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE");
+    }
+    if (!missing.isEmpty()) {
+      throw new IllegalStateException(
+          "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but the following required config values are"
+              + " missing: "
+              + String.join(", ", missing));
+    }
+    return Optional.of(
+        GcpAttributionParams.of(
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER),
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE),
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE),
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID)));
   }
 
   @Override
@@ -182,22 +254,11 @@ public class GcpCredentialsStorageIntegration
     // participate in cache identity; otherwise it is left empty to preserve cross-principal cache
     // reuse. Attribution requires a service account to impersonate and a principal to attribute.
     String principalName = "";
-    Optional<GcpAttributionParams> attributionParams = Optional.empty();
-    if (principalAttributionConfigured(realmConfig())
-        && storageConfig().getGcpServiceAccount() != null) {
+    Optional<GcpAttributionParams> resolvedAttributionParams = Optional.empty();
+    if (attributionParams.isPresent() && storageConfig().getGcpServiceAccount() != null) {
       principalName = context.principalName().orElse("");
       if (!principalName.isEmpty()) {
-        attributionParams =
-            Optional.of(
-                GcpAttributionParams.of(
-                    realmConfig()
-                        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER),
-                    realmConfig()
-                        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE),
-                    realmConfig()
-                        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE),
-                    realmConfig()
-                        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID)));
+        resolvedAttributionParams = attributionParams;
       }
     }
     return GcpStorageCredentialCacheKey.of(
@@ -212,42 +273,7 @@ public class GcpCredentialsStorageIntegration
         transportFactory,
         realmConfig(),
         credentialOps,
-        attributionParams);
-  }
-
-  /**
-   * Returns true when GCS principal attribution is explicitly enabled and fully configured. Throws
-   * {@link IllegalStateException} if enabled but any required field is missing, so a misconfigured
-   * deployment fails fast on the first credential-vending attempt rather than silently falling back
-   * to unattributed credentials.
-   */
-  private static boolean principalAttributionConfigured(RealmConfig realmConfig) {
-    if (!realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED)) {
-      return false;
-    }
-    List<String> missing = new ArrayList<>();
-    if (realmConfig
-        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE)
-        .isEmpty()) {
-      missing.add("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE");
-    }
-    if (realmConfig
-        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER)
-        .isEmpty()) {
-      missing.add("GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER");
-    }
-    if (realmConfig
-        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE)
-        .isEmpty()) {
-      missing.add("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE");
-    }
-    if (!missing.isEmpty()) {
-      throw new IllegalStateException(
-          "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but the following required config values are"
-              + " missing: "
-              + String.join(", ", missing));
-    }
-    return true;
+        resolvedAttributionParams);
   }
 
   /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
