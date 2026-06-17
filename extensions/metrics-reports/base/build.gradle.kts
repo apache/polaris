@@ -23,6 +23,8 @@ plugins {
 }
 
 dependencies {
+  implementation(project(":polaris-core"))
+  implementation(project(":polaris-api-metrics-reports-service"))
   implementation(project(":polaris-extensions-metrics-reports-spi"))
 
   implementation(platform(libs.iceberg.bom))
@@ -30,10 +32,18 @@ dependencies {
 
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
+  implementation(libs.jakarta.ws.rs.api)
   implementation(libs.smallrye.common.annotation)
   implementation(libs.slf4j.api)
 
+  compileOnly(libs.jspecify)
+
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
+  testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
+
+  // Provides jakarta.ws.rs.ext.RuntimeDelegate needed to build Response objects in plain unit tests
+  testRuntimeOnly(enforcedPlatform(libs.quarkus.bom))
+  testRuntimeOnly("io.quarkus.resteasy.reactive:resteasy-reactive")
 }

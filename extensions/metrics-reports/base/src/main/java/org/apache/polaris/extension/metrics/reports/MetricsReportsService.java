@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.metrics;
+package org.apache.polaris.extension.metrics.reports;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
