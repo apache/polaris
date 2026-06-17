@@ -19,6 +19,7 @@
 
 plugins {
   `java-library`
+  id("polaris-base")
   id("polaris-reproducible")
 }
 
@@ -66,58 +67,18 @@ val generatedMarkdownDocs = tasks.register<JavaExec>("generatedMarkdownDocs") {
 
   mainClass = "org.apache.polaris.docs.generator.ReferenceConfigDocsGenerator"
 
+  val genMdDocsDir = generatedMarkdownDocsDir.map { it.asFile.relativeTo(projectDir) }
   outputs.cacheIf { true }
-  outputs.dir(generatedMarkdownDocsDir)
-  inputs.files(doclet)
-  inputs.files(genProjects)
-  inputs.files(genSources)
+  outputs.dir(genMdDocsDir)
+  inputs.files(doclet).withNormalizer(ClasspathNormalizer::class.java)
+  inputs.files(genProjects).withNormalizer(ClasspathNormalizer::class.java)
+  inputs.files(genSources).withNormalizer(ClasspathNormalizer::class.java)
 
-  doFirst {
-    delete(generatedMarkdownDocsDir)
-  }
+  doFirst(CleanDirectoryAction(generatedMarkdownDocsDir))
 
-  argumentProviders.add(CommandLineArgumentProvider {
-
-    // So, in theory, all 'org.gradle.category' attributes should use the type
-    // org.gradle.api.attributes.Category,
-    // as Category.CATEGORY_ATTRIBUTE is defined. BUT! Some attributes have an attribute type ==
-    // String.class!
-    val categoryAttributeAsString = Attribute.of("org.gradle.category", String::class.java)
-
-    val classes = genProjects.incoming.artifacts
-      .filter { a ->
-        // dependencies:
-        //  org.gradle.category=library
-        val category =
-          a.variant.attributes.getAttribute(Category.CATEGORY_ATTRIBUTE)
-            ?: a.variant.attributes.getAttribute(categoryAttributeAsString)
-        category != null && category.toString() == Category.LIBRARY
-      }
-      .map { a -> a.file }
-
-    val sources = genSources.incoming.artifacts
-      .filter { a ->
-        // sources:
-        //  org.gradle.category=verification
-        //  org.gradle.verificationtype=main-sources
-
-        val category = a.variant.attributes.getAttribute(Category.CATEGORY_ATTRIBUTE)
-        val verificationType =
-          a.variant.attributes.getAttribute(VerificationType.VERIFICATION_TYPE_ATTRIBUTE)
-        category != null &&
-          category.name == Category.VERIFICATION &&
-          verificationType != null &&
-          verificationType.name == VerificationType.MAIN_SOURCES &&
-          a.file.name != "resources"
-      }
-      .map { a -> a.file }
-
-    listOf(
-      "--classpath", classes.joinToString(":"),
-      "--sourcepath", sources.joinToString(":"),
-      "--destination", generatedMarkdownDocsDir.get().toString()
-    ) + (if (logger.isInfoEnabled) listOf("--verbose") else listOf())
-  })
+  argumentProviders.add(
+    ConfigDocsArgumentProvider(genProjects, genSources, generatedMarkdownDocsDir, layout.projectDirectory)
+  )
 
   classpath(doclet)
 }
@@ -132,35 +93,84 @@ val generateDocs by tasks.registering(Sync::class) {
   into(targetDir)
 
   from(generatedMarkdownDocsDir)
+  exclude("org/**")
 
   duplicatesStrategy = DuplicatesStrategy.FAIL
-
-  doLast { delete(targetDir.get().dir("org")) }
 }
 
-val copyConfigSectionsToSite by tasks.registering(Copy::class) {
+val copyConfigSectionsToSite by tasks.registering(CopyConfigSectionsToSite::class) {
   dependsOn(generateDocs)
 
   description = "Copies the generated configuration section files to the site content directory as a headless bundle"
   group = "documentation"
 
-  from(layout.buildDirectory.dir("markdown-docs")) {
-    include("smallrye-*.md")
-    include("flags-*.md")
+  sourceDir.set(layout.buildDirectory.dir("markdown-docs"))
+  targetDir.set(
+    rootProject.layout.projectDirectory.dir("site/content/in-dev/unreleased/configuration/config-sections")
+  )
+}
+
+tasks.named("assemble") {
+  dependsOn(copyConfigSectionsToSite)
+}
+
+class CleanDirectoryAction(private val directory: Provider<Directory>) : Action<Task> {
+  override fun execute(task: Task) {
+    directory.get().asFile.deleteRecursively()
+  }
+}
+
+class ConfigDocsArgumentProvider(
+  @get:Classpath val classes: FileCollection,
+  @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) val sources: FileCollection,
+  @get:Internal val destinationDir: Provider<Directory>,
+  @get:Internal val projectDirectory: Directory,
+) : CommandLineArgumentProvider {
+  override fun asArguments(): Iterable<String> =
+    listOf(
+      "--classpath",
+      classes.files.joinToString(":") { it.relativeTo(projectDirectory.asFile).toString() },
+      "--sourcepath",
+      sources.files
+        .filter { it.name != "resources" }
+        .joinToString(":") { it.relativeTo(projectDirectory.asFile).toString() },
+      "--destination",
+      destinationDir.get().asFile.relativeTo(projectDirectory.asFile).toString(),
+    )
+}
+
+abstract class CopyConfigSectionsToSite : DefaultTask() {
+  @get:InputDirectory
+  @get:PathSensitive(PathSensitivity.RELATIVE)
+  abstract val sourceDir: DirectoryProperty
+
+  @get:OutputDirectory abstract val targetDir: DirectoryProperty
+
+  @TaskAction
+  fun copyConfigSections() {
+    val target = targetDir.get().asFile
+    target.mkdirs()
+    target
+      .listFiles()
+      ?.filter { it.name.endsWith(".md") && it.name != "_index.md" }
+      ?.forEach { it.delete() }
+
+    sourceDir
+      .asFileTree
+      .matching {
+        include("smallrye-*.md")
+        include("flags-*.md")
+      }
+      .files
+      .forEach { file ->
+        target
+          .resolve(file.name)
+          .writeText(frontMatter(file.nameWithoutExtension) + file.readText())
+      }
   }
 
-  into(rootProject.layout.projectDirectory.dir("site/content/in-dev/unreleased/configuration/config-sections"))
-
-  doFirst {
-    val targetDir = rootProject.layout.projectDirectory.dir("site/content/in-dev/unreleased/configuration/config-sections").asFile
-    if (targetDir.exists()) {
-      targetDir.listFiles()?.filter { it.name.endsWith(".md") && it.name != "_index.md" }?.forEach { it.delete() }
-    }
-  }
-
-  doLast {
-    val targetDir = rootProject.layout.projectDirectory.dir("site/content/in-dev/unreleased/configuration/config-sections").asFile
-    val frontMatterTemplate = """---
+  private fun frontMatter(title: String): String =
+    """---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -179,20 +189,11 @@ val copyConfigSectionsToSite by tasks.registering(Copy::class) {
 # specific language governing permissions and limitations
 # under the License.
 #
-title: %s
+title: $title
 build:
   list: never
   render: never
 ---
 
 """
-    targetDir.listFiles()?.filter { it.name.endsWith(".md") && it.name != "_index.md" }?.forEach { file ->
-      val content = file.readText()
-      file.writeText(frontMatterTemplate.format(file.nameWithoutExtension) + content)
-    }
-  }
-}
-
-tasks.named("assemble") {
-  dependsOn(copyConfigSectionsToSite)
 }

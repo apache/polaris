@@ -36,4 +36,7 @@ dependencies {
 
   compileOnly(platform(libs.junit.bom))
   compileOnly("org.junit.jupiter:junit-jupiter-api")
+
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-test-common")
 }

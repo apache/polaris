@@ -16,15 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.nosql;
+package org.apache.polaris.service.catalog.iceberg;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.Map;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.service.Profiles;
 
-public class NoSqlInMemoryProfile implements QuarkusTestProfile {
-  @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of(
-        "polaris.persistence.type", "nosql", "polaris.persistence.nosql.backend", "InMemory");
-  }
-}
+@QuarkusTest
+@TestProfile(Profiles.DefaultIcebergCatalogProfile.class)
+public class LocalIcebergCatalogRelationalTest extends AbstractLocalIcebergCatalogTest {}

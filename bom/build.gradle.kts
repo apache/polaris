@@ -17,11 +17,11 @@
  * under the License.
  */
 
+import bom.VerifyBomDependenciesTask
+
 plugins { id("polaris-bom") }
 
 description = "Apache Polaris - Bill of Materials (BOM)"
-
-val ideaActive = System.getProperty("idea.active").toBoolean()
 
 dependencies {
   constraints {
@@ -105,6 +105,7 @@ dependencies {
 
     api(project(":polaris-spark-3.5_2.12"))
     api(project(":polaris-spark-integration-3.5_2.12"))
+    val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
     if (!ideaActive) {
       api(project(":polaris-spark-3.5_2.13"))
       api(project(":polaris-spark-integration-3.5_2.13"))
@@ -124,45 +125,24 @@ dependencies {
   }
 }
 
-tasks.register("verifyBomDependencies") {
+tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
   group = "verification"
   description = "Checks if the BOM dependencies are complete"
 
-  actions.addLast {
-    // Projects that shall not be referenced from the BOM.
-    val nonBomProjects =
-      setOf(
-        ":polaris-bom",
-        ":aggregated-license-report",
-        ":polaris-config-docs-site",
-        ":polaris-distribution",
-      )
-
-    val apiConfig = configurations.api.get()
-    val declaredGroupName =
-      apiConfig.dependencyConstraints.filterIsInstance<DependencyConstraint>().map {
-        "${it.group}:${it.name}"
-      }
-
-    val missingProjectPaths =
-      rootProject.allprojects
-        .filter {
-          !declaredGroupName.contains("${it.group}:${it.name}") && !nonBomProjects.contains(it.path)
-        }
-        .map { it.path }
-        .sorted()
-
-    if (!missingProjectPaths.isEmpty()) {
-      logger.error(
-        "The dependencies declared in ${project.projectDir.relativeTo(rootProject.projectDir)} might be incomplete, the following delcarations might be missing:"
-      )
-      missingProjectPaths.forEach { logger.error("  api(project(\"$it\"))") }
-
-      throw GradleException(
-        "The dependencies declared in ${project.projectDir.relativeTo(rootProject.projectDir)} might be incomplete, see logged errors above."
-      )
-    }
-  }
+  bomDependencyCoordinates.set(
+    configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } }
+  )
+  projectCoordinatesByPath.set(
+    provider { rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" } }
+  )
+  excludedProjectPaths.set(
+    setOf(
+      ":polaris-bom",
+      ":aggregated-license-report",
+      ":polaris-config-docs-site",
+      ":polaris-distribution",
+    )
+  )
 }
 
 tasks.named("check") { dependsOn("verifyBomDependencies") }

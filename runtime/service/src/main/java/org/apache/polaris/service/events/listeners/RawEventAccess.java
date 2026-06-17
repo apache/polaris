@@ -16,11 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.iceberg;
+package org.apache.polaris.service.events.listeners;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-
-@QuarkusTest
-@TestProfile(AbstractIcebergCatalogViewTest.Profile.class)
-public class IcebergViewCatalogRelationalTest extends AbstractIcebergCatalogViewTest {}
+/**
+ * Marker interface signalling that a {@link PolarisEventListener} requires the raw, unsanitized
+ * event. Listeners that implement this interface receive the original event from {@link
+ * org.apache.polaris.service.events.PolarisEventListeners#deliverEvent}, bypassing the global
+ * {@link org.apache.polaris.service.events.EventSanitizer}.
+ *
+ * <p>This is an explicit security opt-out. Implement only when the listener has a documented need
+ * for sensitive attributes (for example, a forensic audit sink that records principal credentials
+ * or raw catalog configuration). All other listeners receive the sanitized event by default.
+ */
+public interface RawEventAccess {}

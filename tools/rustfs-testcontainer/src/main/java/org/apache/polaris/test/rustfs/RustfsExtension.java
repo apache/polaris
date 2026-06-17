@@ -19,18 +19,12 @@
 
 package org.apache.polaris.test.rustfs;
 
-import static java.lang.String.format;
-import static org.junit.jupiter.api.extension.ConditionEvaluationResult.disabled;
-import static org.junit.jupiter.api.extension.ConditionEvaluationResult.enabled;
 import static org.junit.platform.commons.util.AnnotationUtils.findAnnotatedFields;
 import static org.junit.platform.commons.util.ReflectionUtils.makeAccessible;
 
 import java.lang.reflect.Field;
-import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
-import org.junit.jupiter.api.extension.ConditionEvaluationResult;
-import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
@@ -46,24 +40,10 @@ import org.junit.platform.commons.util.ReflectionUtils;
  * annotated with {@link Rustfs}.
  */
 // CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
-public class RustfsExtension
-    implements BeforeAllCallback, BeforeEachCallback, ParameterResolver, ExecutionCondition {
+public class RustfsExtension extends RustfsConditionExtension
+    implements BeforeAllCallback, BeforeEachCallback, ParameterResolver {
   private static final ExtensionContext.Namespace NAMESPACE =
       ExtensionContext.Namespace.create(RustfsExtension.class);
-
-  @Override
-  public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
-    if (OS.current() == OS.LINUX) {
-      return enabled("Running on Linux");
-    }
-    if (OS.current() == OS.MAC
-        && System.getenv("CI_MAC") == null
-        && RustfsContainer.canRunOnMacOs()) {
-      // Disable tests on GitHub Actions
-      return enabled("Running on macOS locally");
-    }
-    return disabled(format("Disabled on %s", OS.current().name()));
-  }
 
   @Override
   public void beforeAll(ExtensionContext context) {

@@ -27,14 +27,33 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
-public class PolarisEvent {
+public class EventEntity {
   public static final String EMPTY_MAP_STRING = "{}";
+
+  /**
+   * Sentinel stored in {@link #catalogId} for events that are not scoped to a specific catalog
+   * (e.g., principal, principal-role, or other realm-level operations). Downstream consumers
+   * querying by catalog must filter this sentinel out (or coalesce it to {@code NULL}).
+   *
+   * <p>This is a transitional placeholder: {@code catalogId} is currently {@code NOT NULL} in the
+   * persistence schema, so realm-scoped events cannot store {@code null} directly. A future schema
+   * migration may relax that constraint and let realm-scoped events use {@code NULL} instead.
+   *
+   * <p>TODO: Remove this sentinel once the {@code catalogId} column is made nullable. Realm-scoped
+   * events should store {@code NULL}, not a magic string, so downstream queries can use {@code IS
+   * NULL} instead of filtering out a reserved value.
+   */
+  public static final String REALM_SCOPED = "__realm__";
 
   // to serialize/deserialize properties
   // TODO: Look into using the CDI-managed `ObjectMapper` object
   private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
-  // catalog id
+  /**
+   * Identifier of the catalog this event was scoped to, or {@link #REALM_SCOPED} for events that
+   * are not catalog-scoped (e.g., principal/realm-level operations). See {@link #REALM_SCOPED} for
+   * the sentinel convention and planned schema evolution.
+   */
   private final String catalogId;
 
   // event id
@@ -99,7 +118,7 @@ public class PolarisEvent {
     return additionalProperties != null ? additionalProperties : EMPTY_MAP_STRING;
   }
 
-  public PolarisEvent(
+  public EventEntity(
       String catalogId,
       String id,
       @Nullable String requestId,
@@ -147,6 +166,7 @@ public class PolarisEvent {
     CATALOG,
     NAMESPACE,
     TABLE,
-    VIEW
+    VIEW,
+    REALM
   }
 }

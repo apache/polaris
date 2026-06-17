@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.iceberg;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
+import copiedcode.CopiedCodeCheckerExtension
+import copiedcode.CopiedCodeCheckerPlugin
 
-@QuarkusTest
-@TestProfile(AbstractIcebergCatalogTest.Profile.class)
-public class IcebergCatalogRelationalTest extends AbstractIcebergCatalogTest {}
+apply<CopiedCodeCheckerPlugin>()
+
+extensions.getByType<CopiedCodeCheckerExtension>().apply {
+  addDefaultContentTypes()
+  licenseFile.convention(layout.settingsDirectory.file("LICENSE"))
+}

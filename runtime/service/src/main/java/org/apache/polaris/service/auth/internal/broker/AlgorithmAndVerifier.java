@@ -16,24 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.nosql;
+package org.apache.polaris.service.auth.internal.broker;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.Map;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.JWTVerifier;
 
-public final class NoSqlTesting {
-  private NoSqlTesting() {}
+/**
+ * Holds a JWT {@link Algorithm} and its derived {@link JWTVerifier}. Built once per realm by a
+ * {@link TokenBrokerFactory} and shared across request-scoped {@link JWTBroker} instances so the
+ * verifier is not reconstructed on every request.
+ */
+record AlgorithmAndVerifier(Algorithm algorithm, JWTVerifier verifier) {
 
-  public static class PersistenceInMemoryProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.persistence.type",
-          "nosql",
-          "polaris.persistence.nosql.backend",
-          "InMemory",
-          "polaris.persistence.auto-bootstrap-types",
-          "nosql");
-    }
+  static AlgorithmAndVerifier of(Algorithm algorithm) {
+    return new AlgorithmAndVerifier(algorithm, JWTBroker.buildVerifier(algorithm));
   }
 }

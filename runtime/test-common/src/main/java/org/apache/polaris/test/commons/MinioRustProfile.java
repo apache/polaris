@@ -16,28 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth.internal.broker;
 
-import com.auth0.jwt.algorithms.Algorithm;
-import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+package org.apache.polaris.test.commons;
 
-/** Generates a JWT using a Symmetric Key. */
-public class SymmetricKeyJWTBroker extends JWTBroker {
-  private final Supplier<String> secretSupplier;
+import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.Map;
 
-  public SymmetricKeyJWTBroker(
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext polarisCallContext,
-      int maxTokenGenerationInSeconds,
-      Supplier<String> secretSupplier) {
-    super(metaStoreManager, polarisCallContext, maxTokenGenerationInSeconds);
-    this.secretSupplier = secretSupplier;
-  }
+public class MinioRustProfile implements QuarkusTestProfile {
+  public static final String SECRET_KEY = "test-sk-123";
+  public static final String ACCESS_KEY = "test-ak-123";
+  public static final Map<String, String> CONFIG_OVERRIDES =
+      ImmutableMap.<String, String>builder()
+          .put("polaris.storage.aws.access-key", ACCESS_KEY)
+          .put("polaris.storage.aws.secret-key", SECRET_KEY)
+          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
+          .build();
 
   @Override
-  public Algorithm getAlgorithm() {
-    return Algorithm.HMAC256(secretSupplier.get());
+  public Map<String, String> getConfigOverrides() {
+    return CONFIG_OVERRIDES;
   }
 }

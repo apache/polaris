@@ -98,6 +98,14 @@ build-spark-plugin-3.5-2.13: check-dependencies ## Build Spark plugin v3.5 with 
 		:polaris-spark-3.5_2.13:assemble
 	@echo "--- Spark plugin v3.5 with Scala v2.13 build complete ---"
 
+build-spark-plugin-4.0-2.13: DEPENDENCIES := java21
+.PHONY: build-spark-plugin-4.0-2.13
+build-spark-plugin-4.0-2.13: check-dependencies ## Build Spark plugin v4.0 with Scala v2.13
+	@echo "--- Building Spark plugin v4.0 with Scala v2.13 ---"
+	@./gradlew \
+		:polaris-spark-4.0_2.13:assemble
+	@echo "--- Spark plugin v4.0 with Scala v2.13 build complete ---"
+
 spotless-apply: DEPENDENCIES := java21
 .PHONY: spotless-apply
 spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradle plugin.
@@ -157,8 +165,7 @@ client-setup-env: $(VENV_DIR) ## Set up Python client environment (venv + depend
 	@$(ACTIVATE_AND_CD) && uv lock && uv sync --active --all-extras
 	@echo "--- Python client environment setup complete ---"
 
-.PHONY: client-integration-test
-client-integration-test: build-server client-setup-env ## Run client integration tests
+run-client-integration-test: client-setup-env
 	@echo "--- Starting client integration tests ---"
 	@echo "Ensuring Docker Compose services are stopped and removed..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml kill || true # `|| true` prevents make from failing if containers don't exist
@@ -175,6 +182,9 @@ client-integration-test: build-server client-setup-env ## Run client integration
 	@echo "--- Client integration tests complete ---"
 	@echo "Tearing down Docker Compose services..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
+
+.PHONY: client-integration-test
+client-integration-test: build-server run-client-integration-test ## Run client integration tests
 
 .PHONY: client-license-check
 client-license-check: client-setup-env ## Run license compliance check

@@ -20,39 +20,25 @@
 package org.apache.polaris.service.events.listeners.inmemory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
 import io.smallrye.mutiny.subscription.BackPressureFailure;
-import java.util.Map;
-import org.apache.polaris.core.entity.PolarisEvent;
+import java.time.Duration;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.Profiles;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.Mockito;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@TestProfile(InMemoryBufferEventListenerBufferSizeTest.Profile.class)
+@TestProfile(Profiles.InMemoryBufferEventListenerBufferSizeProfile.class)
 class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListenerTestBase {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(BASE_CONFIG)
-          .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "60s")
-          .put("polaris.event-listener.persistence-in-memory-buffer.max-buffer-size", "10")
-          .build();
-    }
-  }
 
   @Test
   void testFlushOnSize() {
@@ -89,10 +75,14 @@ class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListe
   @Test
   void testProcessorFailureRecovery() {
     producer.processEvent("test1", event());
-    UnicastProcessor<PolarisEvent> test1 = producer.processors.get("test1");
+    var test1 = producer.processor("test1");
     assertThat(test1).isNotNull();
     // emulate backpressure error; will drop the event and invalidate the processor
-    test1.onError(new BackPressureFailure("error"));
+    test1.processor.onError(new BackPressureFailure("error"));
+    // wait for the processor to be evicted from the cache
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(() -> assertThat(producer.hasProcessor("test1")).isFalse());
     // will create a new processor and recover
     sendAsync("test1", 10);
     assertRows("test1", 10);

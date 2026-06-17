@@ -472,11 +472,15 @@ public class ServiceProducers {
             "Event listener executor is not available because no event listeners are configured");
       };
     }
+    int poolSize = config.executor().poolSize();
+    if (poolSize == -1) {
+      poolSize = Math.min(config.types().get().size(), Runtime.getRuntime().availableProcessors());
+    }
     return SmallRyeManagedExecutor.builder()
         .injectionPointName("event-listener-executor")
         .propagated(ThreadContext.ALL_REMAINING)
         .cleared(ThreadContext.CDI)
-        .maxAsync(config.executor().poolSize())
+        .maxAsync(poolSize)
         .maxQueued(config.executor().queueSize())
         .build();
   }

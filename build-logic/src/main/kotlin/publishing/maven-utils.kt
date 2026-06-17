@@ -77,29 +77,31 @@ abstract class GeneratePomProperties : DefaultTask() {
  * `META-INF/maven/group-id/artifact-id/`. Also adds the `NOTICE` and `LICENSE` files in `META-INF`,
  * which makes it easier for license scanners.
  */
-fun addAdditionalJarContent(project: Project): Unit =
-  project.run {
-    project.plugins.withType(JavaLibraryPlugin::class.java) {
-      val generatePomProperties =
-        tasks.register("generatePomProperties", GeneratePomProperties::class.java) {}
+fun addAdditionalJarContent(project: Project): Unit = project.run {
+  project.plugins.withType(JavaLibraryPlugin::class.java) {
+    val generatePomProperties =
+      tasks.register("generatePomProperties", GeneratePomProperties::class.java) {}
 
+    // Only add the pom.xml to jars for 'release' builds, but not for developer/snapshot builds.
+    // Letting jars depend on the pom.xml (Gradle's `GenerateMavenPom` task, annotated with
+    // `@UntrackedTask`) breaks up-to-date checks for all jars and dependent project
+    // dependencies, leading to unnecessarily long build times.
+    if (rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")) {
+      val pomPath = "META-INF/maven/${project.group}/${project.name}/pom.xml"
+      val generatePomFileTask = tasks.named<GenerateMavenPom>("generatePomFileForMavenPublication")
       tasks.withType(Jar::class).configureEach {
-        // Only add the pom.xml to jars for 'release' builds, but not for developer/snapshot builds.
-        // Letting jars depend on the pom.xml (Gradle's `GenerateMavenPom` task, annotated with
-        // `@UntrackedTask`) breaks up-to-date checks for all jars and dependent project
-        // dependencies, leading to unnecessarily long build times.
-        val includePom =
-          rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")
-        if (includePom) {
-          from(tasks.named<GenerateMavenPom>("generatePomFileForMavenPublication")) {
-            include("pom-default.xml")
-            eachFile { path = "META-INF/maven/${project.group}/${project.name}/pom.xml" }
-          }
-        }
-        from(generatePomProperties) {
-          include("**")
-          eachFile { path = sourcePath }
+        from(generatePomFileTask) {
+          include("pom-default.xml")
+          eachFile { path = pomPath }
         }
       }
     }
+
+    tasks.withType(Jar::class).configureEach {
+      from(generatePomProperties) {
+        include("**")
+        eachFile { path = sourcePath }
+      }
+    }
   }
+}

@@ -16,30 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
 
-import java.util.stream.Stream;
-import org.junit.jupiter.params.Parameter;
-import org.junit.jupiter.params.ParameterizedClass;
-import org.junit.jupiter.params.provider.MethodSource;
+package org.apache.polaris.test.commons;
 
-/**
- * Runs {@link org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest} integration
- * tests against every H2 schema version on the classpath.
- */
-@ParameterizedClass
-@MethodSource("schemaVersions")
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplSchemaTest
-    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
+import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.Map;
 
-  @Parameter int schemaVersion;
-
-  static Stream<Integer> schemaVersions() {
-    return H2SchemaVersions.discoverAsStream();
-  }
+public class NoSqlInMemoryProfile implements QuarkusTestProfile {
+  public static final Map<String, String> NOSQL_PERSISTENCE =
+      Map.of(
+          "polaris.persistence.type",
+          "nosql",
+          "polaris.persistence.nosql.backend",
+          "InMemory",
+          "polaris.persistence.auto-bootstrap-types",
+          "nosql");
 
   @Override
-  public int schemaVersion() {
-    return schemaVersion;
+  public Map<String, String> getConfigOverrides() {
+    return ImmutableMap.<String, String>builder()
+        .putAll(NOSQL_PERSISTENCE)
+        .putAll(MinioRustProfile.CONFIG_OVERRIDES)
+        .build();
   }
 }

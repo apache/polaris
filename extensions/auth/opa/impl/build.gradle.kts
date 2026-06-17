@@ -80,12 +80,12 @@ tasks.register<JavaExec>("generateOpaSchema") {
 
   // Only execute generation if anything changed
   outputs.cacheIf { true }
-  outputs.file("${projectDir}/opa-input-schema.json")
-  inputs.files(jsonSchemaGenerator.runtimeClasspath)
+  outputs.file("./opa-input-schema.json")
+  inputs.files(jsonSchemaGenerator.runtimeClasspath).withNormalizer(ClasspathNormalizer::class.java)
 
   classpath = jsonSchemaGenerator.runtimeClasspath
   mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
-  args("${projectDir}/opa-input-schema.json")
+  args("./opa-input-schema.json")
 }
 
 // Task to validate that the committed schema matches the generated schema
@@ -95,25 +95,30 @@ tasks.register<JavaExec>("validateOpaSchema") {
 
   dependsOn(tasks.compileJava, tasks.named("jandex"))
 
-  val tempSchemaFile = layout.buildDirectory.file("opa-schema/opa-input-schema-generated.json")
+  val tempSchemaFile =
+    layout.buildDirectory
+      .file("opa-schema/opa-input-schema-generated.json")
+      .get()
+      .asFile
+      .relativeTo(projectDir)
   val committedSchemaFile = file("${projectDir}/opa-input-schema.json")
   val logFile = layout.buildDirectory.file("opa-schema/generator.log")
 
   // Only execute validation if anything changed
   outputs.cacheIf { true }
   outputs.file(tempSchemaFile)
-  inputs.file(committedSchemaFile)
-  inputs.files(jsonSchemaGenerator.runtimeClasspath)
+  inputs.file(committedSchemaFile).withPathSensitivity(PathSensitivity.RELATIVE)
+  inputs.files(jsonSchemaGenerator.runtimeClasspath).withNormalizer(ClasspathNormalizer::class.java)
 
   classpath = jsonSchemaGenerator.runtimeClasspath
   mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
-  args(tempSchemaFile.get().asFile.absolutePath)
+  args(tempSchemaFile)
   isIgnoreExitValue = true
 
   var outStream: OutputStream? = null
   doFirst {
     // Ensure temp directory exists
-    tempSchemaFile.get().asFile.parentFile.mkdirs()
+    tempSchemaFile.parentFile.mkdirs()
     outStream = logFile.get().asFile.outputStream()
     standardOutput = outStream
     errorOutput = outStream
@@ -133,7 +138,7 @@ tasks.register<JavaExec>("validateOpaSchema") {
       )
     }
 
-    val generatedContent = tempSchemaFile.get().asFile.readText().trim()
+    val generatedContent = projectDir.resolve(tempSchemaFile).readText().trim()
     val committedContent = committedSchemaFile.readText().trim()
 
     if (generatedContent != committedContent) {
@@ -150,7 +155,7 @@ tasks.register<JavaExec>("validateOpaSchema") {
         |Then commit the updated opa-input-schema.json file.
         |
         |Committed file: ${committedSchemaFile.absolutePath}
-        |Generated file: ${tempSchemaFile.get().asFile.absolutePath}
+        |Generated file: ${tempSchemaFile.absolutePath}
       """
           .trimMargin()
       )
