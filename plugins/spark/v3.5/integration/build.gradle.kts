@@ -85,7 +85,9 @@ dependencies {
   testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.26.0")
 
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
-  testImplementation("org.apache.hudi:hudi-spark${sparkMajorVersion}-bundle_${scalaVersion}:1.1.1") {
+  testImplementation(
+    "org.apache.hudi:hudi-spark${sparkMajorVersion}-bundle_${scalaVersion}:1.1.1"
+  ) {
     // exclude log4j dependencies to match spark-sql exclusions
     // exclude log4j dependencies to match spark-sql exclusions and prevent version conflicts
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
