@@ -161,7 +161,7 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run Quarkus admin tests
         env: *gradle_env_vars
-        run: ./gradlew :polaris-admin:test --continue
+        run: ./gradlew clean :polaris-admin:test --continue
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
