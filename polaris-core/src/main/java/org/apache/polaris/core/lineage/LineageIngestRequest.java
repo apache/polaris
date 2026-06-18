@@ -18,9 +18,21 @@
  */
 package org.apache.polaris.core.lineage;
 
-/** Service boundary for lineage operations used by transport-layer adapters. */
-public interface LineageService {
-  void ingest(LineageIngestRequest request);
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
-  LineageGraph query(LineageQueryRequest request);
+/** Extracted lineage payload that can be persisted independent of the transport event shape. */
+public record LineageIngestRequest(
+    List<LineageDataset> datasets,
+    List<LineageEdge> edges,
+    List<LineageColumnEdge> columnEdges,
+    Optional<Instant> eventTime) {
+  public LineageIngestRequest {
+    datasets = List.copyOf(Objects.requireNonNull(datasets, "datasets must be non-null"));
+    edges = List.copyOf(Objects.requireNonNull(edges, "edges must be non-null"));
+    columnEdges = List.copyOf(Objects.requireNonNull(columnEdges, "columnEdges must be non-null"));
+    Objects.requireNonNull(eventTime, "eventTime must be non-null");
+  }
 }
