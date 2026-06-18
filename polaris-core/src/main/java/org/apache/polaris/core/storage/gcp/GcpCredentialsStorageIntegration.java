@@ -33,7 +33,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -171,6 +170,8 @@ public class GcpCredentialsStorageIntegration
   /**
    * Resolves {@link GcpAttributionParams} from realm config. Returns empty when attribution is
    * disabled; throws {@link IllegalStateException} when enabled but misconfigured.
+   *
+   * <p>Static so it can be called from constructor-chaining expressions ({@code this(...)}).
    */
   public static Optional<GcpAttributionParams> resolveAttributionParams(RealmConfig realmConfig) {
     if (!realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED)) {
@@ -253,12 +254,23 @@ public class GcpCredentialsStorageIntegration
     // Principal attribution makes the vended token per-principal, so the principal must
     // participate in cache identity; otherwise it is left empty to preserve cross-principal cache
     // reuse. Attribution requires a service account to impersonate and a principal to attribute.
-    String principalName = "";
+    Optional<String> principalName = Optional.empty();
     Optional<GcpAttributionParams> resolvedAttributionParams = Optional.empty();
-    if (attributionParams.isPresent() && storageConfig().getGcpServiceAccount() != null) {
-      principalName = context.principalName().orElse("");
-      if (!principalName.isEmpty()) {
-        resolvedAttributionParams = attributionParams;
+    if (attributionParams.isPresent()) {
+      if (storageConfig().getGcpServiceAccount() == null) {
+        LOGGER.warn(
+            "GCS principal attribution is enabled but no gcpServiceAccount is configured"
+                + " on the StorageConfiguration; falling back to non-attributed credentials");
+      } else {
+        Optional<String> ctxPrincipal = context.principalName().filter(n -> !n.isEmpty());
+        if (ctxPrincipal.isPresent()) {
+          principalName = ctxPrincipal;
+          resolvedAttributionParams = attributionParams;
+        } else {
+          LOGGER.warn(
+              "GCS principal attribution is enabled but no principal name is present in the"
+                  + " credential vending context; falling back to non-attributed credentials");
+        }
       }
     }
     return GcpStorageCredentialCacheKey.of(
@@ -293,7 +305,7 @@ public class GcpCredentialsStorageIntegration
     }
 
     GoogleCredentials credentialsToDownscope =
-        baseCredentialsForVending(key, gcpStorageConfig, sourceCredentials, credentialOps);
+        resolveSourceCredentials(key, gcpStorageConfig, sourceCredentials, credentialOps);
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(readLocations, listLocations, writeLocations);
@@ -343,7 +355,7 @@ public class GcpCredentialsStorageIntegration
    * path: impersonate the configured service account from the ambient source credentials, or use
    * those credentials directly.
    */
-  private static GoogleCredentials baseCredentialsForVending(
+  private static GoogleCredentials resolveSourceCredentials(
       GcpStorageCredentialCacheKey key,
       GcpStorageConfigurationInfo storageConfig,
       GoogleCredentials sourceCredentials,
@@ -352,12 +364,12 @@ public class GcpCredentialsStorageIntegration
     if (attributionParams.isPresent()) {
       GcpAttributionParams params = attributionParams.get();
       String subject =
-          GcpAttributionSubjectBuilder.buildSubject(key.realmId(), key.principalName());
+          GcpAttributionSubjectBuilder.buildSubject(key.realmId(), key.principalName().orElse(""));
       GcpFederatedCredentialsExchanger exchanger =
           new GcpFederatedCredentialsExchanger(
               params.tokenIssuer(),
               params.wifAudience(),
-              Path.of(params.signingKeyFile()),
+              params.signingKeyPath(),
               params.signingKeyId(),
               key.transportFactory());
       GoogleCredentials federated = exchanger.federatedCredentials(subject, key.realmId());

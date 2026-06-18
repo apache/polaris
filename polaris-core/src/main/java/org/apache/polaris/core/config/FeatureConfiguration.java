@@ -209,21 +209,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(List.<String>of())
               .buildFeatureConfiguration();
 
-  // ---------------------------------------------------------------------------
-  // GCS principal attribution via Workload Identity Federation
-  //
-  // GCP downscoped credentials have no session-tag mechanism (unlike AWS STS), and custom audit
-  // headers only reach GCS audit logs if the client forwards them. To attribute GCS data access
-  // to the Polaris principal for ANY client, credential vending can chain
-  // catalog-signed JWT -> STS token exchange -> per-catalog service-account impersonation, so the
-  // principal appears in serviceAccountDelegationInfo of every GCS Data Access audit log entry.
-  //
-  // Attribution must be explicitly enabled via GCS_PRINCIPAL_ATTRIBUTION_ENABLED. When enabled,
-  // WIF_AUDIENCE, TOKEN_ISSUER, and SIGNING_KEY_FILE are all required; Polaris will throw at the
-  // first credential-vending attempt if any are missing. Additionally requires a gcpServiceAccount
-  // on the per-catalog StorageConfiguration.
-  // ---------------------------------------------------------------------------
-
   public static final FeatureConfiguration<Boolean> GCS_PRINCIPAL_ATTRIBUTION_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("GCS_PRINCIPAL_ATTRIBUTION_ENABLED")
@@ -248,7 +233,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "attribution, e.g.\n"
                   + "//iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>.\n"
                   + "Used as both the attribution JWT 'aud' claim and the STS token-exchange audience.\n"
-                  + "Empty (default) disables principal attribution.")
+                  + "Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
           .defaultValue("")
           .buildFeatureConfiguration();
 
@@ -259,7 +244,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               "Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer\n"
                   + "configured on the Workload Identity Pool OIDC provider. The provider verifies\n"
                   + "signatures against its uploaded JWKS, so no public discovery endpoint is required.\n"
-                  + "Empty (default) disables principal attribution.")
+                  + "Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
           .defaultValue("")
           .buildFeatureConfiguration();
 
@@ -269,7 +254,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs\n"
                   + "(RS256). The corresponding public key must be published in the Workload Identity\n"
-                  + "Pool provider's uploaded JWKS. Empty (default) disables principal attribution.")
+                  + "Pool provider's uploaded JWKS. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
           .defaultValue("")
           .buildFeatureConfiguration();
 

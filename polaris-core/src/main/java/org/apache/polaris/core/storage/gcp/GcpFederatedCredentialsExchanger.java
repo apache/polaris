@@ -71,7 +71,9 @@ public class GcpFederatedCredentialsExchanger {
    * JVM-wide cache of parsed signing keys, keyed by file path. The key file is a stable pod-mounted
    * secret; parsing it (disk read + {@link KeyFactory}) once per path amortizes across vends rather
    * than re-reading on every credential-cache miss. Key rotation is delivered by a process restart
-   * (the secret is mounted at startup), which clears this cache.
+   * (the secret is mounted at startup), which clears this cache. In practice the map is bounded by
+   * the number of realms in the deployment — each realm has at most one signing-key path — so
+   * memory growth is proportional to realm count.
    */
   private static final ConcurrentHashMap<Path, RSAPrivateKey> SIGNING_KEY_CACHE =
       new ConcurrentHashMap<>();
@@ -132,6 +134,7 @@ public class GcpFederatedCredentialsExchanger {
     if (signingKeyId != null && !signingKeyId.isEmpty()) {
       builder.withKeyId(signingKeyId);
     }
+    // null public key: sign-only; verification is the WIF provider's responsibility
     return builder.sign(Algorithm.RSA256(null, loadSigningKey()));
   }
 
@@ -155,6 +158,12 @@ public class GcpFederatedCredentialsExchanger {
   @VisibleForTesting
   static RSAPrivateKey readPkcs8PrivateKey(Path pemPath) throws IOException {
     String pem = Files.readString(pemPath);
+    if (pem.contains("BEGIN RSA PRIVATE KEY")) {
+      throw new IOException(
+          "PKCS#1 key format (BEGIN RSA PRIVATE KEY) is not supported for GCS attribution from "
+              + pemPath
+              + "; convert to PKCS#8 with: openssl pkcs8 -topk8 -nocrypt -in key.pem -out key-pkcs8.pem");
+    }
     String base64 =
         pem.replaceAll("-----BEGIN [A-Z ]+-----", "")
             .replaceAll("-----END [A-Z ]+-----", "")

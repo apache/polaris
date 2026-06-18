@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
+import java.nio.file.Path;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
@@ -40,6 +41,12 @@ public interface GcpAttributionParams {
 
   @Value.Parameter(order = 4)
   String signingKeyId();
+
+  /** Path derived from {@link #signingKeyFile()}; validated at construction time. */
+  @Value.Derived
+  default Path signingKeyPath() {
+    return Path.of(signingKeyFile());
+  }
 
   static GcpAttributionParams of(
       String tokenIssuer, String wifAudience, String signingKeyFile, String signingKeyId) {

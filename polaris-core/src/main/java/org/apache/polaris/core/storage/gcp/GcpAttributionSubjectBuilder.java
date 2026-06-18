@@ -61,8 +61,9 @@ public final class GcpAttributionSubjectBuilder {
     int principalUsed = Math.min(cleanPrincipal.length(), remaining);
     remaining -= principalUsed;
 
-    // Carry-forward: if the principal left budget unused, the realm may take more than its
-    // initial half-share.
+    // Carry-forward: unused budget from either field flows to the other. A short realm gives
+    // principal more room via the larger `remaining`, and a short principal gives realm more room
+    // here.
     int realmFinal = Math.min(cleanRealm.length(), realmUsed + remaining);
 
     return cleanRealm.substring(0, realmFinal)

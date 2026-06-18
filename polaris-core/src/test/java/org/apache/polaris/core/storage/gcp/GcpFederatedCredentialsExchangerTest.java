@@ -123,4 +123,34 @@ class GcpFederatedCredentialsExchangerTest {
   void readPkcs8PrivateKey() throws IOException {
     assertThat(GcpFederatedCredentialsExchanger.readPkcs8PrivateKey(keyFile)).isNotNull();
   }
+
+  @Test
+  void readPkcs8PrivateKeyRejectsPkcs1Format() throws Exception {
+    KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+    generator.initialize(2048);
+    KeyPair keyPair = generator.generateKeyPair();
+    String pkcs1Pem =
+        "-----BEGIN RSA PRIVATE KEY-----\n"
+            + Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.UTF_8))
+                .encodeToString(keyPair.getPrivate().getEncoded())
+            + "\n-----END RSA PRIVATE KEY-----\n";
+    Path pkcs1File = tempDir.resolve("pkcs1-key.pem");
+    Files.writeString(pkcs1File, pkcs1Pem);
+
+    assertThatThrownBy(() -> GcpFederatedCredentialsExchanger.readPkcs8PrivateKey(pkcs1File))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("PKCS#1")
+        .hasMessageContaining("openssl pkcs8");
+  }
+
+  @Test
+  void readPkcs8PrivateKeyRejectsInvalidBase64() throws Exception {
+    Path badFile = tempDir.resolve("bad-key.pem");
+    Files.writeString(
+        badFile, "-----BEGIN PRIVATE KEY-----\nnot-valid-base64!!!\n-----END PRIVATE KEY-----\n");
+
+    assertThatThrownBy(() -> GcpFederatedCredentialsExchanger.readPkcs8PrivateKey(badFile))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("PKCS#8 RSA private key");
+  }
 }

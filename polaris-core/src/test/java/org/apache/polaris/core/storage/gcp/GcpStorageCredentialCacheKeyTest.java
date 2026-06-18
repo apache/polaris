@@ -39,7 +39,7 @@ class GcpStorageCredentialCacheKeyTest {
   private static final HttpTransportFactory TRANSPORT = NetHttpTransport::new;
   private static final RealmConfig REALM_CONFIG = Mockito.mock(RealmConfig.class);
 
-  private static GcpStorageCredentialCacheKey key(String principalName) {
+  private static GcpStorageCredentialCacheKey key(Optional<String> principalName) {
     return GcpStorageCredentialCacheKey.of(
         "tenant1",
         CONFIG,
@@ -59,14 +59,14 @@ class GcpStorageCredentialCacheKeyTest {
   void principalNameIsPartOfCacheIdentity() {
     // When attribution is on, the vended token is per-principal: two principals must not collide
     // on one cache entry.
-    assertThat(key("alice")).isNotEqualTo(key("bob"));
-    assertThat(key("alice")).hasSameHashCodeAs(key("alice"));
-    assertThat(key("alice")).isEqualTo(key("alice"));
+    assertThat(key(Optional.of("alice"))).isNotEqualTo(key(Optional.of("bob")));
+    assertThat(key(Optional.of("alice"))).hasSameHashCodeAs(key(Optional.of("alice")));
+    assertThat(key(Optional.of("alice"))).isEqualTo(key(Optional.of("alice")));
   }
 
   @Test
   void emptyPrincipalSharesOneEntry() {
-    // When attribution is off the principal is empty, preserving cross-principal cache reuse.
-    assertThat(key("")).isEqualTo(key(""));
+    // When attribution is off the principal is absent, preserving cross-principal cache reuse.
+    assertThat(key(Optional.empty())).isEqualTo(key(Optional.empty()));
   }
 }

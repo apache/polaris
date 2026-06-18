@@ -68,7 +68,7 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
    * attributed credentials to another.
    */
   @Value.Parameter(order = 7)
-  String principalName();
+  Optional<String> principalName();
 
   // ---- aux: app-scoped invariants, excluded from equals/hashCode ----
 
@@ -110,7 +110,7 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
-      String principalName,
+      Optional<String> principalName,
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
       RealmConfig realmConfig,
