@@ -267,5 +267,19 @@ public class TestDocGenTool {
                     | `nested.root.nested-c.string-in-c` |  | `string` |  |
                     | `nested.root.nested-c.int-in-c` |  | `int` |  |
                     """);
+
+    var fileNestedProps = dir.resolve("nested-main.md");
+    soft.assertThat(fileNestedProps)
+        .isRegularFile()
+        .content()
+        .isEqualTo(
+            """
+                    | Property | Description |
+                    |----------|-------------|
+                    | `nested.inner` | Nested class property.  |
+                    | `nested.iface` | Nested interface property.  |
+                    | `nested.record` | Nested record property.  |
+                    | `nested.top` | Top-level property.  |
+                    """);
   }
 }
