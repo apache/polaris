@@ -304,26 +304,25 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return this;
     }
 
-    public Builder validateDefaultBaseLocation() {
+    private void validateDefaultBaseLocation() {
       String defaultBaseLocation = properties.get(DEFAULT_BASE_LOCATION_KEY);
       if (defaultBaseLocation == null) {
-        return this;
+        return;
       }
       String configStr =
           internalProperties.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
       if (configStr == null) {
-        return this;
+        return;
       }
       PolarisStorageConfigurationInfo storageConfig =
           PolarisStorageConfigurationInfo.deserialize(configStr);
       if (storageConfig == null) {
-        return this;
+        return;
       }
       List<String> allowedLocations = storageConfig.getAllowedLocations();
       if (allowedLocations != null && !allowedLocations.isEmpty()) {
         validateBaseLocationAgainstAllowedList(allowedLocations, defaultBaseLocation);
       }
-      return this;
     }
 
     public Builder setStorageConfigurationInfo(
@@ -332,21 +331,12 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         if (defaultBaseLocation == null) {
           throw new BadRequestException("Must specify default base location");
         }
-        // Asymmetric semantics for the simple-create case vs. explicit input:
-        //   - If the caller supplied no allowed-locations, default to the catalog's
-        //     default-base-location. This is the convenience for naive create requests.
-        //     (Update-time callers in PolarisAdminService enforce strictness before reaching
-        //     this method, so the auto-populate only kicks in at create time.)
-        //   - If the caller supplied an explicit allowed-locations list, validate that the
-        //     default-base-location is a subpath of at least one entry and store the list
-        //     as-is. No silent additions to the user-supplied list.
         List<String> userAllowedLocations = storageConfigModel.getAllowedLocations();
         Set<String> allowedLocations;
         if (userAllowedLocations == null || userAllowedLocations.isEmpty()) {
           allowedLocations = new HashSet<>();
           allowedLocations.add(defaultBaseLocation);
         } else {
-          validateBaseLocationAgainstAllowedList(userAllowedLocations, defaultBaseLocation);
           allowedLocations = new HashSet<>(userAllowedLocations);
         }
         PolarisStorageConfigurationInfo config;
