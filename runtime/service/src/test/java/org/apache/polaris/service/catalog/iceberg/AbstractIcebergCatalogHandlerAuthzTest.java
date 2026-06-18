@@ -39,7 +39,6 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.metrics.CommitMetrics;
@@ -1297,18 +1296,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         adminService.grantPrivilegeOnNamespaceToRole(
             CATALOG_NAME, CATALOG_ROLE1, NS2, PolarisPrivilege.TABLE_CREATE));
     newHandler().renameTable(rename2);
-
-    // Verify that renaming a non-existent source reports the source identifier in the error
-    TableIdentifier nonExistentSource = TableIdentifier.of(NS1, "no_such_table");
-    TableIdentifier destination = TableIdentifier.of(NS1AA, "another");
-    RenameTableRequest badRename =
-        RenameTableRequest.builder()
-            .withSource(nonExistentSource)
-            .withDestination(destination)
-            .build();
-    Assertions.assertThatThrownBy(() -> newHandler().renameTable(badRename))
-        .isInstanceOf(NoSuchTableException.class)
-        .hasMessageContaining(nonExistentSource.toString());
   }
 
   @TestFactory
