@@ -86,7 +86,10 @@ fun addAdditionalJarContent(project: Project): Unit = project.run {
     // Letting jars depend on the pom.xml (Gradle's `GenerateMavenPom` task, annotated with
     // `@UntrackedTask`) breaks up-to-date checks for all jars and dependent project
     // dependencies, leading to unnecessarily long build times.
-    if (rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")) {
+    if (
+      providers.gradleProperty("release").isPresent ||
+        providers.gradleProperty("jarWithGitInfo").isPresent
+    ) {
       val pomPath = "META-INF/maven/${project.group}/${project.name}/pom.xml"
       val generatePomFileTask = tasks.named<GenerateMavenPom>("generatePomFileForMavenPublication")
       tasks.withType(Jar::class).configureEach {

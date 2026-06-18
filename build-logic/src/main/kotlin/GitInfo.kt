@@ -36,9 +36,9 @@ class GitInfo(val gitHead: String, val gitDescribe: String, private val rawLinkR
 
   companion object {
     fun memoized(project: Project): GitInfo {
-      val rootProject = project.rootProject
       val isRelease =
-        rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")
+        project.providers.gradleProperty("release").isPresent ||
+          project.providers.gradleProperty("jarWithGitInfo").isPresent
       val service =
         project.gradle.sharedServices.registerIfAbsent(
           "gitInfo-$isRelease",

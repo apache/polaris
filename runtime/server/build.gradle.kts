@@ -41,11 +41,11 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-auth-opa"))
   runtimeOnly(project(":polaris-extensions-auth-ranger"))
 
-  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {
+  val nonRestCatalogs = providers.gradleProperty("NonRESTCatalogs").orNull
+  if (nonRestCatalogs?.contains("HIVE") == true) {
     runtimeOnly(project(":polaris-extensions-federation-hive"))
   }
-
-  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("BIGQUERY") == true) {
+  if (nonRestCatalogs?.contains("BIGQUERY") == true) {
     runtimeOnly(project(":polaris-extensions-federation-bigquery"))
   }
 

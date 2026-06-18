@@ -79,7 +79,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
     extensions.create("publishingHelper", PublishingHelperExtension::class.java)
 
     tasks.withType<Jar>().configureEach {
-      manifest { MemoizedJarInfo.applyJarManifestAttributes(rootProject, attributes) }
+      manifest { MemoizedJarInfo.applyJarManifestAttributes(project, attributes) }
     }
 
     apply(plugin = "maven-publish")
@@ -98,7 +98,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
           val signingPassword: String? by project
           useInMemoryPgpKeys(signingKey, signingPassword)
 
-          if (project.hasProperty("useGpgAgent")) {
+          if (project.providers.gradleProperty("useGpgAgent").isPresent) {
             useGpgCmd()
           }
         }

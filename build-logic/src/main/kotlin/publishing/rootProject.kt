@@ -37,7 +37,7 @@ import org.gradle.kotlin.dsl.register
 internal fun configureOnRootProject(project: Project) = project.run {
   apply<NexusPublishPlugin>()
 
-  val isRelease = project.hasProperty("release")
+  val isRelease = project.providers.gradleProperty("release").isPresent
 
   val sourceTarball = tasks.register<Exec>("sourceTarball")
   sourceTarball.configure {

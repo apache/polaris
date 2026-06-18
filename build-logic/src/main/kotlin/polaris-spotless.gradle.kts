@@ -50,7 +50,7 @@ spotless {
       target("src/**/*.xml", "src/**/*.xsd")
       targetExclude("codestyle/copyright-header.xml")
       eclipseWtp(com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep.XML)
-        .configFile(rootProject.file("codestyle/org.eclipse.wst.xml.core.prefs"))
+        .configFile(layout.settingsDirectory.file("codestyle/org.eclipse.wst.xml.core.prefs"))
       // getting the license-header delimiter right is a bit tricky.
       // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
     }
