@@ -24,6 +24,7 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.Function;
 import org.testcontainers.utility.DockerImageName;
 
 // Spotless/Java doesn't really "like" Javadoc @snippet
@@ -72,14 +73,30 @@ import org.testcontainers.utility.DockerImageName;
 public final class ContainerSpecHelper {
   private final String name;
   private final Class<?> containerClass;
+  private final Function<String, String> systemPropertyLookup;
+  private final Function<String, String> envLookup;
 
   public static ContainerSpecHelper containerSpecHelper(String name, Class<?> containerClass) {
-    return new ContainerSpecHelper(name, containerClass);
+    return containerSpecHelper(name, containerClass, System::getProperty, System::getenv);
   }
 
-  private ContainerSpecHelper(String name, Class<?> containerClass) {
+  static ContainerSpecHelper containerSpecHelper(
+      String name,
+      Class<?> containerClass,
+      Function<String, String> systemPropertyLookup,
+      Function<String, String> envLookup) {
+    return new ContainerSpecHelper(name, containerClass, systemPropertyLookup, envLookup);
+  }
+
+  private ContainerSpecHelper(
+      String name,
+      Class<?> containerClass,
+      Function<String, String> systemPropertyLookup,
+      Function<String, String> envLookup) {
     this.name = name;
     this.containerClass = containerClass;
+    this.systemPropertyLookup = systemPropertyLookup;
+    this.envLookup = envLookup;
   }
 
   public String name() {
@@ -103,19 +120,19 @@ public final class ContainerSpecHelper {
     String systemPropPrefix2 = "polaris.testing." + name() + ".";
     String envPrefix = name().toUpperCase(Locale.ROOT).replaceAll("-", "_") + "_DOCKER_";
 
-    String explicitImage = System.getProperty(systemPropPrefix1 + "image");
+    String explicitImage = systemPropertyLookup.apply(systemPropPrefix1 + "image");
     if (explicitImage == null) {
-      explicitImage = System.getProperty(systemPropPrefix2 + "image");
+      explicitImage = systemPropertyLookup.apply(systemPropPrefix2 + "image");
     }
     if (explicitImage == null) {
-      explicitImage = System.getenv(envPrefix + "IMAGE");
+      explicitImage = envLookup.apply(envPrefix + "IMAGE");
     }
-    String explicitTag = System.getProperty(systemPropPrefix1 + "tag");
+    String explicitTag = systemPropertyLookup.apply(systemPropPrefix1 + "tag");
     if (explicitTag == null) {
-      explicitTag = System.getProperty(systemPropPrefix2 + "tag");
+      explicitTag = systemPropertyLookup.apply(systemPropPrefix2 + "tag");
     }
     if (explicitTag == null) {
-      explicitTag = System.getenv(envPrefix + "TAG");
+      explicitTag = envLookup.apply(envPrefix + "TAG");
     }
 
     if (explicitImage != null && explicitTag != null) {
