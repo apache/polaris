@@ -19,7 +19,7 @@
 
 package org.apache.polaris.test.rustfs;
 
-import org.apache.polaris.testcontainer.S3TestcontainerAccess;
+import org.apache.polaris.testcontainer.S3Access;
 
 /**
  * Provides access to Rustfs via a preconfigured S3 client and providing the by default randomized
@@ -29,4 +29,4 @@ import org.apache.polaris.testcontainer.S3TestcontainerAccess;
  * Rustfs}.
  */
 // CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
-public interface RustfsAccess extends S3TestcontainerAccess {}
+public interface RustfsAccess extends S3Access {}

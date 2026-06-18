@@ -27,7 +27,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 /** Common S3 access API for testcontainer-backed object storage implementations. */
 // CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
-public interface S3TestcontainerAccess {
+public interface S3Access {
 
   /** Host and port, separated by '{@code :}'. */
   String hostPort();

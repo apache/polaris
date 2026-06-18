@@ -326,7 +326,7 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/test/java/tests/smallrye/SomeEnum.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/VeryNested.java
 * tools/container-spec-helper/src/main/java/org/apache/polaris/containerspec/ContainerSpecHelper.java
-* tools/container-spec-helper/src/main/java/org/apache/polaris/testcontainer/S3TestcontainerAccess.java
+* tools/container-spec-helper/src/main/java/org/apache/polaris/testcontainer/S3Access.java
 * tools/azurite-testcontainer/src/intTest/java/org/projectnessie/testing/azurite/ITAzuriteExtensionInstanceField.java
 * tools/azurite-testcontainer/src/intTest/java/org/projectnessie/testing/azurite/ITAzuriteExtension.java
 * tools/azurite-testcontainer/src/intTest/java/org/projectnessie/testing/azurite/ITAzuriteExtensionParameters.java
