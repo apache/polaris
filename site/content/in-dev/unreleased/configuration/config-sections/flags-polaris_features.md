@@ -346,7 +346,7 @@ Enables GCS principal attribution via Workload Identity Federation. When true, c
 
 ##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE"`
 
-Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs (RS256). The corresponding public key must be published in the Workload Identity Pool provider's uploaded JWKS. Empty (default) disables principal attribution.
+Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs (RS256). The corresponding public key must be published in the Workload Identity Pool provider's uploaded JWKS. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
 
 - **Type:** `String`
 - **Default:** ``
@@ -364,7 +364,7 @@ Key ID (kid) written into the header of GCS attribution JWTs so the Workload Ide
 
 ##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER"`
 
-Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer configured on the Workload Identity Pool OIDC provider. The provider verifies signatures against its uploaded JWKS, so no public discovery endpoint is required. Empty (default) disables principal attribution.
+Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer configured on the Workload Identity Pool OIDC provider. The provider verifies signatures against its uploaded JWKS, so no public discovery endpoint is required. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
 
 - **Type:** `String`
 - **Default:** ``
@@ -373,7 +373,7 @@ Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer
 
 ##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE"`
 
-Full resource name of the Workload Identity Pool provider used for GCS principal attribution, e.g. //iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>. Used as both the attribution JWT 'aud' claim and the STS token-exchange audience. Empty (default) disables principal attribution.
+Full resource name of the Workload Identity Pool provider used for GCS principal attribution, e.g. //iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>. Used as both the attribution JWT 'aud' claim and the STS token-exchange audience. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
 
 - **Type:** `String`
 - **Default:** ``
