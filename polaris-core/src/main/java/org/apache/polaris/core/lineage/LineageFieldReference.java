@@ -18,9 +18,12 @@
  */
 package org.apache.polaris.core.lineage;
 
-/** Service boundary for lineage operations used by transport-layer adapters. */
-public interface LineageService {
-  void ingest(LineageIngestRequest request);
+import java.util.Objects;
 
-  LineageGraph query(LineageQueryRequest request);
+/** A reference to a specific field on a lineage dataset. */
+public record LineageFieldReference(LineageDataset dataset, String field) {
+  public LineageFieldReference {
+    Objects.requireNonNull(dataset, "dataset must be non-null");
+    Objects.requireNonNull(field, "field must be non-null");
+  }
 }
