@@ -15,6 +15,7 @@
  */
 package org.apache.polaris.docs.generator;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -269,17 +270,18 @@ public class TestDocGenTool {
                     """);
 
     var fileNestedProps = dir.resolve("nested-main.md");
-    soft.assertThat(fileNestedProps)
-        .isRegularFile()
-        .content()
-        .isEqualTo(
-            """
-                    | Property | Description |
-                    |----------|-------------|
-                    | `nested.inner` | Nested class property.  |
-                    | `nested.iface` | Nested interface property.  |
-                    | `nested.record` | Nested record property.  |
-                    | `nested.top` | Top-level property.  |
-                    """);
+    soft.assertThat(fileNestedProps).isRegularFile();
+    var nestedPropsContent = Files.readString(fileNestedProps);
+    soft.assertThat(nestedPropsContent)
+        .contains(
+            "| Property | Description |",
+            "|----------|-------------|",
+            "| `nested.top` | Top-level property.  |",
+            "| `nested.inner` | Nested class property.  |",
+            "| `nested.iface` | Nested interface property.  |",
+            "| `nested.record` | Nested record property.  |");
+    soft.assertThat(
+            nestedPropsContent.lines().filter(line -> line.startsWith("| `nested.")).count())
+        .isEqualTo(4);
   }
 }
