@@ -91,19 +91,9 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
       @CommandLine.Option(
           names = {"-v", "--schema-version"},
           paramLabel = "<schema version>",
-          converter = SchemaVersionConverter.class,
-          description = "The version of the schema to load in [1, 2, 3, LATEST].")
+          description =
+              "The version of the schema to load. The set of valid values depends on the backend type. If omitted the latest schema version will be used.")
       Integer schemaVersion;
-    }
-
-    static class SchemaVersionConverter implements CommandLine.ITypeConverter<Integer> {
-      @Override
-      public Integer convert(String value) {
-        if ("LATEST".equalsIgnoreCase(value)) {
-          return -1;
-        }
-        return Integer.valueOf(value);
-      }
     }
   }
 
