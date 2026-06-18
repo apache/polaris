@@ -24,11 +24,9 @@ OAuth token endpoint payloads are redacted before writing.
 """
 
 import json
-import logging
+import sys
 from typing import Any
 from urllib.parse import parse_qsl, urlencode
-
-logger = logging.getLogger(__name__)
 
 REDACTED = "***REDACTED***"
 OAUTH_TOKEN_BODY_REDACTED = "<redacted sensitive authentication payload>"
@@ -69,35 +67,17 @@ def sanitize_data(data: Any) -> Any:
     return data
 
 
-def _iter_header_items(headers: Any) -> Any:
-    if isinstance(headers, dict):
-        return headers.items()
-    if isinstance(headers, list):
-        return headers
-    if hasattr(headers, "items"):
-        return headers.items()
-    return None
-
-
-def sanitize_headers(headers: Any) -> Any:
+def sanitize_headers(headers: dict[str, Any] | None) -> dict[str, Any] | None:
     if headers is None:
         return headers
-    items = _iter_header_items(headers)
-    if items is None:
-        return headers
-    if isinstance(headers, list):
-        return [
-            (key, REDACTED if _should_redact_header(str(key)) else value)
-            for key, value in items
-        ]
     return {
         key: REDACTED if _should_redact_header(str(key)) else value
-        for key, value in items
+        for key, value in headers.items()
     }
 
 
 def is_oauth_token_endpoint(url: str) -> bool:
-    return "/oauth/tokens" in url
+    return url.endswith("/oauth/tokens")
 
 
 def _sanitize_form_body(body: str) -> str:
@@ -105,7 +85,7 @@ def _sanitize_form_body(body: str) -> str:
         (key, REDACTED if _is_sensitive_body_key(key) else value)
         for key, value in parse_qsl(body, keep_blank_values=True)
     ]
-    return urlencode(sanitized_pairs)
+    return urlencode(sanitized_pairs, safe="*")
 
 
 def sanitize_body(body: Any) -> Any:
@@ -139,14 +119,14 @@ def sanitize_body_for_log(body: Any, url: str) -> Any:
 def safe_sanitize_headers(headers: Any) -> Any:
     try:
         return sanitize_headers(headers)
-    except Exception:
-        logger.debug("Failed to sanitize debug log headers", exc_info=True)
+    except Exception as e:
+        sys.stderr.write(f"Failed to sanitize debug log headers: {e}\n")
         return SANITIZE_FAILURE_MESSAGE
 
 
 def safe_sanitize_body_for_log(body: Any, url: str) -> Any:
     try:
         return sanitize_body_for_log(body, url)
-    except Exception:
-        logger.debug("Failed to sanitize debug log body", exc_info=True)
+    except Exception as e:
+        sys.stderr.write(f"Failed to sanitize debug log body: {e}\n")
         return SANITIZE_FAILURE_MESSAGE

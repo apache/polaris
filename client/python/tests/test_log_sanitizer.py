@@ -28,6 +28,7 @@ from apache_polaris.cli.log_sanitizer import (
     OAUTH_TOKEN_BODY_REDACTED,
     REDACTED,
     SANITIZE_FAILURE_MESSAGE,
+    is_oauth_token_endpoint,
     sanitize_body,
     sanitize_body_for_log,
     sanitize_data,
@@ -55,8 +56,9 @@ class TestLogSanitizer(unittest.TestCase):
         )
         sanitized = sanitize_body(body)
         self.assertIn("client_id=my-client", sanitized)
-        self.assertIn("client_secret=", sanitized)
+        self.assertIn(f"client_secret={REDACTED}", sanitized)
         self.assertNotIn("super-secret", sanitized)
+        self.assertNotIn("%2A%2A%2A", sanitized)
 
     def test_oauth_token_response_redaction(self) -> None:
         body = json.dumps(
@@ -73,6 +75,16 @@ class TestLogSanitizer(unittest.TestCase):
         self.assertEqual(parsed["refresh_token"], REDACTED)
         self.assertEqual(parsed["token_type"], "Bearer")
         self.assertEqual(parsed["expires_in"], 3600)
+
+    def test_oauth_token_endpoint_matching(self) -> None:
+        self.assertTrue(
+            is_oauth_token_endpoint("http://localhost:8080/api/catalog/v1/oauth/tokens")
+        )
+        self.assertFalse(
+            is_oauth_token_endpoint(
+                "http://localhost:8080/api/catalog/v1/oauth/tokens/extra"
+            )
+        )
 
     def test_oauth_token_endpoint_body_fully_redacted(self) -> None:
         body = (
@@ -123,23 +135,29 @@ class TestLogSanitizer(unittest.TestCase):
         self.assertEqual(sanitized, body)
 
     def test_sanitize_failures_return_safe_fallback(self) -> None:
-        with patch(
-            "apache_polaris.cli.log_sanitizer.sanitize_headers",
-            side_effect=RuntimeError("boom"),
-        ):
-            self.assertEqual(
-                safe_sanitize_headers({"Authorization": "secret"}),
-                SANITIZE_FAILURE_MESSAGE,
-            )
+        stderr = io.StringIO()
+        with patch("apache_polaris.cli.log_sanitizer.sys.stderr", stderr):
+            with patch(
+                "apache_polaris.cli.log_sanitizer.sanitize_headers",
+                side_effect=RuntimeError("boom"),
+            ):
+                self.assertEqual(
+                    safe_sanitize_headers({"Authorization": "secret"}),
+                    SANITIZE_FAILURE_MESSAGE,
+                )
 
-        with patch(
-            "apache_polaris.cli.log_sanitizer.sanitize_body_for_log",
-            side_effect=RuntimeError("boom"),
-        ):
-            self.assertEqual(
-                safe_sanitize_body_for_log('{"token":"secret"}', "http://example"),
-                SANITIZE_FAILURE_MESSAGE,
-            )
+            with patch(
+                "apache_polaris.cli.log_sanitizer.sanitize_body_for_log",
+                side_effect=RuntimeError("boom"),
+            ):
+                self.assertEqual(
+                    safe_sanitize_body_for_log('{"token":"secret"}', "http://example"),
+                    SANITIZE_FAILURE_MESSAGE,
+                )
+
+        output = stderr.getvalue()
+        self.assertIn("Failed to sanitize debug log headers: boom", output)
+        self.assertIn("Failed to sanitize debug log body: boom", output)
 
 
 class TestApiRequestLogging(unittest.TestCase):
