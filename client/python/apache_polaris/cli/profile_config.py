@@ -57,7 +57,6 @@ def ensure_config_file_permissions(path: str | None = None) -> None:
 def load_profiles() -> Dict[str, Dict[str, Any]]:
     if not os.path.exists(CONFIG_FILE):
         return {}
-    ensure_config_file_permissions()
     with open(CONFIG_FILE, "r") as f:
         return json.load(f)
 

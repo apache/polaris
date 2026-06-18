@@ -27,13 +27,29 @@ from unittest.mock import patch
 from apache_polaris.cli.profile_config import (
     CONFIG_FILE_MODE,
     MASKED_CLIENT_SECRET,
+    ensure_config_file_permissions,
     format_profile_for_display,
     load_profiles,
+    mask_client_secret,
     save_profiles,
 )
 
 
 class TestProfileConfig(unittest.TestCase):
+    def test_mask_client_secret_none(self) -> None:
+        self.assertIsNone(mask_client_secret(None))
+
+    def test_mask_client_secret_empty(self) -> None:
+        self.assertEqual(mask_client_secret(""), "")
+
+    def test_mask_client_secret_non_empty(self) -> None:
+        self.assertEqual(mask_client_secret("abcdef123456"), MASKED_CLIENT_SECRET)
+
+    def test_ensure_config_file_permissions_no_op_for_missing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as config_dir:
+            missing_file = os.path.join(config_dir, ".polaris.json")
+            ensure_config_file_permissions(missing_file)
+
     def test_format_profile_for_display_masks_long_secret(self) -> None:
         profile = {
             "client_id": "root",
@@ -117,18 +133,10 @@ class TestProfileConfig(unittest.TestCase):
                 ]
                 self.assertEqual(temp_files, [])
 
-    def test_load_profiles_corrects_permissive_permissions(self) -> None:
+    def test_load_profiles_returns_empty_when_file_missing(self) -> None:
         with tempfile.TemporaryDirectory() as config_dir:
             config_file = os.path.join(config_dir, ".polaris.json")
-            with open(config_file, "w") as f:
-                json.dump({"dev": {"client_secret": "secret-value"}}, f)
-            os.chmod(config_file, 0o644)
             with patch(
-                "apache_polaris.cli.profile_config.CONFIG_DIR", config_dir
-            ), patch(
                 "apache_polaris.cli.profile_config.CONFIG_FILE", config_file
             ):
-                loaded = load_profiles()
-                self.assertEqual(loaded["dev"]["client_secret"], "secret-value")
-                mode = stat.S_IMODE(os.stat(config_file).st_mode)
-                self.assertEqual(mode, CONFIG_FILE_MODE)
+                self.assertEqual(load_profiles(), {})

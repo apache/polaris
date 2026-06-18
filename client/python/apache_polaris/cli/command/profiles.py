@@ -17,7 +17,6 @@
 # under the License.
 #
 
-import os
 import sys
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Any, cast
@@ -59,8 +58,6 @@ class ProfilesCommand(Command):
     profile_name: Optional[str] = None
 
     def _load_profiles(self) -> Dict[str, Dict[str, Any]]:
-        if not os.path.exists(CONFIG_FILE):
-            return {}
         print(f"Loading profiles from {CONFIG_FILE}")
         return load_profiles()
 
