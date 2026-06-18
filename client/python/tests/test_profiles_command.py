@@ -18,7 +18,9 @@
 #
 
 import io
-from unittest.mock import patch, MagicMock, mock_open, ANY
+from unittest.mock import ANY, MagicMock, mock_open, patch
+
+from apache_polaris.cli.exceptions import CliError
 from cli_test_utils import CLITestBase
 
 
@@ -88,15 +90,14 @@ class TestProfilesCommand(CLITestBase):
         new_callable=mock_open,
         read_data='{"dev": {}}',
     )
-    @patch("apache_polaris.cli.command.profiles.sys.exit")
     def test_profile_create_existing_fails(
-        self, mock_exit: MagicMock, mock_file: MagicMock, mock_exists: MagicMock
+        self, mock_file: MagicMock, mock_exists: MagicMock
     ) -> None:
         mock_client = self.build_mock_client()
         mock_exists.return_value = True
-        with patch("sys.stdout", new_callable=io.StringIO):
+
+        with self.assertRaises(CliError):
             self.mock_execute(mock_client, ["profiles", "create", "dev"])
-        mock_exit.assert_called_once_with(1)
 
     @patch("apache_polaris.cli.command.profiles.os.path.exists")
     @patch(
@@ -145,3 +146,18 @@ class TestProfilesCommand(CLITestBase):
             output = mock_stdout.getvalue()
             self.assertIn("Polaris profile dev updated successfully.", output)
         mock_file.assert_called_with(ANY, "w")
+
+    @patch("apache_polaris.cli.command.profiles.os.path.exists")
+    @patch(
+        "apache_polaris.cli.command.profiles.open",
+        new_callable=mock_open,
+        read_data="{}",
+    )
+    def test_profile_update_missing_fails(
+        self, mock_file: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_exists.return_value = True
+
+        with self.assertRaises(CliError):
+            self.mock_execute(mock_client, ["profiles", "update", "missing"])

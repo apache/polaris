@@ -20,7 +20,6 @@
 import json
 
 import os
-import sys
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Any, cast
 
@@ -91,8 +90,7 @@ class ProfilesCommand(Command):
             }
             self._save_profiles(profiles)
         else:
-            print(f"Profile {name} already exists.")
-            sys.exit(1)
+            raise CliError(f"Profile {name} already exists.")
 
     def _get_profile(self, name: str) -> Optional[Dict[str, Any]]:
         profiles = self._load_profiles()
@@ -142,8 +140,7 @@ class ProfilesCommand(Command):
             }
             self._save_profiles(profiles)
         else:
-            print(f"Profile {name} does not exist.")
-            sys.exit(1)
+            raise CliError(f"Profile {name} does not exist.")
 
     def validate(self) -> None:
         if self.profiles_subcommand in {
