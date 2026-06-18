@@ -37,6 +37,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.lineage.LineageColumnEdge;
 import org.apache.polaris.core.lineage.LineageDataset;
 import org.apache.polaris.core.lineage.LineageDirection;
@@ -46,7 +47,6 @@ import org.apache.polaris.core.lineage.LineageGranularity;
 import org.apache.polaris.core.lineage.LineageGraph;
 import org.apache.polaris.core.lineage.LineageQueryRequest;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -280,9 +280,8 @@ class LineagePersistenceTest {
   private static PolarisStorageIntegrationProvider storageProvider() {
     return new PolarisStorageIntegrationProvider() {
       @Override
-      public <T extends PolarisStorageConfigurationInfo>
-          PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-              PolarisStorageConfigurationInfo config) {
+      public PolarisStorageIntegration getStorageIntegration(
+          List<PolarisEntity> resolvedEntityPath) {
         return null;
       }
     };
