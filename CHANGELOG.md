@@ -28,6 +28,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Polaris now supports dynamic datasource activation. Out of the box, two datasources are provided: `postgresql` and `h2`. The datasource to use can be selected at runtime by setting the `polaris.persistence.relational.jdbc.datasource` configuration property (the default is `postgresql`). This allows operators to switch between supported relational databases without rebuilding Polaris.
 
 ### Upgrade notes
 - Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
