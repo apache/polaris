@@ -33,12 +33,12 @@ import java.util.OptionalLong;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.lineage.LineageColumnEdge;
 import org.apache.polaris.core.lineage.LineageDataset;
 import org.apache.polaris.core.lineage.LineageEdge;
 import org.apache.polaris.core.lineage.LineageFieldReference;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.test.commons.CockroachRelationalJdbcLifeCycleManagement;
@@ -171,9 +171,8 @@ class LineagePersistenceJdbcIT {
   private static PolarisStorageIntegrationProvider storageProvider() {
     return new PolarisStorageIntegrationProvider() {
       @Override
-      public <T extends PolarisStorageConfigurationInfo>
-          PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-              PolarisStorageConfigurationInfo config) {
+      public PolarisStorageIntegration getStorageIntegration(
+          List<PolarisEntity> resolvedEntityPath) {
         return null;
       }
     };
