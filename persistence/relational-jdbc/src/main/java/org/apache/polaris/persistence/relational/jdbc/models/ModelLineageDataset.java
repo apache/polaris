@@ -24,7 +24,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.persistence.lineage.LineageDatasetRecord;
+import org.apache.polaris.core.lineage.LineageDataset;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
@@ -99,16 +99,18 @@ public interface ModelLineageDataset extends Converter<ModelLineageDataset> {
     return map;
   }
 
-  static ModelLineageDataset fromRecord(LineageDatasetRecord record, String realmId) {
+  static ModelLineageDataset fromDataset(
+      LineageDataset dataset, String realmId, long datasetId, long nowMillis) {
     return ImmutableModelLineageDataset.builder()
         .realmId(realmId)
-        .datasetId(record.datasetId())
-        .catalog(record.catalog())
-        .namespace(record.namespace())
-        .name(record.name())
-        .polarisEntityId(record.polarisEntityId().orElse(null))
-        .createdAt(record.createdAt())
-        .updatedAt(record.updatedAt())
+        .datasetId(datasetId)
+        .catalog(dataset.catalog())
+        .namespace(dataset.namespace())
+        .name(dataset.name())
+        .polarisEntityId(
+            dataset.polarisEntityId().isPresent() ? dataset.polarisEntityId().getAsLong() : null)
+        .createdAt(nowMillis)
+        .updatedAt(nowMillis)
         .build();
   }
 

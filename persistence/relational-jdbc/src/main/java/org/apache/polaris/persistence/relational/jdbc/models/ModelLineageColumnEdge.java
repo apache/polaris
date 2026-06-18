@@ -23,7 +23,6 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.persistence.lineage.LineageColumnEdgeRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
@@ -85,14 +84,20 @@ public interface ModelLineageColumnEdge extends Converter<ModelLineageColumnEdge
     return map;
   }
 
-  static ModelLineageColumnEdge fromRecord(LineageColumnEdgeRecord record, String realmId) {
+  static ModelLineageColumnEdge fromIds(
+      String realmId,
+      long sourceDatasetId,
+      String sourceField,
+      long targetDatasetId,
+      String targetField,
+      long lastEventAtMillis) {
     return ImmutableModelLineageColumnEdge.builder()
         .realmId(realmId)
-        .sourceDatasetId(record.sourceDatasetId())
-        .sourceField(record.sourceField())
-        .targetDatasetId(record.targetDatasetId())
-        .targetField(record.targetField())
-        .lastEventAt(record.lastEventAt())
+        .sourceDatasetId(sourceDatasetId)
+        .sourceField(sourceField)
+        .targetDatasetId(targetDatasetId)
+        .targetField(targetField)
+        .lastEventAt(lastEventAtMillis)
         .build();
   }
 
