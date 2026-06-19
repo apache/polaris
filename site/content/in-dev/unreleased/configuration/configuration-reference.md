@@ -138,6 +138,12 @@ All properties listed here are **runtime** properties and can be changed without
 
 {{% include-config-section "smallrye-polaris_event_listener_aws_cloudwatch" %}}
 
+### `opentelemetry` event listener
+
+Set `polaris.event-listener.types=opentelemetry` to emit Polaris events as OpenTelemetry log
+records. Configure the OpenTelemetry SDK and exporter with the existing `quarkus.otel.*`
+properties.
+
 ## Operational
 
 ### `polaris.tasks`
@@ -181,4 +187,3 @@ All properties listed here are **runtime** properties and can be changed without
 ### `polaris.realm-context`
 
 {{% include-config-section "smallrye-polaris_realm_context" %}}
-

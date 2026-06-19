@@ -53,6 +53,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
 - Added Polaris Spark 4.0 client.
 
+- Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
+
 ### Changes
 - Added REPL support to Polaris CLI.
 - The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
