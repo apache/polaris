@@ -32,9 +32,9 @@ import org.hawkular.agent.prometheus.text.TextPrometheusMetricsProcessor;
 import org.hawkular.agent.prometheus.types.MetricFamily;
 import org.hawkular.agent.prometheus.walkers.CollectorPrometheusMetricsWalker;
 
-public class MetricsApi extends RestApi {
+public class PlatformMetricsApi extends RestApi {
 
-  MetricsApi(Client client, URI metricsApiEndpoint) {
+  PlatformMetricsApi(Client client, URI metricsApiEndpoint) {
     super(client, metricsApiEndpoint, "text/plain");
   }
 

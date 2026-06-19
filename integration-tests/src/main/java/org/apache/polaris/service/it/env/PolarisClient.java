@@ -33,14 +33,18 @@ import java.util.Random;
 import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.service.it.ext.PolarisServerManager;
+import org.jspecify.annotations.Nullable;
 
 /**
- * This is a holder for the heavy-weight HTTP client for accessing Polaris APIs. This class provides
- * method for constructing light-weight API wrappers for Iceberg REST and Polaris Management API
- * that reuse the same shared HTTP client.
+ * This is a holder for the heavy-weight HTTP client for accessing Polaris APIs, and optionally,
+ * platform APIs (such as metrics or health endpoints).
+ *
+ * <p>This class provides methods for constructing light-weight API wrappers for Iceberg REST APis,
+ * Polaris Management APIs, and platform APIs that reuse the same shared HTTP client.
  */
 public final class PolarisClient implements AutoCloseable {
   private final PolarisApiEndpoints endpoints;
+  private final @Nullable PlatformApiEndpoints platformEndpoints;
   private final Client client;
   // Use an alphanumeric ID for widest compatibility in HTTP and SQL.
   // Use MAX_RADIX for shorter output.
@@ -48,13 +52,33 @@ public final class PolarisClient implements AutoCloseable {
       Long.toString(Math.abs(new Random().nextLong()), Character.MAX_RADIX);
 
   private PolarisClient(PolarisApiEndpoints endpoints) {
-    this.endpoints = endpoints;
+    this(endpoints, null);
+  }
 
+  private PolarisClient(
+      PolarisApiEndpoints endpoints, @Nullable PlatformApiEndpoints platformEndpoints) {
+    this.endpoints = endpoints;
+    this.platformEndpoints = platformEndpoints;
     this.client = polarisServerManager().createClient();
   }
 
+  /**
+   * Builds a {@link PolarisClient} for the given {@link PolarisApiEndpoints}. The returned client
+   * cannot access platform endpoints; use {@link #polarisClient(PolarisApiEndpoints,
+   * PlatformApiEndpoints)} if platform endpoints are required by the test.
+   */
   public static PolarisClient polarisClient(PolarisApiEndpoints endpoints) {
     return new PolarisClient(endpoints);
+  }
+
+  /**
+   * Builds a {@link PolarisClient} for the given {@link PolarisApiEndpoints} and {@link
+   * PlatformApiEndpoints}. The returned client can access both Polaris APIs and platform endpoints
+   * (e.g. metrics or health endpoints).
+   */
+  public static PolarisClient polarisClient(
+      PolarisApiEndpoints endpoints, PlatformApiEndpoints platformEndpoints) {
+    return new PolarisClient(endpoints, platformEndpoints);
   }
 
   /**
@@ -103,8 +127,11 @@ public final class PolarisClient implements AutoCloseable {
     return new PolicyApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
   }
 
-  public MetricsApi metricsApi() {
-    return new MetricsApi(client, endpoints.metricsApiEndpoint());
+  public PlatformMetricsApi platformMetricsApi() {
+    if (platformEndpoints == null) {
+      throw new IllegalStateException("Platform endpoints are not available");
+    }
+    return new PlatformMetricsApi(client, platformEndpoints.metricsApiEndpoint());
   }
 
   /** Requests an access token from the Polaris server for the given principal. */

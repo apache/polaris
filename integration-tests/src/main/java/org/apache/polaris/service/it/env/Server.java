@@ -52,12 +52,12 @@ public interface Server extends AutoCloseable {
   URI baseUri();
 
   /**
-   * The base URI for the Quarkus management (metrics/health) interface. Not to be confused with the
-   * Polaris Management API. This URI includes the management interface root path, usually {@code
-   * /q}.
+   * The base URI for the platform management interface (exposing metrics and health checks). Not to
+   * be confused with the Polaris Management API. This URI includes the management interface root
+   * path, usually {@code /q} on Quarkus platforms.
    *
-   * <p>The management URI is sometimes unavailable, e.g. in the case of a @QuarkusIntegrationTest,
-   * so this method returns an Optional.
+   * <p>The management URI is sometimes unavailable, e.g. in the case of a @QuarkusIntegrationTest;
+   * in such cases this method returns empty.
    */
   default Optional<URI> managementUri() {
     return Optional.empty();
