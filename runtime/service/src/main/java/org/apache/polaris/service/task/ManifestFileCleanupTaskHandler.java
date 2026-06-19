@@ -116,7 +116,11 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
         return false;
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to close manifest reader for {}", manifestFile.path(), e);
+      // Catches from ManifestFiles.read() (resource creation), from inside the block
+      // (e.g. manifest iteration), or from close(). We return false on any IO here
+      // (so the task gets retried) because close() throws checked IOException and
+      // this method returns boolean (no throws declaration).
+      LOGGER.error("Failed to process manifest reader for {}", manifestFile.path(), e);
       return false;
     }
   }
