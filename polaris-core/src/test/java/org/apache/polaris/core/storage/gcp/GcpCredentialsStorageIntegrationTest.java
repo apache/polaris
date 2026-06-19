@@ -22,6 +22,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +35,7 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
 import com.google.auth.oauth2.DownscopedCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.IdentityPoolCredentials;
 import com.google.cloud.ServiceOptions;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
@@ -654,8 +657,18 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .equals(
                             GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
                                 + serviceAccount)));
-    // The source credential used for impersonation should be federated, not the raw mock credential
-    assertThat(capturedSource.get())
-        .isInstanceOf(com.google.auth.oauth2.IdentityPoolCredentials.class);
+
+    // The source credential used for impersonation must be a federated identity, not the raw
+    // source credential. This ensures the attribution JWT (not the ambient SA key) is what
+    // reaches GCP STS and surfaces in serviceAccountDelegationInfo of audit logs.
+    assertThat(capturedSource.get()).isInstanceOf(IdentityPoolCredentials.class);
+
+    // Verify the JWT minted by the supplier carries the correct attribution subject.
+    // retrieveSubjectToken() invokes the supplier locally (no HTTP); it signs the JWT with the
+    // test RSA key, so we can decode it and assert the sub and realm claims are correct.
+    IdentityPoolCredentials idp = (IdentityPoolCredentials) capturedSource.get();
+    DecodedJWT jwt = JWT.decode(idp.retrieveSubjectToken());
+    assertThat(jwt.getSubject()).isEqualTo("realm1/principal1");
+    assertThat(jwt.getClaim("realm").asString()).isEqualTo("realm1");
   }
 }
