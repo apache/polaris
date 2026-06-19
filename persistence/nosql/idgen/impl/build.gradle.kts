@@ -55,11 +55,11 @@ dependencies {
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
-  implementation(platform(libs.jackson.bom))
-  implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation(platform(libs.jackson3.bom))
+  implementation("tools.jackson.core:jackson-databind")
 
-  testFixturesCompileOnly(platform(libs.jackson.bom))
-  testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-databind")
+  testFixturesCompileOnly(platform(libs.jackson3.bom))
+  testFixturesCompileOnly("tools.jackson.core:jackson-databind")
 
   testFixturesCompileOnly(libs.jakarta.inject.api)
   testFixturesCompileOnly(libs.jakarta.enterprise.cdi.api)

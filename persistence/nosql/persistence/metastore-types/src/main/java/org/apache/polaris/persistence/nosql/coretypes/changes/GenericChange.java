@@ -20,19 +20,18 @@ package org.apache.polaris.persistence.nosql.coretypes.changes;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.jsontype.TypeSerializer;
-import java.io.IOException;
 import java.util.Map;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.jsontype.TypeSerializer;
 
 /**
  * "Generic" change, only to be used as a fallback when hitting an unknown change type during
@@ -51,38 +50,37 @@ public interface GenericChange extends Change {
   @Value.Parameter
   Map<String, Object> getAttributes();
 
-  final class GenericChangeInfoSerializer extends JsonSerializer<GenericChange> {
+  final class GenericChangeInfoSerializer extends ValueSerializer<GenericChange> {
 
     @Override
     public void serializeWithType(
         GenericChange value,
         JsonGenerator gen,
-        SerializerProvider serializers,
-        TypeSerializer typeSer)
-        throws IOException {
+        SerializationContext serializationContext,
+        TypeSerializer typeSer) {
       gen.writeStartObject();
-      gen.writeStringField("type", value.getType().name());
+      gen.writeStringProperty("type", value.getType().name());
       var attributes = value.getAttributes();
       if (attributes != null) {
         for (var entry : attributes.entrySet()) {
-          gen.writeFieldName(entry.getKey());
-          gen.writeObject(entry.getValue());
+          gen.writePOJOProperty(entry.getKey(), entry.getValue());
         }
       }
       gen.writeEndObject();
     }
 
     @Override
-    public void serialize(GenericChange value, JsonGenerator gen, SerializerProvider serializers) {
+    public void serialize(
+        GenericChange value, JsonGenerator gen, SerializationContext serializationContext) {
       throw new UnsupportedOperationException();
     }
   }
 
-  final class GenericChangeInfoDeserializer extends JsonDeserializer<GenericChange> {
+  final class GenericChangeInfoDeserializer extends ValueDeserializer<GenericChange> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public GenericChange deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public GenericChange deserialize(JsonParser p, DeserializationContext ctxt) {
       var all = p.readValueAs(Map.class);
       var type = (String) all.remove("type");
       return ImmutableGenericChange.of(ChangeType.valueOf(type), all);
