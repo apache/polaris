@@ -25,7 +25,7 @@ plugins {
 
 dependencies {
   // Quarkus platform
-  implementation(platform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-rest-jackson")
 
   // Add the OPA implementation as RUNTIME dependency to include in Quarkus app

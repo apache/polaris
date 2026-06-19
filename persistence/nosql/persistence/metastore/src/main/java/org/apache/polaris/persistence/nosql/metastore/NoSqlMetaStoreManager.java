@@ -34,6 +34,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -42,7 +43,6 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -687,7 +687,7 @@ record NoSqlMetaStoreManager(
 
   @Override
   public void writeEvents(
-      @NonNull PolarisCallContext callCtx, @NonNull List<PolarisEvent> polarisEvents) {
+      @NonNull PolarisCallContext callCtx, @NonNull List<EventEntity> polarisEvents) {
     throw new UnsupportedOperationException("Events not supported in NoSQL persistence");
   }
 }

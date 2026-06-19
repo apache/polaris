@@ -74,9 +74,8 @@ import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
@@ -99,29 +98,6 @@ import software.amazon.awssdk.services.sts.StsClient;
 
 /** Base class for shared test setup logic used by various Polaris authz-related tests. */
 public abstract class PolarisAuthzTestBase {
-
-  public static class Profile extends Profiles.DefaultProfile {
-
-    @Override
-    public Set<Class<?>> getEnabledAlternatives() {
-      return Set.of(TestPolarisLocalCatalogFactory.class);
-    }
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("polaris.features.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"", "true")
-          .put("polaris.features.\"ENABLE_GENERIC_TABLES\"", "true")
-          .put(
-              "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
-              "true")
-          .put("polaris.features.\"DROP_WITH_PURGE_ENABLED\"", "true")
-          .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
-          .put("polaris.features.\"ENABLE_CATALOG_FEDERATION\"", "true")
-          .build();
-    }
-  }
 
   protected static final String CATALOG_NAME = "polaris-catalog";
   protected static final String FEDERATED_CATALOG_NAME = "federated-polaris-catalog";
@@ -197,7 +173,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected RealmContextHolder realmContextHolder;
   @Inject protected PolarisEventDispatcher polarisEventDispatcher;
 
-  protected IcebergCatalog baseCatalog;
+  protected LocalIcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
   protected PolicyCatalog policyCatalog;
   protected PolarisAdminService adminService;
@@ -479,7 +455,7 @@ public abstract class PolarisAuthzTestBase {
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     this.baseCatalog =
-        new IcebergCatalog(
+        new LocalIcebergCatalog(
             diagServices,
             resolverFactory,
             metaStoreManager,

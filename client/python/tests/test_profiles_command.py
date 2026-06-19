@@ -19,20 +19,25 @@
 
 import io
 from unittest.mock import patch, MagicMock
+
+from apache_polaris.cli.exceptions import CliError
 from cli_test_utils import CLITestBase
 
 
 class TestProfilesCommand(CLITestBase):
     @patch(
         "apache_polaris.cli.command.profiles.load_profiles",
-        return_value={},
+        return_value={"dev": {}, "prod": {}},
     )
     def test_profile_list(self, mock_load_profiles: MagicMock) -> None:
         mock_client = self.build_mock_client()
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             self.mock_execute(mock_client, ["profiles", "list"])
             output = mock_stdout.getvalue()
+            self.assertNotIn("Loading profiles from", output)
             self.assertIn("Polaris profiles:", output)
+            self.assertIn(" - dev", output)
+            self.assertIn(" - prod", output)
 
     @patch(
         "apache_polaris.cli.command.profiles.load_profiles",
@@ -52,7 +57,10 @@ class TestProfilesCommand(CLITestBase):
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             self.mock_execute(mock_client, ["profiles", "get", "dev"])
             output = mock_stdout.getvalue()
+            self.assertNotIn("Loading profiles from", output)
             self.assertIn("Polaris profile dev:", output)
+            self.assertIn("'client_id': 'root'", output)
+            self.assertIn("'host': 'localhost'", output)
             self.assertIn("********", output)
             self.assertNotIn("s3cr3t", output)
 
@@ -88,14 +96,13 @@ class TestProfilesCommand(CLITestBase):
         "apache_polaris.cli.command.profiles.load_profiles",
         return_value={"dev": {}},
     )
-    @patch("apache_polaris.cli.command.profiles.sys.exit")
     def test_profile_create_existing_fails(
-        self, mock_exit: MagicMock, mock_load_profiles: MagicMock
+        self, mock_load_profiles: MagicMock
     ) -> None:
         mock_client = self.build_mock_client()
-        with patch("sys.stdout", new_callable=io.StringIO):
+
+        with self.assertRaises(CliError):
             self.mock_execute(mock_client, ["profiles", "create", "dev"])
-        mock_exit.assert_called_once_with(1)
 
     @patch("apache_polaris.cli.command.profiles.save_profiles")
     @patch(
@@ -161,3 +168,15 @@ class TestProfilesCommand(CLITestBase):
             "Enter Polaris Client Secret (empty to reuse previous value): "
         )
         mock_save_profiles.assert_called_once()
+
+    @patch(
+        "apache_polaris.cli.command.profiles.load_profiles",
+        return_value={},
+    )
+    def test_profile_update_missing_fails(
+        self, mock_load_profiles: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+
+        with self.assertRaises(CliError):
+            self.mock_execute(mock_client, ["profiles", "update", "missing"])

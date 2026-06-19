@@ -36,6 +36,7 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * OPA authorization coverage for management endpoints:
@@ -52,15 +53,15 @@ import org.junit.jupiter.api.Test;
 @TestProfile(OpaTestProfiles.StaticToken.class)
 public class OpaAdminServiceIT extends OpaIntegrationTestBase {
 
+  private @TempDir Path baseCatalogLocationPath;
   private String baseCatalogName;
-  private String baseCatalogLocation;
   private String baseRootToken;
 
   @BeforeEach
-  void setupBaseCatalog() throws Exception {
+  void setupBaseCatalog() {
     baseRootToken = getRootToken();
     baseCatalogName = "opa-base-cat-" + UUID.randomUUID().toString().replace("-", "");
-    baseCatalogLocation = Files.createTempDirectory("opa-base-cat").toUri().toString();
+    var baseCatalogLocation = baseCatalogLocationPath.toUri().toString();
     createFileCatalog(
         baseRootToken, baseCatalogName, baseCatalogLocation, List.of(baseCatalogLocation));
   }
@@ -140,13 +141,12 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
   }
 
   @Test
-  void createCatalogAuthorization() throws Exception {
+  void createCatalogAuthorization(@TempDir Path tempDir) {
     String rootToken = getRootToken();
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
 
     String catalogName = "opa-cat-create-" + UUID.randomUUID().toString().replace("-", "");
-    String baseLocation =
-        java.nio.file.Files.createTempDirectory("opa-cat-create").toUri().toString();
+    String baseLocation = tempDir.toUri().toString();
     Map<String, Object> createCatalogRequest =
         Map.of(
             "type",
@@ -184,7 +184,7 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
   }
 
   @Test
-  void grantTablePrivilegesAuthorization() throws Exception {
+  void grantTablePrivilegesAuthorization(@TempDir Path tempDir) throws Exception {
     String rootToken = baseRootToken;
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String catalogName = "opa-grant-cat-" + UUID.randomUUID().toString().replace("-", "");
@@ -192,7 +192,6 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     String tableName = "tbl_" + UUID.randomUUID().toString().replace("-", "");
     String catalogRole = "role_" + UUID.randomUUID().toString().replace("-", "");
 
-    Path tempDir = Files.createTempDirectory("opa-grant");
     String baseLocation = tempDir.toUri().toString();
     String allowedPrefix = baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
     createFileCatalog(
@@ -312,7 +311,7 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
   }
 
   @Test
-  void listGrantsForCatalogRole() throws Exception {
+  void listGrantsForCatalogRole(@TempDir Path tempDir) throws Exception {
     String rootToken = baseRootToken;
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String catalogName = "opa-grant-list-cat-" + UUID.randomUUID().toString().replace("-", "");
@@ -320,7 +319,6 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     String tableName = "tbl_" + UUID.randomUUID().toString().replace("-", "");
     String catalogRole = "role_" + UUID.randomUUID().toString().replace("-", "");
 
-    Path tempDir = Files.createTempDirectory("opa-grant-list");
     String baseLocation = tempDir.toUri().toString();
     String allowedPrefix = baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
     createFileCatalog(

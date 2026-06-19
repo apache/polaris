@@ -20,7 +20,7 @@ package org.apache.polaris.service.catalog.policy;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.catalog.Profiles;
+import org.apache.polaris.service.Profiles;
 
 @QuarkusTest
 @TestProfile(Profiles.DefaultProfile.class)

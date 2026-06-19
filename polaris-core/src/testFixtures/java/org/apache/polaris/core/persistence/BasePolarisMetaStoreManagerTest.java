@@ -129,7 +129,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .isNotNull()
         .hasSize(2)
         .extracting(PolarisEntity::toCore)
-        .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
+        .containsExactlyInAnyOrder(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
     Assertions.assertThat(createdEntities).containsExactlyInAnyOrderElementsOf(listedEntities);
   }
@@ -263,6 +263,12 @@ public abstract class BasePolarisMetaStoreManagerTest {
   protected void testPrivileges() {
     // allocate test driver
     polarisTestMetaStoreManager.testPrivileges();
+  }
+
+  /** Test that duplicate grant writes are idempotent */
+  @Test
+  protected void testGrantRecordWriteIsIdempotent() {
+    polarisTestMetaStoreManager.testGrantRecordWriteIsIdempotent();
   }
 
   /** test entity rename */

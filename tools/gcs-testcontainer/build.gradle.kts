@@ -38,6 +38,6 @@ dependencies {
 
 testing {
   suites {
-    val intTest by registering(JvmTestSuite::class)
+    register<JvmTestSuite>("intTest")
   }
 }

@@ -17,7 +17,6 @@
 # under the License.
 #
 
-import sys
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Any, cast
 
@@ -28,7 +27,6 @@ from apache_polaris.cli.constants import (
     DEFAULT_HEADER,
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
-    CONFIG_FILE,
 )
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.profile_config import (
@@ -58,7 +56,6 @@ class ProfilesCommand(Command):
     profile_name: Optional[str] = None
 
     def _load_profiles(self) -> Dict[str, Dict[str, Any]]:
-        print(f"Loading profiles from {CONFIG_FILE}")
         return load_profiles()
 
     def _save_profiles(self, profiles: Dict[str, Dict[str, Any]]) -> None:
@@ -86,8 +83,7 @@ class ProfilesCommand(Command):
             }
             self._save_profiles(profiles)
         else:
-            print(f"Profile {name} already exists.")
-            sys.exit(1)
+            raise CliError(f"Profile {name} already exists.")
 
     def _get_profile(self, name: str) -> Optional[Dict[str, Any]]:
         profiles = self._load_profiles()
@@ -137,8 +133,7 @@ class ProfilesCommand(Command):
             }
             self._save_profiles(profiles)
         else:
-            print(f"Profile {name} does not exist.")
-            sys.exit(1)
+            raise CliError(f"Profile {name} does not exist.")
 
     def validate(self) -> None:
         if self.profiles_subcommand in {

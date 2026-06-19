@@ -89,32 +89,67 @@ public class DeltaHelper {
     // the extension of the usage https://github.com/delta-io/delta/issues/4306.
     // Here, we use reflection to set the isUnityCatalog to true for exactly same behavior as
     // unity catalog for now.
+    //
+    // The lookups walk the class hierachy and match the field by suffix because the bytecode
+    // shape of `private lazy val isUnityCatalog` differs across delta version:
+    //   * delta < 4.1: declared on the concret leaf class DeltaCatalog. Scala emits the backing
+    //     field with its plain name `isUnityCatalog`.
+    //     For reference, https://github.com/delta-io/delta/blob/branch-4.0/spark/src/main/scala/org/apache/spark/sql/delta/catalog/DeltaCatalog.scala#L78
+    //   * delta >= 4.1: declared on a new base class AbstractDeltaCatalog that is extended by
+    //     DeltaCatalog. Scala mangles the backing field to a unique name such as
+    //     org$apache$spark$sql$delta$catalog$AbstractDeltaCatalog$$isUnityCatalog.
+    //     For reference: https://github.com/delta-io/delta/blob/branch-4.1/spark/src/main/scala/org/apache/spark/sql/delta/catalog/AbstractDeltaCatalog.scala#L86
     try {
       // isUnityCatalog is a lazy val, access the compute method for the lazy val
       // make sure the method is triggered before the value is set, otherwise, the
       // value will be overwritten later when the method is triggered.
-      String methodGetName = "isUnityCatalog" + "$lzycompute";
-      Method method = this.deltaCatalog.getClass().getDeclaredMethod(methodGetName);
-      method.setAccessible(true);
-      // invoke the lazy methods before it is set
-      method.invoke(this.deltaCatalog);
-    } catch (NoSuchMethodException e) {
-      LOG.warn("No lazy compute method found for variable isUnityCatalog");
+      Method method = findLazyComputeMethod(this.deltaCatalog.getClass(), "isUnityCatalog");
+      if (method != null) {
+        method.setAccessible(true);
+        // invoke the lazy methods before it is set
+        method.invoke(this.deltaCatalog);
+      } else {
+        LOG.warn("No lazy compute method found for variable isUnityCatalog");
+      }
     } catch (Exception e) {
       throw new RuntimeException("Failed to invoke the lazy compute methods for isUnityCatalog", e);
     }
 
     try {
-      Field field = this.deltaCatalog.getClass().getDeclaredField("isUnityCatalog");
+      Field field = findUnityCatalogField(this.deltaCatalog.getClass());
+      if (field == null) {
+        throw new RuntimeException(
+                "Failed find the isUnityCatalog field, delta-spark version >= 3.2.1 is required");
+      }
       field.setAccessible(true);
       field.set(this.deltaCatalog, true);
-    } catch (NoSuchFieldException e) {
-      throw new RuntimeException(
-          "Failed find the isUnityCatalog field, delta-spark version >= 3.2.1 is required", e);
     } catch (IllegalAccessException e) {
       throw new RuntimeException("Failed to set the isUnityCatalog field", e);
     }
-
     return this.deltaCatalog;
+  }
+
+  private static Field findUnityCatalogField(Class<?> clazz) {
+    for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+      for (Field f: c.getDeclaredFields()) {
+        String name = f.getName();
+        if (name.equals("isUnityCatalog") || name.endsWith("$$isUnityCatalog")) {
+          return f;
+        }
+      }
+    }
+    return null;
+  }
+
+  private static Method findLazyComputeMethod(Class<?> clazz, String methodName) {
+    String suffix = methodName + "$lzycompute";
+    for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+      for (Method m: c.getDeclaredMethods()) {
+        if (m.getParameterCount() == 0 && m.getName().endsWith(suffix)) {
+          return m;
+        }
+      }
+    }
+    return null;
   }
 }

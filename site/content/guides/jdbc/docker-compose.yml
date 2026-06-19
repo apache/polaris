@@ -53,7 +53,7 @@ services:
       start_period: 10s
 
   polaris-setup:
-    image: alpine/curl:8.19.0
+    image: alpine/curl:8.20.0
     depends_on:
       polaris:
         condition: service_healthy
@@ -74,6 +74,8 @@ services:
         condition: service_completed_successfully
     stdin_open: true
     tty: true
+    extra_hosts:
+      - "polaris:host-gateway"
     ports:
       - "4040-4045:4040-4045"
     healthcheck:
@@ -102,6 +104,8 @@ services:
         condition: service_completed_successfully
     stdin_open: true
     tty: true
+    extra_hosts:
+      - "polaris:host-gateway"
     ports:
       - "8080:8080"
     environment:

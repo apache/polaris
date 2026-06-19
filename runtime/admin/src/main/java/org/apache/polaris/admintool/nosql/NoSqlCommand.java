@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.admintool.nosql;
 
-import jakarta.inject.Inject;
 import org.apache.polaris.admintool.nosql.maintenance.NoSqlMaintenanceInfoCommand;
 import org.apache.polaris.admintool.nosql.maintenance.NoSqlMaintenanceLogCommand;
 import org.apache.polaris.admintool.nosql.maintenance.NoSqlMaintenanceRunCommand;
-import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import picocli.CommandLine;
 
 @CommandLine.Command(
@@ -35,8 +33,6 @@ import picocli.CommandLine;
     mixinStandardHelpOptions = true,
     description = "Sub-commands specific to NoSQL persistence.")
 public class NoSqlCommand extends BaseNoSqlCommand {
-  @Inject protected Backend backend;
-
   @Override
   public Integer call() {
     printNoSqlInfo();

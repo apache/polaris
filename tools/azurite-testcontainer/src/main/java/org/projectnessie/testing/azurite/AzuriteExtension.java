@@ -112,8 +112,8 @@ public class AzuriteExtension
 
   private AzuriteAccess createContainer(Azurite azurite) {
     String bucket = nonDefault(azurite.storageContainer());
-    String account = nonDefault(azurite.storageContainer());
-    String secret = nonDefault(azurite.storageContainer());
+    String account = nonDefault(azurite.account());
+    String secret = nonDefault(azurite.secret());
     AzuriteContainer container =
         new AzuriteContainer(null, bucket, account, secret).withStartupAttempts(5);
     container.start();

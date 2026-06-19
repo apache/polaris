@@ -23,11 +23,12 @@ import static io.restassured.RestAssured.given;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
-import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusTest
 @TestProfile(RangerTestProfiles.EmbeddedPolicy.class)
@@ -70,7 +71,7 @@ public class RangerIntegrationTest extends RangerIntegrationTestBase {
   }
 
   @Test
-  void testUser1ListCatalogsAllowedButCreateCatalogDenied() throws Exception {
+  void testUser1ListCatalogsAllowedButCreateCatalogDenied(@TempDir Path tempDir) {
     String user1Token = createPrincipalAndGetToken("user1");
 
     given()
@@ -81,7 +82,7 @@ public class RangerIntegrationTest extends RangerIntegrationTestBase {
         .statusCode(200);
 
     String catalogName = "ranger-user1-cat-" + UUID.randomUUID().toString().replace("-", "");
-    String baseLocation = Files.createTempDirectory("ranger-user1-cat").toUri().toString();
+    String baseLocation = tempDir.toUri().toString();
     Map<String, Object> body =
         Map.of(
             "type",

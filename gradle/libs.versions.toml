@@ -18,13 +18,13 @@
 #
 
 [versions]
-checkstyle = "13.5.0"
+checkstyle = "13.6.0"
 hadoop = "3.5.0"
 iceberg = "1.11.0" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
 immutables = "2.12.2"
 jmh = "1.37"
 picocli = "4.7.7"
-quarkus = "3.36.1"
+quarkus = "3.36.3"
 ranger = "2.8.0"
 ranger-graalvm = "25.0.3"
 scala212 = "2.12.21"
@@ -51,11 +51,11 @@ awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.44.7" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.3.7" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.4" }
-cel-bom = { module = "org.projectnessie.cel:cel-bom", version = "0.6.0" }
+cel-bom = { module = "org.projectnessie.cel:cel-bom", version = "0.6.1" }
 checkstyle = { module = "com.puppycrawl.tools:checkstyle", version.ref = "checkstyle" } # required by the polaris-java plugin
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
-errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.49.0" } # required by the polaris-java plugin
+errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.50.0" } # required by the polaris-java plugin
 google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.93.0" }
 graalvm-js-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "ranger-graalvm" }
 graalvm-polyglot-js = { module = "org.graalvm.polyglot:js", version.ref = "ranger-graalvm" }
@@ -109,14 +109,14 @@ s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", ve
 scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref = "scala212" }
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version = "2.0.18" }
-smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.18.1" }
+smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.19.0" }
 smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.17.2" }
 smallrye-jandex = { module = "io.smallrye:jandex", version = "3.6.0" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "2.0.5" }
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "4.2.1" }
-threeten-extra = { module = "org.threeten:threeten-extra", version = "1.9.0" }
+threeten-extra = { module = "org.threeten:threeten-extra", version = "1.10.0" }
 weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.3.Final" }
 weld-core-bom = { module = "org.jboss.weld:weld-core-bom", version = "6.0.4.Final" }
 
