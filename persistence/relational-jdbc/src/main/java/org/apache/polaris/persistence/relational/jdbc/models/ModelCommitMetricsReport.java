@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
@@ -29,6 +27,9 @@ import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Model class for commit_metrics_report table - stores commit metrics as first-class entities. */
 @PolarisImmutable
@@ -250,7 +251,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   // === Static conversion methods (following ModelEntity pattern) ===
 
-  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  ObjectMapper OBJECT_MAPPER = JsonMapper.shared();
 
   /**
    * Converts a CommitMetricsRecord (SPI) to ModelCommitMetricsReport (JDBC).
@@ -310,7 +311,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     }
     try {
       return OBJECT_MAPPER.writeValueAsString(map);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       return "{}";
     }
   }
