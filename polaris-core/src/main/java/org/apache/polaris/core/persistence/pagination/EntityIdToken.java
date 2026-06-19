@@ -31,6 +31,8 @@ import org.jspecify.annotations.Nullable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableEntityIdToken.class)
 @JsonDeserialize(as = ImmutableEntityIdToken.class)
+@tools.jackson.databind.annotation.JsonSerialize(as = ImmutableEntityIdToken.class)
+@tools.jackson.databind.annotation.JsonDeserialize(as = ImmutableEntityIdToken.class)
 public interface EntityIdToken extends Token {
   String ID = "e";
 

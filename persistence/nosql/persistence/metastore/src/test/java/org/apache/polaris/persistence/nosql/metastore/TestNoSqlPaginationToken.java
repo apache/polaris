@@ -23,9 +23,6 @@ import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.List;
@@ -42,6 +39,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.dataformat.smile.SmileMapper;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestNoSqlPaginationToken {
@@ -52,19 +52,18 @@ public class TestNoSqlPaginationToken {
 
   @ParameterizedTest
   @MethodSource("tokens")
-  public void serializationRoundtripSmile(ObjRef containerObjRef, IndexKey indexKey)
-      throws Exception {
+  public void serializationRoundtripSmile(ObjRef containerObjRef, IndexKey indexKey) {
     var token = NoSqlPaginationToken.paginationToken(containerObjRef, indexKey);
     var expectedContainerObjRefBytes = containerObjRef.toBytes();
     var expectedKeyBytes = bytes(indexKey.asByteBuffer());
 
     var serialized = SMILE_MAPPER.writerFor(NoSqlPaginationToken.class).writeValueAsBytes(token);
     var jsonNode = SMILE_MAPPER.readTree(serialized);
-    soft.assertThat(jsonNode.fieldNames()).toIterable().containsExactlyInAnyOrder("t", "c", "k");
-    soft.assertThat(jsonNode.path("t").asText()).isEqualTo(NoSqlPaginationToken.ID);
-    soft.assertThat(jsonNode.path("c").asText())
+    soft.assertThat(jsonNode.asObject().propertyNames()).containsExactlyInAnyOrder("t", "c", "k");
+    soft.assertThat(jsonNode.path("t").asString()).isEqualTo(NoSqlPaginationToken.ID);
+    soft.assertThat(jsonNode.path("c").asString())
         .isEqualTo(Base64.getEncoder().encodeToString(expectedContainerObjRefBytes));
-    soft.assertThat(jsonNode.path("k").asText())
+    soft.assertThat(jsonNode.path("k").asString())
         .isEqualTo(Base64.getEncoder().encodeToString(expectedKeyBytes));
     assertRoundTrip(
         SMILE_MAPPER.readValue(serialized, NoSqlPaginationToken.class),
@@ -76,19 +75,18 @@ public class TestNoSqlPaginationToken {
 
   @ParameterizedTest
   @MethodSource("tokens")
-  public void serializationRoundtripJson(ObjRef containerObjRef, IndexKey indexKey)
-      throws Exception {
+  public void serializationRoundtripJson(ObjRef containerObjRef, IndexKey indexKey) {
     var token = NoSqlPaginationToken.paginationToken(containerObjRef, indexKey);
     var expectedContainerObjRefBytes = containerObjRef.toBytes();
     var expectedKeyBytes = bytes(indexKey.asByteBuffer());
 
     var serialized = JSON_MAPPER.writerFor(NoSqlPaginationToken.class).writeValueAsString(token);
     var jsonNode = JSON_MAPPER.readTree(serialized);
-    soft.assertThat(jsonNode.fieldNames()).toIterable().containsExactlyInAnyOrder("t", "c", "k");
-    soft.assertThat(jsonNode.path("t").asText()).isEqualTo(NoSqlPaginationToken.ID);
-    soft.assertThat(jsonNode.path("c").asText())
+    soft.assertThat(jsonNode.asObject().propertyNames()).containsExactlyInAnyOrder("t", "c", "k");
+    soft.assertThat(jsonNode.path("t").asString()).isEqualTo(NoSqlPaginationToken.ID);
+    soft.assertThat(jsonNode.path("c").asString())
         .isEqualTo(Base64.getEncoder().encodeToString(expectedContainerObjRefBytes));
-    soft.assertThat(jsonNode.path("k").asText())
+    soft.assertThat(jsonNode.path("k").asString())
         .isEqualTo(Base64.getEncoder().encodeToString(expectedKeyBytes));
     assertRoundTrip(
         JSON_MAPPER.readValue(serialized, NoSqlPaginationToken.class),
