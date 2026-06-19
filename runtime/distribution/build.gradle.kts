@@ -37,20 +37,23 @@ val adminProject = project(":polaris-admin")
 val serverProject = project(":polaris-server")
 
 // Configurations to resolve artifacts from other projects
-val adminDistribution by configurations.creating {
-  isCanBeConsumed = false
-  isCanBeResolved = true
-}
+val adminDistribution =
+  configurations.create("adminDistribution") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+  }
 
-val serverDistribution by configurations.creating {
-  isCanBeConsumed = false
-  isCanBeResolved = true
-}
+val serverDistribution =
+  configurations.create("serverDistribution") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+  }
 
-val licenseNotice by configurations.creating {
-  isCanBeConsumed = false
-  isCanBeResolved = true
-}
+val licenseNotice =
+  configurations.create("licenseNotice") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+  }
 
 dependencies {
   adminDistribution(project(":polaris-admin", "distributionElements"))
@@ -59,8 +62,8 @@ dependencies {
   licenseNotice(project(":polaris-server", "licenseNoticeElements"))
 }
 
-val licenseNoticeMerge by
-  tasks.registering(LicenseNoticeMerge::class) { sourceLicenseNotice = licenseNotice }
+val licenseNoticeMerge =
+  tasks.register<LicenseNoticeMerge>("licenseNoticeMerge") { sourceLicenseNotice = licenseNotice }
 
 tasks.named("assembleDist").configure { dependsOn(licenseNoticeMerge) }
 

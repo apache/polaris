@@ -30,7 +30,7 @@ plugins {
 
 description = "Polaris ID generation implementation"
 
-val jcstressRuntime by configurations.creating
+val jcstressRuntime = configurations.create("jcstressRuntime")
 val jcstressMode = providers.gradleProperty("jcstressMode").orElse("quick")
 val jcstressSplitPerActor =
   providers.gradleProperty("jcstressSplitPerActor").map(String::toBoolean).orElse(false)

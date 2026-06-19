@@ -17,22 +17,23 @@
  * under the License.
  */
 
-import org.gradle.kotlin.dsl.support.unzipTo
-
-val licenseReports by configurations.creating { description = "Used to generate license reports" }
+val licenseReports =
+  configurations.create("licenseReports") { description = "Used to generate license reports" }
 
 dependencies {
   licenseReports(project(":polaris-runtime-service", "licenseReports"))
 }
 
-val collectLicenseReportJars by
-  tasks.registering(Sync::class) {
-    destinationDir = project.layout.buildDirectory.dir("tmp/license-report-jars").get().asFile
+val licenseReportJarsDir = layout.buildDirectory.dir("tmp/license-report-jars")
+
+val collectLicenseReportJars =
+  tasks.register<Sync>("collectLicenseReportJars") {
+    into(licenseReportJarsDir)
     from(licenseReports)
   }
 
-val aggregateLicenseReports by
-  tasks.registering {
+val aggregateLicenseReports =
+  tasks.register("aggregateLicenseReports") {
     group = "Build"
     description = "Aggregates license reports"
     val outputDir = project.layout.buildDirectory.dir("licenseReports")
@@ -40,15 +41,18 @@ val aggregateLicenseReports by
     dependsOn(collectLicenseReportJars)
     doLast {
       delete(outputDir)
-      fileTree(collectLicenseReportJars.get().destinationDir).files.forEach { zip ->
+      fileTree(licenseReportJarsDir).files.forEach { zip ->
         val targetDirName = zip.name.replace("-license-report.zip", "")
-        unzipTo(outputDir.get().dir(targetDirName).asFile, zip)
+        copy {
+          from(zipTree(zip))
+          into(outputDir.map { it.dir(targetDirName) })
+        }
       }
     }
   }
 
-val aggregatedLicenseReportsZip by
-  tasks.registering(Zip::class) {
+val aggregatedLicenseReportsZip =
+  tasks.register<Zip>("aggregatedLicenseReportsZip") {
     from(aggregateLicenseReports)
     from(rootProject.layout.projectDirectory) {
       include("NOTICE", "LICENSE")

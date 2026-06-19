@@ -25,7 +25,7 @@ description = "Apache Polaris - Bill of Materials (BOM)"
 
 dependencies {
   constraints {
-    api(rootProject)
+    api(project(":"))
     api(project(":polaris-api-catalog-service"))
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))

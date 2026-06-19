@@ -21,7 +21,7 @@ plugins { id("polaris-server") }
 
 description = "Generates Polaris reference docs"
 
-val genTesting by configurations.registering
+val genTesting = configurations.register("genTesting")
 
 dependencies {
   compileOnly(libs.jspecify)

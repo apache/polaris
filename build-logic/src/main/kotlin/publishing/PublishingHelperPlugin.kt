@@ -31,11 +31,9 @@ import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.configure
-import org.gradle.kotlin.dsl.getValue
+import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.named
-import org.gradle.kotlin.dsl.provideDelegate
 import org.gradle.kotlin.dsl.register
-import org.gradle.kotlin.dsl.registering
 import org.gradle.kotlin.dsl.withType
 import org.gradle.plugins.signing.SigningExtension
 import org.gradle.plugins.signing.SigningPlugin
@@ -94,8 +92,8 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
     if (isSigningEnabled()) {
       plugins.withType<SigningPlugin>().configureEach {
         configure<SigningExtension> {
-          val signingKey: String? by project
-          val signingPassword: String? by project
+          val signingKey = project.findProperty("signingKey")?.toString()
+          val signingPassword = project.findProperty("signingPassword")?.toString()
           useInMemoryPgpKeys(signingKey, signingPassword)
 
           if (project.providers.gradleProperty("useGpgAgent").isPresent) {
@@ -153,15 +151,15 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
               plugins.hasPlugin("java-test-fixtures") &&
                 project.layout.projectDirectory.dir("src/testFixtures").asFile.exists()
             ) {
-              val testFixturesSourcesJar by
-                tasks.registering(org.gradle.api.tasks.bundling.Jar::class) {
-                  val sourceSets: SourceSetContainer by project
+              val testFixturesSourcesJar =
+                tasks.register<Jar>("testFixturesSourcesJar") {
+                  val sourceSets = project.extensions.getByType<SourceSetContainer>()
                   from(sourceSets.named("testFixtures").map { it.allSource })
                   archiveClassifier.set("test-fixtures-sources")
                 }
               tasks.named<Javadoc>("testFixturesJavadoc") { isFailOnError = false }
-              val testFixturesJavadocJar by
-                tasks.registering(org.gradle.api.tasks.bundling.Jar::class) {
+              val testFixturesJavadocJar =
+                tasks.register<Jar>("testFixturesJavadocJar") {
                   from(tasks.named("testFixturesJavadoc"))
                   archiveClassifier.set("test-fixtures-javadoc")
                 }
