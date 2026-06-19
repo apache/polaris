@@ -32,43 +32,43 @@ public class PolarisApiEndpointsTest {
 
   @ParameterizedTest
   @CsvSource({
-    "https://myserver.com          , https://myserver.com/api/catalog",
-    "https://myserver.com/         , https://myserver.com/api/catalog",
-    "https://myserver.com/polaris  , https://myserver.com/polaris/api/catalog",
-    "https://myserver.com/polaris/ , https://myserver.com/polaris/api/catalog"
+    "https://example.com          , https://example.com/api/catalog",
+    "https://example.com/         , https://example.com/api/catalog",
+    "https://example.com/polaris  , https://example.com/polaris/api/catalog",
+    "https://example.com/polaris/ , https://example.com/polaris/api/catalog"
   })
   void testCatalogApiEndpoint(URI baseUri, URI expectedUri) {
     PolarisApiEndpoints endpoints =
         new PolarisApiEndpoints(
-            baseUri, URI.create("https://myserver.com/irrelevant"), "realm1", Map.of());
+            baseUri, URI.create("https://example.com/irrelevant"), "realm1", Map.of());
     assertThat(endpoints.catalogApiEndpoint()).isEqualTo(expectedUri);
   }
 
   @ParameterizedTest
   @CsvSource({
-    "https://myserver.com          , https://myserver.com/api/management",
-    "https://myserver.com/         , https://myserver.com/api/management",
-    "https://myserver.com/polaris  , https://myserver.com/polaris/api/management",
-    "https://myserver.com/polaris/ , https://myserver.com/polaris/api/management"
+    "https://example.com          , https://example.com/api/management",
+    "https://example.com/         , https://example.com/api/management",
+    "https://example.com/polaris  , https://example.com/polaris/api/management",
+    "https://example.com/polaris/ , https://example.com/polaris/api/management"
   })
   void testManagementApiEndpoint(URI baseUri, URI expectedUri) {
     PolarisApiEndpoints endpoints =
         new PolarisApiEndpoints(
-            baseUri, URI.create("https://myserver.com/irrelevant"), "realm1", Map.of());
+            baseUri, URI.create("https://example.com/irrelevant"), "realm1", Map.of());
     assertThat(endpoints.managementApiEndpoint()).isEqualTo(expectedUri);
   }
 
   @ParameterizedTest
   @CsvSource({
-    "https://myserver.com          , https://myserver.com/metrics",
-    "https://myserver.com/         , https://myserver.com/metrics",
-    "https://myserver.com/polaris  , https://myserver.com/polaris/metrics",
-    "https://myserver.com/polaris/ , https://myserver.com/polaris/metrics"
+    "https://example.com          , https://example.com/metrics",
+    "https://example.com/         , https://example.com/metrics",
+    "https://example.com/polaris  , https://example.com/polaris/metrics",
+    "https://example.com/polaris/ , https://example.com/polaris/metrics"
   })
   void testMetricsApiEndpoint(URI baseUri, URI expectedUri) {
     PolarisApiEndpoints endpoints =
         new PolarisApiEndpoints(
-            URI.create("https://myserver.com/irrelevant"), baseUri, "realm1", Map.of());
+            URI.create("https://example.com/irrelevant"), baseUri, "realm1", Map.of());
     assertThat(endpoints.metricsApiEndpoint()).isEqualTo(expectedUri);
   }
 
@@ -76,7 +76,7 @@ public class PolarisApiEndpointsTest {
   void testMetricsApiEndpointUnavailable() {
     PolarisApiEndpoints endpoints =
         new PolarisApiEndpoints(
-            URI.create("https://myserver.com/irrelevant"), null, "realm1", Map.of());
+            URI.create("https://example.com/irrelevant"), null, "realm1", Map.of());
     assertThatThrownBy(endpoints::metricsApiEndpoint)
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Management URI is not available");
@@ -86,7 +86,7 @@ public class PolarisApiEndpointsTest {
   void testRealmId() {
     PolarisApiEndpoints endpoints =
         new PolarisApiEndpoints(
-            URI.create("https://myserver.com/irrelevant"), null, "realm1", Map.of());
+            URI.create("https://example.com/irrelevant"), null, "realm1", Map.of());
     assertThat(endpoints.realmId()).isEqualTo("realm1");
   }
 
@@ -94,7 +94,7 @@ public class PolarisApiEndpointsTest {
   void testExtraHeaders() {
     PolarisApiEndpoints endpoints =
         new PolarisApiEndpoints(
-            URI.create("https://myserver.com/irrelevant"),
+            URI.create("https://example.com/irrelevant"),
             null,
             "realm1",
             Map.of("key1", "value1", "key2", "value2"));
@@ -106,7 +106,7 @@ public class PolarisApiEndpointsTest {
   void testExtraHeadersPrefix() {
     PolarisApiEndpoints endpoints =
         new PolarisApiEndpoints(
-            URI.create("https://myserver.com/irrelevant"),
+            URI.create("https://example.com/irrelevant"),
             null,
             "realm1",
             Map.of("key1", "value1", "key2", "value2"));
