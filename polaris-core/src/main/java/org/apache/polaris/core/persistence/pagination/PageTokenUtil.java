@@ -24,14 +24,7 @@ import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DatabindContext;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
-import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import com.google.common.annotations.VisibleForTesting;
-import java.io.IOException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Locale;
@@ -41,6 +34,11 @@ import java.util.OptionalInt;
 import java.util.ServiceLoader;
 import java.util.function.BooleanSupplier;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.DatabindContext;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.jsontype.impl.TypeIdResolverBase;
+import tools.jackson.dataformat.smile.SmileMapper;
 
 final class PageTokenUtil {
 
@@ -125,19 +123,15 @@ final class PageTokenUtil {
         && !requestedPageToken.isEmpty()
         && shouldDecodeToken.getAsBoolean()) {
       var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
-      try {
-        var pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);
-        if (requestedPageSize != null) {
-          int pageSizeInt = requestedPageSize;
-          checkArgument(pageSizeInt >= 0, "Invalid page size");
-          if (pageToken.pageSize().orElse(-1) != pageSizeInt) {
-            pageToken = ImmutablePageToken.builder().from(pageToken).pageSize(pageSizeInt).build();
-          }
+      var pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);
+      if (requestedPageSize != null) {
+        int pageSizeInt = requestedPageSize;
+        checkArgument(pageSizeInt >= 0, "Invalid page size");
+        if (pageToken.pageSize().orElse(-1) != pageSizeInt) {
+          pageToken = ImmutablePageToken.builder().from(pageToken).pageSize(pageSizeInt).build();
         }
-        return pageToken;
-      } catch (IOException e) {
-        throw new RuntimeException(e);
       }
+      return pageToken;
     } else if (requestedPageSize != null && shouldDecodeToken.getAsBoolean()) {
       int pageSizeInt = requestedPageSize;
       checkArgument(pageSizeInt >= 0, "Invalid page size");
@@ -181,12 +175,8 @@ final class PageTokenUtil {
       return null;
     }
 
-    try {
-      var serialized = SMILE_MAPPER.writeValueAsBytes(pageToken);
-      return Base64.getUrlEncoder().encodeToString(serialized);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
+    var serialized = SMILE_MAPPER.writeValueAsBytes(pageToken);
+    return Base64.getUrlEncoder().encodeToString(serialized);
   }
 
   /** Lazily initialized registry of all token-types. */
@@ -225,12 +215,13 @@ final class PageTokenUtil {
     }
 
     @Override
-    public String idFromValue(Object value) {
+    public String idFromValue(DatabindContext databindContext, Object value) {
       return getId(value);
     }
 
     @Override
-    public String idFromValueAndType(Object value, Class<?> suggestedType) {
+    public String idFromValueAndType(
+        DatabindContext databindContext, Object value, Class<?> suggestedType) {
       return getId(value);
     }
 

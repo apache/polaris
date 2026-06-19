@@ -20,8 +20,6 @@ package org.apache.polaris.core.persistence.cache;
 
 import static org.apache.polaris.core.policy.content.PolicyContentUtil.MAPPER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,10 +32,11 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.type.TypeReference;
 
 public class EntityWeigherTest {
 
-  private PolarisDiagnostics diagnostics;
+  private final PolarisDiagnostics diagnostics;
 
   public EntityWeigherTest() {
     diagnostics = new PolarisDefaultDiagServiceImpl();
@@ -129,10 +128,6 @@ public class EntityWeigherTest {
 
   private static Map<String, String> getPropertiesMap(String properties) {
     if (properties == null || properties.isEmpty()) return new HashMap<>();
-    try {
-      return MAPPER.readValue(properties, new TypeReference<>() {});
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
+    return MAPPER.readValue(properties, new TypeReference<>() {});
   }
 }

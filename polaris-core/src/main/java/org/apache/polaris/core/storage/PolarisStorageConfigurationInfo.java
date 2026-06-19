@@ -23,10 +23,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,6 +42,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The polaris storage configuration information, is part of a polaris entity's internal property,
@@ -94,19 +93,16 @@ public abstract class PolarisStorageConfigurationInfo {
   static {
     DEFAULT_MAPPER =
         JsonMapper.builder()
-            .defaultPropertyInclusion(
-                JsonInclude.Value.construct(
-                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+            .changeDefaultPropertyInclusion(
+                incl ->
+                    incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                        .withContentInclusion(JsonInclude.Include.NON_NULL))
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
   }
 
   public String serialize() {
-    try {
-      return DEFAULT_MAPPER.writeValueAsString(this);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException("serialize failed: " + e.getMessage(), e);
-    }
+    return DEFAULT_MAPPER.writeValueAsString(this);
   }
 
   /**
@@ -116,11 +112,7 @@ public abstract class PolarisStorageConfigurationInfo {
    * @return the PolarisStorageConfiguration object
    */
   public static PolarisStorageConfigurationInfo deserialize(final @NonNull String jsonStr) {
-    try {
-      return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException("deserialize failed: " + e.getMessage(), e);
-    }
+    return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
   }
 
   public static Optional<LocationRestrictions> forEntityPath(

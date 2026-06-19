@@ -18,11 +18,6 @@
  */
 package org.apache.polaris.core.connection;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
@@ -33,13 +28,14 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import tools.jackson.core.StreamWriteFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 public class ConnectionConfigInfoDpoTest {
-  private static final ObjectMapper objectMapper = JsonMapper.builder().build();
-
-  static {
-    objectMapper.enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
-  }
+  private static final ObjectMapper objectMapper =
+      JsonMapper.builder().enable(StreamWriteFeature.STRICT_DUPLICATE_DETECTION).build();
 
   private ServiceIdentityProvider serviceIdentityProvider;
 
@@ -60,7 +56,7 @@ public class ConnectionConfigInfoDpoTest {
   }
 
   @Test
-  void testOAuthClientCredentialsParameters() throws JsonProcessingException {
+  void testOAuthClientCredentialsParameters() {
     // Test deserialization and reserialization of the persistence JSON.
     String json =
         ""
@@ -110,7 +106,7 @@ public class ConnectionConfigInfoDpoTest {
   }
 
   @Test
-  void testBearerAuthenticationParameters() throws JsonProcessingException {
+  void testBearerAuthenticationParameters() {
     // Test deserialization and reserialization of the persistence JSON.
     String json =
         ""
@@ -154,7 +150,7 @@ public class ConnectionConfigInfoDpoTest {
   }
 
   @Test
-  void testImplicitAuthenticationParameters() throws JsonProcessingException {
+  void testImplicitAuthenticationParameters() {
     // Test deserialization and reserialization of the persistence JSON.
     String json =
         ""
@@ -191,7 +187,7 @@ public class ConnectionConfigInfoDpoTest {
   }
 
   @Test
-  void testSigV4AuthenticationParameters() throws JsonProcessingException {
+  void testSigV4AuthenticationParameters() {
     // Test deserialization and reserialization of the persistence JSON.
     String json =
         ""
@@ -252,7 +248,7 @@ public class ConnectionConfigInfoDpoTest {
   }
 
   @Test
-  void testBigQueryMetastoreConnectionConfig() throws JsonProcessingException {
+  void testBigQueryMetastoreConnectionConfig() {
     // Test deserialization and reserialization of the persistence JSON.
     String json =
         ""
