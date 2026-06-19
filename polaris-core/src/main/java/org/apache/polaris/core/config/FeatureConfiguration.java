@@ -401,6 +401,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENTITY_VISIBILITY_FILTERING_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENTITY_VISIBILITY_FILTERING_ENABLED")
+          .description(
+              "If set to true, entity-level visibility filtering is applied to LIST operations "
+                  + "(listTables, listViews, listNamespaces, listCatalogs). "
+                  + "When enabled, each authorizer filters the candidate result set so that only "
+                  + "entities the principal is authorized to see are returned. "
+                  + "Requires LIST_PAGINATION_ENABLED to be true.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_GENERIC_TABLES")
