@@ -29,7 +29,7 @@ class TestProfilesCommand(CLITestBase):
     @patch(
         "apache_polaris.cli.command.profiles.open",
         new_callable=mock_open,
-        read_data="{}",
+        read_data='{"dev": {}, "prod": {}}',
     )
     def test_profile_list(self, mock_file: MagicMock, mock_exists: MagicMock) -> None:
         mock_client = self.build_mock_client()
@@ -37,7 +37,10 @@ class TestProfilesCommand(CLITestBase):
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             self.mock_execute(mock_client, ["profiles", "list"])
             output = mock_stdout.getvalue()
+            self.assertNotIn("Loading profiles from", output)
             self.assertIn("Polaris profiles:", output)
+            self.assertIn(" - dev", output)
+            self.assertIn(" - prod", output)
 
     @patch("apache_polaris.cli.command.profiles.os.path.exists")
     @patch(
@@ -51,7 +54,10 @@ class TestProfilesCommand(CLITestBase):
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             self.mock_execute(mock_client, ["profiles", "get", "dev"])
             output = mock_stdout.getvalue()
+            self.assertNotIn("Loading profiles from", output)
             self.assertIn("Polaris profile dev:", output)
+            self.assertIn("'client_id': 'root'", output)
+            self.assertIn("'host': 'localhost'", output)
 
     @patch("apache_polaris.cli.command.profiles.os.path.exists")
     @patch(
@@ -105,9 +111,7 @@ class TestProfilesCommand(CLITestBase):
         new_callable=mock_open,
         read_data='{"dev": {"client_id": "root", "client_secret": "s3cr3t", "host": "localhost", "port": 8181, "realm": "", "header": "Polaris-Realm"}}',
     )
-    def test_profile_delete(
-        self, mock_file: MagicMock, mock_exists: MagicMock
-    ) -> None:
+    def test_profile_delete(self, mock_file: MagicMock, mock_exists: MagicMock) -> None:
         mock_client = self.build_mock_client()
         mock_exists.return_value = True
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
