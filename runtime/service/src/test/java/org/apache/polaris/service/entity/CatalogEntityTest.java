@@ -306,8 +306,8 @@ public class CatalogEntityTest {
 
   @Test
   public void testExplicitAllowedLocationsWithBaseOutside_rejected() {
-    // User supplied explicit allowed-locations not containing the default-base-location: reject
-    // with a clear error rather than silently widening the perimeter to include the base.
+    // User-supplied explicit allowed-locations not containing the default-base-location: reject
+    // with a clear error rather than silently widening the allowed perimeter to include the base.
     AwsStorageConfigInfo awsStorageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
