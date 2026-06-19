@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.api.backend;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.smallrye.config.ConfigMapping;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /** Polaris persistence backend configuration. */
 @ConfigMapping(prefix = "polaris.persistence.nosql")

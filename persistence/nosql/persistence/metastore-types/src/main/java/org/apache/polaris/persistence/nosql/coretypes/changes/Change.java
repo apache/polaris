@@ -20,9 +20,9 @@ package org.apache.polaris.persistence.nosql.coretypes.changes;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.immutables.value.Value;
+import tools.jackson.databind.annotation.JsonTypeIdResolver;
 
 @JsonTypeIdResolver(ChangeTypeIdResolver.class)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CUSTOM, property = "type", visible = true)

@@ -482,6 +482,7 @@ This product bundles Jackson.
 * Maven group:artifact IDs: tools.jackson.core:jackson-databind
 * Maven group:artifact IDs: tools.jackson.dataformat:jackson-dataformat-smile
 * Maven group:artifact IDs: tools.jackson.dataformat:jackson-dataformat-yaml
+* Maven group:artifact IDs: tools.jackson.datatype:jackson-datatype-guava
 
 Project URL: https://github.com/FasterXML/jackson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt

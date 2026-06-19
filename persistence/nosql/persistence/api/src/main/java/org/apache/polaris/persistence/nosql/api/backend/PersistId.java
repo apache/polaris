@@ -24,19 +24,18 @@ import static org.apache.polaris.persistence.varint.VarInt.readVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.varIntLen;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.immutables.value.Value;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Represents the key of a serialized <em>part</em> of an {@link Obj}, where {@link #part()} defines
@@ -68,17 +67,17 @@ public interface PersistId {
     return persistId(obj.id(), 0);
   }
 
-  class PersistIdSerializer extends JsonSerializer<PersistId> {
+  class PersistIdSerializer extends ValueSerializer<PersistId> {
     @Override
-    public void serialize(PersistId value, JsonGenerator gen, SerializerProvider serializers)
-        throws IOException {
+    public void serialize(
+        PersistId value, JsonGenerator gen, SerializationContext serializationContext) {
       gen.writeBinary(serializeAsBytes(value));
     }
   }
 
-  class PersistIdDeserializer extends JsonDeserializer<PersistId> {
+  class PersistIdDeserializer extends ValueDeserializer<PersistId> {
     @Override
-    public PersistId deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public PersistId deserialize(JsonParser p, DeserializationContext ctxt) {
       return fromBytes(p.getBinaryValue());
     }
   }

@@ -34,13 +34,11 @@ dependencies {
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
-  implementation(platform(libs.jackson.bom))
+  implementation(platform(libs.jackson3.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
-  implementation("com.fasterxml.jackson.core:jackson-core")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
-  runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-guava")
-  runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jdk8")
-  runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+  implementation("tools.jackson.core:jackson-core")
+  implementation("tools.jackson.core:jackson-databind")
+  runtimeOnly("tools.jackson.datatype:jackson-datatype-guava")
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
