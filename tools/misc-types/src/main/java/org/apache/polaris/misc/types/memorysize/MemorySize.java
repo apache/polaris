@@ -51,7 +51,7 @@ import org.jspecify.annotations.NonNull;
  * number of bytes.
  *
  * <p>Note that, although unlikely in practice, memory sizes may exceed {@link Long#MAX_VALUE} and
- * calls to {@link #asLong()} the result in an {@link ArithmeticException}.
+ * calls to {@link #asLong()} may result in an {@link ArithmeticException}.
  */
 public abstract class MemorySize {
   private static final Pattern MEMORY_SIZE_PATTERN =
@@ -184,7 +184,7 @@ public abstract class MemorySize {
 
   /**
    * Convert data size configuration value respecting the following format (shown in regular
-   * expression) "[0-9]+[BbKkMmGgTtPpEeZzYy]?" If the value contain no suffix, the size is treated
+   * expression) "[0-9]+[BbKkMmGgTtPpEeZzYy]?" If the value contains no suffix, the size is treated
    * as bytes.
    *
    * @param value - value to convert.
