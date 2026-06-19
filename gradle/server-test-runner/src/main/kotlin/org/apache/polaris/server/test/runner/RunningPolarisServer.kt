@@ -107,16 +107,21 @@ internal class RunningPolarisServer(
               BufferedReader(InputStreamReader(process.inputStream)).useLines { lines ->
                 lines.forEach { line ->
                   logger.info("[polaris-server] {}", line)
-                  synchronized(capturedOutput) { capturedOutput.add(line) }
+                  synchronized(capturedOutput) {
+                    if (capturedOutput.size < 200) {
+                      capturedOutput.add(line)
+                    }
+                  }
                   if (detected.get() == null) {
                     val match = listenPattern.matchEntire(line)
                     if (match != null) {
-                      detected.set(
+                      val listenUrls =
                         ListenUrls(
                           match.groupValues[1],
                           match.groupValues.getOrNull(2).orEmpty().ifEmpty { null },
                         )
-                      )
+                      logger.info("Captured listen-URLs line from Quarkus: {}", listenUrls)
+                      detected.set(listenUrls)
                       signalReady()
                     }
                   }
