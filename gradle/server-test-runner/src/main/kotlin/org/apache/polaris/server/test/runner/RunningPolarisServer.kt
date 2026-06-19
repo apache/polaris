@@ -25,6 +25,7 @@ import java.net.URI
 import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import org.gradle.api.GradleException
 import org.gradle.api.logging.Logger
@@ -95,7 +96,9 @@ internal class RunningPolarisServer(
       val detected = AtomicReference<ListenUrls>()
       val failed = AtomicReference<Throwable>()
       val ready = CountDownLatch(1)
+      val readySignalled = AtomicBoolean()
       val capturedOutput = mutableListOf<String>()
+      val signalReady = { if (readySignalled.compareAndSet(false, true)) ready.countDown() }
 
       val outputThread =
         Thread(
@@ -114,16 +117,15 @@ internal class RunningPolarisServer(
                           match.groupValues.getOrNull(2).orEmpty().ifEmpty { null },
                         )
                       )
-                      ready.countDown()
+                      signalReady()
                     }
                   }
                 }
               }
             } catch (e: Throwable) {
               failed.set(e)
-              ready.countDown()
             } finally {
-              ready.countDown()
+              signalReady()
             }
           },
           "polaris-server-output",
@@ -149,7 +151,15 @@ internal class RunningPolarisServer(
         )
       }
 
-      return StartedServer(RunningPolarisServer(process, outputThread, stopTimeout), urls.toPorts())
+      val server = RunningPolarisServer(process, outputThread, stopTimeout)
+      val ports =
+        try {
+          urls.toPorts()
+        } catch (e: Throwable) {
+          server.stop(logger)
+          throw e
+        }
+      return StartedServer(server, ports)
     }
 
     private fun capturedOutput(lines: MutableList<String>): String =
@@ -161,7 +171,18 @@ internal data class StartedServer(val server: RunningPolarisServer, val ports: S
 
 private data class ListenUrls(val httpUrl: String, val managementUrl: String?) {
   fun toPorts(): ServerPorts =
-    ServerPorts(URI.create(httpUrl).port, managementUrl?.let { URI.create(it).port })
+    ServerPorts(
+      httpPort = port(httpUrl, "HTTP"),
+      managementPort = managementUrl?.let { port(it, "management") },
+    )
+
+  private fun port(url: String, name: String): Int {
+    val port = URI.create(url).port
+    if (port < 0) {
+      throw GradleException("Polaris server $name listen URL '$url' does not include a port")
+    }
+    return port
+  }
 }
 
 internal data class ServerPorts(val httpPort: Int, val managementPort: Int?)

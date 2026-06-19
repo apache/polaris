@@ -22,7 +22,14 @@ import java.util.Map;
 
 /** Context passed to an isolated {@link PolarisServerStartupAction}. */
 public interface PolarisServerStartupContext {
-  /** Build-configured action parameters. */
+  /**
+   * Build-configured startup-action parameters.
+   *
+   * <p>These values come from the Gradle plugin's {@code startupActionParameters} map and are only
+   * intended for communication between the build script and the startup action. They are not JVM
+   * arguments, Quarkus configuration properties, or environment variables unless the startup action
+   * explicitly copies them into {@link #getSystemProperties()} or {@link #getEnvironment()}.
+   */
   Map<String, String> getParameters();
 
   /** Mutable system properties that will be passed to the Polaris server JVM. */

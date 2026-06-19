@@ -164,6 +164,55 @@ class PolarisServerTestRunnerPluginTest {
     assertThat(result.output).contains("Expected exactly one Polaris server artifact")
   }
 
+  @Test
+  fun `fails when server listen URL does not include port`() {
+    writeSettings()
+    writeBuild(
+      """
+      import org.gradle.jvm.tasks.Jar
+
+      plugins {
+        java
+        id("polaris-server-test-runner")
+      }
+
+      repositories { mavenCentral() }
+
+      dependencies {
+        testImplementation(platform("org.junit:junit-bom:6.1.0"))
+        testImplementation("org.junit.jupiter:junit-jupiter")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+      }
+
+      val serverRuntime by configurations.creating
+
+      dependencies {
+        serverRuntime(files(tasks.named("jar")))
+      }
+
+      tasks.named<Jar>("jar") {
+        manifest { attributes("Main-Class" to "test.FakeServer") }
+      }
+
+      tasks.test {
+        useJUnitPlatform()
+        withPolarisServer(configurations.named("serverRuntime")) {
+          arguments.add(layout.buildDirectory.file("server-stopped.txt").get().asFile.absolutePath)
+        }
+      }
+      """
+        .trimIndent()
+    )
+    writeFakeServer("Listening on: http://0.0.0.0")
+    writePropertyTest()
+
+    val result = gradleRunner("test").buildAndFail()
+
+    assertThat(result.output)
+      .contains("Polaris server HTTP listen URL 'http://0.0.0.0' does not include a port")
+    assertThat(projectDir.resolve("build/server-stopped.txt")).hasContent("stopped")
+  }
+
   private fun writeSettings() {
     projectDir.resolve("settings.gradle.kts").writeText("rootProject.name = \"fixture\"\n")
   }
@@ -172,7 +221,10 @@ class PolarisServerTestRunnerPluginTest {
     projectDir.resolve("build.gradle.kts").writeText(content)
   }
 
-  private fun writeFakeServer() {
+  private fun writeFakeServer(
+    listenLine: String =
+      "Listening on: http://0.0.0.0:12345. Management interface listening on http://0.0.0.0:12346."
+  ) {
     val sourceDir = projectDir.resolve("src/main/java/test").createDirectories()
     sourceDir
       .resolve("FakeServer.java")
@@ -201,7 +253,7 @@ class PolarisServerTestRunnerPluginTest {
                 throw new RuntimeException(e);
               }
             }));
-            System.out.println("Listening on: http://0.0.0.0:12345. Management interface listening on http://0.0.0.0:12346.");
+            System.out.println("${listenLine}");
             new CountDownLatch(1).await();
           }
         }
