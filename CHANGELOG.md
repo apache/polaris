@@ -57,12 +57,18 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added REPL support to Polaris CLI.
 - The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
 - Added version option to Polaris CLI.
+- The token broker now builds the JWT `Algorithm` and `JWTVerifier` once per realm in the `TokenBrokerFactory` and reuses them across requests, instead of rebuilding them on every `verify()`/`sign()` call on the request-scoped broker. For deployments using file-based symmetric secrets, the secret is now read once per realm (at first use) rather than on every JWT operation; rotating the on-disk secret requires a restart.
 
 ### Deprecations
 
 ### Fixes
+- Fixed `NullPointerException` during `dropEntity` when an entity referenced by a grant had been concurrently removed (or purged). `lookupEntities` can return null entries for dropped entities; these are now skipped safely.
 - `RateLimiterFilter` now returns an Iceberg-compatible `ErrorResponse` JSON body on HTTP 429, with `Content-Type: application/json`. Previously the body was empty, causing Iceberg REST clients to surface an opaque error.
 - The admin tool `purge` command now prints the underlying exception stack trace to stderr when a purge fails unexpectedly, matching the `bootstrap` command. Previously a failed purge printed only a generic message, giving operators no diagnostic information.
+- The access token carried in `PolarisCredential` is now redacted from its `toString()`, so it is no longer written to authentication logs (including at WARN level on failed authentication).
+- JWT verification now validates the issuer claim (`"polaris"`) in addition to the active claim. Tokens signed with the same key but carrying a different issuer are now rejected.
+- Inheritable policy mapping inserts in the JDBC backend now use the active transaction connection, so they roll back correctly with the surrounding transaction.
+- Generic table drop now accepts table-scoped `TABLE_DROP` privilege.
 - Azure SAS tokens are now signed for the configured duration instead of a hardcoded 1 hour, so long jobs no longer fail with expired credentials.
 
 ## [1.5.0]

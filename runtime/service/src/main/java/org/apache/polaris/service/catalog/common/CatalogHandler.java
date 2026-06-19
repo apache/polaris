@@ -391,7 +391,7 @@ public abstract class CatalogHandler {
       throw noSuchNamespaceException(dst.namespace());
     } else if (resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(src), subType)
         == null) {
-      throw notFoundExceptionForTableLikeEntity(dst, subType);
+      throw notFoundExceptionForTableLikeEntity(src, subType);
     }
 
     // Normally, since we added the dst as an optional path, we'd expect it to only get resolved

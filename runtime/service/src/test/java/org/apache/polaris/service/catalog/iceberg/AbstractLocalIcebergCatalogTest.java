@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -135,7 +136,6 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
@@ -200,20 +200,6 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           .withPartitionPath("id_bucket=0") // easy way to set partition data for now
           .withRecordCount(1)
           .build();
-
-  public static class Profile extends Profiles.DefaultProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"", "true")
-          .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
-          .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
-          .put("polaris.test.rootAugmentor.enabled", "true")
-          .put("polaris.event-listener.types", "test")
-          .build();
-    }
-  }
 
   private static final String VIEW_QUERY = "select * from ns1.layer1_table";
 
@@ -871,6 +857,44 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     }
     assertThat(totalSnapshots).isEqualTo(2);
     this.assertFiles(catalog.loadTable(TABLE), FILE_B);
+  }
+
+  @Test
+  public void testCommitRetriesWithRefreshOnFailure() {
+    LocalIcebergCatalog catalog = this.catalog();
+    if (this.requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+
+    catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+
+    TableOperations realOps = ((BaseTable) catalog.loadTable(TABLE)).operations();
+    List<MetadataUpdate> updates =
+        List.of(new MetadataUpdate.SetProperties(Map.of("test-key", "test-value")));
+    List<UpdateRequirement> requirements =
+        List.of(new UpdateRequirement.AssertTableUUID(realOps.current().uuid()));
+    UpdateTableRequest request = UpdateTableRequest.create(TABLE, requirements, updates);
+
+    TableOperations spyOps = spy(realOps);
+    AtomicBoolean firstCommit = new AtomicBoolean(true);
+    doAnswer(
+            invocation -> {
+              if (firstCommit.compareAndSet(true, false)) {
+                // Perform a real concurrent modification through the catalog
+                catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_B).commit();
+                throw new CommitFailedException("concurrent modification detected");
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spyOps)
+        .commit(any(), any());
+
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, false);
+    TableMetadata result = catalogHandlerUtils.commit(spyOps, request);
+
+    Mockito.verify(spyOps, Mockito.atLeastOnce()).refresh();
+    Assertions.assertThat(result.properties()).containsEntry("test-key", "test-value");
   }
 
   @Test

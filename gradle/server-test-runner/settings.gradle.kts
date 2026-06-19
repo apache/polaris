@@ -16,15 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.nosql;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.Map;
+pluginManagement { repositories { gradlePluginPortal() } }
 
-public class NoSqlInMemoryProfile implements QuarkusTestProfile {
-  @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of(
-        "polaris.persistence.type", "nosql", "polaris.persistence.nosql.backend", "InMemory");
-  }
-}
+dependencyResolutionManagement { repositories { mavenCentral() } }
+
+rootProject.name = "polaris-server-test-runner"

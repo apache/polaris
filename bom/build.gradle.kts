@@ -25,7 +25,7 @@ description = "Apache Polaris - Bill of Materials (BOM)"
 
 dependencies {
   constraints {
-    api(rootProject)
+    api(project(":"))
     api(project(":polaris-api-catalog-service"))
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))
@@ -133,7 +133,7 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
     configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } }
   )
   projectCoordinatesByPath.set(
-    rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" }
+    provider { rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" } }
   )
   excludedProjectPaths.set(
     setOf(

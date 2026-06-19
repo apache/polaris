@@ -19,12 +19,11 @@
 
 package org.apache.polaris.service.events.listeners.inmemory;
 
-import static org.apache.polaris.core.entity.PolarisEvent.ResourceType.CATALOG;
+import static org.apache.polaris.core.entity.EventEntity.ResourceType.CATALOG;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.reset;
 
-import com.google.common.collect.ImmutableMap;
 import io.netty.channel.EventLoopGroup;
 import io.quarkus.netty.MainEventLoopGroup;
 import io.quarkus.test.junit.mockito.InjectSpy;
@@ -35,33 +34,14 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
-import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
-import org.apache.polaris.core.entity.PolarisEvent;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
 abstract class InMemoryBufferEventListenerTestBase {
-
-  static final Map<String, String> BASE_CONFIG =
-      ImmutableMap.<String, String>builder()
-          .put("polaris.realm-context.realms", "test1,test2")
-          .put("polaris.persistence.type", "relational-jdbc")
-          .put("polaris.persistence.auto-bootstrap-types", "relational-jdbc")
-          .put("quarkus.datasource.db-kind", "h2")
-          .put(
-              "quarkus.datasource.jdbc.url",
-              "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE")
-          .put("polaris.event-listener.type", "persistence-in-memory-buffer")
-          .put(
-              "quarkus.fault-tolerance.\"org.apache.polaris.service.events.listeners.inmemory.InMemoryBufferEventListener/flush\".retry.max-retries",
-              "1")
-          .put(
-              "quarkus.fault-tolerance.\"org.apache.polaris.service.events.listeners.inmemory.InMemoryBufferEventListener/flush\".retry.delay",
-              "10")
-          .build();
 
   @Inject
   @Identifier("persistence-in-memory-buffer")
@@ -118,8 +98,8 @@ abstract class InMemoryBufferEventListenerTestBase {
             });
   }
 
-  static PolarisEvent event() {
+  static EventEntity event() {
     String id = UUID.randomUUID().toString();
-    return new PolarisEvent("test", id, null, "test", 0, null, CATALOG, "test");
+    return new EventEntity("test", id, null, "test", 0, null, CATALOG, "test");
   }
 }

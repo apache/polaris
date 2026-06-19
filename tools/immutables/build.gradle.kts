@@ -19,7 +19,7 @@
 
 plugins { id("polaris-client") }
 
-val processor by configurations.creating
+val processor = configurations.create("processor")
 
 processor.extendsFrom(configurations.api.get())
 

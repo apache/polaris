@@ -211,19 +211,6 @@ dependencies {
 
 tasks.named("javadoc") { dependsOn("jandex") }
 
-tasks.withType(Test::class.java).configureEach {
-  if (System.getenv("AWS_REGION") == null) {
-    environment("AWS_REGION", "us-west-2")
-  }
-  // Note: the test secrets are referenced in
-  // org.apache.polaris.service.it.ServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
-  jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
-  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
-  // "getSubject is supported only if a security manager is allowed".
-  systemProperty("java.security.manager", "allow")
-}
-
 val buildDir = project.layout.buildDirectory
 
 // Same issue as above: allow a java security manager after Java 21
@@ -243,27 +230,40 @@ val quarkusTestArgLine =
 
 val quarkusProperties = providers.systemPropertiesPrefixedBy("quarkus.")
 
-listOf("intTest", "cloudTest").forEach {
-  tasks.named<Test>(it).configure(IntTestConfig(buildDir, quarkusProperties, quarkusTestArgLine))
-}
+tasks.withType(Test::class.java).configureEach {
+  environment("AWS_REGION", providers.environmentVariable("AWS_REGION").getOrElse("us-west-2"))
+  // Note: the test secrets are referenced in
+  // org.apache.polaris.service.it.ServerManager
+  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+  jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
+  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
+  // "getSubject is supported only if a security manager is allowed".
+  systemProperty("java.security.manager", "allow")
 
-class IntTestConfig(
-  @get:Internal val buildDir: DirectoryProperty,
-  @get:Input val quarkusProperties: Provider<Map<String, String>>,
-  @get:Input val quarkusTestArgLine: String,
-) : Action<Test> {
-  override fun execute(t: Test) {
-    t.maxParallelForks = 1
+  // Quarkus tests run "in isolated class loaders", which means that class-statically active
+  // resources pile up used JVM, as those classes cannot be GC'd.
+  // Examples of those statically held active resources are:
+  // - Iceberg's worker pools (thread pools, executors, etc.)
+  // - Hadoop's stats-cleaner (org.apache.hadoop.fs.FileSystem.Statistics.STATS_DATA_CLEANER)
+  // - Guava's 'MoreExecutors' (via Iceberg `ThreadPools`)`
+  // Forcing a new JVM after each test class works around this issue.
+  if ("test" == name) {
+    forkEvery = 1
 
+    // enlarge the max heap size to avoid out of memory error
+    maxHeapSize = "4g"
+  }
+
+  if ("intTest" == name || "cloutTest" == name) {
     val logsDir = buildDir.map { b -> b.asFile.resolve("logs") }
 
     // JVM arguments provider does not interfere with Gradle's cache keys
-    t.jvmArgumentProviders.add(
+    jvmArgumentProviders.add(
       IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine)
     )
 
     // delete files from previous runs
-    t.doFirst(IntTestCleanup(logsDir, buildDir))
+    doFirst(IntTestCleanup(logsDir, buildDir))
   }
 }
 

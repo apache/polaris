@@ -16,22 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.nosql;
+package org.apache.polaris.server.test.runner.spi;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.List;
-import java.util.Map;
-import org.apache.polaris.admintool.MongoTestResourceLifecycleManager;
+/**
+ * Isolated startup action that can prepare external services before the Polaris server process
+ * starts.
+ *
+ * <p>Implementations are loaded from a child classloader configured by the build and may mutate the
+ * provided context to pass task-specific system properties or environment variables to the Polaris
+ * server. Implementations are closed after the decorated test task finishes, or when startup fails.
+ */
+public interface PolarisServerStartupAction extends AutoCloseable {
+  /** Starts required services and updates the Polaris server startup context. */
+  void start(PolarisServerStartupContext context) throws Exception;
 
-public class NoSqlMongoProfile implements QuarkusTestProfile {
+  /** Stops resources owned by this action. */
   @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of(
-        "polaris.persistence.type", "nosql", "polaris.persistence.nosql.backend", "MongoDb");
-  }
-
-  @Override
-  public List<TestResourceEntry> testResources() {
-    return List.of(new TestResourceEntry(MongoTestResourceLifecycleManager.class));
-  }
+  default void close() throws Exception {}
 }

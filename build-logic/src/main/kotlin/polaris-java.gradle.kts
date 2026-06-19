@@ -72,14 +72,20 @@ checkstyle {
       .orElseThrow { GradleException("checkstyle version not found in libs.versions.toml") }
       .requiredVersion
   toolVersion = checkstyleVersion
-  configFile = rootProject.file("codestyle/checkstyle.xml")
+  configFile = layout.settingsDirectory.file("codestyle/checkstyle.xml").asFile
   isIgnoreFailures = false
   maxErrors = 0
   maxWarnings = 0
 }
 
-// Ensure Checkstyle runs after jandex to avoid task dependency issues
-tasks.withType<Checkstyle>().configureEach { tasks.findByName("jandex")?.let { mustRunAfter(it) } }
+tasks.withType<Checkstyle>().configureEach {
+  if (noSourceCheckProjects.contains(project.path)) {
+    enabled = false
+  } else {
+    // Ensure Checkstyle runs after jandex to avoid task dependency issues
+    tasks.findByName("jandex")?.let { mustRunAfter(it) }
+  }
+}
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(
@@ -89,22 +95,40 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.errorprone.disableWarningsInGeneratedCode = true
   options.errorprone.excludedPaths =
     ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated(-openapi)?/.*"
-  val errorproneRules = rootProject.projectDir.resolve("codestyle/errorprone-rules.properties")
+  val errorproneRules = layout.settingsDirectory.file("codestyle/errorprone-rules.properties")
   inputs.file(errorproneRules).withPathSensitivity(PathSensitivity.RELATIVE)
-  options.errorprone.checks.putAll(provider { memoizedErrorproneRules(errorproneRules) })
+  options.errorprone.checks.putAll(
+    provider {
+      val service =
+        project.gradle.sharedServices.registerIfAbsent(
+          "errorProneConfig",
+          ErrorProneConfigService::class.java,
+        ) {
+          parameters.configFile = errorproneRules
+        }
+      service.get().errorproneConfig
+    }
+  )
 }
 
-private fun memoizedErrorproneRules(rulesFile: File): Map<String, CheckSeverity> =
-  rulesFile.reader().use {
-    val rules = Properties()
-    rules.load(it)
-    rules
-      .mapKeys { e -> (e.key as String).trim() }
-      .mapValues { e -> (e.value as String).trim() }
-      .filter { e -> e.key.isNotEmpty() && e.value.isNotEmpty() }
-      .mapValues { e -> CheckSeverity.valueOf(e.value) }
-      .toMap()
+abstract class ErrorProneConfigService : BuildService<ErrorProneConfigService.Parameters> {
+  interface Parameters : BuildServiceParameters {
+    val configFile: RegularFileProperty
   }
+
+  val errorproneConfig: Map<String, CheckSeverity> by lazy {
+    parameters.configFile.get().asFile.reader().use {
+      val rules = Properties()
+      rules.load(it)
+      rules
+        .mapKeys { e -> (e.key as String).trim() }
+        .mapValues { e -> (e.value as String).trim() }
+        .filter { e -> e.key.isNotEmpty() && e.value.isNotEmpty() }
+        .mapValues { e -> CheckSeverity.valueOf(e.value) }
+        .toMap()
+    }
+  }
+}
 
 tasks.register("compileAll") {
   group = "build"
@@ -139,7 +163,7 @@ testing {
       // Special handling for test-suites with names containing `manualtest`, which are intended to
       // be run on demand rather than implicitly via `check`.
       if (!name.lowercase().contains("manualtest")) {
-        targets.all {
+        targets.configureEach {
           if (testTask.name != "test") {
             testTask.configure { shouldRunAfter("test") }
             tasks.named("check").configure { dependsOn(testTask) }
@@ -273,7 +297,7 @@ class BannedDependencies(
   }
 
   fun applyTo(configurations: ConfigurationContainer) {
-    configurations.all { applyTo(this) }
+    configurations.configureEach { applyTo(this) }
   }
 }
 
@@ -284,10 +308,10 @@ fun bannedDependencies(): BannedDependencies {
       BannedDependenciesService::class.java,
     ) {
       parameters.globallyBannedFile.set(
-        rootProject.layout.projectDirectory.file("gradle/banned-dependencies.txt")
+        layout.settingsDirectory.file("gradle/banned-dependencies.txt")
       )
       parameters.quarkusProdBannedFile.set(
-        rootProject.layout.projectDirectory.file("gradle/banned-quarkus-prod-dependencies.txt")
+        layout.settingsDirectory.file("gradle/banned-quarkus-prod-dependencies.txt")
       )
     }
   return service.get().bannedDependencies
@@ -340,7 +364,7 @@ tasks.withType<Test>().configureEach {
   val constraintName =
     if (isTestTask) "testParallelismConstraint" else "intTestParallelismConstraint"
   usesService(gradle.sharedServices.registrations.named(constraintName).get().service)
-  if (project.hasProperty("noIntegrationTests") && !isTestTask) {
+  if (providers.gradleProperty("noIntegrationTests").isPresent && !isTestTask) {
     enabled = false
   }
 }
