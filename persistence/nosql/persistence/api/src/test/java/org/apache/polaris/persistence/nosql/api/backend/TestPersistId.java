@@ -21,9 +21,6 @@ package org.apache.polaris.persistence.nosql.api.backend;
 import static java.lang.String.format;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Base64;
@@ -38,6 +35,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.dataformat.smile.SmileMapper;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestPersistId {
@@ -48,7 +48,7 @@ public class TestPersistId {
 
   @BeforeEach
   protected void setUp() {
-    mapper = JsonMapper.builder().build();
+    mapper = JsonMapper.shared();
     smile = SmileMapper.builder().build();
   }
 
@@ -68,7 +68,7 @@ public class TestPersistId {
   @ParameterizedTest
   @MethodSource
   @SuppressWarnings("ByteBufferBackingArray")
-  public void serDe(long id, int part, ByteBuffer expected) throws Exception {
+  public void serDe(long id, int part, ByteBuffer expected) {
     var persistId = PersistId.persistId(id, part);
 
     var expectedSerializedSize = 1 + Long.BYTES + (part > 0 ? VarInt.varIntLen(part) : 0);

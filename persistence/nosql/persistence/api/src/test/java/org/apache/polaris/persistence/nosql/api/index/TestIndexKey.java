@@ -31,9 +31,6 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.InstanceOfAssertFactories.INTEGER;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.function.IntFunction;
@@ -47,6 +44,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.dataformat.smile.SmileMapper;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestIndexKey {

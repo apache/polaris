@@ -19,10 +19,10 @@
 package org.apache.polaris.persistence.nosql.coretypes.changes;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.databind.DatabindContext;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
 import java.util.Locale;
+import tools.jackson.databind.DatabindContext;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.jsontype.impl.TypeIdResolverBase;
 
 final class ChangeTypeIdResolver extends TypeIdResolverBase {
 
@@ -36,12 +36,13 @@ final class ChangeTypeIdResolver extends TypeIdResolverBase {
   }
 
   @Override
-  public String idFromValue(Object value) {
+  public String idFromValue(DatabindContext databindContext, Object value) {
     return getId(value);
   }
 
   @Override
-  public String idFromValueAndType(Object value, Class<?> suggestedType) {
+  public String idFromValueAndType(
+      DatabindContext databindContext, Object value, Class<?> suggestedType) {
     return getId(value);
   }
 

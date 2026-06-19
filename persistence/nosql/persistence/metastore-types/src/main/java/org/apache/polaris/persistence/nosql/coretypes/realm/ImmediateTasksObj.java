@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.coretypes.realm;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
@@ -27,6 +25,8 @@ import org.apache.polaris.persistence.nosql.api.obj.AbstractObjType;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Maintains all {@link ImmediateTaskObj}. The current version of this object is maintained via the

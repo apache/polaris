@@ -19,8 +19,6 @@
 package org.apache.polaris.persistence.nosql.realms.store;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.time.Instant;
 import java.util.Map;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -28,6 +26,8 @@ import org.apache.polaris.persistence.nosql.api.obj.AbstractObjType;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /** Represents the persisted state of a {@link RealmDefinition}. */
 @PolarisImmutable

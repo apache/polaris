@@ -22,8 +22,6 @@ import static com.google.common.base.Preconditions.checkState;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import java.time.Duration;
@@ -33,6 +31,8 @@ import java.util.OptionalInt;
 import java.util.OptionalLong;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /** Maintenance service configuration. */
 @ConfigMapping(prefix = "polaris.persistence.nosql.maintenance")

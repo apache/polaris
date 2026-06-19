@@ -33,8 +33,8 @@ dependencies {
   compileOnly(enforcedPlatform(libs.quarkus.bom))
   compileOnly("io.vertx:vertx-core")
 
-  compileOnly(platform(libs.jackson.bom))
-  compileOnly("com.fasterxml.jackson.core:jackson-databind")
+  compileOnly(platform(libs.jackson3.bom))
+  compileOnly("tools.jackson.core:jackson-databind")
 
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jspecify)
