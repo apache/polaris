@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.persistence.nosql.coretypes.catalog;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.obj.AbstractObjType;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.coretypes.acl.GrantsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Maintains the state of all catalog grants. The current version of this object is maintained via
