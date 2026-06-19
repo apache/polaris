@@ -103,6 +103,10 @@ public final class PolarisClient implements AutoCloseable {
     return new PolicyApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
   }
 
+  public MetricsApi metricsApi() {
+    return new MetricsApi(client, endpoints.metricsApiEndpoint());
+  }
+
   /** Requests an access token from the Polaris server for the given principal. */
   public String obtainToken(PrincipalWithCredentials credentials) {
     return obtainToken(new ClientPrincipal(credentials));

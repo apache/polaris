@@ -28,6 +28,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriBuilder;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -62,24 +63,32 @@ public class RequestIdHeaderTest {
   HttpServer httpServer;
 
   private Response request(Map<String, String> headers) {
-    try (PolarisClient client =
-        PolarisClient.polarisClient(
-            new PolarisApiEndpoints(httpServer.getLocalBaseUri(), REALM, headers))) {
-      return client
-          .catalogApiPlain()
-          .request("v1/oauth/tokens")
-          .post(
-              Entity.form(
-                  new MultivaluedHashMap<>(
-                      Map.of(
-                          "grant_type",
-                          "client_credentials",
-                          "scope",
-                          "PRINCIPAL_ROLE:ALL",
-                          "client_id",
-                          CLIENT_ID,
-                          "client_secret",
-                          CLIENT_SECRET))));
+    try {
+      try (PolarisClient client =
+          PolarisClient.polarisClient(
+              new PolarisApiEndpoints(
+                  httpServer.getLocalBaseUri(),
+                  UriBuilder.fromUri(httpServer.getLocalBaseUri())
+                      .port(httpServer.getManagementPort())
+                      .build(),
+                  REALM,
+                  headers))) {
+        return client
+            .catalogApiPlain()
+            .request("v1/oauth/tokens")
+            .post(
+                Entity.form(
+                    new MultivaluedHashMap<>(
+                        Map.of(
+                            "grant_type",
+                            "client_credentials",
+                            "scope",
+                            "PRINCIPAL_ROLE:ALL",
+                            "client_id",
+                            CLIENT_ID,
+                            "client_secret",
+                            CLIENT_SECRET))));
+      }
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

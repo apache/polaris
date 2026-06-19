@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.test;
+package org.apache.polaris.service.it.env;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -33,12 +32,15 @@ import org.hawkular.agent.prometheus.text.TextPrometheusMetricsProcessor;
 import org.hawkular.agent.prometheus.types.MetricFamily;
 import org.hawkular.agent.prometheus.walkers.CollectorPrometheusMetricsWalker;
 
-/** Utils for working with metrics in tests */
-public class TestMetricsUtil {
+public class MetricsApi extends RestApi {
 
-  public static Map<String, MetricFamily> fetchMetrics(URI baseManagementUri) {
-    try (Client client = ClientBuilder.newBuilder().build();
-        Response response = client.target(baseManagementUri.resolve("q/metrics")).request().get()) {
+  MetricsApi(Client client, URI metricsApiEndpoint) {
+    super(client, metricsApiEndpoint, "text/plain");
+  }
+
+  /** Fetches all Prometheus metric families from {@code q/metrics}. */
+  public Map<String, MetricFamily> fetchMetrics() {
+    try (Response response = request().get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       String body = response.readEntity(String.class);
       InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));

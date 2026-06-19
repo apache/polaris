@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.net.URI;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 
 /**
  * This class contains the most fundamental information for accessing Polaris APIs, such as the base
@@ -30,26 +31,34 @@ import java.util.stream.Collectors;
  */
 public final class PolarisApiEndpoints implements Serializable {
 
-  private final URI baseUri;
+  private final URI catalogApiEndpoint;
+  private final URI managementApiEndpoint;
+  private final @Nullable URI metricsApiEndpoint;
   private final String realmId;
   private final Map<String, String> headers;
 
-  public PolarisApiEndpoints(URI baseUri, String realmId, String realmHeaderName) {
-    this(baseUri, realmId, Map.of(realmHeaderName, realmId));
-  }
-
-  public PolarisApiEndpoints(URI baseUri, String realmId, Map<String, String> headers) {
-    this.baseUri = baseUri;
+  public PolarisApiEndpoints(
+      URI baseUri, @Nullable URI managementUri, String realmId, Map<String, String> headers) {
+    this.catalogApiEndpoint = appendPath(baseUri, "api/catalog");
+    this.managementApiEndpoint = appendPath(baseUri, "api/management");
+    this.metricsApiEndpoint = managementUri != null ? appendPath(managementUri, "metrics") : null;
     this.realmId = realmId;
     this.headers = headers;
   }
 
   public URI catalogApiEndpoint() {
-    return baseUri.resolve(baseUri.getRawPath() + "/api/catalog").normalize();
+    return catalogApiEndpoint;
   }
 
   public URI managementApiEndpoint() {
-    return baseUri.resolve(baseUri.getRawPath() + "/api/management").normalize();
+    return managementApiEndpoint;
+  }
+
+  public URI metricsApiEndpoint() {
+    if (metricsApiEndpoint == null) {
+      throw new IllegalStateException("Management URI is not available for this Polaris server");
+    }
+    return metricsApiEndpoint;
   }
 
   public String realmId() {
@@ -64,5 +73,13 @@ public final class PolarisApiEndpoints implements Serializable {
     return headers.entrySet().stream()
         .map(e -> Map.entry(keyPrefix + e.getKey(), e.getValue()))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  private static URI appendPath(URI base, String path) {
+    String baseStr = base.toString();
+    if (baseStr.endsWith("/")) {
+      baseStr = baseStr.substring(0, baseStr.length() - 1);
+    }
+    return URI.create(baseStr + "/" + path).normalize();
   }
 }
