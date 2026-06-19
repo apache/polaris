@@ -28,12 +28,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
-- Polaris now supports dynamic datasource activation. Out of the box, two datasources are provided: `postgresql` and `h2`. The datasource to use can be selected at runtime by setting the `polaris.persistence.relational.jdbc.datasource` configuration property (the default is `postgresql`). This allows operators to switch between supported relational databases without rebuilding Polaris.
+- Polaris now supports dynamic datasource activation. This allows operators to switch between supported relational databases without rebuilding Polaris. Currently, the Polaris server ships with two datasources: `postgresql` and `h2`. The admin tool, however, includes only `postgresql` for now. Out-of-the-box support for more datasources and JDBC drivers may be added in the future. The datasource to activate can be selected at runtime by setting the `polaris.persistence.relational.jdbc.datasource` configuration property (the default is `postgresql`).
 
 ### Upgrade notes
 - Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
   - `polaris.event-listener.executor.pool-size` configures the thread pool size.
   - `polaris.event-listener.executor.queue-size` configures the queue size for pending events when all threads are busy.
+- The Helm chart now includes a new `persistence.relationalJdbc.datasource` option to select the relational database to activate. The default is `postgresql`.
 
 ### Breaking changes
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
