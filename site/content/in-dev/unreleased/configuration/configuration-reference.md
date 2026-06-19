@@ -141,8 +141,20 @@ All properties listed here are **runtime** properties and can be changed without
 ### `opentelemetry` event listener
 
 Set `polaris.event-listener.types=opentelemetry` to emit Polaris events as OpenTelemetry log
-records. Configure the OpenTelemetry SDK and exporter with the existing `quarkus.otel.*`
-properties.
+records.
+
+OpenTelemetry is disabled by default in Polaris because there is no collector endpoint that works
+for all deployments. To export these log records, enable the OpenTelemetry SDK and configure an
+OTLP collector endpoint:
+
+```properties
+polaris.event-listener.types=opentelemetry
+quarkus.otel.sdk.disabled=false
+quarkus.otel.exporter.otlp.endpoint=http://otlp-collector:4317
+```
+
+See the [Telemetry]({{% ref "../telemetry" %}}) documentation for additional OpenTelemetry
+configuration details.
 
 ## Operational
 
