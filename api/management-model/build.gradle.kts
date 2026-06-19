@@ -34,8 +34,8 @@ dependencies {
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
-  testImplementation(platform(libs.jackson.bom))
-  testImplementation("com.fasterxml.jackson.core:jackson-databind")
+  testImplementation(platform(libs.jackson3.bom))
+  testImplementation("tools.jackson.core:jackson-databind")
 }
 
 val rootDir = layout.settingsDirectory

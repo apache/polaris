@@ -20,15 +20,14 @@ package org.apache.polaris.core.admin.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 public class CatalogSerializationTest {
 
@@ -40,20 +39,19 @@ public class CatalogSerializationTest {
 
   @BeforeEach
   public void setUp() {
-    mapper = JsonMapper.builder().build();
+    mapper = JsonMapper.shared();
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("catalogTestCases")
-  public void testCatalogSerialization(String description, Catalog catalog)
-      throws JsonProcessingException {
+  public void testCatalogSerialization(String description, Catalog catalog) {
     String json = mapper.writeValueAsString(catalog);
     Catalog deserialized = mapper.readValue(json, Catalog.class);
     assertThat(deserialized).usingRecursiveComparison().isEqualTo(catalog);
   }
 
   @Test
-  public void testJsonFormat() throws JsonProcessingException {
+  public void testJsonFormat() {
     Catalog catalog =
         new Catalog(
             Catalog.TypeEnum.INTERNAL,
@@ -80,7 +78,7 @@ public class CatalogSerializationTest {
   }
 
   @Test
-  public void testJsonFormatWithKmsProperties() throws JsonProcessingException {
+  public void testJsonFormatWithKmsProperties() {
     Catalog catalog =
         new Catalog(
             Catalog.TypeEnum.INTERNAL,

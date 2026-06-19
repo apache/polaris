@@ -29,16 +29,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.ObjectCodec;
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -55,6 +45,14 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
 
 public class RangerPolarisAuthorizerTest {
   private static final String RESOURCE_TYPE_NAME_SEP = ":";
@@ -184,35 +182,29 @@ public class RangerPolarisAuthorizerTest {
   }
 
   private ObjectMapper getMapper() {
-    ObjectMapper ret = new ObjectMapper();
-
     SimpleModule serDeModule = new SimpleModule("testSerDe");
 
     serDeModule.addDeserializer(PolarisPrincipal.class, new PolarisPrincipalDeserializer());
     serDeModule.addDeserializer(
         PolarisResolvedPathWrapper.class, new PolarisResolvedPathWrapperDeserializer());
 
-    ret.registerModule(serDeModule);
-
-    return ret;
+    return JsonMapper.builder().addModule(serDeModule).build();
   }
 
-  static class PolarisPrincipalDeserializer extends JsonDeserializer<PolarisPrincipal> {
+  static class PolarisPrincipalDeserializer extends ValueDeserializer<PolarisPrincipal> {
     @Override
-    public PolarisPrincipal deserialize(JsonParser parser, DeserializationContext context)
-        throws IOException {
-      ObjectCodec codec = parser.getCodec();
-      TreeNode root = codec.readTree(parser);
-      JsonNode nameNode = root != null ? (JsonNode) root.get("name") : null;
+    public PolarisPrincipal deserialize(JsonParser parser, DeserializationContext context) {
+      JsonNode root = parser.readValueAs(JsonNode.class);
+      JsonNode nameNode = root != null ? root.get("name") : null;
 
-      String name = nameNode != null ? nameNode.asText() : null;
+      String name = nameNode != null ? nameNode.asString() : null;
 
       return PolarisPrincipal.of(name, Collections.emptyMap(), Collections.emptySet());
     }
   }
 
   static class PolarisResolvedPathWrapperDeserializer
-      extends JsonDeserializer<PolarisResolvedPathWrapper> {
+      extends ValueDeserializer<PolarisResolvedPathWrapper> {
     private static final Map<String, PolarisEntityType[]> RESOURCE_PATHS = new HashMap<>();
 
     static {
@@ -263,25 +255,26 @@ public class RangerPolarisAuthorizerTest {
     }
 
     @Override
-    public PolarisResolvedPathWrapper deserialize(JsonParser parser, DeserializationContext context)
-        throws IOException {
+    public PolarisResolvedPathWrapper deserialize(
+        JsonParser parser, DeserializationContext context) {
       String target = parser.getValueAsString();
       String[] typeAndName = target.split(RESOURCE_TYPE_NAME_SEP, 2);
 
       if (typeAndName.length != 2) {
-        throw new JsonParseException(target + ": invalid resource");
+        throw DatabindException.from(parser, target + ": invalid resource");
       }
 
       PolarisEntityType[] path = RESOURCE_PATHS.get(typeAndName[0]);
 
       if (path == null) {
-        throw new JsonParseException(target + ": unsupported resource type");
+        throw DatabindException.from(parser, target + ": unsupported resource type");
       }
 
       String[] pathElements = typeAndName[1].split(RESOURCE_ELEMENTS_SEP, path.length);
 
       if (path.length != pathElements.length) {
-        throw new JsonParseException(
+        throw DatabindException.from(
+            parser,
             target
                 + ": incorrect number of path elements. Expected "
                 + path.length
