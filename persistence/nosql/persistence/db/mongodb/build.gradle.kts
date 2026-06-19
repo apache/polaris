@@ -66,15 +66,14 @@ dependencies {
 
 testing {
   suites {
-    val intTest by
-      registering(JvmTestSuite::class) {
-        dependencies {
-          runtimeOnly(platform(libs.testcontainers.bom))
-          runtimeOnly("org.testcontainers:testcontainers-mongodb")
+    register<JvmTestSuite>("intTest") {
+      dependencies {
+        runtimeOnly(platform(libs.testcontainers.bom))
+        runtimeOnly("org.testcontainers:testcontainers-mongodb")
 
-          compileOnly(platform(libs.jackson.bom))
-          compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-        }
+        compileOnly(platform(libs.jackson.bom))
+        compileOnly("com.fasterxml.jackson.core:jackson-annotations")
       }
+    }
   }
 }

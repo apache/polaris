@@ -29,8 +29,8 @@ dependencies {
 description =
   "Provides Polaris version information programmatically, includes the NOTICE/LICENSE* files"
 
-val syncNoticeAndLicense by
-  tasks.registering(Sync::class) {
+val syncNoticeAndLicense =
+  tasks.register<Sync>("syncNoticeAndLicense") {
     // Have to manually declare the inputs of this task here on top of the from/include below
     val rootDir = layout.settingsDirectory
     inputs
@@ -52,8 +52,8 @@ val syncNoticeAndLicense by
     }
   }
 
-val versionProperties by
-  tasks.registering(Sync::class) {
+val versionProperties =
+  tasks.register<Sync>("versionProperties") {
     destinationDir = project.layout.buildDirectory.dir("version").get().asFile
     from(project.layout.files("src/main/version"))
     eachFile { path = "org/apache/polaris/version/$path" }
@@ -71,8 +71,8 @@ sourceSets.main.configure {
 // Build a jar for `jarTest` having both the production and test sources including the "fake
 // manifest" - the production implementation expects all resources to be in the jar containing
 // the `polaris-version.properties` file.
-val jarTestJar by
-  tasks.registering(Jar::class) {
+val jarTestJar =
+  tasks.register<Jar>("jarTestJar") {
     archiveClassifier.set("jarTest")
     from(sourceSets.main.map { it.output })
     from(sourceSets.named("jarTest").map { it.output })
