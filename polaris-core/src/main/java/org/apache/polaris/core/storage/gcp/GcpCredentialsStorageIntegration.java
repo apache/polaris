@@ -18,9 +18,6 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
@@ -61,6 +58,9 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * GCS implementation of {@link PolarisStorageIntegration} with support for scoping credentials for
@@ -74,7 +74,7 @@ public class GcpCredentialsStorageIntegration
   public static final String IMPERSONATION_SCOPE =
       "https://www.googleapis.com/auth/devstorage.read_write";
 
-  private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder().build();
+  private static final ObjectMapper OBJECT_MAPPER = JsonMapper.shared();
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
@@ -428,7 +428,7 @@ public class GcpCredentialsStorageIntegration
   private static String convertToString(CredentialAccessBoundary accessBoundary) {
     try {
       return OBJECT_MAPPER.writeValueAsString(accessBoundary);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       LOGGER.warn("Unable to convert access boundary to json", e);
       return Objects.toString(accessBoundary);
     }
