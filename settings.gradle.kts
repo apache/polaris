@@ -40,6 +40,8 @@ if (isCI) {
 
 includeBuild("build-logic") { name = "polaris-build-logic" }
 
+includeBuild("gradle/server-test-runner") { name = "polaris-server-test-runner" }
+
 if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
   throw GradleException(
     """
