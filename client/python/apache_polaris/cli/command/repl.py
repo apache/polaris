@@ -52,7 +52,7 @@ class ReplCommand(Command):
     A Command implementation to represent `polaris repl`. This command starts an interactive REPL session.
 
     Example commands:
-        * ./polaris repl
+        * polaris repl
     """
 
     profile: Optional[str] = None

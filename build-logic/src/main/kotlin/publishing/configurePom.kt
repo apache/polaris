@@ -21,9 +21,9 @@ package publishing
 
 import groovy.namespace.QName
 import groovy.util.Node
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
-import org.gradle.api.artifacts.component.ModuleComponentSelector
 import org.gradle.api.publish.maven.MavenPublication
 
 /**
@@ -43,130 +43,130 @@ import org.gradle.api.publish.maven.MavenPublication
  * must be exactly the same when built by a release manager and by someone else to verify the built
  * artifact(s).
  */
-internal fun configurePom(project: Project, mavenPublication: MavenPublication, task: Task) =
-  mavenPublication.run {
-    pom {
-      if (project != project.rootProject) {
-        // Add the license to every pom to make it easier for downstream projects to retrieve the
-        // license.
-        licenses {
-          license {
-            name.set("Apache-2.0") // SPDX identifier
+internal data class ParentPomCoordinates(
+  val groupId: String,
+  val artifactId: String,
+  val version: String,
+)
+
+internal fun configurePom(
+  project: Project,
+  parentPomCoordinates: ParentPomCoordinates?,
+  mavenPublication: MavenPublication,
+  task: Task,
+) = mavenPublication.run {
+  pom {
+    if (parentPomCoordinates != null) {
+      // Non-root Gradle projects.
+
+      // Add the license to every pom to make it easier for downstream projects to retrieve the
+      // license.
+      licenses {
+        license {
+          name.set("Apache-2.0") // SPDX identifier
+        }
+      }
+
+      withXml {
+        val projectNode = asNode()
+
+        val parentNode = projectNode.appendNode("parent")
+        // Guarantee that the <parent> element is at a deterministic location.
+        // This is important for reproducible builds!
+        projectNode.remove(parentNode)
+        for ((index, any) in projectNode.children().withIndex()) {
+          if (any is Node) {
+            val qName = any.name() as QName
+            if (qName.localPart == "groupId") {
+              // In theory, we could also replace the groupId element, as the group ID is
+              // currently the same.
+              // But this would break once another group ID is built.
+              projectNode.children().add(index, parentNode)
+              break
+            }
           }
         }
 
-        withXml {
-          val projectNode = asNode()
+        // Add GAV to <parent> element
+        parentNode.appendNode("groupId", parentPomCoordinates.groupId)
+        parentNode.appendNode("artifactId", parentPomCoordinates.artifactId)
+        parentNode.appendNode("version", parentPomCoordinates.version)
 
-          val parentNode = projectNode.appendNode("parent")
-          // Guarantee that the <parent> element is at a deterministic location.
-          // This is important for reproducible builds!
-          projectNode.remove(parentNode)
-          for ((index, any) in projectNode.children().withIndex()) {
-            if (any is Node) {
-              val qName = any.name() as QName
-              if (qName.localPart == "groupId") {
-                // In theory, we could also replace the groupId element, as the group ID is
-                // currently the same.
-                // But this would break once another group ID is built.
-                projectNode.children().add(index, parentNode)
-                break
-              }
+        verifyMandatoryDependencyVersions(projectNode)
+      }
+    } else {
+      // Root Gradle projects.
+
+      val mavenPom = this
+      val effectiveAsfProject = project.provider { EffectiveAsfProject.forProject(project) }
+      val projectVersion = project.version.toString()
+
+      task.doFirst {
+        mavenPom.run {
+          val prj = effectiveAsfProject.get()
+          val asfProjectId = prj.asfProject.apacheId
+
+          organization {
+            name.set("The Apache Software Foundation")
+            url.set("https://www.apache.org/")
+          }
+          licenses {
+            license {
+              name.set("Apache-2.0") // SPDX identifier
+              url.set(prj.asfProject.licenseUrl)
             }
           }
-          val parent = project.parent!!
-          // Add GAV to <parent> element
-          parentNode.appendNode("groupId", parent.group)
-          parentNode.appendNode("artifactId", parent.name)
-          parentNode.appendNode("version", parent.version)
-
-          addMissingMandatoryDependencyVersions(project, projectNode)
-        }
-      } else {
-        val mavenPom = this
-
-        task.doFirst {
-          mavenPom.run {
-            val prj = EffectiveAsfProject.forProject(project)
-            val asfProjectId = prj.asfProject.apacheId
-
-            organization {
-              name.set("The Apache Software Foundation")
-              url.set("https://www.apache.org/")
-            }
-            licenses {
-              license {
-                name.set("Apache-2.0") // SPDX identifier
-                url.set(prj.asfProject.licenseUrl)
-              }
-            }
-            mailingLists {
-              prj.publishingHelperExtension.mailingLists
-                .get()
-                .map { id -> prj.mailingList(id) }
-                .forEach { ml ->
-                  mailingList {
-                    name.set(ml.name())
-                    subscribe.set(ml.subscribe())
-                    unsubscribe.set(ml.unsubscribe())
-                    post.set(ml.post())
-                    archive.set(ml.archive())
-                  }
+          mailingLists {
+            prj.publishingHelperExtension.mailingLists
+              .get()
+              .map { id -> prj.mailingList(id) }
+              .forEach { ml ->
+                mailingList {
+                  name.set(ml.name())
+                  subscribe.set(ml.subscribe())
+                  unsubscribe.set(ml.unsubscribe())
+                  post.set(ml.post())
+                  archive.set(ml.archive())
                 }
-            }
-
-            scm {
-              val codeRepoString: String = prj.codeRepoUrl().get()
-              connection.set("scm:git:$codeRepoString")
-              developerConnection.set("scm:git:$codeRepoString")
-              url.set("$codeRepoString/tree/main")
-              val version = project.version.toString()
-              if (!version.endsWith("-SNAPSHOT")) {
-                val tagPrefix: String = prj.tagPrefix().get()
-                tag.set("$tagPrefix-$version")
               }
-            }
-            issueManagement { url.set(prj.issueTracker()) }
-
-            name.set(prj.fullName())
-            description.set(prj.description())
-            url.set(prj.projectUrl())
-            inceptionYear.set(prj.asfProject.inceptionYear.toString())
-
-            developers { developer { url.set("https://$asfProjectId.apache.org/community/") } }
           }
+
+          scm {
+            val codeRepoString: String = prj.codeRepoUrl().get()
+            connection.set("scm:git:$codeRepoString")
+            developerConnection.set("scm:git:$codeRepoString")
+            url.set("$codeRepoString/tree/main")
+            if (!projectVersion.endsWith("-SNAPSHOT")) {
+              val tagPrefix: String = prj.tagPrefix().get()
+              tag.set("$tagPrefix-$projectVersion")
+            }
+          }
+          issueManagement { url.set(prj.issueTracker()) }
+
+          name.set(prj.fullName())
+          description.set(prj.description())
+          url.set(prj.projectUrl())
+          inceptionYear.set(prj.asfProject.inceptionYear.toString())
+
+          developers { developer { url.set("https://$asfProjectId.apache.org/community/") } }
         }
       }
     }
   }
+}
 
 /**
- * Scans the generated `pom.xml` for `<dependencies>` in `<dependencyManagement>` that do not have a
- * `<version>` and adds one, if possible. Maven kinda requires `<version>` tags there, even if the
+ * Verifies that the generated `pom.xml` for `<dependencies>` in `<dependencyManagement>` all have
+ * the mandatory `<version>` element. Maven kinda requires `<version>` tags there, even if the
  * `<dependency>` without a `<version>` is a bom and that bom's version is available transitively.
  */
-fun addMissingMandatoryDependencyVersions(project: Project, projectNode: Node) {
+private fun verifyMandatoryDependencyVersions(projectNode: Node) {
   xmlNode(xmlNode(projectNode, "dependencyManagement"), "dependencies")?.children()?.forEach {
     val dependency = it as Node
     if (xmlNode(dependency, "version") == null) {
       val depGroup = xmlNode(dependency, "groupId")!!.text()
       val depName = xmlNode(dependency, "artifactId")!!.text()
-
-      var depResult =
-        findDependency(project.configurations.findByName("runtimeClasspath"), depGroup, depName)
-      if (depResult == null) {
-        depResult =
-          findDependency(
-            project.configurations.findByName("testRuntimeClasspath"),
-            depGroup,
-            depName,
-          )
-      }
-
-      if (depResult != null) {
-        val req = depResult.requested as ModuleComponentSelector
-        dependency.appendNode("version", req.version)
-      }
+      throw GradleException("Missing mandatory dependency version for $depGroup:$depName")
     }
   }
 }

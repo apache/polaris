@@ -19,18 +19,22 @@
 
 # Polaris Spark Plugin
 
+This directory contains the Polaris Spark plugins. The plugins are built for specific versions of Spark:
+- [Spark 3.5](./v3.5/getting-started/README.md)
+- [Spark 4.0](./v4.0/getting-started/README.md)
+
 The Polaris Spark plugin provides a SparkCatalog class, which communicates with the Polaris
 REST endpoints, and provides implementations for Apache Spark's
 - [TableCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java)
 - [ViewCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java)
 - [SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java)
 
-Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 and 2.13, and depends on iceberg-spark-runtime 1.11.0.
+The plugin provides support for Spark 3.5 (Scala version 2.12 and 2.13) and Spark 4.0 (Scala version 2.13).
 
 The Polaris Spark client supports catalog management for both Iceberg and Delta tables. It routes all Iceberg table
 requests to the Iceberg REST endpoints and routes all Delta table requests to the Generic Table REST endpoints.
 
-The Spark Client requires at least delta 3.2.1 to work with Delta tables, which requires at least Apache Spark 3.5.3.
+The Spark Client requires at least delta 3.2.1 to work with Delta tables for Spark 3.5, and delta 4.2.0 for Spark 4.0.
 
 # Start Spark with local Polaris service using the Polaris Spark plugin
 The following command starts a Polaris server for local testing, it runs on localhost:8181 with default
@@ -45,8 +49,8 @@ option with the Polaris Spark package, or the `--jars` option with the Polaris S
 The following sections explain how to build and run Spark with both the Polaris package and the bundle JAR.
 
 # Build and run with Polaris spark package locally
-The Polaris Spark client source code is located in plugins/spark/v3.5/spark. To use the Polaris Spark package 
-with Spark, you first need to publish the source JAR to your local Maven repository.
+The Polaris Spark client source code is located in plugins/spark/v<spark_version>/spark. To use the Polaris Spark
+package with Spark, you first need to publish the source JAR to your local Maven repository.
 
 Run the following command to build the Polaris Spark project and publish the source JAR to your local Maven repository:
 - `./gradlew assemble` -- build the whole Polaris project without running tests
@@ -54,7 +58,7 @@ Run the following command to build the Polaris Spark project and publish the sou
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_<scala_version>:<delta_version> \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -71,13 +75,14 @@ The Polaris version is defined in the `versions.txt` file located in the root di
 Assume the following values:
 - `spark_version`: 3.5
 - `scala_version`: 2.12
-- `polaris_version`: 1.2.0-incubating-SNAPSHOT
+- `delta_version`: 3.3.1
+- `polaris_version`: 1.6.0-SNAPSHOT
 - `catalog-name`: `polaris`
 The Spark command would look like following:
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-3.5_2.12:1.2.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-3.5_2.12:1.6.0-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.polaris.warehouse=polaris \
@@ -94,7 +99,7 @@ bin/spark-shell \
 The polaris-spark project also provides a Spark bundle JAR for the `--jars` use case. The resulting JAR will follow this naming format:
 polaris-spark-<spark_version>_<scala_version>-<polaris_version>-bundle.jar
 For example:
-polaris-spark-bundle-3.5_2.12-1.2.0-incubating-SNAPSHOT-bundle.jar
+polaris-spark-3.5_2.12-1.6.0-SNAPSHOT-bundle.jar
 
 Run `./gradlew assemble` to build the entire Polaris project without running tests. After the build completes, 
 the bundle JAR can be found under: plugins/spark/v3.5/spark/build/<scala_version>/libs/.

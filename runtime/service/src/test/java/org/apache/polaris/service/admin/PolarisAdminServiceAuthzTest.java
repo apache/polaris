@@ -34,11 +34,12 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.service.Profiles;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
 @QuarkusTest
-@TestProfile(PolarisAuthzTestBase.Profile.class)
+@TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   private PolarisAdminService newTestAdminService() {
     return newTestAdminService(Set.of());

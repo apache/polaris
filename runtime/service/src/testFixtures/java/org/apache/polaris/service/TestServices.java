@@ -49,7 +49,6 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -229,9 +228,12 @@ public record TestServices(
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
-      BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
       CallContext callContext =
-          new PolarisCallContext(realmContext, metaStoreSession, configurationSource);
+          new PolarisCallContext(
+              realmContext,
+              metaStoreManagerFactory.getOrCreateSession(realmContext),
+              metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
+              configurationSource);
 
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -466,7 +468,10 @@ public record TestServices(
   }
 
   public PolarisCallContext newCallContext() {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore, configurationSource);
+    return new PolarisCallContext(
+        realmContext,
+        metaStoreManagerFactory.getOrCreateSession(realmContext),
+        metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
+        configurationSource);
   }
 }

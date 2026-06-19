@@ -41,7 +41,7 @@ DEFAULT_BASE_LOCATION=abfss://tenant123@blob.core.windows.net \
 TENANT_ID=tenant123.onmicrosoft.com \
 MULTI_TENANT_APP_NAME=myapp \
 CONSENT_URL=https://myapp.com/consent
-./polaris \
+polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   catalogs \

@@ -106,7 +106,8 @@ public class SparkCatalogTest {
       // initialize the polarisSparkCatalog with PolarisSparkCatalog
       this.polarisSparkCatalog =
           new PolarisSparkCatalog(
-              ((InMemoryIcebergSparkCatalog) this.icebergsSparkCatalog).getInMemoryCatalog());
+              ((InMemoryIcebergSparkCatalog) this.icebergsSparkCatalog).getInMemoryCatalog(),
+              new org.apache.polaris.spark.utils.PolarisCatalogSpark3Utils());
       this.polarisSparkCatalog.initialize(name, options);
 
       this.deltaHelper = new DeltaHelper(options);
@@ -661,13 +662,11 @@ public class SparkCatalogTest {
             .thenCallRealMethod();
 
         if ("hudi".equalsIgnoreCase(format)) {
-          // For Hudi tables, mock the loadV1SparkHudiTable method to return the mock table
-          mockedStaticUtils
-              .when(
-                  () ->
-                      PolarisCatalogUtils.loadV1SparkTable(
-                          Mockito.any(), Mockito.any(), Mockito.any()))
+          // For Hudi tables, mock the loadV1SparkTable instance method to return the mock table
+          PolarisCatalogUtils utilsMock = Mockito.mock(PolarisCatalogUtils.class);
+          Mockito.when(utilsMock.loadV1SparkTable(Mockito.any(), Mockito.any(), Mockito.any()))
               .thenReturn(table);
+          sparkCatalog.polarisSparkCatalog.catalogUtils = utilsMock;
         } else {
           TableProvider provider = Mockito.mock(TableProvider.class);
           mockedStaticDS

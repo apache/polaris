@@ -208,6 +208,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     List<PolarisBaseEntity> entities =
         ms.lookupEntitiesInCurrentTxn(callCtx, new ArrayList<>(entityIdsGrantChanged));
     for (PolarisBaseEntity originalEntity : entities) {
+      if (originalEntity == null) {
+        continue; // entity was concurrently dropped/purged after grants were removed
+      }
       PolarisBaseEntity entityGrantChanged =
           originalEntity.withGrantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1);
       ms.writeEntityInCurrentTxn(callCtx, entityGrantChanged, false, originalEntity);

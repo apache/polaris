@@ -33,7 +33,7 @@ plugins {
 val projectName = rootProject.file("ide-name.txt").readText().trim()
 val ideName = "$projectName ${rootProject.version.toString().replace("^([0-9.]+).*", "\\1")}"
 
-if (System.getProperty("idea.sync.active").toBoolean()) {
+if (providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean()) {
   // There's no proper way to set the name of the IDEA project (when "just importing" or
   // syncing the Gradle project)
   val ideaDir = rootProject.layout.projectDirectory.dir(".idea")
@@ -62,6 +62,8 @@ tasks.named<RatTask>("rat").configure {
 
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
+
+  excludes.add(".env")
 
   excludes.add("**/LICENSE*")
   excludes.add("**/NOTICE*")
@@ -160,7 +162,7 @@ tasks.register<Exec>("buildPythonClient") {
   description = "Build the python client"
 
   workingDir = project.projectDir
-  if (project.hasProperty("python.format")) {
+  if (providers.gradleProperty("python.format").isPresent) {
     environment("FORMAT", project.property("python.format") as String)
   }
   commandLine("make", "client-build")
@@ -269,6 +271,7 @@ tasks.named<Wrapper>("wrapper") {
     val insertAtLine =
       scriptLines.indexOf("# Use the maximum available, or set MAX_FD != -1 to use that value.")
     scriptLines.add(insertAtLine, "")
+    scriptLines.add(insertAtLine, $$"[ -f \"${APP_HOME}/.env\" ] && . \"${APP_HOME}/.env\"")
     scriptLines.add(insertAtLine, $$". \"${APP_HOME}/gradle/gradlew-include.sh\"")
 
     scriptFile.writeText(scriptLines.joinToString("\n"))

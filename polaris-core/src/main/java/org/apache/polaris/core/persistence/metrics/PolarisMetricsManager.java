@@ -56,7 +56,7 @@ public interface PolarisMetricsManager {
    */
   default void writeScanMetrics(
       @NonNull PolarisCallContext callCtx, @NonNull ScanMetricsRecord record) {
-    callCtx.getMetaStore().writeScanReport(record);
+    callCtx.getMetricsPersistence().writeScanReport(record);
   }
 
   /**
@@ -73,6 +73,6 @@ public interface PolarisMetricsManager {
    */
   default void writeCommitMetrics(
       @NonNull PolarisCallContext callCtx, @NonNull CommitMetricsRecord record) {
-    callCtx.getMetaStore().writeCommitReport(record);
+    callCtx.getMetricsPersistence().writeCommitReport(record);
   }
 }

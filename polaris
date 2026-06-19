@@ -20,6 +20,14 @@
 
 set -e
 
+cat >&2 <<'DEPRECATION_EOF'
+┌─[DEPRECATED]────────────────────────────────┐
+│ This script is deprecated. Use pip instead: │
+│                                             │
+│   pip install apache-polaris                │
+└─────────────────────────────────────────────┘
+DEPRECATION_EOF
+
 dir=${0%/*}
 repair=false
 for arg in "$@"; do

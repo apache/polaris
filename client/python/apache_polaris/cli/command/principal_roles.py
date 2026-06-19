@@ -42,8 +42,8 @@ class PrincipalRolesCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris principal-roles create user_role
-        * ./polaris principal-roles list --principal user
+        * polaris principal-roles create user_role
+        * polaris principal-roles list --principal user
     """
 
     principal_roles_subcommand: str

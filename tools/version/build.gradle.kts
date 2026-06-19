@@ -32,18 +32,19 @@ description =
 val syncNoticeAndLicense by
   tasks.registering(Sync::class) {
     // Have to manually declare the inputs of this task here on top of the from/include below
-    inputs.files(
-      rootProject.fileTree(rootProject.rootDir) { include("NOTICE*", "LICENSE*", "version.txt") }
-    )
+    val rootDir = layout.settingsDirectory
+    inputs
+      .files(fileTree(rootDir) { include("NOTICE*", "LICENSE*", "version.txt") })
+      .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("version", project.version)
     destinationDir = project.layout.buildDirectory.dir("notice-licenses").get().asFile
-    from(rootProject.rootDir) {
+    from(rootDir) {
       include("NOTICE*", "LICENSE*")
       // Put NOTICE/LICENSE* files under META-INF/resources/ so those files can be directly
       // accessed as static web resources in Quarkus.
       eachFile { path = "META-INF/resources/apache-polaris/${file.name}.txt" }
     }
-    from(rootProject.rootDir) {
+    from(rootDir) {
       include("version.txt")
       // Put NOTICE/LICENSE* files under META-INF/resources/ so those files can be directly
       // accessed as static web resources in Quarkus.
@@ -73,8 +74,8 @@ sourceSets.main.configure {
 val jarTestJar by
   tasks.registering(Jar::class) {
     archiveClassifier.set("jarTest")
-    from(sourceSets.main.get().output)
-    from(sourceSets.getByName("jarTest").output)
+    from(sourceSets.main.map { it.output })
+    from(sourceSets.named("jarTest").map { it.output })
   }
 
 // Add a test-suite to run against the built polaris-version*.jar, not the classes/, because we
@@ -82,9 +83,9 @@ val jarTestJar by
 testing {
   suites {
     register<JvmTestSuite>("jarTest") {
-      dependencies { runtimeOnly(files(jarTestJar.get().archiveFile.get().asFile)) }
+      dependencies { runtimeOnly(files(jarTestJar.map { it.archiveFile })) }
 
-      targets.all {
+      targets.configureEach {
         testTask.configure {
           dependsOn("jar", jarTestJar)
           systemProperty("rootProjectDir", rootProject.rootDir.relativeTo(project.projectDir))

@@ -46,9 +46,9 @@ class PoliciesCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris policies create --catalog some_catalog --namespace some.schema --policy-file some_policy.json --policy-type system.data-compaction some_policy
-        * ./polaris policies list --catalog some_catalog --applicable
-        * ./polaris policies attach --catalog some_catalog --namespace some.schema --attachment-type table-like --attachment-path some.schema.t some_table_policy
+        * polaris policies create --catalog some_catalog --namespace some.schema --policy-file some_policy.json --policy-type system.data-compaction some_policy
+        * polaris policies list --catalog some_catalog --applicable
+        * polaris policies attach --catalog some_catalog --namespace some.schema --attachment-type table-like --attachment-path some.schema.t some_table_policy
     """
 
     policies_subcommand: str
