@@ -95,10 +95,7 @@ spec:
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsAccessKeyId" "polaris.storage.aws.access-key") | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsSecretAccessKey" "polaris.storage.aws.secret-key") | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "gcpToken" "polaris.storage.gcp.token") | indent 12 -}}
-            {{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "username" "quarkus.datasource.username") | indent 12 -}}
-            {{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "password" "quarkus.datasource.password") | indent 12 -}}
-            {{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "jdbcUrl" "quarkus.datasource.jdbc.url") | indent 12 -}}
-            {{- include "polaris.secretToEnv" (list .Values.persistence.nosql.secret "connectionString" "quarkus.mongodb.connection-string") | indent 12 -}}
+            {{- include "polaris.persistenceEnv" . | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.oidc.client.secret "key" "quarkus.oidc.credentials.secret") | indent 12 -}}
             {{- if .Values.extraEnv -}}
             {{- tpl (toYaml .Values.extraEnv) . | nindent 12 -}}

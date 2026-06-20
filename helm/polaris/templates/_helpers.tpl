@@ -46,18 +46,23 @@
 {{- define "polaris.fullnameWithSuffix" -}}
 {{- $global := index . 0 }}
 {{- $suffix := index . 1 }}
+{{- $maxLength := 63 }}
+{{- if ge (len .) 3 }}
+{{- $maxLength = int (index . 2) }}
+{{- end }}
 {{- if not (hasPrefix "-" $suffix) }}
 {{- $suffix = printf "-%s" $suffix }}
 {{- end }}
-{{- $length := int (sub 63 (len $suffix)) }}
+{{- $length := int (sub $maxLength (len $suffix)) }}
+{{- if lt $length 0 }}{{- $length = 0 }}{{- end }}
 {{- if $global.Values.fullnameOverride }}
-{{- $global.Values.fullnameOverride | trunc $length }}{{ $suffix }}
+{{- $global.Values.fullnameOverride | trunc $length | trimSuffix "-" }}{{ $suffix }}
 {{- else }}
 {{- $name := default $global.Chart.Name $global.Values.nameOverride }}
 {{- if contains $name $global.Release.Name }}
-{{- $global.Release.Name | trunc $length }}{{ $suffix }}
+{{- $global.Release.Name | trunc $length | trimSuffix "-" }}{{ $suffix }}
 {{- else }}
-{{- printf "%s-%s" $global.Release.Name $name | trunc $length }}{{ $suffix }}
+{{- printf "%s-%s" $global.Release.Name $name | trunc $length | trimSuffix "-" }}{{ $suffix }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -87,6 +92,20 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "polaris.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "polaris.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+  Maintenance pods labels.
+*/}}
+{{- define "polaris.maintenanceLabels" -}}
+helm.sh/chart: {{ include "polaris.chart" . }}
+app.kubernetes.io/name: {{ include "polaris.name" . }}-maintenance
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: maintenance
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*

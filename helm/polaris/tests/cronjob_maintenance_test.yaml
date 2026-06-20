@@ -35,7 +35,7 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: should not active the MongoDB client when nosql backend is not MongoDb
+  - it: should not activate the MongoDB client when nosql backend is not MongoDb
     template: cronjob-maintenance.yaml
     set:
       persistence:
@@ -52,7 +52,7 @@ tests:
             name: quarkus.mongodb.active
             value: "true"
 
-  - it: should not active the MongoDB client when persistence type is not nosql
+  - it: should not activate the MongoDB client when persistence type is not nosql
     template: cronjob-maintenance.yaml
     set:
       persistence:
@@ -93,7 +93,7 @@ tests:
           of: CronJob
       - equal:
           path: metadata.name
-          value: polaris-release-maint-nosql-maintenance
+          value: polaris-release-nosql-maintenance
       - equal:
           path: metadata.namespace
           value: polaris-ns
@@ -361,7 +361,7 @@ tests:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
           value: apache/polaris-admin-tool:test-tag
 
-  - it: should fail clearly when the CronJob name exceeds 52 chars
+  - it: should trim the fullname prefix when the cron name would exceed 52 chars
     template: cronjob-maintenance.yaml
     set:
       fullnameOverride: "this-is-an-very-long-polaris-release-name-to-exceed-max-allowed-length"
@@ -370,8 +370,27 @@ tests:
           nosql-maintenance:
             enabled: true
     asserts:
-      - failedTemplate:
-          errorPattern: "must be <= 52"
+      # Job key (suffix) is preserved verbatim; prefix is trimmed to fit 52 chars total.
+      - matchRegex:
+          path: metadata.name
+          pattern: ".+-nosql-maintenance$"
+      - equal:
+          path: metadata.name
+          # 52 - len("-nosql-maintenance") = 34 chars of prefix
+          value: this-is-an-very-long-polaris-relea-nosql-maintenance
+
+  - it: should allow per-job serviceAccountName override
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        jobs:
+          nosql-maintenance:
+            enabled: true
+            serviceAccountName: my-custom-sa
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.serviceAccountName
+          value: my-custom-sa
 
   - it: should default restartPolicy to Never and disable SA token automount
     template: cronjob-maintenance.yaml
@@ -425,17 +444,17 @@ tests:
       - notExists:
           path: spec.jobTemplate.spec.template.spec.priorityClassName
 
-  - it: should render CronJob annotations and per-job pod annotations
+  - it: should render maintenance-wide CronJob annotations and pod annotations
     template: cronjob-maintenance.yaml
     set:
       maintenance:
         annotations:
           argocd.argoproj.io/sync-wave: "1"
+        podAnnotations:
+          prometheus.io/scrape: "false"
         jobs:
           nosql-maintenance:
             enabled: true
-            podAnnotations:
-              prometheus.io/scrape: "false"
     asserts:
       - equal:
           path: metadata.annotations["argocd.argoproj.io/sync-wave"]
@@ -456,6 +475,31 @@ tests:
           path: metadata.annotations
       - notExists:
           path: spec.jobTemplate.spec.template.metadata.annotations
+
+  - it: should render user-supplied maintenance.podLabels alongside chart-managed labels
+    template: cronjob-maintenance.yaml
+    set:
+      maintenance:
+        podLabels:
+          team: data-platform
+          cost-center: "1234"
+        jobs:
+          nosql-maintenance:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels.team
+          value: data-platform
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels["cost-center"]
+          value: "1234"
+      # Chart-managed isolation labels still present
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: maintenance
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: polaris-maintenance
 
   - it: should isolate pod labels from server selectors (PDB/Service/SM)
     template: cronjob-maintenance.yaml
@@ -568,7 +612,7 @@ tests:
                 name: my-jdbc-secret
                 key: url-key
 
-  - it: should not render backoffLimit or activeDeadlineSeconds by default
+  - it: should render the default backoffLimit and skip activeDeadlineSeconds by default
     template: cronjob-maintenance.yaml
     set:
       maintenance:
@@ -576,8 +620,9 @@ tests:
           nosql-maintenance:
             enabled: true
     asserts:
-      - notExists:
+      - equal:
           path: spec.jobTemplate.spec.backoffLimit
+          value: 6
       - notExists:
           path: spec.jobTemplate.spec.activeDeadlineSeconds
 

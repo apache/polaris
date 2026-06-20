@@ -1169,16 +1169,37 @@ tasks:
   maxQueuedTasks: 0  # 1000
 
 # @schema type: object
-# -- Configuration for maintenance tasks using as Kubernetes CronJob
+# -- Configuration for Polaris maintenance tasks running as Kubernetes CronJobs.
+# Maintenance pods inherit the global pod-level scheduling and hardening
+# settings but do NOT inherit env-var or volume settings. The latter must be
+# configured explicitly under maintenance.* to prevent server-specific secrets
+# and configuration from being exposed to maintenance pods.
+# @default -- See sub-fields below.
 # @section -- Maintenance
 maintenance:
   # @schema additionalProperties: {type: string}
-  # -- Annotations to add to every maintenance Cronjob object.
+  # -- Annotations to add to every maintenance CronJob object.
   # @section -- Maintenance
   annotations: {}
 
+  # @schema additionalProperties: {type: string}
+  # -- Annotations to add to every maintenance pod.
+  # NOT merged with the global `podAnnotations` as annotations can grant
+  # extra access, so maintenance pods receive only what is configured here.
+  # @section -- Maintenance
+  podAnnotations: {}
+
+  # @schema additionalProperties: {type: string}
+  # -- Labels to add to every maintenance pod (e.g., team, cost-center).
+  # NOT merged with the global `podLabels`. User-supplied labels are
+  # rendered after the chart-managed maintenance labels.
+  # @section -- Maintenance
+  podLabels: {}
+
   # @schema item: object
-  # -- Extra environment variables to add to every maintenance Cronjob object.
+  # -- Extra environment variables to add to every maintenance CronJob object.
+  # NOT merged with the global `extraEnv` as maintenance pods receive only
+  # values configured here.
   # @section -- Maintenance
   extraEnv: []
   #  - name: AWS_STORAGE_BUCKET
@@ -1195,7 +1216,9 @@ maintenance:
   #        key: secret_access_key
 
   # @schema item: object
-  # -- Bulk import environment variables from Secrets or ConfigMaps to every maintenance Cronjob object.
+  # -- Bulk import environment variables from Secrets or ConfigMaps to every maintenance CronJob object.
+  # NOT merged with the global `envFrom` as maintenance pods receive only
+  # values configured here.
   # @section -- Maintenance
   envFrom: []
   #  - secretRef:
@@ -1204,20 +1227,23 @@ maintenance:
   #      name: polaris-env-configmap
 
   # @schema item: object
-  # -- Extra volumes to add to every maintenance Cronjob object.
+  # -- Extra volumes to add to every maintenance CronJob object.
+  # NOT merged with the global `extraVolumes` — see `maintenance.extraEnv` for the rationale.
   # @section -- Maintenance
   extraVolumes: []
     # - name: extra-volume
     #   emptyDir: {}
 
   # @schema item: object
-  # -- Extra volume mounts to add to every maintenance Cronjob object.
+  # -- Extra volume mounts to add to every maintenance CronJob object.
+  # NOT merged with the global `extraVolumeMounts` as maintenance pods receive only
+  # values configured here.
   # @section -- Maintenance
   extraVolumeMounts: []
     # - name: extra-volume
     #   mountPath: /usr/share/extra-volume
 
-  # -- The container image used by every maintenance Cronjob object.
+  # -- The container image used by every maintenance CronJob object.
   # @section -- Maintenance
   image:
     # -- The image repository to pull from for the Polaris admin tool.
@@ -1231,8 +1257,9 @@ maintenance:
     # @section -- Maintenance
     tag: "latest"  # This tag will be replaced with the chart version at release time.
 
-  # @schema additionalProperties: {type: object, required: [schedule]}
-  # -- Define maintenance CronJobs. The key is the name of the job.
+  # @schema additionalProperties: {type: object, required: [enabled, schedule]}
+  # -- Define maintenance CronJobs.
+  # @default -- See sub-fields below.
   # @section -- Maintenance
   jobs:
     nosql-maintenance:
@@ -1246,11 +1273,14 @@ maintenance:
       # @section -- Maintenance
       args: ["nosql", "maintenance-run"]
       # @schema enum: [Allow, Forbid, Replace]
-      # -- The concurrency policy, Valid values are: Allow, Forbid, Replace.
+      # -- The concurrency policy. Valid values are: Allow, Forbid, Replace.
       # @section -- Maintenance
       concurrencyPolicy: Forbid
       # @schema type: object
-      # -- Configures the resources requests and limits for this job's container.
+      # -- Resource requests and limits for this job's container.
+      # Not merged with the global `resources` as server's resource profile
+      # is typically not suitable for short-lived maintenance jobs. Configure
+      # resources explicitly when needed. Unset by default.
       # @section -- Maintenance
       resources:
         {}
@@ -1260,11 +1290,24 @@ maintenance:
         # requests:
         #   cpu: 100m
         #   memory: 128Mi
-      # Optional per-job knobs (uncomment to use):
-      # restartPolicy: Never
-      # backoffLimit: 6
-      # activeDeadlineSeconds: 1800
-      # successfulJobsHistoryLimit: 3
-      # failedjobsHistoryLimit: 1
-      # podAnnotations:
-      #   prometheus.io/scrape: "false"
+      # @schema enum: [Never, OnFailure]
+      # -- The pod's restartPolicy.
+      # @section -- Maintenance
+      restartPolicy: Never
+      # -- Maximum number of retries before marking this Job failed.
+      # @section -- Maintenance
+      backoffLimit: 6
+      # @schema type: [integer, "null"]
+      # @schema minimum: 1
+      # -- Maximum runtime in seconds for a single job run. Null means no limit.
+      # @section -- Maintenance
+      activeDeadlineSeconds: ~
+      # -- How many successful finished Jobs to retain in history.
+      # @section -- Maintenance
+      successfulJobsHistoryLimit: 3
+      # -- How many failed finished Jobs to retain in history.
+      # @section -- Maintenance
+      failedJobsHistoryLimit: 1
+      # -- Per-job ServiceAccount override. Empty means use the global ServiceAccount.
+      # @section -- Maintenance
+      serviceAccountName: ""

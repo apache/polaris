@@ -19,10 +19,8 @@
 
 {{- range $jobName, $jobSpec := .Values.maintenance.jobs }}
 {{- if $jobSpec.enabled }}
-{{- $cronName := printf "%s-maint-%s" (include "polaris.fullname" $) $jobName }}
-{{- if gt (len $cronName) 52 }}
-  {{- fail (printf "Maintenance CronJob name %q is %d chars; must be <= 52 (K8s appends a timestamp+random suffix to generated Pod names, which are capped at 63). Shorten release name, nameOverride/fullnameOverride, or the job key %q." $cronName (len $cronName) $jobName) }}
-{{- end }}
+{{/* Limit to 52 chars so the generated Job name plus Kubernetes timestamp suffix stays within the 63-char DNS label limit. */}}
+{{- $cronName := include "polaris.fullnameWithSuffix" (list $ $jobName 52) }}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -30,7 +28,7 @@ metadata:
   name: {{ $cronName }}
   namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "polaris.labels" $ | nindent 4 }}
+    {{- include "polaris.maintenanceLabels" $ | nindent 4 }}
   {{- with $.Values.maintenance.annotations }}
   annotations:
     {{- tpl (toYaml .) $ | nindent 4 }}
@@ -55,15 +53,11 @@ spec:
       template:
         metadata:
           labels:
-            helm.sh/chart: {{ include "polaris.chart" $ }}
-            app.kubernetes.io/name: {{ include "polaris.name" $ }}-maintenance
-            app.kubernetes.io/instance: {{ $.Release.Name }}
-            app.kubernetes.io/component: maintenance
-            app.kubernetes.io/managed-by: {{ $.Release.Service }}
-            {{- if $.Chart.AppVersion }}
-            app.kubernetes.io/version: {{ $.Chart.AppVersion | quote }}
+            {{- include "polaris.maintenanceLabels" $ | nindent 12 }}
+            {{- with $.Values.maintenance.podLabels }}
+            {{- tpl (toYaml .) $ | nindent 12 }}
             {{- end }}
-          {{- with $jobSpec.podAnnotations }}
+          {{- with $.Values.maintenance.podAnnotations }}
           annotations:
             {{- tpl (toYaml .) $ | nindent 12 }}
           {{- end }}
@@ -78,7 +72,7 @@ spec:
           {{- with $.Values.priorityClassName }}
           priorityClassName: {{ tpl . $ | quote }}
           {{- end }}
-          serviceAccountName: {{ include "polaris.serviceAccountName" $ }}
+          serviceAccountName: {{ $jobSpec.serviceAccountName | default (include "polaris.serviceAccountName" $) }}
           automountServiceAccountToken: false
           {{- if $.Values.podSecurityContext }}
           securityContext:
