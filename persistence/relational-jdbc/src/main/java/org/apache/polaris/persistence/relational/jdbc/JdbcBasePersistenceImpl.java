@@ -1125,7 +1125,7 @@ public class JdbcBasePersistenceImpl
       datasourceOperations.execute(connection, updateQuery);
     } else {
       // record doesn't exist do an insert.
-      datasourceOperations.executeUpdate(insertQuery);
+      datasourceOperations.execute(connection, insertQuery);
     }
     return true;
   }

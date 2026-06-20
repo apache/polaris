@@ -22,5 +22,5 @@ import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.admintool.AdminProfiles;
 import org.apache.polaris.admintool.PurgeCommandTestBase;
 
-@TestProfile(AdminProfiles.PreBootstrappedRelationalJdbc.class)
+@TestProfile(AdminProfiles.RelationalJdbc.class)
 public class RelationalJdbcPurgeCommandTest extends PurgeCommandTestBase {}

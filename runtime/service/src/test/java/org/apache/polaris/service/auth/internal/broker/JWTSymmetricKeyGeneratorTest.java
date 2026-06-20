@@ -52,8 +52,14 @@ public class JWTSymmetricKeyGeneratorTest {
         new PrincipalEntity.Builder().setId(principalId).setName("principal").build();
     Mockito.when(metastoreManager.findPrincipalById(polarisCallContext, principalId))
         .thenReturn(Optional.of(principal));
+    Algorithm algorithm = Algorithm.HMAC256("polaris");
     TokenBroker generator =
-        new SymmetricKeyJWTBroker(metastoreManager, polarisCallContext, 666, () -> "polaris");
+        new JWTBroker(
+            metastoreManager,
+            polarisCallContext,
+            666,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
     TokenResponse token =
         generator.generateFromClientSecrets(
             clientId,

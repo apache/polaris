@@ -90,20 +90,29 @@ quarkus {
 }
 
 // Configuration to expose distribution artifacts
-val distributionElements by
-  configurations.creating {
+val distributionElements =
+  configurations.create("distributionElements") {
     isCanBeConsumed = true
     isCanBeResolved = false
   }
 
-val licenseNoticeElements by
-  configurations.creating {
+val licenseNoticeElements =
+  configurations.create("licenseNoticeElements") {
     isCanBeConsumed = true
     isCanBeResolved = false
   }
 
 // Register the quarkus app directory as an artifact
 artifacts {
-  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
-  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
+  add(distributionElements.name, layout.buildDirectory.dir("quarkus-app")) {
+    builtBy("quarkusBuild")
+  }
+  add(licenseNoticeElements.name, layout.projectDirectory.dir("distribution"))
+}
+
+tasks.withType<Test>().configureEach {
+  forkEvery = 0
+
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
 }

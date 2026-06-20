@@ -127,6 +127,26 @@
       matchPackageNames: [ "org.scala-lang:*" ],
       matchCurrentVersion: "/^2\\.13\\./",
       allowedVersions: "/^2\\.13\\./"
+    },
+    // ANTLR runtime versions are pinned to match the version used by Delta
+    // https://github.com/delta-io/delta/blob/master/project/CrossSparkVersions.scala#L211
+    {
+      matchManagers: ["gradle"],
+      matchPackageNames: ["org.antlr:antlr4-runtime"],
+      enabled: false
+    },
+    // Apache Spark major/minor verisons are not comaptible with each other
+    {
+      matchManagers: ["dockerfile", "docker-compose"],
+      matchPackageNames: [ "apache/spark", "docker.io/apache/spark" ],
+      matchCurrentVersion: "/^3\\.5\\./",
+      allowedVersions: "/^3\\.5\\./"
+    },
+    {
+      matchManagers: ["dockerfile", "docker-compose"],
+      matchPackageNames: [ "apache/spark", "docker.io/apache/spark" ],
+      matchCurrentVersion: "/^4\\.0\\./",
+      allowedVersions: "/^4\\.0\\./"
     }
   ],
 

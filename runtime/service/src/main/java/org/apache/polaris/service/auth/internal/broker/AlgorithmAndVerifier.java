@@ -19,25 +19,16 @@
 package org.apache.polaris.service.auth.internal.broker;
 
 import com.auth0.jwt.algorithms.Algorithm;
-import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import com.auth0.jwt.interfaces.JWTVerifier;
 
-/** Generates a JWT using a Symmetric Key. */
-public class SymmetricKeyJWTBroker extends JWTBroker {
-  private final Supplier<String> secretSupplier;
+/**
+ * Holds a JWT {@link Algorithm} and its derived {@link JWTVerifier}. Built once per realm by a
+ * {@link TokenBrokerFactory} and shared across request-scoped {@link JWTBroker} instances so the
+ * verifier is not reconstructed on every request.
+ */
+record AlgorithmAndVerifier(Algorithm algorithm, JWTVerifier verifier) {
 
-  public SymmetricKeyJWTBroker(
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext polarisCallContext,
-      int maxTokenGenerationInSeconds,
-      Supplier<String> secretSupplier) {
-    super(metaStoreManager, polarisCallContext, maxTokenGenerationInSeconds);
-    this.secretSupplier = secretSupplier;
-  }
-
-  @Override
-  public Algorithm getAlgorithm() {
-    return Algorithm.HMAC256(secretSupplier.get());
+  static AlgorithmAndVerifier of(Algorithm algorithm) {
+    return new AlgorithmAndVerifier(algorithm, JWTBroker.buildVerifier(algorithm));
   }
 }

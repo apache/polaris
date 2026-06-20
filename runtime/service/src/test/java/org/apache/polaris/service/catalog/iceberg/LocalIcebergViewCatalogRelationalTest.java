@@ -20,7 +20,8 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.service.Profiles;
 
 @QuarkusTest
-@TestProfile(AbstractLocalIcebergCatalogViewTest.Profile.class)
+@TestProfile(Profiles.DefaultIcebergCatalogProfile.class)
 public class LocalIcebergViewCatalogRelationalTest extends AbstractLocalIcebergCatalogViewTest {}

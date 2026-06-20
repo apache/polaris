@@ -49,7 +49,7 @@ import org.apache.polaris.persistence.nosql.api.cache.CacheBackend;
 import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations;
 import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheInvalidation;
 import org.apache.polaris.persistence.nosql.api.obj.SimpleTestObj;
-import org.apache.polaris.service.catalog.iceberg.AbstractLocalIcebergCatalogTest;
+import org.apache.polaris.service.Profiles;
 import org.assertj.core.api.SoftAssertions;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.AfterEach;
@@ -69,7 +69,7 @@ import org.junit.jupiter.api.condition.OS;
 @SuppressWarnings("CdiInjectionPointsInspection")
 public class TestPersistenceDistCacheInvalidationsIntegration {
 
-  public static class Profile extends AbstractLocalIcebergCatalogTest.Profile {
+  public static class Profile extends Profiles.NoSqlIcebergCatalogProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
@@ -77,9 +77,6 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
           .put("quarkus.management.port", "0")
           .put("quarkus.management.host", "127.0.0.1")
           .put("quarkus.management.enabled", "true")
-          .put("polaris.persistence.type", "nosql")
-          .put("polaris.persistence.auto-bootstrap-types", "nosql")
-          .put("polaris.persistence.nosql.backend", "InMemory")
           .put(
               "polaris.persistence.distributed-cache-invalidations.valid-tokens", "token1," + TOKEN)
           .put(

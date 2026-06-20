@@ -19,27 +19,11 @@
 package org.apache.polaris.service.it;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
+import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTestBase;
 
 @QuarkusTest
-@TestProfile(RestCatalogViewFileIntegrationTest.Profile.class)
+@TestProfile(Profiles.RestCatalogViewFileIntegrationProfile.class)
 public class RestCatalogViewFileIntegrationTest
-    extends PolarisRestCatalogViewFileIntegrationTestBase {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]",
-          "polaris.readiness.ignore-severe-issues",
-          "true");
-    }
-  }
-}
+    extends PolarisRestCatalogViewFileIntegrationTestBase {}
