@@ -62,26 +62,24 @@ public class RequestIdHeaderTest {
   HttpServer httpServer;
 
   private Response request(Map<String, String> headers) {
-    try {
-      try (PolarisClient client =
-          PolarisClient.polarisClient(
-              new PolarisApiEndpoints(httpServer.getLocalBaseUri(), REALM, headers))) {
-        return client
-            .catalogApiPlain()
-            .request("v1/oauth/tokens")
-            .post(
-                Entity.form(
-                    new MultivaluedHashMap<>(
-                        Map.of(
-                            "grant_type",
-                            "client_credentials",
-                            "scope",
-                            "PRINCIPAL_ROLE:ALL",
-                            "client_id",
-                            CLIENT_ID,
-                            "client_secret",
-                            CLIENT_SECRET))));
-      }
+    try (PolarisClient client =
+        PolarisClient.polarisClient(
+            new PolarisApiEndpoints(httpServer.getLocalBaseUri(), REALM, headers))) {
+      return client
+          .catalogApiPlain()
+          .request("v1/oauth/tokens")
+          .post(
+              Entity.form(
+                  new MultivaluedHashMap<>(
+                      Map.of(
+                          "grant_type",
+                          "client_credentials",
+                          "scope",
+                          "PRINCIPAL_ROLE:ALL",
+                          "client_id",
+                          CLIENT_ID,
+                          "client_secret",
+                          CLIENT_SECRET))));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
