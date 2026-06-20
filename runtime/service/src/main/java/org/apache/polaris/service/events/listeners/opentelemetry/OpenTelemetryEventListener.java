@@ -22,6 +22,9 @@ import static io.opentelemetry.api.common.AttributeKey.booleanKey;
 import static io.opentelemetry.api.common.AttributeKey.longKey;
 import static io.opentelemetry.api.common.AttributeKey.stringArrayKey;
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SPAN_ID_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_FLAGS_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_ID_KEY;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -146,86 +149,113 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
             });
     metadata.openTelemetryContext().forEach(attributes::put);
 
-    putStringAttribute(
-        attributes, event, CATALOG_NAME_ATTRIBUTE_NAME, EventAttributes.CATALOG_NAME);
-    putStringAttribute(
-        attributes,
-        event,
-        NAMESPACE_ATTRIBUTE_NAME,
-        EventAttributes.NAMESPACE,
-        Namespace::toString);
-    putStringAttribute(
-        attributes, event, NAMESPACE_FQN_ATTRIBUTE_NAME, EventAttributes.NAMESPACE_FQN);
-    putStringAttribute(
-        attributes,
-        event,
-        PARENT_NAMESPACE_FQN_ATTRIBUTE_NAME,
-        EventAttributes.PARENT_NAMESPACE_FQN);
-    putStringAttribute(attributes, event, TABLE_NAME_ATTRIBUTE_NAME, EventAttributes.TABLE_NAME);
-    putStringAttribute(
-        attributes, event, TABLE_IDENTIFIER_ATTRIBUTE_NAME, EventAttributes.TABLE_IDENTIFIER);
-    derivedTableIdentifier(event)
-        .ifPresent(
-            tableIdentifier -> attributes.put(TABLE_IDENTIFIER_ATTRIBUTE_NAME, tableIdentifier));
-    putStringAttribute(attributes, event, VIEW_NAME_ATTRIBUTE_NAME, EventAttributes.VIEW_NAME);
-    putStringAttribute(
-        attributes, event, VIEW_IDENTIFIER_ATTRIBUTE_NAME, EventAttributes.VIEW_IDENTIFIER);
-    derivedViewIdentifier(event)
-        .ifPresent(
-            viewIdentifier -> attributes.put(VIEW_IDENTIFIER_ATTRIBUTE_NAME, viewIdentifier));
-    putStringAttribute(
-        attributes, event, PRINCIPAL_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_NAME);
-    putStringAttribute(
-        attributes, event, PRINCIPAL_ROLE_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_ROLE_NAME);
-    putStringAttribute(
-        attributes, event, CATALOG_ROLE_NAME_ATTRIBUTE_NAME, EventAttributes.CATALOG_ROLE_NAME);
-    putStringAttribute(
-        attributes, event, PRIVILEGE_ATTRIBUTE_NAME, EventAttributes.PRIVILEGE, Enum::name);
-    putBooleanAttribute(attributes, event, CASCADE_ATTRIBUTE_NAME, EventAttributes.CASCADE);
-    putStringAttribute(attributes, event, WAREHOUSE_ATTRIBUTE_NAME, EventAttributes.WAREHOUSE);
-    putStringAttribute(
-        attributes,
-        event,
-        ACCESS_DELEGATION_MODE_ATTRIBUTE_NAME,
-        EventAttributes.ACCESS_DELEGATION_MODE);
-    putStringAttribute(
-        attributes, event, IF_NONE_MATCH_ATTRIBUTE_NAME, EventAttributes.IF_NONE_MATCH_STRING);
-    putStringAttribute(attributes, event, SNAPSHOTS_ATTRIBUTE_NAME, EventAttributes.SNAPSHOTS);
-    putBooleanAttribute(
-        attributes, event, PURGE_REQUESTED_ATTRIBUTE_NAME, EventAttributes.PURGE_REQUESTED);
-    putLongAttribute(
-        attributes, event, TASK_ENTITY_ID_ATTRIBUTE_NAME, EventAttributes.TASK_ENTITY_ID);
-    putLongAttribute(attributes, event, TASK_ATTEMPT_ATTRIBUTE_NAME, EventAttributes.TASK_ATTEMPT);
-    putBooleanAttribute(
-        attributes, event, TASK_SUCCESS_ATTRIBUTE_NAME, EventAttributes.TASK_SUCCESS);
-    putStringAttribute(attributes, event, HTTP_METHOD_ATTRIBUTE_NAME, EventAttributes.HTTP_METHOD);
-    putStringAttribute(attributes, event, REQUEST_URI_ATTRIBUTE_NAME, EventAttributes.REQUEST_URI);
-    putStringAttribute(
-        attributes, event, NAMESPACE_NAME_ATTRIBUTE_NAME, EventAttributes.NAMESPACE_NAME);
-    putStringAttribute(
-        attributes, event, GENERIC_TABLE_NAME_ATTRIBUTE_NAME, EventAttributes.GENERIC_TABLE_NAME);
-    putStringAttribute(attributes, event, POLICY_NAME_ATTRIBUTE_NAME, EventAttributes.POLICY_NAME);
-    putStringAttribute(attributes, event, POLICY_TYPE_ATTRIBUTE_NAME, EventAttributes.POLICY_TYPE);
-    putStringAttribute(attributes, event, TARGET_NAME_ATTRIBUTE_NAME, EventAttributes.TARGET_NAME);
-    putBooleanAttribute(attributes, event, DETACH_ALL_ATTRIBUTE_NAME, EventAttributes.DETACH_ALL);
-    putGrantResource(attributes, event);
-    putJsonAttribute(
-        attributes, event, ADD_GRANT_REQUEST_ATTRIBUTE_NAME, EventAttributes.ADD_GRANT_REQUEST);
-    putJsonAttribute(
-        attributes,
-        event,
-        REVOKE_GRANT_REQUEST_ATTRIBUTE_NAME,
-        EventAttributes.REVOKE_GRANT_REQUEST);
+    for (PolarisOtelAttribute attribute : PolarisOtelAttribute.values()) {
+      attribute.forward(this, attributes, event);
+    }
 
     return attributes.build();
   }
 
-  private <T> void putStringAttribute(
-      AttributesBuilder attributes,
-      PolarisEvent event,
-      String logAttributeName,
-      AttributeKey<T> eventAttributeKey) {
-    putStringAttribute(attributes, event, logAttributeName, eventAttributeKey, Object::toString);
+  private enum PolarisOtelAttribute {
+    CATALOG_NAME(string(CATALOG_NAME_ATTRIBUTE_NAME, EventAttributes.CATALOG_NAME)),
+    NAMESPACE(string(NAMESPACE_ATTRIBUTE_NAME, EventAttributes.NAMESPACE, Namespace::toString)),
+    NAMESPACE_FQN(string(NAMESPACE_FQN_ATTRIBUTE_NAME, EventAttributes.NAMESPACE_FQN)),
+    PARENT_NAMESPACE_FQN(
+        string(PARENT_NAMESPACE_FQN_ATTRIBUTE_NAME, EventAttributes.PARENT_NAMESPACE_FQN)),
+    TABLE_NAME(string(TABLE_NAME_ATTRIBUTE_NAME, EventAttributes.TABLE_NAME)),
+    TABLE_IDENTIFIER(string(TABLE_IDENTIFIER_ATTRIBUTE_NAME, EventAttributes.TABLE_IDENTIFIER)),
+    DERIVED_TABLE_IDENTIFIER(
+        (listener, attributes, event) ->
+            listener
+                .derivedTableIdentifier(event)
+                .ifPresent(
+                    tableIdentifier ->
+                        attributes.put(TABLE_IDENTIFIER_ATTRIBUTE_NAME, tableIdentifier))),
+    VIEW_NAME(string(VIEW_NAME_ATTRIBUTE_NAME, EventAttributes.VIEW_NAME)),
+    VIEW_IDENTIFIER(string(VIEW_IDENTIFIER_ATTRIBUTE_NAME, EventAttributes.VIEW_IDENTIFIER)),
+    DERIVED_VIEW_IDENTIFIER(
+        (listener, attributes, event) ->
+            listener
+                .derivedViewIdentifier(event)
+                .ifPresent(
+                    viewIdentifier ->
+                        attributes.put(VIEW_IDENTIFIER_ATTRIBUTE_NAME, viewIdentifier))),
+    PRINCIPAL_NAME(string(PRINCIPAL_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_NAME)),
+    PRINCIPAL_ROLE_NAME(
+        string(PRINCIPAL_ROLE_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_ROLE_NAME)),
+    CATALOG_ROLE_NAME(string(CATALOG_ROLE_NAME_ATTRIBUTE_NAME, EventAttributes.CATALOG_ROLE_NAME)),
+    PRIVILEGE(string(PRIVILEGE_ATTRIBUTE_NAME, EventAttributes.PRIVILEGE, value -> value.name())),
+    CASCADE(booleanAttribute(CASCADE_ATTRIBUTE_NAME, EventAttributes.CASCADE)),
+    WAREHOUSE(string(WAREHOUSE_ATTRIBUTE_NAME, EventAttributes.WAREHOUSE)),
+    ACCESS_DELEGATION_MODE(
+        string(ACCESS_DELEGATION_MODE_ATTRIBUTE_NAME, EventAttributes.ACCESS_DELEGATION_MODE)),
+    IF_NONE_MATCH(string(IF_NONE_MATCH_ATTRIBUTE_NAME, EventAttributes.IF_NONE_MATCH_STRING)),
+    SNAPSHOTS(string(SNAPSHOTS_ATTRIBUTE_NAME, EventAttributes.SNAPSHOTS)),
+    PURGE_REQUESTED(
+        booleanAttribute(PURGE_REQUESTED_ATTRIBUTE_NAME, EventAttributes.PURGE_REQUESTED)),
+    TASK_ENTITY_ID(longAttribute(TASK_ENTITY_ID_ATTRIBUTE_NAME, EventAttributes.TASK_ENTITY_ID)),
+    TASK_ATTEMPT(longAttribute(TASK_ATTEMPT_ATTRIBUTE_NAME, EventAttributes.TASK_ATTEMPT)),
+    TASK_SUCCESS(booleanAttribute(TASK_SUCCESS_ATTRIBUTE_NAME, EventAttributes.TASK_SUCCESS)),
+    HTTP_METHOD(string(HTTP_METHOD_ATTRIBUTE_NAME, EventAttributes.HTTP_METHOD)),
+    REQUEST_URI(string(REQUEST_URI_ATTRIBUTE_NAME, EventAttributes.REQUEST_URI)),
+    NAMESPACE_NAME(string(NAMESPACE_NAME_ATTRIBUTE_NAME, EventAttributes.NAMESPACE_NAME)),
+    GENERIC_TABLE_NAME(
+        string(GENERIC_TABLE_NAME_ATTRIBUTE_NAME, EventAttributes.GENERIC_TABLE_NAME)),
+    POLICY_NAME(string(POLICY_NAME_ATTRIBUTE_NAME, EventAttributes.POLICY_NAME)),
+    POLICY_TYPE(string(POLICY_TYPE_ATTRIBUTE_NAME, EventAttributes.POLICY_TYPE)),
+    TARGET_NAME(string(TARGET_NAME_ATTRIBUTE_NAME, EventAttributes.TARGET_NAME)),
+    DETACH_ALL(booleanAttribute(DETACH_ALL_ATTRIBUTE_NAME, EventAttributes.DETACH_ALL)),
+    GRANT_RESOURCE((listener, attributes, event) -> listener.putGrantResource(attributes, event)),
+    ADD_GRANT_REQUEST(json(ADD_GRANT_REQUEST_ATTRIBUTE_NAME, EventAttributes.ADD_GRANT_REQUEST)),
+    REVOKE_GRANT_REQUEST(
+        json(REVOKE_GRANT_REQUEST_ATTRIBUTE_NAME, EventAttributes.REVOKE_GRANT_REQUEST));
+
+    private final AttributeForwarder forwarder;
+
+    PolarisOtelAttribute(AttributeForwarder forwarder) {
+      this.forwarder = forwarder;
+    }
+
+    void forward(
+        OpenTelemetryEventListener listener, AttributesBuilder attributes, PolarisEvent event) {
+      forwarder.forward(listener, attributes, event);
+    }
+
+    private static <T> AttributeForwarder string(
+        String logAttributeName, AttributeKey<T> eventAttributeKey) {
+      return string(logAttributeName, eventAttributeKey, Object::toString);
+    }
+
+    private static <T> AttributeForwarder string(
+        String logAttributeName, AttributeKey<T> eventAttributeKey, Function<T, String> mapper) {
+      return (listener, attributes, event) ->
+          listener.putStringAttribute(
+              attributes, event, logAttributeName, eventAttributeKey, mapper);
+    }
+
+    private static AttributeForwarder booleanAttribute(
+        String logAttributeName, AttributeKey<Boolean> eventAttributeKey) {
+      return (listener, attributes, event) ->
+          listener.putBooleanAttribute(attributes, event, logAttributeName, eventAttributeKey);
+    }
+
+    private static <T extends Number> AttributeForwarder longAttribute(
+        String logAttributeName, AttributeKey<T> eventAttributeKey) {
+      return (listener, attributes, event) ->
+          listener.putLongAttribute(attributes, event, logAttributeName, eventAttributeKey);
+    }
+
+    private static <T> AttributeForwarder json(
+        String logAttributeName, AttributeKey<T> eventAttributeKey) {
+      return (listener, attributes, event) ->
+          listener.putJsonAttribute(attributes, event, logAttributeName, eventAttributeKey);
+    }
+  }
+
+  @FunctionalInterface
+  private interface AttributeForwarder {
+    void forward(
+        OpenTelemetryEventListener listener, AttributesBuilder attributes, PolarisEvent event);
   }
 
   private <T> void putStringAttribute(
@@ -321,15 +351,15 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
 
   private Optional<Context> toOpenTelemetryContext(PolarisEvent event) {
     Map<String, String> contextValues = event.metadata().openTelemetryContext();
-    String traceId = contextValues.get("otel.trace_id");
-    String spanId = contextValues.get("otel.span_id");
+    String traceId = contextValues.get(OPEN_TELEMETRY_TRACE_ID_KEY);
+    String spanId = contextValues.get(OPEN_TELEMETRY_SPAN_ID_KEY);
     if (traceId == null || spanId == null) {
       return Optional.empty();
     }
 
     try {
       TraceFlags traceFlags =
-          Optional.ofNullable(contextValues.get("otel.trace_flags"))
+          Optional.ofNullable(contextValues.get(OPEN_TELEMETRY_TRACE_FLAGS_KEY))
               .map(flags -> TraceFlags.fromHex(flags, 0))
               .orElseGet(TraceFlags::getDefault);
       SpanContext spanContext =
@@ -337,8 +367,10 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
       if (spanContext.isValid()) {
         return Optional.of(Span.wrap(spanContext).storeInContext(Context.root()));
       }
+      LOGGER.warn(
+          "Could not attach invalid OpenTelemetry context to Polaris event {}", event.type());
     } catch (IllegalArgumentException e) {
-      LOGGER.debug("Could not attach OpenTelemetry context to Polaris event {}", event.type(), e);
+      LOGGER.warn("Could not attach OpenTelemetry context to Polaris event {}", event.type(), e);
     }
     return Optional.empty();
   }

@@ -19,6 +19,8 @@
 
 package org.apache.polaris.service.events.listeners;
 
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SPAN_ID_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_ID_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -136,8 +138,8 @@ class PolarisPersistenceEventListenerTest {
     assertThat(properties)
         .containsEntry(EventAttributes.CATALOG_NAME.name(), CATALOG_NAME)
         .containsKey(EventAttributes.NAMESPACE.name())
-        .containsEntry("otel.trace_id", "trace-123")
-        .containsEntry("otel.span_id", "span-456");
+        .containsEntry(OPEN_TELEMETRY_TRACE_ID_KEY, "trace-123")
+        .containsEntry(OPEN_TELEMETRY_SPAN_ID_KEY, "span-456");
   }
 
   @Test
@@ -151,8 +153,8 @@ class PolarisPersistenceEventListenerTest {
     assertThat(properties)
         .containsEntry(EventAttributes.CATALOG_NAME.name(), CATALOG_NAME)
         .containsKey(EventAttributes.NAMESPACE.name())
-        .containsEntry("otel.trace_id", "trace-123")
-        .containsEntry("otel.span_id", "span-456");
+        .containsEntry(OPEN_TELEMETRY_TRACE_ID_KEY, "trace-123")
+        .containsEntry(OPEN_TELEMETRY_SPAN_ID_KEY, "span-456");
   }
 
   @Test
@@ -380,7 +382,9 @@ class PolarisPersistenceEventListenerTest {
   private static PolarisEventMetadata metadataWithOpenTelemetry() {
     return PolarisEventMetadata.builder()
         .realmId(REALM_ID)
-        .openTelemetryContext(Map.of("otel.trace_id", "trace-123", "otel.span_id", "span-456"))
+        .openTelemetryContext(
+            Map.of(
+                OPEN_TELEMETRY_TRACE_ID_KEY, "trace-123", OPEN_TELEMETRY_SPAN_ID_KEY, "span-456"))
         .build();
   }
 

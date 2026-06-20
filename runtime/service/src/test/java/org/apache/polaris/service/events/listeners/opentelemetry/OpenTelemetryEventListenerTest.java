@@ -21,6 +21,10 @@ package org.apache.polaris.service.events.listeners.opentelemetry;
 import static io.opentelemetry.api.common.AttributeKey.booleanKey;
 import static io.opentelemetry.api.common.AttributeKey.stringArrayKey;
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SAMPLED_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SPAN_ID_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_FLAGS_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_ID_KEY;
 import static org.apache.polaris.service.events.listeners.opentelemetry.OpenTelemetryEventListener.ACTOR_NAME_ATTRIBUTE_NAME;
 import static org.apache.polaris.service.events.listeners.opentelemetry.OpenTelemetryEventListener.ACTOR_ROLES_ATTRIBUTE_NAME;
 import static org.apache.polaris.service.events.listeners.opentelemetry.OpenTelemetryEventListener.ADD_GRANT_REQUEST_ATTRIBUTE_NAME;
@@ -221,13 +225,13 @@ class OpenTelemetryEventListenerTest {
         .user(PolarisPrincipal.of("test_user", Map.of(), Set.of("role1", "role2")))
         .openTelemetryContext(
             Map.of(
-                "otel.trace_id",
+                OPEN_TELEMETRY_TRACE_ID_KEY,
                 TRACE_ID,
-                "otel.span_id",
+                OPEN_TELEMETRY_SPAN_ID_KEY,
                 SPAN_ID,
-                "otel.trace_flags",
+                OPEN_TELEMETRY_TRACE_FLAGS_KEY,
                 "01",
-                "otel.sampled",
+                OPEN_TELEMETRY_SAMPLED_KEY,
                 "true"))
         .build();
   }

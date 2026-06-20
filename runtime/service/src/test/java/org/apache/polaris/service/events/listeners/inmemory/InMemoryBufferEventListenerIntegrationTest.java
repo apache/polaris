@@ -20,6 +20,10 @@
 package org.apache.polaris.service.events.listeners.inmemory;
 
 import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.CONVERTER;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SAMPLED_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SPAN_ID_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_FLAGS_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_ID_KEY;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -182,10 +186,12 @@ class InMemoryBufferEventListenerIntegrationTest {
     assertThat(e1.getPrincipalName()).isEqualTo("root");
     assertThat(e1.getRequestId()).isEqualTo("12345");
     assertThat(e1.getAdditionalPropertiesAsMap())
-        .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
-        .containsEntry("otel.sampled", "true")
-        .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
-        .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
+        .containsEntry(OPEN_TELEMETRY_TRACE_FLAGS_KEY, "03") // trace-was-sampled + random-trace-id
+        .containsEntry(OPEN_TELEMETRY_SAMPLED_KEY, "true")
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_TRACE_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{32}"))
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_SPAN_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{16}"));
 
     EventEntity e2 =
         events.stream()
@@ -202,9 +208,11 @@ class InMemoryBufferEventListenerIntegrationTest {
         .containsEntry("catalog_name", catalogName)
         .containsEntry("table_name", "t1")
         .containsKey("namespace")
-        .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
-        .containsEntry("otel.sampled", "true")
-        .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
-        .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
+        .containsEntry(OPEN_TELEMETRY_TRACE_FLAGS_KEY, "03") // trace-was-sampled + random-trace-id
+        .containsEntry(OPEN_TELEMETRY_SAMPLED_KEY, "true")
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_TRACE_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{32}"))
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_SPAN_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{16}"));
   }
 }
