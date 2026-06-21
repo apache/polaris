@@ -115,7 +115,9 @@ public class DefaultLineageServiceTest {
     Instant lastEventAt = Instant.parse("2026-01-01T00:00:00Z");
     InOrder inOrder = inOrder(persistence);
     inOrder.verify(persistence).upsertDatasets(realmContext, request.datasets());
-    inOrder.verify(persistence).upsertDatasetEdges(realmContext, request.edges(), lastEventAt);
+    inOrder
+        .verify(persistence)
+        .replaceDatasetEdges(realmContext, request.targetDatasets(), request.edges(), lastEventAt);
     inOrder.verify(persistence).upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
   }
 
