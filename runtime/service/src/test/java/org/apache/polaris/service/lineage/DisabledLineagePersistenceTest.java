@@ -41,8 +41,8 @@ class DisabledLineagePersistenceTest {
   }
 
   @Test
-  void throwsForDatasetEdgeUpsert() {
-    assertThatThrownBy(() -> persistence.upsertDatasetEdges(realmContext, List.of(), Instant.EPOCH))
+  void throwsForDatasetEdgeReplace() {
+    assertThatThrownBy(() -> persistence.replaceDatasetEdges(realmContext, List.of(), Instant.EPOCH))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("No lineage persistence implementation");
   }
