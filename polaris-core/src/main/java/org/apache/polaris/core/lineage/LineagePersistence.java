@@ -47,7 +47,8 @@ public interface LineagePersistence {
    * <p>Repeated events asserting the same relationship should update the stored edge timestamp to
    * {@code lastEventAt} rather than creating duplicate edges.
    */
-  void upsertDatasetEdges(RealmContext realmContext, List<LineageEdge> edges, Instant lastEventAt);
+  void replaceDatasetEdges(
+      RealmContext realmContext, List<LineageEdge> edges, Instant lastEventAt);
 
   /**
    * Persists field-level directed edges in {@code lineage_column_edges}.

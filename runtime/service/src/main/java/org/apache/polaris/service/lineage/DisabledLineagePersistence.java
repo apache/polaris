@@ -43,7 +43,7 @@ public class DisabledLineagePersistence implements LineagePersistence {
   }
 
   @Override
-  public void upsertDatasetEdges(
+  public void replaceDatasetEdges(
       RealmContext realmContext, List<LineageEdge> edges, Instant lastEventAt) {
     throw new UnsupportedOperationException(MESSAGE);
   }
