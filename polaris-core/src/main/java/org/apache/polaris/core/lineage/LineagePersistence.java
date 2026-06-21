@@ -42,12 +42,18 @@ public interface LineagePersistence {
   void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets);
 
   /**
-   * Persists dataset-level directed edges in {@code lineage_edges}.
+   * Replaces dataset-level directed edges in {@code lineage_edges}.
    *
-   * <p>Repeated events asserting the same relationship should update the stored edge timestamp to
-   * {@code lastEventAt} rather than creating duplicate edges.
+   * <p>{@code targetDatasets} identifies the output datasets whose latest direct upstream snapshot
+   * is being asserted. For each target dataset, implementations should replace older source edges
+   * with the submitted source set, which may be empty. Events older than the currently stored
+   * target snapshot should not replace newer lineage.
    */
-  void upsertDatasetEdges(RealmContext realmContext, List<LineageEdge> edges, Instant lastEventAt);
+  void replaceDatasetEdges(
+      RealmContext realmContext,
+      List<LineageDataset> targetDatasets,
+      List<LineageEdge> edges,
+      Instant lastEventAt);
 
   /**
    * Persists field-level directed edges in {@code lineage_column_edges}.

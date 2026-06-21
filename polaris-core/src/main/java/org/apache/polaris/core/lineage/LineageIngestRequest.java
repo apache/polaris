@@ -26,13 +26,29 @@ import java.util.Optional;
 /** Extracted lineage payload that can be persisted independent of the transport event shape. */
 public record LineageIngestRequest(
     List<LineageDataset> datasets,
+    List<LineageDataset> targetDatasets,
     List<LineageEdge> edges,
     List<LineageColumnEdge> columnEdges,
     Optional<Instant> eventTime) {
   public LineageIngestRequest {
     datasets = List.copyOf(Objects.requireNonNull(datasets, "datasets must be non-null"));
+    targetDatasets =
+        List.copyOf(Objects.requireNonNull(targetDatasets, "targetDatasets must be non-null"));
     edges = List.copyOf(Objects.requireNonNull(edges, "edges must be non-null"));
     columnEdges = List.copyOf(Objects.requireNonNull(columnEdges, "columnEdges must be non-null"));
     Objects.requireNonNull(eventTime, "eventTime must be non-null");
+  }
+
+  public LineageIngestRequest(
+      List<LineageDataset> datasets,
+      List<LineageEdge> edges,
+      List<LineageColumnEdge> columnEdges,
+      Optional<Instant> eventTime) {
+    this(
+        datasets,
+        edges.stream().map(LineageEdge::target).distinct().toList(),
+        edges,
+        columnEdges,
+        eventTime);
   }
 }
