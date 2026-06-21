@@ -125,10 +125,13 @@ class LineagePersistenceJdbcIT {
         1L);
     lineagePersistence.upsertDatasets(realmContext, List.of(target));
 
-    lineagePersistence.upsertDatasetEdges(
-        realmContext, List.of(new LineageEdge(source, target)), EVENT_TIME.plusMillis(100));
-    lineagePersistence.upsertDatasetEdges(
-        realmContext, List.of(new LineageEdge(source, target)), EVENT_TIME);
+    lineagePersistence.replaceDatasetEdges(
+        realmContext,
+        List.of(target),
+        List.of(new LineageEdge(source, target)),
+        EVENT_TIME.plusMillis(100));
+    lineagePersistence.replaceDatasetEdges(
+        realmContext, List.of(target), List.of(new LineageEdge(source, target)), EVENT_TIME);
     assertSingleLong(
         dataSource,
         "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_edges WHERE realm_id = ?",

@@ -39,11 +39,20 @@ public interface ModelLineageDataset extends Converter<ModelLineageDataset> {
   String NAMESPACE = "namespace";
   String NAME = "name";
   String POLARIS_ENTITY_ID = "polaris_entity_id";
+  String LAST_LINEAGE_EVENT_AT = "last_lineage_event_at";
   String CREATED_AT = "created_at";
   String UPDATED_AT = "updated_at";
 
   List<String> ALL_COLUMNS =
-      List.of(DATASET_ID, CATALOG, NAMESPACE, NAME, POLARIS_ENTITY_ID, CREATED_AT, UPDATED_AT);
+      List.of(
+          DATASET_ID,
+          CATALOG,
+          NAMESPACE,
+          NAME,
+          POLARIS_ENTITY_ID,
+          LAST_LINEAGE_EVENT_AT,
+          CREATED_AT,
+          UPDATED_AT);
   List<String> ALL_COLUMNS_WITH_REALM =
       List.of(
           REALM_ID,
@@ -52,6 +61,7 @@ public interface ModelLineageDataset extends Converter<ModelLineageDataset> {
           NAMESPACE,
           NAME,
           POLARIS_ENTITY_ID,
+          LAST_LINEAGE_EVENT_AT,
           CREATED_AT,
           UPDATED_AT);
 
@@ -68,6 +78,9 @@ public interface ModelLineageDataset extends Converter<ModelLineageDataset> {
   @Nullable
   Long getPolarisEntityId();
 
+  @Nullable
+  Long getLastLineageEventAt();
+
   long getCreatedAt();
 
   long getUpdatedAt();
@@ -81,6 +94,7 @@ public interface ModelLineageDataset extends Converter<ModelLineageDataset> {
         .namespace(rs.getString(NAMESPACE))
         .name(rs.getString(NAME))
         .polarisEntityId(rs.getObject(POLARIS_ENTITY_ID, Long.class))
+        .lastLineageEventAt(rs.getObject(LAST_LINEAGE_EVENT_AT, Long.class))
         .createdAt(rs.getLong(CREATED_AT))
         .updatedAt(rs.getLong(UPDATED_AT))
         .build();
@@ -94,6 +108,7 @@ public interface ModelLineageDataset extends Converter<ModelLineageDataset> {
     map.put(NAMESPACE, getNamespace());
     map.put(NAME, getName());
     map.put(POLARIS_ENTITY_ID, getPolarisEntityId());
+    map.put(LAST_LINEAGE_EVENT_AT, getLastLineageEventAt());
     map.put(CREATED_AT, getCreatedAt());
     map.put(UPDATED_AT, getUpdatedAt());
     return map;

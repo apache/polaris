@@ -310,6 +310,7 @@ CREATE TABLE IF NOT EXISTS lineage_datasets (
     namespace TEXT NOT NULL,
     name TEXT NOT NULL,
     polaris_entity_id BIGINT,
+    last_lineage_event_at BIGINT,
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
     PRIMARY KEY (realm_id, dataset_id),

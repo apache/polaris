@@ -50,7 +50,8 @@ public class DefaultLineageService implements LineageService {
     RealmContext realmContext = callContext.getRealmContext();
     Instant lastEventAt = request.eventTime().orElseGet(Instant::now);
     persistence.upsertDatasets(realmContext, request.datasets());
-    persistence.upsertDatasetEdges(realmContext, request.edges(), lastEventAt);
+    persistence.replaceDatasetEdges(
+        realmContext, request.targetDatasets(), request.edges(), lastEventAt);
     persistence.upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
   }
 
