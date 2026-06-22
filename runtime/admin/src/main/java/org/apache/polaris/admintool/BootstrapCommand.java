@@ -91,7 +91,8 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
       @CommandLine.Option(
           names = {"-v", "--schema-version"},
           paramLabel = "<schema version>",
-          description = "The version of the schema to load in [1, 2, 3, LATEST].")
+          description =
+              "The version of the schema to load. The set of valid values depends on the backend type. If omitted the latest schema version will be used.")
       Integer schemaVersion;
     }
   }

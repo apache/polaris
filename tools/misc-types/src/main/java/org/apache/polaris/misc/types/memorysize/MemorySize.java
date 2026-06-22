@@ -18,18 +18,18 @@
  */
 package org.apache.polaris.misc.types.memorysize;
 
-import static com.fasterxml.jackson.annotation.JsonFormat.Shape;
 import static java.lang.String.format;
 import static java.util.Locale.ROOT;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.eclipse.microprofile.config.spi.Converter;
 import org.jspecify.annotations.NonNull;
+import tools.jackson.databind.cfg.MapperBuilder;
 
 /**
  * Type representing a memory size in bytes, using 1024 as the multiplier for kilo, mega, etc.
@@ -42,7 +42,7 @@ import org.jspecify.annotations.NonNull;
  * in Quarkus).
  *
  * <p>(De)serialization support for Jackson provided via a Jackson module, provided via the Java
- * service loader mechanism. Use {@link ObjectMapper#findAndRegisterModules()} for manually created
+ * service loader mechanism. Use {@link MapperBuilder#findAndAddModules()} for manually created
  * object mappers.
  *
  * <p>Jackson serialization supports both {@link Shape#STRING string} (default) and {@link

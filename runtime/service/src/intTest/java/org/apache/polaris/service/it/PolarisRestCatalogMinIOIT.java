@@ -22,9 +22,10 @@ import static org.apache.polaris.test.commons.MinioRustProfile.ACCESS_KEY;
 import static org.apache.polaris.test.commons.MinioRustProfile.SECRET_KEY;
 
 import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
-import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.aws.s3.S3FileIOProperties;
@@ -36,35 +37,42 @@ import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationBase;
 import org.apache.polaris.test.commons.MinioRustProfile;
 import org.apache.polaris.test.minio.Minio;
 import org.apache.polaris.test.minio.MinioAccess;
-import org.apache.polaris.test.minio.MinioExtension;
-import org.junit.jupiter.api.BeforeAll;
+import org.apache.polaris.test.minio.MinioConditionExtension;
+import org.apache.polaris.test.minio.MinioTestResource;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
 @TestProfile(MinioRustProfile.class)
-@ExtendWith(MinioExtension.class)
+@QuarkusTestResource(
+    value = MinioTestResource.class,
+    initArgs = {
+      @ResourceArg(name = "accessKey", value = ACCESS_KEY),
+      @ResourceArg(name = "secretKey", value = SECRET_KEY)
+    })
+@ExtendWith(MinioConditionExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
 public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase {
 
   protected static final String BUCKET_URI_PREFIX = "/minio-test-polaris";
 
-  private static URI storageBase;
-  private static String endpoint;
+  @Minio static MinioAccess minioAccess;
 
   private static Map<String, String> s3Properties;
 
-  @BeforeAll
-  static void setup(
-      @Minio(accessKey = ACCESS_KEY, secretKey = SECRET_KEY) MinioAccess minioAccess) {
-    storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
-    endpoint = minioAccess.s3endpoint();
+  @BeforeEach
+  void setup() {
     s3Properties =
         Map.of(
-            S3FileIOProperties.ENDPOINT, endpoint,
-            S3FileIOProperties.PATH_STYLE_ACCESS, "true",
-            S3FileIOProperties.ACCESS_KEY_ID, ACCESS_KEY,
-            S3FileIOProperties.SECRET_ACCESS_KEY, SECRET_KEY);
+            S3FileIOProperties.ENDPOINT,
+            minioAccess.s3endpoint(),
+            S3FileIOProperties.PATH_STYLE_ACCESS,
+            "true",
+            S3FileIOProperties.ACCESS_KEY_ID,
+            ACCESS_KEY,
+            S3FileIOProperties.SECRET_ACCESS_KEY,
+            SECRET_KEY);
   }
 
   @Override
@@ -78,8 +86,8 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(true)
-            .setEndpoint(endpoint)
-            .setAllowedLocations(List.of(storageBase.toString()));
+            .setEndpoint(minioAccess.s3endpoint())
+            .setAllowedLocations(List.of(minioAccess.s3BucketUri(BUCKET_URI_PREFIX).toString()));
 
     return storageConfig.build();
   }

@@ -19,6 +19,7 @@
 package org.apache.polaris.service.auth.internal.broker;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -58,8 +59,16 @@ public class RSAKeyPairJWTBrokerTest {
     Mockito.when(metastoreManager.findPrincipalById(polarisCallContext, principalId))
         .thenReturn(Optional.of(principal));
     KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    Algorithm algorithm =
+        Algorithm.RSA256(
+            (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey());
     TokenBroker tokenBroker =
-        new RSAKeyPairJWTBroker(metastoreManager, polarisCallContext, 420, provider);
+        new JWTBroker(
+            metastoreManager,
+            polarisCallContext,
+            420,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
             clientId,
@@ -82,5 +91,68 @@ public class RSAKeyPairJWTBrokerTest {
     assertThat(decodedJWT).isNotNull();
     assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo("PRINCIPAL_ROLE:TEST");
     assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo("test-client-id");
+  }
+
+  @Test
+  public void testVerifyRejectsTokenWithWrongIssuer() throws Exception {
+    var keyPair = PemUtils.generateKeyPair();
+
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
+    PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
+    KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    Algorithm algorithm =
+        Algorithm.RSA256(
+            (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey());
+    TokenBroker tokenBroker =
+        new JWTBroker(
+            metastoreManager,
+            polarisCallContext,
+            420,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
+
+    String tokenWithWrongIssuer =
+        JWT.create()
+            .withIssuer("not-polaris")
+            .withSubject("principal")
+            .withClaim("active", true)
+            .sign(
+                Algorithm.RSA256(
+                    (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
+
+    assertThatThrownBy(() -> tokenBroker.verify(tokenWithWrongIssuer))
+        .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
+        .hasMessageContaining("Failed to verify the token");
+  }
+
+  @Test
+  public void testVerifyRejectsTokenWithMissingIssuer() throws Exception {
+    var keyPair = PemUtils.generateKeyPair();
+
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
+    PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
+    KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    Algorithm algorithm =
+        Algorithm.RSA256(
+            (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey());
+    TokenBroker tokenBroker =
+        new JWTBroker(
+            metastoreManager,
+            polarisCallContext,
+            420,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
+
+    String tokenWithoutIssuer =
+        JWT.create()
+            .withSubject("principal")
+            .withClaim("active", true)
+            .sign(
+                Algorithm.RSA256(
+                    (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
+
+    assertThatThrownBy(() -> tokenBroker.verify(tokenWithoutIssuer))
+        .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
+        .hasMessageContaining("Failed to verify the token");
   }
 }

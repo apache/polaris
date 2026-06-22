@@ -34,7 +34,7 @@ The plugin provides support for Spark 3.5 (Scala version 2.12 and 2.13) and Spar
 The Polaris Spark client supports catalog management for both Iceberg and Delta tables. It routes all Iceberg table
 requests to the Iceberg REST endpoints and routes all Delta table requests to the Generic Table REST endpoints.
 
-The Spark Client requires at least delta 3.2.1 to work with Delta tables for Spark 3.5, and delta 4.0.1 for Spark 4.0.
+The Spark Client requires at least delta 3.2.1 to work with Delta tables for Spark 3.5, and delta 4.2.0 for Spark 4.0.
 
 # Start Spark with local Polaris service using the Polaris Spark plugin
 The following command starts a Polaris server for local testing, it runs on localhost:8181 with default

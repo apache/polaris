@@ -27,7 +27,6 @@ import static org.awaitility.Awaitility.await;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -41,7 +40,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import javax.sql.DataSource;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
@@ -58,6 +56,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.EventEntity;
+import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
@@ -72,30 +71,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@TestProfile(InMemoryBufferEventListenerIntegrationTest.Profile.class)
+@TestProfile(Profiles.InMemoryBufferEventListenerIntegrationProfile.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 class InMemoryBufferEventListenerIntegrationTest {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .put("polaris.persistence.type", "relational-jdbc")
-          .put("polaris.persistence.auto-bootstrap-types", "relational-jdbc")
-          .put("quarkus.datasource.db-kind", "h2")
-          .put("quarkus.otel.sdk.disabled", "false")
-          .put(
-              "quarkus.datasource.jdbc.url",
-              "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE")
-          .put("polaris.event-listener.type", "persistence-in-memory-buffer")
-          .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "100ms")
-          .put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true")
-          .put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\",\"S3\"]")
-          .put("polaris.readiness.ignore-severe-issues", "true")
-          .build();
-    }
-  }
 
   private RestApi managementApi;
   private PolarisApiEndpoints endpoints;

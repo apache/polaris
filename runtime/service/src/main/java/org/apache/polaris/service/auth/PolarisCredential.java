@@ -21,6 +21,7 @@ package org.apache.polaris.service.auth;
 import io.quarkus.security.credential.Credential;
 import java.util.Set;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -57,6 +58,10 @@ public interface PolarisCredential extends Credential {
   /** The principal roles, or empty if the principal has no roles. */
   Set<String> getPrincipalRoles();
 
-  /** The access token of the current user, or null if not applicable. */
+  /**
+   * The access token of the current user, or null if not applicable. Redacted from {@code
+   * toString()} so it is not leaked into logs.
+   */
+  @Value.Redacted
   @Nullable String getToken();
 }

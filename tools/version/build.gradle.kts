@@ -29,23 +29,22 @@ dependencies {
 description =
   "Provides Polaris version information programmatically, includes the NOTICE/LICENSE* files"
 
-val syncNoticeAndLicense by
-  tasks.registering(Sync::class) {
+val syncNoticeAndLicense =
+  tasks.register<Sync>("syncNoticeAndLicense") {
     // Have to manually declare the inputs of this task here on top of the from/include below
+    val rootDir = layout.settingsDirectory
     inputs
-      .files(
-        rootProject.fileTree(rootProject.rootDir) { include("NOTICE*", "LICENSE*", "version.txt") }
-      )
+      .files(fileTree(rootDir) { include("NOTICE*", "LICENSE*", "version.txt") })
       .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("version", project.version)
     destinationDir = project.layout.buildDirectory.dir("notice-licenses").get().asFile
-    from(rootProject.rootDir) {
+    from(rootDir) {
       include("NOTICE*", "LICENSE*")
       // Put NOTICE/LICENSE* files under META-INF/resources/ so those files can be directly
       // accessed as static web resources in Quarkus.
       eachFile { path = "META-INF/resources/apache-polaris/${file.name}.txt" }
     }
-    from(rootProject.rootDir) {
+    from(rootDir) {
       include("version.txt")
       // Put NOTICE/LICENSE* files under META-INF/resources/ so those files can be directly
       // accessed as static web resources in Quarkus.
@@ -53,8 +52,8 @@ val syncNoticeAndLicense by
     }
   }
 
-val versionProperties by
-  tasks.registering(Sync::class) {
+val versionProperties =
+  tasks.register<Sync>("versionProperties") {
     destinationDir = project.layout.buildDirectory.dir("version").get().asFile
     from(project.layout.files("src/main/version"))
     eachFile { path = "org/apache/polaris/version/$path" }
@@ -72,8 +71,8 @@ sourceSets.main.configure {
 // Build a jar for `jarTest` having both the production and test sources including the "fake
 // manifest" - the production implementation expects all resources to be in the jar containing
 // the `polaris-version.properties` file.
-val jarTestJar by
-  tasks.registering(Jar::class) {
+val jarTestJar =
+  tasks.register<Jar>("jarTestJar") {
     archiveClassifier.set("jarTest")
     from(sourceSets.main.map { it.output })
     from(sourceSets.named("jarTest").map { it.output })
@@ -86,7 +85,7 @@ testing {
     register<JvmTestSuite>("jarTest") {
       dependencies { runtimeOnly(files(jarTestJar.map { it.archiveFile })) }
 
-      targets.all {
+      targets.configureEach {
         testTask.configure {
           dependsOn("jar", jarTestJar)
           systemProperty("rootProjectDir", rootProject.rootDir.relativeTo(project.projectDir))

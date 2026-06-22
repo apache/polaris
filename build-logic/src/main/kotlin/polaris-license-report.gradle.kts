@@ -78,8 +78,8 @@ val licenseReportZip =
     archiveExtension.set("zip")
   }
 
-val licenseReports by
-  configurations.creating {
+val licenseReports =
+  configurations.create("licenseReports") {
     isCanBeConsumed = true
     isCanBeResolved = false
     description = "License report files"

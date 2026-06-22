@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth.internal.broker;
 
 import static com.google.common.base.Preconditions.checkState;
 
+import com.auth0.jwt.algorithms.Algorithm;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -30,7 +31,6 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -44,7 +44,8 @@ public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
 
   private final AuthenticationConfiguration authenticationConfiguration;
 
-  private final ConcurrentMap<String, Supplier<String>> secretSuppliers = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, AlgorithmAndVerifier> algorithmAndVerifiers =
+      new ConcurrentHashMap<>();
 
   @Inject
   public SymmetricKeyJWTBrokerFactory(AuthenticationConfiguration authenticationConfiguration) {
@@ -57,8 +58,8 @@ public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
     RealmContext realmContext = polarisCallContext.getRealmContext();
     AuthenticationRealmConfiguration config = authenticationConfiguration.forRealm(realmContext);
     Duration maxTokenGeneration = config.tokenBroker().maxTokenGeneration();
-    Supplier<String> secretSupplier =
-        secretSuppliers.computeIfAbsent(
+    AlgorithmAndVerifier algorithmAndVerifier =
+        algorithmAndVerifiers.computeIfAbsent(
             realmContext.getRealmIdentifier(),
             k -> {
               SymmetricKeyConfiguration symmetricKeyConfiguration =
@@ -71,10 +72,16 @@ public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
               String secret = symmetricKeyConfiguration.secret().orElse(null);
               Path file = symmetricKeyConfiguration.file().orElse(null);
               checkState(secret != null || file != null, "Either file or secret must be set");
-              return () -> Objects.requireNonNullElseGet(secret, () -> readSecretFromDisk(file));
+              String resolvedSecret =
+                  Objects.requireNonNullElseGet(secret, () -> readSecretFromDisk(file));
+              return AlgorithmAndVerifier.of(Algorithm.HMAC256(resolvedSecret));
             });
-    return new SymmetricKeyJWTBroker(
-        metaStoreManager, polarisCallContext, (int) maxTokenGeneration.toSeconds(), secretSupplier);
+    return new JWTBroker(
+        metaStoreManager,
+        polarisCallContext,
+        (int) maxTokenGeneration.toSeconds(),
+        algorithmAndVerifier.algorithm(),
+        algorithmAndVerifier.verifier());
   }
 
   private static String readSecretFromDisk(Path file) {

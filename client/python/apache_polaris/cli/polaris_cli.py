@@ -70,14 +70,14 @@ class PolarisCli:
                 command = cast(ProfilesCommand, command)
                 command.execute()
             else:
+                if options.debug:
+                    PolarisCli._enable_api_request_logging()
                 api_client = ApiClientBuilder(
                     options,
                     direct_authentication=PolarisCli.DIRECT_AUTHENTICATION_ENABLED,
                 ).get_api_client()
                 admin_api = PolarisDefaultApi(api_client)
                 command = Command.from_options(options)
-                if options.debug:
-                    PolarisCli._enable_api_request_logging()
                 command.execute(admin_api)
         # Handlers from most specific to least: ApiException (OpenAPI client), CliError
         # (expected user/config failures with their own exit codes), NotImplementedError
