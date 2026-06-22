@@ -66,6 +66,12 @@ public class DefaultLineageService implements LineageService {
           "Lineage is disabled: set polaris.lineage.enabled=true to enable it.");
     }
 
+    if (!configuration.persistence().enabled()) {
+      throw new UnsupportedOperationException(
+          "Lineage persistence is disabled: set polaris.lineage.persistence.enabled=true to enable"
+              + " it.");
+    }
+
     if (!callContext.getRealmConfig().getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
       throw new UnsupportedOperationException(
           "Lineage realm feature is disabled: enable "

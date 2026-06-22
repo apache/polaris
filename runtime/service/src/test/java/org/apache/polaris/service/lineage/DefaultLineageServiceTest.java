@@ -52,6 +52,7 @@ public class DefaultLineageServiceTest {
   @Mock private CallContext callContext;
   @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
+  @Mock private LineageConfiguration.PersistenceConfiguration persistenceConfiguration;
   @Mock private LineagePersistence persistence;
   @Mock private RealmContext realmContext;
 
@@ -62,6 +63,7 @@ public class DefaultLineageServiceTest {
     MockitoAnnotations.openMocks(this);
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(callContext.getRealmContext()).thenReturn(realmContext);
+    when(configuration.persistence()).thenReturn(persistenceConfiguration);
     service = new DefaultLineageService(callContext, configuration, persistence);
   }
 
@@ -79,6 +81,7 @@ public class DefaultLineageServiceTest {
   @Test
   void throwsWhenRealmFeatureDisabled() {
     when(configuration.enabled()).thenReturn(true);
+    when(persistenceConfiguration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(false);
 
     assertThatThrownBy(() -> service.query(queryRequest()))
@@ -89,8 +92,21 @@ public class DefaultLineageServiceTest {
   }
 
   @Test
+  void throwsWhenPersistenceDisabled() {
+    when(configuration.enabled()).thenReturn(true);
+    when(persistenceConfiguration.enabled()).thenReturn(false);
+
+    assertThatThrownBy(() -> service.query(queryRequest()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("polaris.lineage.persistence.enabled");
+
+    verifyNoInteractions(persistence);
+  }
+
+  @Test
   void delegatesQueryWhenLineageEnabled() {
     when(configuration.enabled()).thenReturn(true);
+    when(persistenceConfiguration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
     LineageQueryRequest request = queryRequest();
     LineageGraph graph =
@@ -107,6 +123,7 @@ public class DefaultLineageServiceTest {
   @Test
   void delegatesIngestWhenLineageEnabled() {
     when(configuration.enabled()).thenReturn(true);
+    when(persistenceConfiguration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
     LineageIngestRequest request = ingestRequest();
 
