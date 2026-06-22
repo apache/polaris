@@ -357,6 +357,97 @@ public class ProductionReadinessChecks {
   }
 
   @Produces
+  public ProductionReadinessCheck checkGcsPrincipalAttribution(
+      FeaturesConfiguration featureConfiguration) {
+    var enabled = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED;
+    var audience = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE;
+    var issuer = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER;
+    var keyFile = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE;
+
+    var defaults = featureConfiguration.defaults();
+    var errors = new ArrayList<Error>();
+
+    boolean defaultEnabled = Boolean.parseBoolean(defaults.get(enabled.key()));
+    String defaultAudience = defaults.getOrDefault(audience.key(), "");
+    String defaultIssuer = defaults.getOrDefault(issuer.key(), "");
+    String defaultKeyFile = defaults.getOrDefault(keyFile.key(), "");
+
+    if (defaultEnabled) {
+      if (defaultAudience.isEmpty()) {
+        errors.add(
+            Error.of(
+                "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE is not set.",
+                format("polaris.features.\"%s\"", audience.key())));
+      }
+      if (defaultIssuer.isEmpty()) {
+        errors.add(
+            Error.of(
+                "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER is not set.",
+                format("polaris.features.\"%s\"", issuer.key())));
+      }
+      if (defaultKeyFile.isEmpty()) {
+        errors.add(
+            Error.of(
+                "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE is not set.",
+                format("polaris.features.\"%s\"", keyFile.key())));
+      }
+    }
+
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, realmOverrides) -> {
+              var overrides = realmOverrides.overrides();
+              boolean realmEnabled =
+                  Boolean.parseBoolean(
+                      overrides.containsKey(enabled.key())
+                          ? overrides.get(enabled.key())
+                          : defaults.get(enabled.key()));
+              if (!realmEnabled) {
+                return;
+              }
+              String effectiveAudience =
+                  overrides.containsKey(audience.key())
+                      ? overrides.get(audience.key())
+                      : defaultAudience;
+              String effectiveIssuer =
+                  overrides.containsKey(issuer.key()) ? overrides.get(issuer.key()) : defaultIssuer;
+              String effectiveKeyFile =
+                  overrides.containsKey(keyFile.key())
+                      ? overrides.get(keyFile.key())
+                      : defaultKeyFile;
+              if (effectiveAudience.isEmpty()) {
+                errors.add(
+                    Error.of(
+                        "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE is not set.",
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, audience.key())));
+              }
+              if (effectiveIssuer.isEmpty()) {
+                errors.add(
+                    Error.of(
+                        "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER is not set.",
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, issuer.key())));
+              }
+              if (effectiveKeyFile.isEmpty()) {
+                errors.add(
+                    Error.of(
+                        "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE is not set.",
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, keyFile.key())));
+              }
+            });
+
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
   @SuppressWarnings("unchecked")
   public ProductionReadinessCheck checkConnectionCredentialVendors(
       @Any Instance<ConnectionCredentialVendor> credentialVendors,
