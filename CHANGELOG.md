@@ -349,3 +349,4 @@ Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release
 [Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
 [Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
 [Apache Ranger Authorization]: https://ranger.apache.org/
+- Fixed native catalog credential vending paths (`loadCredentials` and `loadTable` with delegation) to re-validate locations against the *current* catalog `allowedLocations`. Previously these paths trusted persisted table entity locations, allowing stale credentials after an admin tightened allowed locations on a native catalog. (The federated path had a partial check.)
