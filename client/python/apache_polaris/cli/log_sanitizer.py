@@ -32,34 +32,21 @@ REDACTED = "***REDACTED***"
 OAUTH_TOKEN_BODY_REDACTED = "<redacted sensitive authentication payload>"
 SANITIZE_FAILURE_MESSAGE = "<redacted: unable to sanitize payload>"
 
-# Compared case-insensitively; ``-`` and ``_`` are treated interchangeably.
-SENSITIVE_HEADERS = {"authorization"}
-SENSITIVE_BODY_KEYS = {"client_secret", "access_token", "refresh_token"}
-
-
-def _normalize_key(key: str) -> str:
-    return key.lower().replace("-", "_")
-
-
-def _is_sensitive_body_key(key: str) -> bool:
-    return _normalize_key(key) in SENSITIVE_BODY_KEYS
-
-
-def _should_redact_header(key: str) -> bool:
-    return _normalize_key(key) in SENSITIVE_HEADERS
-
-
-def _redact_body_value(key: str, value: Any) -> Any:
-    if _is_sensitive_body_key(key):
-        if isinstance(value, (dict, list, tuple)):
-            return sanitize_data(value)
-        return REDACTED
-    return sanitize_data(value)
+SENSITIVE_BODY_KEYS = frozenset({"client_secret", "access_token", "refresh_token"})
 
 
 def sanitize_data(data: Any) -> Any:
     if isinstance(data, dict):
-        return {key: _redact_body_value(str(key), value) for key, value in data.items()}
+        sanitized: dict[Any, Any] = {}
+        for key, value in data.items():
+            if key in SENSITIVE_BODY_KEYS:
+                if isinstance(value, (dict, list, tuple)):
+                    sanitized[key] = sanitize_data(value)
+                else:
+                    sanitized[key] = REDACTED
+            else:
+                sanitized[key] = sanitize_data(value)
+        return sanitized
     if isinstance(data, list):
         return [sanitize_data(item) for item in data]
     if isinstance(data, tuple):
@@ -71,7 +58,7 @@ def sanitize_headers(headers: dict[str, Any] | None) -> dict[str, Any] | None:
     if headers is None:
         return headers
     return {
-        key: REDACTED if _should_redact_header(str(key)) else value
+        key: REDACTED if str(key).lower() == "authorization" else value
         for key, value in headers.items()
     }
 
@@ -82,7 +69,7 @@ def is_oauth_token_endpoint(url: str) -> bool:
 
 def _sanitize_form_body(body: str) -> str:
     sanitized_pairs = [
-        (key, REDACTED if _is_sensitive_body_key(key) else value)
+        (key, REDACTED if key in SENSITIVE_BODY_KEYS else value)
         for key, value in parse_qsl(body, keep_blank_values=True)
     ]
     return urlencode(sanitized_pairs, safe="*")
