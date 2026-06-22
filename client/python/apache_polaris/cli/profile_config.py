@@ -19,9 +19,8 @@
 
 import json
 import os
-import stat
 import tempfile
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from apache_polaris.cli.constants import CONFIG_DIR, CONFIG_FILE
 
@@ -29,7 +28,7 @@ CONFIG_FILE_MODE = 0o600
 MASKED_CLIENT_SECRET = "********"
 
 
-def mask_client_secret(client_secret: str | None) -> str | None:
+def mask_client_secret(client_secret: Optional[str]) -> Optional[str]:
     if client_secret is None:
         return None
     if client_secret == "":
@@ -42,16 +41,6 @@ def format_profile_for_display(profile: dict) -> dict:
     if "client_secret" in displayed:
         displayed["client_secret"] = mask_client_secret(displayed["client_secret"])
     return displayed
-
-
-def ensure_config_file_permissions(path: str | None = None) -> None:
-    if path is None:
-        path = CONFIG_FILE
-    if not os.path.exists(path):
-        return
-    current_mode = stat.S_IMODE(os.stat(path).st_mode)
-    if current_mode != CONFIG_FILE_MODE:
-        os.chmod(path, CONFIG_FILE_MODE)
 
 
 def load_profiles() -> Dict[str, Dict[str, Any]]:
@@ -79,4 +68,3 @@ def save_profiles(profiles: Dict[str, Dict[str, Any]]) -> None:
     finally:
         if temp_path is not None and os.path.exists(temp_path):
             os.unlink(temp_path)
-    ensure_config_file_permissions()

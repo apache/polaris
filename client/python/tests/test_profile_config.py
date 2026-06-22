@@ -27,7 +27,6 @@ from unittest.mock import patch
 from apache_polaris.cli.profile_config import (
     CONFIG_FILE_MODE,
     MASKED_CLIENT_SECRET,
-    ensure_config_file_permissions,
     format_profile_for_display,
     load_profiles,
     mask_client_secret,
@@ -44,11 +43,6 @@ class TestProfileConfig(unittest.TestCase):
 
     def test_mask_client_secret_non_empty(self) -> None:
         self.assertEqual(mask_client_secret("abcdef123456"), MASKED_CLIENT_SECRET)
-
-    def test_ensure_config_file_permissions_no_op_for_missing_file(self) -> None:
-        with tempfile.TemporaryDirectory() as config_dir:
-            missing_file = os.path.join(config_dir, ".polaris.json")
-            ensure_config_file_permissions(missing_file)
 
     def test_format_profile_for_display_masks_long_secret(self) -> None:
         profile = {
