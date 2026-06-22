@@ -31,6 +31,7 @@ import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
@@ -50,7 +51,7 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
     return icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
   }
 
-  public static class Profile extends PolarisAuthzTestBase.Profile {
+  public static class Profile extends Profiles.PolarisAuthzBaseProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()

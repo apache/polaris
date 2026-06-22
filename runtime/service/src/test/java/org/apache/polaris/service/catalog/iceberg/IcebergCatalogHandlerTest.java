@@ -205,7 +205,7 @@ class IcebergCatalogHandlerTest {
                 .build());
     when(resolvedPath.getRawLeafEntity()).thenReturn(leafEntity);
 
-    IcebergCatalog icebergCatalog = mock(IcebergCatalog.class);
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
     when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
 
     StorageAccessConfig storageAccessConfig =
@@ -266,7 +266,7 @@ class IcebergCatalogHandlerTest {
     BaseTable table = mock(BaseTable.class);
     when(table.operations()).thenReturn(ops);
 
-    IcebergCatalog icebergCatalog = mock(IcebergCatalog.class);
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
     when(icebergCatalog.loadTable(TABLE2)).thenReturn(table);
     when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
 

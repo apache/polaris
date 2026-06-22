@@ -30,7 +30,7 @@ plugins {
 
 description = "Polaris NoSQL persistence core implementation"
 
-val jcstressRuntime by configurations.creating
+val jcstressRuntime = configurations.create("jcstressRuntime")
 val jcstressMode = providers.gradleProperty("jcstressMode").orElse("quick")
 val jcstressSplitPerActor =
   providers.gradleProperty("jcstressSplitPerActor").map(String::toBoolean).orElse(false)
@@ -119,6 +119,8 @@ jcstress {
 }
 
 tasks.named<JcstressTask>("jcstress") {
+  notCompatibleWithConfigurationCache("Jcstress plugin is not compatible with configuration cache")
+
   listOf("os.name", "os.arch", "os.version", "java.runtime.name", "java.runtime.version").forEach {
     inputs.property(it, providers.systemProperty(it).orElse(""))
   }

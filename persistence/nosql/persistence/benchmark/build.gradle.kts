@@ -20,8 +20,8 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
-  id("polaris-server")
   id("com.gradleup.shadow")
+  id("polaris-server")
   alias(libs.plugins.jmh)
 }
 

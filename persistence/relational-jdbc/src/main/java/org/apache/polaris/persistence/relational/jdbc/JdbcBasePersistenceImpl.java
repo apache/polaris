@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -47,7 +48,6 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEntityUtils;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
@@ -277,7 +277,7 @@ public class JdbcBasePersistenceImpl
   }
 
   @Override
-  public void writeEvents(@NonNull List<PolarisEvent> events) {
+  public void writeEvents(@NonNull List<EventEntity> events) {
     if (events.isEmpty()) {
       return; // or throw if empty list is invalid
     }
@@ -301,7 +301,7 @@ public class JdbcBasePersistenceImpl
 
       // Process remaining events and verify SQL consistency
       for (int i = 1; i < events.size(); i++) {
-        PolarisEvent event = events.get(i);
+        EventEntity event = events.get(i);
         PreparedQuery pq =
             QueryGenerator.generateInsertQuery(
                 ModelEvent.ALL_COLUMNS,
@@ -1125,7 +1125,7 @@ public class JdbcBasePersistenceImpl
       datasourceOperations.execute(connection, updateQuery);
     } else {
       // record doesn't exist do an insert.
-      datasourceOperations.executeUpdate(insertQuery);
+      datasourceOperations.execute(connection, insertQuery);
     }
     return true;
   }

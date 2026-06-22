@@ -309,7 +309,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
     } else {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-      var results = ((IcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
+      var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
       return ListNamespacesResponse.builder()
           .addAll(results.items())
           .nextPageToken(results.encodedResponseToken())
@@ -400,7 +400,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return catalogHandlerUtils().listTables(baseCatalog, namespace, pageToken, pageSize);
     } else {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-      var results = ((IcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
+      var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
           .nextPageToken(results.encodedResponseToken())
@@ -527,7 +527,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         location = request.location();
       } else {
         location =
-            ((IcebergCatalog) baseCatalog).transformTableLikeLocation(ident, request.location());
+            ((LocalIcebergCatalog) baseCatalog)
+                .transformTableLikeLocation(ident, request.location());
       }
     } else {
       location =
@@ -593,7 +594,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
-    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+    if (baseCatalog instanceof LocalIcebergCatalog polarisCatalog) {
       polarisCatalog.validateStagedTableCreate(ident, metadata);
     }
 
@@ -803,7 +804,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // the remote catalog's actual table metadata.
     // Note: this check must come after authorizeLoadTable because baseCatalog is
     // initialized lazily during authorization.
-    if (!(baseCatalog instanceof IcebergCatalog)) {
+    if (!(baseCatalog instanceof LocalIcebergCatalog)) {
       return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
     }
 
@@ -1096,7 +1097,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   if (!isFederated && update instanceof MetadataUpdate.SetLocation setLocation) {
                     String requestedLocation = setLocation.location();
                     String filteredLocation =
-                        ((IcebergCatalog) baseCatalog)
+                        ((LocalIcebergCatalog) baseCatalog)
                             .transformTableLikeLocation(identifier, requestedLocation);
                     return new MetadataUpdate.SetLocation(filteredLocation);
                   } else {
@@ -1210,7 +1211,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // validations.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
         new TransactionWorkspaceMetaStoreManager(diagnostics(), metaStoreManager());
-    ((IcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
+    ((LocalIcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
     // Group all changes by table identifier to handle them atomically.
     // This prevents conflicts when multiple changes target the same table entity.
@@ -1318,7 +1319,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           baseCatalog.getClass().getName());
     } else {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-      var results = ((IcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
+      var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
           .nextPageToken(results.encodedResponseToken())

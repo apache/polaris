@@ -17,7 +17,6 @@
  * under the License.
  */
 
-import copiedcode.CopiedCodeCheckerPlugin
 import org.jetbrains.gradle.ext.copyright
 import org.jetbrains.gradle.ext.encodings
 import org.jetbrains.gradle.ext.settings
@@ -25,23 +24,12 @@ import publishing.PublishingHelperExtension
 import publishing.PublishingHelperPlugin
 
 plugins {
-  id("com.diffplug.spotless")
+  id("polaris-base")
+  id("polaris-spotless")
   id("org.jetbrains.gradle.plugin.idea-ext")
 }
 
 apply<PublishingHelperPlugin>()
-
-apply<CopiedCodeCheckerPlugin>()
-
-if (!project.extra.has("duplicated-project-sources")) {
-  spotless {
-    kotlinGradle {
-      ktfmt().googleStyle()
-      // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-      target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kt*")
-    }
-  }
-}
 
 if (providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean()) {
   idea {

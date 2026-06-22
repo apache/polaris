@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.junit.jupiter.api.Test;
@@ -37,10 +38,9 @@ public class ResultSetIteratorTest {
   @Test
   public void testIteration() throws SQLException {
     ResultSet resultSet = mock(ResultSet.class);
-    Converter<String> converter = mock(Converter.class);
+    Converter<String> converter = converterReturning("first", "second");
 
     when(resultSet.next()).thenReturn(true, true, false);
-    when(converter.fromResultSet(resultSet)).thenReturn("first").thenReturn("second");
 
     ResultSetIterator<String> iterator = new ResultSetIterator<>(resultSet, converter);
 
@@ -56,7 +56,7 @@ public class ResultSetIteratorTest {
   @Test
   public void testNextThrowsWhenExhausted() throws SQLException {
     ResultSet resultSet = mock(ResultSet.class);
-    Converter<String> converter = mock(Converter.class);
+    Converter<String> converter = converterReturning();
 
     when(resultSet.next()).thenReturn(false);
 
@@ -69,15 +69,30 @@ public class ResultSetIteratorTest {
   @Test
   public void testToStream() throws SQLException {
     ResultSet resultSet = mock(ResultSet.class);
-    Converter<String> converter = mock(Converter.class);
+    Converter<String> converter = converterReturning("first", "second");
 
     when(resultSet.next()).thenReturn(true, true, false);
-    when(converter.fromResultSet(resultSet)).thenReturn("first").thenReturn("second");
 
     ResultSetIterator<String> iterator = new ResultSetIterator<>(resultSet, converter);
 
     List<String> results = iterator.toStream().toList();
 
     assertEquals(List.of("first", "second"), results);
+  }
+
+  private static Converter<String> converterReturning(String... values) {
+    return new Converter<String>() {
+      private int index = 0;
+
+      @Override
+      public String fromResultSet(ResultSet rs) {
+        return values[index++];
+      }
+
+      @Override
+      public Map<String, Object> toMap(DatabaseType databaseType) {
+        throw new UnsupportedOperationException("read-only converter stub");
+      }
+    };
   }
 }

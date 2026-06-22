@@ -18,13 +18,13 @@
 #
 
 [versions]
-checkstyle = "13.5.0"
+checkstyle = "13.6.0"
 hadoop = "3.5.0"
 iceberg = "1.11.0" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
 immutables = "2.12.2"
 jmh = "1.37"
 picocli = "4.7.7"
-quarkus = "3.36.1"
+quarkus = "3.36.3"
 ranger = "2.8.0"
 ranger-graalvm = "25.0.3"
 scala212 = "2.12.21"
@@ -51,7 +51,7 @@ awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.44.7" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.3.7" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.4" }
-cel-bom = { module = "org.projectnessie.cel:cel-bom", version = "0.6.0" }
+cel-bom = { module = "org.projectnessie.cel:cel-bom", version = "0.6.1" }
 checkstyle = { module = "com.puppycrawl.tools:checkstyle", version.ref = "checkstyle" } # required by the polaris-java plugin
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
@@ -116,7 +116,7 @@ swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref =
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "2.0.5" }
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "4.2.1" }
-threeten-extra = { module = "org.threeten:threeten-extra", version = "1.9.0" }
+threeten-extra = { module = "org.threeten:threeten-extra", version = "1.10.0" }
 weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.3.Final" }
 weld-core-bom = { module = "org.jboss.weld:weld-core-bom", version = "6.0.4.Final" }
 

@@ -21,8 +21,8 @@ package org.apache.polaris.service.test;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.Response.Status;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
@@ -36,23 +36,22 @@ import org.hawkular.agent.prometheus.walkers.CollectorPrometheusMetricsWalker;
 /** Utils for working with metrics in tests */
 public class TestMetricsUtil {
 
-  public static Map<String, MetricFamily> fetchMetrics(Client client, URI baseManagementUri) {
-    Response response = client.target(baseManagementUri.resolve("q/metrics")).request().get();
-    if (response.getStatus() == Status.MOVED_PERMANENTLY.getStatusCode()) {
-      response = client.target(response.getLocation()).request().get();
+  public static Map<String, MetricFamily> fetchMetrics(URI baseManagementUri) {
+    try (Client client = ClientBuilder.newBuilder().build();
+        Response response = client.target(baseManagementUri.resolve("q/metrics")).request().get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      String body = response.readEntity(String.class);
+      InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+      CollectorPrometheusMetricsWalker walker = new CollectorPrometheusMetricsWalker();
+      new TextPrometheusMetricsProcessor(inputStream, walker).walk();
+      return walker.getAllMetricFamilies().stream()
+          .collect(
+              Collectors.toMap(
+                  MetricFamily::getName,
+                  metricFamily -> metricFamily,
+                  (mf1, mf2) -> {
+                    throw new IllegalStateException("Duplicate metric family: " + mf1.getName());
+                  }));
     }
-    assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-    String body = response.readEntity(String.class);
-    InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
-    CollectorPrometheusMetricsWalker walker = new CollectorPrometheusMetricsWalker();
-    new TextPrometheusMetricsProcessor(inputStream, walker).walk();
-    return walker.getAllMetricFamilies().stream()
-        .collect(
-            Collectors.toMap(
-                MetricFamily::getName,
-                metricFamily -> metricFamily,
-                (mf1, mf2) -> {
-                  throw new IllegalStateException("Duplicate metric family: " + mf1.getName());
-                }));
   }
 }
