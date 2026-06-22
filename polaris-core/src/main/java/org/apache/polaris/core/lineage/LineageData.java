@@ -35,6 +35,7 @@ public record LineageData(
     Objects.requireNonNull(datasetId, "datasetId must be non-null");
     Objects.requireNonNull(namespace, "namespace must be non-null");
     Objects.requireNonNull(name, "name must be non-null");
+    Objects.requireNonNull(subType, "subType must be non-null");
     Objects.requireNonNull(createdAt, "createdAt must be non-null");
     Objects.requireNonNull(updatedAt, "updatedAt must be non-null");
   }
