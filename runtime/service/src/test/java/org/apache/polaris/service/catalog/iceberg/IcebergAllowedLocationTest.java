@@ -627,7 +627,7 @@ public class IcebergAllowedLocationTest {
     updateCatalogAllowedLocations(services, List.of(disallowedAfterShrink));
 
     // Credential vending for the existing table (which has stale location in its entity)
-    # must now be rejected.
+    // must now be rejected.
     IcebergCatalogHandler handler =
         services.catalogAdapter().newHandler(services.securityContext(), catalog);
 
