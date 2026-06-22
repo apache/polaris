@@ -32,20 +32,19 @@ description =
 val syncNoticeAndLicense by
   tasks.registering(Sync::class) {
     // Have to manually declare the inputs of this task here on top of the from/include below
+    val rootDir = layout.settingsDirectory
     inputs
-      .files(
-        rootProject.fileTree(rootProject.rootDir) { include("NOTICE*", "LICENSE*", "version.txt") }
-      )
+      .files(fileTree(rootDir) { include("NOTICE*", "LICENSE*", "version.txt") })
       .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("version", project.version)
     destinationDir = project.layout.buildDirectory.dir("notice-licenses").get().asFile
-    from(rootProject.rootDir) {
+    from(rootDir) {
       include("NOTICE*", "LICENSE*")
       // Put NOTICE/LICENSE* files under META-INF/resources/ so those files can be directly
       // accessed as static web resources in Quarkus.
       eachFile { path = "META-INF/resources/apache-polaris/${file.name}.txt" }
     }
-    from(rootProject.rootDir) {
+    from(rootDir) {
       include("version.txt")
       // Put NOTICE/LICENSE* files under META-INF/resources/ so those files can be directly
       // accessed as static web resources in Quarkus.
@@ -86,7 +85,7 @@ testing {
     register<JvmTestSuite>("jarTest") {
       dependencies { runtimeOnly(files(jarTestJar.map { it.archiveFile })) }
 
-      targets.all {
+      targets.configureEach {
         testTask.configure {
           dependsOn("jar", jarTestJar)
           systemProperty("rootProjectDir", rootProject.rootDir.relativeTo(project.projectDir))

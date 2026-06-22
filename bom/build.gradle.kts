@@ -133,7 +133,7 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
     configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } }
   )
   projectCoordinatesByPath.set(
-    rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" }
+    provider { rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" } }
   )
   excludedProjectPaths.set(
     setOf(

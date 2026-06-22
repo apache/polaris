@@ -78,13 +78,12 @@ val licenseReportZip =
     archiveExtension.set("zip")
   }
 
-val licenseReports by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-    description = "License report files"
-    outgoing { artifact(licenseReportZip) }
-  }
+val licenseReports by configurations.creating {
+  isCanBeConsumed = true
+  isCanBeResolved = false
+  description = "License report files"
+  outgoing { artifact(licenseReportZip) }
+}
 
 plugins.withType<MavenPublishPlugin>().configureEach {
   configure<PublishingExtension> {

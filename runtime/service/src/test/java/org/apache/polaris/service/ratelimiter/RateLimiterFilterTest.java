@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
@@ -29,6 +28,8 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -40,11 +41,12 @@ import org.apache.iceberg.rest.responses.ErrorResponseParser;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.PolarisApiEndpoints;
+import org.apache.polaris.service.it.env.PolarisClient;
+import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterTest.Profile;
-import org.apache.polaris.service.test.PolarisIntegrationTestFixture;
-import org.apache.polaris.service.test.PolarisIntegrationTestHelper;
 import org.apache.polaris.service.test.TestEnvironment;
 import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.apache.polaris.service.test.TestMetricsUtil;
@@ -54,7 +56,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,6 +65,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @TestInstance(Lifecycle.PER_CLASS)
 @TestProfile(Profile.class)
 @ExtendWith(TestEnvironmentExtension.class)
+@ExtendWith(PolarisIntegrationTestExtension.class)
 public class RateLimiterFilterTest {
 
   public static class Profile implements QuarkusTestProfile {
@@ -79,9 +81,9 @@ public class RateLimiterFilterTest {
           .put("polaris.rate-limiter.filter.type", "mock")
           .put("polaris.rate-limiter.token-bucket.type", "default")
           .put("polaris.metrics.tags.environment", "prod")
+          .put("polaris.realm-context.realms", "POLARIS,POLARIS2")
           .put("polaris.metrics.realm-id-tag.enable-in-api-metrics", "true")
           .put("polaris.metrics.realm-id-tag.enable-in-http-metrics", "true")
-          .put("polaris.realm-context.type", "test")
           .put("polaris.authentication.token-broker.type", "symmetric-key")
           .put("polaris.authentication.token-broker.symmetric-key.secret", "secret")
           .put("polaris.event-listener.types", "test")
@@ -89,29 +91,31 @@ public class RateLimiterFilterTest {
     }
   }
 
-  @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry meterRegistry;
 
   @Inject
   @Identifier("test")
-  PolarisEventListener polarisEventListener;
-
-  private TestPolarisEventListener testPolarisEventListener;
+  TestPolarisEventListener polarisEventListener;
 
   private TestEnvironment testEnv;
-  private PolarisIntegrationTestFixture fixture;
+  private PolarisApiEndpoints endpoints;
+  private PolarisClient client;
+  private String adminToken;
 
   @BeforeAll
-  public void createFixture(TestEnvironment testEnv, TestInfo testInfo) {
+  public void setUp(
+      TestEnvironment testEnv, PolarisApiEndpoints endpoints, ClientCredentials credentials) {
     MockRateLimiter.allowProceed = true;
     this.testEnv = testEnv;
-    fixture = helper.createFixture(testEnv, testInfo);
+    this.endpoints = endpoints;
+    client = PolarisClient.polarisClient(endpoints);
+    adminToken = client.obtainToken(credentials);
   }
 
   @AfterAll
-  public void destroyFixture() {
-    if (fixture != null) {
-      fixture.destroy();
+  public void tearDown() throws Exception {
+    if (client != null) {
+      client.close();
     }
   }
 
@@ -119,15 +123,12 @@ public class RateLimiterFilterTest {
   public void resetMeterRegistry() {
     MockRateLimiter.allowProceed = true;
     meterRegistry.clear();
-
-    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
-    testPolarisEventListener.clear();
+    polarisEventListener.clear();
   }
 
   @Test
   public void testRateLimiter() {
-    Consumer<Status> requestAsserter =
-        TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm);
+    Consumer<Status> requestAsserter = constructRequestAsserter(testEnv, adminToken, "POLARIS");
 
     for (int i = 0; i < 3; i++) {
       MockRateLimiter.allowProceed = true;
@@ -138,22 +139,14 @@ public class RateLimiterFilterTest {
 
     // Ensure that a different realm identifier gets a separate limit
     MockRateLimiter.allowProceed = true;
-    Consumer<Status> requestAsserter2 =
-        TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm + "2");
+    Consumer<Status> requestAsserter2 = constructRequestAsserter(testEnv, adminToken, "POLARIS2");
     requestAsserter2.accept(Status.OK);
   }
 
   @Test
   public void testRateLimitedResponseHasIcebergErrorBody() {
     MockRateLimiter.allowProceed = false;
-    try (Response response =
-        fixture
-            .client
-            .target(String.format("%s/api/management/v1/principal-roles", testEnv.baseUri()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + fixture.adminToken)
-            .header(REALM_PROPERTY_KEY, fixture.realm)
-            .get()) {
+    try (Response response = client.managementApi(adminToken).request("v1/principal-roles").get()) {
       assertThat(response.getStatus()).isEqualTo(Status.TOO_MANY_REQUESTS.getStatusCode());
       assertThat(response.getMediaType()).isEqualTo(MediaType.APPLICATION_JSON_TYPE);
 
@@ -168,7 +161,7 @@ public class RateLimiterFilterTest {
   @Test
   public void testMetricsAreEmittedWhenRateLimiting() {
     Consumer<Status> requestAsserter =
-        TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm);
+        constructRequestAsserter(testEnv, adminToken, endpoints.realmId());
 
     for (int i = 0; i < 3; i++) {
       MockRateLimiter.allowProceed = true;
@@ -177,16 +170,14 @@ public class RateLimiterFilterTest {
       requestAsserter.accept(Status.TOO_MANY_REQUESTS);
     }
 
-    PolarisEvent event =
-        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
+    PolarisEvent event = polarisEventListener.getLatest(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
     assertThat(event.attributes().getRequired(EventAttributes.HTTP_METHOD)).isEqualTo("GET");
 
     // Examples of expected metrics:
     // http_server_requests_seconds_count{application="Polaris",environment="prod",method="GET",outcome="CLIENT_ERROR",realm_id="org_apache_polaris_service_ratelimiter_RateLimiterFilterTest",status="429",uri="/api/management/v1/principal-roles"} 1.0
     // polaris_principal_roles_listPrincipalRoles_seconds_count{application="Polaris",class="org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi",environment="prod",exception="none",method="listPrincipalRoles"} 50.0
 
-    Map<String, MetricFamily> metrics =
-        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri());
+    Map<String, MetricFamily> metrics = TestMetricsUtil.fetchMetrics(testEnv.baseManagementUri());
 
     assertThat(metrics)
         .isNotEmpty()
@@ -200,7 +191,7 @@ public class RateLimiterFilterTest {
                   .contains(
                       Map.entry("application", "Polaris"),
                       Map.entry("environment", "prod"),
-                      Map.entry("realm_id", fixture.realm),
+                      Map.entry("realm_id", endpoints.realmId()),
                       Map.entry("method", "GET"),
                       Map.entry("outcome", "CLIENT_ERROR"),
                       Map.entry("status", String.valueOf(Status.TOO_MANY_REQUESTS.getStatusCode())),
@@ -218,7 +209,7 @@ public class RateLimiterFilterTest {
                   .contains(
                       Map.entry("application", "Polaris"),
                       Map.entry("environment", "prod"),
-                      Map.entry("realm_id", fixture.realm),
+                      Map.entry("realm_id", endpoints.realmId()),
                       Map.entry(
                           "class", "org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi"),
                       Map.entry("exception", "none"),
@@ -228,5 +219,26 @@ public class RateLimiterFilterTest {
                   .extracting(Summary::getSampleCount)
                   .isEqualTo(3L);
             });
+  }
+
+  /**
+   * Constructs a function that makes a request to list all principal roles and asserts the status
+   * of the response. This is a relatively simple type of request that can be used for validating
+   * whether the rate limiter intervenes.
+   */
+  private static Consumer<Status> constructRequestAsserter(
+      TestEnvironment testEnv, String adminToken, String realm) {
+    return (Status status) -> {
+      try (Client client = ClientBuilder.newBuilder().build();
+          Response response =
+              client
+                  .target(String.format("%s/api/management/v1/principal-roles", testEnv.baseUri()))
+                  .request("application/json")
+                  .header("Authorization", "Bearer " + adminToken)
+                  .header("Polaris-Realm", realm)
+                  .get()) {
+        assertThat(response).returns(status.getStatusCode(), Response::getStatus);
+      }
+    };
   }
 }

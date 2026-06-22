@@ -56,7 +56,6 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -84,19 +83,6 @@ public abstract class AbstractLocalIcebergCatalogViewTest
     extends ViewCatalogTests<LocalIcebergCatalog> {
   static {
     Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
-  }
-
-  public static class Profile extends Profiles.DefaultProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("polaris.features.\"ALLOW_WILDCARD_LOCATION\"", "true")
-          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true")
-          .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
-          .put("polaris.event-listener.types", "test")
-          .build();
-    }
   }
 
   public static final String CATALOG_NAME = "polaris-catalog";

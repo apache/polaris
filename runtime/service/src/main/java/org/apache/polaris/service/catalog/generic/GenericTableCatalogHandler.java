@@ -131,7 +131,8 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
 
   public boolean dropGenericTable(TableIdentifier identifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.GENERIC_TABLE, identifier);
 
     return this.genericTableCatalog.dropGenericTable(identifier);
   }

@@ -28,6 +28,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
@@ -39,7 +40,7 @@ import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
 @QuarkusTest
-@TestProfile(PolarisAuthzTestBase.Profile.class)
+@TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   private PolicyCatalogHandler newHandler() {

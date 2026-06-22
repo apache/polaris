@@ -24,16 +24,15 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationPreConditions;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.api.RangerAuthzException;
@@ -55,8 +54,6 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
   public static final String SERVICE_TYPE = "polaris";
 
-  private static final String OPERATION_NOT_ALLOWED_FOR_USER_ERROR =
-      "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE";
   private static final String RANGER_AUTH_FAILED_ERROR =
       "Principal '%s' is not authorized for op '%s'";
 
@@ -64,15 +61,13 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   private final String serviceName;
   private RealmContext realmContext;
   private String realmConextIdentifier;
-  private final boolean enforceCredentialRotationRequiredState;
+  private final RealmConfig realmConfig;
 
   public RangerPolarisAuthorizer(
       RangerEmbeddedAuthorizer authorizer, String serviceName, RealmConfig realmConfig) {
     this.authorizer = authorizer;
     this.serviceName = serviceName;
-    this.enforceCredentialRotationRequiredState =
-        realmConfig.getConfig(
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+    this.realmConfig = realmConfig;
   }
 
   public void setRealmContext(RealmContext aRealmContext) {
@@ -142,14 +137,8 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     }
 
     try {
-      if (enforceCredentialRotationRequiredState
-          && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS
-          && polarisPrincipal
-              .getProperties()
-              .containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
-        throw new ForbiddenException(
-            OPERATION_NOT_ALLOWED_FOR_USER_ERROR, polarisPrincipal.getName(), authzOp.name());
-      }
+      AuthorizationPreConditions.checkCredentialRotationRequired(
+          polarisPrincipal, authzOp, realmConfig);
 
       if (!isAccessAuthorized(polarisPrincipal, authzOp, targets, secondaries)) {
         throw new ForbiddenException(

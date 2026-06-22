@@ -75,111 +75,111 @@ import org.gradle.plugins.signing.SigningPlugin
 class PublishingHelperPlugin
 @Inject
 constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Plugin<Project> {
-  override fun apply(project: Project): Unit =
-    project.run {
-      extensions.create("publishingHelper", PublishingHelperExtension::class.java)
+  override fun apply(project: Project): Unit = project.run {
+    extensions.create("publishingHelper", PublishingHelperExtension::class.java)
 
-      tasks.withType<Jar>().configureEach {
-        manifest { MemoizedJarInfo.applyJarManifestAttributes(rootProject, attributes) }
-      }
-
-      apply(plugin = "maven-publish")
-      apply(plugin = "signing")
-
-      // Generate a source tarball for a release to be uploaded to
-      // https://dist.apache.org/repos/dist/dev/<name>/apache-<name>-<version-with-rc>/
-      if (project == rootProject) {
-        configureOnRootProject(project)
-      }
-
-      if (isSigningEnabled()) {
-        plugins.withType<SigningPlugin>().configureEach {
-          configure<SigningExtension> {
-            val signingKey: String? by project
-            val signingPassword: String? by project
-            useInMemoryPgpKeys(signingKey, signingPassword)
-
-            if (project.hasProperty("useGpgAgent")) {
-              useGpgCmd()
-            }
-          }
-        }
-      }
-
-      // Gradle complains when a Gradle module metadata ("pom on steroids") is generated with an
-      // enforcedPlatform() dependency - but Quarkus requires enforcedPlatform(), so we have to
-      // allow it.
-      tasks.withType<GenerateModuleMetadata>().configureEach {
-        suppressedValidationErrors.add("enforced-platform")
-      }
-
-      plugins.withType<MavenPublishPlugin>().configureEach {
-        configure<PublishingExtension> {
-          publications {
-            register<MavenPublication>("maven") {
-              val mavenPublication = this
-              if (project.plugins.hasPlugin(ShadowPlugin::class.java)) {
-                configureShadowPublishing(project, mavenPublication, softwareComponentFactory)
-              } else {
-                val component =
-                  components.firstOrNull { c -> c.name == "javaPlatform" || c.name == "java" }
-                if (component is AdhocComponentWithVariants) {
-                  listOf("testFixturesApiElements", "testFixturesRuntimeElements").forEach { cfg ->
-                    configurations.findByName(cfg)?.apply {
-                      component.addVariantsFromConfiguration(this) { skip() }
-                    }
-                  }
-                }
-                if (component != null) {
-                  from(component)
-                }
-              }
-
-              suppressPomMetadataWarningsFor("testFixturesApiElements")
-              suppressPomMetadataWarningsFor("testFixturesRuntimeElements")
-
-              project.tasks
-                .matching { task -> task.name == "createPolarisSparkJar" }
-                .configureEach {
-                  // if the project contains spark client jar, also publish the jar to maven
-                  artifact(this)
-                }
-
-              if (project.isSigningEnabled()) {
-                configure<SigningExtension> { sign(mavenPublication) }
-              }
-
-              if (
-                plugins.hasPlugin("java-test-fixtures") &&
-                  project.layout.projectDirectory.dir("src/testFixtures").asFile.exists()
-              ) {
-                val testFixturesSourcesJar by
-                  tasks.registering(org.gradle.api.tasks.bundling.Jar::class) {
-                    val sourceSets: SourceSetContainer by project
-                    from(sourceSets.named("testFixtures").get().allSource)
-                    archiveClassifier.set("test-fixtures-sources")
-                  }
-                tasks.named<Javadoc>("testFixturesJavadoc") { isFailOnError = false }
-                val testFixturesJavadocJar by
-                  tasks.registering(org.gradle.api.tasks.bundling.Jar::class) {
-                    from(tasks.named("testFixturesJavadoc"))
-                    archiveClassifier.set("test-fixtures-javadoc")
-                  }
-
-                artifact(testFixturesSourcesJar)
-                artifact(testFixturesJavadocJar)
-              }
-
-              tasks.named("generatePomFileForMavenPublication").configure {
-                configurePom(project, project.parentPomCoordinates(), mavenPublication, this)
-              }
-            }
-          }
-        }
-      }
-
-      addAdditionalJarContent(this)
+    tasks.withType<Jar>().configureEach {
+      manifest { MemoizedJarInfo.applyJarManifestAttributes(project, attributes) }
     }
+
+    apply(plugin = "maven-publish")
+    apply(plugin = "signing")
+
+    // Generate a source tarball for a release to be uploaded to
+    // https://dist.apache.org/repos/dist/dev/<name>/apache-<name>-<version-with-rc>/
+    if (project == rootProject) {
+      configureOnRootProject(project)
+    }
+
+    if (isSigningEnabled()) {
+      plugins.withType<SigningPlugin>().configureEach {
+        configure<SigningExtension> {
+          val signingKey: String? by project
+          val signingPassword: String? by project
+          useInMemoryPgpKeys(signingKey, signingPassword)
+
+          if (project.providers.gradleProperty("useGpgAgent").isPresent) {
+            useGpgCmd()
+          }
+        }
+      }
+    }
+
+    // Gradle complains when a Gradle module metadata ("pom on steroids") is generated with an
+    // enforcedPlatform() dependency - but Quarkus requires enforcedPlatform(), so we have to
+    // allow it.
+    tasks.withType<GenerateModuleMetadata>().configureEach {
+      suppressedValidationErrors.add("enforced-platform")
+    }
+
+    plugins.withType<MavenPublishPlugin>().configureEach {
+      configure<PublishingExtension> {
+        publications {
+          register<MavenPublication>("maven") {
+            val mavenPublication = this
+            if (project.plugins.hasPlugin(ShadowPlugin::class.java)) {
+              configureShadowPublishing(project, mavenPublication, softwareComponentFactory)
+            } else {
+              val component = components.firstOrNull { c ->
+                c.name == "javaPlatform" || c.name == "java"
+              }
+              if (component is AdhocComponentWithVariants) {
+                listOf("testFixturesApiElements", "testFixturesRuntimeElements").forEach { cfg ->
+                  configurations.findByName(cfg)?.apply {
+                    component.addVariantsFromConfiguration(this) { skip() }
+                  }
+                }
+              }
+              if (component != null) {
+                from(component)
+              }
+            }
+
+            suppressPomMetadataWarningsFor("testFixturesApiElements")
+            suppressPomMetadataWarningsFor("testFixturesRuntimeElements")
+
+            project.tasks
+              .matching { task -> task.name == "createPolarisSparkJar" }
+              .configureEach {
+                // if the project contains spark client jar, also publish the jar to maven
+                artifact(this)
+              }
+
+            if (project.isSigningEnabled()) {
+              configure<SigningExtension> { sign(mavenPublication) }
+            }
+
+            if (
+              plugins.hasPlugin("java-test-fixtures") &&
+                project.layout.projectDirectory.dir("src/testFixtures").asFile.exists()
+            ) {
+              val testFixturesSourcesJar by
+                tasks.registering(org.gradle.api.tasks.bundling.Jar::class) {
+                  val sourceSets: SourceSetContainer by project
+                  from(sourceSets.named("testFixtures").map { it.allSource })
+                  archiveClassifier.set("test-fixtures-sources")
+                }
+              tasks.named<Javadoc>("testFixturesJavadoc") { isFailOnError = false }
+              val testFixturesJavadocJar by
+                tasks.registering(org.gradle.api.tasks.bundling.Jar::class) {
+                  from(tasks.named("testFixturesJavadoc"))
+                  archiveClassifier.set("test-fixtures-javadoc")
+                }
+
+              artifact(testFixturesSourcesJar)
+              artifact(testFixturesJavadocJar)
+            }
+
+            tasks.named("generatePomFileForMavenPublication").configure {
+              configurePom(project, project.parentPomCoordinates(), mavenPublication, this)
+            }
+          }
+        }
+      }
+    }
+
+    addAdditionalJarContent(this)
+  }
 
   private fun Project.parentPomCoordinates(): ParentPomCoordinates? =
     if (this == rootProject) {
