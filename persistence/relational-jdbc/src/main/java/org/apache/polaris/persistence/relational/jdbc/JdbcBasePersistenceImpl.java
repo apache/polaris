@@ -1251,8 +1251,7 @@ public class JdbcBasePersistenceImpl
   }
 
   /** Connection-aware overload for use inside transaction. */
-  @NonNull
-  public List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
+  @NonNull List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
       @NonNull PolarisCallContext callCtx,
       long targetCatalogId,
       long targetId,

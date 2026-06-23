@@ -145,6 +145,38 @@ public class DatasourceOperationsTest {
   }
 
   @Test
+  void testExecuteSelect_withConnection_usesProvidedConnection() throws Exception {
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("SELECT * FROM users", List.of());
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenThrow(new SQLException("demo", "42P07"));
+
+    // The connection-aware overload must use the caller-provided Connection
+    // (no internal borrow should occur for the SELECT itself).
+    assertThrows(
+        SQLException.class,
+        () -> datasourceOperations.executeSelect(mockConnection, query, new ModelEntity(1)));
+
+    verify(mockConnection).prepareStatement(query.sql());
+  }
+
+  @Test
+  void testExecuteSelectOverStream_withConnection_usesProvidedConnection() throws Exception {
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("SELECT * FROM users", List.of());
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenThrow(new SQLException("stream demo", "42P07"));
+
+    assertThrows(
+        SQLException.class,
+        () ->
+            datasourceOperations.executeSelectOverStream(
+                mockConnection, query, new ModelEntity(1), stream -> stream.forEach(x -> {})));
+
+    verify(mockConnection).prepareStatement(query.sql());
+  }
+
+  @Test
   void testRunWithinTransaction_commit() throws Exception {
     // reset to ignore constructor interaction
     reset(mockConnection);

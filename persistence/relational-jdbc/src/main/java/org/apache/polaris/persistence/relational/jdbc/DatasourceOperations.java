@@ -173,18 +173,9 @@ public class DatasourceOperations {
       throws SQLException {
     withRetries(
         () -> {
-          logQuery(query);
-          try (Connection connection = borrowConnection();
-              PreparedStatement statement = connection.prepareStatement(query.sql())) {
-            List<Object> params = query.parameters();
-            for (int i = 0; i < params.size(); i++) {
-              statement.setObject(i + 1, params.get(i));
-            }
-            try (ResultSet resultSet = statement.executeQuery()) {
-              ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
-              consumer.accept(iterator.toStream());
-              return null;
-            }
+          try (Connection connection = borrowConnection()) {
+            executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+            return null;
           }
         });
   }
@@ -198,19 +189,32 @@ public class DatasourceOperations {
       throws SQLException {
     withRetries(
         () -> {
-          logQuery(query);
-          try (PreparedStatement statement = connection.prepareStatement(query.sql())) {
-            List<Object> params = query.parameters();
-            for (int i = 0; i < params.size(); i++) {
-              statement.setObject(i + 1, params.get(i));
-            }
-            try (ResultSet resultSet = statement.executeQuery()) {
-              ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
-              consumer.accept(iterator.toStream());
-              return null;
-            }
-          }
+          executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+          return null;
         });
+  }
+
+  /**
+   * Internal implementation that executes the SELECT on the provided connection. Does not manage
+   * connection lifecycle or retries.
+   */
+  private <T> void executeSelectOverStreamWithConnection(
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer,
+      @NonNull Connection connection)
+      throws SQLException {
+    logQuery(query);
+    try (PreparedStatement statement = connection.prepareStatement(query.sql())) {
+      List<Object> params = query.parameters();
+      for (int i = 0; i < params.size(); i++) {
+        statement.setObject(i + 1, params.get(i));
+      }
+      try (ResultSet resultSet = statement.executeQuery()) {
+        ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+        consumer.accept(iterator.toStream());
+      }
+    }
   }
 
   /** Connection-aware version for use inside runWithinTransaction. */
