@@ -93,6 +93,7 @@ dependencies {
     api(project(":polaris-config-docs-generator"))
 
     api(project(":polaris-core"))
+    api(project(":polaris-lineage"))
 
     api(project(":polaris-relational-jdbc"))
 
