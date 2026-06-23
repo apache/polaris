@@ -772,6 +772,162 @@
                 }
             }
         },
+        "maintenance": {
+            "description": "Configuration for Polaris maintenance tasks running as Kubernetes CronJobs. Maintenance pods inherit the global pod-level scheduling and hardening settings but do NOT inherit env-var or volume settings. The latter must be configured explicitly under maintenance.* to prevent server-specific secrets and configuration from being exposed to maintenance pods.",
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "description": "Annotations to add to every maintenance CronJob object.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "envFrom": {
+                    "description": "Bulk import environment variables from Secrets or ConfigMaps to every maintenance CronJob object. NOT merged with the global `envFrom` as maintenance pods receive only values configured here.",
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "extraEnv": {
+                    "description": "Extra environment variables to add to every maintenance CronJob object. NOT merged with the global `extraEnv` as maintenance pods receive only values configured here.",
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "extraVolumeMounts": {
+                    "description": "Extra volume mounts to add to every maintenance CronJob object. NOT merged with the global `extraVolumeMounts` as maintenance pods receive only values configured here.",
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "extraVolumes": {
+                    "description": "Extra volumes to add to every maintenance CronJob object. NOT merged with the global `extraVolumes` — see `maintenance.extraEnv` for the rationale.",
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "image": {
+                    "description": "The container image used by every maintenance CronJob object.",
+                    "type": "object",
+                    "properties": {
+                        "pullPolicy": {
+                            "description": "The image pull policy.",
+                            "type": "string",
+                            "enum": [
+                                "Always",
+                                "IfNotPresent",
+                                "Never"
+                            ]
+                        },
+                        "repository": {
+                            "description": "The image repository to pull from for the Polaris admin tool.",
+                            "type": "string"
+                        },
+                        "tag": {
+                            "description": "The image tag.",
+                            "type": "string"
+                        }
+                    }
+                },
+                "jobs": {
+                    "description": "Define maintenance CronJobs.",
+                    "type": "object",
+                    "properties": {
+                        "nosql-maintenance": {
+                            "type": "object",
+                            "properties": {
+                                "activeDeadlineSeconds": {
+                                    "description": "Maximum runtime in seconds for a single job run. Null means no limit.",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "minimum": 1
+                                },
+                                "args": {
+                                    "description": "The arguments to pass to the admin tool.",
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "backoffLimit": {
+                                    "description": "Maximum number of retries before marking this Job failed.",
+                                    "type": "integer"
+                                },
+                                "concurrencyPolicy": {
+                                    "description": "The concurrency policy. Valid values are: Allow, Forbid, Replace.",
+                                    "type": "string",
+                                    "enum": [
+                                        "Allow",
+                                        "Forbid",
+                                        "Replace"
+                                    ]
+                                },
+                                "enabled": {
+                                    "description": "Enable this maintenance job.",
+                                    "type": "boolean"
+                                },
+                                "failedJobsHistoryLimit": {
+                                    "description": "How many failed finished Jobs to retain in history.",
+                                    "type": "integer"
+                                },
+                                "resources": {
+                                    "description": "Resource requests and limits for this job's container. Not merged with the global `resources` as server's resource profile is typically not suitable for short-lived maintenance jobs. Configure resources explicitly when needed. Unset by default.",
+                                    "type": "object"
+                                },
+                                "restartPolicy": {
+                                    "description": "The pod's restartPolicy.",
+                                    "type": "string",
+                                    "enum": [
+                                        "Never",
+                                        "OnFailure"
+                                    ]
+                                },
+                                "schedule": {
+                                    "description": "The schedule in Cron format.",
+                                    "type": "string"
+                                },
+                                "serviceAccountName": {
+                                    "description": "Per-job ServiceAccount override. Empty means use the global ServiceAccount.",
+                                    "type": "string"
+                                },
+                                "successfulJobsHistoryLimit": {
+                                    "description": "How many successful finished Jobs to retain in history.",
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                            "enabled",
+                            "schedule"
+                        ]
+                    }
+                },
+                "podAnnotations": {
+                    "description": "Annotations to add to every maintenance pod. NOT merged with the global `podAnnotations` as annotations can grant extra access, so maintenance pods receive only what is configured here.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "podLabels": {
+                    "description": "Labels to add to every maintenance pod (e.g., team, cost-center). NOT merged with the global `podLabels`. User-supplied labels are rendered after the chart-managed maintenance labels.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "managementService": {
             "type": "object",
             "properties": {
