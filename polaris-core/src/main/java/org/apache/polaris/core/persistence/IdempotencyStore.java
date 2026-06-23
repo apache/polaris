@@ -16,152 +16,103 @@
  */
 package org.apache.polaris.core.persistence;
 
+import com.google.common.annotations.Beta;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 
 /**
- * Abstraction for persisting and querying idempotency records.
+ * SPI for persisting and looking up handler-level idempotency records.
  *
- * <p>An {@link IdempotencyStore} is responsible for:
+ * <p>Polaris uses an "optimistic commit" model: a record is inserted only <em>after</em> the
+ * originating operation has reached a terminal HTTP status. The SPI exposes just two state
+ * transitions:
  *
  * <ul>
- *   <li>Reserving an idempotency key for a particular operation and resource
- *   <li>Recording completion status and response metadata
- *   <li>Allowing callers to look up existing records to detect duplicates
- *   <li>Expiring and purging old reservations
+ *   <li>{@link #load(UUID)} to detect a duplicate request before doing any work;
+ *   <li>{@link #recordIfAbsent(UUID, String, String, int, String, Instant, Instant)} to atomically
+ *       insert the record after the operation has finalized, returning {@link RecordResult#OWNED}
+ *       when the caller wins the race and {@link RecordResult#DUPLICATE} (with the existing record)
+ *       when another caller raced ahead.
  * </ul>
  *
- * <p>Implementations must be thread-safe if used concurrently.
+ * <p>There is no in-progress / lease / heartbeat state in this design, and no response body is
+ * stored — duplicate requests rebuild an equivalent response from authoritative catalog state.
+ *
+ * <p>The handler-level idempotency design always runs after authorization, so the store does not
+ * need to enforce identity itself; it only needs to persist {@code bindingHash} (which folds in the
+ * caller principal) so the handler can validate it on replay and reject reuse of the same key for a
+ * different caller, operation, or resource.
+ *
+ * <p>A store instance is bound to a single realm at construction, so the realm is not part of any
+ * method signature. Implementations must be thread-safe.
  */
+@Beta
 public interface IdempotencyStore {
 
-  /** High-level outcome of attempting to reserve an idempotency key. */
-  enum ReserveResultType {
-    /** The caller successfully acquired ownership of the idempotency key. */
+  /** Outcome of an attempted record insertion. */
+  enum RecordResultType {
+    /** The caller successfully inserted a new idempotency record. */
     OWNED,
-    /** A reservation already exists for the key; the caller does not own it. */
+    /** A record already exists for the same key in this realm; the caller did not insert. */
     DUPLICATE
   }
 
   /**
-   * Result of attempting to update the heartbeat for an in-progress idempotency record.
+   * Result of {@link #recordIfAbsent(UUID, String, String, int, String, Instant, Instant)},
+   * including the outcome and, when {@link RecordResultType#DUPLICATE}, the existing record so the
+   * caller can compare bindings without an extra round-trip.
    *
-   * <p>This allows callers to distinguish between different "no update" scenarios instead of
-   * overloading them into a boolean.
+   * <p>Invariant: when {@link #type()} is {@link RecordResultType#DUPLICATE}, {@link #existing()}
+   * is always present. Implementations that cannot reload the conflicting record must raise an
+   * exception rather than return a {@code DUPLICATE} with an empty {@code existing}.
    */
-  enum HeartbeatResult {
-    /** The heartbeat was successfully updated for the in-progress record owned by this executor. */
-    UPDATED,
-
-    /**
-     * The idempotency record exists but has already been finalized with an HTTP status; there is no
-     * longer an in-progress reservation to heartbeat.
-     */
-    FINALIZED,
-
-    /**
-     * No idempotency record exists for the specified realm and key. This can happen if the record
-     * was never created or has already been purged.
-     */
-    NOT_FOUND,
-
-    /**
-     * An in-progress idempotency record exists for the key, but it is owned by a different
-     * executor. The caller should stop heartbeating as it no longer owns the reservation.
-     */
-    LOST_OWNERSHIP
-  }
+  record RecordResult(RecordResultType type, Optional<IdempotencyRecord> existing) {}
 
   /**
-   * Result of a {@link #reserve(String, String, String, String, Instant, String, Instant)} call,
-   * including the outcome and, when applicable, the existing idempotency record.
+   * Loads an existing record for the given key in this store's realm, if present.
    *
-   * @param type outcome of the reservation attempt
-   * @param existing existing idempotency record, when {@link #type ()} is {@link
-   *     ReserveResultType#DUPLICATE}, otherwise {@link Optional#empty()}.
+   * @param idempotencyKey application-provided idempotency key (a UUIDv7)
    */
-  record ReserveResult(ReserveResultType type, Optional<IdempotencyRecord> existing) {}
+  Optional<IdempotencyRecord> load(UUID idempotencyKey);
 
   /**
-   * Attempts to reserve an idempotency key for a given operation and resource.
+   * Atomically inserts an idempotency record if no record exists yet for {@code idempotencyKey} in
+   * this store's realm; otherwise returns the existing record.
    *
-   * <p>If no record exists yet, the implementation should create a new reservation owned by {@code
-   * executorId}. If a record already exists, the implementation should return {@link
-   * ReserveResultType#DUPLICATE} along with the existing record.
+   * <p>This is the only "write" path in the SPI. It is invoked after the originating operation has
+   * succeeded, so {@code httpStatus} is always set.
    *
-   * @param realmId logical tenant or realm identifier
-   * @param idempotencyKey application-provided idempotency key
-   * @param operationType logical operation name (e.g., {@code "commit-table"})
-   * @param normalizedResourceId normalized identifier of the affected resource
-   * @param expiresAt timestamp after which the reservation is considered expired
-   * @param executorId identifier of the caller attempting the reservation
-   * @param now timestamp representing the current time
-   * @return {@link ReserveResult} describing whether the caller owns the reservation or hit a
-   *     duplicate
+   * @param idempotencyKey application-provided idempotency key (a UUIDv7)
+   * @param operationType logical operation name (e.g. {@code "create-table"}), persisted as a
+   *     human-readable label only
+   * @param bindingHash opaque hash over the full binding (caller principal, operation, and the
+   *     request-derived resource identity); not a human-readable identifier, and not the request
+   *     payload; persisted so replay can detect reuse of the same key for a different
+   *     caller/operation/resource
+   * @param httpStatus HTTP status code returned to the client
+   * @param metadataLocation resource state pointer captured at record time (for tables, the
+   *     metadata-file location); used on replay to detect the resource advancing beyond the
+   *     originally-created state; may be {@code null}
+   * @param createdAt timestamp representing when the record was created
+   * @param expiresAt timestamp after which the record is eligible for purging
    */
-  ReserveResult reserve(
-      String realmId,
-      String idempotencyKey,
+  RecordResult recordIfAbsent(
+      UUID idempotencyKey,
       String operationType,
-      String normalizedResourceId,
-      Instant expiresAt,
-      String executorId,
-      Instant now);
+      String bindingHash,
+      int httpStatus,
+      String metadataLocation,
+      Instant createdAt,
+      Instant expiresAt);
 
   /**
-   * Loads an existing idempotency record for the given realm and key, if present.
+   * Purges records in this store's realm whose expiration time is strictly before the given
+   * instant.
    *
-   * @param realmId logical tenant or realm identifier
-   * @param idempotencyKey application-provided idempotency key
-   * @return the corresponding {@link IdempotencyRecord}, if it exists
-   */
-  Optional<IdempotencyRecord> load(String realmId, String idempotencyKey);
-
-  /**
-   * Updates the heartbeat for an in-progress reservation to indicate that the executor is still
-   * actively processing.
-   *
-   * @param realmId logical tenant or realm identifier
-   * @param idempotencyKey application-provided idempotency key
-   * @param executorId identifier of the executor that owns the reservation
-   * @param now timestamp representing the current time
-   * @return {@link HeartbeatResult} describing whether the heartbeat was updated or why it was not
-   */
-  HeartbeatResult updateHeartbeat(
-      String realmId, String idempotencyKey, String executorId, Instant now);
-
-  /**
-   * Marks an idempotency record as finalized, recording HTTP status and response metadata.
-   *
-   * <p>Implementations should be tolerant of idempotent re-finalization attempts and typically
-   * return {@code false} when a record was already finalized.
-   *
-   * @param realmId logical tenant or realm identifier
-   * @param idempotencyKey application-provided idempotency key
-   * @param httpStatus HTTP status code returned to the client, or {@code null} if not applicable
-   * @param errorSubtype optional error subtype or code, if the operation failed
-   * @param responseSummary short, serialized representation of the response body
-   * @param responseHeaders serialized representation of response headers
-   * @param finalizedAt timestamp when the operation completed
-   * @return {@code true} if the record was transitioned to a finalized state, {@code false}
-   *     otherwise
-   */
-  boolean finalizeRecord(
-      String realmId,
-      String idempotencyKey,
-      Integer httpStatus,
-      String errorSubtype,
-      String responseSummary,
-      String responseHeaders,
-      Instant finalizedAt);
-
-  /**
-   * Purges records in a given realm whose expiration time is strictly before the given instant.
-   *
-   * @param realmId logical tenant or realm identifier
    * @param before cutoff instant; records expiring before this time may be removed
    * @return number of records that were purged
    */
-  int purgeExpired(String realmId, Instant before);
+  int purgeExpired(Instant before);
 }

@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.jspecify.annotations.Nullable;
@@ -32,8 +33,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * JDBC model for {@link IdempotencyRecord} mirroring the {@code idempotency_records} table.
  *
- * <p>This follows the same pattern as {@link ModelEvent}, separating the storage representation
- * from the core domain model while still providing {@link Converter} helpers.
+ * <p>The table holds finalized records only (no in-progress / lease state). A row is inserted at
+ * most once per {@code (realm_id, idempotency_key)} pair and is never updated afterwards.
  *
  * <p>Note: {@code realm_id} is treated as an implicit column across relational-jdbc: callers can
  * filter on it in WHERE clauses even if it is not included in the projection list.
@@ -42,51 +43,23 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   String TABLE_NAME = "idempotency_records";
 
-  // Logical tenant / realm identifier.
   String REALM_ID = "realm_id";
-  // Client-provided idempotency key.
   String IDEMPOTENCY_KEY = "idempotency_key";
-  // Logical operation type (e.g. commit-table).
   String OPERATION_TYPE = "operation_type";
-  // Normalized identifier of the affected resource.
-  String RESOURCE_ID = "resource_id";
-
-  // Final HTTP status code once the operation is completed (null while in-progress).
+  String BINDING_HASH = "binding_hash";
   String HTTP_STATUS = "http_status";
-  // Optional error subtype for failures.
-  String ERROR_SUBTYPE = "error_subtype";
-  // Short serialized representation of the response body.
-  String RESPONSE_SUMMARY = "response_summary";
-  // Serialized representation of response headers.
-  String RESPONSE_HEADERS = "response_headers";
-  // Timestamp when the operation was finalized (null while in-progress).
-  String FINALIZED_AT = "finalized_at";
-
-  // Timestamp when the record was created.
+  String METADATA_LOCATION = "metadata_location";
   String CREATED_AT = "created_at";
-  // Timestamp when the record was last updated.
-  String UPDATED_AT = "updated_at";
-  // Timestamp for the last heartbeat update (null if no heartbeat recorded).
-  String HEARTBEAT_AT = "heartbeat_at";
-  // Identifier of the executor that owns the in-progress record (null if not owned).
-  String EXECUTOR_ID = "executor_id";
-  // Expiration timestamp after which the record can be considered stale/purgeable.
   String EXPIRES_AT = "expires_at";
 
   List<String> ALL_COLUMNS =
       List.of(
           IDEMPOTENCY_KEY,
           OPERATION_TYPE,
-          RESOURCE_ID,
+          BINDING_HASH,
           HTTP_STATUS,
-          ERROR_SUBTYPE,
-          RESPONSE_SUMMARY,
-          RESPONSE_HEADERS,
-          FINALIZED_AT,
+          METADATA_LOCATION,
           CREATED_AT,
-          UPDATED_AT,
-          HEARTBEAT_AT,
-          EXECUTOR_ID,
           EXPIRES_AT);
 
   String getRealmId();
@@ -95,36 +68,18 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   String getOperationType();
 
-  String getResourceId();
+  String getBindingHash();
 
-  @Nullable Integer getHttpStatus();
+  int getHttpStatus();
 
-  @Nullable String getErrorSubtype();
-
-  @Nullable String getResponseSummary();
-
-  @Nullable String getResponseHeaders();
-
-  @Nullable Instant getFinalizedAt();
+  @Nullable String getMetadataLocation();
 
   Instant getCreatedAt();
-
-  Instant getUpdatedAt();
-
-  @Nullable Instant getHeartbeatAt();
-
-  @Nullable String getExecutorId();
 
   Instant getExpiresAt();
 
   @Override
   default IdempotencyRecord fromResultSet(ResultSet rs) throws SQLException {
-    return fromRow(rs);
-  }
-
-  /** Convert the current ResultSet row into an {@link IdempotencyRecord}. */
-  static IdempotencyRecord fromRow(ResultSet rs) throws SQLException {
-    // Requires realm_id to be projected in the ResultSet.
     return fromRow(rs.getString(REALM_ID), rs);
   }
 
@@ -133,41 +88,21 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
    * call context (so callers can project only {@link #ALL_COLUMNS}).
    */
   static IdempotencyRecord fromRow(String realmId, ResultSet rs) throws SQLException {
-    String idempotencyKey = rs.getString(IDEMPOTENCY_KEY);
+    UUID idempotencyKey = UUID.fromString(rs.getString(IDEMPOTENCY_KEY));
     String operationType = rs.getString(OPERATION_TYPE);
-    String resourceId = rs.getString(RESOURCE_ID);
-
-    Integer httpStatus = (Integer) rs.getObject(HTTP_STATUS);
-    String errorSubtype = rs.getString(ERROR_SUBTYPE);
-    String responseSummary = rs.getString(RESPONSE_SUMMARY);
-    String responseHeaders = rs.getString(RESPONSE_HEADERS);
-
+    String bindingHash = rs.getString(BINDING_HASH);
+    int httpStatus = rs.getInt(HTTP_STATUS);
+    String metadataLocation = rs.getString(METADATA_LOCATION);
     Instant createdAt = rs.getTimestamp(CREATED_AT).toInstant();
-    Instant updatedAt = rs.getTimestamp(UPDATED_AT).toInstant();
-
-    Timestamp finalizedTs = rs.getTimestamp(FINALIZED_AT);
-    Instant finalizedAt = finalizedTs == null ? null : finalizedTs.toInstant();
-
-    Timestamp heartbeatTs = rs.getTimestamp(HEARTBEAT_AT);
-    Instant heartbeatAt = heartbeatTs == null ? null : heartbeatTs.toInstant();
-
-    String executorId = rs.getString(EXECUTOR_ID);
     Instant expiresAt = rs.getTimestamp(EXPIRES_AT).toInstant();
-
     return new IdempotencyRecord(
         realmId,
         idempotencyKey,
         operationType,
-        resourceId,
+        bindingHash,
         httpStatus,
-        errorSubtype,
-        responseSummary,
-        responseHeaders,
+        metadataLocation,
         createdAt,
-        updatedAt,
-        finalizedAt,
-        heartbeatAt,
-        executorId,
         expiresAt);
   }
 
@@ -176,16 +111,10 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put(IDEMPOTENCY_KEY, getIdempotencyKey());
     map.put(OPERATION_TYPE, getOperationType());
-    map.put(RESOURCE_ID, getResourceId());
+    map.put(BINDING_HASH, getBindingHash());
     map.put(HTTP_STATUS, getHttpStatus());
-    map.put(ERROR_SUBTYPE, getErrorSubtype());
-    map.put(RESPONSE_SUMMARY, getResponseSummary());
-    map.put(RESPONSE_HEADERS, getResponseHeaders());
-    map.put(FINALIZED_AT, getFinalizedAt() == null ? null : Timestamp.from(getFinalizedAt()));
+    map.put(METADATA_LOCATION, getMetadataLocation());
     map.put(CREATED_AT, Timestamp.from(getCreatedAt()));
-    map.put(UPDATED_AT, Timestamp.from(getUpdatedAt()));
-    map.put(HEARTBEAT_AT, getHeartbeatAt() == null ? null : Timestamp.from(getHeartbeatAt()));
-    map.put(EXECUTOR_ID, getExecutorId());
     map.put(EXPIRES_AT, Timestamp.from(getExpiresAt()));
     return map;
   }

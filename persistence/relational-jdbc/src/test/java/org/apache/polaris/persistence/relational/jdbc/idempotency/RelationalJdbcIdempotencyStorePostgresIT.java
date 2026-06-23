@@ -23,10 +23,10 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
-import org.apache.polaris.core.persistence.IdempotencyStore.HeartbeatResult;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
@@ -48,7 +48,8 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
               .dockerImageName(null)
               .asCompatibleSubstituteFor("postgres"));
 
-  private static DataSource dataSource;
+  private static final String REALM = "test-realm";
+
   private static RelationalJdbcIdempotencyStore store;
 
   @BeforeAll
@@ -58,9 +59,8 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     ds.setURL(POSTGRES.getJdbcUrl());
     ds.setUser(POSTGRES.getUsername());
     ds.setPassword(POSTGRES.getPassword());
-    dataSource = ds;
+    DataSource dataSource = ds;
 
-    // Apply schema
     RelationalJdbcConfiguration cfg =
         new RelationalJdbcConfiguration() {
           @Override
@@ -87,14 +87,14 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     try (InputStream is =
         Thread.currentThread()
             .getContextClassLoader()
-            .getResourceAsStream("postgres/schema-v4.sql")) {
+            .getResourceAsStream("postgres/schema-v5.sql")) {
       if (is == null) {
-        throw new IllegalStateException("schema-v4.sql not found on classpath");
+        throw new IllegalStateException("schema-v5.sql not found on classpath");
       }
       ops.executeScript(is);
     }
 
-    store = new RelationalJdbcIdempotencyStore(dataSource, cfg);
+    store = new RelationalJdbcIdempotencyStore(ops, REALM);
   }
 
   @AfterAll
@@ -103,107 +103,78 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
   }
 
   @Test
-  void reserveSingleWinnerAndDuplicate() {
-    String realm = "test-realm";
-    String key = "K1";
-    String op = "commit-table";
-    String rid = "catalogs/1/tables/ns.tbl";
+  void recordFirstWinnerAndDuplicate() {
+    UUID key = UUID.randomUUID();
+    String op = "create-table";
+    String binding = "binding-A";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op, rid, exp, "A", now);
-    assertThat(r1.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+    IdempotencyStore.RecordResult r1 = store.recordIfAbsent(key, op, binding, 200, null, now, exp);
+    assertThat(r1.type()).isEqualTo(IdempotencyStore.RecordResultType.OWNED);
+    assertThat(r1.existing()).isEmpty();
 
-    IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op, rid, exp, "B", now);
-    assertThat(r2.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
+    IdempotencyStore.RecordResult r2 =
+        store.recordIfAbsent(key, op, "binding-B", 200, null, now, exp);
+    assertThat(r2.type()).isEqualTo(IdempotencyStore.RecordResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();
-    assertThat(rec.realmId()).isEqualTo(realm);
+    assertThat(rec.realmId()).isEqualTo(REALM);
     assertThat(rec.idempotencyKey()).isEqualTo(key);
     assertThat(rec.operationType()).isEqualTo(op);
-    assertThat(rec.normalizedResourceId()).isEqualTo(rid);
-    assertThat(rec.httpStatus()).isNull();
+    assertThat(rec.bindingHash()).isEqualTo(binding);
+    assertThat(rec.httpStatus()).isEqualTo(200);
+    assertThat(rec.metadataLocation()).isNull();
   }
 
   @Test
-  void heartbeatAndFinalize() {
-    String realm = "test-realm";
-    String key = "K2";
-    String op = "commit-table";
-    String rid = "catalogs/1/tables/ns.tbl2";
+  void loadReturnsRecordedEntry() {
+    UUID key = UUID.randomUUID();
+    String op = "create-table";
+    String binding = "binding-load";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    store.reserve(realm, key, op, rid, exp, "A", now);
-    HeartbeatResult hb = store.updateHeartbeat(realm, key, "A", now.plusSeconds(1));
-    assertThat(hb).isEqualTo(HeartbeatResult.UPDATED);
+    store.recordIfAbsent(key, op, binding, 200, null, now, exp);
 
-    boolean fin =
-        store.finalizeRecord(
-            realm,
-            key,
-            201,
-            null,
-            "{\"ok\":true}",
-            "{\"Content-Type\":\"application/json\"}",
-            now.plusSeconds(2));
-    assertThat(fin).isTrue();
-
-    // finalize again should be a no-op
-    boolean fin2 =
-        store.finalizeRecord(
-            realm,
-            key,
-            201,
-            null,
-            "{\"ok\":true}",
-            "{\"Content-Type\":\"application/json\"}",
-            now.plusSeconds(3));
-    assertThat(fin2).isFalse();
-
-    Optional<IdempotencyRecord> rec = store.load(realm, key);
+    Optional<IdempotencyRecord> rec = store.load(key);
     assertThat(rec).isPresent();
-    assertThat(rec.get().isFinalized()).isTrue();
-    assertThat(rec.get().httpStatus()).isEqualTo(201);
+    assertThat(rec.get().operationType()).isEqualTo(op);
+    assertThat(rec.get().bindingHash()).isEqualTo(binding);
+    assertThat(rec.get().httpStatus()).isEqualTo(200);
   }
 
   @Test
   void purgeExpired() {
-    String realm = "test-realm";
-    String key = "K3";
+    UUID key = UUID.randomUUID();
     String op = "drop-table";
-    String rid = "catalogs/1/tables/ns.tbl3";
     Instant now = Instant.now();
     Instant expPast = now.minus(Duration.ofMinutes(1));
 
-    store.reserve(realm, key, op, rid, expPast, "A", now);
-    int purged = store.purgeExpired(realm, Instant.now());
+    store.recordIfAbsent(key, op, "binding-purge", 204, null, now, expPast);
+    int purged = store.purgeExpired(Instant.now());
     assertThat(purged).isEqualTo(1);
   }
 
   @Test
-  void duplicateReturnsExistingBindingForMismatch() {
-    String realm = "test-realm";
-    String key = "K4";
-    String op1 = "commit-table";
-    String rid1 = "catalogs/1/tables/ns.tbl4";
-    String op2 = "drop-table"; // different binding
-    String rid2 = "catalogs/1/tables/ns.tbl4"; // same resource, different op
+  void duplicateWithDifferentBindingReturnsOriginal() {
+    UUID key = UUID.randomUUID();
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op1, rid1, exp, "A", now);
-    assertThat(r1.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+    IdempotencyStore.RecordResult r1 =
+        store.recordIfAbsent(key, "create-table", "binding-A", 200, null, now, exp);
+    assertThat(r1.type()).isEqualTo(IdempotencyStore.RecordResultType.OWNED);
 
-    // Second reserve with different op/resource should *not* overwrite the original binding.
-    // The store must return DUPLICATE with the *original* (op1, rid1); the HTTP layer
-    // (IdempotencyFilter)
-    // will detect the mismatch and return 422.
-    IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op2, rid2, exp, "B", now);
-    assertThat(r2.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
+    // Reuse of the same key with a different binding: the second call must NOT overwrite the
+    // original. The store returns DUPLICATE with the original (operation_type, binding_hash); the
+    // handler layer detects the binding mismatch and surfaces 422.
+    IdempotencyStore.RecordResult r2 =
+        store.recordIfAbsent(key, "drop-table", "binding-B", 204, null, now, exp);
+    assertThat(r2.type()).isEqualTo(IdempotencyStore.RecordResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();
-    assertThat(rec.operationType()).isEqualTo(op1);
-    assertThat(rec.normalizedResourceId()).isEqualTo(rid1);
+    assertThat(rec.operationType()).isEqualTo("create-table");
+    assertThat(rec.bindingHash()).isEqualTo("binding-A");
   }
 }

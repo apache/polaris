@@ -30,6 +30,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
+- The relational-JDBC metastore schema is bumped to v5, which reshapes the (previously unused) `idempotency_records` table for the optimistic-commit idempotency model. New installations bootstrap at v5 automatically. Existing v4 installations are not migrated in place; enabling idempotency requires bootstrapping at v5 or applying the equivalent DDL from `schema-v5.sql`. The v4 `idempotency_records` table was never wired to request handling, so no data migration is needed.
 - Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
   - `polaris.event-listener.executor.pool-size` configures the thread pool size.
   - `polaris.event-listener.executor.queue-size` configures the queue size for pending events when all threads are busy.
@@ -52,6 +53,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for `register table` overwrite semantics in the Iceberg REST catalog flow (`overwrite=true`) for internal Polaris catalogs. With overwrite enabled, existing table pointers can be updated to a new metadata location while preserving default behavior for `overwrite=false`.
 - Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
 - Added Polaris Spark 4.0 client.
+- Added experimental, disabled-by-default handler-level support for the Iceberg REST `Idempotency-Key` header on `createTable`. Polaris records successful outcomes only after `createTable` completes and rebuilds retry responses from current catalog state; it does not store response bodies or prevent duplicate in-flight execution. Concurrent create retries can replay the matching successful create if its idempotency record becomes visible within a bounded lookup window; otherwise the original 409 conflict is returned. Failed outcomes are not recorded, so retries after failures re-run the operation.
 
 ### Changes
 - Added REPL support to Polaris CLI.

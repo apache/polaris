@@ -17,149 +17,43 @@
 package org.apache.polaris.core.entity;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
- * Immutable snapshot of an idempotency reservation and its finalization status.
+ * Immutable snapshot of a recorded idempotency outcome.
  *
- * <p>This is the persistence-agnostic representation used by higher layers; storage backends map
- * their concrete schemas into this type.
+ * <p>Under the single-transaction ("optimistic commit") model used by Polaris, a record only exists
+ * after the originating operation has succeeded (a terminal 2xx status). There is no separate
+ * in-progress state, no executor lease, and no stored response body — replays re-derive an
+ * equivalent response from authoritative catalog state. Failed outcomes are not recorded, so a
+ * retry after a failure simply re-runs the operation.
+ *
+ * <p>The {@code (realm_id, idempotency_key)} pair is the logical primary key; {@code binding_hash}
+ * is the single value callers compare against on replay to detect reuse of the same key for a
+ * different caller, operation, or resource. {@code operation_type} is retained separately purely as
+ * a human-readable label for debugging/observability and is not part of the comparison.
  *
  * @param realmId Logical tenant / realm identifier.
- * @param idempotencyKey Client-provided idempotency key.
- * @param operationType Logical operation type (e.g. {@code "commit-table"}).
- * @param normalizedResourceId Request-derived, fully-qualified identifier of the affected resource
- *     (see {@link #normalizedResourceId ()}).
- * @param httpStatus HTTP status code returned to the client once finalized; {@code null} while
- *     in-progress.
- * @param errorSubtype Optional error subtype/code when the operation failed.
- * @param responseSummary Minimal serialized representation of the response body for replay.
- * @param responseHeaders Serialized representation of a small, whitelisted set of response headers
- *     for replay.
- * @param finalizedAt Timestamp when the operation was finalized; {@code null} while in-progress.
- * @param createdAt Timestamp when the record was created.
- * @param updatedAt Timestamp when the record was last updated.
- * @param heartbeatAt Timestamp of the most recent heartbeat while in-progress; {@code null} if
- *     never heartbeated.
- * @param executorId Identifier of the executor that owns the in-progress reservation; {@code null}
- *     if not owned.
- * @param expiresAt Timestamp after which the reservation is considered expired and eligible for
- *     purging.
+ * @param idempotencyKey Client-provided idempotency key (a UUIDv7).
+ * @param operationType Logical operation type (e.g. {@code "create-table"}), kept human-readable
+ *     for debugging only.
+ * @param bindingHash Opaque hash over the full binding (caller principal, operation, and the
+ *     request-derived resource identity such as namespace, name and access-delegation modes). Not a
+ *     human-readable identifier, and intentionally does not include the request payload; compared
+ *     on replay to detect reuse of the same key for a different caller/operation/resource.
+ * @param httpStatus HTTP status code that was returned to the client for the originating request.
+ * @param metadataLocation Resource state pointer captured when the record was written (for tables,
+ *     the metadata-file location). Used on replay to detect that the resource has advanced beyond
+ *     the originally-created state; {@code null} for operations that do not track one.
+ * @param createdAt Timestamp when the record was inserted.
+ * @param expiresAt Timestamp after which the record is eligible for purging.
  */
 public record IdempotencyRecord(
     String realmId,
-    String idempotencyKey,
+    UUID idempotencyKey,
     String operationType,
-    String normalizedResourceId,
-    Integer httpStatus,
-    String errorSubtype,
-    String responseSummary,
-    String responseHeaders,
+    String bindingHash,
+    int httpStatus,
+    String metadataLocation,
     Instant createdAt,
-    Instant updatedAt,
-    Instant finalizedAt,
-    Instant heartbeatAt,
-    String executorId,
-    Instant expiresAt) {
-
-  /**
-   * Normalized identifier of the resource affected by the operation.
-   *
-   * <p>This should be derived from the request (for example, a canonicalized and fully-qualified
-   * identifier like {@code "catalogs/<catalogId>/tables/ns.tbl"}), not from a generated internal
-   * entity id.
-   *
-   * <p>The identifier must be stable even on failure (before any entities are created) and must be
-   * scoped to avoid false conflicts (for example, include the catalog/warehouse identifier when
-   * applicable).
-   */
-  @Override
-  public String normalizedResourceId() {
-    return normalizedResourceId;
-  }
-
-  /**
-   * HTTP status code returned to the client for this idempotent operation.
-   *
-   * <p>Remains {@code null} while the record is {@code IN_PROGRESS} and is set only when the
-   * operation reaches a terminal 2xx or 4xx state.
-   */
-  @Override
-  public Integer httpStatus() {
-    return httpStatus;
-  }
-
-  /**
-   * Optional error subtype or code that provides additional detail when the operation failed.
-   *
-   * <p>Examples include {@code already_exists}, {@code namespace_not_empty}, or {@code
-   * idempotency_replay_failed}.
-   */
-  @Override
-  public String errorSubtype() {
-    return errorSubtype;
-  }
-
-  /**
-   * Minimal serialized representation of the response body used to reproduce an equivalent
-   * response.
-   *
-   * <p>This is typically a compact JSON string that contains just enough information for the HTTP
-   * layer to reconstruct the response for duplicate idempotent requests.
-   */
-  @Override
-  public String responseSummary() {
-    return responseSummary;
-  }
-
-  /**
-   * Serialized representation of a small, whitelisted set of HTTP response headers.
-   *
-   * <p>Stored as a JSON string so that the HTTP layer can replay key headers (such as {@code
-   * Content-Type}) when serving a duplicate idempotent request.
-   */
-  @Override
-  public String responseHeaders() {
-    return responseHeaders;
-  }
-
-  /**
-   * Timestamp indicating when the record was finalized.
-   *
-   * <p>Set at the same time as {@link #httpStatus ()} when the operation completes; {@code null}
-   * while the record is still {@code IN_PROGRESS}.
-   */
-  @Override
-  public Instant finalizedAt() {
-    return finalizedAt;
-  }
-
-  /**
-   * Timestamp of the most recent successful heartbeat while the operation is {@code IN_PROGRESS}.
-   *
-   * <p>This is updated by the owning executor to signal liveness and is used by reconciliation
-   * logic to detect stuck or abandoned in-progress records.
-   */
-  @Override
-  public Instant heartbeatAt() {
-    return heartbeatAt;
-  }
-
-  /**
-   * Identifier of the executor (for example pod or worker id) that currently owns the in-progress
-   * reservation.
-   */
-  @Override
-  public String executorId() {
-    return executorId;
-  }
-
-  /** Timestamp after which the reservation is considered expired and eligible for purging. */
-  @Override
-  public Instant expiresAt() {
-    return expiresAt;
-  }
-
-  public boolean isFinalized() {
-    return httpStatus != null;
-  }
-}
+    Instant expiresAt) {}

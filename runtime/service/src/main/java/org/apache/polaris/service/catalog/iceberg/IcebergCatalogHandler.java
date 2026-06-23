@@ -24,6 +24,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -44,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
@@ -66,6 +68,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTCatalogProperties;
@@ -98,6 +101,7 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -130,6 +134,9 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyHandlerSupport;
+import org.apache.polaris.service.idempotency.IdempotencyOutcome;
+import org.apache.polaris.service.idempotency.IdempotentOperation;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.jspecify.annotations.NonNull;
@@ -215,6 +222,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
 
+  protected abstract IdempotencyHandlerSupport idempotencySupport();
+
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
   @SuppressWarnings("immutables:incompat")
@@ -233,6 +242,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   private static final String SNAPSHOTS_ALL = "all";
   private static final String SNAPSHOTS_REFS = "refs";
+
+  private static final Set<PolarisStorageActions> CREATE_TABLE_STORAGE_ACTIONS =
+      Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE, PolarisStorageActions.LIST);
 
   private CatalogEntity getResolvedCatalogEntity() {
     CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
@@ -416,30 +428,43 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   /**
-   * Create a table.
+   * Convenience entry point used by tests that exercise the authorization wiring without going
+   * through the REST adapter. Production callers go through the four-arg overload via the adapter.
    *
    * @param namespace the namespace to create the table in
    * @param request the table creation request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
+  @VisibleForTesting
   public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
     return createTableDirect(
-        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
+        namespace,
+        request,
+        EnumSet.noneOf(AccessDelegationMode.class),
+        Optional.empty(),
+        Optional.empty());
   }
 
   /**
-   * Create a table.
+   * Convenience entry point used by tests for the write-delegation variant. Production callers go
+   * through the adapter, which resolves the delegation modes and refresh-credentials endpoint from
+   * the request.
    *
    * @param namespace the namespace to create the table in
    * @param request the table creation request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
+  @VisibleForTesting
   public LoadTableResponse createTableDirectWithWriteDelegation(
       Namespace namespace,
       CreateTableRequest request,
       Optional<String> refreshCredentialsEndpoint) {
     return createTableDirect(
-        namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
+        namespace,
+        request,
+        EnumSet.of(VENDED_CREDENTIALS),
+        refreshCredentialsEndpoint,
+        Optional.empty());
   }
 
   public void authorizeCreateTableDirect(
@@ -460,14 +485,98 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
   }
 
+  /**
+   * Create a table, optionally honoring an {@code Idempotency-Key} from the REST request.
+   *
+   * <p>When an idempotency key is supplied and the feature is enabled:
+   *
+   * <ol>
+   *   <li>Authorization runs first, so idempotency cannot bypass it.
+   *   <li>Pre-flight loads any prior record for {@code (realm, key)}. A match (same caller, same
+   *       resource binding) replays the response from authoritative catalog state; a binding
+   *       mismatch raises 422.
+   *   <li>On a fresh key, the table is created and the record is inserted afterwards. A concurrent
+   *       caller that wins the race causes our insert to return DUPLICATE — we then replay too, so
+   *       the response is equivalent to what the winner returned.
+   * </ol>
+   *
+   * <p>No response body is stored. Replays go through {@code loadTable +
+   * buildLoadTableResponseWithDelegationCredentials}, which re-vends fresh credentials for the
+   * current caller.
+   */
   public LoadTableResponse createTableDirect(
       Namespace namespace,
       CreateTableRequest request,
       EnumSet<AccessDelegationMode> delegationModes,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<UUID> idempotencyKey) {
 
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
+
+    // Pre-flight owns the full idempotency decision: it returns Disabled when the feature is off or
+    // no key was supplied (plain create path), Duplicate to replay a prior success, or Owned to
+    // proceed. Authorization already ran above, so a replay reloads current catalog state (no
+    // response body is stored) and re-vends credentials for this caller;
+    // buildLoadTableResponseForExistingTable raises 422 if the table has advanced beyond the
+    // metadata location captured when the key was recorded. A binding mismatch surfaces as
+    // IdempotencyConflictException, which PolarisExceptionMapper maps to HTTP 422.
+    IdempotencyOutcome preflight =
+        idempotencySupport()
+            .preflight(
+                idempotencyKey,
+                polarisPrincipal(),
+                IdempotentOperation.CREATE_TABLE,
+                namespace.toString(),
+                request.name(),
+                resolvedMode.map(Enum::name).orElse("none"));
+    if (preflight instanceof IdempotencyOutcome.Duplicate(IdempotencyRecord existing)) {
+      return buildLoadTableResponseForExistingTable(
+          tableIdentifier,
+          resolvedMode,
+          CREATE_TABLE_STORAGE_ACTIONS,
+          refreshCredentialsEndpoint,
+          existing.metadataLocation());
+    }
+
+    // Run the operation. A concurrent request carrying the same key can win the catalog-level race
+    // and make this attempt fail with AlreadyExistsException; if that winner recorded a matching
+    // idempotency outcome, replay it instead of returning a 409.
+    LoadTableResponse response;
+    try {
+      response = doCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
+    } catch (AlreadyExistsException e) {
+      Optional<IdempotencyRecord> raceWinner =
+          idempotencySupport().resolveConcurrentDuplicate(preflight);
+      if (raceWinner.isPresent()) {
+        return buildLoadTableResponseForExistingTable(
+            tableIdentifier,
+            resolvedMode,
+            CREATE_TABLE_STORAGE_ACTIONS,
+            refreshCredentialsEndpoint,
+            raceWinner.get().metadataLocation());
+      }
+      // Not a same-key retry: the table genuinely pre-existed, so this is a real conflict.
+      throw e;
+    }
+
+    // Record the successful outcome. recordOutcome is a no-op unless idempotency is in effect, and
+    // throws (422) if the key was reused with a different binding. A concurrent same-key,
+    // same-table
+    // create cannot also reach this point — the loser fails the catalog create above and replays
+    // via
+    // resolveConcurrentDuplicate — so there is no winner-recorded-first case to replay here.
+    String metadataLocation = response.tableMetadata().metadataFileLocation();
+    idempotencySupport().recordOutcome(preflight, 200, metadataLocation);
+    return response;
+  }
+
+  private LoadTableResponse doCreateTableDirect(
+      Namespace namespace,
+      CreateTableRequest request,
+      Optional<AccessDelegationMode> resolvedMode,
+      Optional<String> refreshCredentialsEndpoint) {
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(tableIdentifier)) {
@@ -494,10 +603,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               tableIdentifier,
               tableMetadata,
               resolvedMode,
-              Set.of(
-                  PolarisStorageActions.READ,
-                  PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST),
+              CREATE_TABLE_STORAGE_ACTIONS,
               refreshCredentialsEndpoint)
           .build();
     } else if (table instanceof BaseMetadataTable) {
@@ -506,6 +612,43 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
     }
 
+    throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+  }
+
+  /**
+   * Loads {@code tableIdentifier} from the base catalog and builds a {@link LoadTableResponse} with
+   * freshly-vended delegation credentials. Shared by the regular {@link #loadTable} path and the
+   * idempotent {@code createTable} replay path; it performs no authorization itself (callers
+   * authorize first). If the table no longer exists, {@code loadTable} raises {@code
+   * NoSuchTableException}, surfacing the same not-found a regular load would.
+   *
+   * <p>When {@code expectedMetadataLocation} is non-null, the load fails with 422 if the table's
+   * current metadata location has advanced past it — used by idempotent replay to avoid returning a
+   * table that has materially changed since the key was first recorded.
+   */
+  private LoadTableResponse buildLoadTableResponseForExistingTable(
+      TableIdentifier tableIdentifier,
+      Optional<AccessDelegationMode> resolvedMode,
+      Set<PolarisStorageActions> actions,
+      Optional<String> refreshCredentialsEndpoint,
+      @Nullable String expectedMetadataLocation) {
+    Table table = baseCatalog.loadTable(tableIdentifier);
+    if (table instanceof BaseTable baseTable) {
+      TableMetadata tableMetadata = baseTable.operations().current();
+      if (expectedMetadataLocation != null
+          && !expectedMetadataLocation.equals(tableMetadata.metadataFileLocation())) {
+        throw new UnprocessableEntityException(
+            "Idempotency-Key replay failed: table %s has changed since it was created with this key",
+            tableIdentifier);
+      }
+      return buildLoadTableResponseWithDelegationCredentials(
+              tableIdentifier, tableMetadata, resolvedMode, actions, refreshCredentialsEndpoint)
+          .build();
+    }
+    if (table instanceof BaseMetadataTable) {
+      throw notFoundExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+    }
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
@@ -976,26 +1119,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit
     // when data-access is specified but access delegation grants are not found.
-    Table table = baseCatalog.loadTable(tableIdentifier);
-
-    if (table instanceof BaseTable baseTable) {
-      TableMetadata tableMetadata = baseTable.operations().current();
-      LoadTableResponse response =
-          buildLoadTableResponseWithDelegationCredentials(
-                  tableIdentifier,
-                  tableMetadata,
-                  resolvedMode,
-                  actionsRequested,
-                  refreshCredentialsEndpoint)
-              .build();
-      return Optional.of(filterResponseToSnapshots(response, snapshots));
-    } else if (table instanceof BaseMetadataTable) {
-      // metadata tables are loaded on the client side, return NoSuchTableException for now
-      throw notFoundExceptionForTableLikeEntity(
-          tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
-    }
-
-    throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    LoadTableResponse response =
+        buildLoadTableResponseForExistingTable(
+            tableIdentifier, resolvedMode, actionsRequested, refreshCredentialsEndpoint, null);
+    return Optional.of(filterResponseToSnapshots(response, snapshots));
   }
 
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
