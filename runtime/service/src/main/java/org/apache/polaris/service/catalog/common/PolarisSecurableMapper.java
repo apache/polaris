@@ -61,6 +61,9 @@ public final class PolarisSecurableMapper {
   }
 
   public static PolarisSecurable tableLike(String catalogName, TableIdentifier identifier) {
+    if (identifier.namespace().isEmpty()) {
+      throw new IllegalArgumentException("Table-like target cannot have an empty namespace");
+    }
     ImmutablePolarisSecurable.Builder builder =
         ImmutablePolarisSecurable.builder()
             .addPathSegment(new PathSegment(PolarisEntityType.CATALOG, catalogName));

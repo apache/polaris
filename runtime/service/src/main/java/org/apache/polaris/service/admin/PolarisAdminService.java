@@ -277,7 +277,7 @@ public class PolarisAdminService {
             List.of(
                 new SingleTargetAuthorizationIntent(
                     op, PolarisSecurable.of(new PathSegment(entityType, topLevelEntityName))))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException(
           "TopLevelEntity of type %s does not exist: %s", entityType, topLevelEntityName);
@@ -366,7 +366,7 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurable.of(
                         new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName))))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException(
@@ -408,7 +408,7 @@ public class PolarisAdminService {
                         new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName)),
                     PolarisSecurable.of(
                         new PathSegment(PolarisEntityType.PRINCIPAL, principalName))))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException(
@@ -451,7 +451,7 @@ public class PolarisAdminService {
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName),
                     PolarisSecurable.of(
                         new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName))))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException(
@@ -494,7 +494,7 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, catalogName)),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName)))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
@@ -534,7 +534,7 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurableMapper.namespace(catalogName, namespace),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName)))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
@@ -585,7 +585,7 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurableMapper.tableLike(catalogName, identifier),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName)))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
@@ -642,7 +642,7 @@ public class PolarisAdminService {
                     op,
                     PolarisSecurableMapper.policy(catalogName, identifier),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName)))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {

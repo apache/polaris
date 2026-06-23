@@ -267,7 +267,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
                         requestedOp,
                         PolarisSecurableMapper.policy(catalogName(), identifier),
                         PolarisSecurableMapper.policyAttachmentTarget(catalogName(), target)))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     throwNotFoundExceptionIfFailToResolve(status, identifier);
 

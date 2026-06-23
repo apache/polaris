@@ -156,8 +156,13 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return primaryResolverStatus;
   }
 
-  public @Nullable ResolverStatus getPrimaryResolverStatus() {
-    return primaryResolverStatus;
+  public ResolverStatus getPrimaryResolverStatusOrThrow() {
+    ResolverStatus status = primaryResolverStatus;
+    diagnostics.checkNotNull(
+        status,
+        "resolver_not_run_before_access",
+        "resolveAll() or resolveSelections() must be called before reading resolver status");
+    return status;
   }
 
   public boolean getIsPassthroughFacade() {

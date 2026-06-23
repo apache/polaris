@@ -101,7 +101,7 @@ public class PolarisAdminServiceTest {
         .thenReturn(resolutionManifest);
     ResolverStatus successStatus = createSuccessfulResolverStatus();
     when(resolutionManifest.resolveAll()).thenReturn(successStatus);
-    when(resolutionManifest.getPrimaryResolverStatus()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
     when(resolutionManifest.getIsPassthroughFacade()).thenReturn(false);
     doAnswer(
             invocation -> {
@@ -161,7 +161,7 @@ public class PolarisAdminServiceTest {
         .thenReturn(resolutionManifest);
     ResolverStatus successStatus = createSuccessfulResolverStatus();
     when(resolutionManifest.resolveAll()).thenReturn(successStatus);
-    when(resolutionManifest.getPrimaryResolverStatus()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
     when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
@@ -198,7 +198,7 @@ public class PolarisAdminServiceTest {
         .thenReturn(resolutionManifest);
     ResolverStatus successStatus = createSuccessfulResolverStatus();
     when(resolutionManifest.resolveAll()).thenReturn(successStatus);
-    when(resolutionManifest.getPrimaryResolverStatus()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG, 1L);
     when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
@@ -262,7 +262,7 @@ public class PolarisAdminServiceTest {
         .thenReturn(resolutionManifest);
     ResolverStatus successStatus = createSuccessfulResolverStatus();
     when(resolutionManifest.resolveAll()).thenReturn(successStatus);
-    when(resolutionManifest.getPrimaryResolverStatus()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity =
@@ -296,7 +296,7 @@ public class PolarisAdminServiceTest {
         .thenReturn(resolutionManifest);
     ResolverStatus successStatus = createSuccessfulResolverStatus();
     when(resolutionManifest.resolveAll()).thenReturn(successStatus);
-    when(resolutionManifest.getPrimaryResolverStatus()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity =
@@ -771,7 +771,7 @@ public class PolarisAdminServiceTest {
         .thenReturn(resolutionManifest);
     ResolverStatus successStatus = createSuccessfulResolverStatus();
     when(resolutionManifest.resolveAll()).thenReturn(successStatus);
-    when(resolutionManifest.getPrimaryResolverStatus()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
     when(resolutionManifest.getResolvedPath(
             eq(ResolvedPathKey.of(List.of(namespace.levels()), PolarisEntityType.NAMESPACE))))
         .thenReturn(resolvedPathWrapper);

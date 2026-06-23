@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog.common;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionWithSameNameForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.entityNameForSubType;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
@@ -411,10 +410,7 @@ public abstract class CatalogHandler {
       TableIdentifier identifier) {
     ensureResolutionManifestForTable(identifier);
     checkArgument(!ops.isEmpty(), "No operations provided for table-like authorization");
-    checkState(
-        resolutionManifest.getPrimaryResolverStatus() != null,
-        "Expected table-like target to already be resolved before authorizing operations %s",
-        ops);
+    resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier), subType, true);
@@ -458,7 +454,7 @@ public abstract class CatalogHandler {
                     .<AuthorizationIntent>map(
                         target -> new SingleTargetAuthorizationIntent(op, target))
                     .toList()));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
 
     // If one of the paths failed to resolve, throw exception based on the one that
     // we first failed to resolve.
@@ -518,7 +514,7 @@ public abstract class CatalogHandler {
                         op,
                         PolarisSecurableMapper.tableLike(catalogName(), src),
                         PolarisSecurableMapper.tableLike(catalogName(), dst)))));
-    ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
         && status.getFailedToResolvePath().lastEntityType() == PolarisEntityType.NAMESPACE) {
       throw noSuchNamespaceException(dst.namespace());
