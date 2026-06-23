@@ -16,14 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
 
-import java.util.Objects;
-
-/** A source-to-target field mapping returned for column-granularity queries. */
-public record LineageFieldMapping(String sourceField, String targetField) {
-  public LineageFieldMapping {
-    Objects.requireNonNull(sourceField, "sourceField must be non-null");
-    Objects.requireNonNull(targetField, "targetField must be non-null");
-  }
+plugins {
+  id("polaris-client")
 }
+
+description = "Polaris lineage model and service contract"

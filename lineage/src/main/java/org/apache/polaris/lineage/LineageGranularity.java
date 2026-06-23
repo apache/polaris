@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.lineage;
 
-/** Service boundary for lineage operations used by transport-layer adapters. */
-public interface LineageService {
-  LineageGraph query(LineageQueryRequest request);
+/** Supported query granularities for lineage lookups. */
+public enum LineageGranularity {
+  DATASET,
+  COLUMN
 }
