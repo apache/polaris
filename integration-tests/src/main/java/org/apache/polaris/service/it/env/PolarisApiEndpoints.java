@@ -30,26 +30,24 @@ import java.util.stream.Collectors;
  */
 public final class PolarisApiEndpoints implements Serializable {
 
-  private final URI baseUri;
+  private final URI catalogApiEndpoint;
+  private final URI managementApiEndpoint;
   private final String realmId;
   private final Map<String, String> headers;
 
-  public PolarisApiEndpoints(URI baseUri, String realmId, String realmHeaderName) {
-    this(baseUri, realmId, Map.of(realmHeaderName, realmId));
-  }
-
   public PolarisApiEndpoints(URI baseUri, String realmId, Map<String, String> headers) {
-    this.baseUri = baseUri;
+    this.catalogApiEndpoint = appendPath(baseUri, "api/catalog");
+    this.managementApiEndpoint = appendPath(baseUri, "api/management");
     this.realmId = realmId;
     this.headers = headers;
   }
 
   public URI catalogApiEndpoint() {
-    return baseUri.resolve(baseUri.getRawPath() + "/api/catalog").normalize();
+    return catalogApiEndpoint;
   }
 
   public URI managementApiEndpoint() {
-    return baseUri.resolve(baseUri.getRawPath() + "/api/management").normalize();
+    return managementApiEndpoint;
   }
 
   public String realmId() {
@@ -64,5 +62,13 @@ public final class PolarisApiEndpoints implements Serializable {
     return headers.entrySet().stream()
         .map(e -> Map.entry(keyPrefix + e.getKey(), e.getValue()))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  static URI appendPath(URI base, String path) {
+    String baseStr = base.toString();
+    if (baseStr.endsWith("/")) {
+      baseStr = baseStr.substring(0, baseStr.length() - 1);
+    }
+    return URI.create(baseStr + "/" + path).normalize();
   }
 }
