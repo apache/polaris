@@ -20,7 +20,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -208,9 +207,10 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     setClause.put(ModelIdempotencyRecord.FINALIZED_AT, Timestamp.from(finalizedAt));
     setClause.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(finalizedAt));
 
-    Map<String, Object> whereEquals = new HashMap<>();
-    whereEquals.put(ModelIdempotencyRecord.REALM_ID, realmId);
-    whereEquals.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
+    Map<String, Object> whereEquals =
+        Map.ofEntries(
+            Map.entry(ModelIdempotencyRecord.REALM_ID, realmId),
+            Map.entry(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey));
 
     QueryGenerator.PreparedQuery update =
         QueryGenerator.generateUpdateQuery(

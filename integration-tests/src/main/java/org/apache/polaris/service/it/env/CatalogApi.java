@@ -142,11 +142,11 @@ public class CatalogApi extends PolarisRestApi {
   public ListTablesResponse listTables(
       String catalog, Namespace namespace, String pageToken, String pageSize) {
     String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("pageToken", pageToken);
-    queryParams.put("pageSize", pageSize);
     try (Response res =
-        request("v1/{cat}/namespaces/{ns}/tables", Map.of("cat", catalog, "ns", ns), queryParams)
+        request(
+                "v1/{cat}/namespaces/{ns}/tables",
+                Map.of("cat", catalog, "ns", ns),
+                Map.ofEntries(Map.entry("pageToken", pageToken), Map.entry("pageSize", pageSize)))
             .get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListTablesResponse.class);
@@ -297,11 +297,11 @@ public class CatalogApi extends PolarisRestApi {
   public ListTablesResponse listViews(
       String catalog, Namespace namespace, String pageToken, String pageSize) {
     String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("pageToken", pageToken);
-    queryParams.put("pageSize", pageSize);
     try (Response res =
-        request("v1/{cat}/namespaces/{ns}/views", Map.of("cat", catalog, "ns", ns), queryParams)
+        request(
+                "v1/{cat}/namespaces/{ns}/views",
+                Map.of("cat", catalog, "ns", ns),
+                Map.ofEntries(Map.entry("pageToken", pageToken), Map.entry("pageSize", pageSize)))
             .get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListTablesResponse.class);

@@ -22,7 +22,6 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,16 +34,15 @@ public final class OpaTestProfiles {
   public static class StaticToken implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-      Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.type", "opa");
-      config.put("polaris.authorization.opa.auth.type", "bearer");
-      config.put(
-          "polaris.authorization.opa.auth.bearer.static-token.value",
-          "test-opa-bearer-token-12345");
-      config.put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]");
-      config.put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true");
-      config.put("polaris.readiness.ignore-severe-issues", "true");
-      return config;
+      return Map.ofEntries(
+          Map.entry("polaris.authorization.type", "opa"),
+          Map.entry("polaris.authorization.opa.auth.type", "bearer"),
+          Map.entry(
+              "polaris.authorization.opa.auth.bearer.static-token.value",
+              "test-opa-bearer-token-12345"),
+          Map.entry("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]"),
+          Map.entry("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true"),
+          Map.entry("polaris.readiness.ignore-severe-issues", "true"));
     }
 
     @Override
@@ -64,16 +62,15 @@ public final class OpaTestProfiles {
         tokenFilePath = Files.createTempFile("opa-test-token", ".txt");
         Files.writeString(tokenFilePath, "test-opa-bearer-token-from-file");
 
-        Map<String, String> config = new HashMap<>();
-        config.put("polaris.authorization.type", "opa");
-        config.put("polaris.authorization.opa.auth.type", "bearer");
-        config.put(
-            "polaris.authorization.opa.auth.bearer.file-based.path", tokenFilePath.toString());
-        config.put("polaris.authorization.opa.auth.bearer.file-based.refresh-interval", "PT1S");
-        config.put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]");
-        config.put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true");
-        config.put("polaris.readiness.ignore-severe-issues", "true");
-        return config;
+        return Map.ofEntries(
+            Map.entry("polaris.authorization.type", "opa"),
+            Map.entry("polaris.authorization.opa.auth.type", "bearer"),
+            Map.entry(
+                "polaris.authorization.opa.auth.bearer.file-based.path", tokenFilePath.toString()),
+            Map.entry("polaris.authorization.opa.auth.bearer.file-based.refresh-interval", "PT1S"),
+            Map.entry("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]"),
+            Map.entry("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true"),
+            Map.entry("polaris.readiness.ignore-severe-issues", "true"));
       } catch (IOException e) {
         throw new RuntimeException("Failed to create test token file", e);
       }

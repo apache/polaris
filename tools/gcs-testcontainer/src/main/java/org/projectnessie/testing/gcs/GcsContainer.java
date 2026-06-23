@@ -24,7 +24,6 @@ import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -179,28 +178,25 @@ public class GcsContainer extends GenericContainer<GcsContainer>
 
   @Override
   public Map<String, String> hadoopConfig() {
-    Map<String, String> r = new HashMap<>();
-    // See https://github.com/GoogleCloudDataproc/hadoop-connectors/blob/master/gcs/CONFIGURATION.md
-    r.put("fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem");
-    r.put("fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS");
-    r.put("fs.gs.storage.root.url", baseUri());
-    r.put("fs.gs.project.id", projectId);
-    // TODO the docs don't mention anything about using an OAuth2 token :(
-    r.put("fs.gs.auth.type", "USER_CREDENTIALS");
-    r.put("fs.gs.auth.client.id", "foo");
-    r.put("fs.gs.auth.client.secret", "bar");
-    r.put("fs.gs.auth.refresh.token", "baz");
-    return r;
+    return Map.ofEntries(
+        Map.entry("fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"),
+        Map.entry("fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS"),
+        Map.entry("fs.gs.storage.root.url", baseUri()),
+        Map.entry("fs.gs.project.id", projectId),
+        // TODO the docs don't mention anything about using an OAuth2 token :(
+        Map.entry("fs.gs.auth.type", "USER_CREDENTIALS"),
+        Map.entry("fs.gs.auth.client.id", "foo"),
+        Map.entry("fs.gs.auth.client.secret", "bar"),
+        Map.entry("fs.gs.auth.refresh.token", "baz"));
   }
 
   @Override
   public Map<String, String> icebergProperties() {
-    Map<String, String> r = new HashMap<>();
-    r.put("io-impl", "org.apache.iceberg.gcp.gcs.GCSFileIO");
-    r.put("gcs.project-id", projectId);
-    r.put("gcs.service.host", baseUri());
-    r.put("gcs.oauth2.token", oauth2token);
-    return r;
+    return Map.ofEntries(
+        Map.entry("io-impl", "org.apache.iceberg.gcp.gcs.GCSFileIO"),
+        Map.entry("gcs.project-id", projectId),
+        Map.entry("gcs.service.host", baseUri()),
+        Map.entry("gcs.oauth2.token", oauth2token));
   }
 
   @Override

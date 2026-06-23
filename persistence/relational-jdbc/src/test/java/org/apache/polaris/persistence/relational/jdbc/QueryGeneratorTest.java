@@ -43,9 +43,9 @@ public class QueryGeneratorTest {
 
   @Test
   void testGenerateSelectQuery_withMaQueryGeneratorpWhereClause() {
-    Map<String, Object> whereClause = new HashMap<>();
-    whereClause.put("name", "testEntity");
+    Map<String, Object> whereClause = new LinkedHashMap<>();
     whereClause.put("entity_version", 1);
+    whereClause.put("name", "testEntity");
     String expectedQuery =
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = ? AND name = ?";
     assertEquals(

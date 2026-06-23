@@ -19,7 +19,6 @@
 package org.apache.polaris.extension.auth.ranger.test;
 
 import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.HashMap;
 import java.util.Map;
 
 /** Quarkus test profiles for Ranger integration tests using embedded policy fixtures. */
@@ -31,21 +30,21 @@ public final class RangerTestProfiles {
   public static class EmbeddedPolicy implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-      Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.type", "ranger");
-      config.put("polaris.authorization.ranger.service-name", "dev_polaris");
-      config.put(
-          "polaris.authorization.ranger.authz.default.policy.source.impl",
-          "org.apache.ranger.admin.client.EmbeddedResourcePolicySource");
-      config.put(
-          "polaris.authorization.ranger.authz.default.enable.implicit.userstore.enricher", "true");
-      config.put(
-          "polaris.authorization.ranger.authz.default.policy.source.embedded_resource.path",
-          "/authz_it_tests");
-      config.put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]");
-      config.put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true");
-      config.put("polaris.readiness.ignore-severe-issues", "true");
-      return config;
+      return Map.ofEntries(
+          Map.entry("polaris.authorization.type", "ranger"),
+          Map.entry("polaris.authorization.ranger.service-name", "dev_polaris"),
+          Map.entry(
+              "polaris.authorization.ranger.authz.default.policy.source.impl",
+              "org.apache.ranger.admin.client.EmbeddedResourcePolicySource"),
+          Map.entry(
+              "polaris.authorization.ranger.authz.default.enable.implicit.userstore.enricher",
+              "true"),
+          Map.entry(
+              "polaris.authorization.ranger.authz.default.policy.source.embedded_resource.path",
+              "/authz_it_tests"),
+          Map.entry("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]"),
+          Map.entry("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true"),
+          Map.entry("polaris.readiness.ignore-severe-issues", "true"));
     }
   }
 }

@@ -22,7 +22,6 @@ import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeE
 
 import com.google.common.base.Preconditions;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -86,9 +85,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setName(catalog.getName())
             .setProperties(catalog.getProperties().toMap())
             .setCatalogType(catalog.getType().name());
-    Map<String, String> internalProperties = new HashMap<>();
-    internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
-    builder.setInternalProperties(internalProperties);
+    builder.setInternalProperties(
+        Map.ofEntries(Map.entry(CATALOG_TYPE_PROPERTY, catalog.getType().name())));
     builder.setStorageConfigurationInfo(
         realmConfig, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
     return builder.build();

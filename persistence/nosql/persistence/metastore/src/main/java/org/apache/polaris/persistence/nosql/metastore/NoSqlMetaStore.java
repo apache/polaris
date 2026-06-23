@@ -52,7 +52,6 @@ import static org.apache.polaris.persistence.nosql.metastore.mutation.UpdateKeyF
 import com.google.common.collect.Streams;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -444,11 +443,12 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               .setSubType(PolarisEntitySubType.NULL_SUBTYPE)
               .setCreateTimestamp(persistence.currentTimeMillis());
 
-      Map<String, String> properties = new HashMap<>();
-      properties.put(
-          PolarisTaskConstants.TASK_TYPE,
-          String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode()));
-      properties.put("data", PolarisObjectMapperUtil.serialize(dropped));
+      Map<String, String> properties =
+          Map.ofEntries(
+              Map.entry(
+                  PolarisTaskConstants.TASK_TYPE,
+                  String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode())),
+              Map.entry("data", PolarisObjectMapperUtil.serialize(dropped)));
       taskEntityBuilder.setProperties(properties);
       if (cleanupProperties != null) {
         taskEntityBuilder.setInternalProperties(cleanupProperties);

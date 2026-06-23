@@ -277,10 +277,9 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
 
     if (key.equals(EventAttributes.RENAME_TABLE_REQUEST)
         && value instanceof RenameTableRequest request) {
-      Map<String, String> result = new LinkedHashMap<>();
-      result.put("rename_source", request.source().toString());
-      result.put("rename_destination", request.destination().toString());
-      return result;
+      return Map.ofEntries(
+          Map.entry("rename_source", request.source().toString()),
+          Map.entry("rename_destination", request.destination().toString()));
     }
 
     return Map.of(key.name(), value.toString());

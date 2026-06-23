@@ -25,7 +25,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
 import org.testcontainers.containers.GenericContainer;
@@ -80,10 +79,8 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
         """;
       loadRegoPolicy(baseUrl, polarisPolicyName, polarisRegoPolicy);
 
-      Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.opa.policy-uri", baseUrl + "/v1/data/polaris/authz");
-
-      return config;
+      return Map.ofEntries(
+          Map.entry("polaris.authorization.opa.policy-uri", baseUrl + "/v1/data/polaris/authz"));
 
     } catch (Exception e) {
       throw new RuntimeException("Failed to start OPA test resource", e);

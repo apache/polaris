@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence;
 
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -1190,12 +1189,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task
     // later
     if (cleanup && refreshEntityToDrop.getType() != PolarisEntityType.POLICY) {
-      Map<String, String> properties = new HashMap<>();
-      properties.put(
-          PolarisTaskConstants.TASK_TYPE,
-          String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode()));
-      properties.put(
-          PolarisTaskConstants.TASK_DATA, PolarisObjectMapperUtil.serialize(refreshEntityToDrop));
+      Map<String, String> properties =
+          Map.ofEntries(
+              Map.entry(
+                  PolarisTaskConstants.TASK_TYPE,
+                  String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode())),
+              Map.entry(
+                  PolarisTaskConstants.TASK_DATA,
+                  PolarisObjectMapperUtil.serialize(refreshEntityToDrop)));
       PolarisBaseEntity.Builder taskEntityBuilder =
           new PolarisBaseEntity.Builder()
               .propertiesAsMap(properties)
