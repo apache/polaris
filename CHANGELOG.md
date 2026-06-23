@@ -52,6 +52,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for `register table` overwrite semantics in the Iceberg REST catalog flow (`overwrite=true`) for internal Polaris catalogs. With overwrite enabled, existing table pointers can be updated to a new metadata location while preserving default behavior for `overwrite=false`.
 - Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
 - Added Polaris Spark 4.0 client.
+- Added support for event filters, with one implementation based on Jakarta Expression Language. Operators can configure named filters with `include` and `exclude` predicates and map them to event listeners so only matching events are delivered.
 
 ### Changes
 - Added REPL support to Polaris CLI.

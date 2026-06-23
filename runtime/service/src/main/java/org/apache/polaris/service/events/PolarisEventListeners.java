@@ -19,8 +19,6 @@
 
 package org.apache.polaris.service.events;
 
-import static org.apache.polaris.service.events.PolarisServiceBusEventDispatcher.POLARIS_EVENT_CHANNEL;
-
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.common.annotation.Identifier;
 import io.vertx.core.Handler;
@@ -31,8 +29,10 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -41,20 +41,27 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.polaris.service.events.PolarisEventListenerConfiguration.ListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.RawEventAccess;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class PolarisEventListeners {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisEventListeners.class);
+
+  private record NamedEventFilter(String name, EventFilter filter) {}
 
   @Inject EventBus eventBus;
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
   @Inject EventSanitizer eventSanitizer;
+  @Inject @Any Instance<EventFilterFactory> eventFilterFactories;
+  @Inject PolarisEventFilterConfiguration filterConfiguration;
 
   @Inject
   @Identifier("event-listener-executor")
@@ -75,26 +82,28 @@ public class PolarisEventListeners {
       LOGGER.debug("No event listeners present, skipping event listener setup");
       return;
     }
-    for (String enabledEventListener : listenerTypeSet) {
-      var listenerConfiguration = configuration.listenerConfig().get(enabledEventListener);
+    for (String listenerName : listenerTypeSet) {
+      var listenerConfiguration = configuration.listenerConfig().get(listenerName);
       var supportedTypes = resolveSupportedTypes(listenerConfiguration);
-      var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
+      var listener = eventListeners.select(Identifier.Literal.of(listenerName)).get();
+      var listenerFilters = listenerFilters(listenerName, listenerConfiguration);
       var listenerExecutor =
           new ListenerExecutor(sharedExecutor, configuration.listenerBacklog().queueSize());
       // Reuse the same handler for every selected event type for this listener.
       Handler<Message<PolarisEvent>> handler =
           message ->
               scheduleEventDelivery(
-                  message.body(), enabledEventListener, listener, listenerExecutor);
+                  message.body(), listenerName, listener, listenerFilters, listenerExecutor);
       for (var polarisEventType : supportedTypes) {
         eventTypesWithListeners.add(polarisEventType);
-        eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
+        String address = PolarisServiceBusEventDispatcher.eventAddress(polarisEventType);
+        eventBus.localConsumer(address, handler);
       }
     }
   }
 
   private static EnumSet<PolarisEventType> resolveSupportedTypes(
-      PolarisEventListenerConfiguration.ListenerConfiguration listenerConfiguration) {
+      @Nullable ListenerConfiguration listenerConfiguration) {
     // Missing or empty per-listener filters mean that the listener receives all event types.
     if (listenerConfiguration == null
         || (listenerConfiguration.enabledEventCategories().orElse(Set.of()).isEmpty()
@@ -120,11 +129,12 @@ public class PolarisEventListeners {
       PolarisEvent event,
       String listenerName,
       PolarisEventListener listener,
-      ListenerExecutor listenerExecutor) {
+      List<NamedEventFilter> listenerFilters,
+      Executor listenerExecutor) {
     LOGGER.debug(
         "Scheduling {} event delivery to listener '{}' ({})", event.type(), listenerName, listener);
     try {
-      listenerExecutor.execute(() -> deliverEvent(event, listenerName, listener));
+      listenerExecutor.execute(() -> deliverEvent(event, listenerName, listener, listenerFilters));
       LOGGER.debug(
           "Successfully scheduled {} event delivery to listener '{}' ({})",
           event.type(),
@@ -142,25 +152,120 @@ public class PolarisEventListeners {
 
   // Executed on the blocking shared executor
   private void deliverEvent(
-      PolarisEvent event, String listenerName, PolarisEventListener listener) {
+      PolarisEvent event,
+      String listenerName,
+      PolarisEventListener listener,
+      List<NamedEventFilter> listenerFilters) {
     LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
-    PolarisEvent toDeliver =
-        (listener instanceof RawEventAccess) ? event : eventSanitizer.sanitize(event);
+
+    // 1. Filters
+    for (var filter : listenerFilters) {
+      try {
+        if (!filter.filter().test(event)) {
+          LOGGER.debug(
+              "Event {} filtered out by filter '{}' ({}) for listener '{}' ({})",
+              event.type(),
+              filter.name(),
+              filter.filter(),
+              listenerName,
+              listener);
+          return;
+        }
+      } catch (Exception e) {
+        LOGGER.error(
+            "Error while filtering {} event with filter '{}' ({}) for listener '{}' ({}); event will be dropped",
+            event.type(),
+            filter.name(),
+            filter.filter(),
+            listenerName,
+            listener,
+            e);
+        return;
+      }
+    }
+
+    // 2. Sanitizers
+    // TODO make sanitizers selectable like filters
+    PolarisEvent toDeliver = event;
+    boolean sanitize = !(listener instanceof RawEventAccess);
+    if (sanitize) {
+      try {
+        toDeliver = eventSanitizer.sanitize(event);
+      } catch (Exception e) {
+        LOGGER.error(
+            "Error while sanitizing {} event for listener '{}' ({}); event will be dropped",
+            event.type(),
+            listenerName,
+            listener,
+            e);
+        return;
+      }
+    }
+
+    // 3. Listener
     try {
       listener.onEvent(toDeliver);
       LOGGER.debug(
           "Successfully delivered {} event to listener '{}' ({})",
-          event.type(),
+          toDeliver.type(),
           listenerName,
           listener);
     } catch (Exception e) {
       LOGGER.error(
           "Error while delivering {} event to listener '{}' ({})",
-          event.type(),
+          toDeliver.type(),
           listenerName,
           listener,
           e);
     }
+  }
+
+  private List<NamedEventFilter> listenerFilters(
+      String listenerName, @Nullable ListenerConfiguration listenerConfiguration) {
+    if (listenerConfiguration == null) {
+      return List.of();
+    }
+    List<String> filterNames = listenerConfiguration.filters().orElse(List.of());
+    if (filterNames.isEmpty()) {
+      return List.of();
+    }
+    var filters = new ArrayList<NamedEventFilter>(filterNames.size());
+    for (var filterName : filterNames) {
+      var filterConfig = filterConfiguration.filters().get(filterName);
+      if (filterConfig == null) {
+        throw new IllegalArgumentException(
+            "Unknown event filter '"
+                + filterName
+                + "' referenced by listener '"
+                + listenerName
+                + "'");
+      }
+      filters.add(new NamedEventFilter(filterName, createFilter(filterName, filterConfig)));
+    }
+    return filters;
+  }
+
+  private EventFilter createFilter(
+      String filterName, PolarisEventFilterConfiguration.FilterConfiguration filterConfig) {
+    var eventFilterFactory =
+        eventFilterFactories.select(Identifier.Literal.of(filterConfig.type()));
+    if (eventFilterFactory.isUnsatisfied()) {
+      throw new IllegalArgumentException(
+          "Unsupported Polaris event filter type '"
+              + filterConfig.type()
+              + "' for filter '"
+              + filterName
+              + "'");
+    }
+    if (eventFilterFactory.isAmbiguous()) {
+      throw new IllegalArgumentException(
+          "Ambiguous Polaris event filter type '"
+              + filterConfig.type()
+              + "' for filter '"
+              + filterName
+              + "'");
+    }
+    return eventFilterFactory.get().create(filterName, filterConfig);
   }
 
   public boolean hasListeners(PolarisEventType eventType) {

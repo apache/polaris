@@ -23,6 +23,7 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 import io.smallrye.config.WithParentName;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -75,6 +76,13 @@ public interface PolarisEventListenerConfiguration {
      * present, then all event types are enabled.
      */
     Optional<Set<PolarisEventType.Category>> enabledEventCategories();
+
+    /**
+     * Ordered list of event filter names to apply to this listener. Filters are applied in the
+     * declared order; an event must pass all of them before being delivered. Each name must
+     * correspond to a filter defined under {@code polaris.event-filter.<name>}.
+     */
+    Optional<List<String>> filters();
   }
 
   /** Configuration for the thread pool running event listeners. */

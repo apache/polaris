@@ -67,6 +67,8 @@ dependencies {
   implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
 
+  implementation("jakarta.el:jakarta.el-api")
+  implementation("org.glassfish.expressly:expressly")
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.validation.api)

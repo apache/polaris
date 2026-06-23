@@ -27,5 +27,5 @@ This section covers how to configure Apache Polaris.
 
 - [Configuring Polaris]({{% ref "configuring-polaris.md" %}}) - Learn how to configure Polaris using environment variables, configuration files, and other mechanisms.
 - [Configuration Reference]({{% ref "configuration-reference.md" %}}) - A comprehensive reference of all Polaris configuration options.
+- [Events]({{% ref "../events.md" %}}) - Learn how to configure event listeners and event filters.
 - [Production Configuration]({{% ref "configuring-polaris-for-production" %}}) - Tips and best practices for deploying Polaris in production environments.
-
