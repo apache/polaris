@@ -83,6 +83,10 @@ jobs:
       #
       - name: Verify Copilot instructions
         run: .github/scripts/check-copilot-instructions.sh
+      - name: Set up Node 24
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24'
       - name: Renovate Configuration Validation
         run: npx --yes --package renovate renovate-config-validator --strict --no-global .github/renovate.json5
       # Intentionally unpinned to always use the latest allowlist from the ASF.
