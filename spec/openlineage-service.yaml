@@ -1,0 +1,133 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# This file documents the OpenLineage ingest endpoint exposed by Apache Polaris.
+#
+# IMPORTANT: This spec is documentation, not a code-generation source. The
+# OpenLineage event schema is a `oneOf` over RunEvent / JobEvent / DatasetEvent
+# discriminated by the `schemaURL` field, which the OpenAPI Generator's Java
+# templates cannot translate faithfully (they collapse the variants into a
+# single class with every variant's required fields marked `@NotNull`,
+# rejecting every valid event with a 400). Polaris instead hand-writes the
+# JAX-RS resource on top of the official `io.openlineage:openlineage-java`
+# library, exactly as Marquez (the OpenLineage reference server) does. See
+# `api/openlineage-service/` for the implementation.
+#
+# The authoritative event schema lives upstream:
+#   https://openlineage.io/spec/2-0-2/OpenLineage.json
+#
+# This file is kept so the OpenLineage endpoint shows up alongside Polaris's
+# other API specs and can be browsed by API tools.
+
+---
+openapi: 3.0.3
+info:
+  title: Apache Polaris OpenLineage Service
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 0.0.1
+  description:
+    Defines the OpenLineage-compatible ingest API exposed by Apache Polaris.
+    Polaris accepts OpenLineage events at the standard OpenLineage path so
+    engines (Spark, Flink, Airflow, Trino, dbt) can be reconfigured by URL
+    alone. Event bodies follow the OpenLineage specification at
+    https://openlineage.io/spec/2-0-2/OpenLineage.json.
+
+servers:
+  - url: "{scheme}://{host}/api/v1"
+    description: Server URL when the port can be inferred from the scheme
+    variables:
+      scheme:
+        description: The scheme of the URI, either http or https.
+        default: https
+      host:
+        description: The host address for the specified server
+        default: localhost
+
+security:
+  - OAuth2: []
+  - BearerAuth: []
+
+paths:
+  /lineage:
+    post:
+      tags:
+        - OpenLineage API
+      summary: Submit an OpenLineage event
+      description:
+        Accepts an OpenLineage RunEvent, JobEvent, or DatasetEvent as defined
+        by the OpenLineage specification
+        (https://openlineage.io/spec/2-0-2/OpenLineage.json).
+
+
+        The body is dispatched to the correct event variant by inspecting the
+        `schemaURL` field — the fragment after the final `/` selects RunEvent,
+        JobEvent, or DatasetEvent. Unrecognized values fall back to RunEvent.
+
+
+        This endpoint is the standard OpenLineage ingest path, so existing
+        OpenLineage transports can target Polaris by URL change alone.
+      operationId: sendLineageEvent
+      requestBody:
+        description:
+          An OpenLineage event. The exact body schema is the upstream
+          OpenLineage 2-0-2 JSON Schema referenced above.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              externalDocs:
+                description: OpenLineage 2-0-2 JSON Schema (authoritative)
+                url: https://openlineage.io/spec/2-0-2/OpenLineage.json
+      responses:
+        201:
+          description:
+            Created. The event was accepted for processing. Per the
+            OpenLineage server specification the response body is empty.
+        400:
+          description: Bad Request - The request body is not a valid OpenLineage event
+        401:
+          description: Unauthorized - The caller is not authenticated
+        403:
+          description: Forbidden - The caller is not authorized to submit lineage events
+        503:
+          description: Service Unavailable - The lineage subsystem is temporarily unable to accept events
+        5XX:
+          description: Server error
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description:
+        OAuth2 client-credentials flow against the Polaris token endpoint.
+        The same client-id/secret used for catalog access is used here.
+        # TODO: a dedicated LINEAGE_INGEST privilege grant will be required once
+        # privilege enforcement is implemented; the endpoint currently uses @RolesAllowed("**").
+      flows:
+        clientCredentials:
+          tokenUrl: /v1/oauth/tokens
+          scopes: {}
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
