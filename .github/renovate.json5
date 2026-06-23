@@ -35,6 +35,10 @@
     "main",
   ],
 
+  // Keep monorepo grouping when there are actually multiple updates,
+  // but allow one-dependency PRs to use version-specific titles.
+  groupSingleUpdates: false,
+
   pip_requirements: {
     // fileMatch default: (^|/)([\\w-]*)requirements\\.(txt|pip)$
     "managerFilePatterns": ["(^|/)([\\w-]*)requirements.*\\.txt$"],
@@ -87,9 +91,16 @@
       groupName: "Quarkus, ignore non Platform",
       matchManagers: ["gradle"],
       matchPackageNames: [
+        // Gradle plugin IDs
+        "io.quarkus",
+
+        // Maven coordinates
+        "/^io\\.quarkus:.+/",
         "io.quarkus.platform:quarkus-amazon-services-bom",
         "io.quarkus.platform:quarkus-google-cloud-services-bom",
-        "io.quarkus:io.quarkus.gradle.plugin",
+
+        // Do not disable the main platform BOM.
+        "/^io\\.quarkus\\.platform:(?!quarkus-bom$).+/"
       ],
       enabled: false
     },
