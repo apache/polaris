@@ -100,7 +100,8 @@
         "io.quarkus.platform:quarkus-google-cloud-services-bom",
 
         // Do not disable the main platform BOM.
-        "/^io\\.quarkus\\.platform:(?!quarkus-bom$).+/"
+        "io.quarkus.platform:*",
+        "!io.quarkus.platform:quarkus-bom"
       ],
       enabled: false
     },
