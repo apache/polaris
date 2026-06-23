@@ -22,9 +22,9 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.lineage.LineageGraph;
-import org.apache.polaris.core.lineage.LineageQueryRequest;
-import org.apache.polaris.core.lineage.LineageService;
+import org.apache.polaris.lineage.LineageGraph;
+import org.apache.polaris.lineage.LineageQueryRequest;
+import org.apache.polaris.lineage.LineageService;
 
 @RequestScoped
 public class DefaultLineageService implements LineageService {

@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.lineage;
 
-/** Node kinds surfaced by normalized lineage queries. */
-public enum LineageNodeType {
-  DATASET,
-  COLUMN
+/** Supported directions for lineage queries. */
+public enum LineageDirection {
+  UPSTREAM,
+  DOWNSTREAM,
+  BOTH
 }
