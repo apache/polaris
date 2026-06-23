@@ -36,9 +36,11 @@ import org.eclipse.microprofile.faulttolerance.Timeout;
 /**
  * JAX-RS resource for the OpenLineage ingest endpoint.
  *
- * <p>Mounted at the standard OpenLineage path ({@code POST /api/v1/lineage}) so that any engine
- * already using the OpenLineage HTTP transport (Spark, Flink, Airflow, Trino, dbt) can target
- * Polaris by URL change alone — no client-side rewriting.
+ * <p>Implements the <a
+ * href="https://github.com/OpenLineage/OpenLineage/blob/main/spec/OpenLineage.yml">OpenLineage
+ * HTTP API spec</a>. Mounted at the standard OpenLineage path ({@code POST /api/v1/lineage}) so
+ * that any engine already using the OpenLineage HTTP transport (Spark, Flink, Airflow, Trino, dbt)
+ * can target Polaris by URL change alone — no client-side rewriting.
  *
  * <p>The body is parsed into a {@link PolarisLineageEvent} which Jackson resolves to one of {@code
  * OfRunEvent} / {@code OfJobEvent} / {@code OfDatasetEvent} based on the {@code schemaURL} field.
