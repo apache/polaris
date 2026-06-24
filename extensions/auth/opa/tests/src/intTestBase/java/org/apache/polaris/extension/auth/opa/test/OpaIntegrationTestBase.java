@@ -46,7 +46,11 @@ public abstract class OpaIntegrationTestBase {
   @BeforeAll
   static void configureRestAssured() {
     RestAssured.baseURI = "http://localhost";
-    RestAssured.port = Integer.getInteger("quarkus.http.test-port");
+    Integer port = Integer.getInteger("quarkus.http.test-port");
+    if (port == null) {
+      fail("System property quarkus.http.test-port is not set");
+    }
+    RestAssured.port = port;
   }
 
   @AfterAll

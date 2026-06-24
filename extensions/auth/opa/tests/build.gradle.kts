@@ -73,8 +73,6 @@ fun Test.configureOpaTestTask(
   description = "Runs OPA integration tests against an external Polaris server."
   group = LifecycleBasePlugin.VERIFICATION_GROUP
 
-  environment("AWS_REGION", providers.environmentVariable("AWS_REGION").getOrElse("us-west-2"))
-  environment(mapOf("POLARIS_BOOTSTRAP_CREDENTIALS" to "POLARIS,test-admin,test-secret"))
   val apiVersion = providers.environmentVariable("DOCKER_API_VERSION").getOrElse("1.44")
   systemProperty("api.version", apiVersion)
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")

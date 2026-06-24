@@ -33,7 +33,8 @@ import org.testcontainers.containers.wait.strategy.Wait;
 /** Starts an OPA test server before the external Polaris server process starts. */
 public class OpaStartupAction implements PolarisServerStartupAction {
   private static final int OPA_PORT = 8181;
-  private static final String POLICY_NAME = "polaris-authz";
+  private static final String POLICY_NAME = "polaris/authz";
+  private static final String POLICY_PACKAGE = POLICY_NAME.replace('/', '.');
 
   private GenericContainer<?> opa;
 
@@ -58,7 +59,7 @@ public class OpaStartupAction implements PolarisServerStartupAction {
     loadRegoPolicy(baseUrl, POLICY_NAME, polarisRegoPolicy());
     context
         .getSystemProperties()
-        .put("polaris.authorization.opa.policy-uri", baseUrl + "/v1/data/polaris/authz");
+        .put("polaris.authorization.opa.policy-uri", baseUrl + "/v1/data/" + POLICY_NAME);
   }
 
   @Override
@@ -98,7 +99,7 @@ public class OpaStartupAction implements PolarisServerStartupAction {
 
   private String polarisRegoPolicy() {
     return """
-        package polaris.authz
+        package %s
 
         default allow := false
 
@@ -111,6 +112,7 @@ public class OpaStartupAction implements PolarisServerStartupAction {
         allow if {
           input.actor.principal == "admin"
         }
-        """;
+        """
+        .formatted(POLICY_PACKAGE);
   }
 }
