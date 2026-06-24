@@ -48,13 +48,13 @@ jobs:
     if: github.repository == 'apache/polaris'
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           # Must mention the branch to check out explicitly.
           # Otherwise the branch of the workflow-call (usually 'versioned-docs') would be checked out.
           ref: "main"
           persist-credentials: false
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: "versioned-docs"
           path: site/content/releases
@@ -78,7 +78,7 @@ jobs:
 
       - name: Deploy Static Site to GitHub
         if: github.event_name == 'push' && github.repository == 'apache/polaris'
-        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: asf-site
