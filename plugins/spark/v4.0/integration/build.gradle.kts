@@ -151,6 +151,13 @@ configurations.named("intTestRuntimeClasspath") {
   resolutionStrategy { force("jakarta.servlet:jakarta.servlet-api:5.0.0") }
 }
 
+evaluationDependsOn(":polaris-spark-${sparkMajorVersion}_${scalaVersion}")
+
+val sparkBundleJarTask =
+  project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}")
+    .tasks
+    .named("createPolarisSparkJar")
+
 tasks.named<Test>("intTest").configure {
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
@@ -179,3 +186,82 @@ tasks.named<Test>("intTest").configure {
   // For Spark integration tests
   addSparkJvmOptions()
 }
+
+// Bundle-jar sanity test
+testing {
+  suites {
+    register("sparkBundleTest") {
+      useJUnitJupiter()
+      dependencies {
+        implementation(platform(libs.quarkus.bom)) {
+          exclude(group = "jakarta.servlet", module = "jakarta.servlet-api")
+        }
+        implementation("org.apache.spark:spark-sql_${scalaVersion}:${spark40Version}") {
+          exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
+          exclude("org.apache.logging.log4j", "log4j-1.2-api")
+          exclude("org.apache.logging.log4j", "log4j-core")
+          exclude("org.slf4j", "jul-to-slf4j")
+        }
+        implementation(
+          "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
+        )
+        implementation(enforcedPlatform("org.scala-lang:scala-library:${scalaLibraryVersion}"))
+        implementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
+        implementation(libs.antlr4.runtime.spark40)
+        implementation(libs.javax.servlet.api)
+        runtimeOnly("org.apache.logging.log4j:log4j-core:2.26.0")
+
+        implementation(project(":polaris-api-management-model"))
+        implementation(testFixtures(project(":polaris-runtime-service")))
+
+        implementation(platform(libs.jackson.bom))
+        implementation("com.fasterxml.jackson.core:jackson-databind")
+
+        implementation("io.quarkus:quarkus-junit")
+        implementation(libs.assertj.core)
+      }
+      targets.all {
+        testTask.configure {
+          systemProperty("build.output.directory", layout.buildDirectory.asFile.get())
+          dependsOn(tasks.named("quarkusBuild"))
+          dependsOn(sparkBundleJarTask)
+          systemProperty(
+            "polaris.spark.bundle.jar",
+            sparkBundleJarTask.flatMap { it.archiveFile }.get().asFile.absolutePath,
+          )
+          systemProperty("polaris.version", project.version.toString())
+          systemProperty("polaris.scala.version", scalaVersion)
+          dependsOn(":publishToMavenLocal")
+          dependsOn(":polaris-core:publishMavenPublicationToMavenLocal")
+          dependsOn(
+            ":polaris-spark-${sparkMajorVersion}_${scalaVersion}:publishMavenPublicationToMavenLocal"
+          )
+          jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-Dquarkus.profile=it") })
+
+          if (System.getenv("AWS_REGION") == null) {
+            environment("AWS_REGION", "us-west-2")
+          }
+          environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+          jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
+          systemProperty("java.security.manager", "allow")
+          systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")
+          addSparkJvmOptions()
+        }
+      }
+    }
+  }
+}
+
+// Curate the runtime classpath
+configurations.named("sparkBundleTestRuntimeClasspath").configure {
+  exclude(group = "org.apache.polaris", module = "polaris-core")
+  exclude(
+    group = "org.apache.polaris",
+    module = "polaris-spark-${sparkMajorVersion}_${scalaVersion}",
+  )
+  resolutionStrategy { force("jakarta.servlet:jakarta.servlet-api:5.0.0") }
+}
+
+tasks.named("check") { dependsOn(testing.suites.named("sparkBundleTest")) }
+
+tasks.named("intTest") { dependsOn(testing.suites.named("sparkBundleTest")) }
