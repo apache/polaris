@@ -66,8 +66,7 @@ public class SemanticModelCatalogAdapter
       SecurityContext securityContext) {
     ensureEnabled();
     // TODO: authorize the principal, validate the OSI document against the bundled OSI JSON Schema,
-    //  then persist a new semantic-model entity (entity version 0) and return the stored document
-    //  with its entity-version. Tracked for a follow-up phase; returns 501 until persistence lands.
+    //  then persist a new semantic-model entity and return the stored document.
     return notImplemented();
   }
 
@@ -81,7 +80,7 @@ public class SemanticModelCatalogAdapter
       SecurityContext securityContext) {
     ensureEnabled();
     // TODO: authorize the principal, then page through the namespace's semantic-model entities and
-    //  return their identifiers. Tracked for a follow-up phase; returns 501 until persistence lands.
+    //  return their identifiers.
     return notImplemented();
   }
 
@@ -93,8 +92,7 @@ public class SemanticModelCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     ensureEnabled();
-    // TODO: authorize the principal, then read and return the stored OSI document and its
-    //  entity-version. Tracked for a follow-up phase; returns 501 until persistence lands.
+    // TODO: authorize the principal, then read and return the stored OSI document.
     return notImplemented();
   }
 
@@ -107,11 +105,8 @@ public class SemanticModelCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     ensureEnabled();
-    // TODO: authorize the principal, validate the OSI document, then replace the stored document.
-    //  When current-version is supplied, enforce optimistic concurrency (CAS) and fail with 409 on
-    //  mismatch; otherwise last-writer-wins. Increment the entity version and return the stored
-    //  document with its entity-version. Tracked for a follow-up phase; returns 501 until
-    //  persistence lands.
+    // TODO: authorize the principal, validate the OSI document, then replace the stored document
+    //  and return it.
     return notImplemented();
   }
 
@@ -123,8 +118,7 @@ public class SemanticModelCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     ensureEnabled();
-    // TODO: authorize the principal, then delete the semantic-model entity. Tracked for a follow-up
-    //  phase; returns 501 until persistence lands.
+    // TODO: authorize the principal, then delete the semantic-model entity.
     return notImplemented();
   }
 }

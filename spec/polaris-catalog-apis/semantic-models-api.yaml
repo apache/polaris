@@ -156,9 +156,9 @@ paths:
 
         Upon a successful update, the model's entity version is incremented by 1.
 
-        For optimistic concurrency, supply `current-version` in the request: the update succeeds
-        only if it matches the version currently stored in the catalog, otherwise the request fails
-        with 409. Omit `current-version` for last-writer-wins semantics.
+        Updates use optimistic concurrency: supply the `entity-version` you last read for this
+        model, and the update succeeds only if it matches the version currently stored in the
+        catalog. A mismatch fails with 409.
       requestBody:
         required: true
         content:
@@ -185,7 +185,9 @@ paths:
                 SemanticModelToUpdateDoesNotExist:
                   $ref: '#/components/examples/NoSuchSemanticModelError'
         409:
-          description: "The supplied current-version does not match the stored version; retry after fetching the latest version"
+          description:
+            Conflict - the supplied entity-version does not match the stored version. The client
+            may retry after fetching the latest version.
           content:
             application/json:
               schema:
@@ -290,15 +292,16 @@ components:
       type: object
       required:
         - document
+        - entity-version
       properties:
         document:
           $ref: '#/components/schemas/SemanticModelDocument'
-        current-version:
+        entity-version:
           type: integer
           description: |
-            If provided, the update succeeds only when this matches the entity version currently
-            stored in the catalog (optimistic concurrency); otherwise the request fails with 409.
-            Omit for last-writer-wins semantics.
+            The entity version the client last read for this semantic model. The update applies
+            only if it matches the version currently stored in the catalog (optimistic concurrency);
+            a mismatch fails with 409.
 
     LoadSemanticModelResponse:
       type: object
@@ -312,8 +315,7 @@ components:
           type: integer
           description: |
             The current version of the stored semantic-model entity. It is 0 after create and
-            increments by 1 on each successful update. Echo this value back as `current-version`
-            on a subsequent update to opt into optimistic concurrency.
+            increments by 1 on each successful update. 
 
     ListSemanticModelsResponse:
       type: object
@@ -385,10 +387,10 @@ components:
       }
 
     SemanticModelVersionMismatchError:
-      summary: The supplied current-version does not match the stored version
+      summary: The supplied entity-version does not match the stored version
       value: {
         "error": {
-          "message": "The semantic model version doesn't match the current-version",
+          "message": "The semantic model version doesn't match the supplied entity-version",
           "type": "SemanticModelVersionMismatchException",
           "code": 409
         }
