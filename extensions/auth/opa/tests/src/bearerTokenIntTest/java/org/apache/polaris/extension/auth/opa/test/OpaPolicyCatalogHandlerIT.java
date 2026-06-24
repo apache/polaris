@@ -20,8 +20,6 @@ package org.apache.polaris.extension.auth.opa.test;
 
 import static io.restassured.RestAssured.given;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,17 +31,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * OPA authorization coverage for generic table endpoints:
+ * OPA authorization coverage for catalog policy endpoints:
  *
  * <ul>
- *   <li>List generic tables
- *   <li>Create generic table
- *   <li>Drop generic table
+ *   <li>List/create policies
+ *   <li>Attach/detach policy mappings
+ *   <li>Delete policies
  * </ul>
  */
-@QuarkusTest
-@TestProfile(OpaTestProfiles.StaticToken.class)
-public class OpaGenericTableHandlerIT extends OpaIntegrationTestBase {
+public class OpaPolicyCatalogHandlerIT extends OpaIntegrationTestBase {
 
   private String catalogName;
   private String namespace;
@@ -53,7 +49,7 @@ public class OpaGenericTableHandlerIT extends OpaIntegrationTestBase {
   @BeforeEach
   void setupBaseCatalog(@TempDir Path tempDir) throws Exception {
     rootToken = getRootToken();
-    catalogName = "opa-gt-" + UUID.randomUUID().toString().replace("-", "");
+    catalogName = "opa-policy-" + UUID.randomUUID().toString().replace("-", "");
     namespace = "ns_" + UUID.randomUUID().toString().replace("-", "");
     Path warehouse = tempDir.resolve("warehouse");
     Files.createDirectory(warehouse);
@@ -63,56 +59,98 @@ public class OpaGenericTableHandlerIT extends OpaIntegrationTestBase {
   }
 
   @Test
-  void genericTableCreateAndDropAuthorization() throws Exception {
+  void policyListAndAttachAuthorization() throws Exception {
     String rootToken = this.rootToken;
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
-    String tableName = "gt_" + UUID.randomUUID().toString().replace("-", "");
+    String policyName = "pol_" + UUID.randomUUID().toString().replace("-", "");
 
-    Map<String, Object> tablePayload =
-        Map.of("name", tableName, "format", "ICEBERG", "doc", "doc", "properties", Map.of());
+    Map<String, Object> createPolicyRequest =
+        Map.of(
+            "name", policyName,
+            "type", "system.data-compaction",
+            "description", "opa policy test",
+            "content",
+                """
+                {
+                  "version":"2025-02-03",
+                  "enable":true,
+                  "config":{"target_file_size_bytes":134217728}
+                }
+                """);
 
-    // Stranger cannot list generic tables
-    given()
-        .header("Authorization", "Bearer " + strangerToken)
-        .get("/api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables", catalogName, namespace)
-        .then()
-        .statusCode(403);
-
-    // Root lists generic tables (initially empty)
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .get("/api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables", catalogName, namespace)
-        .then()
-        .statusCode(200);
-
-    // Stranger cannot create generic table
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + strangerToken)
-        .body(toJson(tablePayload))
-        .post(
-            "/api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables", catalogName, namespace)
-        .then()
-        .statusCode(403);
-
-    // Root creates generic table
+    // Root creates policy
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(tablePayload))
-        .post(
-            "/api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables", catalogName, namespace)
+        .body(toJson(createPolicyRequest))
+        .post("/api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies", catalogName, namespace)
         .then()
         .statusCode(200);
 
-    // Root drops generic table
+    // Stranger cannot list policies
+    given()
+        .header("Authorization", "Bearer " + strangerToken)
+        .get("/api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies", catalogName, namespace)
+        .then()
+        .statusCode(403);
+
+    // Root lists policies
+    given()
+        .header("Authorization", "Bearer " + rootToken)
+        .get("/api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies", catalogName, namespace)
+        .then()
+        .statusCode(200);
+
+    Map<String, Object> attachRequest =
+        Map.of("target", Map.of("type", "catalog", "path", List.of()), "parameters", Map.of());
+
+    // Stranger cannot attach policy
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + strangerToken)
+        .body(toJson(attachRequest))
+        .put(
+            "/api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings",
+            catalogName,
+            namespace,
+            policyName)
+        .then()
+        .statusCode(403);
+
+    // Root attaches policy to catalog
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + rootToken)
+        .body(toJson(attachRequest))
+        .put(
+            "/api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings",
+            catalogName,
+            namespace,
+            policyName)
+        .then()
+        .statusCode(204);
+
+    // Detach policy for cleanup
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + rootToken)
+        .body(toJson(attachRequest))
+        .post(
+            "/api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings",
+            catalogName,
+            namespace,
+            policyName)
+        .then()
+        .statusCode(204);
+
+    // Delete policy
     given()
         .header("Authorization", "Bearer " + rootToken)
         .delete(
-            "/api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+            "/api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
             catalogName,
             namespace,
-            tableName)
+            policyName)
         .then()
         .statusCode(204);
   }

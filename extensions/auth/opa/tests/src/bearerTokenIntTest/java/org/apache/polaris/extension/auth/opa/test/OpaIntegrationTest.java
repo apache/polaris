@@ -21,19 +21,9 @@ package org.apache.polaris.extension.auth.opa.test;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 
-/**
- * Integration tests for OPA with file-based bearer token authentication.
- *
- * <p>These tests verify that OpaPolarisAuthorizer correctly reads bearer tokens from a file and
- * uses them to authenticate with OPA.
- */
-@QuarkusTest
-@TestProfile(OpaTestProfiles.FileToken.class)
-public class OpaFileTokenIntegrationTest extends OpaIntegrationTestBase {
+public class OpaIntegrationTest extends OpaIntegrationTestBase {
 
   @Test
   void testOpaAllowsRootUser() {

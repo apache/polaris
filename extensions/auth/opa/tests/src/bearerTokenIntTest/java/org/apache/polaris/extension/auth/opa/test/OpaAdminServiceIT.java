@@ -20,8 +20,6 @@ package org.apache.polaris.extension.auth.opa.test;
 
 import static io.restassured.RestAssured.given;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import java.net.URI;
 import java.nio.file.Files;
@@ -49,8 +47,6 @@ import org.junit.jupiter.api.io.TempDir;
  *   <li>Catalog-role grant listings
  * </ul>
  */
-@QuarkusTest
-@TestProfile(OpaTestProfiles.StaticToken.class)
 public class OpaAdminServiceIT extends OpaIntegrationTestBase {
 
   private @TempDir Path baseCatalogLocationPath;

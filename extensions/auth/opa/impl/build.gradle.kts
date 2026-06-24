@@ -124,6 +124,8 @@ tasks.register<JavaExec>("validateOpaSchema") {
     errorOutput = outStream
   }
 
+  val prjDir = projectDir
+
   doLast {
     outStream?.close()
 
@@ -138,7 +140,7 @@ tasks.register<JavaExec>("validateOpaSchema") {
       )
     }
 
-    val generatedContent = projectDir.resolve(tempSchemaFile).readText().trim()
+    val generatedContent = prjDir.resolve(tempSchemaFile).readText().trim()
     val committedContent = committedSchemaFile.readText().trim()
 
     if (generatedContent != committedContent) {
