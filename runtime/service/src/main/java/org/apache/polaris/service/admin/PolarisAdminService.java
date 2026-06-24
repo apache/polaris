@@ -911,11 +911,10 @@ public class PolarisAdminService {
         // so we must restore it explicitly in the updateBuilder.
         updateBuilder.setDefaultBaseLocation(defaultBaseLocation);
       } else {
-        // New base location is already in the updated properties; we'll also potentially
-        // plumb it into the logic for setting an updated StorageConfigurationInfo.
         defaultBaseLocation = newDefaultBaseLocation;
       }
     }
+
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(
           realmConfig, updateRequest.getStorageConfigInfo(), defaultBaseLocation);

@@ -180,7 +180,9 @@ public abstract class AbstractLocalIcebergCatalogViewTest
                 .setStorageConfigurationInfo(
                     realmConfig,
                     new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*"), null),
+                        StorageConfigInfo.StorageTypeEnum.FILE,
+                        List.of("file://tmp", "file://", "/", "*"),
+                        null),
                     "file://tmp")
                 .build()
                 .asCatalog(serviceIdentityProvider)));
