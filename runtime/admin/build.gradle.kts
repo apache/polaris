@@ -87,6 +87,9 @@ quarkus {
         .toMap()
     }
   )
+  buildForkOptions {
+    maxHeapSize = "2G"
+  }
 }
 
 // Configuration to expose distribution artifacts
