@@ -29,8 +29,14 @@ import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
 /**
- * Cache key for vended GCP credentials. GCP downscoped credentials do not support session tags, so
- * principal and credential vending context are never included.
+ * Cache key for vended GCP credentials.
+ *
+ * <p>By default GCP downscoped credentials are principal-independent, so {@link #principalName()}
+ * is empty and credentials are shared across principals. When GCS principal attribution via
+ * Workload Identity Federation is enabled (see {@code
+ * FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_*}), the vended token is derived from a
+ * per-principal federated identity, so the principal name is included here to ensure one
+ * principal's attributed credentials are never served to another.
  */
 @PolarisImmutable
 public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey {
@@ -55,24 +61,42 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   @Value.Parameter(order = 6)
   Optional<String> refreshCredentialsEndpoint();
 
+  /**
+   * The requesting principal name, included in the cache key only when GCS principal attribution is
+   * enabled (otherwise empty). When attribution is active the vended credential carries this
+   * principal's identity, so it must participate in cache identity to avoid serving one principal's
+   * attributed credentials to another.
+   */
+  @Value.Parameter(order = 7)
+  Optional<String> principalName();
+
   // ---- aux: app-scoped invariants, excluded from equals/hashCode ----
 
-  @Value.Parameter(order = 7)
+  @Value.Parameter(order = 8)
   @Value.Auxiliary
   GoogleCredentials sourceCredentials();
 
-  @Value.Parameter(order = 8)
+  @Value.Parameter(order = 9)
   @Value.Auxiliary
   HttpTransportFactory transportFactory();
 
   @Override
-  @Value.Parameter(order = 9)
+  @Value.Parameter(order = 10)
   @Value.Auxiliary
   RealmConfig realmConfig();
 
-  @Value.Parameter(order = 10)
+  @Value.Parameter(order = 11)
   @Value.Auxiliary
   GcpCredentialOps credentialOps();
+
+  /**
+   * Pre-computed attribution config parameters, present only when GCS principal attribution is
+   * fully configured and a principal is available. Computed at cache key build time so {@code
+   * compute()} can use these values directly without re-reading realm config.
+   */
+  @Value.Parameter(order = 12)
+  @Value.Auxiliary
+  Optional<GcpAttributionParams> attributionParams();
 
   @Override
   default StorageAccessConfig load() {
@@ -86,10 +110,12 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
+      Optional<String> principalName,
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
       RealmConfig realmConfig,
-      GcpCredentialOps credentialOps) {
+      GcpCredentialOps credentialOps,
+      Optional<GcpAttributionParams> attributionParams) {
     return ImmutableGcpStorageCredentialCacheKey.of(
         realmId,
         storageConfig,
@@ -97,9 +123,11 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
         allowedListLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint,
+        principalName,
         sourceCredentials,
         transportFactory,
         realmConfig,
-        credentialOps);
+        credentialOps,
+        attributionParams);
   }
 }

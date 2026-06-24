@@ -46,6 +46,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -55,6 +56,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUri;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -77,6 +79,7 @@ public class GcpCredentialsStorageIntegration
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
   private final GcpCredentialOps credentialOps;
+  private final Optional<GcpAttributionParams> attributionParams;
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
@@ -89,13 +92,14 @@ public class GcpCredentialsStorageIntegration
         null,
         storageConfig,
         realmConfig,
-        GcpCredentialOps.DEFAULT);
+        GcpCredentialOps.DEFAULT,
+        resolveAttributionParams(realmConfig));
   }
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
-      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      StorageCredentialCache cache,
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
     this(
@@ -104,7 +108,8 @@ public class GcpCredentialsStorageIntegration
         cache,
         storageConfig,
         realmConfig,
-        GcpCredentialOps.DEFAULT);
+        GcpCredentialOps.DEFAULT,
+        resolveAttributionParams(realmConfig));
   }
 
   public GcpCredentialsStorageIntegration(
@@ -113,16 +118,46 @@ public class GcpCredentialsStorageIntegration
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig,
       GcpCredentialOps credentialOps) {
-    this(sourceCredentials, transportFactory, null, storageConfig, realmConfig, credentialOps);
+    this(
+        sourceCredentials,
+        transportFactory,
+        null,
+        storageConfig,
+        realmConfig,
+        credentialOps,
+        resolveAttributionParams(realmConfig));
   }
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
-      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      StorageCredentialCache cache,
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig,
       GcpCredentialOps credentialOps) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        cache,
+        storageConfig,
+        realmConfig,
+        credentialOps,
+        resolveAttributionParams(realmConfig));
+  }
+
+  /**
+   * Full constructor accepting pre-resolved attribution params. Downstream integrations can pass
+   * their own {@link GcpAttributionParams} without depending on {@link
+   * org.apache.polaris.core.config.FeatureConfiguration}.
+   */
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      StorageCredentialCache cache,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps,
+      Optional<GcpAttributionParams> attributionParams) {
     super(cache, realmConfig, storageConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
@@ -130,6 +165,47 @@ public class GcpCredentialsStorageIntegration
         sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
     this.transportFactory = transportFactory;
     this.credentialOps = credentialOps;
+    this.attributionParams = attributionParams;
+  }
+
+  /**
+   * Resolves {@link GcpAttributionParams} from realm config. Returns empty when attribution is
+   * disabled; throws {@link IllegalStateException} when enabled but misconfigured.
+   *
+   * <p>Static so it can be called from constructor-chaining expressions ({@code this(...)}).
+   */
+  public static Optional<GcpAttributionParams> resolveAttributionParams(RealmConfig realmConfig) {
+    if (!realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED)) {
+      return Optional.empty();
+    }
+    List<String> missing = new ArrayList<>();
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE");
+    }
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER");
+    }
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE");
+    }
+    if (!missing.isEmpty()) {
+      throw new IllegalStateException(
+          "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but the following required config values are"
+              + " missing: "
+              + String.join(", ", missing));
+    }
+    return Optional.of(
+        GcpAttributionParams.of(
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER),
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE),
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE),
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID)));
   }
 
   @Override
@@ -176,6 +252,28 @@ public class GcpCredentialsStorageIntegration
       @NonNull Set<String> writeLocations,
       @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
+    // Principal attribution makes the vended token per-principal, so the principal must
+    // participate in cache identity; otherwise it is left empty to preserve cross-principal cache
+    // reuse. Attribution requires a service account to impersonate and a principal to attribute.
+    Optional<String> principalName = Optional.empty();
+    Optional<GcpAttributionParams> resolvedAttributionParams = Optional.empty();
+    if (attributionParams.isPresent()) {
+      if (storageConfig().getGcpServiceAccount() == null) {
+        LOGGER.warn(
+            "GCS principal attribution is enabled but no gcpServiceAccount is configured"
+                + " on the StorageConfiguration; falling back to non-attributed credentials");
+      } else {
+        Optional<String> ctxPrincipal = context.principalName().filter(n -> !n.isEmpty());
+        if (ctxPrincipal.isPresent()) {
+          principalName = ctxPrincipal;
+          resolvedAttributionParams = attributionParams;
+        } else {
+          LOGGER.warn(
+              "GCS principal attribution is enabled but no principal name is present in the"
+                  + " credential vending context; falling back to non-attributed credentials");
+        }
+      }
+    }
     return GcpStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         storageConfig(),
@@ -183,10 +281,12 @@ public class GcpCredentialsStorageIntegration
         listLocations,
         writeLocations,
         refreshEndpoint,
+        principalName,
         sourceCredentials,
         transportFactory,
         realmConfig(),
-        credentialOps);
+        credentialOps,
+        resolvedAttributionParams);
   }
 
   /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
@@ -206,7 +306,7 @@ public class GcpCredentialsStorageIntegration
     }
 
     GoogleCredentials credentialsToDownscope =
-        getBaseCredentials(gcpStorageConfig, sourceCredentials, credentialOps);
+        resolveSourceCredentials(key, gcpStorageConfig, sourceCredentials, credentialOps);
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(readLocations, listLocations, writeLocations);
@@ -244,6 +344,40 @@ public class GcpCredentialsStorageIntegration
                 accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint));
 
     return accessConfig.build();
+  }
+
+  /**
+   * Returns the credential to be used as the source for downscoping.
+   *
+   * <p>When GCS principal attribution is configured and a principal is present (so the cache key
+   * carries pre-computed {@link GcpAttributionParams}), the impersonation source is a federated
+   * identity whose subject is {@code <realm>/<principal>}, which surfaces the principal in {@code
+   * serviceAccountDelegationInfo} of GCS Data Access audit logs. Otherwise this is the standard
+   * path: impersonate the configured service account from the ambient source credentials, or use
+   * those credentials directly.
+   */
+  private static GoogleCredentials resolveSourceCredentials(
+      GcpStorageCredentialCacheKey key,
+      GcpStorageConfigurationInfo storageConfig,
+      GoogleCredentials sourceCredentials,
+      GcpCredentialOps credentialOps) {
+    Optional<GcpAttributionParams> attributionParams = key.attributionParams();
+    if (attributionParams.isPresent()) {
+      GcpAttributionParams params = attributionParams.get();
+      String subject =
+          GcpAttributionSubjectBuilder.buildSubject(key.realmId(), key.principalName().orElse(""));
+      GcpFederatedCredentialsExchanger exchanger =
+          new GcpFederatedCredentialsExchanger(
+              params.tokenIssuer(),
+              params.wifAudience(),
+              params.signingKeyPath(),
+              params.signingKeyId(),
+              key.transportFactory());
+      GoogleCredentials federated = exchanger.federatedCredentials(subject, key.realmId());
+      return createImpersonatedCredentials(
+          federated, storageConfig.getGcpServiceAccount(), credentialOps);
+    }
+    return getBaseCredentials(storageConfig, sourceCredentials, credentialOps);
   }
 
   /**

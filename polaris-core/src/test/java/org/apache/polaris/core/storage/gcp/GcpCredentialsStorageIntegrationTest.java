@@ -20,7 +20,10 @@ package org.apache.polaris.core.storage.gcp;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +35,7 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
 import com.google.auth.oauth2.DownscopedCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.IdentityPoolCredentials;
 import com.google.cloud.ServiceOptions;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
@@ -44,15 +48,26 @@ import com.google.cloud.storage.StorageOptions;
 import com.google.protobuf.Timestamp;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -60,6 +75,7 @@ import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -501,5 +517,158 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .path("availabilityCondition")
         .path("expression")
         .asText();
+  }
+
+  private static RealmConfig configWith(Map<String, String> values) {
+    RealmConfigurationSource source = (rc, name) -> values.get(name);
+    return new RealmConfigImpl(source, () -> "test-realm");
+  }
+
+  @Test
+  void resolveAttributionParamsDisabledByDefault() {
+    assertThat(GcpCredentialsStorageIntegration.resolveAttributionParams(EMPTY_REALM_CONFIG))
+        .isEmpty();
+  }
+
+  @Test
+  void resolveAttributionParamsReturnsParamsWhenFullyConfigured() {
+    RealmConfig config =
+        configWith(
+            Map.of(
+                "GCS_PRINCIPAL_ATTRIBUTION_ENABLED", "true",
+                "GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE",
+                    "//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/p/providers/pr",
+                "GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER", "https://issuer.example.com",
+                "GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE", "/tmp/key.pem"));
+    Optional<GcpAttributionParams> result =
+        GcpCredentialsStorageIntegration.resolveAttributionParams(config);
+    assertThat(result).isPresent();
+    assertThat(result.get().wifAudience())
+        .isEqualTo(
+            "//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/p/providers/pr");
+    assertThat(result.get().tokenIssuer()).isEqualTo("https://issuer.example.com");
+    assertThat(result.get().signingKeyFile()).isEqualTo("/tmp/key.pem");
+  }
+
+  @Test
+  void resolveAttributionParamsThrowsWhenEnabledButAudienceMissing() {
+    RealmConfig config =
+        configWith(
+            Map.of(
+                "GCS_PRINCIPAL_ATTRIBUTION_ENABLED", "true",
+                "GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER", "https://issuer.example.com",
+                "GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE", "/tmp/key.pem"));
+    assertThatThrownBy(() -> GcpCredentialsStorageIntegration.resolveAttributionParams(config))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE");
+  }
+
+  @Test
+  void resolveAttributionParamsThrowsWhenMultipleRequiredParamsMissing() {
+    RealmConfig config = configWith(Map.of("GCS_PRINCIPAL_ATTRIBUTION_ENABLED", "true"));
+    assertThatThrownBy(() -> GcpCredentialsStorageIntegration.resolveAttributionParams(config))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE")
+        .hasMessageContaining("GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER")
+        .hasMessageContaining("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE");
+  }
+
+  @Test
+  void testWifAttributionFlowUsesFederatedCredentials(@TempDir Path tempDir) throws Exception {
+    String serviceAccount = "test-sa@project.iam.gserviceaccount.com";
+    GcpStorageConfigurationInfo config =
+        GcpStorageConfigurationInfo.builder()
+            .addAllAllowedLocations(List.of("gs://bucket/path"))
+            .gcpServiceAccount(serviceAccount)
+            .build();
+
+    AtomicReference<GoogleCredentials> capturedSource = new AtomicReference<>();
+
+    IamCredentialsClient mockIamClient = Mockito.mock(IamCredentialsClient.class);
+    GenerateAccessTokenResponse mockResponse =
+        GenerateAccessTokenResponse.newBuilder()
+            .setAccessToken("wif-impersonated-token")
+            .setExpireTime(
+                Timestamp.newBuilder().setSeconds(System.currentTimeMillis() / 1000 + 3600).build())
+            .build();
+    Mockito.when(mockIamClient.generateAccessToken(Mockito.any(GenerateAccessTokenRequest.class)))
+        .thenReturn(mockResponse);
+
+    GoogleCredentials mockCreds = Mockito.mock(GoogleCredentials.class);
+    Mockito.when(mockCreds.createScoped(Mockito.any(String.class))).thenReturn(mockCreds);
+
+    GcpCredentialOps testOps =
+        new GcpCredentialOps() {
+          @Override
+          public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
+            capturedSource.set(credentials);
+            return mockIamClient;
+          }
+
+          @Override
+          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+            return new AccessToken("downscoped-token", new Date());
+          }
+        };
+
+    KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");
+    gen.initialize(2048);
+    KeyPair keyPair = gen.generateKeyPair();
+    String pem =
+        "-----BEGIN PRIVATE KEY-----\n"
+            + Base64.getMimeEncoder(64, "\n".getBytes(UTF_8))
+                .encodeToString(keyPair.getPrivate().getEncoded())
+            + "\n-----END PRIVATE KEY-----\n";
+    Path keyFile = tempDir.resolve("attribution-key.pem");
+    Files.writeString(keyFile, pem);
+
+    GcpAttributionParams params =
+        GcpAttributionParams.of(
+            "https://issuer.example.com",
+            "//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/p/providers/pr",
+            keyFile.toString(),
+            "key-1");
+
+    GcpCredentialsStorageIntegration integration =
+        new GcpCredentialsStorageIntegration(
+            mockCreds,
+            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
+            null,
+            config,
+            EMPTY_REALM_CONFIG,
+            testOps,
+            Optional.of(params));
+
+    integration.getStorageAccessConfig(
+        toGrants(
+            Set.of("gs://bucket/path"), Set.of("gs://bucket/path"), Set.of("gs://bucket/path")),
+        Optional.empty(),
+        CredentialVendingContext.builder()
+            .realm(Optional.of("realm1"))
+            .principalName(Optional.of("principal1"))
+            .build());
+
+    Mockito.verify(mockIamClient)
+        .generateAccessToken(
+            Mockito.argThat(
+                request ->
+                    request
+                        .getName()
+                        .equals(
+                            GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
+                                + serviceAccount)));
+
+    // The source credential used for impersonation must be a federated identity, not the raw
+    // source credential. This ensures the attribution JWT (not the ambient SA key) is what
+    // reaches GCP STS and surfaces in serviceAccountDelegationInfo of audit logs.
+    assertThat(capturedSource.get()).isInstanceOf(IdentityPoolCredentials.class);
+
+    // Verify the JWT minted by the supplier carries the correct attribution subject.
+    // retrieveSubjectToken() invokes the supplier locally (no HTTP); it signs the JWT with the
+    // test RSA key, so we can decode it and assert the sub and realm claims are correct.
+    IdentityPoolCredentials idp = (IdentityPoolCredentials) capturedSource.get();
+    DecodedJWT jwt = JWT.decode(idp.retrieveSubjectToken());
+    assertThat(jwt.getSubject()).isEqualTo("realm1/principal1");
+    assertThat(jwt.getClaim("realm").asString()).isEqualTo("realm1");
   }
 }
