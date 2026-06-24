@@ -213,20 +213,10 @@ tasks.named("javadoc") { dependsOn("jandex") }
 
 val buildDir = project.layout.buildDirectory
 
-// Same issue as above: allow a java security manager after Java 21
-// (this setting is for the application under test, while the setting above is for test
-// code).
-val securityManagerAllow = "-Djava.security.manager=allow"
-
 // Example: to attach a debugger to the spawned JVM running Quarkus, add
 // -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
 // to your test configuration.
-val quarkusTestArgLine =
-  providers
-    .systemProperty("quarkus.test.arg-line")
-    .map { "$it $securityManagerAllow" }
-    .orElse(securityManagerAllow)
-    .get()
+val quarkusTestArgLine = providers.systemProperty("quarkus.test.arg-line").orElse("").get()
 
 val quarkusProperties = providers.systemPropertiesPrefixedBy("quarkus.")
 
@@ -236,9 +226,6 @@ tasks.withType(Test::class.java).configureEach {
   // org.apache.polaris.service.it.ServerManager
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
-  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
-  // "getSubject is supported only if a security manager is allowed".
-  systemProperty("java.security.manager", "allow")
 
   // Quarkus tests run "in isolated class loaders", which means that class-statically active
   // resources pile up used JVM, as those classes cannot be GC'd.
@@ -287,7 +274,9 @@ class IntTestArgumentProvider(
   override fun asArguments(): Iterable<String?> {
     val args = mutableListOf<String>()
 
-    args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
+    if (quarkusTestArgLine.isNotBlank()) {
+      args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
+    }
     // This property is not honored in a per-profile application.properties file,
     // so we need to set it here.
     args.add("-Dquarkus.log.file.path=${logsDir.get().resolve("polaris.log").absolutePath}")
