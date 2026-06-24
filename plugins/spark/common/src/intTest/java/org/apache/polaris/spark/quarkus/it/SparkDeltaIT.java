@@ -21,7 +21,6 @@ package org.apache.polaris.spark.quarkus.it;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -41,7 +40,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-@QuarkusIntegrationTest
 public class SparkDeltaIT extends SparkIntegrationBase {
   private String defaultNs;
   private String tableRootDir;

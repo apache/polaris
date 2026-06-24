@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.spark.quarkus.it;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
 import org.apache.polaris.service.it.ext.SparkSessionBuilder;
 import org.apache.spark.sql.SparkSession;
 
-@QuarkusIntegrationTest
 public class SparkCatalogIcebergIT extends SparkCatalogBaseIT {
   /** Initialize the spark catalog to use the iceberg spark catalog. */
   @Override

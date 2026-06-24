@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
-import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.util.Arrays;
 import java.util.Map;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -50,7 +49,6 @@ import org.junit.jupiter.api.Test;
  * SparkCatalog operations, some operations like listNamespaces under a namespace can not be
  * triggered through a SQL interface directly with Spark.
  */
-@QuarkusIntegrationTest
 public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
   private static StructType schema = new StructType().add("id", "long").add("name", "string");
   protected StagingTableCatalog tableCatalog = null;
