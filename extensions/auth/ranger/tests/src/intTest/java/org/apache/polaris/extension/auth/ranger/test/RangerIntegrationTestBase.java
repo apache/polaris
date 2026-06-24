@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
@@ -30,7 +31,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 
 /**
  * Base class for Ranger integration tests providing common helpers for authentication and principal
@@ -42,6 +45,17 @@ public abstract class RangerIntegrationTestBase {
   private final List<String> catalogsToCleanup = new ArrayList<>();
 
   protected Map<String, String> user2Token = new HashMap<>();
+
+  @BeforeAll
+  static void configureRestAssured() {
+    RestAssured.baseURI = "http://localhost";
+    RestAssured.port = Integer.getInteger("quarkus.http.test-port");
+  }
+
+  @AfterAll
+  static void resetRestAssured() {
+    RestAssured.reset();
+  }
 
   protected String toJson(Object value) {
     try {
