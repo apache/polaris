@@ -52,7 +52,6 @@ import org.apache.polaris.service.events.AttributeKey;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
-import org.apache.polaris.service.events.listeners.EventResourceIdentifiers;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.LoggerFactory;
 
@@ -114,10 +113,6 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
       stringKey(ACTOR_NAME_ATTRIBUTE_NAME);
   private static final io.opentelemetry.api.common.AttributeKey<List<String>>
       ACTOR_ROLES_ATTRIBUTE_KEY = stringArrayKey(ACTOR_ROLES_ATTRIBUTE_NAME);
-  private static final io.opentelemetry.api.common.AttributeKey<String>
-      TABLE_IDENTIFIER_ATTRIBUTE_KEY = stringKey(TABLE_IDENTIFIER_ATTRIBUTE_NAME);
-  private static final io.opentelemetry.api.common.AttributeKey<String>
-      VIEW_IDENTIFIER_ATTRIBUTE_KEY = stringKey(VIEW_IDENTIFIER_ATTRIBUTE_NAME);
   private static final io.opentelemetry.api.common.AttributeKey<String>
       GRANT_RESOURCE_ATTRIBUTE_KEY = stringKey(GRANT_RESOURCE_ATTRIBUTE_NAME);
   private static final io.opentelemetry.api.common.AttributeKey<String>
@@ -225,22 +220,8 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
         string(PARENT_NAMESPACE_FQN_ATTRIBUTE_NAME, EventAttributes.PARENT_NAMESPACE_FQN)),
     TABLE_NAME(string(TABLE_NAME_ATTRIBUTE_NAME, EventAttributes.TABLE_NAME)),
     TABLE_IDENTIFIER(string(TABLE_IDENTIFIER_ATTRIBUTE_NAME, EventAttributes.TABLE_IDENTIFIER)),
-    DERIVED_TABLE_IDENTIFIER(
-        (listener, attributes, event) ->
-            listener
-                .derivedTableIdentifier(event)
-                .ifPresent(
-                    tableIdentifier ->
-                        attributes.put(TABLE_IDENTIFIER_ATTRIBUTE_KEY, tableIdentifier))),
     VIEW_NAME(string(VIEW_NAME_ATTRIBUTE_NAME, EventAttributes.VIEW_NAME)),
     VIEW_IDENTIFIER(string(VIEW_IDENTIFIER_ATTRIBUTE_NAME, EventAttributes.VIEW_IDENTIFIER)),
-    DERIVED_VIEW_IDENTIFIER(
-        (listener, attributes, event) ->
-            listener
-                .derivedViewIdentifier(event)
-                .ifPresent(
-                    viewIdentifier ->
-                        attributes.put(VIEW_IDENTIFIER_ATTRIBUTE_KEY, viewIdentifier))),
     PRINCIPAL_NAME(string(PRINCIPAL_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_NAME)),
     PRINCIPAL_ROLE_NAME(
         string(PRINCIPAL_ROLE_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_ROLE_NAME)),
@@ -393,20 +374,6 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
       LOGGER.warn("Could not serialize Polaris event attribute {}", value, e);
       return Optional.empty();
     }
-  }
-
-  private Optional<String> derivedTableIdentifier(PolarisEvent event) {
-    if (event.attributes().contains(EventAttributes.TABLE_IDENTIFIER)) {
-      return Optional.empty();
-    }
-    return EventResourceIdentifiers.tableIdentifierFromNamespaceAndName(event.attributes());
-  }
-
-  private Optional<String> derivedViewIdentifier(PolarisEvent event) {
-    if (event.attributes().contains(EventAttributes.VIEW_IDENTIFIER)) {
-      return Optional.empty();
-    }
-    return EventResourceIdentifiers.viewIdentifierFromNamespaceAndName(event.attributes());
   }
 
   private Optional<Context> toOpenTelemetryContext(PolarisEvent event) {

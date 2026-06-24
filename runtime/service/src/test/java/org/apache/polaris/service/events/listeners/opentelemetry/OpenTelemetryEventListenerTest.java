@@ -124,13 +124,12 @@ class OpenTelemetryEventListenerTest {
         .isEqualTo("test_catalog");
     assertThat(record.getAttributes().get(stringKey(TABLE_NAME_ATTRIBUTE_NAME)))
         .isEqualTo("test_table");
-    assertThat(record.getAttributes().get(stringKey(TABLE_IDENTIFIER_ATTRIBUTE_NAME)))
-        .isEqualTo("test_namespace.test_table");
+    assertThat(record.getAttributes().get(stringKey(TABLE_IDENTIFIER_ATTRIBUTE_NAME))).isNull();
     assertThat(record.getAttributes().get(booleanKey(PURGE_REQUESTED_ATTRIBUTE_NAME))).isTrue();
   }
 
   @Test
-  void shouldKeepExplicitTableIdentifierInsteadOfDerivingOne() {
+  void shouldEmitExplicitTableIdentifier() {
     CapturingLogRecordExporter exporter = new CapturingLogRecordExporter();
     OpenTelemetryEventListener listener = createListener(exporter);
 
@@ -139,8 +138,8 @@ class OpenTelemetryEventListenerTest {
             PolarisEventType.AFTER_CREATE_TABLE,
             metadata(),
             new EventAttributeMap()
-                .put(EventAttributes.NAMESPACE, Namespace.of("derived_namespace"))
-                .put(EventAttributes.TABLE_NAME, "derived_table")
+                .put(EventAttributes.NAMESPACE, Namespace.of("test_namespace"))
+                .put(EventAttributes.TABLE_NAME, "test_table")
                 .put(
                     EventAttributes.TABLE_IDENTIFIER,
                     TableIdentifier.of(Namespace.of("explicit_namespace"), "explicit_table"))));
