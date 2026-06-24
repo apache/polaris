@@ -122,7 +122,8 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
       return renameIdentifier.get();
     }
 
-    Optional<String> namespaceAndTableName = resolveNamespaceAndTableName(attributes);
+    Optional<String> namespaceAndTableName =
+        EventResourceIdentifiers.tableIdentifierFromNamespaceAndName(attributes);
     if (namespaceAndTableName.isPresent()) {
       return namespaceAndTableName.get();
     }
@@ -154,17 +155,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
         .get(EventAttributes.VIEW_IDENTIFIER)
         .map(TableIdentifier::toString)
         .or(() -> resolveRenameIdentifier(event))
-        .or(
-            () ->
-                attributes
-                    .get(EventAttributes.NAMESPACE)
-                    .flatMap(
-                        namespace ->
-                            attributes
-                                .get(EventAttributes.VIEW_NAME)
-                                .map(
-                                    viewName ->
-                                        TableIdentifier.of(namespace, viewName).toString())))
+        .or(() -> EventResourceIdentifiers.viewIdentifierFromNamespaceAndName(attributes))
         .or(() -> attributes.get(EventAttributes.VIEW_NAME))
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
@@ -178,16 +169,6 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
                 event.type().name().startsWith("AFTER_")
                     ? request.destination().toString()
                     : request.source().toString());
-  }
-
-  private static Optional<String> resolveNamespaceAndTableName(EventAttributeMap attributes) {
-    return attributes
-        .get(EventAttributes.NAMESPACE)
-        .flatMap(
-            namespace ->
-                attributes
-                    .get(EventAttributes.TABLE_NAME)
-                    .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
   }
 
   private static Optional<String> resolveCreateTableIdentifier(EventAttributeMap attributes) {

@@ -22,6 +22,7 @@ import static io.opentelemetry.api.common.AttributeKey.booleanKey;
 import static io.opentelemetry.api.common.AttributeKey.longKey;
 import static io.opentelemetry.api.common.AttributeKey.stringArrayKey;
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SAMPLED_KEY;
 import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SPAN_ID_KEY;
 import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_FLAGS_KEY;
 import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_ID_KEY;
@@ -46,12 +47,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.service.events.AttributeKey;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
+import org.apache.polaris.service.events.listeners.EventResourceIdentifiers;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.LoggerFactory;
 
@@ -101,6 +102,35 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
   static final String TARGET_NAME_ATTRIBUTE_NAME = "polaris.target.name";
   static final String DETACH_ALL_ATTRIBUTE_NAME = "polaris.detach_all";
 
+  private static final io.opentelemetry.api.common.AttributeKey<String> EVENT_TYPE_ATTRIBUTE_KEY =
+      stringKey(EVENT_TYPE_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<String>
+      EVENT_CATEGORY_ATTRIBUTE_KEY = stringKey(EVENT_CATEGORY_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<String> REALM_ID_ATTRIBUTE_KEY =
+      stringKey(REALM_ID_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<String> REQUEST_ID_ATTRIBUTE_KEY =
+      stringKey(REQUEST_ID_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<String> ACTOR_NAME_ATTRIBUTE_KEY =
+      stringKey(ACTOR_NAME_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<List<String>>
+      ACTOR_ROLES_ATTRIBUTE_KEY = stringArrayKey(ACTOR_ROLES_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<String>
+      TABLE_IDENTIFIER_ATTRIBUTE_KEY = stringKey(TABLE_IDENTIFIER_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<String>
+      VIEW_IDENTIFIER_ATTRIBUTE_KEY = stringKey(VIEW_IDENTIFIER_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<String>
+      GRANT_RESOURCE_ATTRIBUTE_KEY = stringKey(GRANT_RESOURCE_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<String>
+      GRANT_RESOURCE_TYPE_ATTRIBUTE_KEY = stringKey(GRANT_RESOURCE_TYPE_ATTRIBUTE_NAME);
+  private static final io.opentelemetry.api.common.AttributeKey<String>
+      OPEN_TELEMETRY_TRACE_ID_ATTRIBUTE_KEY = stringKey(OPEN_TELEMETRY_TRACE_ID_KEY);
+  private static final io.opentelemetry.api.common.AttributeKey<String>
+      OPEN_TELEMETRY_SPAN_ID_ATTRIBUTE_KEY = stringKey(OPEN_TELEMETRY_SPAN_ID_KEY);
+  private static final io.opentelemetry.api.common.AttributeKey<String>
+      OPEN_TELEMETRY_TRACE_FLAGS_ATTRIBUTE_KEY = stringKey(OPEN_TELEMETRY_TRACE_FLAGS_KEY);
+  private static final io.opentelemetry.api.common.AttributeKey<String>
+      OPEN_TELEMETRY_SAMPLED_ATTRIBUTE_KEY = stringKey(OPEN_TELEMETRY_SAMPLED_KEY);
+
   private static final org.slf4j.Logger LOGGER =
       LoggerFactory.getLogger(OpenTelemetryEventListener.class);
 
@@ -116,6 +146,7 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
 
   @Override
   public void onEvent(PolarisEvent event) {
+    Optional<Context> openTelemetryContext = toOpenTelemetryContext(event);
     var logRecordBuilder =
         openTelemetryLogger
             .logRecordBuilder()
@@ -124,36 +155,66 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
             .setSeverityText("INFO")
             .setEventName(event.type().name())
             .setBody(event.type().name())
-            .setAllAttributes(toLogAttributes(event));
-    toOpenTelemetryContext(event).ifPresent(logRecordBuilder::setContext);
+            .setAllAttributes(toLogAttributes(event, openTelemetryContext.isPresent()));
+    openTelemetryContext.ifPresent(logRecordBuilder::setContext);
     logRecordBuilder.emit();
   }
 
-  private Attributes toLogAttributes(PolarisEvent event) {
+  private Attributes toLogAttributes(PolarisEvent event, boolean includeOpenTelemetryContext) {
     AttributesBuilder attributes = Attributes.builder();
-    attributes.put(EVENT_TYPE_ATTRIBUTE_NAME, event.type().name());
-    attributes.put(EVENT_CATEGORY_ATTRIBUTE_NAME, event.type().category().name());
+    attributes.put(EVENT_TYPE_ATTRIBUTE_KEY, event.type().name());
+    attributes.put(EVENT_CATEGORY_ATTRIBUTE_KEY, event.type().category().name());
 
     PolarisEventMetadata metadata = event.metadata();
-    attributes.put(REALM_ID_ATTRIBUTE_NAME, metadata.realmId());
+    attributes.put(REALM_ID_ATTRIBUTE_KEY, metadata.realmId());
     metadata
         .requestId()
-        .ifPresent(requestId -> attributes.put(REQUEST_ID_ATTRIBUTE_NAME, requestId));
+        .ifPresent(requestId -> attributes.put(REQUEST_ID_ATTRIBUTE_KEY, requestId));
     metadata
         .user()
         .ifPresent(
             principal -> {
-              attributes.put(ACTOR_NAME_ATTRIBUTE_NAME, principal.getName());
-              attributes.put(
-                  stringArrayKey(ACTOR_ROLES_ATTRIBUTE_NAME), List.copyOf(principal.getRoles()));
+              attributes.put(ACTOR_NAME_ATTRIBUTE_KEY, principal.getName());
+              attributes.put(ACTOR_ROLES_ATTRIBUTE_KEY, List.copyOf(principal.getRoles()));
             });
-    metadata.openTelemetryContext().forEach(attributes::put);
+    if (includeOpenTelemetryContext) {
+      putOpenTelemetryContextAttributes(attributes, metadata.openTelemetryContext());
+    }
 
-    for (PolarisOtelAttribute attribute : PolarisOtelAttribute.values()) {
+    for (PolarisOtelAttribute attribute : PolarisOtelAttribute.VALUES) {
       attribute.forward(this, attributes, event);
     }
 
     return attributes.build();
+  }
+
+  private static void putOpenTelemetryContextAttributes(
+      AttributesBuilder attributes, Map<String, String> contextValues) {
+    putIfPresent(
+        attributes,
+        OPEN_TELEMETRY_TRACE_ID_ATTRIBUTE_KEY,
+        contextValues.get(OPEN_TELEMETRY_TRACE_ID_KEY));
+    putIfPresent(
+        attributes,
+        OPEN_TELEMETRY_SPAN_ID_ATTRIBUTE_KEY,
+        contextValues.get(OPEN_TELEMETRY_SPAN_ID_KEY));
+    putIfPresent(
+        attributes,
+        OPEN_TELEMETRY_TRACE_FLAGS_ATTRIBUTE_KEY,
+        contextValues.get(OPEN_TELEMETRY_TRACE_FLAGS_KEY));
+    putIfPresent(
+        attributes,
+        OPEN_TELEMETRY_SAMPLED_ATTRIBUTE_KEY,
+        contextValues.get(OPEN_TELEMETRY_SAMPLED_KEY));
+  }
+
+  private static void putIfPresent(
+      AttributesBuilder attributes,
+      io.opentelemetry.api.common.AttributeKey<String> attributeKey,
+      String value) {
+    if (value != null) {
+      attributes.put(attributeKey, value);
+    }
   }
 
   private enum PolarisOtelAttribute {
@@ -170,7 +231,7 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
                 .derivedTableIdentifier(event)
                 .ifPresent(
                     tableIdentifier ->
-                        attributes.put(TABLE_IDENTIFIER_ATTRIBUTE_NAME, tableIdentifier))),
+                        attributes.put(TABLE_IDENTIFIER_ATTRIBUTE_KEY, tableIdentifier))),
     VIEW_NAME(string(VIEW_NAME_ATTRIBUTE_NAME, EventAttributes.VIEW_NAME)),
     VIEW_IDENTIFIER(string(VIEW_IDENTIFIER_ATTRIBUTE_NAME, EventAttributes.VIEW_IDENTIFIER)),
     DERIVED_VIEW_IDENTIFIER(
@@ -179,7 +240,7 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
                 .derivedViewIdentifier(event)
                 .ifPresent(
                     viewIdentifier ->
-                        attributes.put(VIEW_IDENTIFIER_ATTRIBUTE_NAME, viewIdentifier))),
+                        attributes.put(VIEW_IDENTIFIER_ATTRIBUTE_KEY, viewIdentifier))),
     PRINCIPAL_NAME(string(PRINCIPAL_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_NAME)),
     PRINCIPAL_ROLE_NAME(
         string(PRINCIPAL_ROLE_NAME_ATTRIBUTE_NAME, EventAttributes.PRINCIPAL_ROLE_NAME)),
@@ -205,10 +266,12 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
     POLICY_TYPE(string(POLICY_TYPE_ATTRIBUTE_NAME, EventAttributes.POLICY_TYPE)),
     TARGET_NAME(string(TARGET_NAME_ATTRIBUTE_NAME, EventAttributes.TARGET_NAME)),
     DETACH_ALL(booleanAttribute(DETACH_ALL_ATTRIBUTE_NAME, EventAttributes.DETACH_ALL)),
-    GRANT_RESOURCE((listener, attributes, event) -> listener.putGrantResource(attributes, event)),
+    GRANT_RESOURCE(OpenTelemetryEventListener::putGrantResource),
     ADD_GRANT_REQUEST(json(ADD_GRANT_REQUEST_ATTRIBUTE_NAME, EventAttributes.ADD_GRANT_REQUEST)),
     REVOKE_GRANT_REQUEST(
         json(REVOKE_GRANT_REQUEST_ATTRIBUTE_NAME, EventAttributes.REVOKE_GRANT_REQUEST));
+
+    private static final PolarisOtelAttribute[] VALUES = values();
 
     private final AttributeForwarder forwarder;
 
@@ -228,27 +291,34 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
 
     private static <T> AttributeForwarder string(
         String logAttributeName, AttributeKey<T> eventAttributeKey, Function<T, String> mapper) {
+      io.opentelemetry.api.common.AttributeKey<String> logAttributeKey =
+          stringKey(logAttributeName);
       return (listener, attributes, event) ->
           listener.putStringAttribute(
-              attributes, event, logAttributeName, eventAttributeKey, mapper);
+              attributes, event, logAttributeKey, eventAttributeKey, mapper);
     }
 
     private static AttributeForwarder booleanAttribute(
         String logAttributeName, AttributeKey<Boolean> eventAttributeKey) {
+      io.opentelemetry.api.common.AttributeKey<Boolean> logAttributeKey =
+          booleanKey(logAttributeName);
       return (listener, attributes, event) ->
-          listener.putBooleanAttribute(attributes, event, logAttributeName, eventAttributeKey);
+          listener.putBooleanAttribute(attributes, event, logAttributeKey, eventAttributeKey);
     }
 
     private static <T extends Number> AttributeForwarder longAttribute(
         String logAttributeName, AttributeKey<T> eventAttributeKey) {
+      io.opentelemetry.api.common.AttributeKey<Long> logAttributeKey = longKey(logAttributeName);
       return (listener, attributes, event) ->
-          listener.putLongAttribute(attributes, event, logAttributeName, eventAttributeKey);
+          listener.putLongAttribute(attributes, event, logAttributeKey, eventAttributeKey);
     }
 
     private static <T> AttributeForwarder json(
         String logAttributeName, AttributeKey<T> eventAttributeKey) {
+      io.opentelemetry.api.common.AttributeKey<String> logAttributeKey =
+          stringKey(logAttributeName);
       return (listener, attributes, event) ->
-          listener.putJsonAttribute(attributes, event, logAttributeName, eventAttributeKey);
+          listener.putJsonAttribute(attributes, event, logAttributeKey, eventAttributeKey);
     }
   }
 
@@ -261,66 +331,66 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
   private <T> void putStringAttribute(
       AttributesBuilder attributes,
       PolarisEvent event,
-      String logAttributeName,
+      io.opentelemetry.api.common.AttributeKey<String> logAttributeKey,
       AttributeKey<T> eventAttributeKey,
       Function<T, String> mapper) {
     event
         .attributes()
         .get(eventAttributeKey)
         .map(mapper)
-        .ifPresent(value -> attributes.put(stringKey(logAttributeName), value));
+        .ifPresent(value -> attributes.put(logAttributeKey, value));
   }
 
   private void putBooleanAttribute(
       AttributesBuilder attributes,
       PolarisEvent event,
-      String logAttributeName,
+      io.opentelemetry.api.common.AttributeKey<Boolean> logAttributeKey,
       AttributeKey<Boolean> eventAttributeKey) {
     event
         .attributes()
         .get(eventAttributeKey)
-        .ifPresent(value -> attributes.put(booleanKey(logAttributeName), value));
+        .ifPresent(value -> attributes.put(logAttributeKey, value));
   }
 
   private <T extends Number> void putLongAttribute(
       AttributesBuilder attributes,
       PolarisEvent event,
-      String logAttributeName,
+      io.opentelemetry.api.common.AttributeKey<Long> logAttributeKey,
       AttributeKey<T> eventAttributeKey) {
     event
         .attributes()
         .get(eventAttributeKey)
-        .ifPresent(value -> attributes.put(longKey(logAttributeName), value.longValue()));
+        .ifPresent(value -> attributes.put(logAttributeKey, value.longValue()));
   }
 
   private <T> void putJsonAttribute(
       AttributesBuilder attributes,
       PolarisEvent event,
-      String logAttributeName,
+      io.opentelemetry.api.common.AttributeKey<String> logAttributeKey,
       AttributeKey<T> eventAttributeKey) {
     event
         .attributes()
         .get(eventAttributeKey)
         .flatMap(this::toJsonString)
-        .ifPresent(value -> attributes.put(stringKey(logAttributeName), value));
+        .ifPresent(value -> attributes.put(logAttributeKey, value));
   }
 
   private void putGrantResource(AttributesBuilder attributes, PolarisEvent event) {
     Optional<GrantResource> grantResource = event.attributes().get(EventAttributes.GRANT_RESOURCE);
     grantResource
         .flatMap(this::toJsonString)
-        .ifPresent(value -> attributes.put(GRANT_RESOURCE_ATTRIBUTE_NAME, value));
+        .ifPresent(value -> attributes.put(GRANT_RESOURCE_ATTRIBUTE_KEY, value));
     grantResource
         .map(GrantResource::getType)
-        .map(Enum::name)
-        .ifPresent(value -> attributes.put(GRANT_RESOURCE_TYPE_ATTRIBUTE_NAME, value));
+        .map(Object::toString)
+        .ifPresent(value -> attributes.put(GRANT_RESOURCE_TYPE_ATTRIBUTE_KEY, value));
   }
 
   private Optional<String> toJsonString(Object value) {
     try {
       return Optional.of(objectMapper.writeValueAsString(value));
     } catch (JsonProcessingException e) {
-      LOGGER.debug("Could not serialize Polaris event attribute {}", value, e);
+      LOGGER.warn("Could not serialize Polaris event attribute {}", value, e);
       return Optional.empty();
     }
   }
@@ -329,24 +399,14 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
     if (event.attributes().contains(EventAttributes.TABLE_IDENTIFIER)) {
       return Optional.empty();
     }
-    Optional<Namespace> namespace = event.attributes().get(EventAttributes.NAMESPACE);
-    Optional<String> tableName = event.attributes().get(EventAttributes.TABLE_NAME);
-    if (namespace.isPresent() && tableName.isPresent()) {
-      return Optional.of(TableIdentifier.of(namespace.get(), tableName.get()).toString());
-    }
-    return Optional.empty();
+    return EventResourceIdentifiers.tableIdentifierFromNamespaceAndName(event.attributes());
   }
 
   private Optional<String> derivedViewIdentifier(PolarisEvent event) {
     if (event.attributes().contains(EventAttributes.VIEW_IDENTIFIER)) {
       return Optional.empty();
     }
-    Optional<Namespace> namespace = event.attributes().get(EventAttributes.NAMESPACE);
-    Optional<String> viewName = event.attributes().get(EventAttributes.VIEW_NAME);
-    if (namespace.isPresent() && viewName.isPresent()) {
-      return Optional.of(TableIdentifier.of(namespace.get(), viewName.get()).toString());
-    }
-    return Optional.empty();
+    return EventResourceIdentifiers.viewIdentifierFromNamespaceAndName(event.attributes());
   }
 
   private Optional<Context> toOpenTelemetryContext(PolarisEvent event) {
@@ -360,7 +420,7 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
     try {
       TraceFlags traceFlags =
           Optional.ofNullable(contextValues.get(OPEN_TELEMETRY_TRACE_FLAGS_KEY))
-              .map(flags -> TraceFlags.fromHex(flags, 0))
+              .map(OpenTelemetryEventListener::traceFlagsFromHex)
               .orElseGet(TraceFlags::getDefault);
       SpanContext spanContext =
           SpanContext.create(traceId, spanId, traceFlags, TraceState.getDefault());
@@ -373,5 +433,12 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
       LOGGER.warn("Could not attach OpenTelemetry context to Polaris event {}", event.type(), e);
     }
     return Optional.empty();
+  }
+
+  private static TraceFlags traceFlagsFromHex(String flags) {
+    if (flags.length() != 2) {
+      throw new IllegalArgumentException("OpenTelemetry trace_flags must be 2 hex characters");
+    }
+    return TraceFlags.fromHex(flags, 0);
   }
 }
