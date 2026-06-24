@@ -554,7 +554,7 @@ public class IcebergAllowedLocationTest {
 
   private void updateCatalogAllowedLocations(
       TestServices services, List<String> newAllowedLocations) {
-    // Fetch current catalog to get entity version for update. 
+    // Fetch current catalog to get entity version for update.
     Catalog fetched;
     try (Response getResp =
         services
