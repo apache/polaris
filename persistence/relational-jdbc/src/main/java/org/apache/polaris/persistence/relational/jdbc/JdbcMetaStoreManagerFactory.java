@@ -56,7 +56,6 @@ import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +86,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Inject Clock clock;
   @Inject PolarisDiagnostics diagnostics;
-  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject DatasourceOperations datasourceOperations;
   @Inject RealmConfigurationSource realmConfigurationSource;
 
