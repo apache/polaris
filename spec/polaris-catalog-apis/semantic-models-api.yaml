@@ -37,7 +37,7 @@ paths:
         datasets, fields, relationships, metrics, and AI context for a logical analytics surface above
         physical tables and views.
 
-        Upon successful creation, the model's entity version will be 0.
+        Upon successful creation, the response returns the model's initial entity-version.
 
       requestBody:
         required: true
@@ -154,7 +154,7 @@ paths:
       description: |
         Replace a semantic model's document with a new one.
 
-        Upon a successful update, the model's entity version is incremented by 1.
+        Upon a successful update, the model's entity-version changes and the new value is returned.
 
         Updates use optimistic concurrency: supply the `entity-version` you last read for this
         model, and the update succeeds only if it matches the version currently stored in the
@@ -297,11 +297,10 @@ components:
         document:
           $ref: '#/components/schemas/SemanticModelDocument'
         entity-version:
-          type: integer
+          type: string
           description: |
-            The entity version the client last read for this semantic model. The update applies
-            only if it matches the version currently stored in the catalog (optimistic concurrency);
-            a mismatch fails with 409.
+            An opaque string identifying the version the client last read for this semantic model. The update applies 
+            only if it matches the version currently stored in the catalog (optimistic concurrency).
 
     LoadSemanticModelResponse:
       type: object
@@ -312,10 +311,10 @@ components:
         document:
           $ref: '#/components/schemas/SemanticModelDocument'
         entity-version:
-          type: integer
+          type: string
           description: |
-            The current version of the stored semantic-model entity. It is 0 after create and
-            increments by 1 on each successful update. 
+            An opaque string identifying the current version of the stored semantic-model entity. It
+            changes whenever the model is updated. 
 
     ListSemanticModelsResponse:
       type: object
