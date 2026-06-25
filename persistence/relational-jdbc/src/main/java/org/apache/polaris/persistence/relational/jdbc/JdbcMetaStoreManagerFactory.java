@@ -196,7 +196,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         JdbcBasePersistenceImpl metaStore =
             createSession(realm, bootstrapOptions.rootCredentialsSet(), true);
         PolarisCallContext polarisContext =
-            new PolarisCallContext(realmContext, metaStore, new MetricsPersistence() {});
+            new PolarisCallContext(realmContext, metaStore);
 
         PrincipalSecretsResult secretsResult =
             createPolarisPrincipalForRealm(metaStoreManager, polarisContext);
@@ -218,7 +218,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       JdbcBasePersistenceImpl session = createSession(realm, null, true);
 
       PolarisCallContext callContext =
-          new PolarisCallContext(realmContext, session, new MetricsPersistence() {});
+          new PolarisCallContext(realmContext, session);
 
       // Verify the realm is bootstrapped before purging — a non-bootstrapped realm
       // has no root principal, so purging it is a no-op that should be reported as failure.
@@ -283,7 +283,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
     JdbcBasePersistenceImpl metaStore = createSession(realmId, null, fallbackOnDne);
     PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStore, new MetricsPersistence() {});
+        new PolarisCallContext(realmContext, metaStore);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);
     if (rootPrincipal.isEmpty()) {

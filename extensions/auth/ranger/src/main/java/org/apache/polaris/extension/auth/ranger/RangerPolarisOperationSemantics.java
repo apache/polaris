@@ -255,6 +255,10 @@ public record RangerPolarisOperationSemantics(
         new RangerPolarisOperationSemantics(
             toSet(TABLE_READ_DATA), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.LIST_TABLE_METRICS,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_READ_DATA), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.REPORT_WRITE_METRICS,
         new RangerPolarisOperationSemantics(
             toSet(TABLE_WRITE_DATA), null, ResolvedPathRooting.ROOT));

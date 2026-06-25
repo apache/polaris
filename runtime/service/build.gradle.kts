@@ -144,6 +144,8 @@ dependencies {
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.quarkus:quarkus-jdbc-h2")
+  // Provides jakarta.ws.rs.ext.RuntimeDelegate needed to build Response objects in plain unit tests
+  testRuntimeOnly("io.quarkus.resteasy.reactive:resteasy-reactive")
 
   testImplementation("io.opentelemetry:opentelemetry-sdk-testing")
 
@@ -204,10 +206,6 @@ dependencies {
   testFixturesImplementation("com.azure:azure-core")
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
-
-  // Provides jakarta.ws.rs.ext.RuntimeDelegate needed to build Response objects in plain unit tests
-  testRuntimeOnly(enforcedPlatform(libs.quarkus.bom))
-  testRuntimeOnly("io.quarkus.resteasy.reactive:resteasy-reactive")
 
   // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
   // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
