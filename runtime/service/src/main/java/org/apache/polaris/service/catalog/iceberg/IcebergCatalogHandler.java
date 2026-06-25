@@ -427,21 +427,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
   }
 
-  /**
-   * Create a table.
-   *
-   * @param namespace the namespace to create the table in
-   * @param request the table creation request
-   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
-   */
-  public LoadTableResponse createTableDirectWithWriteDelegation(
-      Namespace namespace,
-      CreateTableRequest request,
-      Optional<String> refreshCredentialsEndpoint) {
-    return createTableDirect(
-        namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
-  }
-
   public void authorizeCreateTableDirect(
       Namespace namespace, CreateTableRequest request, boolean delegationRequested) {
     if (delegationRequested) {

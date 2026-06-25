@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+
 import com.google.common.collect.ImmutableMap;
 import jakarta.inject.Inject;
 import java.time.Instant;
@@ -469,8 +471,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE1))
-                    .createTableDirectWithWriteDelegation(
-                        NS2, createDirectWithWriteDelegationRequest, Optional.empty()))
+                    .createTableDirect(
+                        NS2,
+                        createDirectWithWriteDelegationRequest,
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
