@@ -168,7 +168,18 @@ exit 0
 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; -Dquarkus.container-image.build&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#204a87"&gt;true&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id="run-the-docker-compose-file" id="run-the-docker-compose-file"&gt;Run the &lt;code&gt;docker-compose&lt;/code&gt; file&lt;a class="heading-anchor" href="#run-the-docker-compose-file" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
-&lt;p&gt;To start the &lt;code&gt;docker-compose&lt;/code&gt; file with the necessary dependencies, run these commands from the repo&amp;rsquo;s root directory:&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and Apache Flink</title><link>https://polaris.apache.org/guides/flink/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/flink/</guid><description>&lt;p&gt;This getting started guide provides a &lt;code&gt;docker-compose&lt;/code&gt; file to set up &lt;a href="https://flink.apache.org/"&gt;Apache Flink&lt;/a&gt; with Apache Polaris. Apache Polaris is configured as an Iceberg REST Catalog in Flink.&lt;/p&gt;
+&lt;p&gt;To start the &lt;code&gt;docker-compose&lt;/code&gt; file with the necessary dependencies, run these commands from the repo&amp;rsquo;s root directory:&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and Trino</title><link>https://polaris.apache.org/guides/trino/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/trino/</guid><description>&lt;p&gt;This getting started guide provides a &lt;code&gt;docker-compose&lt;/code&gt; file to set up &lt;a href="https://trino.io/"&gt;Trino&lt;/a&gt; with Apache Polaris.
+Apache Polaris is configured as an Iceberg REST Catalog, and &lt;a href="https://rustfs.com/"&gt;RustFS&lt;/a&gt; provides S3-compatible object storage.&lt;/p&gt;
+&lt;p&gt;The &lt;code&gt;docker-compose&lt;/code&gt; file starts the following services:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;rustfs&lt;/code&gt; — S3-compatible object storage for Iceberg data files&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;polaris&lt;/code&gt; — Apache Polaris running with an in-memory metastore&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;polaris-setup&lt;/code&gt; — bootstraps a catalog, grants, and a namespace in Polaris&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;trino&lt;/code&gt; — Trino configured with an Iceberg connector pointing at Polaris&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id="build-the-polaris-image" id="build-the-polaris-image"&gt;Build the Polaris image&lt;a class="heading-anchor" href="#build-the-polaris-image" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;If a Polaris image is not already present locally, build one with the following command:&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and Apache Flink</title><link>https://polaris.apache.org/guides/flink/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/flink/</guid><description>&lt;p&gt;This getting started guide provides a &lt;code&gt;docker-compose&lt;/code&gt; file to set up &lt;a href="https://flink.apache.org/"&gt;Apache Flink&lt;/a&gt; with Apache Polaris. Apache Polaris is configured as an Iceberg REST Catalog in Flink.&lt;/p&gt;
 &lt;ol&gt;
 &lt;li&gt;
 &lt;p&gt;Build the Polaris server image if it&amp;rsquo;s not already present locally:&lt;/p&gt;
