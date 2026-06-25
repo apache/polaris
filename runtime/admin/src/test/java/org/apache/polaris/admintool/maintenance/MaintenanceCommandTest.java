@@ -16,12 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool;
+package org.apache.polaris.admintool.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.Instant;
+import org.apache.polaris.admintool.BaseCommand;
+import org.apache.polaris.core.persistence.MaintenanceManager;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
 
@@ -29,33 +32,50 @@ class MaintenanceCommandTest {
 
   @Test
   void testPurgeEventsSuccess() {
-    MaintenanceCommand command = new MaintenanceCommand();
-    command.maintenanceManager = () -> {};
+    PurgeEventsCommand command = new PurgeEventsCommand();
+    command.maintenanceManager = cutoff -> {};
 
     CommandLine commandLine = new CommandLine(command);
     StringWriter out = new StringWriter();
-    StringWriter err = new StringWriter();
     commandLine.setOut(new PrintWriter(out));
-    commandLine.setErr(new PrintWriter(err));
+    commandLine.setErr(new PrintWriter(new StringWriter()));
 
-    int exitCode = commandLine.execute("--purge-events");
+    int exitCode = commandLine.execute();
 
     assertThat(exitCode).isEqualTo(0);
-    assertThat(out.toString()).contains("Events purged successfully.");
+    assertThat(out.toString()).contains("All events purged successfully.");
+  }
+
+  @Test
+  void testPurgeEventsWithRetention() {
+    PurgeEventsCommand command = new PurgeEventsCommand();
+    Instant[] capturedCutoff = new Instant[1];
+    command.maintenanceManager = cutoff -> capturedCutoff[0] = cutoff;
+
+    CommandLine commandLine = new CommandLine(command);
+    StringWriter out = new StringWriter();
+    commandLine.setOut(new PrintWriter(out));
+    commandLine.setErr(new PrintWriter(new StringWriter()));
+
+    int exitCode = commandLine.execute("--retention-days", "7");
+
+    assertThat(exitCode).isEqualTo(0);
+    assertThat(out.toString()).contains("Events older than 7 days purged successfully.");
+    assertThat(capturedCutoff[0]).isNotNull();
+    assertThat(capturedCutoff[0]).isBefore(Instant.now());
   }
 
   @Test
   void testPurgeEventsUnsupportedBackend() {
-    MaintenanceCommand command = new MaintenanceCommand();
+    PurgeEventsCommand command = new PurgeEventsCommand();
     command.maintenanceManager = null;
 
     CommandLine commandLine = new CommandLine(command);
-    StringWriter out = new StringWriter();
     StringWriter err = new StringWriter();
-    commandLine.setOut(new PrintWriter(out));
+    commandLine.setOut(new PrintWriter(new StringWriter()));
     commandLine.setErr(new PrintWriter(err));
 
-    int exitCode = commandLine.execute("--purge-events");
+    int exitCode = commandLine.execute();
 
     assertThat(exitCode).isEqualTo(BaseCommand.EXIT_CODE_MAINTENANCE_ERROR);
     assertThat(err.toString())
@@ -65,39 +85,23 @@ class MaintenanceCommandTest {
   @Test
   void testPurgeEventsFailurePrintsStackTrace() {
     String failureMessage = "simulated database connection failure";
-    MaintenanceCommand command = new MaintenanceCommand();
+    PurgeEventsCommand command = new PurgeEventsCommand();
     command.maintenanceManager =
-        () -> {
-          throw new RuntimeException(failureMessage);
-        };
+        (MaintenanceManager)
+            cutoff -> {
+              throw new RuntimeException(failureMessage);
+            };
 
     CommandLine commandLine = new CommandLine(command);
     StringWriter err = new StringWriter();
     commandLine.setErr(new PrintWriter(err));
 
-    int exitCode = commandLine.execute("--purge-events");
+    int exitCode = commandLine.execute();
 
     assertThat(exitCode).isEqualTo(BaseCommand.EXIT_CODE_MAINTENANCE_ERROR);
     assertThat(err.toString())
         .contains("java.lang.RuntimeException: " + failureMessage)
         .contains("\tat ")
         .contains("Maintenance encountered errors during operation.");
-  }
-
-  @Test
-  void testNoFlagPrintsUsage() {
-    MaintenanceCommand command = new MaintenanceCommand();
-    command.maintenanceManager = () -> {};
-
-    CommandLine commandLine = new CommandLine(command);
-    StringWriter out = new StringWriter();
-    StringWriter err = new StringWriter();
-    commandLine.setOut(new PrintWriter(out));
-    commandLine.setErr(new PrintWriter(err));
-
-    int exitCode = commandLine.execute();
-
-    assertThat(exitCode).isEqualTo(BaseCommand.EXIT_CODE_USAGE);
-    assertThat(err.toString()).contains("No maintenance operation specified.");
   }
 }

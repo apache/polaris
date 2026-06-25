@@ -16,11 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.relational.jdbc;
+package org.apache.polaris.admintool.maintenance;
 
-import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.admintool.AdminProfiles;
-import org.apache.polaris.admintool.maintenance.MaintenanceCommandTestBase;
+import org.apache.polaris.admintool.BaseCommand;
+import picocli.CommandLine;
 
-@TestProfile(AdminProfiles.CockroachJdbc.class)
-public class CockroachJdbcMaintenanceCommandTest extends MaintenanceCommandTestBase {}
+@CommandLine.Command(
+    name = "maintenance",
+    mixinStandardHelpOptions = true,
+    description = "Performs maintenance operations on Polaris storage.",
+    subcommands = {PurgeEventsCommand.class})
+public class MaintenanceCommand extends BaseCommand {
+
+  @Override
+  public Integer call() {
+    spec.commandLine().usage(spec.commandLine().getOut());
+    return 0;
+  }
+}

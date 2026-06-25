@@ -22,7 +22,9 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.persistence.MaintenanceManager;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 
@@ -33,11 +35,17 @@ public class JdbcMaintenanceManager implements MaintenanceManager {
   @Inject DatasourceOperations datasourceOperations;
 
   @Override
-  public void purgeEvents() {
+  public void purgeEvents(Instant cutoff) {
     try {
       datasourceOperations.executeUpdate(
           QueryGenerator.generateDeleteQuery(
-              ModelEvent.ALL_COLUMNS, ModelEvent.TABLE_NAME, Map.of()));
+              ModelEvent.ALL_COLUMNS,
+              ModelEvent.TABLE_NAME,
+              Map.of(),
+              Map.of(),
+              Map.of(ModelEvent.TIMESTAMP_MS, cutoff.toEpochMilli()),
+              Set.of(),
+              Set.of()));
     } catch (SQLException e) {
       throw new RuntimeException(String.format("Failed to purge events: %s", e.getMessage()), e);
     }

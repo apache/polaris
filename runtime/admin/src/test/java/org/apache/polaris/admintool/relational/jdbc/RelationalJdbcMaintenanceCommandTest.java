@@ -20,7 +20,7 @@ package org.apache.polaris.admintool.relational.jdbc;
 
 import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.admintool.AdminProfiles;
-import org.apache.polaris.admintool.MaintenanceCommandTestBase;
+import org.apache.polaris.admintool.maintenance.MaintenanceCommandTestBase;
 
 @TestProfile(AdminProfiles.RelationalJdbc.class)
 public class RelationalJdbcMaintenanceCommandTest extends MaintenanceCommandTestBase {}

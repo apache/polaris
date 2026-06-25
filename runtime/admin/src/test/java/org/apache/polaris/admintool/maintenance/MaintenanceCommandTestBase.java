@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool;
+package org.apache.polaris.admintool.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,8 +39,8 @@ public abstract class MaintenanceCommandTestBase {
   }
 
   @Test
-  @Launch(value = {"maintenance", "--purge-events"})
+  @Launch(value = {"maintenance", "purge-events"})
   public void testPurgeEvents(LaunchResult result) {
-    assertThat(result.getOutput()).contains("Events purged successfully.");
+    assertThat(result.getOutput()).contains("All events purged successfully.");
   }
 }

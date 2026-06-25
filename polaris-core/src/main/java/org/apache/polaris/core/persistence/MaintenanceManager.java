@@ -18,9 +18,14 @@
  */
 package org.apache.polaris.core.persistence;
 
+import java.time.Instant;
+
 /** Maintenance operations for Polaris storage backends. */
 public interface MaintenanceManager {
 
-  /** Purge all events from the event store unconditionally across all realms. */
-  void purgeEvents();
+  /**
+   * Purge events older than the given cutoff from the event store. Events with a timestamp before
+   * {@code cutoff} are deleted. Pass {@link Instant#now()} to purge all events.
+   */
+  void purgeEvents(Instant cutoff);
 }
