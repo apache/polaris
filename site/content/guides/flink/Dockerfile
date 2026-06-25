@@ -17,7 +17,7 @@
 # under the License.
 #
 
-FROM apache/flink:2.2.1
+FROM apache/flink:2.3.0
 
 ARG ICEBERG_FLINK_RUNTIME_VERSION=2.1
 ARG ICEBERG_VERSION=1.11.0
