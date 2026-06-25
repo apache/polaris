@@ -73,6 +73,9 @@ quarkus {
         .toMap()
     }
   )
+  buildForkOptions {
+    maxHeapSize = "2G"
+  }
 }
 
 tasks.register("run") {
