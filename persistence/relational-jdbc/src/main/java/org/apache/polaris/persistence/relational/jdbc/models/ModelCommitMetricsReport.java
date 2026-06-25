@@ -255,7 +255,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   ObjectMapper OBJECT_MAPPER = JsonMapper.shared();
 
-
   /**
    * Converts a CommitMetricsRecord (SPI) to ModelCommitMetricsReport (JDBC).
    *
@@ -319,6 +318,20 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     }
   }
 
+  private static Map<String, String> parseMetadata(@Nullable String metadata) {
+    if (metadata == null || metadata.isBlank()) {
+      return Map.of();
+    }
+    try {
+      Map<String, String> parsed =
+          OBJECT_MAPPER.readValue(
+              metadata, new tools.jackson.core.type.TypeReference<Map<String, String>>() {});
+      return parsed != null ? parsed : Map.of();
+    } catch (JacksonException e) {
+      return Map.of();
+    }
+  }
+
   /**
    * Converts this JDBC model back to the backend-agnostic SPI record.
    *
@@ -330,7 +343,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .catalogId(getCatalogId())
         .tableId(getTableId())
         .timestamp(Instant.ofEpochMilli(getTimestampMs()))
-        .metadata(MetricsModelUtils.parseMetadata(getMetadata()))
+        .metadata(parseMetadata(getMetadata()))
         .principalName(getPrincipalName())
         .requestId(getRequestId())
         .otelTraceId(getOtelTraceId())
