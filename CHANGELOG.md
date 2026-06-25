@@ -128,7 +128,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
-- Added a **beta** Table Metrics REST API (`/api/metrics-reports/v1/`) for querying Iceberg scan and commit metrics. In this release the read path returns an empty result set; durable storage backing is provided by the `polaris-extensions-metrics-reports-jdbc` extension in a follow-up release. Querying requires the new `TABLE_READ_METRICS` privilege on the target table.
+- Added an **experimental (beta)** Table Metrics REST API (`/api/metrics-reports/v1/`) for querying Iceberg scan and commit metrics. **This API is a proof-of-concept; it is subject to breaking changes in any future release without prior notice and should not be used in production.** In this release the read path returns an empty result set; durable storage backing is provided by the `polaris-extensions-metrics-reports-jdbc` extension in a follow-up release. Querying requires the new `TABLE_READ_METRICS` privilege on the target table.
 - Added `deploymentAnnotations` support in Helm chart.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added `topologySpreadConstraints` support in Helm chart.

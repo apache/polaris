@@ -17,8 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Apache Polaris Metrics Reports Service OpenAPI Specification'
-linkTitle: 'Metrics Reports API ↗'
+title: 'Apache Polaris Metrics Reports Service OpenAPI Specification (Experimental)'
+linkTitle: 'Metrics Reports API (Experimental) ↗'
 weight: 300
 params:
   show_page_toc: false
