@@ -128,7 +128,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         diagnostics,
         datasourceOperations,
         secretsGenerator(realmId, rootCredentialsSet),
-        storageIntegrationProvider,
         realmId,
         schemaVersion);
   }

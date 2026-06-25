@@ -75,7 +75,6 @@ class MetricsReportPersistenceTest {
             diagnostics,
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
-            storageProvider,
             "TEST_REALM",
             4);
   }
