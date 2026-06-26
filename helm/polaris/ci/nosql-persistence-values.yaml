@@ -58,3 +58,8 @@ advancedConfig:
     mongodb:
       write-concern:
         safe: true
+
+maintenance:
+  jobs:
+    nosql-maintenance:
+      enabled: true

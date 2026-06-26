@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -32,6 +30,8 @@ import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utility class used by the meta store manager to ensure that all entities which had been resolved
@@ -77,9 +77,9 @@ public class PolarisEntityResolver {
    *     or a principal can be specified here
    */
   PolarisEntityResolver(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull TransactionalPersistence ms,
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {
@@ -149,9 +149,9 @@ public class PolarisEntityResolver {
    *     like a catalog.
    */
   PolarisEntityResolver(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull TransactionalPersistence ms,
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath) {
     this(diagnostics, callCtx, ms, catalogPath, null, null);
   }
@@ -166,9 +166,9 @@ public class PolarisEntityResolver {
    * @param resolvedEntityDto resolved entity DTO
    */
   PolarisEntityResolver(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull TransactionalPersistence ms,
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       PolarisEntityCore resolvedEntityDto) {
     this(diagnostics, callCtx, ms, catalogPath, resolvedEntityDto, null);
@@ -184,11 +184,11 @@ public class PolarisEntityResolver {
    * @param entity Polaris base entity
    */
   PolarisEntityResolver(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull TransactionalPersistence ms,
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity) {
+      @NonNull PolarisBaseEntity entity) {
     this(
         diagnostics,
         callCtx,
@@ -240,8 +240,8 @@ public class PolarisEntityResolver {
    * @return true if all entities have been resolved successfully
    */
   private boolean resolveEntitiesIfNeeded(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull TransactionalPersistence ms,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {

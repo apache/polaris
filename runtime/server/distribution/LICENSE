@@ -381,7 +381,6 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web-common
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-api
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-mutiny
-* Maven group:artifact IDs: io.smallrye.reactive:vertx-mutiny-generator
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-api
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-jta
@@ -538,6 +537,8 @@ This product bundles Jackson.
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jdk8
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jsr310
 * Maven group:artifact IDs: com.fasterxml.jackson.module:jackson-module-parameter-names
+* Maven group:artifact IDs: tools.jackson.core:jackson-core
+* Maven group:artifact IDs: tools.jackson.core:jackson-databind
 
 Project URL: https://github.com/FasterXML/jackson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1704,7 +1705,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles JBoss (logmanager, transaction, narayana).
 
-* Maven group:artifact IDs: org.jboss.invocation:jboss-invocation
 * Maven group:artifact IDs: org.jboss:jboss-transaction-spi
 * Maven group:artifact IDs: org.jboss.logging:commons-logging-jboss-logging
 * Maven group:artifact IDs: org.jboss.narayana.jta:narayana-jta

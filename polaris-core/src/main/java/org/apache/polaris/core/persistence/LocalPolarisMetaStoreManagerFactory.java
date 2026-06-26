@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,8 +33,11 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,18 +60,18 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private final PolarisDiagnostics diagnostics;
 
   protected LocalPolarisMetaStoreManagerFactory(
-      @Nonnull Clock clock, @Nonnull PolarisDiagnostics diagnostics) {
+      @NonNull Clock clock, @NonNull PolarisDiagnostics diagnostics) {
     this.clock = clock;
     this.diagnostics = diagnostics;
   }
 
-  protected abstract StoreType createBackingStore(@Nonnull PolarisDiagnostics diagnostics);
+  protected abstract StoreType createBackingStore(@NonNull PolarisDiagnostics diagnostics);
 
   protected abstract TransactionalPersistence createMetaStoreSession(
-      @Nonnull StoreType store,
-      @Nonnull RealmContext realmContext,
+      @NonNull StoreType store,
+      @NonNull RealmContext realmContext,
       @Nullable RootCredentialsSet rootCredentialsSet,
-      @Nonnull PolarisDiagnostics diagnostics);
+      @NonNull PolarisDiagnostics diagnostics);
 
   protected PrincipalSecretsGenerator secretsGenerator(
       RealmContext realmContext, @Nullable RootCredentialsSet rootCredentialsSet) {
@@ -160,6 +161,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
+  public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
+    return getOrCreateSession(realmContext);
+  }
+
+  @Override
   public synchronized EntityCache getOrCreateEntityCache(
       RealmContext realmContext, RealmConfig realmConfig) {
     if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
@@ -182,7 +188,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     // CallContext may not have been resolved yet.
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+    TransactionalPersistence metaStore =
+        sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
     PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
     Optional<PrincipalEntity> preliminaryRootPrincipal =
@@ -212,7 +219,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+    TransactionalPersistence metaStore =
+        sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
     PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);

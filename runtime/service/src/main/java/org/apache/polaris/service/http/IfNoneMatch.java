@@ -18,14 +18,14 @@
  */
 package org.apache.polaris.service.http;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.NonNull;
 
 /** Logical representation of an HTTP compliant If-None-Match header. */
-public record IfNoneMatch(boolean isWildcard, @Nonnull List<String> eTags) {
+public record IfNoneMatch(boolean isWildcard, @NonNull List<String> eTags) {
 
   private static final String WILDCARD_HEADER_VALUE = "*";
 

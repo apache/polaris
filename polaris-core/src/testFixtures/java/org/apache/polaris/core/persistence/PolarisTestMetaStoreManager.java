@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -58,6 +57,7 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.jspecify.annotations.NonNull;
 
 /** Test the Polaris persistence layer */
 public class PolarisTestMetaStoreManager {
@@ -1723,8 +1723,8 @@ public class PolarisTestMetaStoreManager {
   private PolarisBaseEntity loadCacheEntryByName(
       long entityCatalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull String entityName,
+      @NonNull PolarisEntityType entityType,
+      @NonNull String entityName,
       boolean expectExists) {
     // load cached entry
     ResolvedEntityResult cacheEntry =
@@ -1756,8 +1756,8 @@ public class PolarisTestMetaStoreManager {
   private PolarisBaseEntity loadCacheEntryByName(
       long entityCatalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull String entityName) {
+      @NonNull PolarisEntityType entityType,
+      @NonNull String entityName) {
     return this.loadCacheEntryByName(entityCatalogId, parentId, entityType, entityName, true);
   }
 
@@ -1858,7 +1858,7 @@ public class PolarisTestMetaStoreManager {
   private void refreshCacheEntry(
       int entityVersion,
       int entityGrantRecordsVersion,
-      @Nonnull PolarisEntityType entityType,
+      @NonNull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId) {
     // refresh cached entry
@@ -2490,6 +2490,44 @@ public class PolarisTestMetaStoreManager {
     loadGrantsResult = polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, PR900);
     Assertions.assertThat(loadGrantsResult).isNotNull();
     Assertions.assertThat(loadGrantsResult.getGrantRecords()).hasSize(0);
+  }
+
+  /** Test that granting the same privilege twice leaves exactly one grant record. */
+  public void testGrantRecordWriteIsIdempotent() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    PolarisBaseEntity role =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.CATALOG_ROLE, "R1");
+    PolarisBaseEntity namespace =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    PolarisPrivilege privilege = PolarisPrivilege.TABLE_READ_DATA;
+    List<PolarisEntityCore> catalogPath = List.of(catalog, namespace);
+
+    polarisMetaStoreManager.grantPrivilegeOnSecurableToRole(
+        this.polarisCallContext, role, catalogPath, namespace, privilege);
+    polarisMetaStoreManager.grantPrivilegeOnSecurableToRole(
+        this.polarisCallContext, role, catalogPath, namespace, privilege);
+
+    LoadGrantsResult grantsOnSecurable =
+        polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, namespace);
+    Assertions.assertThat(grantsOnSecurable.isSuccess()).isTrue();
+    Assertions.assertThat(grantsOnSecurable.getGrantRecords())
+        .filteredOn(
+            grant ->
+                grant.getGranteeId() == role.getId()
+                    && grant.getSecurableId() == namespace.getId()
+                    && grant.getPrivilegeCode() == privilege.getCode())
+        .hasSize(1);
+
+    LoadGrantsResult grantsOnGrantee =
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, role);
+    Assertions.assertThat(grantsOnGrantee.isSuccess()).isTrue();
+    Assertions.assertThat(grantsOnGrantee.getGrantRecords())
+        .filteredOn(
+            grant ->
+                grant.getGranteeId() == role.getId()
+                    && grant.getSecurableId() == namespace.getId()
+                    && grant.getPrivilegeCode() == privilege.getCode())
+        .hasSize(1);
   }
 
   /**

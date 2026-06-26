@@ -21,8 +21,6 @@ package org.apache.polaris.core.connection;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -36,6 +34,8 @@ import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The internal persistence-object counterpart to OAuthClientCredentialsParameters defined in the
@@ -56,9 +56,9 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
 
   public OAuthClientCredentialsParametersDpo(
       @JsonProperty(value = "tokenUri", required = false) @Nullable String tokenUri,
-      @JsonProperty(value = "clientId", required = true) @Nonnull String clientId,
-      @JsonProperty(value = "clientSecretReference", required = true) @Nonnull
-          SecretReference clientSecretReference,
+      @JsonProperty(value = "clientId", required = true) @NonNull String clientId,
+      @JsonProperty(value = "clientSecretReference", required = true)
+          @NonNull SecretReference clientSecretReference,
       @JsonProperty(value = "scopes", required = false) @Nullable List<String> scopes) {
     super(AuthenticationType.OAUTH.getCode());
 
@@ -74,11 +74,11 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
     return tokenUri;
   }
 
-  public @Nonnull String getClientId() {
+  public @NonNull String getClientId() {
     return clientId;
   }
 
-  public @Nonnull SecretReference getClientSecretReference() {
+  public @NonNull SecretReference getClientSecretReference() {
     return clientSecretReference;
   }
 
@@ -87,13 +87,13 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
   }
 
   @JsonIgnore
-  public @Nonnull String getScopesAsString() {
+  public @NonNull String getScopesAsString() {
     return OAuth2Util.toScope(
         Objects.requireNonNullElse(scopes, List.of(OAuth2Properties.CATALOG_SCOPE)));
   }
 
   @Override
-  public @Nonnull Map<String, String> asIcebergCatalogProperties(
+  public @NonNull Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
     // Return only metadata properties - credentials are handled by ConnectionCredentialVendor
     HashMap<String, String> properties = new HashMap<>();
@@ -105,7 +105,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
   }
 
   @Override
-  public @Nonnull AuthenticationParameters asAuthenticationParametersModel() {
+  public @NonNull AuthenticationParameters asAuthenticationParametersModel() {
     return OAuthClientCredentialsParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
         .setTokenUri(getTokenUri())

@@ -277,3 +277,23 @@ Do not include AI tool names or model identifiers in code, comments, or commit
 messages. For PR descriptions, follow the disclosure guidance in
 [CONTRIBUTING.md](CONTRIBUTING.md#guidelines-for-ai-assisted-contributions).
 The human author owns the contribution.
+
+## Security issues
+
+Before reporting or fixing security issues, read
+[`SECURITY-THREAT-MODEL.md`](SECURITY-THREAT-MODEL.md) to determine whether a
+finding is a Polaris vulnerability, a deployment responsibility, a dependency
+issue, or a false positive. Use [`SECURITY.md`](SECURITY.md) and the public
+[security reporting page](https://polaris.apache.org/community/security-report/)
+for reporting process and disclosure handling.
+
+ASF severity, advisory status, and CVE candidacy are non-authoritative triage
+estimates. Do not infer them from `SECURITY-THREAT-MODEL.md` alone.
+
+Do not treat a test as proof of a vulnerability unless it demonstrates that the
+stated actor can cross a real trust boundary without already-authorized access,
+privileged fixtures, mocked trust decisions, or protected information.
+
+Do not include private vulnerability details, exploit payloads, reporter names,
+private mailing-list content, secrets, or non-public infrastructure details in
+code, comments, tests, documentation, commit messages, or PR descriptions.

@@ -23,7 +23,7 @@ plugins {
   id("polaris-runtime")
 }
 
-configurations.all {
+configurations.configureEach {
   if (name != "checkstyle") {
     exclude(group = "org.antlr", module = "antlr4-runtime")
     exclude(group = "org.scala-lang", module = "scala-library")

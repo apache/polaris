@@ -19,7 +19,7 @@
 
 plugins { id("polaris-client") }
 
-val processor by configurations.creating
+val processor = configurations.create("processor")
 
 processor.extendsFrom(configurations.api.get())
 
@@ -28,5 +28,5 @@ dependencies {
   api(libs.immutables.value.annotations)
 
   processor(libs.immutables.value.processor)
-  processor(project)
+  processor(project(":polaris-immutables"))
 }

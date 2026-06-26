@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Result of a getSubscopedCredsForEntity() call */
 public class ScopedCredentialsResult extends BaseResult {
@@ -35,7 +35,7 @@ public class ScopedCredentialsResult extends BaseResult {
    * @param extraInformation extra information
    */
   public ScopedCredentialsResult(
-      @Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+      @NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.storageAccessConfig = null;
   }

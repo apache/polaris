@@ -52,6 +52,9 @@ dependencies {
   testFixturesApi("io.vertx:vertx-core")
 
   testImplementation(testFixtures(project(":polaris-async-api")))
+
+  testCompileOnly(platform(libs.jackson.bom))
+  testCompileOnly("com.fasterxml.jackson.core:jackson-databind")
 }
 
 tasks.withType<Javadoc> {

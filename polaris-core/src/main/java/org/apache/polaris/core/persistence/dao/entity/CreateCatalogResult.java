@@ -20,9 +20,9 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** the return the result of a create-catalog method */
 public class CreateCatalogResult extends BaseResult {
@@ -39,7 +39,7 @@ public class CreateCatalogResult extends BaseResult {
    * @param errorCode error code, cannot be SUCCESS
    * @param extraInformation extra information
    */
-  public CreateCatalogResult(@Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+  public CreateCatalogResult(@NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.catalog = null;
     this.catalogAdminRole = null;
@@ -52,7 +52,7 @@ public class CreateCatalogResult extends BaseResult {
    * @param catalogAdminRole and associated admin role
    */
   public CreateCatalogResult(
-      @Nonnull PolarisBaseEntity catalog, @Nonnull PolarisBaseEntity catalogAdminRole) {
+      @NonNull PolarisBaseEntity catalog, @NonNull PolarisBaseEntity catalogAdminRole) {
     super(ReturnStatus.SUCCESS);
     this.catalog = catalog;
     this.catalogAdminRole = catalogAdminRole;
@@ -60,10 +60,10 @@ public class CreateCatalogResult extends BaseResult {
 
   @JsonCreator
   private CreateCatalogResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") @Nullable String extraInformation,
-      @JsonProperty("catalog") @Nonnull PolarisBaseEntity catalog,
-      @JsonProperty("catalogAdminRole") @Nonnull PolarisBaseEntity catalogAdminRole) {
+      @JsonProperty("catalog") @NonNull PolarisBaseEntity catalog,
+      @JsonProperty("catalogAdminRole") @NonNull PolarisBaseEntity catalogAdminRole) {
     super(returnStatus, extraInformation);
     this.catalog = catalog;
     this.catalogAdminRole = catalogAdminRole;

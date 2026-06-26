@@ -19,17 +19,16 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.NonNull;
 
 /** Fully qualified resource path represented as ordered PathSegments. */
 @PolarisImmutable
 public interface PolarisSecurable {
-  static PolarisSecurable of(@Nonnull PathSegment leaf) {
+  static PolarisSecurable of(@NonNull PathSegment leaf) {
     return ImmutablePolarisSecurable.builder().addPathSegment(leaf).build();
   }
 
@@ -39,7 +38,7 @@ public interface PolarisSecurable {
    * <p>The segments must be ordered from the furthest parent segment to the leaf segment. For
    * example, a table path should be ordered as {@code CATALOG, NAMESPACE, TABLE_LIKE}.
    */
-  static PolarisSecurable of(@Nonnull PathSegment first, @Nonnull PathSegment... rest) {
+  static PolarisSecurable of(@NonNull PathSegment first, @NonNull PathSegment... rest) {
     return ImmutablePolarisSecurable.builder().addPathSegment(first).addPathSegments(rest).build();
   }
 
@@ -48,11 +47,10 @@ public interface PolarisSecurable {
    *
    * <p>For example, a table path would be ordered as {@code [CATALOG, NAMESPACE, TABLE_LIKE]}.
    */
-  @Nonnull
-  List<PathSegment> getPathSegments();
+  @NonNull List<PathSegment> getPathSegments();
 
   /** Returns the leaf segment of the path. */
-  @Nonnull
+  @NonNull
   @Value.Derived
   default PathSegment getLeaf() {
     List<PathSegment> pathSegments = getPathSegments();
@@ -62,26 +60,13 @@ public interface PolarisSecurable {
   }
 
   /** Returns ordered parent segments from furthest parent to immediate parent. */
-  @Nonnull
+  @NonNull
   @Value.Derived
   default List<PathSegment> getParents() {
     List<PathSegment> pathSegments = getPathSegments();
     Preconditions.checkState(
         !pathSegments.isEmpty(), "PathSegments must contain at least one segment");
     return pathSegments.subList(0, pathSegments.size() - 1);
-  }
-
-  /**
-   * Returns a stable debug string for authorization messages.
-   *
-   * <p>For example, a table securable may render as {@code
-   * CATALOG:catalog1.NAMESPACE:ns1.TABLE_LIKE:table1}.
-   */
-  @Nonnull
-  default String formatForAuthorizationMessage() {
-    return getPathSegments().stream()
-        .map(segment -> segment.entityType() + ":" + segment.name())
-        .collect(Collectors.joining("."));
   }
 
   @Value.Check

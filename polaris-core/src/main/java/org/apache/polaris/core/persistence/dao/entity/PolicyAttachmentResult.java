@@ -20,9 +20,9 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** result of an attach/detach operation */
 public class PolicyAttachmentResult extends BaseResult {
@@ -36,7 +36,7 @@ public class PolicyAttachmentResult extends BaseResult {
    * @param extraInformation extra information
    */
   public PolicyAttachmentResult(
-      @Nonnull ReturnStatus errorStatus, @Nullable String extraInformation) {
+      @NonNull ReturnStatus errorStatus, @Nullable String extraInformation) {
     super(errorStatus, extraInformation);
     this.mappingRecord = null;
   }
@@ -47,7 +47,7 @@ public class PolicyAttachmentResult extends BaseResult {
    * @param errorStatus error code, cannot be SUCCESS
    * @param policyTypeCode existing policy mapping record's policy type code
    */
-  public PolicyAttachmentResult(@Nonnull ReturnStatus errorStatus, int policyTypeCode) {
+  public PolicyAttachmentResult(@NonNull ReturnStatus errorStatus, int policyTypeCode) {
     super(errorStatus, Integer.toString(policyTypeCode));
     this.mappingRecord = null;
   }
@@ -57,14 +57,14 @@ public class PolicyAttachmentResult extends BaseResult {
    *
    * @param mappingRecord policy mapping record being attached/detached
    */
-  public PolicyAttachmentResult(@Nonnull PolarisPolicyMappingRecord mappingRecord) {
+  public PolicyAttachmentResult(@NonNull PolarisPolicyMappingRecord mappingRecord) {
     super(ReturnStatus.SUCCESS);
     this.mappingRecord = mappingRecord;
   }
 
   @JsonCreator
   private PolicyAttachmentResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") String extraInformation,
       @JsonProperty("policyMappingRecord") PolarisPolicyMappingRecord mappingRecord) {
     super(returnStatus, extraInformation);

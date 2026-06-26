@@ -24,6 +24,22 @@ weight: 400
 
 This page documents various entities that can be managed in Apache Polaris.
 
+## Entity name constraints
+
+The REST layer enforces the following rules for entity names (namespace levels, table names, view names, and generic table names). Names that violate these rules are rejected with HTTP 400.
+
+A valid entity name:
+
+- is not empty;
+- is not `.` or `..`;
+- does not contain ISO control characters (U+0000–U+001F or U+007F–U+009F);
+- does not contain any of the following characters: <code>/\:*?"<>|#+`</code>;
+- does not start or end with whitespace.
+
+These constraints apply to **create**, **register**, and **rename** operations. Existing entities whose names pre-date this validation are not affected by read or update operations.
+
+[Policy](#policy) names are subject to stricter constraints; see below.
+
 ## Catalog
 
 A catalog is a top-level entity in Polaris that may contain other entities like [namespaces](#namespace) and [tables](#table). These map directly to [Apache Iceberg catalogs](https://iceberg.apache.org/terms/#catalog).
@@ -96,6 +112,8 @@ Each catalog role may have multiple [privileges](#privilege) granted to it, and 
 ## Policy
 
 Polaris policy is a set of rules governing actions on specified resources under predefined conditions. Polaris support policy for Iceberg table compaction, snapshot expiry, row-level access control, and custom policy definitions.
+
+Policy names may only contain letters (`A–Z`, `a–z`), digits (`0–9`), hyphens (`-`), and underscores (`_`). Names that do not match this pattern are rejected with HTTP 400.
 
 Policy can be applied at catalog level, namespace level, or table level. Policy inheritance can be achieved by attaching one to a higher-level scope, such as namespace or catalog. As a result, tables registered under those entities do not need to be declared individually for the same policy. If a table or a namespace requires a different policy, user can assign a different policy, hence overriding policy of the same type declared at the higher level entities.
 

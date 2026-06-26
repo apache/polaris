@@ -19,11 +19,11 @@
 
 package org.apache.polaris.core.storage.aws;
 
-import jakarta.annotation.Nullable;
 import java.net.URI;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsBaseClientBuilder;

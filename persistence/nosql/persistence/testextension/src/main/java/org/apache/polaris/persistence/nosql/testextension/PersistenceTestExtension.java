@@ -26,6 +26,7 @@ import static org.junit.platform.commons.util.AnnotationUtils.findAnnotation;
 import static org.junit.platform.commons.util.ReflectionUtils.isPrivate;
 import static org.junit.platform.commons.util.ReflectionUtils.makeAccessible;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.Field;
 import java.lang.reflect.Parameter;
 import java.time.Duration;
@@ -120,10 +121,10 @@ public class PersistenceTestExtension
   private Object resolve(
       PolarisPersistence annotation, Class<?> type, ExtensionContext extensionContext) {
 
-    if (MonotonicClock.class.isAssignableFrom(type)) {
+    if (MonotonicClock.class == type) {
       return getOrCreateMonotonicClock(extensionContext);
     }
-    if (IdGenerator.class.isAssignableFrom(type)) {
+    if (IdGenerator.class == type || SnowflakeIdGenerator.class == type) {
       return getOrCreateSnowflakeIdGenerator(extensionContext);
     }
 
@@ -133,13 +134,13 @@ public class PersistenceTestExtension
         "Cannot find backend spec for %s",
         extensionContext.getRequiredTestClass());
 
-    if (BackendTestFactory.class.isAssignableFrom(type)) {
+    if (BackendTestFactory.class == type) {
       return getOrCreateBackendTestFactory(extensionContext, backendSpec);
     }
-    if (Backend.class.isAssignableFrom(type)) {
+    if (Backend.class == type) {
       return getOrCreateBackend(extensionContext, backendSpec);
     }
-    if (Persistence.class.isAssignableFrom(type)) {
+    if (Persistence.class == type) {
       return createPersistence(annotation, extensionContext, backendSpec);
     }
 
@@ -161,22 +162,30 @@ public class PersistenceTestExtension
   public boolean supportsParameter(
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
-    return parameterContext.isAnnotated(PolarisPersistence.class);
+    return parameterContext.isAnnotated(PolarisPersistence.class)
+        && isValidFieldCandidate(parameterContext.getParameter().getType());
   }
 
-  private void assertValidFieldCandidate(Field field) {
-    if (!field.getType().isAssignableFrom(SnowflakeIdGenerator.class)
-        && !field.getType().isAssignableFrom(MonotonicClock.class)
-        && !field.getType().isAssignableFrom(Persistence.class)
-        && !field.getType().isAssignableFrom(Backend.class)
-        && !field.getType().isAssignableFrom(BackendTestFactory.class)) {
-      throw new ExtensionConfigurationException(
-          "Unsupported field type " + field.getType().getName());
+  @VisibleForTesting
+  void assertValidFieldCandidate(Field field) {
+    var fieldType = field.getType();
+    if (!isValidFieldCandidate(fieldType)) {
+      throw new ExtensionConfigurationException("Unsupported field type " + fieldType.getName());
     }
     if (isPrivate(field)) {
       throw new ExtensionConfigurationException(
           String.format("field [%s] must not be private.", field));
     }
+  }
+
+  @VisibleForTesting
+  static boolean isValidFieldCandidate(Class<?> fieldType) {
+    return IdGenerator.class == fieldType
+        || SnowflakeIdGenerator.class == fieldType
+        || MonotonicClock.class == fieldType
+        || Persistence.class == fieldType
+        || Backend.class == fieldType
+        || BackendTestFactory.class == fieldType;
   }
 
   private MonotonicClock getOrCreateMonotonicClock(ExtensionContext extensionContext) {
@@ -213,10 +222,11 @@ public class PersistenceTestExtension
         SnowflakeIdGenerator.class);
   }
 
-  private BackendTestFactory getOrCreateBackendTestFactory(
+  @VisibleForTesting
+  BackendTestFactory getOrCreateBackendTestFactory(
       ExtensionContext extensionContext, BackendSpec backendSpec) {
     var store = extensionContext.getRoot().getStore(NAMESPACE);
-    var existingResource = store.get(KEY_BACKEND, WrappedResource.class);
+    var existingResource = store.get(KEY_BACKEND_TEST_FACTORY, WrappedResource.class);
     var existing =
         existingResource != null ? existingResource.<BackendTestFactory>resource() : null;
     if (existing != null) {

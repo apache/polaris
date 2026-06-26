@@ -21,13 +21,13 @@ package org.apache.polaris.core.persistence.dao.entity;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** result of a load policy mapping call */
 public class LoadPolicyMappingsResult extends BaseResult {
@@ -44,7 +44,7 @@ public class LoadPolicyMappingsResult extends BaseResult {
    * @param extraInformation extra information
    */
   public LoadPolicyMappingsResult(
-      @Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+      @NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.mappingRecords = null;
     this.entities = null;
@@ -57,8 +57,8 @@ public class LoadPolicyMappingsResult extends BaseResult {
    * @param entities policy entities
    */
   public LoadPolicyMappingsResult(
-      @Nonnull List<PolarisPolicyMappingRecord> mappingRecords,
-      @Nonnull List<PolarisBaseEntity> entities) {
+      @NonNull List<PolarisPolicyMappingRecord> mappingRecords,
+      @NonNull List<PolarisBaseEntity> entities) {
     super(ReturnStatus.SUCCESS);
     this.mappingRecords = mappingRecords;
     this.entities = entities;
@@ -66,7 +66,7 @@ public class LoadPolicyMappingsResult extends BaseResult {
 
   @JsonCreator
   private LoadPolicyMappingsResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") String extraInformation,
       @JsonProperty("policyMappingRecords") List<PolarisPolicyMappingRecord> mappingRecords,
       @JsonProperty("policyEntities") List<PolarisBaseEntity> entities) {

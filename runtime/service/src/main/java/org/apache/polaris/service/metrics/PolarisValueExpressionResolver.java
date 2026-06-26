@@ -19,12 +19,12 @@
 package org.apache.polaris.service.metrics;
 
 import io.micrometer.common.annotation.ValueExpressionResolver;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 @ApplicationScoped
 public class PolarisValueExpressionResolver implements ValueExpressionResolver {
@@ -33,7 +33,7 @@ public class PolarisValueExpressionResolver implements ValueExpressionResolver {
 
   @Override
   @Nullable
-  public String resolve(@Nonnull String expression, @Nullable Object parameter) {
+  public String resolve(@NonNull String expression, @Nullable Object parameter) {
     // TODO maybe replace with CEL of some expression engine and make this more generic
     if (metricsConfiguration.realmIdTag().enableInApiMetrics()
         && parameter instanceof RealmContext realmContext

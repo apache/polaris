@@ -62,6 +62,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.FindOneAndReplaceOptions;
+import com.mongodb.client.model.InsertManyOptions;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
@@ -174,6 +175,9 @@ final class MongoDbBackend implements Backend {
 
   @Override
   public void deleteRealms(Set<String> realmIds) {
+    if (!supportsRealmDeletion()) {
+      throw new UnsupportedOperationException("Realm deletion is not enabled for this backend");
+    }
     if (realmIds.isEmpty()) {
       return;
     }
@@ -334,7 +338,7 @@ final class MongoDbBackend implements Backend {
     }
     var docs = newRefs.stream().map(r -> newReferenceDoc(realmId, r)).toList();
     try {
-      refs().insertMany(docs);
+      refs().insertMany(docs, new InsertManyOptions().ordered(false));
     } catch (MongoBulkWriteException e) {
       if (e.getWriteErrors().stream().anyMatch(we -> we.getCategory() != DUPLICATE_KEY)) {
         throw unhandledException(e);

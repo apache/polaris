@@ -27,8 +27,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -46,6 +44,8 @@ import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInf
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The internal persistence-object counterpart to ConnectionConfigInfo defined in the API model.
@@ -79,19 +79,19 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
-      @JsonProperty(value = "uri", required = true) @Nonnull String uri,
-      @JsonProperty(value = "authenticationParameters", required = true) @Nullable
-          AuthenticationParametersDpo authenticationParameters,
-      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
-          ServiceIdentityInfoDpo serviceIdentity,
-      @JsonProperty(value = "properties", required = false) @Nullable
-          Map<String, String> properties) {
+      @JsonProperty(value = "uri", required = true) @NonNull String uri,
+      @JsonProperty(value = "authenticationParameters", required = true)
+          @Nullable AuthenticationParametersDpo authenticationParameters,
+      @JsonProperty(value = "serviceIdentity", required = false)
+          @Nullable ServiceIdentityInfoDpo serviceIdentity,
+      @JsonProperty(value = "properties", required = false)
+          @Nullable Map<String, String> properties) {
     this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, properties, true);
   }
 
   public ConnectionConfigInfoDpo(
       int connectionTypeCode,
-      @Nonnull String uri,
+      @NonNull String uri,
       @Nullable AuthenticationParametersDpo authenticationParameters,
       @Nullable ServiceIdentityInfoDpo serviceIdentity) {
     this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, null);
@@ -99,7 +99,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   protected ConnectionConfigInfoDpo(
       int connectionTypeCode,
-      @Nonnull String uri,
+      @NonNull String uri,
       @Nullable AuthenticationParametersDpo authenticationParameters,
       @Nullable ServiceIdentityInfoDpo serviceIdentity,
       @Nullable Map<String, String> properties,
@@ -160,7 +160,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     }
   }
 
-  public static ConnectionConfigInfoDpo deserialize(final @Nonnull String jsonStr) {
+  public static ConnectionConfigInfoDpo deserialize(final @NonNull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
     } catch (JsonProcessingException ex) {
@@ -265,7 +265,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
    * @return A new copy of the ConnectionConfigInfoDpo with the given service identity info.
    */
   public abstract ConnectionConfigInfoDpo withServiceIdentity(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
+      @NonNull ServiceIdentityInfoDpo serviceIdentityInfo);
 
   /**
    * Produces the corresponding API-model ConnectionConfigInfo for this persistence object; many

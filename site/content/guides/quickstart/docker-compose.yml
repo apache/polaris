@@ -71,7 +71,7 @@ services:
       start_period: 10s
 
   bucket-setup:
-    image: amazon/aws-cli:2.34.48
+    image: amazon/aws-cli:2.35.11
     depends_on:
       rustfs:
         condition: service_healthy
@@ -89,7 +89,7 @@ services:
         echo Bucket setup complete.
 
   polaris-setup:
-    image: alpine/curl:8.19.0
+    image: alpine/curl:8.20.0
     depends_on:
       polaris:
         condition: service_healthy

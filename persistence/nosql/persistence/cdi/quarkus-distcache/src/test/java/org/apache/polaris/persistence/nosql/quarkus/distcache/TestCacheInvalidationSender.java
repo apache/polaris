@@ -462,7 +462,7 @@ public class TestCacheInvalidationSender {
                 body.set(new String(requestBody.readAllBytes(), UTF_8));
               }
               reqUri.set(exchange.getRequestURI());
-              exchange.sendResponseHeaders(204, 0);
+              exchange.sendResponseHeaders(204, -1);
               exchange.getResponseBody().close();
             })) {
 
@@ -524,7 +524,7 @@ public class TestCacheInvalidationSender {
                 body.set(new String(requestBody.readAllBytes(), UTF_8));
               }
               reqUri.set(exchange.getRequestURI());
-              exchange.sendResponseHeaders(204, 0);
+              exchange.sendResponseHeaders(204, -1);
               exchange.getResponseBody().close();
             })) {
 

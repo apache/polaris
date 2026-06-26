@@ -116,14 +116,16 @@ final class TestSnapshot implements Snapshot {
     return Map.of();
   }
 
+  @Deprecated
   @Override
   public Iterable<DataFile> addedDataFiles(FileIO io) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
+  @Deprecated
   @Override
   public Iterable<DataFile> removedDataFiles(FileIO io) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override

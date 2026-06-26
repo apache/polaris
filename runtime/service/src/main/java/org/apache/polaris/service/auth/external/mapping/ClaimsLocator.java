@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.auth.external.mapping;
 
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.json.JsonNumber;
 import jakarta.json.JsonString;
@@ -29,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.jspecify.annotations.Nullable;
 
 /** A utility class for locating claims in a JWT token by path. */
 @ApplicationScoped

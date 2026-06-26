@@ -21,10 +21,10 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Response object for the loadResolvedEntities call. */
 public class ResolvedEntitiesResult extends BaseResult {
@@ -36,7 +36,7 @@ public class ResolvedEntitiesResult extends BaseResult {
   }
 
   public ResolvedEntitiesResult(
-      @Nonnull ReturnStatus returnStatus, @Nullable String extraInformation) {
+      @NonNull ReturnStatus returnStatus, @Nullable String extraInformation) {
     super(returnStatus, extraInformation);
     this.resolvedEntities = null;
   }

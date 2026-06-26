@@ -20,6 +20,10 @@
 title: Polaris Benchmarks
 type: docs
 weight: 500
+menus:
+  main:
+    parent: tools
+    weight: 300
 ---
 
 Polaris Benchmarks is a tool to measure the performance of Polaris.

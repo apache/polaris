@@ -19,17 +19,17 @@
 
 package org.apache.polaris.core.storage.aws;
 
-import jakarta.annotation.Nonnull;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.jspecify.annotations.NonNull;
 
 public class S3Location extends StorageLocation {
   private static final Pattern URI_PATTERN = Pattern.compile("^(s3a?):(.+)$");
   private final String scheme;
   private final String locationWithoutScheme;
 
-  public S3Location(@Nonnull String location) {
+  public S3Location(@NonNull String location) {
     super(location);
     Matcher matcher = URI_PATTERN.matcher(location);
     if (!matcher.matches()) {

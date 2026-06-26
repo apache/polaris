@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.catalog.Namespace;
@@ -39,6 +40,7 @@ import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
@@ -129,6 +131,7 @@ public class IcebergCatalogAdapter
   public Response createNamespace(
       String prefix,
       CreateNamespaceRequest createNamespaceRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     validateIcebergProperties(realmConfig, createNamespaceRequest.properties());
@@ -213,7 +216,11 @@ public class IcebergCatalogAdapter
 
   @Override
   public Response dropNamespace(
-      String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
+      String prefix,
+      String namespace,
+      UUID idempotencyKey,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     return withCatalog(
@@ -230,6 +237,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     updateNamespacePropertiesRequest.validate();
@@ -263,6 +271,7 @@ public class IcebergCatalogAdapter
       String namespace,
       CreateTableRequest createTableRequest,
       String accessDelegationMode,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     createTableRequest.validate();
@@ -321,6 +330,7 @@ public class IcebergCatalogAdapter
       String accessDelegationMode,
       String ifNoneMatchString,
       String snapshots,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     EnumSet<AccessDelegationMode> delegationModes =
@@ -361,7 +371,9 @@ public class IcebergCatalogAdapter
       String prefix,
       TableIdentifier tableIdentifier) {
     return delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
-        ? Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier))
+        ? Optional.of(
+            new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
+                .credentialsPath(tableIdentifier))
         : Optional.empty();
   }
 
@@ -389,6 +401,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String table,
+      UUID idempotencyKey,
       Boolean purgeRequested,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -413,17 +426,27 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       RegisterTableRequest registerTableRequest,
+      String accessDelegationMode,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     registerTableRequest.validate();
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, registerTableRequest.name()));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, registerTableRequest.name());
+    EntityNameValidator.validateIdentifier(tableIdentifier);
+    EnumSet<AccessDelegationMode> delegationModes =
+        parseAccessDelegationModes(accessDelegationMode);
     return withCatalog(
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse response = catalog.registerTable(ns, registerTableRequest);
+          LoadTableResponse response =
+              catalog.registerTable(
+                  ns,
+                  registerTableRequest,
+                  delegationModes,
+                  getRefreshCredentialsEndpoint(delegationModes, prefix, tableIdentifier));
           return tryInsertETagHeader(
                   Response.ok(response), response, namespace, registerTableRequest.name())
               .build();
@@ -434,6 +457,7 @@ public class IcebergCatalogAdapter
   public Response renameTable(
       String prefix,
       RenameTableRequest renameTableRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     EntityNameValidator.validateIdentifier(renameTableRequest.destination());
@@ -452,6 +476,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       CommitTableRequest commitTableRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     commitTableRequest.updates().stream()
@@ -506,6 +531,24 @@ public class IcebergCatalogAdapter
   }
 
   @Override
+  public Response registerView(
+      String prefix,
+      String namespace,
+      RegisterViewRequest registerViewRequest,
+      UUID idempotencyKey,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    registerViewRequest.validate();
+    Namespace ns =
+        NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, registerViewRequest.name()));
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.registerView(ns, registerViewRequest)).build());
+  }
+
+  @Override
   public Response listViews(
       String prefix,
       String namespace,
@@ -526,13 +569,17 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String table,
+      String planId,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
     Optional<String> refreshEndpoint =
-        Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
+        Optional.of(
+            new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
+                .credentialsPath(tableIdentifier));
     return withCatalog(
         securityContext,
         prefix,
@@ -544,6 +591,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String view,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns =
@@ -577,6 +625,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String view,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns =
@@ -595,6 +644,7 @@ public class IcebergCatalogAdapter
   public Response renameView(
       String prefix,
       RenameTableRequest renameTableRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     EntityNameValidator.validateIdentifier(renameTableRequest.destination());
@@ -613,6 +663,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String view,
       CommitViewRequest commitViewRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     UpdateTableRequest revisedRequest =
@@ -635,6 +686,7 @@ public class IcebergCatalogAdapter
   public Response commitTransaction(
       String prefix,
       CommitTransactionRequest commitTransactionRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     commitTransactionRequest.tableChanges().stream()

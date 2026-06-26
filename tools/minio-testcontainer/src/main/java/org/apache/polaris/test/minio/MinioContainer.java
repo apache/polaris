@@ -269,8 +269,6 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
         .httpClientBuilder(UrlConnectionHttpClient.builder())
         .applyMutation(builder -> builder.endpointOverride(URI.create(s3endpoint())))
         .applyMutation(builder -> region.ifPresent(r -> builder.region(Region.of(r))))
-        // .serviceConfiguration(s3Configuration(s3PathStyleAccess, s3UseArnRegionEnabled))
-        // credentialsProvider(s3AccessKeyId, s3SecretAccessKey, s3SessionToken)
         .credentialsProvider(
             StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey(), secretKey())))
         .build();

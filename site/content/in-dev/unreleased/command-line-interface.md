@@ -24,6 +24,16 @@ weight: 300
 
 In order to help administrators quickly set up and manage their Polaris server, Polaris provides a simple command-line interface (CLI) for common tasks.
 
+## Installation
+
+Install the latest release from PyPI:
+
+```shell
+pip install apache-polaris
+```
+
+For development, run `make client-setup-env` to set up the Python client environment.
+
 The basic syntax of the Polaris CLI is outlined below:
 
 ```
@@ -59,6 +69,7 @@ Global Options:
 10. setup
 11. find
 12. tables
+13. repl
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important.
 
@@ -76,6 +87,7 @@ polaris repair
 polaris setup apply setup-config.yaml
 polaris find some_table
 polaris tables list --catalog my_catalog --namespace ns1
+polaris repl
 ```
 
 ### Authentication
@@ -100,20 +112,6 @@ If your Polaris server is configured to use a realm other than the default, you 
 Also, if your Polaris server uses a custom realm header name, you can use the `--header` option to specify it. If `--header` is not provided, the CLI will check the `HEADER` environment variable. If neither is provided, the CLI will use default header name `Polaris-Realm`.
 
 Read [here]({{% ref "configuration/configuring-polaris.md" %}}) more about configuring polaris server to work with multiple realms.
-
-### PATH
-
-These examples assume the Polaris CLI is on the PATH and so can be invoked just by the command `polaris`. You can add the CLI to your PATH environment variable with a command like the following:
-
-```
-export PATH="$HOME/polaris:$PATH"
-```
-
-Alternatively, you can run the CLI by providing a path to it, such as with the following invocation:
-
-```
-~/polaris principals list
-```
 
 ## Commands
 
@@ -218,7 +216,7 @@ External Catalog Federation: Bearer Token Options:
 External Catalog Federation: AWS SigV4 Options:
   --catalog-role-arn CATALOG_ROLE_ARN                                  The AWS IAM role ARN assumed by Polaris when signing requests
   --catalog-role-session-name CATALOG_ROLE_SESSION_NAME                The role session name to be used by the SigV4 protocol for signing requests
-  --catalog-external-id CATALOG_EXTERNAL_ID                            An optional external ID used to establish a AWS trust relationship
+  --catalog-external-id CATALOG_EXTERNAL_ID                            An optional external ID used to establish an AWS trust relationship
   --catalog-signing-region CATALOG_SIGNING_REGION                      Region to be used by the SigV4 protocol for signing requests
   --catalog-signing-name CATALOG_SIGNING_NAME                          The service name to be used by the SigV4 protocol for signing requests
 ```
@@ -1809,6 +1807,22 @@ Command Options:
 
 ```
 polaris tables delete my_table --catalog my_catalog --namespace ns1
+```
+
+### REPL
+
+The `REPL` command starts an interactive REPL session for Polaris CLI allowing multiple commands to be executed without re-authenticating.
+
+Global authentication and connection options are bound at session start. When starting the REPL, a default catalog can be specified by using the `--catalog` flag. This catalog will be automatically used for all commands within the session that require a catalog, unless explicitly overridden.
+
+Command history is automatically saved to `~/.polaris/.polaris_repl_history`, and the number of entries can be configured via the `POLARIS_REPL_HISTORY_LENGTH` environment variable.
+
+Inside the REPL, use `help` to list commands, `exit` or `Ctrl-D` to quit, and `Ctrl-C` to clear the current line.
+
+##### Examples
+
+```
+polaris repl --catalog my_catalog
 ```
 
 ## Examples

@@ -20,9 +20,9 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Enumerates the privileges used by the built-in RBAC authorizer ({@link
@@ -268,9 +268,9 @@ public enum PolarisPrivilege {
    */
   PolarisPrivilege(
       int code,
-      @Nonnull PolarisEntityType securableType,
-      @Nonnull List<PolarisEntitySubType> securableSubTypes,
-      @Nonnull PolarisEntityType granteeType) {
+      @NonNull PolarisEntityType securableType,
+      @NonNull List<PolarisEntitySubType> securableSubTypes,
+      @NonNull PolarisEntityType granteeType) {
     this.code = code;
     this.securableType = securableType;
     this.securableSubTypes = securableSubTypes;
@@ -287,9 +287,9 @@ public enum PolarisPrivilege {
    */
   PolarisPrivilege(
       int code,
-      @Nonnull PolarisEntityType securableType,
-      @Nonnull PolarisEntitySubType securableSubType,
-      @Nonnull PolarisEntityType granteeType) {
+      @NonNull PolarisEntityType securableType,
+      @NonNull PolarisEntitySubType securableSubType,
+      @NonNull PolarisEntityType granteeType) {
     this(code, securableType, List.of(securableSubType), granteeType);
   }
 
@@ -299,7 +299,7 @@ public enum PolarisPrivilege {
    * @param code internal code associated to this privilege
    * @param securableType securable type
    */
-  PolarisPrivilege(int code, @Nonnull PolarisEntityType securableType) {
+  PolarisPrivilege(int code, @NonNull PolarisEntityType securableType) {
     this(
         code,
         securableType,
@@ -316,8 +316,8 @@ public enum PolarisPrivilege {
    */
   PolarisPrivilege(
       int code,
-      @Nonnull PolarisEntityType securableType,
-      @Nonnull PolarisEntitySubType securableSubType) {
+      @NonNull PolarisEntityType securableType,
+      @NonNull PolarisEntitySubType securableSubType) {
     this(code, securableType, List.of(securableSubType), PolarisEntityType.CATALOG_ROLE);
   }
 

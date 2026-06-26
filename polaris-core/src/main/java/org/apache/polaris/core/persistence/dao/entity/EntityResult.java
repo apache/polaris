@@ -20,10 +20,10 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** the return for an entity lookup call */
 public class EntityResult extends BaseResult {
@@ -37,8 +37,7 @@ public class EntityResult extends BaseResult {
    * @param errorCode error code, cannot be SUCCESS
    * @param extraInformation extra information if error. Implementation specific
    */
-  public EntityResult(
-      @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+  public EntityResult(@NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.entity = null;
   }
@@ -48,7 +47,7 @@ public class EntityResult extends BaseResult {
    *
    * @param entity the entity being looked-up
    */
-  public EntityResult(@Nonnull PolarisBaseEntity entity) {
+  public EntityResult(@NonNull PolarisBaseEntity entity) {
     super(ReturnStatus.SUCCESS);
     this.entity = entity;
   }
@@ -60,7 +59,7 @@ public class EntityResult extends BaseResult {
    * @param errorStatus error status, cannot be SUCCESS
    * @param subTypeCode existing entity subtype code
    */
-  public EntityResult(@Nonnull BaseResult.ReturnStatus errorStatus, int subTypeCode) {
+  public EntityResult(@NonNull ReturnStatus errorStatus, int subTypeCode) {
     super(errorStatus, Integer.toString(subTypeCode));
     this.entity = null;
   }
@@ -89,7 +88,7 @@ public class EntityResult extends BaseResult {
 
   @JsonCreator
   private EntityResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") @Nullable String extraInformation,
       @JsonProperty("entity") @Nullable PolarisBaseEntity entity) {
     super(returnStatus, extraInformation);

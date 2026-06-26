@@ -19,7 +19,7 @@
 package org.apache.polaris.core.persistence.metrics;
 
 import com.google.common.annotations.Beta;
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Service Provider Interface (SPI) for persisting Iceberg metrics reports.
@@ -42,8 +42,6 @@ import jakarta.annotation.Nonnull;
  *
  * <p><b>Note:</b> This SPI is currently experimental and not yet implemented in all persistence
  * backends. The API may change in future releases.
- *
- * @see PolarisMetricsManager
  */
 @Beta
 public interface MetricsPersistence {
@@ -57,7 +55,7 @@ public interface MetricsPersistence {
    *
    * @param record the scan metrics record to persist
    */
-  default void writeScanReport(@Nonnull ScanMetricsRecord record) {
+  default void writeScanReport(@NonNull ScanMetricsRecord record) {
     // No-op by default - backends that don't support metrics silently ignore
   }
 
@@ -70,7 +68,7 @@ public interface MetricsPersistence {
    *
    * @param record the commit metrics record to persist
    */
-  default void writeCommitReport(@Nonnull CommitMetricsRecord record) {
+  default void writeCommitReport(@NonNull CommitMetricsRecord record) {
     // No-op by default - backends that don't support metrics silently ignore
   }
 }

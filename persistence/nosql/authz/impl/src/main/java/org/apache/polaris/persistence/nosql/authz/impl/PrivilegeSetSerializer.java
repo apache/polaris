@@ -18,15 +18,24 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
-import static org.apache.polaris.persistence.nosql.authz.impl.JacksonPrivilegesModule.currentPrivileges;
+import static java.util.Objects.requireNonNull;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import java.io.IOException;
+import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
+import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 
 public class PrivilegeSetSerializer extends JsonSerializer<PrivilegeSet> {
+  private final Supplier<Privileges> privilegesResolver;
+
+  PrivilegeSetSerializer(Supplier<Privileges> privilegesResolver) {
+    this.privilegesResolver =
+        requireNonNull(privilegesResolver, "privilegesResolver must not be null");
+  }
+
   @Override
   public void serialize(PrivilegeSet value, JsonGenerator gen, SerializerProvider serializers)
       throws IOException {
@@ -45,7 +54,7 @@ public class PrivilegeSetSerializer extends JsonSerializer<PrivilegeSet> {
       // Otherwise, for external/REST, use the privilege names from the "global" set of
       // privileges.
       gen.writeStartArray();
-      var collapsed = value.collapseComposites(currentPrivileges());
+      var collapsed = value.collapseComposites(privilegesResolver.get());
       for (var privilege : collapsed) {
         gen.writeString(privilege.name());
       }

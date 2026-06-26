@@ -60,6 +60,18 @@ public interface RetainedCollector {
   @NonNull Persistence realmPersistence();
 
   /**
+   * {@link Persistence Persistence} configured for the current {@linkplain #realm() realm}, without
+   * automatic retain side effects.
+   *
+   * <p>Use this view for maintenance-time cleanup commits that must not mark everything they touch
+   * as retained.
+   *
+   * <p>The returned {@link Persistence Persistence} bypasses the cache to avoid polluting the
+   * production cache with accesses from the maintenance service.
+   */
+  @NonNull Persistence nonRecordingRealmPersistence();
+
+  /**
    * Instruct the maintenance service to retain the reference with the given name.
    *
    * <p>References that are fetched via {@link #realmPersistence()} are automatically marked to be

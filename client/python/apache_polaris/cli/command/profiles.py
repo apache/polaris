@@ -20,7 +20,6 @@
 import json
 
 import os
-import sys
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Any, cast
 
@@ -46,11 +45,11 @@ class ProfilesCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris profiles create dev
-        * ./polaris profiles delete dev
-        * ./polaris profiles update dev
-        * ./polaris profiles get dev
-        * ./polaris profiles list
+        * polaris profiles create dev
+        * polaris profiles delete dev
+        * polaris profiles update dev
+        * polaris profiles get dev
+        * polaris profiles list
     """
 
     profiles_subcommand: str
@@ -60,7 +59,6 @@ class ProfilesCommand(Command):
         if not os.path.exists(CONFIG_FILE):
             return {}
         with open(CONFIG_FILE, "r") as f:
-            print(f"Loading profiles from {CONFIG_FILE}")
             return json.load(f)
 
     def _save_profiles(self, profiles: Dict[str, Dict[str, Any]]) -> None:
@@ -91,8 +89,7 @@ class ProfilesCommand(Command):
             }
             self._save_profiles(profiles)
         else:
-            print(f"Profile {name} already exists.")
-            sys.exit(1)
+            raise CliError(f"Profile {name} already exists.")
 
     def _get_profile(self, name: str) -> Optional[Dict[str, Any]]:
         profiles = self._load_profiles()
@@ -142,8 +139,7 @@ class ProfilesCommand(Command):
             }
             self._save_profiles(profiles)
         else:
-            print(f"Profile {name} does not exist.")
-            sys.exit(1)
+            raise CliError(f"Profile {name} does not exist.")
 
     def validate(self) -> None:
         if self.profiles_subcommand in {

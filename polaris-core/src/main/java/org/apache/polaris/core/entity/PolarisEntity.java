@@ -21,8 +21,6 @@ package org.apache.polaris.core.entity;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +28,8 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * For legacy reasons, this class is only a thin facade over PolarisBaseEntity's members/methods. No
@@ -154,7 +154,7 @@ public class PolarisEntity extends PolarisBaseEntity {
         .orElse(null);
   }
 
-  public PolarisEntity(@Nonnull PolarisBaseEntity sourceEntity) {
+  public PolarisEntity(@NonNull PolarisBaseEntity sourceEntity) {
     super(
         sourceEntity.getCatalogId(),
         sourceEntity.getId(),
@@ -371,7 +371,7 @@ public class PolarisEntity extends PolarisBaseEntity {
       return (B) this;
     }
 
-    public B setInternalProperties(@Nonnull Map<String, String> internalProperties) {
+    public B setInternalProperties(@NonNull Map<String, String> internalProperties) {
       this.internalProperties = new HashMap<>(internalProperties);
       return (B) this;
     }

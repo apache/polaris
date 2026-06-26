@@ -19,7 +19,6 @@
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.primitives.Ints.checkedCast;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.persistence.nosql.api.index.IndexStripe.indexStripe;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
@@ -52,11 +51,13 @@ import org.slf4j.LoggerFactory;
 final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements UpdatableIndex<V> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UpdatableIndexImpl.class);
+  static final int FORCE_SPILL_MAX_EMBEDDED_ENTRY_DIVISOR = 4;
 
   private final IndexContainer<V> indexContainer;
   private final PersistenceParams params;
   private final LongSupplier idGenerator;
   private final IndexValueSerializer<V> serializer;
+  private boolean hasOversizedEmbeddedEntry;
   private boolean finalized;
 
   UpdatableIndexImpl(
@@ -81,7 +82,8 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
     var indexContainerBuilder = ImmutableIndexContainer.<V>builder();
 
-    if (embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()) {
+    if (embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()
+        || hasOversizedEmbeddedEntry) {
       // The serialized representation of the embedded index is probably bigger than the configured
       // limit. Spill out the embedded index.
       spillOutEmbedded(prefix, persistObj, indexContainerBuilder);
@@ -181,15 +183,17 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
       // Only use stripe if it (still) has elements.
       if (stripe.hasElements()) {
         var serSize = stripe.estimatedSerializedSize();
-        var desiredSplits = checkedCast(serSize / params.maxIndexStripeSize().asLong() + 1);
-        if (desiredSplits > 1) {
+        var maxStripeSize = params.maxIndexStripeSize().asLong();
+        if (serSize > maxStripeSize) {
           // The stripe became too big, needs to be split further
+          var splitStripes = stripe.splitByTargetSize(maxStripeSize);
           LOGGER.debug(
-              "Splitting index stripe {}, modified={}, into {} parts",
+              "Splitting index stripe {}, modified={}, into {} stripes for target size {}",
               stripe.getObjId(),
               stripe.isModified(),
-              desiredSplits);
-          survivingStripes.addAll(stripe.divide(desiredSplits));
+              splitStripes.size(),
+              maxStripeSize);
+          survivingStripes.addAll(splitStripes);
         } else {
           LOGGER.debug(
               "Keeping index stripe {}, modified={}", stripe.getObjId(), stripe.isModified());
@@ -212,7 +216,8 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
       var last = stripe.last();
       ObjRef id;
       if (stripe.isModified()) {
-        var obj = indexStripeObj(idGenerator.getAsLong(), stripe.serialize());
+        var serialized = stripe.serialize();
+        var obj = indexStripeObj(idGenerator.getAsLong(), serialized);
         // Persist updated stripes
         persistObj.accept(first.toSafeString(prefix), obj);
         id = objRef(obj);
@@ -230,6 +235,16 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   @Override
   public boolean add(@NonNull InternalIndexElement<V> element) {
     checkNotFinalized();
+
+    var maxEmbeddedIndexSize = params.maxEmbeddedIndexSize().asLong();
+    var maxEmbeddedEntrySizeBeforeForcedSpill =
+        Math.max(1L, maxEmbeddedIndexSize / FORCE_SPILL_MAX_EMBEDDED_ENTRY_DIVISOR);
+    var entrySerializedSizeUpperBound =
+        IndexImpl.singleEntrySerializedSizeUpperBound(
+            element.key(), element.contentSerializedSize(serializer));
+
+    hasOversizedEmbeddedEntry |=
+        entrySerializedSizeUpperBound > maxEmbeddedEntrySizeBeforeForcedSpill;
     var added = embedded.add(element);
     if (added) {
       return !reference.containsElement(element.key());
@@ -295,7 +310,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   }
 
   @Override
-  public List<IndexSpi<V>> divide(int parts) {
+  public List<IndexSpi<V>> splitByTargetSize(long targetSerializedSize) {
     throw unsupported();
   }
 

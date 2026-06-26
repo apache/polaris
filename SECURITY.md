@@ -22,3 +22,12 @@
 Apache Polaris follows the process from [ASF security team](https://www.apache.org/security/).
 
 Please report any security issues to [security@apache.org](mailto:security@apache.org).
+
+## Threat Model
+
+The Polaris project maintains a threat model in
+[SECURITY-THREAT-MODEL.md](./SECURITY-THREAT-MODEL.md). It documents
+security boundaries, in-scope vs. out-of-scope issues, trust assumptions,
+security invariants, and triage guidance — useful both for human
+reviewers handling reports and for automated security tooling that
+consults the model before scanning.

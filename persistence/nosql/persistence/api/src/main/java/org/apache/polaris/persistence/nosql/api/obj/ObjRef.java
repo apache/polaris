@@ -71,6 +71,11 @@ public interface ObjRef {
         }
 
         @Override
+        public boolean isNullSerialized(@NonNull ByteBuffer buffer) {
+          return buffer.get(buffer.position()) == 0;
+        }
+
+        @Override
         public void skip(@NonNull ByteBuffer buffer) {
           skipObjId(buffer);
         }

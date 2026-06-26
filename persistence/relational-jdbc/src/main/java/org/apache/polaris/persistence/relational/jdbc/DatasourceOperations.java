@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.relational.jdbc;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,7 +43,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +54,9 @@ public class DatasourceOperations {
   private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
   // PG STATUS CODES
-  private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
+  // 23505 = unique key violation, consistent across PG/Cockroach/H2; other checks (FK, NOT NULL,
+  // CHECK) all propagate
+  private static final String UNIQUENESS_CONSTRAINT_VIOLATION_SQL_CODE = "23505";
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
 
   // H2 STATUS CODES
@@ -147,8 +150,7 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during the query execution.
    */
   public <T> List<T> executeSelect(
-      @Nonnull QueryGenerator.PreparedQuery query, @Nonnull Converter<T> converterInstance)
-      throws SQLException {
+      @NonNull PreparedQuery query, @NonNull Converter<T> converterInstance) throws SQLException {
     ArrayList<T> results = new ArrayList<>();
     executeSelectOverStream(query, converterInstance, stream -> stream.forEach(results::add));
     return results;
@@ -165,26 +167,66 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during the query execution.
    */
   public <T> void executeSelectOverStream(
-      @Nonnull QueryGenerator.PreparedQuery query,
-      @Nonnull Converter<T> converterInstance,
-      @Nonnull Consumer<Stream<T>> consumer)
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer)
       throws SQLException {
     withRetries(
         () -> {
-          logQuery(query);
-          try (Connection connection = borrowConnection();
-              PreparedStatement statement = connection.prepareStatement(query.sql())) {
-            List<Object> params = query.parameters();
-            for (int i = 0; i < params.size(); i++) {
-              statement.setObject(i + 1, params.get(i));
-            }
-            try (ResultSet resultSet = statement.executeQuery()) {
-              ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
-              consumer.accept(iterator.toStream());
-              return null;
-            }
+          try (Connection connection = borrowConnection()) {
+            executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+            return null;
           }
         });
+  }
+
+  /** Connection-aware version for use inside runWithinTransaction. */
+  public <T> void executeSelectOverStream(
+      @NonNull Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer)
+      throws SQLException {
+    withRetries(
+        () -> {
+          executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+          return null;
+        });
+  }
+
+  /**
+   * Internal implementation that executes the SELECT on the provided connection. Does not manage
+   * connection lifecycle or retries.
+   */
+  private <T> void executeSelectOverStreamWithConnection(
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer,
+      @NonNull Connection connection)
+      throws SQLException {
+    logQuery(query);
+    try (PreparedStatement statement = connection.prepareStatement(query.sql())) {
+      List<Object> params = query.parameters();
+      for (int i = 0; i < params.size(); i++) {
+        statement.setObject(i + 1, params.get(i));
+      }
+      try (ResultSet resultSet = statement.executeQuery()) {
+        ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+        consumer.accept(iterator.toStream());
+      }
+    }
+  }
+
+  /** Connection-aware version for use inside runWithinTransaction. */
+  public <T> List<T> executeSelect(
+      @NonNull Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance)
+      throws SQLException {
+    ArrayList<T> results = new ArrayList<>();
+    executeSelectOverStream(
+        connection, query, converterInstance, stream -> stream.forEach(results::add));
+    return results;
   }
 
   /**
@@ -407,8 +449,8 @@ public class DatasourceOperations {
     boolean execute(Connection connection) throws SQLException;
   }
 
-  public boolean isConstraintViolation(SQLException e) {
-    return CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
+  public boolean isUniquenessConstraintViolation(SQLException e) {
+    return UNIQUENESS_CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
   }
 
   public boolean isRelationDoesNotExist(SQLException e) {

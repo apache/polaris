@@ -152,7 +152,14 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
 
   boolean isMutable();
 
-  List<IndexSpi<V>> divide(int parts);
+  /**
+   * Split this index into a variable number of stripes, trying to keep each resulting stripe near
+   * the target serialized size.
+   *
+   * <p>The target size is a goal, not a hard upper bound. A single oversized entry may still end up
+   * in its own stripe.
+   */
+  List<IndexSpi<V>> splitByTargetSize(long targetSerializedSize);
 
   List<IndexSpi<V>> stripes();
 

@@ -197,6 +197,12 @@ public class TestObjRef {
 
     soft.assertThat(OBJ_REF_SERIALIZER.serializedSize(null)).isEqualTo(1);
 
+    var nullProbe = nullSerialized.duplicate();
+    soft.assertThat(OBJ_REF_SERIALIZER.isNullSerialized(nullProbe)).isTrue();
+    soft.assertThat(nullProbe)
+        .extracting(ByteBuffer::position, ByteBuffer::remaining)
+        .containsExactly(0, 1);
+
     soft.assertThat(OBJ_REF_SERIALIZER.deserialize(nullSerialized.duplicate())).isNull();
     var nullSkip = nullSerialized.duplicate();
     OBJ_REF_SERIALIZER.skip(nullSkip);
@@ -214,6 +220,11 @@ public class TestObjRef {
     soft.assertThat(buffer.remaining()).isEqualTo(0);
 
     buffer.flip();
+    var nullProbe = buffer.duplicate();
+    soft.assertThat(OBJ_REF_SERIALIZER.isNullSerialized(nullProbe)).isEqualTo(objRef == null);
+    soft.assertThat(nullProbe)
+        .extracting(ByteBuffer::position, ByteBuffer::remaining)
+        .containsExactly(0, serSize);
     soft.assertThat(OBJ_REF_SERIALIZER.deserialize(buffer.duplicate())).isEqualTo(objRef);
 
     var skipped = buffer.duplicate();

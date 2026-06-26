@@ -34,11 +34,11 @@ dependencies {
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
-  testImplementation(platform(libs.jackson.bom))
-  testImplementation("com.fasterxml.jackson.core:jackson-databind")
+  testImplementation(platform(libs.jackson3.bom))
+  testImplementation("tools.jackson.core:jackson-databind")
 }
 
-val rootDir = rootProject.layout.projectDirectory
+val rootDir = layout.settingsDirectory
 val specsDir = rootDir.dir("spec")
 val templatesDir = rootDir.dir("server-templates")
 // Use a different directory than 'generated/', because OpenAPI generator's `GenerateTask` adds the
@@ -86,7 +86,7 @@ sourceSets { main { java { srcDir(generatedOpenApiSrcDir) } } }
 tasks.named<GenerateTask>("openApiGenerate") {
   inputs.dir(templatesDir)
   inputs.dir(specsDir)
-  actions.addFirst { delete { delete(generatedDir) } }
+  cleanupOutput = true
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

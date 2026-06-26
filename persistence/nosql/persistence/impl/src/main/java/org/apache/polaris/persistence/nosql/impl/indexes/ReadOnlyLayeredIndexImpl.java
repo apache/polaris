@@ -50,7 +50,7 @@ final class ReadOnlyLayeredIndexImpl<V> extends AbstractLayeredIndexImpl<V> {
   }
 
   @Override
-  public List<IndexSpi<V>> divide(int parts) {
+  public List<IndexSpi<V>> splitByTargetSize(long targetSerializedSize) {
     throw unsupported();
   }
 

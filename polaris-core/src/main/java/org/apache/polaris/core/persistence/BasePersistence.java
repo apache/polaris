@@ -18,14 +18,13 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -34,12 +33,12 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Interface to the Polaris persistence backend, with which to persist and retrieve all the data
@@ -54,11 +53,12 @@ import org.apache.polaris.core.policy.PolicyMappingPersistence;
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
  *
- * <p>This interface also extends {@link MetricsPersistence} for Iceberg metrics storage. By
- * default, all metrics operations are no-ops. Implementations that support metrics persistence
- * (e.g., JDBC) should override these methods to provide actual storage.
+ * <p>Metrics-related persistence is intentionally decoupled and lives in {@code
+ * MetricsPersistence}. A concrete backend may implement both SPIs on the same class, but callers
+ * that only need metrics persistence should depend on {@code MetricsPersistence} directly rather
+ * than on {@link BasePersistence}.
  */
-public interface BasePersistence extends PolicyMappingPersistence, MetricsPersistence {
+public interface BasePersistence extends PolicyMappingPersistence {
   /**
    * The returned id must be fully unique within a realm and never reused once generated, whether or
    * not anything ends up committing an entity with the generated id.
@@ -66,7 +66,7 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param callCtx call context
    * @return new unique entity identifier
    */
-  long generateNewId(@Nonnull PolarisCallContext callCtx);
+  long generateNewId(@NonNull PolarisCallContext callCtx);
 
   /**
    * Write this entity to the persistence backend. If successful, the write must be durable and
@@ -89,8 +89,8 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    *     null if this is expected to be a brand-new entity
    */
   void writeEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       @Nullable PolarisBaseEntity originalEntity);
 
@@ -127,27 +127,28 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    *     there is no mix-and-match "create" and "update" in a single batch.
    */
   void writeEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisBaseEntity> entities,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities);
 
   /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
-   * record with the same PK), all attributes of the new record will replace the existing one.
+   * record with the same PK), this is a no-op, because currently all fields of the grantRecord are
+   * part of the PK. If additional non-PK attributes are added this might change.
    *
    * @param callCtx call context
-   * @param grantRec entity record to write, potentially replacing an existing entity record with
-   *     the same key
+   * @param grantRec entity record to write; no update occurs if identical to an already-persisted
+   *     grantRecord
    */
   void writeToGrantRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec);
 
   /**
    * Write all events to the events table. This is an append-only operation.
    *
    * @param events events to persist
    */
-  void writeEvents(@Nonnull List<PolarisEvent> events);
+  void writeEvents(@NonNull List<EventEntity> events);
 
   /**
    * Delete this entity from the meta store.
@@ -155,7 +156,7 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param callCtx call context
    * @param entity entity to delete
    */
-  void deleteEntity(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
+  void deleteEntity(@NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity);
 
   /**
    * Delete the specified grantRecord to the grant_records table.
@@ -164,7 +165,7 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param grantRec entity record to delete.
    */
   void deleteFromGrantRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec);
 
   /**
    * Delete the all grant records in the grant_records table for the specified entity. This method
@@ -178,10 +179,10 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param grantsOnSecurable all grants on that securable entity
    */
   void deleteAllEntityGrantRecords(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
-      @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
-      @Nonnull List<PolarisGrantRecord> grantsOnSecurable);
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore entity,
+      @NonNull List<PolarisGrantRecord> grantsOnGrantee,
+      @NonNull List<PolarisGrantRecord> grantsOnSecurable);
 
   /**
    * Delete Polaris entity and grant record metadata from all tables within the realm defined by the
@@ -189,7 +190,7 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    *
    * @param callCtx call context
    */
-  void deleteAll(@Nonnull PolarisCallContext callCtx);
+  void deleteAll(@NonNull PolarisCallContext callCtx);
 
   /**
    * Lookup an entity given its catalog id (which can be {@link
@@ -208,9 +209,8 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param typeCode the PolarisEntityType code of the entity to lookup
    * @return null if the entity was not found, else the retrieved entity.
    */
-  @Nullable
-  PolarisBaseEntity lookupEntity(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode);
+  @Nullable PolarisBaseEntity lookupEntity(
+      @NonNull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode);
 
   /**
    * Lookup an entity given its catalogId, parentId, typeCode, and name.
@@ -226,13 +226,12 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param name the name of the entity
    * @return null if the specified entity does not exist
    */
-  @Nullable
-  PolarisBaseEntity lookupEntityByName(
-      @Nonnull PolarisCallContext callCtx,
+  @Nullable PolarisBaseEntity lookupEntityByName(
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       int typeCode,
-      @Nonnull String name);
+      @NonNull String name);
 
   /**
    * Looks up just the entity's subType and id given it catalogId, parentId, typeCode, and name.
@@ -246,11 +245,11 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    */
   @Nullable
   default EntityNameLookupRecord lookupEntityIdAndSubTypeByName(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       int typeCode,
-      @Nonnull String name) {
+      @NonNull String name) {
     PolarisBaseEntity baseEntity = lookupEntityByName(callCtx, catalogId, parentId, typeCode, name);
     if (baseEntity == null) {
       return null;
@@ -266,9 +265,8 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @return list of polaris base entities, parallel to the input list of ids. An entity in the list
    *     will be null if the corresponding entity could not be found.
    */
-  @Nonnull
-  List<PolarisBaseEntity> lookupEntities(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
+  @NonNull List<PolarisBaseEntity> lookupEntities(
+      @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
 
   /**
    * Get change tracking versions for all specified entity ids.
@@ -278,9 +276,8 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @return list parallel to the input list of entity versions. If an entity cannot be found, the
    *     corresponding element in the list will be null
    */
-  @Nonnull
-  List<PolarisChangeTrackingVersions> lookupEntityVersions(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
+  @NonNull List<PolarisChangeTrackingVersions> lookupEntityVersions(
+      @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
 
   /**
    * List lightweight information of entities matching the given criteria with pagination. If all
@@ -294,14 +291,13 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param pageToken the token to start listing after
    * @return the paged list of matching entities
    */
-  @Nonnull
-  Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
+  @NonNull Page<EntityNameLookupRecord> listEntities(
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken);
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull PageToken pageToken);
 
   /**
    * Load full entities matching the given criteria with pagination and transformation. If only the
@@ -318,15 +314,14 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    *     returning
    * @return the paged list of matching entities after transformation
    */
-  @Nonnull
-  <T> Page<T> listFullEntities(
-      @Nonnull PolarisCallContext callCtx,
+  @NonNull <T> Page<T> listFullEntities(
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
+      @NonNull Function<PolarisBaseEntity, T> transformer,
       PageToken pageToken);
 
   /**
@@ -339,7 +334,7 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @return current grant records version for that entity.
    */
   int lookupEntityGrantRecordsVersion(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
+      @NonNull PolarisCallContext callCtx, long catalogId, long entityId);
 
   /**
    * Lookup the specified grant record from the grant_records table. Return NULL if not found
@@ -353,9 +348,8 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param privilegeCode code for the privilege we are looking up
    * @return the grant record if found, NULL if not found
    */
-  @Nullable
-  PolarisGrantRecord lookupGrantRecord(
-      @Nonnull PolarisCallContext callCtx,
+  @Nullable PolarisGrantRecord lookupGrantRecord(
+      @NonNull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
       long granteeCatalogId,
@@ -371,9 +365,8 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param securableId id of the securable entity
    * @return the list of grant records for the specified securable
    */
-  @Nonnull
-  List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId);
+  @NonNull List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
+      @NonNull PolarisCallContext callCtx, long securableCatalogId, long securableId);
 
   /**
    * Get all grant records granted to the specified grantee entity.
@@ -383,9 +376,8 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @param granteeId id of the grantee entity
    * @return the list of grant records for the specified grantee
    */
-  @Nonnull
-  List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
-      @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
+  @NonNull List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
+      @NonNull PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
 
   /**
    * Check if the specified parent entity has children.
@@ -400,7 +392,7 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * @return true if the parent entity has children
    */
   boolean hasChildren(
-      @Nonnull PolarisCallContext callContext,
+      @NonNull PolarisCallContext callContext,
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId);
@@ -417,7 +409,7 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    */
   default <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @Nonnull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext, T entity) {
     return Optional.empty();
   }
 

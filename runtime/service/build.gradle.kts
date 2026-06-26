@@ -85,6 +85,7 @@ dependencies {
   implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
 
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.annotation.api)
 
   implementation(platform(libs.google.cloud.storage.bom))
@@ -159,6 +160,8 @@ dependencies {
 
   testImplementation(libs.awaitility)
 
+  testImplementation(libs.junit.pioneer)
+
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:testcontainers-postgresql")
@@ -208,69 +211,82 @@ dependencies {
 
 tasks.named("javadoc") { dependsOn("jandex") }
 
+val buildDir = project.layout.buildDirectory
+
+// Example: to attach a debugger to the spawned JVM running Quarkus, add
+// -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+// to your test configuration.
+val quarkusTestArgLine = providers.systemProperty("quarkus.test.arg-line").orElse("").get()
+
+val quarkusProperties = providers.systemPropertiesPrefixedBy("quarkus.")
+
 tasks.withType(Test::class.java).configureEach {
-  if (System.getenv("AWS_REGION") == null) {
-    environment("AWS_REGION", "us-west-2")
-  }
+  environment("AWS_REGION", providers.environmentVariable("AWS_REGION").getOrElse("us-west-2"))
   // Note: the test secrets are referenced in
   // org.apache.polaris.service.it.ServerManager
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
-  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
-  // "getSubject is supported only if a security manager is allowed".
-  systemProperty("java.security.manager", "allow")
+
+  // Quarkus tests run "in isolated class loaders", which means that class-statically active
+  // resources pile up used JVM, as those classes cannot be GC'd.
+  // Examples of those statically held active resources are:
+  // - Iceberg's worker pools (thread pools, executors, etc.)
+  // - Hadoop's stats-cleaner (org.apache.hadoop.fs.FileSystem.Statistics.STATS_DATA_CLEANER)
+  // - Guava's 'MoreExecutors' (via Iceberg `ThreadPools`)`
+  // Forcing a new JVM after each test class works around this issue.
+  if ("test" == name) {
+    forkEvery = 1
+
+    // enlarge the max heap size to avoid out of memory error
+    maxHeapSize = "4g"
+  }
+
+  if ("intTest" == name || "cloutTest" == name) {
+    val logsDir = buildDir.map { b -> b.asFile.resolve("logs") }
+
+    // JVM arguments provider does not interfere with Gradle's cache keys
+    jvmArgumentProviders.add(
+      IntTestArgumentProvider(logsDir, quarkusProperties, quarkusTestArgLine)
+    )
+
+    // delete files from previous runs
+    doFirst(IntTestCleanup(logsDir, buildDir))
+  }
 }
 
-listOf("intTest", "cloudTest")
-  .map { tasks.named<Test>(it) }
-  .forEach {
-    it.configure {
-      maxParallelForks = 1
-
-      val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
-
-      // JVM arguments provider does not interfere with Gradle's cache keys
-      jvmArgumentProviders.add(
-        CommandLineArgumentProvider {
-          // Same issue as above: allow a java security manager after Java 21
-          // (this setting is for the application under test, while the setting above is for test
-          // code).
-          val securityManagerAllow = "-Djava.security.manager=allow"
-
-          val args = mutableListOf<String>()
-
-          // Example: to attach a debugger to the spawned JVM running Quarkus, add
-          // -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
-          // to your test configuration.
-          val explicitQuarkusTestArgLine = System.getProperty("quarkus.test.arg-line")
-          var quarkusTestArgLine =
-            if (explicitQuarkusTestArgLine != null)
-              "$explicitQuarkusTestArgLine $securityManagerAllow"
-            else securityManagerAllow
-
-          args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
-          // This property is not honored in a per-profile application.properties file,
-          // so we need to set it here.
-          args.add("-Dquarkus.log.file.path=${logsDir.resolve("polaris.log").absolutePath}")
-
-          // Add `quarkus.*` system properties, other than the ones explicitly set above
-          System.getProperties()
-            .filter {
-              it.key.toString().startsWith("quarkus.") &&
-                !"quarkus.test.arg-line".equals(it.key) &&
-                !"quarkus.log.file.path".equals(it.key)
-            }
-            .forEach { args.add("${it.key}=${it.value}") }
-
-          args
-        }
-      )
-      // delete files from previous runs
-      doFirst {
-        // delete log files written by Polaris
-        logsDir.deleteRecursively()
-        // delete quarkus.log file (captured Polaris stdout/stderr)
-        project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
-      }
-    }
+class IntTestCleanup(
+  @get:Internal val logsDir: Provider<File>,
+  @get:Internal val buildDir: DirectoryProperty,
+) : Action<Task> {
+  override fun execute(t: Task) {
+    // delete log files written by Polaris
+    logsDir.get().deleteRecursively()
+    // delete quarkus.log file (captured Polaris stdout/stderr)
+    buildDir.get().asFile.resolve("quarkus.log").delete()
   }
+}
+
+class IntTestArgumentProvider(
+  @get:Internal val logsDir: Provider<File>,
+  @get:Input val quarkusProperties: Provider<Map<String, String>>,
+  @get:Input val quarkusTestArgLine: String,
+) : CommandLineArgumentProvider {
+  override fun asArguments(): Iterable<String?> {
+    val args = mutableListOf<String>()
+
+    if (quarkusTestArgLine.isNotBlank()) {
+      args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
+    }
+    // This property is not honored in a per-profile application.properties file,
+    // so we need to set it here.
+    args.add("-Dquarkus.log.file.path=${logsDir.get().resolve("polaris.log").absolutePath}")
+
+    // Add `quarkus.*` system properties, other than the ones explicitly set above
+    quarkusProperties
+      .get()
+      .filter { e -> "quarkus.test.arg-line" != e.key && "quarkus.log.file.path" != e.key }
+      .forEach { e -> args.add("${e.key}=${e.value}") }
+
+    return args
+  }
+}

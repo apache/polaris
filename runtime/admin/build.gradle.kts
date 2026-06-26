@@ -25,6 +25,7 @@ plugins {
 }
 
 dependencies {
+  compileOnly(libs.jspecify)
   implementation(project(":polaris-core"))
   implementation(project(":polaris-version"))
   implementation(project(":polaris-api-management-service"))
@@ -57,6 +58,7 @@ dependencies {
 
   testImplementation(project(":polaris-runtime-test-common"))
   testFixturesApi(project(":polaris-core"))
+  testFixturesImplementation(project(":polaris-runtime-test-common"))
 
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
   testFixturesApi("io.quarkus:quarkus-junit")
@@ -85,23 +87,35 @@ quarkus {
         .toMap()
     }
   )
+  buildForkOptions {
+    maxHeapSize = "2G"
+  }
 }
 
 // Configuration to expose distribution artifacts
-val distributionElements by
-  configurations.creating {
+val distributionElements =
+  configurations.create("distributionElements") {
     isCanBeConsumed = true
     isCanBeResolved = false
   }
 
-val licenseNoticeElements by
-  configurations.creating {
+val licenseNoticeElements =
+  configurations.create("licenseNoticeElements") {
     isCanBeConsumed = true
     isCanBeResolved = false
   }
 
 // Register the quarkus app directory as an artifact
 artifacts {
-  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
-  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
+  add(distributionElements.name, layout.buildDirectory.dir("quarkus-app")) {
+    builtBy("quarkusBuild")
+  }
+  add(licenseNoticeElements.name, layout.projectDirectory.dir("distribution"))
+}
+
+tasks.withType<Test>().configureEach {
+  forkEvery = 0
+
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
 }

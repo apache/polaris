@@ -18,10 +18,11 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
+import static org.apache.polaris.core.storage.StorageLocation.ensureTrailingSlash;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
@@ -30,31 +31,36 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
 import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
-import com.google.cloud.iam.credentials.v1.IamCredentialsSettings;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
-import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUri;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +69,7 @@ import org.slf4j.LoggerFactory;
  * input read/write locations
  */
 public class GcpCredentialsStorageIntegration
-    extends InMemoryStorageIntegration<GcpStorageConfigurationInfo> {
+    extends CachingStorageIntegration<GcpStorageConfigurationInfo> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(GcpCredentialsStorageIntegration.class);
   public static final String SERVICE_ACCOUNT_PREFIX = "projects/-/serviceAccounts/";
@@ -74,41 +80,238 @@ public class GcpCredentialsStorageIntegration
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
+  private final GcpCredentialOps credentialOps;
+  private final Optional<GcpAttributionParams> attributionParams;
 
   public GcpCredentialsStorageIntegration(
-      GcpStorageConfigurationInfo config,
       GoogleCredentials sourceCredentials,
-      HttpTransportFactory transportFactory) {
-    super(config, GcpCredentialsStorageIntegration.class.getName());
+      HttpTransportFactory transportFactory,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        null,
+        storageConfig,
+        realmConfig,
+        GcpCredentialOps.DEFAULT,
+        resolveAttributionParams(realmConfig));
+  }
+
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      StorageCredentialCache cache,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        cache,
+        storageConfig,
+        realmConfig,
+        GcpCredentialOps.DEFAULT,
+        resolveAttributionParams(realmConfig));
+  }
+
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        null,
+        storageConfig,
+        realmConfig,
+        credentialOps,
+        resolveAttributionParams(realmConfig));
+  }
+
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      StorageCredentialCache cache,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        cache,
+        storageConfig,
+        realmConfig,
+        credentialOps,
+        resolveAttributionParams(realmConfig));
+  }
+
+  /**
+   * Full constructor accepting pre-resolved attribution params. Downstream integrations can pass
+   * their own {@link GcpAttributionParams} without depending on {@link
+   * org.apache.polaris.core.config.FeatureConfiguration}.
+   */
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      StorageCredentialCache cache,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps,
+      Optional<GcpAttributionParams> attributionParams) {
+    super(cache, realmConfig, storageConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
         sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
     this.transportFactory = transportFactory;
+    this.credentialOps = credentialOps;
+    this.attributionParams = attributionParams;
+  }
+
+  /**
+   * Resolves {@link GcpAttributionParams} from realm config. Returns empty when attribution is
+   * disabled; throws {@link IllegalStateException} when enabled but misconfigured.
+   *
+   * <p>Static so it can be called from constructor-chaining expressions ({@code this(...)}).
+   */
+  public static Optional<GcpAttributionParams> resolveAttributionParams(RealmConfig realmConfig) {
+    if (!realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED)) {
+      return Optional.empty();
+    }
+    List<String> missing = new ArrayList<>();
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE");
+    }
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER");
+    }
+    if (realmConfig
+        .getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE)
+        .isEmpty()) {
+      missing.add("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE");
+    }
+    if (!missing.isEmpty()) {
+      throw new IllegalStateException(
+          "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but the following required config values are"
+              + " missing: "
+              + String.join(", ", missing));
+    }
+    return Optional.of(
+        GcpAttributionParams.of(
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER),
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE),
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE),
+            realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID)));
   }
 
   @Override
-  public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-    // Note: GCP downscoped credentials do not support session tags like AWS STS.
-    // The credentialVendingContext is accepted for interface compatibility but not used.
+  protected StorageCredentialCacheKey buildCacheKey(
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
+    return buildCacheKey(
+        readLocations(grants),
+        listLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
+  }
+
+  private static Set<String> readLocations(List<LocationGrant> grants) {
+    return locationsFor(grants, PolarisStorageActions.READ, PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> listLocations(List<LocationGrant> grants) {
+    return locationsFor(grants, PolarisStorageActions.LIST, PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> writeLocations(List<LocationGrant> grants) {
+    return locationsFor(
+        grants,
+        PolarisStorageActions.WRITE,
+        PolarisStorageActions.DELETE,
+        PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> locationsFor(
+      List<LocationGrant> grants, PolarisStorageActions... wantedActions) {
+    Set<PolarisStorageActions> wanted = Set.of(wantedActions);
+    return grants.stream()
+        .filter(g -> g.actions().stream().anyMatch(wanted::contains))
+        .flatMap(g -> g.locations().stream())
+        .collect(Collectors.toSet());
+  }
+
+  private GcpStorageCredentialCacheKey buildCacheKey(
+      @NonNull Set<String> readLocations,
+      @NonNull Set<String> listLocations,
+      @NonNull Set<String> writeLocations,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
+    // Principal attribution makes the vended token per-principal, so the principal must
+    // participate in cache identity; otherwise it is left empty to preserve cross-principal cache
+    // reuse. Attribution requires a service account to impersonate and a principal to attribute.
+    Optional<String> principalName = Optional.empty();
+    Optional<GcpAttributionParams> resolvedAttributionParams = Optional.empty();
+    if (attributionParams.isPresent()) {
+      if (storageConfig().getGcpServiceAccount() == null) {
+        LOGGER.warn(
+            "GCS principal attribution is enabled but no gcpServiceAccount is configured"
+                + " on the StorageConfiguration; falling back to non-attributed credentials");
+      } else {
+        Optional<String> ctxPrincipal = context.principalName().filter(n -> !n.isEmpty());
+        if (ctxPrincipal.isPresent()) {
+          principalName = ctxPrincipal;
+          resolvedAttributionParams = attributionParams;
+        } else {
+          LOGGER.warn(
+              "GCS principal attribution is enabled but no principal name is present in the"
+                  + " credential vending context; falling back to non-attributed credentials");
+        }
+      }
+    }
+    return GcpStorageCredentialCacheKey.of(
+        context.realm().orElse(""),
+        storageConfig(),
+        readLocations,
+        listLocations,
+        writeLocations,
+        refreshEndpoint,
+        principalName,
+        sourceCredentials,
+        transportFactory,
+        realmConfig(),
+        credentialOps,
+        resolvedAttributionParams);
+  }
+
+  /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
+  static StorageAccessConfig compute(GcpStorageCredentialCacheKey key) {
+    GcpStorageConfigurationInfo gcpStorageConfig = key.storageConfig();
+    GoogleCredentials sourceCredentials = key.sourceCredentials();
+    HttpTransportFactory transportFactory = key.transportFactory();
+    GcpCredentialOps credentialOps = key.credentialOps();
+    Set<String> readLocations = key.allowedReadLocations();
+    Set<String> listLocations = key.allowedListLocations();
+    Set<String> writeLocations = key.allowedWriteLocations();
+
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
 
-    GoogleCredentials credentialsToDownscope = getBaseCredentials();
+    GoogleCredentials credentialsToDownscope =
+        resolveSourceCredentials(key, gcpStorageConfig, sourceCredentials, credentialOps);
 
     CredentialAccessBoundary accessBoundary =
-        generateAccessBoundaryRules(
-            allowListOperation, allowedReadLocations, allowedWriteLocations);
+        generateAccessBoundaryRules(readLocations, listLocations, writeLocations);
     DownscopedCredentials credentials =
         DownscopedCredentials.newBuilder()
             .setHttpTransportFactory(transportFactory)
@@ -117,13 +320,13 @@ public class GcpCredentialsStorageIntegration
             .build();
     AccessToken token;
     try {
-      token = refreshAccessToken(credentials);
+      token = credentialOps.refreshAccessToken(credentials);
     } catch (IOException e) {
       LOGGER
           .atError()
-          .addKeyValue("readLocations", allowedReadLocations)
-          .addKeyValue("writeLocations", allowedWriteLocations)
-          .addKeyValue("includesList", allowListOperation)
+          .addKeyValue("readLocations", readLocations)
+          .addKeyValue("listLocations", listLocations)
+          .addKeyValue("writeLocations", writeLocations)
           .addKeyValue("accessBoundary", convertToString(accessBoundary))
           .log("Unable to refresh access credentials", e);
       throw new RuntimeException("Unable to fetch access credentials " + e.getMessage());
@@ -137,28 +340,67 @@ public class GcpCredentialsStorageIntegration
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
         String.valueOf(token.getExpirationTime().getTime()));
 
-    refreshCredentialsEndpoint.ifPresent(
-        endpoint -> {
-          accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-        });
+    key.refreshCredentialsEndpoint()
+        .ifPresent(
+            endpoint ->
+                accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint));
 
     return accessConfig.build();
+  }
+
+  /**
+   * Returns the credential to be used as the source for downscoping.
+   *
+   * <p>When GCS principal attribution is configured and a principal is present (so the cache key
+   * carries pre-computed {@link GcpAttributionParams}), the impersonation source is a federated
+   * identity whose subject is {@code <realm>/<principal>}, which surfaces the principal in {@code
+   * serviceAccountDelegationInfo} of GCS Data Access audit logs. Otherwise this is the standard
+   * path: impersonate the configured service account from the ambient source credentials, or use
+   * those credentials directly.
+   */
+  private static GoogleCredentials resolveSourceCredentials(
+      GcpStorageCredentialCacheKey key,
+      GcpStorageConfigurationInfo storageConfig,
+      GoogleCredentials sourceCredentials,
+      GcpCredentialOps credentialOps) {
+    Optional<GcpAttributionParams> attributionParams = key.attributionParams();
+    if (attributionParams.isPresent()) {
+      GcpAttributionParams params = attributionParams.get();
+      String subject =
+          GcpAttributionSubjectBuilder.buildSubject(key.realmId(), key.principalName().orElse(""));
+      GcpFederatedCredentialsExchanger exchanger =
+          new GcpFederatedCredentialsExchanger(
+              params.tokenIssuer(),
+              params.wifAudience(),
+              params.signingKeyPath(),
+              params.signingKeyId(),
+              key.transportFactory());
+      GoogleCredentials federated = exchanger.federatedCredentials(subject, key.realmId());
+      return createImpersonatedCredentials(
+          federated, storageConfig.getGcpServiceAccount(), credentialOps);
+    }
+    return getBaseCredentials(storageConfig, sourceCredentials, credentialOps);
   }
 
   /**
    * Returns the credential to be used as the source for downscoping. If a specific service account
    * is configured, it impersonates that account first.
    */
-  private GoogleCredentials getBaseCredentials() {
-    if (config().getGcpServiceAccount() != null) {
-      return createImpersonatedCredentials(sourceCredentials, config().getGcpServiceAccount());
+  private static GoogleCredentials getBaseCredentials(
+      GcpStorageConfigurationInfo storageConfig,
+      GoogleCredentials sourceCredentials,
+      GcpCredentialOps credentialOps) {
+    if (storageConfig.getGcpServiceAccount() != null) {
+      return createImpersonatedCredentials(
+          sourceCredentials, storageConfig.getGcpServiceAccount(), credentialOps);
     }
     return sourceCredentials;
   }
 
-  private GoogleCredentials createImpersonatedCredentials(
-      GoogleCredentials source, String targetServiceAccount) {
-    try (IamCredentialsClient iamCredentialsClient = createIamCredentialsClient(source)) {
+  private static GoogleCredentials createImpersonatedCredentials(
+      GoogleCredentials source, String targetServiceAccount, GcpCredentialOps credentialOps) {
+    try (IamCredentialsClient iamCredentialsClient =
+        credentialOps.createIamCredentialsClient(source)) {
       GenerateAccessTokenRequest request =
           GenerateAccessTokenRequest.newBuilder()
               .setName(SERVICE_ACCOUNT_PREFIX + targetServiceAccount)
@@ -185,7 +427,7 @@ public class GcpCredentialsStorageIntegration
     }
   }
 
-  private String convertToString(CredentialAccessBoundary accessBoundary) {
+  private static String convertToString(CredentialAccessBoundary accessBoundary) {
     try {
       return OBJECT_MAPPER.writeValueAsString(accessBoundary);
     } catch (JsonProcessingException e) {
@@ -194,42 +436,65 @@ public class GcpCredentialsStorageIntegration
     }
   }
 
+  /**
+   * Generate a {@link CredentialAccessBoundary} honoring per-action grants. The {@code
+   * legacyObjectReader} permission is granted on locations from {@code allowedReadLocations} (and
+   * also on {@code allowedListLocations}, since GCS list requires bucket-level read); the {@code
+   * objectViewer} permission is added on buckets that have any location in {@code
+   * allowedListLocations}; write access only on {@code allowedWriteLocations}. CEL conditions are
+   * de-duplicated so a path that appears in both the read and list sets contributes a single {@code
+   * resourceNameStartsWith} expression.
+   */
   @VisibleForTesting
   public static CredentialAccessBoundary generateAccessBoundaryRules(
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
-    Map<String, List<String>> readConditionsMap = new HashMap<>();
-    Map<String, List<String>> writeConditionsMap = new HashMap<>();
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedListLocations,
+      @NonNull Set<String> allowedWriteLocations) {
+    Map<String, LinkedHashSet<String>> readConditionsByBucket = new LinkedHashMap<>();
+    Map<String, LinkedHashSet<String>> writeConditionsByBucket = new LinkedHashMap<>();
+    HashSet<String> bucketsWithList = new HashSet<>();
 
-    HashSet<String> readBuckets = new HashSet<>();
-    HashSet<String> writeBuckets = new HashSet<>();
-    Stream.concat(allowedReadLocations.stream(), allowedWriteLocations.stream())
+    Stream.concat(allowedReadLocations.stream(), allowedListLocations.stream())
         .distinct()
         .forEach(
             location -> {
               StorageUri uri = StorageUri.parse(location);
               String bucket = uri.authority();
-              readBuckets.add(bucket);
-              String path = uri.rawPath().substring(1);
-              List<String> resourceExpressions =
-                  readConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
-              resourceExpressions.add(resourceNameStartsWithExpression(bucket, path));
-              if (allowListOperation) {
-                resourceExpressions.add(objectListPrefixStartsWithExpression(path));
-              }
-              if (allowedWriteLocations.contains(location)) {
-                writeBuckets.add(bucket);
-                List<String> writeExpressions =
-                    writeConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
-                writeExpressions.add(resourceNameStartsWithExpression(bucket, path));
-              }
+              // Treat the granted path as a directory prefix: a trailing slash is required so
+              // that the downstream startsWith() CEL conditions cannot be satisfied by sibling
+              // objects or list prefixes that merely share the granted path as a string prefix
+              // (e.g. a grant on "data/" must not authorize access to "data_foo/*)".
+              String path = ensureTrailingSlash(uri.rawPath().substring(1));
+              readConditionsByBucket
+                  .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
+                  .add(resourceNameStartsWithExpression(bucket, path));
             });
+
+    allowedListLocations.forEach(
+        location -> {
+          StorageUri uri = StorageUri.parse(location);
+          String bucket = uri.authority();
+          String path = ensureTrailingSlash(uri.rawPath().substring(1));
+          readConditionsByBucket
+              .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
+              .add(objectListPrefixStartsWithExpression(path));
+          bucketsWithList.add(bucket);
+        });
+
+    allowedWriteLocations.forEach(
+        location -> {
+          StorageUri uri = StorageUri.parse(location);
+          String bucket = uri.authority();
+          String path = ensureTrailingSlash(uri.rawPath().substring(1));
+          writeConditionsByBucket
+              .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
+              .add(resourceNameStartsWithExpression(bucket, path));
+        });
+
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
-    readBuckets.forEach(
-        bucket -> {
-          List<String> readConditions = readConditionsMap.get(bucket);
-          if (readConditions == null || readConditions.isEmpty()) {
+    readConditionsByBucket.forEach(
+        (bucket, conditions) -> {
+          if (conditions.isEmpty()) {
             return;
           }
           CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
@@ -237,18 +502,17 @@ public class GcpCredentialsStorageIntegration
           builder.setAvailableResource(bucketResource(bucket));
           builder.setAvailabilityCondition(
               CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
-                  .setExpression(String.join(" || ", readConditions))
+                  .setExpression(String.join(" || ", conditions))
                   .build());
           builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyObjectReader"));
-          if (allowListOperation) {
+          if (bucketsWithList.contains(bucket)) {
             builder.addAvailablePermission("inRole:roles/storage.objectViewer");
           }
           accessBoundaryBuilder.addRule(builder.build());
         });
-    writeBuckets.forEach(
-        bucket -> {
-          List<String> writeConditions = writeConditionsMap.get(bucket);
-          if (writeConditions == null || writeConditions.isEmpty()) {
+    writeConditionsByBucket.forEach(
+        (bucket, conditions) -> {
+          if (conditions.isEmpty()) {
             return;
           }
           CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
@@ -256,26 +520,12 @@ public class GcpCredentialsStorageIntegration
           builder.setAvailableResource(bucketResource(bucket));
           builder.setAvailabilityCondition(
               CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
-                  .setExpression(String.join(" || ", writeConditions))
+                  .setExpression(String.join(" || ", conditions))
                   .build());
           builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyBucketWriter"));
           accessBoundaryBuilder.addRule(builder.build());
         });
     return accessBoundaryBuilder.build();
-  }
-
-  @VisibleForTesting
-  protected AccessToken refreshAccessToken(DownscopedCredentials credentials) throws IOException {
-    return credentials.refreshAccessToken();
-  }
-
-  @VisibleForTesting
-  protected IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials)
-      throws IOException {
-    return IamCredentialsClient.create(
-        IamCredentialsSettings.newBuilder()
-            .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
-            .build());
   }
 
   @VisibleForTesting

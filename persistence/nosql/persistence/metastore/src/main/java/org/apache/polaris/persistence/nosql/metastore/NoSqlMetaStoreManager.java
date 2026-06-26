@@ -19,11 +19,9 @@
 package org.apache.polaris.persistence.nosql.metastore;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.GRANT_NOT_FOUND;
-import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.mapToEntity;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.mapToEntityNameLookupRecord;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.principalObjToPolarisPrincipalSecrets;
@@ -32,12 +30,11 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -46,7 +43,6 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -72,12 +68,10 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.persistence.nosql.metastore.mutation.GrantsMutation;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 import org.jspecify.annotations.NonNull;
@@ -686,59 +680,6 @@ record NoSqlMetaStoreManager(
             });
   }
 
-  // PolarisCredentialVendor
-
-  @NonNull
-  @Override
-  public ScopedCredentialsResult getSubscopedCredsForEntity(
-      @NonNull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      @NonNull PolarisEntityType entityType,
-      boolean allowListOperation,
-      @NonNull Set<String> allowedReadLocations,
-      @NonNull Set<String> allowedWriteLocations,
-      @NonNull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @NonNull CredentialVendingContext credentialVendingContext) {
-
-    checkArgument(
-        !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
-        "allowed_locations_to_subscope_is_required");
-
-    // reload the entity or error out if not found
-    var reloadedEntity = loadEntity(callCtx, catalogId, entityId, entityType);
-    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return new ScopedCredentialsResult(
-          reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
-    }
-
-    // get storage integration
-    var storageIntegration = ms(callCtx).loadPolarisStorageIntegration(reloadedEntity.getEntity());
-
-    // cannot be null
-    checkNotNull(
-        storageIntegration,
-        "storage_integration_not_exists, catalogId=%s, entityId=%s",
-        catalogId,
-        entityId);
-
-    try {
-      var creds =
-          storageIntegration.getSubscopedCreds(
-              callCtx.getRealmConfig(),
-              allowListOperation,
-              allowedReadLocations,
-              allowedWriteLocations,
-              polarisPrincipal,
-              refreshCredentialsEndpoint,
-              credentialVendingContext);
-      return new ScopedCredentialsResult(creds);
-    } catch (Exception ex) {
-      return new ScopedCredentialsResult(SUBSCOPE_CREDS_ERROR, ex.getMessage());
-    }
-  }
-
   @Override
   public boolean requiresEntityReload() {
     return false;
@@ -746,7 +687,7 @@ record NoSqlMetaStoreManager(
 
   @Override
   public void writeEvents(
-      @NonNull PolarisCallContext callCtx, @NonNull List<PolarisEvent> polarisEvents) {
+      @NonNull PolarisCallContext callCtx, @NonNull List<EventEntity> polarisEvents) {
     throw new UnsupportedOperationException("Events not supported in NoSQL persistence");
   }
 }

@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: # zizmor: ignore[artipacked]
           # Fetch full history for proper branch operations
           fetch-depth: 0
@@ -186,160 +186,6 @@ jobs:
           | Staging Repository ID | \`${staging_repo_id}\` |
           EOT
 
-      - name: Copy distribution from SVN dev to release space
-        env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
-        run: |
-          echo "::add-mask::$SVN_PASSWORD"
-
-          source "${LIBS_DIR}/_constants.sh"
-          source "${LIBS_DIR}/_exec.sh"
-
-          # Define source and destination URLs
-          dev_artifacts_url="${APACHE_DIST_URL}/dev/polaris/${version_without_rc}"
-          release_artifacts_url="${APACHE_DIST_URL}/release/polaris/${version_without_rc}"
-
-          dev_helm_url="${APACHE_DIST_URL}/dev/polaris/helm-chart/${version_without_rc}"
-          release_helm_url="${APACHE_DIST_URL}/release/polaris/helm-chart/${version_without_rc}"
-
-          dev_python_client_url="${APACHE_DIST_URL}/dev/polaris/python-client/${version_without_rc}"
-          release_python_client_url="${APACHE_DIST_URL}/release/polaris/python-client/${version_without_rc}"
-
-          exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-            "${dev_artifacts_url}" "${release_artifacts_url}" \
-            -m "Release Apache Polaris ${version_without_rc}"
-
-          exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-            "${dev_helm_url}" "${release_helm_url}" \
-            -m "Release Apache Polaris Helm chart ${version_without_rc}"
-
-          exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-            "${dev_python_client_url}" "${release_python_client_url}" \
-            -m "Release Apache Polaris Python client ${version_without_rc}"
-
-          cat <<EOT >> $GITHUB_STEP_SUMMARY
-          ## Distribution
-          Artifacts, Helm chart, and Python client moved from dist dev to dist release
-          EOT
-
-      - name: Clean up old releases from dist release repository
-        env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
-        run: |
-          echo "::add-mask::$SVN_PASSWORD"
-
-          source "${LIBS_DIR}/_constants.sh"
-          source "${LIBS_DIR}/_exec.sh"
-
-          release_artifacts_url="${APACHE_DIST_URL}/release/polaris"
-          release_helm_url="${APACHE_DIST_URL}/release/polaris/helm-chart"
-
-          # List and remove old release artifact versions
-          old_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_artifacts_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-incubating)?/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
-
-          if [[ -n "${old_versions}" ]]; then
-            echo "## Old Releases Cleanup" >> $GITHUB_STEP_SUMMARY
-            echo "Removing old release versions:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "${old_versions}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-
-            for old_version in ${old_versions}; do
-              exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-                "${release_artifacts_url}/${old_version}" \
-                -m "Remove old release ${old_version} (superseded by ${version_without_rc})"
-            done
-          else
-            echo "## Old Releases Cleanup" >> $GITHUB_STEP_SUMMARY
-            echo "No old release versions found to remove" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # List and remove old Helm chart versions
-          old_helm_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-incubating)?/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
-
-          if [[ -n "${old_helm_versions}" ]]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Removing old Helm chart versions:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "${old_helm_versions}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-
-            for old_helm_version in ${old_helm_versions}; do
-              exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-                "${release_helm_url}/${old_helm_version}" \
-                -m "Remove old Helm chart ${old_helm_version} (superseded by ${version_without_rc})"
-            done
-          else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "No old Helm chart versions found to remove" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # List and remove old Python client versions
-          release_python_client_url="${APACHE_DIST_URL}/release/polaris/python-client"
-          old_python_client_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_python_client_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-incubating)?/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
-
-          if [[ -n "${old_python_client_versions}" ]]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Removing old Python client versions:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "${old_python_client_versions}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-
-            for old_python_client_version in ${old_python_client_versions}; do
-              exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-                "${release_python_client_url}/${old_python_client_version}" \
-                -m "Remove old Python client ${old_python_client_version} (superseded by ${version_without_rc})"
-            done
-          else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "No old Python client versions found to remove" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Transfer Helm index and artifacthub-repo.yml from dev to release
-        env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
-        run: |
-          echo "::add-mask::$SVN_PASSWORD"
-
-          source "${LIBS_DIR}/_constants.sh"
-          source "${LIBS_DIR}/_exec.sh"
-
-          # Define source and destination URLs
-          dev_helm_chart_url="${APACHE_DIST_URL}/dev/polaris/helm-chart"
-          release_helm_chart_url="${APACHE_DIST_URL}/release/polaris/helm-chart"
-
-          # Remove any existing index.yaml / artifacthub-repo.yml at the release location before the move.
-          # svn mv to a URL fails with "already exists" if the destination path is present, which is the
-          # case on every release after the first one has put these files under release/polaris/helm-chart/.
-          existing_release_files=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_chart_url}" | grep -E '^(index\.yaml|artifacthub-repo\.yml)$' || true)
-
-          if [[ -n "${existing_release_files}" ]]; then
-            files_to_remove=()
-            for f in ${existing_release_files}; do
-              files_to_remove+=("${release_helm_chart_url}/${f}")
-            done
-            exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-              "${files_to_remove[@]}" \
-              -m "Remove previous Helm index and artifacthub-repo.yml (superseded by ${version_without_rc})"
-          fi
-
-          # Move index.yaml and artifacthub-repo.yml from dev to release
-          # The index was already properly generated in workflow 3 with relative URLs for the current
-          # release and absolute URLs to archive.apache.org for previous releases, so we just transfer it as-is
-          exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-            "${dev_helm_chart_url}/index.yaml" \
-            "${dev_helm_chart_url}/artifacthub-repo.yml" \
-            "${release_helm_chart_url}/" \
-            -m "Transfer Helm index and artifacthub-repo.yml for ${version_without_rc} release"
-
-          cat <<EOT >> $GITHUB_STEP_SUMMARY
-          ## Helm Repository Metadata
-          Helm index and artifacthub-repo.yml transferred from dist dev to dist release
-          EOT
-
       - name: Create final release tag and push to Git repository
         run: |
           source "${LIBS_DIR}/_exec.sh"
@@ -367,7 +213,7 @@ jobs:
           docker buildx inspect
 
       - name: Set up Java
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -420,17 +266,20 @@ jobs:
           artifacts_dir="${RELEASEY_DIR}/release-artifacts"
           exec_process mkdir -p "${artifacts_dir}"
 
-          # Download artifacts from Apache dist release space
-          release_artifacts_url="${APACHE_DIST_URL}/release/polaris/${version_without_rc}"
-          release_helm_url="${APACHE_DIST_URL}/release/polaris/helm-chart/${version_without_rc}"
+          # Download artifacts from the Apache dist dev area.
+          # The artifacts remain in dist dev after this workflow completes so that a PMC
+          # member can perform the dist dev → dist release `svn mv` manually (the credentials
+          # used by this workflow do not have write access to the release area).
+          dev_artifacts_url="${APACHE_DIST_URL}/dev/polaris/${version_without_rc}"
+          dev_helm_url="${APACHE_DIST_URL}/dev/polaris/helm-chart/${version_without_rc}"
 
-          # Download main artifacts
+          # Download main artifacts (non-destructive: artifacts stay in dist dev)
           exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-            "${release_artifacts_url}" "${artifacts_dir}/artifacts"
+            "${dev_artifacts_url}" "${artifacts_dir}/artifacts"
 
-          # Download Helm chart artifacts
+          # Download Helm chart artifacts (non-destructive: artifacts stay in dist dev)
           exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-            "${release_helm_url}" "${artifacts_dir}/helm"
+            "${dev_helm_url}" "${artifacts_dir}/helm"
 
           # Prepare the content of the Github Release
           # ********************************************************************************
@@ -453,7 +302,16 @@ jobs:
           # ********************************************************************************
 
           # Collect all artifacts to attach from the artifacts directory
-          readarray -t artifacts_to_attach < <(find "${artifacts_dir}" -type f -name "*.tar.gz" -o -name "*.tgz" -o -name "*.asc" -o -name "*.sha512" -o -name "*.prov")
+          readarray -t artifacts_to_attach < <(
+            find "${artifacts_dir}" -type f \( \
+              -name "*.tar.gz" -o \
+              -name "*.tgz" -o \
+              -name "*.zip" -o \
+              -name "*.asc" -o \
+              -name "*.sha512" -o \
+              -name "*.prov" \
+            \)
+          )
 
           # Create GitHub release and immediately publish it
           exec_process gh release create \
@@ -483,6 +341,59 @@ jobs:
           ✅ Nexus staging repository released
           EOT
 
+      - name: Update previous release binary distribution URLs to archive
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          # Use a temporary worktree to operate on the versioned-docs branch without
+          # disturbing the current release-branch checkout.
+          versioned_docs_dir="${RUNNER_TEMP}/versioned-docs"
+          exec_process git fetch origin versioned-docs
+          exec_process git worktree add "${versioned_docs_dir}" origin/versioned-docs
+
+          # Find all binary-distribution.md files in version directories,
+          # skip the directory for the version being released right now
+          # (its docs haven't been added to versioned-docs yet, but we exclude
+          # it explicitly for safety).
+          changed_files=()
+          while IFS= read -r -d '' file; do
+            # Derive the version from the first path component inside the worktree
+            rel_path="${file#${versioned_docs_dir}/}"
+            version_dir="${rel_path%%/*}"
+            if [[ "${version_dir}" == "${version_without_rc}" ]]; then
+              continue
+            fi
+
+            # Replace both incubator and non-incubator downloads URLs with the
+            # archive equivalent, so old docs no longer point at the live CDN.
+            sed -i \
+              -e 's|https://downloads\.apache\.org/incubator/polaris/|https://archive.apache.org/dist/incubator/polaris/|g' \
+              -e 's|https://downloads\.apache\.org/polaris/|https://archive.apache.org/dist/polaris/|g' \
+              "${file}"
+
+            if ! git -C "${versioned_docs_dir}" diff --quiet -- "${rel_path}"; then
+              changed_files+=("${rel_path}")
+            fi
+          done < <(find "${versioned_docs_dir}" -path "*/getting-started/binary-distribution.md" -print0)
+
+          if [[ ${#changed_files[@]} -gt 0 ]]; then
+            exec_process git -C "${versioned_docs_dir}" add "${changed_files[@]}"
+            exec_process git -C "${versioned_docs_dir}" commit \
+              -m "Update binary distribution URLs to archive for releases superseded by ${version_without_rc}"
+            exec_process git -C "${versioned_docs_dir}" push origin HEAD:versioned-docs
+
+            echo "## Binary Distribution URL Updates" >> $GITHUB_STEP_SUMMARY
+            echo "Updated to archive URLs in:" >> $GITHUB_STEP_SUMMARY
+            for f in "${changed_files[@]}"; do
+              echo "- \`${f}\`" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "## Binary Distribution URL Updates" >> $GITHUB_STEP_SUMMARY
+            echo "No binary distribution URLs needed updating" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          exec_process git worktree remove "${versioned_docs_dir}" --force
+
       - name: Release summary
         run: |
           cat <<EOT >> $GITHUB_STEP_SUMMARY
@@ -491,15 +402,18 @@ jobs:
 
           | Component | Status |
           | --- | --- |
-          | Distribution artifacts | ✅ Moved to release space |
-          | Helm chart and index | ✅ Updated in release space |
-          | Old releases cleanup | ✅ Removed from dist release |
           | Git release tag | ✅ Created and pushed |
           | GitHub release | ✅ Created with artifacts attached |
           | Docker images | ✅ Published to Docker Hub |
           | Nexus repository | ✅ Released |
+          | Binary dist URL updates | ✅ Previous releases updated to archive URLs |
           | Version | \`${version_without_rc}\` |
           | Final release tag | \`${final_release_tag}\` |
+
+          ⚠️ Manual steps required on \`dist.apache.org\` (the release artifacts remain in dist dev \`dev/polaris\` for these operations):
+          - \`svn mv\` distribution artifacts, Helm chart, and Python client from dist dev \`dev/polaris\` to dist release \`release/polaris\`.
+          - \`svn mv\` the Helm \`index.yaml\` and \`artifacthub-repo.yml\` from dist dev to \`release/polaris/helm-chart/\`.
+          - \`svn rm\` old release versions from \`release/polaris\` that have been superseded by \`${version_without_rc}\`.
           EOT
 
   publish-python-client:
@@ -515,7 +429,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -530,7 +444,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y subversion
 
-      - name: Download Python wheel from Apache dist release repository
+      - name: Download Python wheel from Apache dist dev repository
         env:
           SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
           SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
@@ -540,10 +454,12 @@ jobs:
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          release_python_client_url="${APACHE_DIST_URL}/release/polaris/python-client/${version_without_rc}"
+          # Download from dist dev. The wheel remains in dist dev so that a PMC member can
+          # perform the dist dev → dist release `svn mv` manually after this workflow.
+          dev_python_client_url="${APACHE_DIST_URL}/dev/polaris/python-client/${version_without_rc}"
 
           exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-            "${release_python_client_url}" dist/
+            "${dev_python_client_url}" dist/
 
       - name: Publish Python client release to PyPI
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0

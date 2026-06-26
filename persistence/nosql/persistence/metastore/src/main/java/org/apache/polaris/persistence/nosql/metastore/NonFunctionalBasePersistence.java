@@ -24,13 +24,13 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
@@ -270,30 +270,21 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
   }
 
   @Override
-  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
+  public void persistStorageIntegrationIfNeeded(
       @NonNull PolarisCallContext callCtx,
       @NonNull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration) {
+      @Nullable PolarisStorageIntegration storageIntegration) {
     throw unimplemented();
   }
 
   @Nullable
   @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegration(
-          @NonNull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+  public PolarisStorageIntegration createStorageIntegration(
+      @NonNull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     throw unimplemented();
-  }
-
-  @Nullable
-  @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
-    throw useMetaStoreManager("getSubscopedCredsForEntity");
   }
 
   @Override
@@ -338,7 +329,7 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
   }
 
   @Override
-  public void writeEvents(@NonNull List<PolarisEvent> events) {
+  public void writeEvents(@NonNull List<EventEntity> events) {
     throw unimplemented();
   }
 

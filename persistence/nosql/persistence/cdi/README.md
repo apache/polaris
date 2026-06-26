@@ -34,7 +34,7 @@ The biggest difference between the Quarkus and Weld variants is the way how data
 `Backend` instances are produced, because the Weld variant targets testing purposes.
 * Weld locates the `Backend` instances using Java's service loader mechanism via 
   `org.apache.polaris.persistence.nosql.api.backend.BackendLoader.findFactoryByName()`, which is
-  also what the the NoSQL persistence JUnit test extension uses.
+  also what the NoSQL persistence JUnit test extension uses.
 * In Quarkus, the `Backend` instances are located using a CDI identifier-based mechanism.
   There are also backend specific builders that leverage Quarkus extensions for the respective
   database backends.

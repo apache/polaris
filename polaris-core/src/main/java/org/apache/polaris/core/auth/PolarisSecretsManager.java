@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.jspecify.annotations.NonNull;
 
 /** Manages secrets for Polaris principals. */
 public interface PolarisSecretsManager {
@@ -31,9 +31,8 @@ public interface PolarisSecretsManager {
    * @param clientId principal client id
    * @return the secrets associated to that principal, including the entity id of the principal
    */
-  @Nonnull
-  PrincipalSecretsResult loadPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId);
+  @NonNull PrincipalSecretsResult loadPrincipalSecrets(
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId);
 
   /**
    * Rotate secrets
@@ -47,13 +46,12 @@ public interface PolarisSecretsManager {
    * @param oldSecretHash main secret hash for the principal
    * @return the secrets associated to that principal amd the id of the principal
    */
-  @Nonnull
-  PrincipalSecretsResult rotatePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
+  @NonNull PrincipalSecretsResult rotatePrincipalSecrets(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash);
+      @NonNull String oldSecretHash);
 
   /**
    * Reset the secrets of a principal entity.
@@ -69,11 +67,10 @@ public interface PolarisSecretsManager {
    *     system-generated)
    * @return the secrets associated with the principal, including the updated client id and secret
    */
-  @Nonnull
-  PrincipalSecretsResult resetPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
+  @NonNull PrincipalSecretsResult resetPrincipalSecrets(
+      @NonNull PolarisCallContext callCtx,
       long principalId,
-      @Nonnull String resolvedClientId,
+      @NonNull String resolvedClientId,
       String customClientSecret);
 
   /**
@@ -86,5 +83,5 @@ public interface PolarisSecretsManager {
    * @param principalId id of the principal whose secrets should be deleted
    */
   void deletePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId, long principalId);
 }

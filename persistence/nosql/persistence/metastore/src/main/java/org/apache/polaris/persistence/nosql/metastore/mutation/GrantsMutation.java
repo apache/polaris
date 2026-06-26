@@ -39,10 +39,10 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 import org.apache.polaris.persistence.nosql.coretypes.acl.AclObj;
+import org.apache.polaris.persistence.nosql.coretypes.acl.GrantTriplet;
 import org.apache.polaris.persistence.nosql.coretypes.acl.GrantsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
-import org.apache.polaris.persistence.nosql.metastore.privs.GrantTriplet;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -181,6 +181,8 @@ public record GrantsMutation(
 
                   var aclObj = aclObjBuilder.build();
 
+                  // Replacing the ACL object or the grants index entry leaves older ACL objects and
+                  // index stripes stale until a later maintenance purge.
                   state.writeOrReplace("acl-" + aclTriplet.id(), aclObj);
 
                   securablesIndex.put(aclKey, objRef(aclObj));

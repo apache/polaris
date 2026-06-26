@@ -19,31 +19,31 @@
 
 package org.apache.polaris.service.events;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.google.common.collect.ImmutableMap;
+import io.quarkus.runtime.BlockingOperationControl;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@TestProfile(PolarisEventListenersTest.PolarisEventListenersTestProfile.class)
+@TestProfile(Profiles.PolarisEventListenersTestProfile.class)
 public class PolarisEventListenersTest {
   static final Set<PolarisEventType> CATALOG_EVENT_TYPES =
       PolarisEventType.typesOfCategory(PolarisEventType.Category.CATALOG);
@@ -61,6 +61,7 @@ public class PolarisEventListenersTest {
 
     @Override
     public void onEvent(PolarisEvent event) {
+      assertThat(BlockingOperationControl.isBlockingAllowed()).isTrue();
       if (predicate.test(event)) {
         expectedEvents.add(event);
       } else {
@@ -121,32 +122,6 @@ public class PolarisEventListenersTest {
           event ->
               event.type().category() == PolarisEventType.Category.CATALOG
                   || event.type() == PolarisEventType.AFTER_SEND_NOTIFICATION);
-    }
-  }
-
-  public static class PolarisEventListenersTestProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .put(
-              "polaris.event-listener.types",
-              "after-send-listener,before-send-listener,consume-all-listener,consume-all-listener-2,consume-only-catalog-listener,consume-catalog-and-after-notification-listener")
-          .put(
-              "polaris.event-listener.after-send-listener.enabled-event-types",
-              "AFTER_SEND_NOTIFICATION")
-          .put(
-              "polaris.event-listener.before-send-listener.enabled-event-types",
-              "BEFORE_SEND_NOTIFICATION")
-          .put(
-              "polaris.event-listener.consume-only-catalog-listener.enabled-event-categories",
-              "CATALOG")
-          .put(
-              "polaris.event-listener.consume-catalog-and-after-notification-listener.enabled-event-categories",
-              "CATALOG")
-          .put(
-              "polaris.event-listener.consume-catalog-and-after-notification-listener.enabled-event-types",
-              "AFTER_SEND_NOTIFICATION")
-          .build();
     }
   }
 

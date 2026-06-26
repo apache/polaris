@@ -19,14 +19,16 @@
 package org.apache.polaris.persistence.nosql.impl.commits;
 
 interface CommitSynchronizer {
-  void before(long nanosRemaining);
+  boolean before(long nanosRemaining);
 
   void after();
 
   CommitSynchronizer NON_SYNCHRONIZING =
       new CommitSynchronizer() {
         @Override
-        public void before(long nanosRemaining) {}
+        public boolean before(long nanosRemaining) {
+          return true;
+        }
 
         @Override
         public void after() {}

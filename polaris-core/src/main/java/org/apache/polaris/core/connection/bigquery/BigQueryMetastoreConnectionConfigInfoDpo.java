@@ -21,8 +21,6 @@ package org.apache.polaris.core.connection.bigquery;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +33,8 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The internal persistence-object counterpart to {@link
@@ -46,13 +46,13 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
   public static final String DEFAULT_URI = "https://bigquery.googleapis.com";
 
   public BigQueryMetastoreConnectionConfigInfoDpo(
-      @JsonProperty(value = "uri", required = true) @Nonnull String uri,
-      @JsonProperty(value = "authenticationParameters", required = false) @Nullable
-          AuthenticationParametersDpo authenticationParameters,
-      @JsonProperty(value = "properties", required = false) @Nullable
-          Map<String, String> properties,
-      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
-          ServiceIdentityInfoDpo serviceIdentity) {
+      @JsonProperty(value = "uri", required = true) @NonNull String uri,
+      @JsonProperty(value = "authenticationParameters", required = false)
+          @Nullable AuthenticationParametersDpo authenticationParameters,
+      @JsonProperty(value = "properties", required = false)
+          @Nullable Map<String, String> properties,
+      @JsonProperty(value = "serviceIdentity", required = false)
+          @Nullable ServiceIdentityInfoDpo serviceIdentity) {
     super(
         ConnectionType.BIGQUERY.getCode(),
         uri,
@@ -75,7 +75,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
   }
 
   @Override
-  public @Nonnull Map<String, String> asIcebergCatalogProperties(
+  public @NonNull Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager polarisCredentialManager) {
     HashMap<String, String> properties = new HashMap<>();
 
@@ -96,7 +96,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
 
   @Override
   public ConnectionConfigInfoDpo withServiceIdentity(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
+      @NonNull ServiceIdentityInfoDpo serviceIdentityInfo) {
     return new BigQueryMetastoreConnectionConfigInfoDpo(
         getUri(), getAuthenticationParameters(), getProperties(), serviceIdentityInfo);
   }

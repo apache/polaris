@@ -40,12 +40,10 @@ import org.apache.iceberg.metrics.MetricsReport;
 import org.apache.iceberg.metrics.ScanMetrics;
 import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.metrics.ScanReport;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RequestIdSupplier;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,7 +54,7 @@ import org.mockito.ArgumentCaptor;
  *
  * <p>Note: The reporter now receives catalogId and tableId directly from the caller (already
  * resolved during authorization in IcebergCatalogHandler), so there's no need to mock entity
- * lookups. The reporter uses {@link PolarisMetaStoreManager} to persist metrics.
+ * lookups. The reporter uses {@link MetricsPersistence} to persist metrics.
  */
 public class PersistingMetricsReporterTest {
 
@@ -67,20 +65,13 @@ public class PersistingMetricsReporterTest {
   private static final TableIdentifier TABLE_IDENTIFIER =
       TableIdentifier.of(Namespace.of("db", "schema"), TABLE_NAME);
 
-  private PolarisMetaStoreManager metaStoreManager;
-  private PolarisCallContext polarisCallContext;
+  private MetricsPersistence metricsPersistence;
   private PersistingMetricsReporter reporter;
 
   @SuppressWarnings("unchecked")
   @BeforeEach
   void setUp() {
-    // Mock PolarisMetaStoreManager
-    metaStoreManager = mock(PolarisMetaStoreManager.class);
-
-    // Mock CallContext
-    CallContext callContext = mock(CallContext.class);
-    polarisCallContext = mock(PolarisCallContext.class);
-    when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
+    metricsPersistence = mock(MetricsPersistence.class);
 
     // Mock Instance beans (not resolvable in test context)
     Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
@@ -90,8 +81,7 @@ public class PersistingMetricsReporterTest {
     when(requestIdInstance.isResolvable()).thenReturn(false);
 
     reporter =
-        new PersistingMetricsReporter(
-            callContext, metaStoreManager, principalInstance, requestIdInstance);
+        new PersistingMetricsReporter(metricsPersistence, principalInstance, requestIdInstance);
   }
 
   @Test
@@ -103,9 +93,9 @@ public class PersistingMetricsReporterTest {
     reporter.reportMetric(
         CATALOG_NAME, CATALOG_ID, TABLE_IDENTIFIER, TABLE_ID, scanReport, Instant.now());
 
-    // Verify metaStoreManager was called with correct record
+    // Verify metricsPersistence was called with correct record
     ArgumentCaptor<ScanMetricsRecord> captor = ArgumentCaptor.forClass(ScanMetricsRecord.class);
-    verify(metaStoreManager).writeScanMetrics(any(PolarisCallContext.class), captor.capture());
+    verify(metricsPersistence).writeScanReport(captor.capture());
 
     ScanMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
@@ -122,9 +112,9 @@ public class PersistingMetricsReporterTest {
     reporter.reportMetric(
         CATALOG_NAME, CATALOG_ID, TABLE_IDENTIFIER, TABLE_ID, commitReport, Instant.now());
 
-    // Verify metaStoreManager was called with correct record
+    // Verify metricsPersistence was called with correct record
     ArgumentCaptor<CommitMetricsRecord> captor = ArgumentCaptor.forClass(CommitMetricsRecord.class);
-    verify(metaStoreManager).writeCommitMetrics(any(PolarisCallContext.class), captor.capture());
+    verify(metricsPersistence).writeCommitReport(captor.capture());
 
     CommitMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
@@ -141,9 +131,9 @@ public class PersistingMetricsReporterTest {
     reporter.reportMetric(
         CATALOG_NAME, CATALOG_ID, TABLE_IDENTIFIER, TABLE_ID, unknownReport, Instant.now());
 
-    // Verify metaStoreManager was NOT called since report type is unknown
-    verify(metaStoreManager, never()).writeScanMetrics(any(), any());
-    verify(metaStoreManager, never()).writeCommitMetrics(any(), any());
+    // Verify metricsPersistence was NOT called since report type is unknown
+    verify(metricsPersistence, never()).writeScanReport(any());
+    verify(metricsPersistence, never()).writeCommitReport(any());
   }
 
   private ScanReport createScanReport() {

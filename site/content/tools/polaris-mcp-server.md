@@ -20,6 +20,10 @@
 title: Polaris MCP Server
 type: docs
 weight: 200
+menus:
+  main:
+    parent: tools
+    weight: 200
 ---
 
 Polaris MCP Server is a package that provides Python implementation of the Model Context Protocol (MCP) server for Apache Polaris.

@@ -20,8 +20,6 @@ package org.apache.polaris.core.connection.iceberg;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +34,8 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The internal persistence-object counterpart to IcebergRestConnectionConfigInfo defined in the API
@@ -53,15 +53,15 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
    *     of a REST API.
    */
   public IcebergRestConnectionConfigInfoDpo(
-      @JsonProperty(value = "uri", required = true) @Nonnull String uri,
-      @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
-          AuthenticationParametersDpo authenticationParameters,
-      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
-          ServiceIdentityInfoDpo serviceIdentityInfo,
-      @JsonProperty(value = "remoteCatalogName", required = false) @Nullable
-          String remoteCatalogName,
-      @JsonProperty(value = "properties", required = false) @Nullable
-          Map<String, String> properties) {
+      @JsonProperty(value = "uri", required = true) @NonNull String uri,
+      @JsonProperty(value = "authenticationParameters", required = true)
+          @NonNull AuthenticationParametersDpo authenticationParameters,
+      @JsonProperty(value = "serviceIdentity", required = false)
+          @Nullable ServiceIdentityInfoDpo serviceIdentityInfo,
+      @JsonProperty(value = "remoteCatalogName", required = false)
+          @Nullable String remoteCatalogName,
+      @JsonProperty(value = "properties", required = false)
+          @Nullable Map<String, String> properties) {
     super(
         ConnectionType.ICEBERG_REST.getCode(),
         uri,
@@ -76,7 +76,7 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
   }
 
   @Override
-  public @Nonnull Map<String, String> asIcebergCatalogProperties(
+  public @NonNull Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     properties.put(CatalogProperties.URI, getUri());
@@ -100,7 +100,7 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
 
   @Override
   public ConnectionConfigInfoDpo withServiceIdentity(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
+      @NonNull ServiceIdentityInfoDpo serviceIdentityInfo) {
     return new IcebergRestConnectionConfigInfoDpo(
         getUri(),
         getAuthenticationParameters(),

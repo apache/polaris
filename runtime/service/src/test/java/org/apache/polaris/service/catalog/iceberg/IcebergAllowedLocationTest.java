@@ -34,6 +34,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.catalog.Namespace;
@@ -51,6 +52,7 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.service.TestServices;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
@@ -70,6 +72,9 @@ public class IcebergAllowedLocationTest {
           .addRepresentations(
               ImmutableSQLViewRepresentation.builder().sql(VIEW_QUERY).dialect("spark").build())
           .build();
+
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
 
   private String getTableName() {
     return "table_" + UUID.randomUUID();
@@ -102,6 +107,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     null,
+                    IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -131,6 +137,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext());
 
@@ -167,6 +174,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     "vended-credentials",
+                    IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -197,6 +205,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 "vended-credentials",
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
@@ -232,6 +241,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     null,
+                    IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -263,6 +273,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 "vended-credentials",
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
@@ -459,6 +470,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext());
     assertThat(createResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -533,9 +545,94 @@ public class IcebergAllowedLocationTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
+  }
+
+  private void updateCatalogAllowedLocations(
+      TestServices services, List<String> newAllowedLocations) {
+    // Fetch current catalog to get entity version for update.
+    Catalog fetched;
+    try (Response getResp =
+        services
+            .catalogsApi()
+            .getCatalog(catalog, services.realmContext(), services.securityContext())) {
+      assertThat(getResp.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      fetched = getResp.readEntity(Catalog.class);
+    }
+
+    StorageConfigInfo newConfig =
+        FileStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(newAllowedLocations)
+            .build();
+
+    UpdateCatalogRequest updateRequest =
+        UpdateCatalogRequest.builder()
+            .setCurrentEntityVersion(fetched.getEntityVersion())
+            .setStorageConfigInfo(newConfig)
+            .build();
+
+    try (Response updateResp =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalog, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(updateResp.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  void testNativeCredentialVendingRejectsStaleLocationsAfterAllowedLocationsShrink(
+      @TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var baseDir = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var allowedWhenCreated = baseDir + "/original-data";
+    var disallowedAfterShrink = baseDir + "/other-data";
+
+    // Catalog initially allows the original location
+    createCatalog(services, Map.of(), baseDir, List.of(allowedWhenCreated));
+    createNamespace(services, allowedWhenCreated + "/" + namespace);
+
+    String tableName = getTableName();
+    TableIdentifier tableId = TableIdentifier.of(Namespace.of(namespace), tableName);
+
+    var createReq =
+        CreateTableRequest.builder()
+            .withName(tableName)
+            .withSchema(SCHEMA)
+            .withLocation(allowedWhenCreated + "/" + namespace + "/" + tableName)
+            .build();
+
+    // Create succeeds under current allowed
+    try (Response createResp =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createReq,
+                "vended-credentials",
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(createResp.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    // Now shrink: update catalog to only allow a completely different location
+    updateCatalogAllowedLocations(services, List.of(disallowedAfterShrink));
+
+    // Credential vending for the existing table (which has stale location in its entity)
+    // must now be rejected.
+    IcebergCatalogHandler handler =
+        services.catalogAdapter().newHandler(services.securityContext(), catalog);
+
+    assertThatThrownBy(() -> handler.loadCredentials(tableId, Optional.empty()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("outside the catalog's current allowed locations");
   }
 }

@@ -35,6 +35,19 @@ public final class NamespaceUtils {
    */
   public static final String DEFAULT_NAMESPACE_SEPARATOR = "\u001f";
 
+  /**
+   * The default namespace separator, percent-encoded to "%1F".
+   *
+   * <p>This is the same encoded separator declared in Iceberg's {@link
+   * org.apache.iceberg.rest.RESTUtil} class, but it's package-private there and cannot be
+   * referenced.
+   *
+   * <p>This value is also exposed in {@link
+   * org.apache.iceberg.rest.RESTCatalogProperties#NAMESPACE_SEPARATOR_DEFAULT} – but here we avoid
+   * referencing that field directly since we don't own it.
+   */
+  public static final String DEFAULT_NAMESPACE_SEPARATOR_ENCODED = "%1F";
+
   private NamespaceUtils() {}
 
   /** Joins the levels of a namespace into a single string using the given {@code separator}. */

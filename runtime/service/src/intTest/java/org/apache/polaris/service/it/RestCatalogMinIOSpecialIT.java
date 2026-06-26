@@ -30,12 +30,15 @@ import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_KEY_ID;
 import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_SECRET_KEY;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
+import static org.apache.polaris.test.commons.MinioRustProfile.ACCESS_KEY;
+import static org.apache.polaris.test.commons.MinioRustProfile.SECRET_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,7 +54,6 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableOperations;
-import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
@@ -73,15 +75,18 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.test.commons.MinioRustProfile;
 import org.apache.polaris.test.minio.Minio;
 import org.apache.polaris.test.minio.MinioAccess;
-import org.apache.polaris.test.minio.MinioExtension;
+import org.apache.polaris.test.minio.MinioConditionExtension;
+import org.apache.polaris.test.minio.MinioTestResource;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -96,34 +101,29 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
  * some S3-specific options.
  */
 @QuarkusIntegrationTest
-@TestProfile(RestCatalogMinIOSpecialIT.Profile.class)
-@ExtendWith(MinioExtension.class)
+@TestProfile(MinioRustProfile.class)
+@QuarkusTestResource(
+    value = MinioTestResource.class,
+    initArgs = {
+      @ResourceArg(name = "accessKey", value = ACCESS_KEY),
+      @ResourceArg(name = "secretKey", value = SECRET_KEY)
+    })
+@ExtendWith(MinioConditionExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class RestCatalogMinIOSpecialIT {
 
   private static final String BUCKET_URI_PREFIX = "/minio-test";
-  private static final String MINIO_ACCESS_KEY = "test-ak-123";
-  private static final String MINIO_SECRET_KEY = "test-sk-123";
   private static final String TEST_REGION = "us-west-2";
   private static final String TEST_ROLE_ARN = "arn:aws:iam::000000000000:role/polaris-access-role";
   private static String adminToken;
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .put("polaris.storage.aws.access-key", MINIO_ACCESS_KEY)
-          .put("polaris.storage.aws.secret-key", MINIO_SECRET_KEY)
-          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
-          .build();
-    }
-  }
 
   private static final Schema SCHEMA =
       new Schema(
           required(1, "id", Types.IntegerType.get(), "doc"),
           optional(2, "data", Types.StringType.get()));
+
+  @Minio static MinioAccess minioAccess;
 
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
@@ -138,12 +138,9 @@ public class RestCatalogMinIOSpecialIT {
   private String catalogName;
 
   @BeforeAll
-  static void setup(
-      PolarisApiEndpoints apiEndpoints,
-      @Minio(accessKey = MINIO_ACCESS_KEY, secretKey = MINIO_SECRET_KEY) MinioAccess minioAccess,
-      ClientCredentials credentials) {
-    s3Client = minioAccess.s3Client();
+  void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
     endpoints = apiEndpoints;
+    s3Client = minioAccess.s3Client();
     client = polarisClient(endpoints);
     adminToken = client.obtainToken(credentials);
     managementApi = client.managementApi(adminToken);
@@ -152,7 +149,7 @@ public class RestCatalogMinIOSpecialIT {
   }
 
   @AfterAll
-  static void close() throws Exception {
+  void close() throws Exception {
     client.close();
   }
 
@@ -232,10 +229,8 @@ public class RestCatalogMinIOSpecialIT {
     CatalogProperties.Builder catalogProps =
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
     if (!stsEnabled) {
-      catalogProps.addProperty(
-          TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), MINIO_ACCESS_KEY);
-      catalogProps.addProperty(
-          TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), MINIO_SECRET_KEY);
+      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), ACCESS_KEY);
+      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), SECRET_KEY);
     }
     Catalog catalog =
         PolarisCatalog.builder()
@@ -263,8 +258,8 @@ public class RestCatalogMinIOSpecialIT {
 
     if (delegationMode.isEmpty()) {
       // Use local credentials on the client side
-      propertiesBuilder.put("s3.access-key-id", MINIO_ACCESS_KEY);
-      propertiesBuilder.put("s3.secret-access-key", MINIO_SECRET_KEY);
+      propertiesBuilder.put("s3.access-key-id", ACCESS_KEY);
+      propertiesBuilder.put("s3.secret-access-key", SECRET_KEY);
     }
 
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
@@ -375,41 +370,6 @@ public class RestCatalogMinIOSpecialIT {
     }
   }
 
-  @Test
-  public void testVendedCredentialsFailClosedForWildcardTableIdentifiers() throws IOException {
-    try (RESTCatalog restCatalog =
-        createCatalog(
-            Optional.of(endpoint),
-            Optional.of(endpoint),
-            true,
-            Optional.empty(),
-            Optional.of(VENDED_CREDENTIALS),
-            true,
-            Optional.of(TEST_REGION),
-            Optional.of(TEST_ROLE_ARN),
-            Optional.of(true))) {
-      Namespace targetNamespace = Namespace.of("foo");
-      Namespace checkedNamespace = Namespace.of("*");
-      TableIdentifier targetId = TableIdentifier.of(targetNamespace, "target");
-      TableIdentifier checkedId = TableIdentifier.of(checkedNamespace, "*");
-      restCatalog.createNamespace(targetNamespace);
-      restCatalog.createNamespace(checkedNamespace);
-      restCatalog.createTable(targetId, SCHEMA);
-
-      try {
-        assertThatThrownBy(() -> restCatalog.createTable(checkedId, SCHEMA))
-            .hasMessageContaining("Access Denied");
-      } finally {
-        if (restCatalog.tableExists(checkedId)) {
-          restCatalog.dropTable(checkedId);
-        }
-        if (restCatalog.tableExists(targetId)) {
-          restCatalog.dropTable(targetId);
-        }
-      }
-    }
-  }
-
   private void assertLoadTableWithVendedCredentialsFailsWithKmsError(TableIdentifier id) {
     assertThatThrownBy(
             () ->
@@ -418,7 +378,6 @@ public class RestCatalogMinIOSpecialIT {
                     id,
                     "ALL",
                     Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
-        .hasMessageContaining("Failed to get subscoped credentials")
         .hasMessageContaining("invalid resource")
         .hasMessageContaining("arn:aws:kms:us-west-2:000000000000:key/*");
   }

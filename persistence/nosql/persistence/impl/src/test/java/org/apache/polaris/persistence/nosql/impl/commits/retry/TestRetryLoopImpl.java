@@ -160,17 +160,17 @@ public class TestRetryLoopImpl {
     var mockedConfig =
         mockedConfig(Integer.MAX_VALUE, Integer.MAX_VALUE, 100, 100, Integer.MAX_VALUE);
 
-    var clock = mockedClock(3);
+    var clock = mockedClock(MILLISECONDS.toNanos(30), MILLISECONDS.toNanos(50));
     var tryLoopState = new RetryLoopImpl<>(mockedConfig, clock);
-    var t0 = clock.nanoTime();
+    var t0 = 0L;
 
     soft.assertThat(tryLoopState.canRetry(t0, MILLISECONDS.toNanos(20))).isTrue();
-    verify(clock, times(1)).sleepMillis(80L);
+    verify(clock, times(1)).sleepMillis(90L);
 
     // bounds doubled
 
     soft.assertThat(tryLoopState.canRetry(t0, MILLISECONDS.toNanos(30))).isTrue();
-    verify(clock, times(1)).sleepMillis(170L);
+    verify(clock, times(1)).sleepMillis(180L);
   }
 
   @ParameterizedTest

@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.docs.generator;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Holds information about a PolarisConfiguration (FeatureConfiguration or

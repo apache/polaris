@@ -20,7 +20,6 @@
 package org.apache.polaris.service.identity.provider;
 
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
@@ -38,6 +37,7 @@ import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ResolvableServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Default implementation of {@link ServiceIdentityProvider} that provides service identity
@@ -73,7 +73,7 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
 
   @Override
   public Optional<ServiceIdentityInfoDpo> allocateServiceIdentity(
-      @Nonnull ConnectionConfigInfo connectionConfig) {
+      @NonNull ConnectionConfigInfo connectionConfig) {
     if (config == null || connectionConfig.getAuthenticationParameters() == null) {
       return Optional.empty();
     }
@@ -95,7 +95,7 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
 
   @Override
   public Optional<ServiceIdentityInfo> getServiceIdentityInfo(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
+      @NonNull ServiceIdentityInfoDpo serviceIdentityInfo) {
     if (config == null) {
       return Optional.empty();
     }
@@ -113,7 +113,7 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
 
   @Override
   public Optional<ServiceIdentityCredential> getServiceIdentityCredential(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
+      @NonNull ServiceIdentityInfoDpo serviceIdentityInfo) {
     if (config == null) {
       return Optional.empty();
     }

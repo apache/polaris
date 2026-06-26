@@ -22,8 +22,8 @@ package org.apache.polaris.service.catalog.common;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-import jakarta.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
+import org.jspecify.annotations.NonNull;
 
 /**
  * A collection of utilities related to table locations CODE_COPIED_TO_POLARIS From Apache Iceberg
@@ -46,7 +46,7 @@ public class LocationUtils {
    * @param fileName file.txt
    * @return 1001/1001/1001/10011001
    */
-  public static String computeHash(@Nonnull String fileName) {
+  public static String computeHash(@NonNull String fileName) {
     HashCode hashCode = HASH_FUNC.hashString(fileName, StandardCharsets.UTF_8);
 
     // {@link Integer#toBinaryString} excludes leading zeros, which we want to preserve.

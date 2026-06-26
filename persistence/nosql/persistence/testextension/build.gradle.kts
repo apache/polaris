@@ -44,6 +44,8 @@ dependencies {
 
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+  testCompileOnly(platform(libs.jackson.bom))
+  testCompileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
   implementation(platform(libs.junit.bom))
   implementation("org.junit.jupiter:junit-jupiter")

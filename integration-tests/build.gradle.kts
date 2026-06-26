@@ -78,6 +78,7 @@ dependencies {
   implementation(libs.assertj.core)
   implementation(libs.mockito.core)
   implementation(libs.awaitility)
+  implementation(libs.hawkular.agent.prometheus.scraper)
   implementation(libs.s3mock.testcontainers)
   implementation(project(":polaris-runtime-test-common"))
   implementation(project(":polaris-minio-testcontainer"))

@@ -20,7 +20,7 @@ package org.apache.polaris.core.policy;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a policy type in Polaris. A policy type defines a category of policies that may be

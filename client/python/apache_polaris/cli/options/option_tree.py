@@ -1248,6 +1248,16 @@ class OptionTree:
         )
 
     @staticmethod
+    def _repl_option() -> Option:
+        return Option(
+            Commands.REPL,
+            hint="start an interactive REPL session",
+            args=[
+                Argument(Arguments.CATALOG, str, Hints.CATALOG),
+            ],
+        )
+
+    @staticmethod
     def get_tree() -> List[Option]:
         return [
             OptionTree._catalogs_option(),
@@ -1261,4 +1271,5 @@ class OptionTree:
             OptionTree._setup_option(),
             OptionTree._tables_option(),
             OptionTree._find_option(),
+            OptionTree._repl_option(),
         ]

@@ -21,14 +21,14 @@ package org.apache.polaris.core.connection;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Map;
 import org.apache.iceberg.aws.AwsProperties;
 import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The internal persistence-object counterpart to SigV4AuthenticationParameters defined in the API
@@ -71,7 +71,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     this.signingName = signingName;
   }
 
-  public @Nonnull String getRoleArn() {
+  public @NonNull String getRoleArn() {
     return roleArn;
   }
 
@@ -83,7 +83,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     return externalId;
   }
 
-  public @Nonnull String getSigningRegion() {
+  public @NonNull String getSigningRegion() {
     return signingRegion;
   }
 
@@ -91,7 +91,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     return signingName;
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
@@ -106,7 +106,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
   }
 
   @Override
-  public @Nonnull AuthenticationParameters asAuthenticationParametersModel() {
+  public @NonNull AuthenticationParameters asAuthenticationParametersModel() {
     return SigV4AuthenticationParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
         .setRoleArn(getRoleArn())

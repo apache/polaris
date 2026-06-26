@@ -1,0 +1,143 @@
+{{/*
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+*/}}
+
+{{- range $jobName, $jobSpec := .Values.maintenance.jobs }}
+{{- if $jobSpec.enabled }}
+{{/* Limit to 52 chars so the generated Job name plus Kubernetes timestamp suffix stays within the 63-char DNS label limit. */}}
+{{- $cronName := include "polaris.fullnameWithSuffix" (list $ $jobName 52) }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $cronName }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "polaris.maintenanceLabels" $ | nindent 4 }}
+  {{- with $.Values.maintenance.annotations }}
+  annotations:
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ $jobSpec.schedule | quote }}
+  concurrencyPolicy: {{ default "Forbid" $jobSpec.concurrencyPolicy }}
+  {{- if hasKey $jobSpec "successfulJobsHistoryLimit" }}
+  successfulJobsHistoryLimit: {{ $jobSpec.successfulJobsHistoryLimit }}
+  {{- end }}
+  {{- if hasKey $jobSpec "failedJobsHistoryLimit" }}
+  failedJobsHistoryLimit: {{ $jobSpec.failedJobsHistoryLimit }}
+  {{- end }}
+  jobTemplate:
+    spec:
+      {{- if hasKey $jobSpec "backoffLimit" }}
+      backoffLimit: {{ $jobSpec.backoffLimit }}
+      {{- end }}
+      {{- with $jobSpec.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ . }}
+      {{- end }}
+      template:
+        metadata:
+          labels:
+            {{- include "polaris.maintenanceLabels" $ | nindent 12 }}
+            {{- with $.Values.maintenance.podLabels }}
+            {{- tpl (toYaml .) $ | nindent 12 }}
+            {{- end }}
+          {{- with $.Values.maintenance.podAnnotations }}
+          annotations:
+            {{- tpl (toYaml .) $ | nindent 12 }}
+          {{- end }}
+        spec:
+          {{- if $.Values.imagePullSecrets }}
+          imagePullSecrets:
+          {{- range $.Values.imagePullSecrets }}
+            - name: {{ . | quote }}
+          {{- end }}
+          {{- end }}
+          restartPolicy: {{ default "Never" $jobSpec.restartPolicy }}
+          {{- with $.Values.priorityClassName }}
+          priorityClassName: {{ tpl . $ | quote }}
+          {{- end }}
+          serviceAccountName: {{ $jobSpec.serviceAccountName | default (include "polaris.serviceAccountName" $) }}
+          automountServiceAccountToken: false
+          {{- if $.Values.podSecurityContext }}
+          securityContext:
+            {{- tpl (toYaml $.Values.podSecurityContext) $ | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: polaris-admin-tool
+              {{- if $.Values.containerSecurityContext }}
+              securityContext:
+                {{- tpl (toYaml $.Values.containerSecurityContext) $ | nindent 16 }}
+              {{- end }}
+              image: "{{ tpl $.Values.maintenance.image.repository $ }}:{{ tpl $.Values.maintenance.image.tag $ | default $.Chart.Version }}"
+              imagePullPolicy: {{ tpl $.Values.maintenance.image.pullPolicy $ }}
+              {{- if $jobSpec.args }}
+              args:
+                {{- range $jobSpec.args }}
+                - {{ . | quote }}
+                {{- end }}
+              {{- end }}
+              {{- with $jobSpec.resources }}
+              resources:
+                {{- tpl (toYaml .) $ | nindent 16 }}
+              {{- end }}
+              {{- $persistenceEnv := include "polaris.persistenceEnv" $ -}}
+              {{- if or $persistenceEnv $.Values.maintenance.extraEnv }}
+              env:
+                {{- with $persistenceEnv }}
+                {{- . | nindent 16 }}
+                {{- end }}
+                {{- with $.Values.maintenance.extraEnv }}
+                {{- tpl (toYaml .) $ | nindent 16 }}
+                {{- end }}
+              {{- end }}
+              {{- with $.Values.maintenance.envFrom }}
+              envFrom:
+                {{- tpl (toYaml .) $ | nindent 16 }}
+              {{- end }}
+              volumeMounts:
+                - name: config-volume
+                  mountPath: {{ trimSuffix "/" $.Values.image.configDir }}
+                  readOnly: true
+                - name: temp-dir
+                  mountPath: /tmp
+                  readOnly: false
+                {{- with $.Values.maintenance.extraVolumeMounts }}
+                {{- tpl (toYaml .) $ | nindent 16 }}
+                {{- end }}
+          volumes:
+            {{- include "polaris.maintenanceConfigVolume" $ | nindent 12 }}
+            - name: temp-dir
+              emptyDir: {}
+            {{- with $.Values.maintenance.extraVolumes }}
+            {{- tpl (toYaml .) $ | nindent 12 }}
+            {{- end }}
+          {{- if $.Values.nodeSelector }}
+          nodeSelector:
+            {{- tpl (toYaml $.Values.nodeSelector) $ | nindent 12 }}
+          {{- end }}
+          {{- if $.Values.affinity }}
+          affinity:
+            {{- tpl (toYaml $.Values.affinity) $ | nindent 12 }}
+          {{- end }}
+          {{- if $.Values.tolerations }}
+          tolerations:
+            {{- tpl (toYaml $.Values.tolerations) $ | nindent 12 }}
+          {{- end }}
+{{- end }}
+{{- end }}

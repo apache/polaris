@@ -27,6 +27,7 @@ description = "Polaris NoSQL persistence core types"
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-persistence-nosql-api"))
+  implementation(project(":polaris-persistence-nosql-authz-api"))
   implementation(project(":polaris-idgen-api"))
   implementation(project(":polaris-persistence-nosql-maintenance-api"))
   implementation(project(":polaris-persistence-nosql-maintenance-spi"))

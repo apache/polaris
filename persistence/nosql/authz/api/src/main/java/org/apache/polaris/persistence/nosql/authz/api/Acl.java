@@ -31,6 +31,8 @@ public interface Acl {
 
   void forEach(@NonNull BiConsumer<String, AclEntry> consumer);
 
+  boolean isEmpty();
+
   interface AclBuilder {
     @CanIgnoreReturnValue
     AclBuilder from(@NonNull Acl instance);

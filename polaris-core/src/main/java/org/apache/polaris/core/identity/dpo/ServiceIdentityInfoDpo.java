@@ -24,12 +24,12 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The internal persistence-object counterpart to ServiceIdentityInfo defined in the API model.
@@ -55,8 +55,8 @@ public abstract class ServiceIdentityInfoDpo {
 
   public ServiceIdentityInfoDpo(
       @JsonProperty(value = "identityTypeCode", required = true) int identityTypeCode,
-      @JsonProperty(value = "identityInfoReference", required = false) @Nullable
-          SecretReference identityInfoReference) {
+      @JsonProperty(value = "identityInfoReference", required = false)
+          @Nullable SecretReference identityInfoReference) {
     this.identityTypeCode = identityTypeCode;
     this.identityInfoReference = identityInfoReference;
   }

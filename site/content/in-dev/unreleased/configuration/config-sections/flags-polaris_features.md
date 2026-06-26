@@ -344,6 +344,51 @@ The maximum weight for the entity cache. This is a heuristic value without any p
 
 ---
 
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_ENABLED"`
+
+Enables GCS principal attribution via Workload Identity Federation. When true, credential vending chains a catalog-signed JWT through an STS token exchange and service-account impersonation so the Polaris principal appears in GCS Data Access audit logs (serviceAccountDelegationInfo.principalSubject). Requires GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE, GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER, and GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE to also be set; a missing required value is a fatal configuration error. Also requires a gcpServiceAccount on the catalog StorageConfiguration. Default: false (attribution disabled).
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE"`
+
+Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs (RS256). The corresponding public key must be published in the Workload Identity Pool provider's uploaded JWKS. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID"`
+
+Key ID (kid) written into the header of GCS attribution JWTs so the Workload Identity Pool provider can select the right public key from its JWKS during key rotation (when the JWKS holds both the old and new keys). Must match the kid of the JWKS entry for the configured signing key. Empty omits the header (only safe with a single-key JWKS).
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER"`
+
+Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer configured on the Workload Identity Pool OIDC provider. The provider verifies signatures against its uploaded JWKS, so no public discovery endpoint is required. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE"`
+
+Full resource name of the Workload Identity Pool provider used for GCS principal attribution, e.g. //iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>. Used as both the attribution JWT 'aud' claim and the STS token-exchange audience. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
 ##### `polaris.features."ICEBERG_COMMIT_MAX_RETRIES"`
 
 The max number of times to try committing to an Iceberg table
@@ -426,6 +471,15 @@ If set to true, resolve AWS credentials based on the storageName field of the st
 
 - **Type:** `Boolean`
 - **Default:** `false`
+
+---
+
+##### `polaris.features."SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL"`
+
+Ordered list of fields to include in the session name during credential vending. Applies to systems that support session-based sub-scoped credentials (e.g. S3 with STS). Fields are joined with '-' and prefixed with 'p-' by default. The result is truncated to 64 characters (the AWS STS session name limit); budget unused by a short field flows to subsequent fields. When empty (default), falls back to INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL behaviour. Supported fields: realm, catalog, namespace, table, principal Field order is significant: fields appear in the session name in the order listed. Changing the order changes the session name structure and will affect CloudTrail queries. To customise the prefix, include a 'prefix-X' token (e.g. 'prefix-myorg' sets the prefix to 'myorg-'). Defaults to 'p-'. Example: ["realm","catalog","table","principal"] produces session names like 'p-acme-hr_catalog-employee-etl_writer' (truncated to 64 chars). Note: enabling this flag may reduce credential cache reuse when context-specific fields (e.g. table, namespace) are included, since credentials are keyed partly on session name.
+
+- **Type:** `List<String>`
+- **Default:** `[]`
 
 ---
 

@@ -28,30 +28,21 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.persistence.nosql.api.index.IndexKey;
-import org.apache.polaris.persistence.nosql.metastore.privs.GrantTriplet;
 
 public final class MutationResults {
   private final List<BaseResult> results;
-  // TODO populate and process 'aclsToRemove'
-  private final List<GrantTriplet> aclsToRemove;
   private final List<PolarisBaseEntity> droppedEntities;
-  private final List<IndexKey> policyIndexKeysToRemove = new ArrayList<>();
 
   boolean anyChange;
   boolean hardFailure;
 
-  private MutationResults(
-      List<BaseResult> results,
-      List<GrantTriplet> aclsToRemove,
-      List<PolarisBaseEntity> droppedEntities) {
+  private MutationResults(List<BaseResult> results, List<PolarisBaseEntity> droppedEntities) {
     this.results = results;
-    this.aclsToRemove = aclsToRemove;
     this.droppedEntities = droppedEntities;
   }
 
   MutationResults(BaseResult single) {
-    this(List.of(single), List.of(), List.of());
+    this(List.of(single), List.of());
   }
 
   static MutationResults singleEntityResult(BaseResult.ReturnStatus returnStatus) {
@@ -63,27 +54,15 @@ public final class MutationResults {
   }
 
   static MutationResults newMutableMutationResults() {
-    return new MutationResults(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
-  }
-
-  public List<BaseResult> results() {
-    return results;
-  }
-
-  public List<GrantTriplet> aclsToRemove() {
-    return aclsToRemove;
+    return new MutationResults(new ArrayList<>(), new ArrayList<>());
   }
 
   public List<PolarisBaseEntity> droppedEntities() {
     return droppedEntities;
   }
 
-  public List<IndexKey> policyIndexKeysToRemove() {
-    return policyIndexKeysToRemove;
-  }
-
-  void addPolicyIndexKeyToRemove(IndexKey indexKey) {
-    policyIndexKeysToRemove.add(indexKey);
+  public List<BaseResult> results() {
+    return results;
   }
 
   void entityResult(PolarisBaseEntity entity) {

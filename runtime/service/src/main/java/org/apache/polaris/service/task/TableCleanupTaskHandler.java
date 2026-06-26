@@ -39,6 +39,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
@@ -84,7 +85,16 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
   @Override
   public boolean handleTask(TaskEntity cleanupTask, CallContext callContext) {
-    IcebergTableLikeEntity tableEntity = tryGetTableEntity(cleanupTask).orElseThrow();
+    IcebergTableLikeEntity entity = tryGetTableEntity(cleanupTask).orElseThrow();
+
+    if (entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+      return handleViewCleanup(cleanupTask, entity);
+    }
+    return handleTableCleanup(cleanupTask, entity, callContext);
+  }
+
+  private boolean handleTableCleanup(
+      TaskEntity cleanupTask, IcebergTableLikeEntity tableEntity, CallContext callContext) {
     LOGGER
         .atInfo()
         .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
@@ -151,6 +161,34 @@ public class TableCleanupTaskHandler implements TaskHandler {
     return false;
   }
 
+  private boolean handleViewCleanup(TaskEntity cleanupTask, IcebergTableLikeEntity viewEntity) {
+    LOGGER
+        .atInfo()
+        .addKeyValue("viewIdentifier", viewEntity.getTableIdentifier())
+        .addKeyValue("metadataLocation", viewEntity.getMetadataLocation())
+        .log("Handling view metadata cleanup task");
+
+    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, viewEntity.getTableIdentifier())) {
+      if (!TaskUtils.exists(viewEntity.getMetadataLocation(), fileIO)) {
+        LOGGER
+            .atWarn()
+            .addKeyValue("viewIdentifier", viewEntity.getTableIdentifier())
+            .addKeyValue("metadataLocation", viewEntity.getMetadataLocation())
+            .log("View metadata cleanup scheduled, but metadata file does not exist");
+        return true;
+      }
+
+      fileIO.deleteFile(viewEntity.getMetadataLocation());
+      LOGGER
+          .atInfo()
+          .addKeyValue("viewIdentifier", viewEntity.getTableIdentifier())
+          .addKeyValue("metadataLocation", viewEntity.getMetadataLocation())
+          .log("Successfully deleted view metadata file");
+
+      return true;
+    }
+  }
+
   private Stream<TaskEntity> getManifestTaskStream(
       TaskEntity cleanupTask,
       TableMetadata tableMetadata,
@@ -189,7 +227,6 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .log("Queueing task to delete manifest file");
               return new TaskEntity.Builder()
                   .setName(taskName)
-                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
                   .setCreateTimestamp(clock.millis())
                   .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
                   .withData(
@@ -233,7 +270,9 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
                   .withData(
                       new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                          tableEntity.getTableIdentifier(), metadataBatch))
+                          tableEntity.getTableIdentifier(),
+                          metadataBatch,
+                          BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
                   .build();
             });

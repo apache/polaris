@@ -19,14 +19,14 @@
 package org.apache.polaris.service.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ public class DefaultConfigurationStore
   }
 
   @Override
-  public @Nullable Object getConfigValue(@Nonnull RealmContext realmContext, String configName) {
+  public @Nullable Object getConfigValue(@NonNull RealmContext realmContext, String configName) {
     String realm = realmContext.getRealmIdentifier();
     LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
     return Optional.ofNullable(realmOverrides.getOrDefault(realm, Map.of()).get(configName))
@@ -57,7 +57,7 @@ public class DefaultConfigurationStore
   }
 
   @Override
-  public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
+  public <T> @Nullable T getConfiguration(@NonNull RealmContext realmContext, String configName) {
     @SuppressWarnings("unchecked")
     T value = (T) getConfigValue(realmContext, configName);
     return value;

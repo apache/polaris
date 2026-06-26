@@ -30,12 +30,15 @@ import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_KEY_ID;
 import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_SECRET_KEY;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
+import static org.apache.polaris.test.commons.MinioRustProfile.ACCESS_KEY;
+import static org.apache.polaris.test.commons.MinioRustProfile.SECRET_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,15 +75,18 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.test.commons.MinioRustProfile;
 import org.apache.polaris.test.rustfs.Rustfs;
 import org.apache.polaris.test.rustfs.RustfsAccess;
-import org.apache.polaris.test.rustfs.RustfsExtension;
+import org.apache.polaris.test.rustfs.RustfsConditionExtension;
+import org.apache.polaris.test.rustfs.RustfsTestResource;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -95,34 +101,29 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
  * with some S3-specific options.
  */
 @QuarkusIntegrationTest
-@TestProfile(RestCatalogRustFSSpecialIT.Profile.class)
-@ExtendWith(RustfsExtension.class)
+@TestProfile(MinioRustProfile.class)
+@QuarkusTestResource(
+    value = RustfsTestResource.class,
+    initArgs = {
+      @ResourceArg(name = "accessKey", value = ACCESS_KEY),
+      @ResourceArg(name = "secretKey", value = SECRET_KEY)
+    })
+@ExtendWith(RustfsConditionExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class RestCatalogRustFSSpecialIT {
 
   private static final String BUCKET_URI_PREFIX = "/rustfs-test";
-  private static final String RUSTFS_ACCESS_KEY = "test-ak-123";
-  private static final String RUSTFS_SECRET_KEY = "test-sk-123";
   private static final String TEST_REGION = "us-west-2";
   private static final String TEST_ROLE_ARN = "arn:aws:iam::000000000000:role/polaris-access-role";
   private static String adminToken;
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .put("polaris.storage.aws.access-key", RUSTFS_ACCESS_KEY)
-          .put("polaris.storage.aws.secret-key", RUSTFS_SECRET_KEY)
-          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
-          .build();
-    }
-  }
 
   private static final Schema SCHEMA =
       new Schema(
           required(1, "id", Types.IntegerType.get(), "doc"),
           optional(2, "data", Types.StringType.get()));
+
+  @Rustfs static RustfsAccess rustfsAccess;
 
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
@@ -137,13 +138,9 @@ public class RestCatalogRustFSSpecialIT {
   private String catalogName;
 
   @BeforeAll
-  static void setup(
-      PolarisApiEndpoints apiEndpoints,
-      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY)
-          RustfsAccess rustfsAccess,
-      ClientCredentials credentials) {
-    s3Client = rustfsAccess.s3Client();
+  void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
     endpoints = apiEndpoints;
+    s3Client = rustfsAccess.s3Client();
     client = polarisClient(endpoints);
     adminToken = client.obtainToken(credentials);
     managementApi = client.managementApi(adminToken);
@@ -152,7 +149,7 @@ public class RestCatalogRustFSSpecialIT {
   }
 
   @AfterAll
-  static void close() throws Exception {
+  void close() throws Exception {
     client.close();
   }
 
@@ -232,10 +229,8 @@ public class RestCatalogRustFSSpecialIT {
     CatalogProperties.Builder catalogProps =
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
     if (!stsEnabled) {
-      catalogProps.addProperty(
-          TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), RUSTFS_ACCESS_KEY);
-      catalogProps.addProperty(
-          TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), RUSTFS_SECRET_KEY);
+      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), ACCESS_KEY);
+      catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), SECRET_KEY);
     }
     Catalog catalog =
         PolarisCatalog.builder()
@@ -263,8 +258,8 @@ public class RestCatalogRustFSSpecialIT {
 
     if (delegationMode.isEmpty()) {
       // Use local credentials on the client side
-      propertiesBuilder.put("s3.access-key-id", RUSTFS_ACCESS_KEY);
-      propertiesBuilder.put("s3.secret-access-key", RUSTFS_SECRET_KEY);
+      propertiesBuilder.put("s3.access-key-id", ACCESS_KEY);
+      propertiesBuilder.put("s3.secret-access-key", SECRET_KEY);
     }
 
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
@@ -376,6 +371,9 @@ public class RestCatalogRustFSSpecialIT {
   }
 
   private void assertLoadTableWithVendedCredentialsFailsWithKmsError(TableIdentifier id) {
+    // RustFS's STS shim rejects the AssumeRole call when the inline policy contains the
+    // wildcard KMS resource generated for kms-enabled configs; it returns a 400 without a
+    // descriptive body, so we can only pin the error to the STS client path.
     assertThatThrownBy(
             () ->
                 catalogApi.loadTable(
@@ -383,7 +381,7 @@ public class RestCatalogRustFSSpecialIT {
                     id,
                     "ALL",
                     Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
-        .hasMessageContaining("Failed to get subscoped credentials")
+        .hasMessageContaining("Service: Sts")
         .hasMessageContaining("Status Code: 400");
   }
 

@@ -549,7 +549,7 @@ class MaintenanceServiceImpl implements MaintenanceService {
   private boolean identifyAgainstRealm(String realmId, AllRetained allRetained) {
     LOGGER.info("Identifying referenced data in realm '{}'", realmId);
 
-    var pers = realmPersistenceFactory.newBuilder().realmId(realmId).build();
+    var pers = realmPersistenceFactory.newBuilder().realmId(realmId).skipDecorators().build();
     var collector = new RetainedCollectorImpl(pers, allRetained, objTypeRetainedIdentifiers);
 
     boolean any = false;

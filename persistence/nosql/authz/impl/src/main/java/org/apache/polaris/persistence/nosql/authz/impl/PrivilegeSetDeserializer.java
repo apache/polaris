@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
-import static org.apache.polaris.persistence.nosql.authz.impl.JacksonPrivilegesModule.currentPrivileges;
+import static java.util.Objects.requireNonNull;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -26,30 +26,39 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import java.io.IOException;
+import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
+import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 
 class PrivilegeSetDeserializer extends JsonDeserializer<PrivilegeSet> {
+  private final Supplier<Privileges> privilegesResolver;
+
+  PrivilegeSetDeserializer(Supplier<Privileges> privilegesResolver) {
+    this.privilegesResolver =
+        requireNonNull(privilegesResolver, "privilegesResolver must not be null");
+  }
+
   @Override
   public PrivilegeSet deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
     switch (p.currentToken()) {
       case VALUE_NULL:
-        return new PrivilegeSetImpl(currentPrivileges(), new byte[0]);
+        return new PrivilegeSetImpl(privilegesResolver.get(), new byte[0]);
       case VALUE_STRING:
         // Internal, storage serialization format.
         var bytes = p.getBinaryValue();
-        return new PrivilegeSetImpl(currentPrivileges(), bytes);
+        return new PrivilegeSetImpl(privilegesResolver.get(), bytes);
       case START_ARRAY:
         // External/REST serialization format using privilege names.
-        var privileges = currentPrivileges();
+        var privileges = privilegesResolver.get();
         var builder = PrivilegeSetImpl.builder(privileges);
         for (var t = p.nextToken(); ; t = p.nextToken()) {
-          // Note: switch(t) lets checkstyle fail
-          if (t == JsonToken.VALUE_STRING) {
-            builder.addPrivilege(privileges.byName(p.getText()));
-          }
           if (t == JsonToken.END_ARRAY) {
             break;
           }
+          if (t != JsonToken.VALUE_STRING) {
+            throw new JsonMappingException(p, "Unexpected JSON token " + t + " in privilege array");
+          }
+          builder.addPrivilege(privileges.byName(p.getText()));
         }
         return builder.build();
       default:

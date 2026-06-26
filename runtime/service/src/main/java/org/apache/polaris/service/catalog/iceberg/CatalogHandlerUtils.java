@@ -27,7 +27,6 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundE
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.lang.reflect.Field;
@@ -65,6 +64,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -90,12 +90,19 @@ import org.apache.iceberg.view.ViewRepresentation;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CODE_COPIED_TO_POLARIS Copied from CatalogHandler in Iceberg 1.8.0 Contains a collection of
- * utilities related to managing Iceberg entities
+ * CODE_COPIED_TO_POLARIS
+ *
+ * <p>Copied from CatalogHandlers as of Iceberg 1.8.0.
+ *
+ * <p>The {@link #registerView(ViewCatalog, Namespace, RegisterViewRequest)} method was copied from
+ * Iceberg 1.11.0.
+ *
+ * <p>Contains a collection of utilities related to managing Iceberg entities.
  */
 @ApplicationScoped
 public class CatalogHandlerUtils {
@@ -413,6 +420,7 @@ public class CatalogHandlerUtils {
           .run(
               taskOps -> {
                 TableMetadata base = isRetry.get() ? taskOps.refresh() : taskOps.current();
+                isRetry.set(true);
 
                 TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(base);
                 TableMetadata newBase = base;
@@ -738,6 +746,15 @@ public class CatalogHandlerUtils {
     if (!dropped) {
       throw notFoundExceptionForTableLikeEntity(viewIdentifier, PolarisEntitySubType.ICEBERG_VIEW);
     }
+  }
+
+  public LoadViewResponse registerView(
+      ViewCatalog catalog, Namespace namespace, RegisterViewRequest request) {
+    request.validate();
+
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    View view = catalog.registerView(identifier, request.metadataLocation());
+    return viewResponse(view);
   }
 
   protected ViewMetadata commit(ViewOperations ops, UpdateTableRequest request) {

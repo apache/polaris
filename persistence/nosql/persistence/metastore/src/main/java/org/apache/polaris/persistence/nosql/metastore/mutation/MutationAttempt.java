@@ -280,14 +280,9 @@ public record MutationAttempt(
                           return false;
                         }
 
-                        while (iter.hasNext()) {
-                          var elem = iter.next();
-                          var key = PolicyMappingsObj.PolicyMappingKey.fromIndexKey(elem.key());
-                          var reversed = key.reverse();
-
-                          mutationResults.addPolicyIndexKeyToRemove(elem.key());
-                          mutationResults.addPolicyIndexKeyToRemove(reversed.toIndexKey());
-                        }
+                        // Policy-mapping cleanup happens as a separate maintenance workflow,
+                        // because entity drops and policy-mappings updates cannot be made atomic
+                        // across multiple refs in the NoSQL model.
 
                         return true;
                       })

@@ -60,7 +60,7 @@ class LicenseFileValidation : DependencyFilter {
 
     data.allDependencies.forEach { mod ->
       val licenses =
-        (mod.manifests.map { it.license } +
+        (mod.manifests.flatMap { manifest -> manifest.licenses.map { it.name } } +
             mod.licenseFiles.flatMap { it.fileDetails }.map { it.license } +
             mod.poms.flatMap { it.licenses }.map { it.name })
           .distinct()

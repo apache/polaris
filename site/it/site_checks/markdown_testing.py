@@ -119,7 +119,7 @@ def run_test(
 
         tee.printf(
             dedent(f"""
-            Test steps durations for for {md_file} ({"❌ FAILED" if failed else "✅ passed"}):
+            Test steps durations for {md_file} ({"❌ FAILED" if failed else "✅ passed"}):
                 .. Test: {duration_str}
                 .. Docker Compose Info: {_format_duration(docker_info_duration)}
                 .. Docker Cleanup: {_format_duration(cleanup_duration)}

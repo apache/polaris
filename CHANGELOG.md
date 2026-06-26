@@ -30,12 +30,62 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
+- Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
+  - `polaris.event-listener.executor.pool-size` configures the thread pool size.
+  - `polaris.event-listener.executor.queue-size` configures the queue size for pending events when all threads are busy.
 
 ### Breaking changes
-- The ExternalCatalogFactory interface has been renamed to FederatedCatalogFactory. Its createCatalog() and createGenericCatalog() method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
+- The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
+- The REST layer now enforces stricter validation for entity names (including namespaces, tables, views, and generic tables). Requests containing invalid names will be rejected with an HTTP 400 error. Existing clients should verify and rename entities before upgrading if their names fall into the following forbidden categories:
+    - Empty strings
+    - Names consisting solely of `.` or `..`
+    - Names containing control (invisible) characters
+    - Names with leading or trailing whitespace
+    - Names containing any of these characters: <code>/\:*?"<>|#+`</code>
+
+### New Features
+- Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
+- Added `SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL` feature flag for AWS credential vending. Operators can now configure an ordered list of fields (`realm`, `catalog`, `namespace`, `table`, `principal`) to compose structured STS role session names (e.g. `p-acme-hr_catalog-employee-etl_writer`). Session names are sanitized and proportionally truncated to the AWS 64-character limit. When unset, existing `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` behaviour is preserved.
+- Added `hostUsers` support in Helm chart.
+- Added documentation for BigQuery Metastore Catalog federation. Build with `-PNonRESTCatalogs=BIGQUERY` to include the BigQueryMetastoreCatalog federation extension. See `site/content/in-dev/unreleased/federation/bigquery-metastore-federation.md`.
+- Support for view registration has been added.
+- Python client: added support for Python 3.14
+- Added support for `register table` overwrite semantics in the Iceberg REST catalog flow (`overwrite=true`) for internal Polaris catalogs. With overwrite enabled, existing table pointers can be updated to a new metadata location while preserving default behavior for `overwrite=false`.
+- Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
+- Added Polaris Spark 4.0 client.
+- Added `maintenance` support in Helm chart.
+
+- Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
+
+### Changes
+- Added REPL support to Polaris CLI.
+- The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
+- Added version option to Polaris CLI.
+- The token broker now builds the JWT `Algorithm` and `JWTVerifier` once per realm in the `TokenBrokerFactory` and reuses them across requests, instead of rebuilding them on every `verify()`/`sign()` call on the request-scoped broker. For deployments using file-based symmetric secrets, the secret is now read once per realm (at first use) rather than on every JWT operation; rotating the on-disk secret requires a restart.
+
+### Deprecations
+
+### Fixes
+- Fixed a boundary condition in GCS downscoped credential generation (`GcpCredentialsStorageIntegration`). Locations without a trailing slash could previously grant access to sibling object prefixes via the generated CEL conditions for `resource.name` and list prefixes. Granted paths are now normalized to a directory prefix (with a trailing slash) before the CEL conditions are built, so sibling prefixes can no longer satisfy the `startsWith` checks.
+- Fixed `NullPointerException` during `dropEntity` when an entity referenced by a grant had been concurrently removed (or purged). `lookupEntities` can return null entries for dropped entities; these are now skipped safely.
+- `RateLimiterFilter` now returns an Iceberg-compatible `ErrorResponse` JSON body on HTTP 429, with `Content-Type: application/json`. Previously the body was empty, causing Iceberg REST clients to surface an opaque error.
+- The admin tool `purge` command now prints the underlying exception stack trace to stderr when a purge fails unexpectedly, matching the `bootstrap` command. Previously a failed purge printed only a generic message, giving operators no diagnostic information.
+- The access token carried in `PolarisCredential` is now redacted from its `toString()`, so it is no longer written to authentication logs (including at WARN level on failed authentication).
+- JWT verification now validates the issuer claim (`"polaris"`) in addition to the active claim. Tokens signed with the same key but carrying a different issuer are now rejected.
+- Inheritable policy mapping inserts in the JDBC backend now use the active transaction connection, so they roll back correctly with the surrounding transaction.
+- Generic table drop now accepts table-scoped `TABLE_DROP` privilege.
+- Azure SAS tokens are now signed for the configured duration instead of a hardcoded 1 hour, so long jobs no longer fail with expired credentials.
+
+## [1.5.0]
+
+### Highlights
+
+### Upgrade notes
+
+### Breaking changes
 - The `ConnectionCredentials.of()` method now throws an exception when more than one expiration timestamp property is present in the credentials map. Only a single expiration timestamp is allowed per credentials bundle.
 - Entity names (namespaces, tables, views, generic tables) submitted to the REST layer are now rejected with HTTP 400 if they are empty, contain a `/`, or have leading/trailing whitespace. Clients that were previously able to create such entities must rename them before upgrading.
-- The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
+- Fixed `renameTable` to return HTTP 204 (No Content) instead of 200, as per the Iceberg REST Catalog spec.
 
 ### New Features
 - Added `envFrom` support in Helm chart.
@@ -50,16 +100,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Removed unused `PolarisAuthorizableOperation` values: `REVOKE_PRINCIPAL_GRANT_FROM_PRINCIPAL_ROLE`, `REVOKE_PRINCIPAL_ROLE_GRANT_FROM_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_ROOT`, `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL`, `ADD_PRINCIPAL_ROLE_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL_ROLE`, `ADD_CATALOG_ROLE_GRANT_TO_CATALOG_ROLE`, `REVOKE_CATALOG_ROLE_GRANT_FROM_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG`, `LIST_GRANTS_ON_NAMESPACE`, `LIST_GRANTS_ON_TABLE`, `LIST_GRANTS_ON_VIEW`.
 - Changed deprecated APIs in JUnit 5. This change will force downstream projects that pull in the Polaris test packages to adopt JUnit 6.
 - Added client id collision check during reset.
-- The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
-- Added version option to Polaris CLI.
+- The ExternalCatalogFactory interface has been renamed to FederatedCatalogFactory. Its createCatalog() and createGenericCatalog() method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
 
 ### Deprecations
 - The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
 
 ### Fixes
-- Fixed `renameTable` to return HTTP 204 (No Content) instead of 200, as per the Iceberg REST Catalog spec.
-
-### Commits
+- Fixed native catalog credential vending paths (`loadCredentials` and `loadTable` with delegation) to re-validate locations against the *current* catalog `allowedLocations`. Previously these paths trusted persisted table entity locations, allowing stale credentials after an admin tightened allowed locations on a native catalog. (The federated path had a partial check.)
 
 ## [1.4.0]
 
@@ -113,7 +160,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `PolarisConfigurationStore` has been deprecated for removal.
 
 ### Fixes
-
 - Fixed error propagation in drop operations (`dropTable`, `dropView`, `dropNamespace`). Server errors now return appropriate HTTP status codes based on persistence result instead of always returning NotFound
 - Enable non-AWS STS role ARNs
 - Helm chart: fixed a bug that prevented CORS settings to be properly applied. A new setting `cors.enabled` has been introduced in the chart as part of the fix.
@@ -191,7 +237,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   endpoints at `/q/metrics` and `/q/health` instead.
 
 ### Fixes
-
 - Fixed incorrect Azure expires at field for the credentials refresh response, leading to client failure via #2633
 
 ## [1.1.0-incubating]
@@ -297,7 +342,9 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
-[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.3.0-incubating...HEAD
+[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.5.0...HEAD
+[1.5.0]: https://github.com/apache/polaris/compare/apache-polaris-1.4.0...apache-polaris-1.5.0
+[1.4.0]: https://github.com/apache/polaris/compare/apache-polaris-1.3.0-incubating...apache-polaris-1.4.0
 [1.3.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.2.0-incubating...apache-polaris-1.3.0-incubating
 [1.2.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.1.0-incubating...apache-polaris-1.2.0-incubating
 [1.1.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.0.1-incubating...apache-polaris-1.1.0-incubating

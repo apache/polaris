@@ -137,6 +137,139 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(List.<String>of())
           .buildFeatureConfiguration();
 
+  /**
+   * The set of fields supported for composing the AWS STS role session name during credential
+   * vending.
+   *
+   * <p>Supported values:
+   *
+   * <ul>
+   *   <li>{@code realm} - The realm identifier for the request
+   *   <li>{@code catalog} - The name of the catalog vending credentials
+   *   <li>{@code namespace} - The namespace being accessed (dot-separated)
+   *   <li>{@code table} - The table name being accessed
+   *   <li>{@code principal} - The principal name requesting credentials
+   * </ul>
+   */
+  public static final List<String> SUPPORTED_SESSION_NAME_FIELDS =
+      List.<String>of("realm", "catalog", "namespace", "table", "principal");
+
+  /**
+   * Ordered list of fields to include in the session name during credential vending. Applies to
+   * systems that support session-based sub-scoped credentials (e.g. S3 with STS). Fields are joined
+   * with {@code -} and prefixed with {@code p-} by default. The result is truncated to 64
+   * characters; any budget unused by a short field is carried forward to subsequent fields.
+   *
+   * <p>When empty (default), falls back to {@link #INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL}
+   * behaviour for backward compatibility.
+   *
+   * <p>Supported fields: realm, catalog, namespace, table, principal.
+   *
+   * <p><b>Field order is significant.</b> The fields appear in the session name in the order they
+   * are listed. Changing the order changes the session name structure, which affects CloudTrail
+   * queries and log correlation.
+   *
+   * <p>The prefix can be customised by including a {@code prefix-X} token anywhere in the list
+   * (e.g. {@code ["prefix-myorg", "catalog", "principal"]} → {@code myorg-catalog-principal}).
+   * Defaults to {@code p-}.
+   *
+   * <p>Example: setting {@code ["realm","catalog","table","principal"]} produces session names like
+   * {@code p-acme-hr_catalog-employee-etl_writer} (truncated to 64 chars).
+   *
+   * <p>Note: enabling this flag causes the session name to vary per request context, which may
+   * reduce credential cache reuse depending on which fields are configured.
+   */
+  public static final FeatureConfiguration<List<String>>
+      SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL")
+              .description(
+                  "Ordered list of fields to include in the session name during credential vending.\n"
+                      + "Applies to systems that support session-based sub-scoped credentials (e.g. S3 with STS).\n"
+                      + "Fields are joined with '-' and prefixed with 'p-' by default. The result is truncated to\n"
+                      + "64 characters (the AWS STS session name limit); budget unused by a short field flows to\n"
+                      + "subsequent fields.\n"
+                      + "When empty (default), falls back to INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL behaviour.\n"
+                      + "\n"
+                      + "Supported fields: "
+                      + String.join(", ", SUPPORTED_SESSION_NAME_FIELDS)
+                      + "\n"
+                      + "\n"
+                      + "Field order is significant: fields appear in the session name in the order listed.\n"
+                      + "Changing the order changes the session name structure and will affect CloudTrail queries.\n"
+                      + "\n"
+                      + "To customise the prefix, include a 'prefix-X' token (e.g. 'prefix-myorg' sets the prefix\n"
+                      + "to 'myorg-'). Defaults to 'p-'.\n"
+                      + "\n"
+                      + "Example: [\"realm\",\"catalog\",\"table\",\"principal\"] produces session names like\n"
+                      + "'p-acme-hr_catalog-employee-etl_writer' (truncated to 64 chars).\n"
+                      + "\n"
+                      + "Note: enabling this flag may reduce credential cache reuse when context-specific fields\n"
+                      + "(e.g. table, namespace) are included, since credentials are keyed partly on session name.")
+              .defaultValue(List.<String>of())
+              .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> GCS_PRINCIPAL_ATTRIBUTION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_ENABLED")
+          .description(
+              "Enables GCS principal attribution via Workload Identity Federation.\n"
+                  + "When true, credential vending chains a catalog-signed JWT through an STS token\n"
+                  + "exchange and service-account impersonation so the Polaris principal appears in GCS\n"
+                  + "Data Access audit logs (serviceAccountDelegationInfo.principalSubject).\n"
+                  + "Requires GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE, GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER,\n"
+                  + "and GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE to also be set;\n"
+                  + "a missing required value is a fatal configuration error.\n"
+                  + "Also requires a gcpServiceAccount on the catalog StorageConfiguration.\n"
+                  + "Default: false (attribution disabled).")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE")
+          .description(
+              "Full resource name of the Workload Identity Pool provider used for GCS principal\n"
+                  + "attribution, e.g.\n"
+                  + "//iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>.\n"
+                  + "Used as both the attribution JWT 'aud' claim and the STS token-exchange audience.\n"
+                  + "Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER")
+          .description(
+              "Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer\n"
+                  + "configured on the Workload Identity Pool OIDC provider. The provider verifies\n"
+                  + "signatures against its uploaded JWKS, so no public discovery endpoint is required.\n"
+                  + "Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE")
+          .description(
+              "Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs\n"
+                  + "(RS256). The corresponding public key must be published in the Workload Identity\n"
+                  + "Pool provider's uploaded JWKS. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID")
+          .description(
+              "Key ID (kid) written into the header of GCS attribution JWTs so the Workload Identity\n"
+                  + "Pool provider can select the right public key from its JWKS during key rotation\n"
+                  + "(when the JWKS holds both the old and new keys). Must match the kid of the JWKS\n"
+                  + "entry for the configured signing key. Empty omits the header (only safe with a\n"
+                  + "single-key JWKS).")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")

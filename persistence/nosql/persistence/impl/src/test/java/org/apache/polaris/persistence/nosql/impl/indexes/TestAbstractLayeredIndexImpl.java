@@ -222,7 +222,7 @@ public class TestAbstractLayeredIndexImpl {
     soft.assertThatThrownBy(layered::asMutableIndex)
         .isInstanceOf(UnsupportedOperationException.class);
     soft.assertThat(layered.isMutable()).isFalse();
-    soft.assertThatThrownBy(() -> layered.divide(3))
+    soft.assertThatThrownBy(() -> layered.splitByTargetSize(3))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 

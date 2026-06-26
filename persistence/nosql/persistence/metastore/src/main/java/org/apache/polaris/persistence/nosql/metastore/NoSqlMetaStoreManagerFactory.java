@@ -39,8 +39,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -49,7 +49,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
@@ -63,13 +63,14 @@ import org.slf4j.LoggerFactory;
 class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(NoSqlMetaStoreManagerFactory.class);
 
+  // Stateless no-op; reused for every realm since NoSQL does not implement metrics persistence.
+  private static final MetricsPersistence NO_OP_METRICS_PERSISTENCE = new MetricsPersistence() {};
+
   private final Map<String, Persistence> realmPersistenceMap = new ConcurrentHashMap<>();
   private final RealmManagement realmManagement;
   private final RealmPersistenceFactory realmPersistenceFactory;
   private final Privileges privileges;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final Clock clock;
-  private final PolarisDiagnostics diagnostics;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
@@ -77,15 +78,11 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmManagement realmManagement,
       RealmPersistenceFactory realmPersistenceFactory,
       Privileges privileges,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      Clock clock,
-      PolarisDiagnostics diagnostics) {
+      Clock clock) {
     this.realmManagement = realmManagement;
     this.realmPersistenceFactory = realmPersistenceFactory;
     this.privileges = privileges;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.clock = clock;
-    this.diagnostics = diagnostics;
   }
 
   @PostConstruct
@@ -137,6 +134,12 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   @Override
+  public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
+    // NoSQL backend does not implement metrics persistence.
+    return NO_OP_METRICS_PERSISTENCE;
+  }
+
+  @Override
   public PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext) {
     var realmId = realmContext.getRealmIdentifier();
 
@@ -144,7 +147,7 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private NoSqlMetaStore newPersistenceMetaStore(Persistence persistence) {
-    return new NoSqlMetaStore(persistence, privileges, storageIntegrationProvider, diagnostics);
+    return new NoSqlMetaStore(persistence, privileges);
   }
 
   private Persistence initializedRealmPersistence(String realmId) {
@@ -271,7 +274,8 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
             rootCredentialsSet,
             clock);
 
-    PolarisCallContext ctx = new PolarisCallContext(() -> realmId, metaStore);
+    PolarisCallContext ctx =
+        new PolarisCallContext(() -> realmId, metaStore, RealmConfigurationSource.EMPTY_CONFIG);
     var secretsResult = createPolarisPrincipalForRealm(metaStoreManager, ctx);
 
     realmManagement.update(

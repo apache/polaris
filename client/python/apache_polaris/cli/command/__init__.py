@@ -240,13 +240,20 @@ class Command(ABC):
                 catalog_name=options_get(Arguments.CATALOG),
                 type_filter=options_get(Arguments.TYPE),
             )
+        elif options.command == Commands.REPL:
+            from apache_polaris.cli.command.repl import ReplCommand
+
+            command = ReplCommand(
+                profile=options_get(Arguments.PROFILE),
+                catalog=options_get(Arguments.CATALOG),
+            )
 
         if command is not None:
             command.validate()
             return command
         else:
             raise CliError(
-                "Please specify a command or run ./polaris --help to view the available commands"
+                "Please specify a command or run 'polaris --help' to view the available commands"
             )
 
     def execute(self, api: PolarisDefaultApi) -> None:

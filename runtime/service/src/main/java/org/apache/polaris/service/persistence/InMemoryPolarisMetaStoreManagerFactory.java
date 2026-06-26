@@ -19,8 +19,6 @@
 package org.apache.polaris.service.persistence;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -38,6 +36,8 @@ import org.apache.polaris.core.persistence.transactional.TransactionalPersistenc
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 @ApplicationScoped
 @Identifier("in-memory")
@@ -65,16 +65,16 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   @Override
-  protected TreeMapMetaStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
+  protected TreeMapMetaStore createBackingStore(@NonNull PolarisDiagnostics diagnostics) {
     return new TreeMapMetaStore(diagnostics);
   }
 
   @Override
   protected TransactionalPersistence createMetaStoreSession(
-      @Nonnull TreeMapMetaStore store,
-      @Nonnull RealmContext realmContext,
+      @NonNull TreeMapMetaStore store,
+      @NonNull RealmContext realmContext,
       @Nullable RootCredentialsSet rootCredentialsSet,
-      @Nonnull PolarisDiagnostics diagnostics) {
+      @NonNull PolarisDiagnostics diagnostics) {
     return new TreeMapTransactionalPersistenceImpl(
         diagnostics, store, storageIntegration, secretsGenerator(realmContext, rootCredentialsSet));
   }

@@ -101,13 +101,13 @@ if [[ -z "$REGTEST_ROOT_BEARER_TOKEN" ]]; then
     exit 1
   fi
 
-  token=$(echo "$output" | awk -F\" '{print $4}')
+  token=$(echo "$output" | jq -r '.access_token // empty')
 
-  if [ "$token" == "unauthorized_client" ]; then
-    logred "Error: Failed to retrieve bearer token"
+  if [ -z "$token" ]; then
+    logred "Error: Failed to retrieve bearer token — response: $output"
     exit 1
   fi
-
+  
   export REGTEST_ROOT_BEARER_TOKEN=$token
 fi
 

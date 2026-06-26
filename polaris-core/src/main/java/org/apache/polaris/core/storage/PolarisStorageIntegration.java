@@ -18,105 +18,41 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.RealmConfig;
+import org.jspecify.annotations.NonNull;
 
 /**
- * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
- * service principle information
+ * SPI for a storage integration bound to a particular storage configuration. An integration vends
+ * scoped storage credentials for requests against its configured backend.
  *
- * @param <T> the concrete type of {@link PolarisStorageConfigurationInfo} this integration supports
+ * <p>Implementations are returned by {@link PolarisStorageIntegrationProvider} given a resolved
+ * entity path; the provider decides how an integration instance is created and cached. The default
+ * cloud integrations (AWS, GCP, Azure) extend {@link CachingStorageIntegration}, which adds
+ * in-memory caching of vended credentials. Other implementations — e.g. persistence-backed
+ * credential pools — may implement this interface directly without extending the caching base
+ * class.
  */
-public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigurationInfo> {
-
-  private final String integrationIdentifierOrId;
-  private final T config;
-
-  public PolarisStorageIntegration(T config, String identifierOrId) {
-    this.config = config;
-    this.integrationIdentifierOrId = identifierOrId;
-  }
-
-  protected T config() {
-    return config;
-  }
-
-  public String getStorageIdentifierOrId() {
-    return integrationIdentifierOrId;
-  }
+public interface PolarisStorageIntegration {
 
   /**
-   * Subscope the creds against the allowed read and write locations.
+   * Vend a scoped {@link StorageAccessConfig} for the given list of {@link LocationGrant}s.
    *
-   * @param realmConfig the call context
-   * @param allowListOperation whether to allow LIST on all the provided allowed read/write
+   * <p>The AWS and GCP implementations honor per-grant action separation: a grant of {@code (loc,
+   * {WRITE})} does not cause {@code loc} to receive read or list permissions in the resulting
+   * credentials. The Azure implementation cannot fully honor per-grant per-prefix separation
+   * because a SAS token is monolithic at the container (or, for hierarchical ADLS, single-path)
+   * level; its action flags reflect the union of requested actions across all grants.
+   *
+   * @param grants per-location action requests; each grant pairs a set of storage location URIs
+   *     with the operations (READ, WRITE, LIST, DELETE, ALL) the credentials should permit on those
    *     locations
-   * @param allowedReadLocations a set of allowed to read locations
-   * @param allowedWriteLocations a set of allowed to write locations
-   * @param polarisPrincipal the principal requesting credentials
-   * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
-   *     supported by the storage type it will be returned to the client in the appropriate
-   *     properties. The endpoint may be relative to the base URI and the client is responsible for
-   *     handling the relative path
-   * @param credentialVendingContext context containing metadata for session tags (catalog,
-   *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
-   * @return An enum map including the scoped credentials
+   * @param refreshEndpoint optional endpoint URL for clients to refresh credentials
+   * @param context metadata (catalog, principal, roles, trace id, etc.) attached to the vending
+   *     call — used for audit tagging and cache keying
    */
-  public abstract StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext);
-
-  /**
-   * Validate access for the provided operation actions and locations.
-   *
-   * @param actions a set of operation actions to validate, like LIST/READ/DELETE/WRITE/ALL
-   * @param locations a set of locations to get access to
-   * @return A Map of string, representing the result of validation, the key value is {@code
-   *     <location, validate result>}. A validate result looks like this
-   *     <pre>
-   * {
-   *   "status" : "failure",
-   *   "actions" : {
-   *     "READ" : {
-   *       "message" : "The specified file was not found",
-   *       "status" : "failure"
-   *     },
-   *     "DELETE" : {
-   *       "message" : "One or more objects could not be deleted (Status Code: 200; Error Code: null)",
-   *       "status" : "failure"
-   *     },
-   *     "LIST" : {
-   *       "status" : "success"
-   *     },
-   *     "WRITE" : {
-   *       "message" : "Access Denied (Status Code: 403; Error Code: AccessDenied)",
-   *       "status" : "failure"
-   *     }
-   *   },
-   *   "message" : "Some of the integration checks failed. Check the Polaris documentation for more information."
-   * }
-   * </pre>
-   */
-  @Nonnull
-  public abstract Map<String, Map<PolarisStorageActions, ValidationResult>>
-      validateAccessToLocations(
-          @Nonnull RealmConfig realmConfig,
-          @Nonnull T storageConfig,
-          @Nonnull Set<PolarisStorageActions> actions,
-          @Nonnull Set<String> locations);
-
-  /**
-   * Result of calling {@link #validateAccessToLocations(RealmConfig,
-   * PolarisStorageConfigurationInfo, Set, Set)}
-   */
-  public record ValidationResult(boolean success, String message) {}
+  StorageAccessConfig getStorageAccessConfig(
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context);
 }

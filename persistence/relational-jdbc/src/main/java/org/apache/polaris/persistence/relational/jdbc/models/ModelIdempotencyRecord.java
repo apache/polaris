@@ -18,7 +18,6 @@
 
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -28,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
+import org.jspecify.annotations.Nullable;
 
 /**
  * JDBC model for {@link IdempotencyRecord} mirroring the {@code idempotency_records} table.
@@ -97,30 +97,23 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   String getResourceId();
 
-  @Nullable
-  Integer getHttpStatus();
+  @Nullable Integer getHttpStatus();
 
-  @Nullable
-  String getErrorSubtype();
+  @Nullable String getErrorSubtype();
 
-  @Nullable
-  String getResponseSummary();
+  @Nullable String getResponseSummary();
 
-  @Nullable
-  String getResponseHeaders();
+  @Nullable String getResponseHeaders();
 
-  @Nullable
-  Instant getFinalizedAt();
+  @Nullable Instant getFinalizedAt();
 
   Instant getCreatedAt();
 
   Instant getUpdatedAt();
 
-  @Nullable
-  Instant getHeartbeatAt();
+  @Nullable Instant getHeartbeatAt();
 
-  @Nullable
-  String getExecutorId();
+  @Nullable String getExecutorId();
 
   Instant getExpiresAt();
 

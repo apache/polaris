@@ -48,9 +48,9 @@ class PrivilegesCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris privileges table grant --catalog c --catalog-role cr --namespace n --table t PRIVILEGE_NAME
-        * ./polaris privileges namespace revoke --catalog c --catalog-role cr --namespace n PRIVILEGE_NAME
-        * ./polaris privileges list --catalog c --catalog-role cr
+        * polaris privileges table grant --catalog c --catalog-role cr --namespace n --table t PRIVILEGE_NAME
+        * polaris privileges namespace revoke --catalog c --catalog-role cr --namespace n PRIVILEGE_NAME
+        * polaris privileges list --catalog c --catalog-role cr
     """
 
     privileges_subcommand: str

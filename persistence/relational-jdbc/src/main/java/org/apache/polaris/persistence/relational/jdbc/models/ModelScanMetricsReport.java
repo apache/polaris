@@ -18,9 +18,6 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
@@ -30,6 +27,9 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
+import org.jspecify.annotations.Nullable;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Model class for scan_metrics_report table - stores scan metrics as first-class entities. */
 @PolarisImmutable
@@ -115,35 +115,25 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
 
   long getTimestampMs();
 
-  @Nullable
-  String getPrincipalName();
+  @Nullable String getPrincipalName();
 
-  @Nullable
-  String getRequestId();
+  @Nullable String getRequestId();
 
-  @Nullable
-  String getOtelTraceId();
+  @Nullable String getOtelTraceId();
 
-  @Nullable
-  String getOtelSpanId();
+  @Nullable String getOtelSpanId();
 
-  @Nullable
-  String getReportTraceId();
+  @Nullable String getReportTraceId();
 
-  @Nullable
-  Long getSnapshotId();
+  @Nullable Long getSnapshotId();
 
-  @Nullable
-  Integer getSchemaId();
+  @Nullable Integer getSchemaId();
 
-  @Nullable
-  String getFilterExpression();
+  @Nullable String getFilterExpression();
 
-  @Nullable
-  String getProjectedFieldIds();
+  @Nullable String getProjectedFieldIds();
 
-  @Nullable
-  String getProjectedFieldNames();
+  @Nullable String getProjectedFieldNames();
 
   long getResultDataFiles();
 
@@ -177,8 +167,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
 
   long getTotalDeleteFileSizeBytes();
 
-  @Nullable
-  String getMetadata();
+  @Nullable String getMetadata();
 
   @Override
   default ModelScanMetricsReport fromResultSet(ResultSet rs) throws SQLException {
@@ -262,8 +251,6 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
 
   // === Static conversion methods (following ModelEntity pattern) ===
 
-  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   /**
    * Converts a ScanMetricsRecord (SPI) to ModelScanMetricsReport (JDBC).
    *
@@ -328,8 +315,8 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
       return "{}";
     }
     try {
-      return OBJECT_MAPPER.writeValueAsString(map);
-    } catch (JsonProcessingException e) {
+      return JsonMapper.shared().writeValueAsString(map);
+    } catch (JacksonException e) {
       return "{}";
     }
   }

@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
@@ -55,6 +56,9 @@ public class FileIOExceptionsTest {
       new Schema(required(3, "id", Types.IntegerType.get(), "unique ID"));
 
   private static final String catalog = "test-catalog";
+
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
 
   private static TestServices services;
   private static MeasuredFileIOFactory ioFactory;
@@ -108,6 +112,7 @@ public class FileIOExceptionsTest {
             .createNamespace(
                 FileIOExceptionsTest.catalog,
                 CreateNamespaceRequest.builder().withNamespace(Namespace.of("ns1")).build(),
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(200);
@@ -128,7 +133,13 @@ public class FileIOExceptionsTest {
         services
             .restApi()
             .createTable(
-                catalog, "ns1", request, null, services.realmContext(), services.securityContext());
+                catalog,
+                "ns1",
+                request,
+                null,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext());
     res.close();
   }
 
@@ -137,7 +148,13 @@ public class FileIOExceptionsTest {
         services
             .restApi()
             .dropTable(
-                catalog, "ns1", "t1", false, services.realmContext(), services.securityContext());
+                catalog,
+                "ns1",
+                "t1",
+                IDEMPOTENCY_KEY,
+                false,
+                services.realmContext(),
+                services.securityContext());
     res.close();
   }
 
@@ -152,6 +169,7 @@ public class FileIOExceptionsTest {
                 null,
                 null,
                 "ALL",
+                null,
                 services.realmContext(),
                 services.securityContext());
     res.close();

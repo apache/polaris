@@ -42,10 +42,10 @@ class PolarisCli:
     available in the Python client API.
 
     Example usage:
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principals create example_user
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principal-roles create example_role
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} catalog-roles list
-    * ./polaris --client-id ${id} --client-secret ${secret} --base-url https://custom-polaris-domain.example.com/service-prefix catalogs list
+    * polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principals create example_user
+    * polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principal-roles create example_role
+    * polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} catalog-roles list
+    * polaris --client-id ${id} --client-secret ${secret} --base-url https://custom-polaris-domain.example.com/service-prefix catalogs list
     """
 
     # Can be enabled if the client is able to authenticate directly without first fetching a token
@@ -66,20 +66,20 @@ class PolarisCli:
                 command = cast(ProfilesCommand, command)
                 command.execute()
             else:
+                if options.debug:
+                    PolarisCli._enable_api_request_logging()
                 api_client = ApiClientBuilder(
                     options,
                     direct_authentication=PolarisCli.DIRECT_AUTHENTICATION_ENABLED,
                 ).get_api_client()
                 admin_api = PolarisDefaultApi(api_client)
                 command = Command.from_options(options)
-                if options.debug:
-                    PolarisCli._enable_api_request_logging()
                 command.execute(admin_api)
         # Handlers from most specific to least: ApiException (OpenAPI client), CliError
         # (expected user/config failures with their own exit codes), NotImplementedError
         # (abstract Command misuse), then generic bugs.
         except ApiException as e:
-            PolarisCli._try_print_exception(e)
+            PolarisCli.print_api_exception(e)
             sys.exit(CLI_ERROR_EXIT_CODE)
         except CliError as e:
             sys.stderr.write(f"{e}{os.linesep}")
@@ -114,7 +114,7 @@ class PolarisCli:
         urllib3.PoolManager.urlopen = urlopen_wrapper
 
     @staticmethod
-    def _try_print_exception(e: ApiException) -> None:
+    def print_api_exception(e: ApiException) -> None:
         try:
             error = json.loads(e.body)["error"]
             sys.stderr.write(

@@ -2,11 +2,11 @@
   "accessBoundaryRules": [
     {
       "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
+        "inRole:roles/storage.legacyObjectReader"
       ],
       "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
       "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('normal/path/to/data') || resource.name.startsWith('projects/_/buckets/bucket1/objects/awesome/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('awesome/path/to/data')"
+        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/awesome/path/to/data/') || resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data/')"
       }
     }
   ]

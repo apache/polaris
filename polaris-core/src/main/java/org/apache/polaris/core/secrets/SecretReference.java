@@ -21,13 +21,13 @@ package org.apache.polaris.core.secrets;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a "wrapped reference" to a user-owned secret that holds an identifier to retrieve
@@ -60,7 +60,7 @@ import java.util.regex.Pattern;
  *     protocol/version specifiers, etc., which are implementation-specific.
  */
 public record SecretReference(
-    @Nonnull @JsonProperty(value = "urn") String urn,
+    @NonNull @JsonProperty(value = "urn") String urn,
     @Nullable @JsonProperty(value = "referencePayload") Map<String, String> referencePayload) {
   private static final String URN_SCHEME = "urn";
   private static final String URN_NAMESPACE = "polaris-secret";
@@ -112,7 +112,7 @@ public record SecretReference(
    * @param urn The URN string to validate.
    * @return true if the URN is valid, false otherwise.
    */
-  private static boolean urnIsValid(@Nonnull String urn) {
+  private static boolean urnIsValid(@NonNull String urn) {
     return urn.trim().isEmpty() ? false : URN_PATTERN.matcher(urn).matches();
   }
 
@@ -125,9 +125,9 @@ public record SecretReference(
    *     components).
    * @return The constructed URN string.
    */
-  @Nonnull
+  @NonNull
   public static String buildUrnString(
-      @Nonnull String secretManagerType, @Nonnull String typeSpecificIdentifier) {
+      @NonNull String secretManagerType, @NonNull String typeSpecificIdentifier) {
 
     Preconditions.checkArgument(
         !secretManagerType.trim().isEmpty(), "Secret manager type cannot be empty");

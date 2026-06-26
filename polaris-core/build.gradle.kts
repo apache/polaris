@@ -70,6 +70,9 @@ dependencies {
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
   implementation(libs.google.cloud.iamcredentials)
+  // Signs short-lived attribution JWTs for GCS principal attribution via Workload Identity
+  // Federation (see GcpFederatedCredentialsExchanger).
+  implementation(libs.auth0.jwt)
 
   testCompileOnly(project(":polaris-immutables"))
   testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
@@ -80,10 +83,9 @@ dependencies {
   testFixturesApi(libs.threeten.extra)
   testFixturesApi(platform(libs.jackson.bom))
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-  testFixturesApi(libs.jakarta.annotation.api)
   testFixturesApi(libs.jakarta.ws.rs.api)
 
-  compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

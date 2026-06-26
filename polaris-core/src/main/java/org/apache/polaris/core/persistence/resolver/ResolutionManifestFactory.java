@@ -19,13 +19,12 @@
 
 package org.apache.polaris.core.persistence.resolver;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public interface ResolutionManifestFactory {
 
-  @Nonnull
-  PolarisResolutionManifest createResolutionManifest(
-      @Nonnull PolarisPrincipal principal, @Nullable String referenceCatalogName);
+  @NonNull PolarisResolutionManifest createResolutionManifest(
+      @NonNull PolarisPrincipal principal, @Nullable String referenceCatalogName);
 }

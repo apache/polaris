@@ -104,6 +104,8 @@ public final class PersistenceImplementation implements Persistence {
       String realmId,
       MonotonicClock monotonicClock,
       IdGenerator idGenerator) {
+    checkArgument(
+        params.referencePreviousHeadCount() > 0, "referencePreviousHeadCount must be positive");
 
     this.backend = backend;
     this.params = params;
@@ -252,14 +254,19 @@ public final class PersistenceImplementation implements Persistence {
       }
 
       var numParts = f.realNumParts();
-      if (numParts > fetched.size()) {
+      if (numParts > 1) {
         // The value of ObjId.numParts() is inconsistent with the real number of parts.
         // There are more parts that need to be fetched.
         fetchIds.clear();
-        for (var p = fetched.size(); p < numParts; p++) {
-          fetchIds.add(persistId(id.id(), p));
+        for (var p = 1; p < numParts; p++) {
+          var partId = persistId(id.id(), p);
+          if (!fetched.containsKey(partId)) {
+            fetchIds.add(partId);
+          }
         }
-        fetched.putAll(backend.fetch(realmId, fetchIds));
+        if (!fetchIds.isEmpty()) {
+          fetched.putAll(backend.fetch(realmId, fetchIds));
+        }
       }
       var fetchedObjTypeId = f.type();
       try (var in =
