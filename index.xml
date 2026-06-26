@@ -3892,9 +3892,9 @@ Additionally, Polaris will be bootstrapped to use this database and Docker conta
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;./getting-started/assets/cloud_providers/deploy-gcp.sh
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id="environment-variables" id="environment-variables"&gt;Environment Variables&lt;a class="heading-anchor" href="#environment-variables" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
-&lt;p&gt;The deployment script accepts the following environment variables:&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and Trino</title><link>https://polaris.apache.org/guides/trino/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/trino/</guid><description>&lt;p&gt;This getting started guide provides a &lt;code&gt;docker-compose&lt;/code&gt; file to set up &lt;a href="https://trino.io/"&gt;Trino&lt;/a&gt; with Apache Polaris.
+&lt;p&gt;The deployment script accepts the following environment variables:&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and Trino</title><link>https://polaris.apache.org/guides/trino/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/trino/</guid><description>&lt;p&gt;This getting started guide provides &lt;code&gt;docker-compose&lt;/code&gt; files to set up &lt;a href="https://trino.io/"&gt;Trino&lt;/a&gt; with Apache Polaris.
 Apache Polaris is configured as an Iceberg REST Catalog, and &lt;a href="https://rustfs.com/"&gt;RustFS&lt;/a&gt; provides S3-compatible object storage.&lt;/p&gt;
-&lt;p&gt;The &lt;code&gt;docker-compose&lt;/code&gt; file starts the following services:&lt;/p&gt;
+&lt;p&gt;The docker compose setup starts the following services:&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;code&gt;rustfs&lt;/code&gt; — S3-compatible object storage for Iceberg data files&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;polaris&lt;/code&gt; — Apache Polaris running with an in-memory metastore&lt;/li&gt;

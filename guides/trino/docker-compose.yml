@@ -19,111 +19,6 @@
 
 services:
 
-  rustfs:
-    image: rustfs/rustfs
-    ports:
-      - "9000:9000" # S3 API port
-      - "9001:9001" # Console port
-    environment:
-      RUSTFS_ACCESS_KEY: rustfsadmin
-      RUSTFS_SECRET_KEY: rustfsadmin
-      RUSTFS_VOLUMES: /data
-      RUSTFS_ADDRESS: ":9000"
-      RUSTFS_CONSOLE_ENABLE: "true"
-      RUSTFS_CONSOLE_ADDRESS: ":9001"
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:9000/health && curl --fail http://127.0.0.1:9001/rustfs/console/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  setup_bucket:
-    image: amazon/aws-cli:2.35.4
-    depends_on:
-      rustfs:
-        condition: service_healthy
-    environment:
-      AWS_ACCESS_KEY_ID: rustfsadmin
-      AWS_SECRET_ACCESS_KEY: rustfsadmin
-      AWS_ENDPOINT_URL: http://rustfs:9000
-    entrypoint: "/bin/sh"
-    command:
-      - "-c"
-      - >-
-        echo Creating RustFS bucket... &&
-        aws s3 mb s3://bucket123 &&
-        aws s3 ls &&
-        echo Bucket setup complete.
-
-  polaris:
-    image: apache/polaris:latest
-    ports:
-      - "8181:8181"
-      - "5005:5005"
-    depends_on:
-      rustfs:
-        condition: service_healthy
-      setup_bucket:
-        condition: service_completed_successfully
-    environment:
-      JAVA_DEBUG: true
-      JAVA_DEBUG_PORT: "*:5005"
-      AWS_REGION: us-west-2
-      AWS_ACCESS_KEY_ID: rustfsadmin
-      AWS_SECRET_ACCESS_KEY: rustfsadmin
-      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
-      polaris.realm-context.realms: POLARIS
-      quarkus.otel.sdk.disabled: "true"
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
-      interval: 2s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
-
-  polaris-setup:
-    image: alpine/curl:8.20.0
-    depends_on:
-      polaris:
-        condition: service_healthy
-      setup_bucket:
-        condition: service_completed_successfully
-    environment:
-      - CLIENT_ID=root
-      - CLIENT_SECRET=s3cr3t
-    volumes:
-      - ../assets/polaris/:/polaris
-    entrypoint: "/bin/sh"
-    command:
-      - "-c"
-      - >-
-        source /polaris/obtain-token.sh &&
-        echo Creating catalog... &&
-        export STORAGE_CONFIG_INFO='{"storageType":"S3",
-          "endpoint":"http://localhost:9000",
-          "endpointInternal":"http://rustfs:9000",
-          "pathStyleAccess":true,
-          "region":"us-west-2"}' &&
-        export STORAGE_LOCATION='s3://bucket123' &&
-        /polaris/create-catalog.sh POLARIS $$TOKEN &&
-        echo Extra grants... &&
-        curl \
-          --fail-with-body \
-          -H "Authorization: Bearer $$TOKEN" \
-          -H 'Content-Type: application/json' \
-          -X PUT \
-          http://polaris:8181/api/management/v1/catalogs/quickstart_catalog/catalog-roles/catalog_admin/grants \
-          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}' &&
-        echo Done. &&
-        touch /tmp/polaris-setup-done &&
-        tail -f /dev/null
-    healthcheck:
-      interval: 1s
-      timeout: 10s
-      retries: 240
-      test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
-
   trino:
     image: trinodb/trino
     ports:
@@ -135,7 +30,7 @@ services:
       - CLIENT_ID=root
       - CLIENT_SECRET=s3cr3t
     volumes:
-      - ./catalog:/etc/trino/catalog
+      - ../trino/catalog:/etc/trino/catalog
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/v1/info"]
       interval: 5s
