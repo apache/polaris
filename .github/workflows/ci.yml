@@ -92,6 +92,43 @@ jobs:
       # Intentionally unpinned to always use the latest allowlist from the ASF.
       - uses: apache/infrastructure-actions/allowlist-check@main # zizmor: ignore[unpinned-uses]
 
+  license-checks:
+    name: License and NOTICE Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run distribution merge and Quarkus license report validation
+        env: *gradle_env_vars
+        run: |
+          ./gradlew \
+            :polaris-distribution:licenseNoticeMerge \
+            :polaris-server:generateLicenseReport \
+            :polaris-admin:generateLicenseReport \
+            --continue
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+      - name: Archive license validation outputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: failure()
+        with:
+          name: upload-${{ github.job }}-license-reports
+          path: |
+            runtime/distribution/build/merged-license-notice/**
+            runtime/server/build/reports/dependency-license/**
+            runtime/admin/build/reports/dependency-license/**
+
   runtime-service-tests:
     name: Runtime Service Tests
     runs-on: ubuntu-latest
@@ -579,6 +616,7 @@ jobs:
     name: "Required Checks"
     needs:
       - build-checks
+      - license-checks
       - runtime-service-tests
       - runtime-service-int-tests
       - admin-tool-tests

@@ -18,6 +18,8 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import licenses.BundleJarLicenseNoticeValidation
+import licenses.BundleLicenseValidation
 
 plugins { id("polaris-client") }
 
@@ -132,6 +134,57 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
   from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
 }
+
+val createPolarisSparkJar = tasks.named<ShadowJar>("createPolarisSparkJar")
+
+val checkBundleLicense by
+  tasks.registering(BundleLicenseValidation::class) {
+    description =
+      "Validates direct runtimeClasspath dependencies have " +
+        "'* Maven group:artifact IDs:' entries in BUNDLE-LICENSE"
+    group = "verification"
+    bundleLicenseFile.set(project.file("BUNDLE-LICENSE"))
+    bundledArtifacts.set(
+      provider {
+        configurations
+          .getByName("runtimeClasspath")
+          .resolvedConfiguration
+          .resolvedArtifacts
+          .filter { it.moduleVersion.id.group != project.group.toString() }
+          .map { "${it.moduleVersion.id.group}:${it.moduleVersion.id.name}" }
+          .toSet()
+      }
+    )
+    // The BUNDLE-LICENSE is shared between the _2.12 and _2.13 build variants, so it intentionally
+    // contains entries for both Scala variants of each artifact. Allow the cross-variant entry so
+    // the superfluous check does not produce a false positive when building for the other variant.
+    allowedExtraArtifacts.set(
+      provider {
+        val otherScalaVersion = if (scalaVersion == "2.12") "2.13" else "2.12"
+        configurations
+          .getByName("runtimeClasspath")
+          .resolvedConfiguration
+          .resolvedArtifacts
+          .filter { it.moduleVersion.id.group != project.group.toString() }
+          .map {
+            val baseName =
+              it.moduleVersion.id.name.replace("_${scalaVersion}", "_${otherScalaVersion}")
+            "${it.moduleVersion.id.group}:${baseName}"
+          }
+          .toSet()
+      }
+    )
+  }
+
+val checkBundleJarLicenseNotice by
+  tasks.registering(BundleJarLicenseNoticeValidation::class) {
+    description = "Validates the bundle shadow JAR contains top-level LICENSE and NOTICE entries"
+    group = "verification"
+    bundleJar.set(createPolarisSparkJar.flatMap { it.archiveFile })
+    dependsOn(createPolarisSparkJar)
+  }
+
+tasks.named("check") { dependsOn(checkBundleLicense, checkBundleJarLicenseNotice) }
 
 // ensure the shadow jar job (which will automatically run license addition) is run for both
 // `assemble` and `build` task
