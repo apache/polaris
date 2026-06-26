@@ -58,6 +58,9 @@ public class ProductionReadinessChecks {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ProductionReadinessChecks.class);
 
+  private static final String REFLECTION_FREE_SERIALIZERS_PROPERTY =
+      "quarkus.rest.jackson.optimization.enable-reflection-free-serializers";
+
   /**
    * A warning sign ⚠ {@code 26A0} with variant selector {@code FE0F}. The sign is preceded by a
    * null character {@code 0000} to ensure that the warning sign is displayed correctly regardless
@@ -217,6 +220,18 @@ public class ProductionReadinessChecks {
                 "The realm context resolver is configured to map requests without a realm header to the default realm.",
                 "polaris.realm-context.require-header"));
       }
+    }
+    return ProductionReadinessCheck.OK;
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkReflectionFreeSerializers(Config config) {
+    ConfigValue configValue = config.getConfigValue(REFLECTION_FREE_SERIALIZERS_PROPERTY);
+    if (Boolean.parseBoolean(configValue.getValue())) {
+      return ProductionReadinessCheck.of(
+          Error.ofSevere(
+              "Quarkus REST Jackson reflection-free serializers must be disabled because Polaris REST JSON handling relies on registered ObjectMapper customizations for Iceberg request and response models.",
+              REFLECTION_FREE_SERIALIZERS_PROPERTY));
     }
     return ProductionReadinessCheck.OK;
   }
