@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.lineage;
+package org.apache.polaris.extensions.lineage;
 
 /** Service boundary for lineage operations used by transport-layer adapters. */
 public interface LineageService {

@@ -16,16 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import java.util.Objects;
 
-/** Request model for normalized lineage lookups. */
-public record LineageQueryRequest(
-    String nodeId, LineageDirection direction, LineageGranularity granularity) {
-  public LineageQueryRequest {
-    Objects.requireNonNull(nodeId, "nodeId must be non-null");
-    Objects.requireNonNull(direction, "direction must be non-null");
-    Objects.requireNonNull(granularity, "granularity must be non-null");
+/** A source-to-target field mapping returned for column-granularity queries. */
+public record LineageFieldMapping(String sourceField, String targetField) {
+  public LineageFieldMapping {
+    Objects.requireNonNull(sourceField, "sourceField must be non-null");
+    Objects.requireNonNull(targetField, "targetField must be non-null");
   }
 }

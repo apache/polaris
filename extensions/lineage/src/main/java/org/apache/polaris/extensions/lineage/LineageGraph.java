@@ -16,14 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.lineage;
+package org.apache.polaris.extensions.lineage;
 
+import java.util.List;
 import java.util.Objects;
 
-/** A source-to-target field mapping returned for column-granularity queries. */
-public record LineageFieldMapping(String sourceField, String targetField) {
-  public LineageFieldMapping {
-    Objects.requireNonNull(sourceField, "sourceField must be non-null");
-    Objects.requireNonNull(targetField, "targetField must be non-null");
+/** Normalized response model for lineage queries. */
+public record LineageGraph(
+    LineageNode node, List<LineageNode> upstream, List<LineageNode> downstream) {
+  public LineageGraph {
+    Objects.requireNonNull(node, "node must be non-null");
+    upstream = List.copyOf(Objects.requireNonNull(upstream, "upstream must be non-null"));
+    downstream = List.copyOf(Objects.requireNonNull(downstream, "downstream must be non-null"));
   }
 }
