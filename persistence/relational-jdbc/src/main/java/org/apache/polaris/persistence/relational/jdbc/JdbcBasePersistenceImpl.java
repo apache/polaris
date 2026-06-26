@@ -68,7 +68,6 @@ import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
@@ -92,7 +91,6 @@ public class JdbcBasePersistenceImpl
   private final PolarisDiagnostics diagnostics;
   private final DatasourceOperations datasourceOperations;
   private final PrincipalSecretsGenerator secretsGenerator;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
   private final int schemaVersion;
 
@@ -103,13 +101,11 @@ public class JdbcBasePersistenceImpl
       PolarisDiagnostics diagnostics,
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
       String realmId,
       int schemaVersion) {
     this.diagnostics = diagnostics;
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
   }
