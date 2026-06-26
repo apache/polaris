@@ -21,11 +21,8 @@ package org.apache.polaris.extension.auth.ranger.test;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -34,6 +31,9 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Base class for Ranger integration tests providing common helpers for authentication and principal
@@ -41,7 +41,7 @@ import org.junit.jupiter.api.BeforeAll;
  */
 public abstract class RangerIntegrationTestBase {
 
-  private static final JsonMapper mapper = JsonMapper.builder().build();
+  private static final JsonMapper mapper = JsonMapper.shared();
   private final List<String> catalogsToCleanup = new ArrayList<>();
 
   protected Map<String, String> user2Token = new HashMap<>();
@@ -60,8 +60,8 @@ public abstract class RangerIntegrationTestBase {
   protected String toJson(Object value) {
     try {
       return mapper.writeValueAsString(value);
-    } catch (java.io.IOException e) {
-      throw new UncheckedIOException("Failed to serialize to JSON", e);
+    } catch (JacksonException e) {
+      throw new IllegalArgumentException("Failed to serialize to JSON", e);
     }
   }
 
@@ -151,9 +151,9 @@ public abstract class RangerIntegrationTestBase {
       if (valueNode == null || valueNode.isMissingNode() || valueNode.isNull()) {
         return null;
       }
-      return valueNode.asText();
-    } catch (java.io.IOException e) {
-      throw new UncheckedIOException("Failed to parse JSON response", e);
+      return valueNode.asString();
+    } catch (JacksonException e) {
+      throw new IllegalArgumentException("Failed to parse JSON response", e);
     }
   }
 
