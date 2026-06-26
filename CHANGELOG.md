@@ -55,6 +55,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added Polaris Spark 4.0 client.
 - Added `maintenance` support in Helm chart.
 
+- Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
+
 ### Changes
 - Added REPL support to Polaris CLI.
 - The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.

@@ -29,6 +29,10 @@ import org.immutables.value.Value;
 /** Metadata associated with a Polaris event. */
 @PolarisImmutable
 public interface PolarisEventMetadata {
+  String OPEN_TELEMETRY_SPAN_ID_KEY = "otel.span_id";
+  String OPEN_TELEMETRY_TRACE_ID_KEY = "otel.trace_id";
+  String OPEN_TELEMETRY_SAMPLED_KEY = "otel.sampled";
+  String OPEN_TELEMETRY_TRACE_FLAGS_KEY = "otel.trace_flags";
 
   static ImmutablePolarisEventMetadata.Builder builder() {
     return ImmutablePolarisEventMetadata.builder();
