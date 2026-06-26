@@ -788,6 +788,24 @@ public class PolarisAdminService {
     return secretReferences;
   }
 
+  private void deleteSecretReferencesAfterFailedCatalogCreate(
+      Map<String, SecretReference> secretReferences) {
+    secretReferences
+        .values()
+        .forEach(
+            secretReference -> {
+              try {
+                getUserSecretsManager().deleteSecret(secretReference);
+              } catch (RuntimeException e) {
+                LOGGER
+                    .atWarn()
+                    .setCause(e)
+                    .addKeyValue("secretReference", secretReference.urn())
+                    .log("Failed to clean up secret after catalog creation failure");
+              }
+            });
+  }
+
   /**
    * @see #extractSecretReferences
    */
@@ -819,77 +837,83 @@ public class PolarisAdminService {
             .setProperties(reservedProperties.removeReservedProperties(entity.getPropertiesAsMap()))
             .build();
 
-    if (catalog instanceof ExternalCatalog externalCatalog) {
-      ConnectionConfigInfo connectionConfigInfo = externalCatalog.getConnectionConfigInfo();
+    Map<String, SecretReference> processedSecretReferences = Map.of();
+    boolean catalogCreated = false;
+    try {
+      if (catalog instanceof ExternalCatalog externalCatalog) {
+        ConnectionConfigInfo connectionConfigInfo = externalCatalog.getConnectionConfigInfo();
 
-      if (connectionConfigInfo != null) {
-        LOGGER
-            .atDebug()
-            .addKeyValue("catalogName", entity.getName())
-            .log("Creating a federated catalog");
-        FeatureConfiguration.enforceFeatureEnabledOrThrow(
-            realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
-        Map<String, SecretReference> processedSecretReferences = Map.of();
-        List<String> supportedAuthenticationTypes =
-            realmConfig
-                .getConfig(FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
-                .stream()
-                .map(s -> s.toUpperCase(Locale.ROOT))
-                .toList();
-        if (requiresSecretReferenceExtraction(connectionConfigInfo)) {
-          // For fields that contain references to secrets, we'll separately process the secrets
-          // from the original request first, and then populate those fields with the extracted
-          // secret references as part of the construction of the internal persistence entity.
-          checkState(
-              supportedAuthenticationTypes.contains(
-                  connectionConfigInfo
-                      .getAuthenticationParameters()
-                      .getAuthenticationType()
-                      .name()),
-              "Authentication type %s is not supported.",
-              connectionConfigInfo.getAuthenticationParameters().getAuthenticationType());
-          processedSecretReferences = extractSecretReferences(externalCatalog, entity);
-        } else {
-          // Support no-auth catalog federation only when the feature is enabled.
-          checkState(
-              supportedAuthenticationTypes.contains(
-                  AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT.name()),
-              "Implicit authentication based catalog federation is not supported.");
+        if (connectionConfigInfo != null) {
+          LOGGER
+              .atDebug()
+              .addKeyValue("catalogName", entity.getName())
+              .log("Creating a federated catalog");
+          FeatureConfiguration.enforceFeatureEnabledOrThrow(
+              realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+          List<String> supportedAuthenticationTypes =
+              realmConfig
+                  .getConfig(FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
+                  .stream()
+                  .map(s -> s.toUpperCase(Locale.ROOT))
+                  .toList();
+          if (requiresSecretReferenceExtraction(connectionConfigInfo)) {
+            // For fields that contain references to secrets, we'll separately process the secrets
+            // from the original request first, and then populate those fields with the extracted
+            // secret references as part of the construction of the internal persistence entity.
+            checkState(
+                supportedAuthenticationTypes.contains(
+                    connectionConfigInfo
+                        .getAuthenticationParameters()
+                        .getAuthenticationType()
+                        .name()),
+                "Authentication type %s is not supported.",
+                connectionConfigInfo.getAuthenticationParameters().getAuthenticationType());
+            processedSecretReferences = extractSecretReferences(externalCatalog, entity);
+          } else {
+            // Support no-auth catalog federation only when the feature is enabled.
+            checkState(
+                supportedAuthenticationTypes.contains(
+                    AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT.name()),
+                "Implicit authentication based catalog federation is not supported.");
+          }
+
+          // Allocate service identity if needed for the authentication type.
+          // The provider will determine if a service identity is required based on the connection
+          // config.
+          Optional<ServiceIdentityInfoDpo> serviceIdentityInfoDpoOptional =
+              serviceIdentityProvider.allocateServiceIdentity(connectionConfigInfo);
+
+          entity =
+              new CatalogEntity.Builder(entity)
+                  .setConnectionConfigInfoDpoWithSecrets(
+                      connectionConfigInfo,
+                      processedSecretReferences,
+                      serviceIdentityInfoDpoOptional.orElse(null))
+                  .build();
         }
+      }
 
-        // Allocate service identity if needed for the authentication type.
-        // The provider will determine if a service identity is required based on the connection
-        // config.
-        Optional<ServiceIdentityInfoDpo> serviceIdentityInfoDpoOptional =
-            serviceIdentityProvider.allocateServiceIdentity(connectionConfigInfo);
-
-        entity =
-            new CatalogEntity.Builder(entity)
-                .setConnectionConfigInfoDpoWithSecrets(
-                    connectionConfigInfo,
-                    processedSecretReferences,
-                    serviceIdentityInfoDpoOptional.orElse(null))
-                .build();
+      CreateCatalogResult catalogResult =
+          metaStoreManager.createCatalog(getCurrentPolarisContext(), entity, List.of());
+      if (catalogResult.alreadyExists()) {
+        throw new AlreadyExistsException(
+            "Cannot create Catalog %s. Catalog already exists or resolution failed",
+            entity.getName());
+      } else if (!catalogResult.isSuccess()) {
+        throw new IllegalStateException(
+            String.format(
+                "Cannot create Catalog %s: %s with extraInfo %s",
+                entity.getName(),
+                catalogResult.getReturnStatus(),
+                catalogResult.getExtraInformation()));
+      }
+      catalogCreated = true;
+      return PolarisEntity.of(catalogResult.getCatalog());
+    } finally {
+      if (!catalogCreated) {
+        deleteSecretReferencesAfterFailedCatalogCreate(processedSecretReferences);
       }
     }
-
-    CreateCatalogResult catalogResult =
-        metaStoreManager.createCatalog(getCurrentPolarisContext(), entity, List.of());
-    if (catalogResult.alreadyExists()) {
-      // TODO: Proactive garbage-collection of any inline secrets that were written to the
-      // secrets manager, here and on any other unexpected exception as well.
-      throw new AlreadyExistsException(
-          "Cannot create Catalog %s. Catalog already exists or resolution failed",
-          entity.getName());
-    } else if (!catalogResult.isSuccess()) {
-      throw new IllegalStateException(
-          String.format(
-              "Cannot create Catalog %s: %s with extraInfo %s",
-              entity.getName(),
-              catalogResult.getReturnStatus(),
-              catalogResult.getExtraInformation()));
-    }
-    return PolarisEntity.of(catalogResult.getCatalog());
   }
 
   public void deleteCatalog(String name) {

@@ -24,25 +24,44 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.ExternalCatalog;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -51,6 +70,7 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
@@ -58,6 +78,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.assertj.core.api.Assertions;
@@ -126,6 +147,62 @@ public class PolarisAdminServiceTest {
 
   protected static void assertSuccess(BaseResult result) {
     Assertions.assertThat(result.isSuccess()).isTrue();
+  }
+
+  @Test
+  void testCreateCatalogCleansUpInlineSecretsWhenCatalogAlreadyExists() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogCreate(secretReference);
+    when(metaStoreManager.createCatalog(any(), any(), any()))
+        .thenReturn(new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
+
+    assertThatThrownBy(
+            () ->
+                adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
+        .isInstanceOf(AlreadyExistsException.class);
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testCreateCatalogCleanupFailureDoesNotHideOriginalFailure() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogCreate(secretReference);
+    CreateCatalogResult resultWithError =
+        new CreateCatalogResult(
+            BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unexpected Error Occurred");
+    when(metaStoreManager.createCatalog(any(), any(), any())).thenReturn(resultWithError);
+    doThrow(new RuntimeException("cleanup failed")).when(userSecretsManager).deleteSecret(any());
+
+    assertThatThrownBy(
+            () ->
+                adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage(
+            String.format(
+                "Cannot create Catalog %s: %s with extraInfo %s",
+                "external-catalog",
+                resultWithError.getReturnStatus(),
+                resultWithError.getExtraInformation()));
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testCreateCatalogDoesNotCleanUpInlineSecretsOnSuccess() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogCreate(secretReference);
+    when(metaStoreManager.createCatalog(any(), any(), any()))
+        .thenReturn(
+            new CreateCatalogResult(
+                createBaseCatalog("external-catalog"), createBaseCatalogRole()));
+
+    adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog()));
+
+    verify(userSecretsManager, never()).deleteSecret(any());
   }
 
   @Test
@@ -703,6 +780,77 @@ public class PolarisAdminServiceTest {
         .setCatalogId(1L)
         .setCreateTimestamp(System.currentTimeMillis())
         .build();
+  }
+
+  private void setupExternalCatalogCreate(SecretReference secretReference) {
+    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS))
+        .thenReturn(true);
+    when(realmConfig.getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS))
+        .thenReturn(-1);
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_CATALOG_FEDERATION)).thenReturn(true);
+    when(realmConfig.getConfig(
+            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
+        .thenReturn(List.of(AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name()));
+
+    GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
+    when(idResult.getId()).thenReturn(2L);
+    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    when(reservedProperties.removeReservedProperties(Mockito.<Map<String, String>>any()))
+        .thenReturn(Map.of());
+    when(userSecretsManager.writeSecret(any(), any())).thenReturn(secretReference);
+    when(identityProvider.allocateServiceIdentity(any())).thenReturn(Optional.empty());
+  }
+
+  private Catalog createExternalOauthCatalog() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+            .build();
+    ConnectionConfigInfo connectionConfigInfo =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/polaris/api/catalog")
+            .setRemoteCatalogName("remote-catalog")
+            .setAuthenticationParameters(
+                OAuthClientCredentialsParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
+                    .setClientId("client-id")
+                    .setClientSecret("client-secret")
+                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName("external-catalog")
+        .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+        .setStorageConfigInfo(awsConfigModel)
+        .setConnectionConfigInfo(connectionConfigInfo)
+        .build();
+  }
+
+  private PolarisBaseEntity createBaseCatalog(String name) {
+    return new PolarisBaseEntity(
+        PolarisEntityConstants.getNullId(),
+        2L,
+        PolarisEntityType.CATALOG,
+        PolarisEntitySubType.NULL_SUBTYPE,
+        PolarisEntityConstants.getRootEntityId(),
+        name);
+  }
+
+  private PolarisBaseEntity createBaseCatalogRole() {
+    return new PolarisBaseEntity(
+        2L,
+        3L,
+        PolarisEntityType.CATALOG_ROLE,
+        PolarisEntitySubType.NULL_SUBTYPE,
+        2L,
+        PolarisEntityConstants.getNameOfCatalogAdminRole());
   }
 
   private PolarisEntity createEntity(String name, PolarisEntityType type, long id) {
