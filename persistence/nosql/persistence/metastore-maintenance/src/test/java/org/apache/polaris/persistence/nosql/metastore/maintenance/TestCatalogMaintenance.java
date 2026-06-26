@@ -569,8 +569,7 @@ public class TestCatalogMaintenance {
 
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    var metrics = metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
-    var callCtx = new PolarisCallContext(realmContext, session, metrics, configurationSource);
+    var callCtx = new PolarisCallContext(realmContext, session, configurationSource);
     var persistence =
         realmPersistenceFactory.newBuilder().realmId(realmId).skipDecorators().build();
 
@@ -927,8 +926,7 @@ public class TestCatalogMaintenance {
 
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    var metrics = metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
-    var callCtx = new PolarisCallContext(realmContext, session, metrics, configurationSource);
+    var callCtx = new PolarisCallContext(realmContext, session, configurationSource);
 
     for (var e : entities) {
       var result =
