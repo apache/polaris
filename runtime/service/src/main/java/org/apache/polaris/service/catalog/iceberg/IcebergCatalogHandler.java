@@ -117,6 +117,7 @@ import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
+import org.apache.polaris.extension.metrics.spi.IcebergMetricsReporter;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
@@ -130,7 +131,6 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -209,7 +209,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract EventAttributeMap eventAttributeMap();
 
-  protected abstract PolarisMetricsReporter metricsReporter();
+  protected abstract IcebergMetricsReporter metricsReporter();
 
   protected abstract Clock clock();
 

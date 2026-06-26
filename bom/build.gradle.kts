@@ -30,6 +30,7 @@ dependencies {
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
+    api(project(":polaris-api-metrics-reports-service"))
 
     api(project(":polaris-container-spec-helper"))
     api(project(":polaris-azurite-testcontainer"))
@@ -99,6 +100,8 @@ dependencies {
     api(project(":polaris-extensions-federation-bigquery"))
     api(project(":polaris-extensions-federation-hadoop"))
     api(project(":polaris-extensions-federation-hive"))
+    api(project(":polaris-extensions-metrics-reports-jdbc"))
+    api(project(":polaris-extensions-metrics-reports-spi"))
     api(project(":polaris-hms-testcontainer"))
 
     api(project(":polaris-spark-3.5_2.12"))
@@ -107,6 +110,7 @@ dependencies {
       api(project(":polaris-spark-3.5_2.13"))
       api(project(":polaris-spark-4.0_2.13"))
     }
+    api(project(":polaris-extensions-metrics-reports"))
 
     api(project(":polaris-admin"))
     api(project(":polaris-runtime-common"))

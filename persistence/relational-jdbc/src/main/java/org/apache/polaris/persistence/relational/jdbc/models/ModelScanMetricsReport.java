@@ -20,9 +20,13 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -319,6 +323,85 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
     } catch (JacksonException e) {
       return "{}";
     }
+  }
+
+  private static Map<String, String> parseMetadata(@Nullable String metadata) {
+    if (metadata == null || metadata.isBlank()) {
+      return Map.of();
+    }
+    try {
+      Map<String, String> parsed =
+          JsonMapper.shared()
+              .readValue(
+                  metadata, new tools.jackson.core.type.TypeReference<Map<String, String>>() {});
+      return parsed != null ? parsed : Map.of();
+    } catch (JacksonException e) {
+      return Map.of();
+    }
+  }
+
+  /**
+   * Converts this JDBC model back to the backend-agnostic SPI record.
+   *
+   * @return a ScanMetricsRecord built from this model's fields
+   */
+  default ScanMetricsRecord toRecord() {
+    String rawFieldIds = getProjectedFieldIds();
+    String rawFieldNames = getProjectedFieldNames();
+    List<Integer> fieldIds =
+        rawFieldIds == null || rawFieldIds.isEmpty()
+            ? Collections.emptyList()
+            : Arrays.stream(rawFieldIds.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .flatMap(
+                    s -> {
+                      try {
+                        return java.util.stream.Stream.of(Integer.parseInt(s));
+                      } catch (NumberFormatException e) {
+                        return java.util.stream.Stream.empty();
+                      }
+                    })
+                .collect(Collectors.toList());
+    List<String> fieldNames =
+        rawFieldNames == null || rawFieldNames.isEmpty()
+            ? Collections.emptyList()
+            : Arrays.stream(rawFieldNames.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+    return ScanMetricsRecord.builder()
+        .reportId(getReportId())
+        .catalogId(getCatalogId())
+        .tableId(getTableId())
+        .timestamp(Instant.ofEpochMilli(getTimestampMs()))
+        .metadata(parseMetadata(getMetadata()))
+        .principalName(getPrincipalName())
+        .requestId(getRequestId())
+        .otelTraceId(getOtelTraceId())
+        .otelSpanId(getOtelSpanId())
+        .snapshotId(Optional.ofNullable(getSnapshotId()))
+        .schemaId(Optional.ofNullable(getSchemaId()))
+        .filterExpression(Optional.ofNullable(getFilterExpression()))
+        .projectedFieldIds(fieldIds)
+        .projectedFieldNames(fieldNames)
+        .resultDataFiles(getResultDataFiles())
+        .resultDeleteFiles(getResultDeleteFiles())
+        .totalFileSizeBytes(getTotalFileSizeBytes())
+        .totalDataManifests(getTotalDataManifests())
+        .totalDeleteManifests(getTotalDeleteManifests())
+        .scannedDataManifests(getScannedDataManifests())
+        .scannedDeleteManifests(getScannedDeleteManifests())
+        .skippedDataManifests(getSkippedDataManifests())
+        .skippedDeleteManifests(getSkippedDeleteManifests())
+        .skippedDataFiles(getSkippedDataFiles())
+        .skippedDeleteFiles(getSkippedDeleteFiles())
+        .totalPlanningDurationMs(getTotalPlanningDurationMs())
+        .equalityDeleteFiles(getEqualityDeleteFiles())
+        .positionalDeleteFiles(getPositionalDeleteFiles())
+        .indexedDeleteFiles(getIndexedDeleteFiles())
+        .totalDeleteFileSizeBytes(getTotalDeleteFileSizeBytes())
+        .build();
   }
 
   /** Dummy instance to be used as a Converter when calling fromResultSet(). */

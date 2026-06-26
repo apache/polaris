@@ -94,7 +94,7 @@ public class DatasourceOperations {
     }
   }
 
-  DatabaseType getDatabaseType() {
+  public DatabaseType getDatabaseType() {
     return databaseType;
   }
 
