@@ -606,7 +606,7 @@ This product bundles jakarta.validation-api with the following in its NOTICE fil
 
 --------------------------------------------------------------------------------
 
-This product bundles Conscrypt (openjdk uber) with the following in its NOTICE file:
+This product bundles Conscrypt (openjdk-uber) with the following in its NOTICE file:
 |
 | Copyright 2016 The Android Open Source Project
 | 
