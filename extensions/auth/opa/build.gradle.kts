@@ -17,13 +17,15 @@
  * under the License.
  */
 
+import java.io.OutputStream
 import org.gradle.api.attributes.java.TargetJvmVersion
 import org.gradle.api.plugins.jvm.JvmTestSuite
 import org.gradle.language.base.plugins.LifecycleBasePlugin
 
 plugins {
-  id("polaris-client")
+  id("polaris-server")
   id("polaris-server-test-runner")
+  id("org.kordamp.gradle.jandex")
 }
 
 val intTestJvmVersion = 21
@@ -32,6 +34,8 @@ val intTestBase by configurations.creating {
   isCanBeResolved = false
 }
 val intTestBaseSources = sourceSets.create("intTestBase")
+val jsonSchemaGenerator = sourceSets.create("jsonSchemaGenerator")
+val jsonSchemaGeneratorImplementation by configurations.getting
 val opaStartupAction = sourceSets.create("opaStartupAction")
 val opaStartupActionCompileOnly by configurations.getting
 val opaStartupActionImplementation by configurations.getting
@@ -46,6 +50,46 @@ listOf(
 
 dependencies {
   polarisServer(project(path = ":polaris-server", configuration = "quarkusRunner"))
+
+  implementation(project(":polaris-core"))
+  implementation(libs.apache.httpclient5)
+  implementation(platform(libs.jackson.bom))
+  implementation("com.fasterxml.jackson.core:jackson-core")
+  implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation(libs.guava)
+  implementation(libs.slf4j.api)
+  implementation(libs.auth0.jwt)
+  implementation(project(":polaris-async-api"))
+
+  jsonSchemaGeneratorImplementation(project(":polaris-extensions-auth-opa"))
+  jsonSchemaGeneratorImplementation(platform(libs.jackson.bom))
+  jsonSchemaGeneratorImplementation("com.fasterxml.jackson.module:jackson-module-jsonSchema")
+
+  // Iceberg dependency for ForbiddenException
+  implementation(platform(libs.iceberg.bom))
+  implementation("org.apache.iceberg:iceberg-api")
+
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
+  compileOnly(libs.jspecify)
+  compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
+  compileOnly(libs.smallrye.config.core)
+
+  testCompileOnly(project(":polaris-immutables"))
+  testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
+  testImplementation(testFixtures(project(":polaris-core")))
+  testImplementation(platform(libs.junit.bom))
+  testImplementation("org.junit.jupiter:junit-jupiter")
+  testImplementation(libs.assertj.core)
+  testImplementation(libs.mockito.core)
+  testImplementation(libs.threeten.extra)
+  testImplementation(testFixtures(project(":polaris-async-api")))
+  testImplementation(project(":polaris-async-java"))
+  testImplementation(project(":polaris-idgen-mocks"))
 
   opaStartupActionCompileOnly("org.apache.polaris.server-test-runner:polaris-server-test-runner")
   opaStartupActionImplementation(platform(libs.testcontainers.bom))
@@ -63,6 +107,102 @@ dependencies {
   intTestBase(platform(libs.iceberg.bom))
   intTestBase("org.apache.iceberg:iceberg-api")
   intTestBase("org.apache.iceberg:iceberg-core")
+}
+
+// Task to generate JSON Schema from model classes
+tasks.register<JavaExec>("generateOpaSchema") {
+  group = "documentation"
+  description = "Generates JSON Schema for OPA authorization input"
+
+  dependsOn(tasks.compileJava, tasks.named("jandex"))
+
+  // Only execute generation if anything changed
+  outputs.cacheIf { true }
+  outputs.file("./opa-input-schema.json")
+  inputs.files(jsonSchemaGenerator.runtimeClasspath).withNormalizer(ClasspathNormalizer::class.java)
+
+  classpath = jsonSchemaGenerator.runtimeClasspath
+  mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
+  args("./opa-input-schema.json")
+}
+
+// Task to validate that the committed schema matches the generated schema
+tasks.register<JavaExec>("validateOpaSchema") {
+  group = "verification"
+  description = "Validates that the committed OPA schema matches the generated schema"
+
+  dependsOn(tasks.compileJava, tasks.named("jandex"))
+
+  val tempSchemaFile =
+    layout.buildDirectory
+      .file("opa-schema/opa-input-schema-generated.json")
+      .get()
+      .asFile
+      .relativeTo(projectDir)
+  val committedSchemaFile = file("${projectDir}/opa-input-schema.json")
+  val logFile = layout.buildDirectory.file("opa-schema/generator.log")
+
+  // Only execute validation if anything changed
+  outputs.cacheIf { true }
+  outputs.file(tempSchemaFile)
+  inputs.file(committedSchemaFile).withPathSensitivity(PathSensitivity.RELATIVE)
+  inputs.files(jsonSchemaGenerator.runtimeClasspath).withNormalizer(ClasspathNormalizer::class.java)
+
+  classpath = jsonSchemaGenerator.runtimeClasspath
+  mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
+  args(tempSchemaFile)
+  isIgnoreExitValue = true
+
+  var outStream: OutputStream? = null
+  doFirst {
+    // Ensure temp directory exists
+    tempSchemaFile.parentFile.mkdirs()
+    outStream = logFile.get().asFile.outputStream()
+    standardOutput = outStream
+    errorOutput = outStream
+  }
+
+  val prjDir = projectDir
+
+  doLast {
+    outStream?.close()
+
+    if (executionResult.get().exitValue != 0) {
+      throw GradleException(
+        """
+        |OPA Schema validation failed!
+        |
+        |${logFile.get().asFile.readText()}
+      """
+          .trimMargin()
+      )
+    }
+
+    val generatedContent = prjDir.resolve(tempSchemaFile).readText().trim()
+    val committedContent = committedSchemaFile.readText().trim()
+
+    if (generatedContent != committedContent) {
+      throw GradleException(
+        """
+        |OPA Schema validation failed!
+        |
+        |The committed opa-input-schema.json does not match the generated schema.
+        |This means the schema is out of sync with the model classes.
+        |
+        |To fix this, run:
+        |  ./gradlew :polaris-extensions-auth-opa:generateOpaSchema
+        |
+        |Then commit the updated opa-input-schema.json file.
+        |
+        |Committed file: ${committedSchemaFile.absolutePath}
+        |Generated file: ${tempSchemaFile.absolutePath}
+      """
+          .trimMargin()
+      )
+    }
+
+    logger.info("OPA schema validation passed - schema is up to date")
+  }
 }
 
 fun Test.configureOpaTestTask(
@@ -185,4 +325,4 @@ tasks.register("intTest") {
   dependsOn("bearerTokenIntTest", "opaFileTokenIntTest")
 }
 
-tasks.named("check") { dependsOn("intTest") }
+tasks.named("check") { dependsOn("validateOpaSchema", "intTest") }
