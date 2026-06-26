@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.extension.metrics.reports;
 
+import com.google.common.annotations.Beta;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
@@ -52,6 +53,7 @@ import org.jspecify.annotations.NonNull;
  *
  * <p>TODO (#4756): wire durable metrics query provider when the extension is installed.
  */
+@Beta
 @RequestScoped
 public class MetricsReportsService implements PolarisCatalogsApiService {
 

@@ -40,7 +40,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -105,8 +104,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             schemaVersion());
     AtomicOperationMetaStoreManager metaStoreManager =
         new AtomicOperationMetaStoreManager(clock, diagServices);
-    PolarisCallContext callCtx =
-        new PolarisCallContext(realmContext, basePersistence, new MetricsPersistence() {});
+    PolarisCallContext callCtx = new PolarisCallContext(realmContext, basePersistence);
     return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 

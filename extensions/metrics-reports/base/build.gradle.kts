@@ -33,6 +33,7 @@ dependencies {
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.ws.rs.api)
+  implementation(libs.guava)
   implementation(libs.smallrye.common.annotation)
   implementation(libs.slf4j.api)
 

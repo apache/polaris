@@ -76,8 +76,7 @@ class JdbcGrantRecordsIdempotencyTest {
             RANDOM_SECRETS,
             REALM_CONTEXT.getRealmIdentifier(),
             schemaVersion);
-    PolarisCallContext callCtx =
-        new PolarisCallContext(REALM_CONTEXT, basePersistence);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
 
     PolarisGrantRecord grant =
         new PolarisGrantRecord(
@@ -119,8 +118,7 @@ class JdbcGrantRecordsIdempotencyTest {
             RANDOM_SECRETS,
             REALM_CONTEXT.getRealmIdentifier(),
             schemaVersion);
-    PolarisCallContext callCtx =
-        new PolarisCallContext(REALM_CONTEXT, basePersistence);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
 
     PolarisGrantRecord grant =
         new PolarisGrantRecord(

@@ -42,8 +42,6 @@ import org.jspecify.annotations.NonNull;
  *
  * <p><b>Note:</b> This SPI is currently experimental and not yet implemented in all persistence
  * backends. The API may change in future releases.
- *
-
  */
 @Beta
 public interface MetricsPersistence {

@@ -42,8 +42,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
     - Names containing control (invisible) characters
     - Names with leading or trailing whitespace
     - Names containing any of these characters: <code>/\:*?"<>|#+`</code>
+- The `PolarisMetricsReporter` SPI (previously in `runtime/service`) has been replaced by `IcebergMetricsReporter` in `extensions/metrics-reports/spi`. Custom reporters must implement `org.apache.polaris.extension.metrics.spi.IcebergMetricsReporter` and update the `@Identifier` annotation for CDI selection via `polaris.iceberg-metrics.reporting.type`. The method signature now includes a `receivedTimestamp` parameter of type `java.time.Instant`.
+- Metrics reporting now requires the `TABLE_READ_DATA` privilege on the target table for read (scan) metrics and `TABLE_WRITE_DATA` for write (commit) metrics.
 
 ### New Features
+- Added an **experimental (beta)** Table Metrics REST API (`/api/metrics-reports/v1/`) for querying Iceberg scan and commit metrics. **This API is a proof-of-concept; it is subject to breaking changes in any future release without prior notice and should not be used in production.** In this release the read path returns HTTP 501 until durable query backing is installed in a follow-up extension. Querying requires the new `TABLE_READ_METRICS` privilege on the target table.
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
 - Added `SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL` feature flag for AWS credential vending. Operators can now configure an ordered list of fields (`realm`, `catalog`, `namespace`, `table`, `principal`) to compose structured STS role session names (e.g. `p-acme-hr_catalog-employee-etl_writer`). Session names are sanitized and proportionally truncated to the AWS 64-character limit. When unset, existing `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` behaviour is preserved.
 - Added `hostUsers` support in Helm chart.
@@ -121,14 +124,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - The (Before/After)CommitViewEvent has been removed.
 - The (Before/After)CommitTableEvent has been removed.
-- The `PolarisMetricsReporter` SPI (previously in `runtime/service`) has been replaced by `IcebergMetricsReporter` in `extensions/metrics-reports/spi`. Custom reporters must implement `org.apache.polaris.extension.metrics.IcebergMetricsReporter` and update the `@Identifier` annotation for CDI selection via `polaris.iceberg-metrics.reporting.type`. The method signature now includes a `receivedTimestamp` parameter of type `java.time.Instant`.
 - The `ExternalCatalogFactory.createCatalog()` and `createGenericCatalog()` method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
-- Metrics reporting now requires the `TABLE_READ_DATA` privilege on the target table for read (scan) metrics and `TABLE_WRITE_DATA` for write (commit) metrics.
 - The `REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE` operation no longer requires the `PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE` privilege. Only `CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE` on the catalog role is now required, making revoke symmetric with assign. This allows catalog administrators to fully manage catalog role assignments without requiring elevated privileges on principal roles.
 
 ### New Features
 
-- Added an **experimental (beta)** Table Metrics REST API (`/api/metrics-reports/v1/`) for querying Iceberg scan and commit metrics. **This API is a proof-of-concept; it is subject to breaking changes in any future release without prior notice and should not be used in production.** In this release the read path returns an empty result set; durable storage backing is provided by the `polaris-extensions-metrics-reports-jdbc` extension in a follow-up release. Querying requires the new `TABLE_READ_METRICS` privilege on the target table.
 - Added `deploymentAnnotations` support in Helm chart.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added `topologySpreadConstraints` support in Helm chart.
@@ -142,7 +142,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Relaxed `client_id`, `client_secret` regex/pattern validation on reset endpoint call
 - Added support for S3-compatible storage that does not have KMS (use `kmsUavailable: true` in catalog storage configuration)
 - Added support for storage-scoped AWS credentials, allowing different AWS credentials to be configured per named storage. Enable with the `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` feature flag (default: false). Storage names can be set explicitly via the `storageName` field on storage configuration, or inferred from the first allowed location's host.
-- Added support for persisting Iceberg metrics (ScanReport, CommitReport) to the database. Enable by setting `polaris.iceberg-metrics.reporting.type=persisting` in configuration. Metrics tables are included in the main JDBC schema.
 - Added setup options to Polaris CLI.
 - Added CockroachDB as a supported database for the relational JDBC persistence backend. Set `polaris.persistence.relational.jdbc.database-type` to `cockroachdb` to get started.
 

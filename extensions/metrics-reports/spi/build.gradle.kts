@@ -24,4 +24,5 @@ plugins {
 dependencies {
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
+  implementation(libs.guava)
 }
