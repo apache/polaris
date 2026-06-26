@@ -299,6 +299,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "true")
                     .setStorageConfigurationInfo(realmConfig, storageConfigModel, STORAGE_LOCATION)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
@@ -1924,6 +1926,52 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
         .isInstanceOf(InMemoryFileIO.class);
+  }
+
+  @Test
+  public void testDropViewWithPurge() {
+    MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
+    LocalIcebergCatalog viewCatalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
+    viewCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    viewCatalog.createNamespace(NS);
+    viewCatalog
+        .buildView(TABLE)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", "SELECT * FROM ns.tbl")
+        .create();
+
+    Assertions.assertThat(viewCatalog.dropView(TABLE)).as("Drop should succeed").isTrue();
+
+    TaskEntity taskEntity =
+        TaskEntity.of(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+                .getEntities()
+                .getFirst());
+    Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
+    properties.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO");
+    taskEntity =
+        TaskEntity.of(
+            new PolarisBaseEntity.Builder(taskEntity).internalPropertiesAsMap(properties).build());
+    TaskFileIOSupplier taskFileIOSupplier =
+        new TaskFileIOSupplier(
+            (accessConfig, ioImplClassName, properties1) ->
+                measured.loadFileIO(
+                    accessConfig, "org.apache.iceberg.inmemory.InMemoryFileIO", Map.of()),
+            storageAccessConfigProvider);
+
+    TableCleanupTaskHandler handler =
+        new TableCleanupTaskHandler(
+            Mockito.mock(), clock, metaStoreManagerFactory, taskFileIOSupplier);
+    handler.handleTask(taskEntity, polarisContext);
+    Assertions.assertThat(measured.getNumDeletedFiles())
+        .as("View metadata file should be deleted")
+        .isGreaterThan(0);
   }
 
   @Test
