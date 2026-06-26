@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,31 +32,21 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.extensions.lineage.LineageDataset;
-import org.apache.polaris.extensions.lineage.LineageDirection;
-import org.apache.polaris.extensions.lineage.LineageEdge;
-import org.apache.polaris.extensions.lineage.LineageGranularity;
-import org.apache.polaris.extensions.lineage.LineageGraph;
-import org.apache.polaris.extensions.lineage.LineageIngestRequest;
-import org.apache.polaris.extensions.lineage.LineageNode;
-import org.apache.polaris.extensions.lineage.LineageNodeType;
-import org.apache.polaris.extensions.lineage.LineagePersistence;
-import org.apache.polaris.extensions.lineage.LineageQueryRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-public class DefaultLineageServiceTest {
+public class DefaultPolarisLineageHandlerTest {
   @Mock private CallContext callContext;
   @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
   @Mock private LineageConfiguration.PersistenceConfiguration persistenceConfiguration;
-  @Mock private LineagePersistence persistence;
+  @Mock private LineageStoreManager storeManager;
   @Mock private RealmContext realmContext;
 
-  private DefaultLineageService service;
+  private DefaultPolarisLineageHandler service;
 
   @BeforeEach
   void setUp() {
@@ -64,7 +54,7 @@ public class DefaultLineageServiceTest {
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(callContext.getRealmContext()).thenReturn(realmContext);
     when(configuration.persistence()).thenReturn(persistenceConfiguration);
-    service = new DefaultLineageService(callContext, configuration, persistence);
+    service = new DefaultPolarisLineageHandler(callContext, configuration, storeManager);
   }
 
   @Test
@@ -75,7 +65,7 @@ public class DefaultLineageServiceTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("polaris.lineage.enabled");
 
-    verifyNoInteractions(persistence);
+    verifyNoInteractions(storeManager);
   }
 
   @Test
@@ -88,7 +78,7 @@ public class DefaultLineageServiceTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining(FeatureConfiguration.ENABLE_LINEAGE.key());
 
-    verifyNoInteractions(persistence);
+    verifyNoInteractions(storeManager);
   }
 
   @Test
@@ -100,7 +90,7 @@ public class DefaultLineageServiceTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("polaris.lineage.persistence.enabled");
 
-    verifyNoInteractions(persistence);
+    verifyNoInteractions(storeManager);
   }
 
   @Test
@@ -114,10 +104,10 @@ public class DefaultLineageServiceTest {
             new LineageNode("dataset:test:orders", LineageNodeType.DATASET, null, false),
             List.of(),
             List.of());
-    when(persistence.loadLineage(realmContext, request)).thenReturn(graph);
+    when(storeManager.loadLineage(realmContext, request)).thenReturn(graph);
 
     assertThat(service.query(request)).isSameAs(graph);
-    verify(persistence).loadLineage(realmContext, request);
+    verify(storeManager).loadLineage(realmContext, request);
   }
 
   @Test
@@ -130,10 +120,10 @@ public class DefaultLineageServiceTest {
     service.ingest(request);
 
     Instant lastEventAt = Instant.parse("2026-01-01T00:00:00Z");
-    InOrder inOrder = inOrder(persistence);
-    inOrder.verify(persistence).upsertDatasets(realmContext, request.datasets());
-    inOrder.verify(persistence).replaceDatasetEdges(realmContext, request.edges(), lastEventAt);
-    inOrder.verify(persistence).upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
+    InOrder inOrder = inOrder(storeManager);
+    inOrder.verify(storeManager).upsertDatasets(realmContext, request.datasets());
+    inOrder.verify(storeManager).replaceDatasetEdges(realmContext, request.edges(), lastEventAt);
+    inOrder.verify(storeManager).upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
   }
 
   private static LineageQueryRequest queryRequest() {
