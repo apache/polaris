@@ -16,23 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-
-/** Extracted lineage payload that can be persisted independent of the transport event shape. */
-public record LineageIngestRequest(
-    List<LineageDataset> datasets,
-    List<LineageEdge> edges,
-    List<LineageColumnEdge> columnEdges,
-    Optional<Instant> eventTime) {
-  public LineageIngestRequest {
-    datasets = List.copyOf(Objects.requireNonNull(datasets, "datasets must be non-null"));
-    edges = List.copyOf(Objects.requireNonNull(edges, "edges must be non-null"));
-    columnEdges = List.copyOf(Objects.requireNonNull(columnEdges, "columnEdges must be non-null"));
-    Objects.requireNonNull(eventTime, "eventTime must be non-null");
-  }
+/** Supported query granularities for lineage lookups. */
+public enum LineageGranularity {
+  DATASET,
+  COLUMN
 }

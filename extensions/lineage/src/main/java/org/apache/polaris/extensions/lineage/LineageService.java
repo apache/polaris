@@ -16,22 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
-import java.util.Objects;
-import java.util.OptionalLong;
+/** Service boundary for lineage operations used by transport-layer adapters. */
+public interface LineageService {
+  void ingest(LineageIngestRequest request);
 
-/** A dataset participating in lineage. */
-public record LineageDataset(
-    String catalog, String namespace, String name, OptionalLong polarisEntityId) {
-  public LineageDataset {
-    Objects.requireNonNull(catalog, "catalog must be non-null");
-    Objects.requireNonNull(namespace, "namespace must be non-null");
-    Objects.requireNonNull(name, "name must be non-null");
-    Objects.requireNonNull(polarisEntityId, "polarisEntityId must be non-null");
-  }
-
-  public LineageDataset(String catalog, String namespace, String name) {
-    this(catalog, namespace, name, OptionalLong.empty());
-  }
+  LineageGraph query(LineageQueryRequest request);
 }

@@ -23,12 +23,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Instant;
 import java.util.List;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.lineage.LineageColumnEdge;
-import org.apache.polaris.core.lineage.LineageDataset;
-import org.apache.polaris.core.lineage.LineageEdge;
-import org.apache.polaris.core.lineage.LineageGraph;
-import org.apache.polaris.core.lineage.LineagePersistence;
-import org.apache.polaris.core.lineage.LineageQueryRequest;
+import org.apache.polaris.extensions.lineage.LineageColumnEdge;
+import org.apache.polaris.extensions.lineage.LineageDataset;
+import org.apache.polaris.extensions.lineage.LineageEdge;
+import org.apache.polaris.extensions.lineage.LineageGraph;
+import org.apache.polaris.extensions.lineage.LineagePersistence;
+import org.apache.polaris.extensions.lineage.LineageQueryRequest;
 
 /** Placeholder persistence until a concrete lineage backend is added. */
 @DefaultBean

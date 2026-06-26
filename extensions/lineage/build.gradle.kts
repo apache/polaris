@@ -16,11 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
 
-/** Service boundary for lineage operations used by transport-layer adapters. */
-public interface LineageService {
-  void ingest(LineageIngestRequest request);
-
-  LineageGraph query(LineageQueryRequest request);
+plugins {
+  id("polaris-client")
+  id("org.kordamp.gradle.jandex")
 }
+
+dependencies {
+  implementation(project(":polaris-core"))
+}
+
+tasks.named("javadoc") { dependsOn("jandex") }
