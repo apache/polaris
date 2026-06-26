@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.extensions.lineage;
 
-/** Service boundary for lineage operations used by transport-layer adapters. */
-public interface LineageService {
+/** Lineage handler contract used by transport-layer adapters. */
+public interface PolarisLineageHandler {
   void ingest(LineageIngestRequest request);
 
   LineageGraph query(LineageQueryRequest request);

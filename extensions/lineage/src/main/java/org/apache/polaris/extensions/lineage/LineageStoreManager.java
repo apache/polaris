@@ -23,14 +23,14 @@ import java.util.List;
 import org.apache.polaris.core.context.RealmContext;
 
 /**
- * Persistence SPI for lineage storage backends.
+ * Storage manager SPI for lineage storage backends.
  *
  * <p>This contract is expressed in terms of Polaris's local lineage graph rather than raw
  * OpenLineage run events. The service layer owns event parsing, forwarding, authorization, and
- * dataset resolution. Persistence backends persist dataset nodes, dataset edges, and column edges,
- * and load normalized lineage graphs.
+ * dataset resolution. Storage manager implementations persist dataset nodes, dataset edges, and
+ * column edges, and load normalized lineage graphs.
  */
-public interface LineagePersistence {
+public interface LineageStoreManager {
 
   /**
    * Persists dataset nodes in {@code lineage_datasets}.
