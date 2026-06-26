@@ -204,8 +204,8 @@ configured reporter. Two built-in reporters are provided:
 
 | Type | Description |
 |------|-------------|
-| `log` | Logs each report at INFO level via SLF4J. |
-| `no-op` (default) | Silently discards all reports. |
+| `log` (default) | Logs each report at INFO level via SLF4J. |
+| `no-op` | Silently discards all reports. |
 
 The active reporter is selected with:
 
