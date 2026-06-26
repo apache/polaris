@@ -93,7 +93,7 @@ multiple logical catalogs under one URI.</p><div class=highlight><pre tabindex=0
 </span></span></span><span style=display:flex><span>    --catalog-client-secret <span style=color:#4e9a06>&#34;&lt;remote-client-secret&gt;&#34;</span> <span style=color:#4e9a06>\
 </span></span></span><span style=display:flex><span>    --catalog-client-scope <span style=color:#4e9a06>&#34;PRINCIPAL_ROLE:ALL&#34;</span> <span style=color:#4e9a06>\
 </span></span></span><span style=display:flex><span>    analytics_rest
-</span></span></code></pre></div><p>Refer to the <a href=../command-line-interface.md#catalogs>CLI documentation</a> for details on alternative authentication types such as BEARER or SIGV4.</p><p>Grant catalog roles to principal roles the same way you do for internal catalogs so compute engines
+</span></span></code></pre></div><p>Refer to the <a href=https://polaris.apache.org/in-dev/unreleased/command-line-interface/#catalogs>CLI documentation</a> for details on alternative authentication types such as BEARER or SIGV4.</p><p>Grant catalog roles to principal roles the same way you do for internal catalogs so compute engines
 receive tokens with access to the federated namespace.</p><h2 id=outbound-http-settings id=outbound-http-settings>Outbound HTTP settings<a class=heading-anchor href=#outbound-http-settings aria-label=Anchor>🔗</a></h2><p>Iceberg REST federation uses Iceberg&rsquo;s HTTP client. You can pass through non-sensitive HTTP
 settings by adding catalog properties when creating or updating the external catalog (via
 <code>--property</code> or <code>--set-property</code>).</p><div class="alert alert-warning"><p class=alert-heading>⚠️ Warning</p>Catalog properties are returned to authenticated catalog clients as part of the Iceberg REST
