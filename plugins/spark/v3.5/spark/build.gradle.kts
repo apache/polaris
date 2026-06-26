@@ -207,7 +207,7 @@ listOf("intTestCompileClasspath", "intTestRuntimeClasspath").forEach {
   }
 }
 
-tasks.register<ShadowJar>("createPolarisSparkJar") {
+val createPolarisSparkJar = tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = "bundle"
   isZip64 = true
 
@@ -253,6 +253,12 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
 
 // ensure the shadow jar job (which will automatically run license addition) is run for both
 // `assemble` and `build` task
-tasks.named("assemble") { dependsOn("createPolarisSparkJar") }
+tasks.named("assemble") { dependsOn(createPolarisSparkJar) }
 
-tasks.named("build") { dependsOn("createPolarisSparkJar") }
+tasks.named("build") { dependsOn(createPolarisSparkJar) }
+
+publishing {
+  publications.named<MavenPublication>("maven") {
+    artifact(createPolarisSparkJar)
+  }
+}
