@@ -98,7 +98,7 @@ services:
     ]
 
   trino:
-    image: trinodb/trino:481
+    image: trinodb/trino:482
     depends_on:
       polaris-setup:
         condition: service_completed_successfully
