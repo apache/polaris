@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.lineage;
+package org.apache.polaris.extensions.lineage;
 
-/** Supported directions for lineage queries. */
-public enum LineageDirection {
-  UPSTREAM,
-  DOWNSTREAM,
-  BOTH
+/** Supported query granularities for lineage lookups. */
+public enum LineageGranularity {
+  DATASET,
+  COLUMN
 }
