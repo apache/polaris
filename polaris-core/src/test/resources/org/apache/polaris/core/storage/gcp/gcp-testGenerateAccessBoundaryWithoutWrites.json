@@ -6,7 +6,7 @@
       ],
       "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
       "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/awesome/path/to/data') || resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data')"
+        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/awesome/path/to/data/') || resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data/')"
       }
     }
   ]

@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
+import static org.apache.polaris.core.storage.StorageLocation.ensureTrailingSlash;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -458,7 +460,11 @@ public class GcpCredentialsStorageIntegration
             location -> {
               StorageUri uri = StorageUri.parse(location);
               String bucket = uri.authority();
-              String path = uri.rawPath().substring(1);
+              // Treat the granted path as a directory prefix: a trailing slash is required so
+              // that the downstream startsWith() CEL conditions cannot be satisfied by sibling
+              // objects or list prefixes that merely share the granted path as a string prefix
+              // (e.g. a grant on "data/" must not authorize access to "data_foo/*)".
+              String path = ensureTrailingSlash(uri.rawPath().substring(1));
               readConditionsByBucket
                   .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
                   .add(resourceNameStartsWithExpression(bucket, path));
@@ -468,7 +474,7 @@ public class GcpCredentialsStorageIntegration
         location -> {
           StorageUri uri = StorageUri.parse(location);
           String bucket = uri.authority();
-          String path = uri.rawPath().substring(1);
+          String path = ensureTrailingSlash(uri.rawPath().substring(1));
           readConditionsByBucket
               .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
               .add(objectListPrefixStartsWithExpression(path));
@@ -479,7 +485,7 @@ public class GcpCredentialsStorageIntegration
         location -> {
           StorageUri uri = StorageUri.parse(location);
           String bucket = uri.authority();
-          String path = uri.rawPath().substring(1);
+          String path = ensureTrailingSlash(uri.rawPath().substring(1));
           writeConditionsByBucket
               .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
               .add(resourceNameStartsWithExpression(bucket, path));
