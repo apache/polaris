@@ -309,12 +309,12 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .isEqualTo(
             "resource.name.startsWith('projects/_/buckets/bucket1/objects/"
                 + "a\\'b\\\"c\\\\d"
-                + "') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('"
+                + "/') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('"
                 + "a\\'b\\\"c\\\\d"
-                + "')");
+                + "/')");
     assertThat(expressionAt(parsedRules, 1))
         .isEqualTo(
-            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b\\\"c\\\\d')");
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b\\\"c\\\\d/')");
   }
 
   @ParameterizedTest
@@ -414,7 +414,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .path("expression")
                 .asText())
         .contains("projects/_/buckets/bucket1/objects/path/to/data?with?question")
-        .contains("startsWith('path/to/data?with?question')");
+        .contains("path/to/data?with?question");
   }
 
   @Test
@@ -492,6 +492,40 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         && request
                             .getScope(0)
                             .equals(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE)));
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryNormalizesTrailingSlashConsistently() {
+    CredentialAccessBoundary noSlash =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of("gs://bucket1/data"), Set.of("gs://bucket1/data"), Set.of("gs://bucket1/data"));
+    CredentialAccessBoundary withSlash =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of("gs://bucket1/data/"),
+            Set.of("gs://bucket1/data/"),
+            Set.of("gs://bucket1/data/"));
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    assertThat(mapper.convertValue(noSlash, JsonNode.class))
+        .isEqualTo(mapper.convertValue(withSlash, JsonNode.class));
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryAppendsTrailingSlashToGuardAgainstSiblingAccess() {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of("gs://bucket1/data"), Set.of("gs://bucket1/data"), Set.of("gs://bucket1/data"));
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(expressionAt(parsedRules, 0))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')"
+                + " || api.getAttribute('storage.googleapis.com/objectListPrefix', '')"
+                + ".startsWith('data/')");
+    assertThat(expressionAt(parsedRules, 1))
+        .isEqualTo("resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')");
   }
 
   private static String expressionAt(JsonNode parsedRules, int ruleIndex) {
