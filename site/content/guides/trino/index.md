@@ -30,10 +30,10 @@ menus:
         weight: 350
 ---
 
-This getting started guide provides a `docker-compose` file to set up [Trino](https://trino.io/) with Apache Polaris.
+This getting started guide provides `docker-compose` files to set up [Trino](https://trino.io/) with Apache Polaris.
 Apache Polaris is configured as an Iceberg REST Catalog, and [RustFS](https://rustfs.com/) provides S3-compatible object storage.
 
-The `docker-compose` file starts the following services:
+The docker compose setup starts the following services:
 * `rustfs` — S3-compatible object storage for Iceberg data files
 * `polaris` — Apache Polaris running with an in-memory metastore
 * `polaris-setup` — bootstraps a catalog, grants, and a namespace in Polaris
@@ -50,12 +50,13 @@ If a Polaris image is not already present locally, build one with the following 
    -Dquarkus.container-image.build=true
 ```
 
-## Run the `docker-compose` file
+## Run the `docker-compose` files
 
 Start all services from the repo's root directory:
 
 ```shell
-docker compose -f site/content/guides/trino/docker-compose.yml up
+export S3_ENDPOINT=http://rustfs:9000
+docker compose -f site/content/guides/rustfs/docker-compose.yml -f site/content/guides/trino/docker-compose.yml up
 ```
 
 Wait until the `trino` service is healthy before proceeding. You can check by watching for the log line `HTTP server started` in the Trino container output.
@@ -65,7 +66,7 @@ Wait until the `trino` service is healthy before proceeding. You can check by wa
 Open a Trino CLI session inside the running Trino container:
 
 ```shell
-docker compose -f site/content/guides/trino/docker-compose.yml exec trino trino
+docker exec -it $(docker ps -q --filter name=trino) trino
 ```
 
 ## Run SQL queries
@@ -82,8 +83,7 @@ CREATE TABLE events (
     event_type VARCHAR,
     user_id    BIGINT,
     created_at TIMESTAMP(6) WITH TIME ZONE
-)
-WITH (format = 'PARQUET');
+);
 
 INSERT INTO events VALUES
     (1, 'page_view', 101, TIMESTAMP '2024-10-01 10:00:00 UTC'),
