@@ -26,10 +26,10 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.catalog.api.PolarisCatalogSemanticModelApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
-import org.apache.polaris.service.types.CreateSemanticModelRequest;
-import org.apache.polaris.service.types.UpdateSemanticModelRequest;
+import org.apache.polaris.service.catalog.semanticmodel.api.PolarisCatalogSemanticModelApiService;
+import org.apache.polaris.service.catalog.semanticmodel.types.CreateSemanticModelRequest;
+import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticModelRequest;
 
 /**
  * Stub adapter for the OSI semantic-model API. The endpoints are wired and gated by {@link

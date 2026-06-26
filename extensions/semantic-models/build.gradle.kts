@@ -21,39 +21,28 @@ import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 
 plugins {
   alias(libs.plugins.openapi.generator)
-  id("polaris-client")
+  id("polaris-server")
   id("org.kordamp.gradle.jandex")
 }
 
-val genericTableModels =
+val semanticModelModels =
   listOf(
-    "CreateGenericTableRequest",
-    "LoadGenericTableResponse",
-    "ListGenericTablesResponse",
-    "GenericTable",
-    "StorageAccessConfig",
-  )
-
-val policyManagementModels =
-  listOf(
-    "CatalogIdentifier",
-    "CreatePolicyRequest",
-    "LoadPolicyResponse",
-    "Policy",
-    "ApplicablePolicy",
-    "PolicyAttachmentTarget",
-    "AttachPolicyRequest",
-    "DetachPolicyRequest",
-    "UpdatePolicyRequest",
-    "GetApplicablePoliciesResponse",
-    "ListPoliciesResponse",
-  )
-
-val models = (genericTableModels + policyManagementModels).joinToString(",")
+      "SemanticModelDocument",
+      "SemanticModelIdentifier",
+      "CreateSemanticModelRequest",
+      "UpdateSemanticModelRequest",
+      "LoadSemanticModelResponse",
+      "ListSemanticModelsResponse",
+    )
+    .joinToString(",")
 
 dependencies {
   implementation(project(":polaris-core"))
+  // CatalogAdapter and other shared catalog service abstractions.
+  implementation(project(":polaris-runtime-service"))
 
+  // Dependencies required by the generated OSI semantic-model REST API code (mirrors the set used
+  // by the polaris-api-catalog-service generated code).
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
@@ -76,12 +65,13 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly(libs.microprofile.fault.tolerance.api)
+  compileOnly(libs.jakarta.enterprise.cdi.api)
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 }
 
-val rootDir = layout.settingsDirectory
+val rootDir = rootProject.layout.projectDirectory
 val specsDir = rootDir.dir("spec")
 val templatesDir = rootDir.dir("server-templates")
 // Use a different directory than 'generated/', because OpenAPI generator's `GenerateTask` adds the
@@ -96,13 +86,14 @@ openApiGenerate {
   inputSpec = provider { specsDir.file("polaris-catalog-service.yaml").asFile.absolutePath }
   generatorName = "jaxrs-resteasy"
   outputDir = provider { generatedDir.get().asFile.absolutePath }
-  apiPackage = "org.apache.polaris.service.catalog.api"
-  modelPackage = "org.apache.polaris.service.types"
+  // Distinct packages so the generated code does not split-package with polaris-api-catalog-service.
+  apiPackage = "org.apache.polaris.service.catalog.semanticmodel.api"
+  modelPackage = "org.apache.polaris.service.catalog.semanticmodel.types"
   ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
   removeOperationIdPrefix.set(true)
   templateDir.set(provider { templatesDir.asFile.absolutePath })
-  globalProperties.put("apis", "GenericTableApi,PolicyApi")
-  globalProperties.put("models", models)
+  globalProperties.put("apis", "SemanticModelApi")
+  globalProperties.put("models", semanticModelModels)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
@@ -122,10 +113,6 @@ openApiGenerate {
     mapOf(
       "ErrorModel" to "org.apache.iceberg.rest.responses.ErrorResponse",
       "IcebergErrorResponse" to "org.apache.iceberg.rest.responses.ErrorResponse",
-      "TableIdentifier" to "org.apache.iceberg.catalog.TableIdentifier",
-
-      // Custom types defined below
-      "PolicyIdentifier" to "org.apache.polaris.service.types.PolicyIdentifier",
     )
 }
 
@@ -138,7 +125,5 @@ sourceSets { main { java { srcDir(generatedOpenApiSrcDir) } } }
 tasks.named<GenerateTask>("openApiGenerate") {
   inputs.dir(templatesDir)
   inputs.dir(specsDir)
-  cleanupOutput = true
+  actions.addFirst { delete { delete(generatedDir) } }
 }
-
-tasks.named("javadoc") { dependsOn("jandex") }
