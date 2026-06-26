@@ -101,10 +101,6 @@ for (sparkVersion in sparkVersions) {
       "polaris-spark-${sparkVersion}_${scalaVersion}",
       file("${polarisSparkDir}/v${sparkVersion}/spark"),
     )
-    polarisProject(
-      "polaris-spark-integration-${sparkVersion}_${scalaVersion}",
-      file("${polarisSparkDir}/v${sparkVersion}/integration"),
-    )
     if (first) {
       first = false
     }
