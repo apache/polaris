@@ -229,7 +229,11 @@ public class TaskExecutorImpl implements TaskExecutor {
             .addKeyValue("taskEntityId", taskEntityId)
             .addKeyValue("taskType", task.getTaskType())
             .log("Unable to find handler for task type");
-        return;
+        throw new RuntimeException(
+            "Unable to find handler for task type "
+                + task.getTaskType()
+                + " for task entity id "
+                + taskEntityId);
       }
       TaskHandler handler = handlerOpt.get();
       success = handler.handleTask(task, ctx);
@@ -247,6 +251,12 @@ public class TaskExecutorImpl implements TaskExecutor {
             .addKeyValue("taskEntityId", taskEntityId)
             .addKeyValue("taskEntityName", taskEntity.getName())
             .log("Unable to execute async task");
+        throw new RuntimeException(
+            "Task handler returned false for task entity id "
+                + taskEntityId
+                + " (handler: "
+                + handler.getClass().getSimpleName()
+                + ")");
       }
     } finally {
       if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_ATTEMPT_TASK)) {
