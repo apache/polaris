@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -24,24 +24,19 @@ import java.time.Instant;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.extensions.lineage.LineageGraph;
-import org.apache.polaris.extensions.lineage.LineageIngestRequest;
-import org.apache.polaris.extensions.lineage.LineagePersistence;
-import org.apache.polaris.extensions.lineage.LineageQueryRequest;
-import org.apache.polaris.extensions.lineage.LineageService;
 
 @RequestScoped
-public class DefaultLineageService implements LineageService {
+public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
   private final CallContext callContext;
   private final LineageConfiguration configuration;
-  private final LineagePersistence persistence;
+  private final LineageStoreManager storeManager;
 
   @Inject
-  public DefaultLineageService(
-      CallContext callContext, LineageConfiguration configuration, LineagePersistence persistence) {
+  public DefaultPolarisLineageHandler(
+      CallContext callContext, LineageConfiguration configuration, LineageStoreManager storeManager) {
     this.callContext = callContext;
     this.configuration = configuration;
-    this.persistence = persistence;
+    this.storeManager = storeManager;
   }
 
   @Override
@@ -49,15 +44,15 @@ public class DefaultLineageService implements LineageService {
     ensureEnabled();
     RealmContext realmContext = callContext.getRealmContext();
     Instant lastEventAt = request.eventTime().orElseGet(Instant::now);
-    persistence.upsertDatasets(realmContext, request.datasets());
-    persistence.replaceDatasetEdges(realmContext, request.edges(), lastEventAt);
-    persistence.upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
+    storeManager.upsertDatasets(realmContext, request.datasets());
+    storeManager.replaceDatasetEdges(realmContext, request.edges(), lastEventAt);
+    storeManager.upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
   }
 
   @Override
   public LineageGraph query(LineageQueryRequest request) {
     ensureEnabled();
-    return persistence.loadLineage(callContext.getRealmContext(), request);
+    return storeManager.loadLineage(callContext.getRealmContext(), request);
   }
 
   private void ensureEnabled() {
@@ -68,7 +63,7 @@ public class DefaultLineageService implements LineageService {
 
     if (!configuration.persistence().enabled()) {
       throw new UnsupportedOperationException(
-          "Lineage persistence is disabled: set polaris.lineage.persistence.enabled=true to enable"
+          "Lineage store manager is disabled: set polaris.lineage.persistence.enabled=true to enable"
               + " it.");
     }
 

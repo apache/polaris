@@ -24,6 +24,12 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-arc")
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
+  compileOnly(libs.smallrye.config.core)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
