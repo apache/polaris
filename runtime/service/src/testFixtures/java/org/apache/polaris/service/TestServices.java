@@ -27,6 +27,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
@@ -97,6 +98,7 @@ import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
@@ -367,9 +369,28 @@ public record TestServices(
             }
           };
 
+      IdempotencyConfiguration idempotencyConfiguration =
+          new IdempotencyConfiguration() {
+            @Override
+            public boolean enabled() {
+              return Boolean.parseBoolean(
+                  String.valueOf(config.getOrDefault("polaris.idempotency.enabled", "false")));
+            }
+
+            @Override
+            public Duration ttl() {
+              Object value = config.get("polaris.idempotency.ttl");
+              return value == null ? Duration.ofMinutes(5) : Duration.parse(String.valueOf(value));
+            }
+          };
+
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
-              callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
+              callContext,
+              new DefaultCatalogPrefixParser(),
+              reservedProperties,
+              handlerFactory,
+              idempotencyConfiguration);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;

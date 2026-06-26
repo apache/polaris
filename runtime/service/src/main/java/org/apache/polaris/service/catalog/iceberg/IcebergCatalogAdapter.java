@@ -26,6 +26,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,6 +62,7 @@ import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -81,17 +83,20 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
+  private final IdempotencyConfiguration idempotencyConfiguration;
 
   @Inject
   public IcebergCatalogAdapter(
       CallContext callContext,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      IcebergCatalogHandlerFactory handlerFactory) {
+      IcebergCatalogHandlerFactory handlerFactory,
+      IdempotencyConfiguration idempotencyConfiguration) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
+    this.idempotencyConfiguration = idempotencyConfiguration;
   }
 
   /**
@@ -296,9 +301,25 @@ public class IcebergCatalogAdapter
                         ns, createTableRequest, delegationModes, refreshCredentialsEndpoint))
                 .build();
           } else {
+            // Entity-property idempotency: only honor the header when the feature is enabled. The
+            // key + expiry are forwarded so the handler can embed them into the new table entity
+            // (single-transaction model) and replay a prior success on retry.
+            Optional<UUID> effectiveKey =
+                idempotencyConfiguration.enabled()
+                    ? Optional.ofNullable(idempotencyKey)
+                    : Optional.empty();
+            Instant idempotencyExpiry =
+                effectiveKey
+                    .map(k -> Instant.now().plus(idempotencyConfiguration.ttl()))
+                    .orElse(null);
             LoadTableResponse response =
                 catalog.createTableDirect(
-                    ns, createTableRequest, delegationModes, refreshCredentialsEndpoint);
+                    ns,
+                    createTableRequest,
+                    delegationModes,
+                    refreshCredentialsEndpoint,
+                    effectiveKey,
+                    idempotencyExpiry);
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
