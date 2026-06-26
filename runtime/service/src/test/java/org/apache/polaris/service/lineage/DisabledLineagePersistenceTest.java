@@ -23,9 +23,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Instant;
 import java.util.List;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.lineage.LineageDirection;
-import org.apache.polaris.core.lineage.LineageGranularity;
-import org.apache.polaris.core.lineage.LineageQueryRequest;
+import org.apache.polaris.extensions.lineage.LineageDirection;
+import org.apache.polaris.extensions.lineage.LineageGranularity;
+import org.apache.polaris.extensions.lineage.LineageQueryRequest;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 

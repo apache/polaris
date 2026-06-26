@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import java.util.Objects;
 
-/** A reference to a specific field on a lineage dataset. */
-public record LineageFieldReference(LineageDataset dataset, String field) {
-  public LineageFieldReference {
-    Objects.requireNonNull(dataset, "dataset must be non-null");
-    Objects.requireNonNull(field, "field must be non-null");
+/** A source-to-target field mapping returned for column-granularity queries. */
+public record LineageFieldMapping(String sourceField, String targetField) {
+  public LineageFieldMapping {
+    Objects.requireNonNull(sourceField, "sourceField must be non-null");
+    Objects.requireNonNull(targetField, "targetField must be non-null");
   }
 }

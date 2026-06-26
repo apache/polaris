@@ -16,10 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
-/** Supported query granularities for lineage lookups. */
-public enum LineageGranularity {
-  DATASET,
-  COLUMN
+import java.util.Objects;
+
+/** A field-level lineage relationship between two dataset columns. */
+public record LineageColumnEdge(LineageFieldReference source, LineageFieldReference target) {
+  public LineageColumnEdge {
+    Objects.requireNonNull(source, "source must be non-null");
+    Objects.requireNonNull(target, "target must be non-null");
+  }
 }

@@ -24,11 +24,11 @@ import java.time.Instant;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.lineage.LineageGraph;
-import org.apache.polaris.core.lineage.LineageIngestRequest;
-import org.apache.polaris.core.lineage.LineagePersistence;
-import org.apache.polaris.core.lineage.LineageQueryRequest;
-import org.apache.polaris.core.lineage.LineageService;
+import org.apache.polaris.extensions.lineage.LineageGraph;
+import org.apache.polaris.extensions.lineage.LineageIngestRequest;
+import org.apache.polaris.extensions.lineage.LineagePersistence;
+import org.apache.polaris.extensions.lineage.LineageQueryRequest;
+import org.apache.polaris.extensions.lineage.LineageService;
 
 @RequestScoped
 public class DefaultLineageService implements LineageService {
