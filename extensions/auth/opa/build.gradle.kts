@@ -29,16 +29,18 @@ plugins {
 }
 
 val intTestJvmVersion = 21
-val intTestBase by configurations.creating {
-  isCanBeConsumed = false
-  isCanBeResolved = false
-}
+val intTestBase =
+  configurations.create("intTestBase") {
+    isCanBeConsumed = false
+    isCanBeResolved = false
+  }
 val intTestBaseSources = sourceSets.create("intTestBase")
 val jsonSchemaGenerator = sourceSets.create("jsonSchemaGenerator")
-val jsonSchemaGeneratorImplementation by configurations.getting
+val jsonSchemaGeneratorImplementation =
+  configurations.getByName("jsonSchemaGeneratorImplementation")
 val opaStartupAction = sourceSets.create("opaStartupAction")
-val opaStartupActionCompileOnly by configurations.getting
-val opaStartupActionImplementation by configurations.getting
+val opaStartupActionCompileOnly = configurations.getByName("opaStartupActionCompileOnly")
+val opaStartupActionImplementation = configurations.getByName("opaStartupActionImplementation")
 val opaBearerTokenRefreshIntervalProperty =
   "polaris.authorization.opa.auth.bearer.file-based.refresh-interval"
 
