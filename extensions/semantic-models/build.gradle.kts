@@ -86,7 +86,8 @@ openApiGenerate {
   inputSpec = provider { specsDir.file("polaris-catalog-service.yaml").asFile.absolutePath }
   generatorName = "jaxrs-resteasy"
   outputDir = provider { generatedDir.get().asFile.absolutePath }
-  // Distinct packages so the generated code does not split-package with polaris-api-catalog-service.
+  // Distinct packages so the generated code does not split-package with
+  // polaris-api-catalog-service.
   apiPackage = "org.apache.polaris.service.catalog.semanticmodel.api"
   modelPackage = "org.apache.polaris.service.catalog.semanticmodel.types"
   ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
