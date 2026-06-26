@@ -1537,6 +1537,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 .addAll(VIEW_ENDPOINTS)
                 .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig()))
                 .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig()))
+                .addAll(PolarisEndpoints.getSupportedSemanticModelEndpoints(realmConfig()))
                 .build())
         .build();
   }

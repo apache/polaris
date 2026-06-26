@@ -1,0 +1,412 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+paths:
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/semantic-models:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
+
+    post:
+      tags:
+        - Semantic Model API
+      summary: Create a semantic model in the given namespace
+      operationId: createSemanticModel
+      description: |
+        Creates a semantic model in the specified namespace.
+
+        A semantic model is an Open Semantic Interchange (OSI) document describing
+        datasets, fields, relationships, metrics, and AI context for a logical analytics surface above
+        physical tables and views.
+
+        Upon successful creation, the response returns the model's initial entity-version.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSemanticModelRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/CreateSemanticModelResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
+        409:
+          description: Conflict - A semantic model with this name already exists in the namespace
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                SemanticModelAlreadyExists:
+                  $ref: '#/components/examples/SemanticModelAlreadyExistsError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    get:
+      tags:
+        - Semantic Model API
+      summary: List semantic models in the given namespace
+      operationId: listSemanticModels
+      description: |
+        List semantic-model identifiers under a namespace.
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+
+      responses:
+        200:
+          $ref: '#/components/responses/ListSemanticModelsResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/semantic-models/{semantic-model-name}:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
+      - $ref: '#/components/parameters/semantic-model-name'
+
+    get:
+      tags:
+        - Semantic Model API
+      summary: Load a semantic model
+      operationId: loadSemanticModel
+      description: Load a semantic model from the catalog.
+      responses:
+        200:
+          $ref: '#/components/responses/LoadSemanticModelResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - the requested semantic model does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                SemanticModelToGetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchSemanticModelError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    put:
+      tags:
+        - Semantic Model API
+      summary: Update a semantic model
+      operationId: updateSemanticModel
+      description: |
+        Replace a semantic model's document with a new one.
+
+        Upon a successful update, the model's entity-version changes and the new value is returned.
+
+        Updates use optimistic concurrency: supply the `entity-version` you last read for this
+        model, and the update succeeds only if it matches the version currently stored in the
+        catalog. A mismatch fails with 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSemanticModelRequest'
+
+      responses:
+        200:
+          $ref: '#/components/responses/UpdateSemanticModelResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - the requested semantic model does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                SemanticModelToUpdateDoesNotExist:
+                  $ref: '#/components/examples/NoSuchSemanticModelError'
+        409:
+          description:
+            Conflict - the supplied entity-version does not match the stored version. The client
+            may retry after fetching the latest version.
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                SemanticModelVersionMismatch:
+                  $ref: '#/components/examples/SemanticModelVersionMismatchError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    delete:
+      tags:
+        - Semantic Model API
+      summary: Drop a semantic model from the catalog
+      operationId: dropSemanticModel
+      description: Remove a semantic model from the catalog.
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - the requested semantic model does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                SemanticModelToDeleteDoesNotExist:
+                  $ref: '#/components/examples/NoSuchSemanticModelError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+components:
+  parameters:
+    semantic-model-name:
+      name: semantic-model-name
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/SemanticModelName'
+
+  schemas:
+
+    SemanticModelName:
+      type: string
+      description:
+        A semantic model name. A valid name consists of uppercase and lowercase letters (A-Z, a-z),
+        digits (0-9), hyphens (-), and underscores (_).
+      pattern: '^[A-Za-z0-9\-_]+$'
+      example: 'tpcds_retail_model'
+
+    SemanticModelDocument:
+      type: object
+      description: An Open Semantic Interchange (OSI) document body.
+      required:
+        - version
+        - semantic_model
+      properties:
+        version:
+          type: string
+          description: The OSI spec version.
+          example: "0.1.1"
+        semantic_model:
+          type: string
+          description: The OSI semantic model serialized as a JSON string.
+      example:
+        version: "0.1.1"
+        semantic_model: '{"name":"tpcds_retail_model","description":"retail analytics","datasets":[{"name":"store_sales","source":"public.store_sales","primary_key":["ss_item_sk","ss_ticket_number"]}],"metrics":[{"name":"total_sales","expression":{"dialects":[{"dialect":"ANSI_SQL","expression":"SUM(ss_ext_sales_price)"}]}}]}'
+
+    SemanticModelIdentifier:
+      type: object
+      required:
+        - namespace
+        - name
+      properties:
+        namespace:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/Namespace'
+        name:
+          $ref: '#/components/schemas/SemanticModelName'
+
+    CreateSemanticModelRequest:
+      type: object
+      required:
+        - name
+        - document
+      properties:
+        name:
+          $ref: '#/components/schemas/SemanticModelName'
+        document:
+          $ref: '#/components/schemas/SemanticModelDocument'
+
+    UpdateSemanticModelRequest:
+      type: object
+      required:
+        - document
+        - entity-version
+      properties:
+        document:
+          $ref: '#/components/schemas/SemanticModelDocument'
+        entity-version:
+          type: string
+          description: |
+            An opaque string identifying the version the client last read for this semantic model. The update applies 
+            only if it matches the version currently stored in the catalog (optimistic concurrency).
+
+    LoadSemanticModelResponse:
+      type: object
+      required:
+        - document
+        - entity-version
+      properties:
+        document:
+          $ref: '#/components/schemas/SemanticModelDocument'
+        entity-version:
+          type: string
+          description: |
+            An opaque string identifying the current version of the stored semantic-model entity. It
+            changes whenever the model is updated. 
+
+    ListSemanticModelsResponse:
+      type: object
+      properties:
+        next-page-token:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+        identifiers:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/SemanticModelIdentifier'
+
+  responses:
+    CreateSemanticModelResponse:
+      description: Semantic model object result after creating a semantic model
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadSemanticModelResponse'
+
+    LoadSemanticModelResponse:
+      description: Semantic model object result when loading a semantic model
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadSemanticModelResponse'
+
+    UpdateSemanticModelResponse:
+      description: |
+        Response when a semantic model is successfully updated.
+
+        The updated OSI document is returned in the `document` field.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadSemanticModelResponse'
+
+    ListSemanticModelsResponse:
+      description: A list of semantic model identifiers
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListSemanticModelsResponse'
+          examples:
+            ListSemanticModelsResponseNonEmpty:
+              $ref: '#/components/examples/ListSemanticModelsNonEmptyExample'
+            ListSemanticModelsResponseEmpty:
+              $ref: '#/components/examples/ListSemanticModelsEmptyExample'
+
+  examples:
+    NoSuchSemanticModelError:
+      summary: The requested semantic model does not exist
+      value: {
+        "error": {
+          "message": "The given semantic model does not exist",
+          "type": "NoSuchSemanticModelException",
+          "code": 404
+        }
+      }
+
+    SemanticModelAlreadyExistsError:
+      summary: A semantic model with this name already exists in the namespace
+      value: {
+        "error": {
+          "message": "The given semantic model already exists",
+          "type": "AlreadyExistsException",
+          "code": 409
+        }
+      }
+
+    SemanticModelVersionMismatchError:
+      summary: The supplied entity-version does not match the stored version
+      value: {
+        "error": {
+          "message": "The semantic model version doesn't match the supplied entity-version",
+          "type": "SemanticModelVersionMismatchException",
+          "code": 409
+        }
+      }
+
+    ListSemanticModelsNonEmptyExample:
+      summary: A non-empty list of semantic model identifiers
+      value:
+        identifiers:
+          - namespace:
+              - sales
+            name: tpcds_retail_model
+          - namespace:
+              - sales
+            name: orders_funnel
+
+    ListSemanticModelsEmptyExample:
+      summary: An empty list for a namespace with no semantic models
+      value:
+        identifiers: [ ]
