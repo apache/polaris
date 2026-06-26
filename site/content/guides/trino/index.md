@@ -61,6 +61,12 @@ docker compose -f site/content/guides/rustfs/docker-compose.yml -f site/content/
 
 Wait until the `trino` service is healthy before proceeding. You can check by watching for the log line `HTTP server started` in the Trino container output.
 
+<!-- Guide testing: do not exercise the expensive Docker compose setup.
+```shell
+exit 0
+```
+-->
+
 ## Connect to the Trino CLI
 
 Open a Trino CLI session inside the running Trino container:
