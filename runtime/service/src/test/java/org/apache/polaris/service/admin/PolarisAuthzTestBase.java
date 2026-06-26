@@ -222,7 +222,7 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(authenticatedRoot, PolarisPrincipal.class);
 
     this.adminService =
-        new PolarisAdminService(
+        PolarisAdminServiceTestSupport.newAdminService(
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -286,21 +286,25 @@ public abstract class PolarisAuthzTestBase {
             .build();
 
     catalogEntity =
-        adminService.createCatalog(
-            new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setName(CATALOG_NAME)
-                    .setCatalogType("INTERNAL")
-                    .setDefaultBaseLocation(storageLocation)
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
-                    .build()
-                    .asCatalog(serviceIdentityProvider)));
-    federatedCatalogEntity = adminService.createCatalog(new CreateCatalogRequest(externalCatalog));
+        newRootAdminService()
+            .createCatalog(
+                new CreateCatalogRequest(
+                    new CatalogEntity.Builder()
+                        .setName(CATALOG_NAME)
+                        .setCatalogType("INTERNAL")
+                        .setDefaultBaseLocation(storageLocation)
+                        .setStorageConfigurationInfo(
+                            realmConfig, storageConfigModel, storageLocation)
+                        .build()
+                        .asCatalog(serviceIdentityProvider)));
+    federatedCatalogEntity =
+        newRootAdminService().createCatalog(new CreateCatalogRequest(externalCatalog));
 
     initBaseCatalog();
 
     PrincipalWithCredentials principal =
-        adminService.createPrincipal(new PrincipalEntity.Builder().setName(PRINCIPAL_NAME).build());
+        newRootAdminService()
+            .createPrincipal(new PrincipalEntity.Builder().setName(PRINCIPAL_NAME).build());
     principalEntity =
         rotateAndRefreshPrincipal(
             metaStoreManager, PRINCIPAL_NAME, principal.getCredentials(), polarisContext);
@@ -308,42 +312,49 @@ public abstract class PolarisAuthzTestBase {
     // Pre-create the principal roles and catalog roles without any grants on securables, but
     // assign both principal roles to the principal, then CATALOG_ROLE1 to PRINCIPAL_ROLE1,
     // CATALOG_ROLE2 to PRINCIPAL_ROLE2, and CATALOG_ROLE_SHARED to both.
-    adminService.createPrincipalRole(
-        new PrincipalRoleEntity.Builder().setName(PRINCIPAL_ROLE1).build());
-    adminService.createPrincipalRole(
-        new PrincipalRoleEntity.Builder().setName(PRINCIPAL_ROLE2).build());
-    adminService.createCatalogRole(
-        CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
-    adminService.createCatalogRole(
-        CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
-    adminService.createCatalogRole(
-        CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE_SHARED).build());
-    adminService.createCatalogRole(
-        FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
-    adminService.createCatalogRole(
-        FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
+    newRootAdminService()
+        .createPrincipalRole(new PrincipalRoleEntity.Builder().setName(PRINCIPAL_ROLE1).build());
+    newRootAdminService()
+        .createPrincipalRole(new PrincipalRoleEntity.Builder().setName(PRINCIPAL_ROLE2).build());
+    newRootAdminService()
+        .createCatalogRole(
+            CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
+    newRootAdminService()
+        .createCatalogRole(
+            CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
+    newRootAdminService()
+        .createCatalogRole(
+            CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE_SHARED).build());
+    newRootAdminService()
+        .createCatalogRole(
+            FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
+    newRootAdminService()
+        .createCatalogRole(
+            FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
 
-    assertSuccess(adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1));
-    assertSuccess(adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE2));
+    assertSuccess(newRootAdminService().assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1));
+    assertSuccess(newRootAdminService().assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE2));
 
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE1));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE1));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE2));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE2));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE_SHARED));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE_SHARED));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE_SHARED));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE_SHARED));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE1, FEDERATED_CATALOG_NAME, CATALOG_ROLE1));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(
+                PRINCIPAL_ROLE1, FEDERATED_CATALOG_NAME, CATALOG_ROLE1));
     assertSuccess(
-        adminService.assignCatalogRoleToPrincipalRole(
-            PRINCIPAL_ROLE2, FEDERATED_CATALOG_NAME, CATALOG_ROLE2));
+        newRootAdminService()
+            .assignCatalogRoleToPrincipalRole(
+                PRINCIPAL_ROLE2, FEDERATED_CATALOG_NAME, CATALOG_ROLE2));
 
     // Do some shared setup with non-authz-aware baseCatalog.
     baseCatalog.createNamespace(NS1);
@@ -524,9 +535,21 @@ public abstract class PolarisAuthzTestBase {
     }
   }
 
+  protected PolarisAdminService newRootAdminService() {
+    return PolarisAdminServiceTestSupport.newAdminService(
+        callContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        authenticatedRoot,
+        polarisAuthorizer,
+        reservedProperties);
+  }
+
   protected PolarisAuthzTestsFactory.Builder authzTestsBuilder(String operationName) {
     return PolarisAuthzTestsFactory.builder()
-        .adminService(adminService)
+        .adminServiceSupplier(this::newRootAdminService)
         .operationName(operationName);
   }
 }

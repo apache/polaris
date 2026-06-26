@@ -90,9 +90,12 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -111,6 +114,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.core.rest.PolarisEndpoints;
@@ -124,6 +128,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributeMap;
@@ -683,7 +688,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             ? PolarisAuthorizableOperation.REPORT_READ_METRICS
             : PolarisAuthorizableOperation.REPORT_WRITE_METRICS;
 
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
     // Get catalog and table IDs from resolved entities (already resolved during authorization)
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
@@ -790,7 +796,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // Note: this check must come after authorizeLoadTable because baseCatalog is
     // initialized lazily during authorization.
     if (!(baseCatalog instanceof LocalIcebergCatalog)) {
-      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
+      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint, actionsRequested);
     }
 
     IcebergTableLikeEntity entity = getTableEntity(tableIdentifier);
@@ -809,7 +815,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               "Entity missing location in internal properties, requires backfill "
                   + "as it was likely not updated with stored property changes. "
                   + "Falling back to full loadTable path");
-      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
+      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint, actionsRequested);
     }
 
     Set<String> tableLocations =
@@ -844,7 +850,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   private Set<PolarisStorageActions> authorizeLoadTable(
       TableIdentifier tableIdentifier, boolean delegationRequested) {
     if (!delegationRequested) {
-      authorizeBasicTableLikeOperationOrThrow(
+      resolveAndAuthorizeBasicTableLikeOperationOrThrow(
           PolarisAuthorizableOperation.LOAD_TABLE,
           PolarisEntitySubType.ICEBERG_TABLE,
           tableIdentifier);
@@ -861,16 +867,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation write =
         PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 
+    // Resolve once for the shared table target before auth fallback. Today resolution does not
+    // vary by table operation, so either delegation op is sufficient for building the manifest.
+    resolveBasicTableLikeTargetOrThrow(write, tableIdentifier);
+
     Set<PolarisStorageActions> actionsRequested =
         new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
     try {
-      // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
-      // easily.
-      authorizeBasicTableLikeOperationOrThrow(
+      authorizeResolvedBasicTableLikeOperationOrThrow(
           write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
-      authorizeBasicTableLikeOperationOrThrow(
+      authorizeResolvedBasicTableLikeOperationOrThrow(
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
@@ -901,25 +909,49 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Set<PolarisStorageActions> actionsRequested =
           EnumSet.of(PolarisStorageActions.READ, PolarisStorageActions.LIST);
 
+      Namespace namespace = tableIdentifier.namespace();
+      resolutionManifest = newResolutionManifest();
+      resolutionManifest.addPath(
+          new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE));
+      resolutionManifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */));
+
+      // Resolve once for the shared table target before auth fallback. Today resolution depends on
+      // the principal and target, not the register-table operation, so either delegation op is
+      // sufficient for building the manifest.
+      authorizationState().setResolutionManifest(resolutionManifest);
+      authorizer()
+          .resolveAuthorizationInputs(
+              authorizationState(),
+              new AuthorizationRequest(
+                  polarisPrincipal(),
+                  List.of(
+                      new SingleTargetAuthorizationIntent(
+                          PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+                          PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier)))));
+
       try {
         if (overwrite) {
-          authorizeRegisterTableOverwriteOrThrow(
+          authorizeResolvedRegisterTableOverwriteOrThrow(
               PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
               tableIdentifier);
         } else {
-          authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION, tableIdentifier);
         }
         actionsRequested.add(PolarisStorageActions.WRITE);
       } catch (ForbiddenException e) {
         if (overwrite) {
-          authorizeRegisterTableOverwriteOrThrow(
+          authorizeResolvedRegisterTableOverwriteOrThrow(
               PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
               tableIdentifier);
         } else {
-          authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION, tableIdentifier);
         }
       }
@@ -939,6 +971,22 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
+    return loadTableWithResolvedAuthorization(
+        tableIdentifier,
+        snapshots,
+        ifNoneMatch,
+        actionsRequested,
+        resolvedMode,
+        refreshCredentialsEndpoint);
+  }
+
+  private Optional<LoadTableResponse> loadTableWithResolvedAuthorization(
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      IfNoneMatch ifNoneMatch,
+      Set<PolarisStorageActions> actionsRequested,
+      Optional<AccessDelegationMode> resolvedMode,
+      Optional<String> refreshCredentialsEndpoint) {
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
       IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
@@ -1095,13 +1143,26 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public LoadTableResponse updateTable(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
-
-    // Ensure resolution manifest is initialized so we can determine whether
-    // fine grained authz model is enabled at the catalog level
     ensureResolutionManifestForTable(tableIdentifier);
+    // Intentionally pre-resolve once using coarse UPDATE_TABLE so we can read catalog-scoped
+    // config from the shared manifest before authorizing the final per-update operation set.
+    // This is a temporary misuse of the current SPI shape: operation is part of the
+    // resolveAuthorizationInputs(...) request, but built-in authorizers do not currently vary
+    // resolution by operation. Once the SPI supports multiple resolution passes cleanly, this flow
+    // should stop relying on a representative operation for planning-time config lookup.
+    authorizationState().setResolutionManifest(resolutionManifest);
+    authorizer()
+        .resolveAuthorizationInputs(
+            authorizationState(),
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.UPDATE_TABLE,
+                        PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier)))));
 
     EnumSet<PolarisAuthorizableOperation> authorizableOperations =
-        getUpdateTableAuthorizableOperations(request);
+        getUpdateTableAuthorizableOperations(request, getResolvedCatalogEntity());
 
     authorizeBasicTableLikeOperationsOrThrow(
         authorizableOperations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
@@ -1129,7 +1190,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public void dropTableWithoutPurge(TableIdentifier tableIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
-    authorizeBasicTableLikeOperationOrThrow(
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     catalogHandlerUtils().dropTable(baseCatalog, tableIdentifier);
@@ -1137,7 +1198,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public void dropTableWithPurge(TableIdentifier tableIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE;
-    authorizeBasicTableLikeOperationOrThrow(
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
@@ -1149,7 +1210,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public void tableExists(TableIdentifier tableIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.TABLE_EXISTS;
-    authorizeBasicTableLikeOperationOrThrow(
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     // TODO: Just skip CatalogHandlers for this one maybe
@@ -1341,14 +1402,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_VIEW;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     return catalogHandlerUtils().loadView(viewCatalog, viewIdentifier);
   }
 
   public LoadViewResponse replaceView(TableIdentifier viewIdentifier, UpdateTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REPLACE_VIEW;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
@@ -1360,14 +1423,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public void dropView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_VIEW;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     catalogHandlerUtils().dropView(viewCatalog, viewIdentifier);
   }
 
   public void viewExists(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.VIEW_EXISTS;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     // TODO: Just skip CatalogHandlers for this one maybe
     catalogHandlerUtils().loadView(viewCatalog, viewIdentifier);
@@ -1411,12 +1476,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   private EnumSet<PolarisAuthorizableOperation> getUpdateTableAuthorizableOperations(
-      UpdateTableRequest request) {
+      UpdateTableRequest request, CatalogEntity catalogEntity) {
     boolean useFineGrainedOperations =
         realmConfig()
             .getConfig(
-                FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES,
-                getResolvedCatalogEntity());
+                FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES, catalogEntity);
 
     if (useFineGrainedOperations) {
       EnumSet<PolarisAuthorizableOperation> actions =
@@ -1562,9 +1626,20 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   private ImmutableLoadCredentialsResponse fallbackToFullLoadTable(
-      TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
+      TableIdentifier tableIdentifier,
+      Optional<String> refreshCredentialsEndpoint,
+      Set<PolarisStorageActions> actionsRequested) {
+    Optional<AccessDelegationMode> resolvedMode =
+        resolveAccessDelegationModes(EnumSet.of(VENDED_CREDENTIALS));
     LoadTableResponse loadTableResponse =
-        loadTableWithAccessDelegation(tableIdentifier, "all", refreshCredentialsEndpoint);
+        loadTableWithResolvedAuthorization(
+                tableIdentifier,
+                "all",
+                null,
+                actionsRequested,
+                resolvedMode,
+                refreshCredentialsEndpoint)
+            .orElseThrow();
     return ImmutableLoadCredentialsResponse.builder()
         .credentials(loadTableResponse.credentials())
         .build();

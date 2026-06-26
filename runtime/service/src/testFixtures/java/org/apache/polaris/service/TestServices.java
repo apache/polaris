@@ -36,6 +36,7 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
@@ -111,11 +112,11 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 
 public record TestServices(
     Clock clock,
-    PolarisCatalogsApi catalogsApi,
-    IcebergRestCatalogApi restApi,
-    PolarisCatalogGenericTableApi genericTableApi,
-    IcebergRestConfigurationApi restConfigurationApi,
-    IcebergCatalogAdapter catalogAdapter,
+    Supplier<PolarisCatalogsApi> catalogsApiSupplier,
+    Supplier<IcebergRestCatalogApi> restApiSupplier,
+    Supplier<PolarisCatalogGenericTableApi> genericTableApiSupplier,
+    Supplier<IcebergRestConfigurationApi> restConfigurationApiSupplier,
+    Supplier<IcebergCatalogAdapter> catalogAdapterSupplier,
     RealmConfigurationSource configurationSource,
     PolarisDiagnostics polarisDiagnostics,
     StorageCredentialCache storageCredentialCache,
@@ -132,6 +133,26 @@ public record TestServices(
     PolarisEventDispatcher polarisEventDispatcher,
     PolarisEventMetadataFactory eventMetadataFactory,
     StorageAccessConfigProvider storageAccessConfigProvider) {
+
+  public PolarisCatalogsApi catalogsApi() {
+    return catalogsApiSupplier.get();
+  }
+
+  public IcebergRestCatalogApi restApi() {
+    return restApiSupplier.get();
+  }
+
+  public PolarisCatalogGenericTableApi genericTableApi() {
+    return genericTableApiSupplier.get();
+  }
+
+  public IcebergRestConfigurationApi restConfigurationApi() {
+    return restConfigurationApiSupplier.get();
+  }
+
+  public IcebergCatalogAdapter catalogAdapter() {
+    return catalogAdapterSupplier.get();
+  }
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -205,6 +226,14 @@ public record TestServices(
     public TestServices build() {
       RealmConfigurationSource configurationSource = (rc, name) -> config.get(name);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
+      Mockito.doAnswer(
+              invocation -> {
+                AuthorizationState authzState = invocation.getArgument(0);
+                authzState.getResolutionManifest().resolveAll();
+                return null;
+              })
+          .when(authorizer)
+          .resolveAuthorizationInputs(any(), any());
 
       // Application level
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
@@ -337,117 +366,134 @@ public record TestServices(
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
-      IcebergCatalogHandlerFactory handlerFactory =
-          new IcebergCatalogHandlerFactory() {
-            @Override
-            public IcebergCatalogHandler createHandler(
-                String catalogName, PolarisPrincipal principal) {
-              return ImmutableIcebergCatalogHandler.builder()
-                  .catalogName(catalogName)
-                  .polarisPrincipal(principal)
-                  .diagnostics(diagnostics)
-                  .callContext(callContext)
-                  .prefixParser(new DefaultCatalogPrefixParser())
-                  .resolverFactory(resolverFactory)
-                  .resolutionManifestFactory(resolutionManifestFactory)
-                  .metaStoreManager(metaStoreManager)
-                  .credentialManager(credentialManager)
-                  .localCatalogFactory(localCatalogFactory)
-                  .authorizer(authorizer)
-                  .reservedProperties(reservedProperties)
-                  .catalogHandlerUtils(catalogHandlerUtils)
-                  .federatedCatalogFactories(federatedCatalogFactory)
-                  .storageAccessConfigProvider(storageAccessConfigProvider)
-                  .eventAttributeMap(eventAttributeMap)
-                  .metricsReporter(new DefaultMetricsReporter())
-                  .clock(clock)
-                  .accessDelegationModeResolver(
-                      new DefaultAccessDelegationModeResolver(realmConfig))
-                  .build();
-            }
+      Supplier<IcebergCatalogAdapter> catalogAdapterSupplier =
+          () -> {
+            IcebergCatalogHandlerFactory handlerFactory =
+                new IcebergCatalogHandlerFactory() {
+                  @Override
+                  public IcebergCatalogHandler createHandler(
+                      String catalogName, PolarisPrincipal principal) {
+                    return ImmutableIcebergCatalogHandler.builder()
+                        .catalogName(catalogName)
+                        .polarisPrincipal(principal)
+                        .diagnostics(diagnostics)
+                        .callContext(callContext)
+                        .authorizationState(new AuthorizationState())
+                        .prefixParser(new DefaultCatalogPrefixParser())
+                        .resolverFactory(resolverFactory)
+                        .resolutionManifestFactory(resolutionManifestFactory)
+                        .metaStoreManager(metaStoreManager)
+                        .credentialManager(credentialManager)
+                        .localCatalogFactory(localCatalogFactory)
+                        .authorizer(authorizer)
+                        .reservedProperties(reservedProperties)
+                        .catalogHandlerUtils(catalogHandlerUtils)
+                        .federatedCatalogFactories(federatedCatalogFactory)
+                        .storageAccessConfigProvider(storageAccessConfigProvider)
+                        .eventAttributeMap(eventAttributeMap)
+                        .metricsReporter(new DefaultMetricsReporter())
+                        .clock(clock)
+                        .accessDelegationModeResolver(
+                            new DefaultAccessDelegationModeResolver(realmConfig))
+                        .build();
+                  }
+                };
+
+            return new IcebergCatalogAdapter(
+                callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
           };
 
-      IcebergCatalogAdapter catalogService =
-          new IcebergCatalogAdapter(
-              callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
-
-      // Optionally wrap with event delegator
-      IcebergRestCatalogApiService finalRestCatalogService = catalogService;
-      IcebergRestConfigurationApiService finalRestConfigurationService = catalogService;
-      if (useEventDelegator) {
-        finalRestCatalogService =
-            new IcebergRestCatalogEventServiceDelegator(
-                catalogService,
-                polarisEventDispatcher,
-                eventMetadataFactory,
-                new DefaultCatalogPrefixParser(),
-                eventAttributeMap);
-        finalRestConfigurationService =
-            new IcebergRestConfigurationEventServiceDelegator(
-                catalogService, polarisEventDispatcher, eventMetadataFactory);
-      }
-
-      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(finalRestCatalogService);
-      IcebergRestConfigurationApi restConfigurationApi =
-          new IcebergRestConfigurationApi(finalRestConfigurationService);
-
-      GenericTableCatalogHandlerFactory genericHandlerFactory =
-          new GenericTableCatalogHandlerFactory() {
-            @Override
-            public GenericTableCatalogHandler createHandler(
-                String catalogName, PolarisPrincipal principal) {
-              return ImmutableGenericTableCatalogHandler.builder()
-                  .catalogName(catalogName)
-                  .polarisPrincipal(principal)
-                  .callContext(callContext)
-                  .resolutionManifestFactory(resolutionManifestFactory)
-                  .metaStoreManager(metaStoreManager)
-                  .authorizer(authorizer)
-                  .credentialManager(credentialManager)
-                  .federatedCatalogFactories(federatedCatalogFactory)
-                  .build();
+      Supplier<IcebergRestCatalogApi> restApiSupplier =
+          () -> {
+            IcebergCatalogAdapter catalogService = catalogAdapterSupplier.get();
+            IcebergRestCatalogApiService finalRestCatalogService = catalogService;
+            if (useEventDelegator) {
+              finalRestCatalogService =
+                  new IcebergRestCatalogEventServiceDelegator(
+                      catalogService,
+                      polarisEventDispatcher,
+                      eventMetadataFactory,
+                      new DefaultCatalogPrefixParser(),
+                      eventAttributeMap);
             }
+            return new IcebergRestCatalogApi(finalRestCatalogService);
           };
-      GenericTableCatalogAdapter genericTableCatalogAdapter =
-          new GenericTableCatalogAdapter(
-              callContext,
-              new DefaultCatalogPrefixParser(),
-              reservedProperties,
-              genericHandlerFactory);
-      PolarisCatalogGenericTableApiService genericTableService = genericTableCatalogAdapter;
-      if (useEventDelegator) {
-        genericTableService =
-            new CatalogGenericTableEventServiceDelegator(
-                genericTableCatalogAdapter,
-                polarisEventDispatcher,
-                eventMetadataFactory,
-                new DefaultCatalogPrefixParser());
-      }
-      PolarisCatalogGenericTableApi genericTableApi =
-          new PolarisCatalogGenericTableApi(genericTableService);
 
-      PolarisAdminService adminService =
-          new PolarisAdminService(
-              callContext,
-              resolutionManifestFactory,
-              metaStoreManager,
-              userSecretsManager,
-              serviceIdentityProvider,
-              principal,
-              authorizer,
-              reservedProperties);
-      PolarisCatalogsApi catalogsApi =
-          new PolarisCatalogsApi(
-              new PolarisServiceImpl(
-                  realmConfig, reservedProperties, adminService, serviceIdentityProvider));
+      Supplier<IcebergRestConfigurationApi> restConfigurationApiSupplier =
+          () -> {
+            IcebergCatalogAdapter catalogService = catalogAdapterSupplier.get();
+            IcebergRestConfigurationApiService finalRestConfigurationService = catalogService;
+            if (useEventDelegator) {
+              finalRestConfigurationService =
+                  new IcebergRestConfigurationEventServiceDelegator(
+                      catalogService, polarisEventDispatcher, eventMetadataFactory);
+            }
+            return new IcebergRestConfigurationApi(finalRestConfigurationService);
+          };
+
+      Supplier<PolarisCatalogGenericTableApi> genericTableApiSupplier =
+          () -> {
+            GenericTableCatalogHandlerFactory genericHandlerFactory =
+                new GenericTableCatalogHandlerFactory() {
+                  @Override
+                  public GenericTableCatalogHandler createHandler(
+                      String catalogName, PolarisPrincipal principal) {
+                    return ImmutableGenericTableCatalogHandler.builder()
+                        .catalogName(catalogName)
+                        .polarisPrincipal(principal)
+                        .callContext(callContext)
+                        .authorizationState(new AuthorizationState())
+                        .resolutionManifestFactory(resolutionManifestFactory)
+                        .metaStoreManager(metaStoreManager)
+                        .authorizer(authorizer)
+                        .credentialManager(credentialManager)
+                        .federatedCatalogFactories(federatedCatalogFactory)
+                        .build();
+                  }
+                };
+            GenericTableCatalogAdapter genericTableCatalogAdapter =
+                new GenericTableCatalogAdapter(
+                    callContext,
+                    new DefaultCatalogPrefixParser(),
+                    reservedProperties,
+                    genericHandlerFactory);
+            PolarisCatalogGenericTableApiService genericTableService = genericTableCatalogAdapter;
+            if (useEventDelegator) {
+              genericTableService =
+                  new CatalogGenericTableEventServiceDelegator(
+                      genericTableCatalogAdapter,
+                      polarisEventDispatcher,
+                      eventMetadataFactory,
+                      new DefaultCatalogPrefixParser());
+            }
+            return new PolarisCatalogGenericTableApi(genericTableService);
+          };
+
+      Supplier<PolarisCatalogsApi> catalogsApiSupplier =
+          () -> {
+            PolarisAdminService adminService =
+                new PolarisAdminService(
+                    callContext,
+                    resolutionManifestFactory,
+                    metaStoreManager,
+                    new AuthorizationState(),
+                    userSecretsManager,
+                    serviceIdentityProvider,
+                    principal,
+                    authorizer,
+                    reservedProperties);
+            return new PolarisCatalogsApi(
+                new PolarisServiceImpl(
+                    realmConfig, reservedProperties, adminService, serviceIdentityProvider));
+          };
 
       return new TestServices(
           clock,
-          catalogsApi,
-          restApi,
-          genericTableApi,
-          restConfigurationApi,
-          catalogService,
+          catalogsApiSupplier,
+          restApiSupplier,
+          genericTableApiSupplier,
+          restConfigurationApiSupplier,
+          catalogAdapterSupplier,
           configurationSource,
           diagnostics,
           storageCredentialCache,

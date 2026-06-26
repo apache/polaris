@@ -20,12 +20,16 @@ package org.apache.polaris.service.catalog.generic;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import jakarta.inject.Inject;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -39,8 +43,8 @@ import org.junit.jupiter.api.TestFactory;
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
-
-  @Inject GenericTableCatalogHandlerFactory genericTableCatalogHandlerFactory;
+  @jakarta.inject.Inject PolarisCredentialManager credentialManager;
+  @jakarta.inject.Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
 
   private GenericTableCatalogHandler newWrapper() {
     return newWrapper(Set.of());
@@ -54,7 +58,17 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
       Set<String> activatedPrincipalRoles, String catalogName) {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
-    return genericTableCatalogHandlerFactory.createHandler(catalogName, authenticatedPrincipal);
+    return ImmutableGenericTableCatalogHandler.builder()
+        .catalogName(catalogName)
+        .polarisPrincipal(authenticatedPrincipal)
+        .callContext(callContext)
+        .authorizationState(new AuthorizationState())
+        .resolutionManifestFactory(resolutionManifestFactory)
+        .metaStoreManager(metaStoreManager)
+        .authorizer(polarisAuthorizer)
+        .credentialManager(credentialManager)
+        .federatedCatalogFactories(federatedCatalogFactories)
+        .build();
   }
 
   @TestFactory
@@ -76,11 +90,13 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   @TestFactory
   Stream<DynamicNode> testCreateGenericTablePrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA));
 
     final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
 
@@ -115,8 +131,9 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   @TestFactory
   Stream<DynamicNode> testDropGenericTablePrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
 
     return authzTestsBuilder("dropGenericTable")
         .action(() -> newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC))
@@ -137,13 +154,13 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     return authzTestsBuilder(operationName)
         .grantAction(
             priv ->
-                adminService.grantPrivilegeOnTableToRole(
-                    CATALOG_NAME, CATALOG_ROLE1, tableId, priv))
+                newRootAdminService()
+                    .grantPrivilegeOnTableToRole(CATALOG_NAME, CATALOG_ROLE1, tableId, priv))
         .revokeAction(
             priv -> {
               PrivilegeResult res =
-                  adminService.revokePrivilegeOnTableFromRole(
-                      CATALOG_NAME, CATALOG_ROLE1, tableId, priv);
+                  newRootAdminService()
+                      .revokePrivilegeOnTableFromRole(CATALOG_NAME, CATALOG_ROLE1, tableId, priv);
               // After table drop + recreate, grants on the old entity no longer exist on the
               // new entity. Only treat GRANT_NOT_FOUND or ENTITY_NOT_FOUND as acceptable —
               // any other failure should propagate to avoid masking real errors.
@@ -166,8 +183,9 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   @TestFactory
   Stream<DynamicNode> testDropGenericTableWithTableLevelPrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
 
     return tableLevelAuthzTestsBuilder("dropGenericTableWithTableLevelGrant", TABLE_NS1_1_GENERIC)
         .action(() -> newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC))

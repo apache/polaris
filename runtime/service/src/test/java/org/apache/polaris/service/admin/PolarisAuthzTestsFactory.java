@@ -23,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import io.quarkus.arc.Arc;
+import io.quarkus.arc.ManagedContext;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -31,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.ForbiddenException;
@@ -63,13 +66,36 @@ import org.junit.jupiter.api.DynamicTest;
 @PolarisImmutable
 public abstract class PolarisAuthzTestsFactory {
 
+  private static void runInFreshRequestContext(Runnable action) {
+    ManagedContext requestContext = Arc.container().requestContext();
+    boolean wasActive = requestContext.isActive();
+    if (wasActive) {
+      requestContext.terminate();
+    }
+
+    requestContext.activate();
+    try {
+      action.run();
+    } finally {
+      requestContext.terminate();
+      if (wasActive) {
+        requestContext.activate();
+      }
+    }
+  }
+
   protected abstract String operationName();
 
-  protected abstract PolarisAdminService adminService();
+  protected abstract Supplier<PolarisAdminService> adminServiceSupplier();
 
   protected abstract Runnable action();
 
   protected abstract Optional<Runnable> cleanupAction();
+
+  @Value.Default
+  protected boolean useFreshRequestContext() {
+    return false;
+  }
 
   @Value.Default
   protected String principalName() {
@@ -84,7 +110,8 @@ public abstract class PolarisAuthzTestsFactory {
   @Value.Default
   protected Function<PolarisPrivilege, PrivilegeResult> grantAction() {
     return privilege ->
-        adminService()
+        adminServiceSupplier()
+            .get()
             .grantPrivilegeOnCatalogToRole(
                 catalogName(), PolarisAuthzTestBase.CATALOG_ROLE1, privilege);
   }
@@ -92,7 +119,8 @@ public abstract class PolarisAuthzTestsFactory {
   @Value.Default
   protected Function<PolarisPrivilege, PrivilegeResult> revokeAction() {
     return privilege ->
-        adminService()
+        adminServiceSupplier()
+            .get()
             .revokePrivilegeOnCatalogFromRole(
                 catalogName(), PolarisAuthzTestBase.CATALOG_ROLE1, privilege);
   }
@@ -145,6 +173,10 @@ public abstract class PolarisAuthzTestsFactory {
     @CanIgnoreReturnValue
     public abstract Builder operationName(String operationName);
 
+    @CanIgnoreReturnValue
+    public abstract Builder adminServiceSupplier(
+        Supplier<PolarisAdminService> adminServiceSupplier);
+
     /** Sets the action to test. */
     @CanIgnoreReturnValue
     public abstract Builder action(Runnable action);
@@ -166,6 +198,9 @@ public abstract class PolarisAuthzTestsFactory {
 
     @CanIgnoreReturnValue
     public abstract Builder catalogName(String catalogName);
+
+    @CanIgnoreReturnValue
+    public abstract Builder useFreshRequestContext(boolean useFreshRequestContext);
 
     @CanIgnoreReturnValue
     public abstract Builder grantAction(Function<PolarisPrivilege, PrivilegeResult> grantAction);
@@ -219,9 +254,6 @@ public abstract class PolarisAuthzTestsFactory {
     protected abstract Builder from(PolarisAuthzTestsFactory factory);
 
     @CanIgnoreReturnValue
-    protected abstract Builder adminService(PolarisAdminService adminService);
-
-    @CanIgnoreReturnValue
     protected abstract Builder addSufficientPrivilegeSet(Set<PolarisPrivilege> set);
 
     @CanIgnoreReturnValue
@@ -251,13 +283,22 @@ public abstract class PolarisAuthzTestsFactory {
                                   .isTrue();
                             }
 
-                            assertThatCode(action()::run)
+                            Runnable authzAction =
+                                useFreshRequestContext()
+                                    ? () -> runInFreshRequestContext(action())
+                                    : action();
+                            assertThatCode(() -> authzAction.run())
                                 .describedAs(
                                     "Expected success with sufficient privileges '%s'",
                                     privilegeSet)
                                 .doesNotThrowAnyException();
 
-                            assertThatCode(cleanupAction().orElse(() -> {})::run)
+                            Runnable cleanup =
+                                useFreshRequestContext()
+                                    ? () ->
+                                        runInFreshRequestContext(cleanupAction().orElse(() -> {}))
+                                    : cleanupAction().orElse(() -> {});
+                            assertThatCode(() -> cleanup.run())
                                 .describedAs(
                                     "Cleanup action with sufficient privileges '%s'", privilegeSet)
                                 .doesNotThrowAnyException();
@@ -273,8 +314,12 @@ public abstract class PolarisAuthzTestsFactory {
                                 assertThat(revokeAction().apply(privilege).isSuccess())
                                     .describedAs("Expected success after revoking '%s'", privilege)
                                     .isTrue();
+                                Runnable authzAction =
+                                    useFreshRequestContext()
+                                        ? () -> runInFreshRequestContext(action())
+                                        : action();
                                 assertThatThrownBy(
-                                        action()::run,
+                                        () -> authzAction.run(),
                                         "Expected ForbiddenException after revoking sufficient privilege '%s' from set '%s'",
                                         privilege,
                                         privilegeSet)
@@ -298,8 +343,12 @@ public abstract class PolarisAuthzTestsFactory {
                                   .describedAs("Expected success after revoking '%s'", privilege)
                                   .isTrue();
                             }
+                            Runnable authzAction =
+                                useFreshRequestContext()
+                                    ? () -> runInFreshRequestContext(action())
+                                    : action();
                             assertThatThrownBy(
-                                    action()::run,
+                                    () -> authzAction.run(),
                                     "Expected ForbiddenException after revoking all sufficient privileges '%s'",
                                     privilegeSet)
                                 .isInstanceOf(ForbiddenException.class)
@@ -327,9 +376,13 @@ public abstract class PolarisAuthzTestsFactory {
                                   .describedAs("Expected success after granting '%s'", privilege)
                                   .isTrue();
                             }
+                            Runnable authzAction =
+                                useFreshRequestContext()
+                                    ? () -> runInFreshRequestContext(action())
+                                    : action();
 
                             assertThatThrownBy(
-                                    action()::run,
+                                    () -> authzAction.run(),
                                     "Expected ForbiddenException with insufficient privilege set '%s'",
                                     privilegeSet)
                                 .isInstanceOf(ForbiddenException.class)
