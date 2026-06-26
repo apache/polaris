@@ -39,7 +39,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
@@ -51,7 +50,6 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
@@ -72,9 +70,7 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private final RealmManagement realmManagement;
   private final RealmPersistenceFactory realmPersistenceFactory;
   private final Privileges privileges;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final Clock clock;
-  private final PolarisDiagnostics diagnostics;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
@@ -82,15 +78,11 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmManagement realmManagement,
       RealmPersistenceFactory realmPersistenceFactory,
       Privileges privileges,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      Clock clock,
-      PolarisDiagnostics diagnostics) {
+      Clock clock) {
     this.realmManagement = realmManagement;
     this.realmPersistenceFactory = realmPersistenceFactory;
     this.privileges = privileges;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.clock = clock;
-    this.diagnostics = diagnostics;
   }
 
   @PostConstruct
@@ -155,7 +147,7 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private NoSqlMetaStore newPersistenceMetaStore(Persistence persistence) {
-    return new NoSqlMetaStore(persistence, privileges, storageIntegrationProvider, diagnostics);
+    return new NoSqlMetaStore(persistence, privileges);
   }
 
   private Persistence initializedRealmPersistence(String realmId) {

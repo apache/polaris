@@ -62,7 +62,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -91,7 +90,6 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.Index;
@@ -144,20 +142,12 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
   private final Persistence persistence;
   private final Privileges privileges;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final MemoizedIndexedAccess memoizedIndexedAccess;
-  private final PolarisDiagnostics diagnostics;
 
-  NoSqlMetaStore(
-      Persistence persistence,
-      Privileges privileges,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      PolarisDiagnostics diagnostics) {
+  NoSqlMetaStore(Persistence persistence, Privileges privileges) {
     this.persistence = persistence;
     this.privileges = privileges;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.memoizedIndexedAccess = newMemoizedIndexedAccess(persistence);
-    this.diagnostics = diagnostics;
   }
 
   <REF_OBJ extends ContainerObj, RESULT> RESULT performChange(
