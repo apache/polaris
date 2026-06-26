@@ -225,7 +225,7 @@ jobs:
           # Vote Failure Email
 
           ## Subject
-          [RESULT][VOTE] Release Apache Polaris ${version_without_rc} (rc${rc_number})
+          [CANCEL][VOTE] Release Apache Polaris ${version_without_rc} (rc${rc_number})
 
           ## Body
           Hello everyone,
