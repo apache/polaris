@@ -56,14 +56,13 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -112,7 +111,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject PolarisPrincipalHolder polarisPrincipalHolder;
 
   private PolarisGenericTableCatalog genericTableCatalog;
-  private IcebergCatalog icebergCatalog;
+  private LocalIcebergCatalog icebergCatalog;
   private AwsStorageConfigInfo storageConfigModel;
   private String realmName;
   private PolarisCallContext polarisContext;
@@ -183,7 +182,6 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                 new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                     .addProperty(
                         FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                     .addProperty(
@@ -211,20 +209,25 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                         .sessionToken(SESSION_TOKEN)
                         .build())
                 .build());
-    PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
+    AwsStorageConfigurationInfo mockAwsConfig =
+        AwsStorageConfigurationInfo.builder()
+            .roleARN("arn:aws:iam::012345678901:role/mock")
+            .build();
+    AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (AwsStorageConfigurationInfo)
-                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
-            stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
-        .thenReturn((PolarisStorageIntegration) storageIntegration);
+            (destination) -> stsClient,
+            config -> java.util.Optional.empty(),
+            storageCredentialCache,
+            mockAwsConfig,
+            callContext.getRealmConfig());
+    when(storageIntegrationProvider.getStorageIntegration(Mockito.anyList()))
+        .thenReturn(storageIntegration);
 
     this.genericTableCatalog =
         new PolarisGenericTableCatalog(metaStoreManager, polarisContext, passthroughView);
     this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
-        new IcebergCatalog(
+        new LocalIcebergCatalog(
             diagServices,
             resolverFactory,
             metaStoreManager,

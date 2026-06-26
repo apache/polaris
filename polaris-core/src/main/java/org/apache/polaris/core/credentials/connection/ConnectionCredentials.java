@@ -41,14 +41,27 @@ public record ConnectionCredentials(Map<String, String> credentials, Optional<In
   /**
    * Creates ConnectionCredentials from a map of catalog access properties. Expiration timestamps
    * are extracted and stored separately; credential properties are stored in the credentials map.
+   *
+   * <p>Only a single expiration timestamp is supported per credentials bundle. If multiple
+   * expiration timestamp properties are present, an {@link IllegalArgumentException} is thrown.
    */
   public static ConnectionCredentials of(Map<CatalogAccessProperty, String> properties) {
     Map<String, String> credentials = new HashMap<>();
     Instant expiresAt = null;
+    CatalogAccessProperty expiresAtKey = null;
     for (var entry : properties.entrySet()) {
       CatalogAccessProperty key = entry.getKey();
       if (key.isExpirationTimestamp()) {
+        if (expiresAtKey != null) {
+          throw new IllegalArgumentException(
+              "Multiple expiration timestamp properties found while building ConnectionCredentials: "
+                  + expiresAtKey.getPropertyName()
+                  + " and "
+                  + key.getPropertyName()
+                  + ". Only a single expiration timestamp is allowed per credentials bundle.");
+        }
         expiresAt = Instant.ofEpochMilli(Long.parseLong(entry.getValue()));
+        expiresAtKey = key;
       }
       if (key.isCredential()) {
         credentials.put(key.getPropertyName(), entry.getValue());

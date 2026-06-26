@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.credentials;
 
+import static org.apache.polaris.service.credentials.TestObjectFactory.createConnectionConfig;
 import static org.mockito.Mockito.when;
 
 import io.quarkus.test.InjectMock;
@@ -125,7 +126,11 @@ public class DefaultPolarisCredentialManagerTest {
     // Create connection config
     IcebergRestConnectionConfigInfoDpo connectionConfig =
         new IcebergRestConnectionConfigInfoDpo(
-            "https://test-catalog.example.com", authParams, testServiceIdentity, "test-catalog");
+            "https://test-catalog.example.com",
+            authParams,
+            testServiceIdentity,
+            "test-catalog",
+            Map.of());
 
     // Should delegate to TestSigV4Vendor
     ConnectionCredentials credentials =
@@ -152,8 +157,7 @@ public class DefaultPolarisCredentialManagerTest {
 
     // Create connection config
     IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://test-catalog.example.com", authParams, testServiceIdentity, "test-catalog");
+        createConnectionConfig(authParams, testServiceIdentity);
 
     // Should delegate to TestOAuthVendor
     ConnectionCredentials credentials =

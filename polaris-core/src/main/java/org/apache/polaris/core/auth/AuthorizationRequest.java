@@ -18,92 +18,18 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
-import java.util.ArrayList;
+import com.google.common.base.Preconditions;
 import java.util.List;
-import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
+import org.jspecify.annotations.NonNull;
 
-/**
- * Authorization request inputs for pre-authorization and core authorization.
- *
- * <p>This wrapper keeps authorization inputs together and conveys the intent to be authorized via
- * {@link AuthorizationTargetBinding} target bindings.
- */
-@PolarisImmutable
-public interface AuthorizationRequest {
-  static AuthorizationRequest of(
-      @Nonnull PolarisPrincipal principal,
-      @Nonnull PolarisAuthorizableOperation operation,
-      @Nonnull List<AuthorizationTargetBinding> targetBindings) {
-    return ImmutableAuthorizationRequest.builder()
-        .principal(principal)
-        .operation(operation)
-        .targetBindings(targetBindings)
-        .build();
-  }
-
-  /** Returns the principal requesting authorization. */
-  @Nonnull
-  PolarisPrincipal getPrincipal();
-
-  /** Returns the operation being authorized. */
-  @Nonnull
-  PolarisAuthorizableOperation getOperation();
-
-  /** Returns the target/secondary target bindings. */
-  @Nonnull
-  List<AuthorizationTargetBinding> getTargetBindings();
-
-  /**
-   * Returns the primary target securables, if any.
-   *
-   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
-   */
-  @Nonnull
-  @Value.Derived
-  default List<PolarisSecurable> getTargets() {
-    return getTargetBindings().stream().map(AuthorizationTargetBinding::getTarget).toList();
-  }
-
-  /**
-   * Returns secondary securables, if any.
-   *
-   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
-   */
-  @Nonnull
-  @Value.Derived
-  default List<PolarisSecurable> getSecondaries() {
-    List<PolarisSecurable> secondaries = new ArrayList<>();
-    for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
-      if (targetBinding.getSecondary() != null) {
-        secondaries.add(targetBinding.getSecondary());
-      }
-    }
-    return secondaries;
-  }
-
-  default boolean hasSecurableType(PolarisEntityType... types) {
-    for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
-      if (containsType(targetBinding.getTarget(), types)) {
-        return true;
-      }
-      if (targetBinding.getSecondary() != null
-          && containsType(targetBinding.getSecondary(), types)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  static boolean containsType(PolarisSecurable securable, PolarisEntityType... types) {
-    PolarisEntityType entityType = securable.getLeaf().entityType();
-    for (PolarisEntityType type : types) {
-      if (entityType == type) {
-        return true;
-      }
-    }
-    return false;
+/** Full authorization request containing the subject and one or more authorization intents. */
+public record AuthorizationRequest(
+    @NonNull PolarisPrincipal principal, @NonNull List<AuthorizationIntent> intents) {
+  public AuthorizationRequest {
+    Preconditions.checkNotNull(principal, "principal must be non-null");
+    Preconditions.checkNotNull(intents, "intents must be non-null");
+    intents = List.copyOf(intents);
+    Preconditions.checkArgument(
+        !intents.isEmpty(), "Authorization request must contain at least one intent");
   }
 }

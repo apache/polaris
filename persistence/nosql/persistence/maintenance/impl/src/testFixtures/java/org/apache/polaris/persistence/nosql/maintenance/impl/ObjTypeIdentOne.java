@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.persistence.nosql.maintenance.impl;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.function.BiConsumer;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.maintenance.spi.ObjTypeRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 public class ObjTypeIdentOne implements ObjTypeRetainedIdentifier {
@@ -36,14 +36,14 @@ public class ObjTypeIdentOne implements ObjTypeRetainedIdentifier {
     return "TEST ObjTypeRetainedIdentifier ONE";
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ObjType handledObjType() {
     return ObjOne.TYPE;
   }
 
   @Override
-  public void identifyRelatedObj(@Nonnull RetainedCollector collector, @Nonnull ObjRef objRef) {
+  public void identifyRelatedObj(@NonNull RetainedCollector collector, @NonNull ObjRef objRef) {
     if (testCallback != null) {
       testCallback.accept(collector, objRef);
     }

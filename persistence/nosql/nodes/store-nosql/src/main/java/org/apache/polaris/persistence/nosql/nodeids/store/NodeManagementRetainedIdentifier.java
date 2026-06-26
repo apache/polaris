@@ -20,13 +20,13 @@ package org.apache.polaris.persistence.nosql.nodeids.store;
 
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.stream.IntStream;
 import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
 import org.apache.polaris.persistence.nosql.nodeids.api.NodeManagement;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 class NodeManagementRetainedIdentifier implements PerRealmRetainedIdentifier {
@@ -40,7 +40,7 @@ class NodeManagementRetainedIdentifier implements PerRealmRetainedIdentifier {
   }
 
   @Override
-  public boolean identifyRetained(@Nonnull RetainedCollector collector) {
+  public boolean identifyRetained(@NonNull RetainedCollector collector) {
     if (!collector.isSystemRealm()) {
       return false;
     }

@@ -19,11 +19,11 @@
 package org.apache.polaris.core.connection;
 
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.ImplicitAuthenticationParameters;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.jspecify.annotations.NonNull;
 
 /**
  * The internal persistence-object counterpart to ImplicitAuthenticationParameters defined in the
@@ -36,7 +36,7 @@ public class ImplicitAuthenticationParametersDpo extends AuthenticationParameter
   }
 
   @Override
-  public @Nonnull Map<String, String> asIcebergCatalogProperties(
+  public @NonNull Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
     // Return only metadata properties - credentials are handled by ConnectionCredentialVendor
     // Implicit auth has no metadata properties
@@ -44,7 +44,7 @@ public class ImplicitAuthenticationParametersDpo extends AuthenticationParameter
   }
 
   @Override
-  public @Nonnull AuthenticationParameters asAuthenticationParametersModel() {
+  public @NonNull AuthenticationParameters asAuthenticationParametersModel() {
     return ImplicitAuthenticationParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT)
         .build();

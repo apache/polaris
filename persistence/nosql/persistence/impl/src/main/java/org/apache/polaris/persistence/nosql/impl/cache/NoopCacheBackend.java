@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.persistence.nosql.impl.cache;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.cache.CacheBackend;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 final class NoopCacheBackend implements CacheBackend {
 
@@ -32,29 +32,29 @@ final class NoopCacheBackend implements CacheBackend {
   private NoopCacheBackend() {}
 
   @Override
-  public Persistence wrap(@Nonnull Persistence persistence) {
+  public Persistence wrap(@NonNull Persistence persistence) {
     return persistence;
   }
 
   @Override
-  public void putReferenceNegative(@Nonnull String repositoryId, @Nonnull String name) {}
+  public void putReferenceNegative(@NonNull String repositoryId, @NonNull String name) {}
 
   @Override
-  public void putReference(@Nonnull String repositoryId, @Nonnull Reference r) {}
+  public void putReference(@NonNull String repositoryId, @NonNull Reference r) {}
 
   @Override
-  public void putReferenceLocal(@Nonnull String repositoryId, @Nonnull Reference r) {}
+  public void putReferenceLocal(@NonNull String repositoryId, @NonNull Reference r) {}
 
   @Override
-  public void removeReference(@Nonnull String repositoryId, @Nonnull String name) {}
+  public void removeReference(@NonNull String repositoryId, @NonNull String name) {}
 
   @Override
-  public Reference getReference(@Nonnull String repositoryId, @Nonnull String name) {
+  public Reference getReference(@NonNull String repositoryId, @NonNull String name) {
     return null;
   }
 
   @Override
-  public void clear(@Nonnull String repositoryId) {}
+  public void clear(@NonNull String repositoryId) {}
 
   @Override
   public void purge() {}
@@ -65,19 +65,19 @@ final class NoopCacheBackend implements CacheBackend {
   }
 
   @Override
-  public void remove(@Nonnull String repositoryId, @Nonnull ObjRef id) {}
+  public void remove(@NonNull String repositoryId, @NonNull ObjRef id) {}
 
   @Override
-  public void putNegative(@Nonnull String repositoryId, @Nonnull ObjRef id) {}
+  public void putNegative(@NonNull String repositoryId, @NonNull ObjRef id) {}
 
   @Override
-  public void put(@Nonnull String repositoryId, @Nonnull Obj obj) {}
+  public void put(@NonNull String repositoryId, @NonNull Obj obj) {}
 
   @Override
-  public void putLocal(@Nonnull String repositoryId, @Nonnull Obj obj) {}
+  public void putLocal(@NonNull String repositoryId, @NonNull Obj obj) {}
 
   @Override
-  public Obj get(@Nonnull String repositoryId, @Nonnull ObjRef id) {
+  public Obj get(@NonNull String repositoryId, @NonNull ObjRef id) {
     return null;
   }
 }

@@ -24,8 +24,6 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.quarkus.runtime.Startup;
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.inject.Instance;
@@ -58,6 +56,8 @@ import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.tracing.TracingFilter;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -162,7 +162,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     tryHandleTask(taskEntityId, clone, eventMetadata, null, 1);
   }
 
-  private @Nonnull CompletableFuture<Void> tryHandleTask(
+  private @NonNull CompletableFuture<Void> tryHandleTask(
       long taskEntityId,
       CallContext callContext,
       PolarisEventMetadata eventMetadata,
@@ -198,13 +198,15 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   protected void handleTask(
       long taskEntityId, CallContext ctx, PolarisEventMetadata eventMetadata, int attempt) {
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_ATTEMPT_TASK,
-            eventMetadataFactory.copy(eventMetadata),
-            new EventAttributeMap()
-                .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                .put(EventAttributes.TASK_ATTEMPT, attempt)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_ATTEMPT_TASK)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_ATTEMPT_TASK,
+              eventMetadataFactory.copy(eventMetadata),
+              new EventAttributeMap()
+                  .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                  .put(EventAttributes.TASK_ATTEMPT, attempt)));
+    }
 
     boolean success = false;
     try {
@@ -247,14 +249,16 @@ public class TaskExecutorImpl implements TaskExecutor {
             .log("Unable to execute async task");
       }
     } finally {
-      polarisEventDispatcher.dispatch(
-          new PolarisEvent(
-              PolarisEventType.AFTER_ATTEMPT_TASK,
-              eventMetadataFactory.copy(eventMetadata),
-              new EventAttributeMap()
-                  .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                  .put(EventAttributes.TASK_ATTEMPT, attempt)
-                  .put(EventAttributes.TASK_SUCCESS, success)));
+      if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_ATTEMPT_TASK)) {
+        polarisEventDispatcher.dispatch(
+            new PolarisEvent(
+                PolarisEventType.AFTER_ATTEMPT_TASK,
+                eventMetadataFactory.copy(eventMetadata),
+                new EventAttributeMap()
+                    .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                    .put(EventAttributes.TASK_ATTEMPT, attempt)
+                    .put(EventAttributes.TASK_SUCCESS, success)));
+      }
     }
   }
 

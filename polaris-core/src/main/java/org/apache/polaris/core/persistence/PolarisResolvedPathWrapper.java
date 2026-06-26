@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Holds fully-resolved path of PolarisEntities representing the targetEntity with all its grants
@@ -89,7 +89,7 @@ public class PolarisResolvedPathWrapper {
    * @return true if the namespace is considered fully resolved for the given catalog type
    */
   public boolean isFullyResolvedNamespace(
-      @Nonnull String catalogName, @Nonnull Namespace namespace) {
+      @NonNull String catalogName, @NonNull Namespace namespace) {
     if (resolvedPath == null) {
       return false;
     }

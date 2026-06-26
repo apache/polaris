@@ -22,6 +22,10 @@ package org.apache.polaris.core.exceptions;
 import com.google.errorprone.annotations.FormatMethod;
 
 public class CommitConflictException extends PolarisException {
+  public CommitConflictException(String message) {
+    super(message);
+  }
+
   @FormatMethod
   public CommitConflictException(String message, Object... args) {
     super(String.format(message, args));

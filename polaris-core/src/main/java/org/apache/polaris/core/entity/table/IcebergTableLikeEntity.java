@@ -20,20 +20,20 @@ package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An entity type for {@link TableLikeEntity} instances that conform to iceberg semantics around
@@ -166,7 +166,7 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
     public Builder setParentNamespace(Namespace namespace) {
       if (namespace != null && !namespace.isEmpty()) {
         internalProperties.put(
-            NamespaceEntity.PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
+            NamespaceEntity.PARENT_NAMESPACE_KEY, PolarisEntityUtils.encodeNamespace(namespace));
       }
       return this;
     }
@@ -177,7 +177,7 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
     }
 
     @Override
-    public Builder setInternalProperties(@Nonnull Map<String, String> internalProperties) {
+    public Builder setInternalProperties(@NonNull Map<String, String> internalProperties) {
       // ensure we carry forward the parent namespace and metadata location if already set.
       // however, we allow for overriding them if explicitly specified in the provided map.
       Map<String, String> newInternalProperties = new HashMap<>();

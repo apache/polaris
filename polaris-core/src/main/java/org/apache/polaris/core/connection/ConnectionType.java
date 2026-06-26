@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.connection;
 
-import jakarta.annotation.Nonnull;
 import java.util.Arrays;
+import org.jspecify.annotations.NonNull;
 
 /**
  * The internal persistence-object counterpart to ConnectionConfigInfo.ConnectionTypeEnum defined in
@@ -34,11 +34,13 @@ public enum ConnectionType {
   ICEBERG_REST(1),
   HADOOP(2),
   HIVE(3),
+  BIGQUERY(4),
   ;
 
   public static final String ICEBERG_REST_FACTORY_IDENTIFIER = "iceberg_rest";
   public static final String HADOOP_FACTORY_IDENTIFIER = "hadoop";
   public static final String HIVE_FACTORY_IDENTIFIER = "hive";
+  public static final String BIGQUERY_FACTORY_IDENTIFIER = "bigquery";
 
   private static final ConnectionType[] REVERSE_MAPPING_ARRAY;
 
@@ -69,7 +71,7 @@ public enum ConnectionType {
    * @param connectionTypeCode code associated to the connection type
    * @return ConnectionType corresponding to that code or null if mapping not found
    */
-  public static @Nonnull ConnectionType fromCode(int connectionTypeCode) {
+  public static @NonNull ConnectionType fromCode(int connectionTypeCode) {
     // ensure it is within bounds
     if (connectionTypeCode < 0 || connectionTypeCode >= REVERSE_MAPPING_ARRAY.length) {
       return ConnectionType.NULL_TYPE;
@@ -97,6 +99,8 @@ public enum ConnectionType {
         return HADOOP_FACTORY_IDENTIFIER;
       case HIVE:
         return HIVE_FACTORY_IDENTIFIER;
+      case BIGQUERY:
+        return BIGQUERY_FACTORY_IDENTIFIER;
       default:
         throw new UnsupportedOperationException(
             "No factory identifier for connection type: " + this);

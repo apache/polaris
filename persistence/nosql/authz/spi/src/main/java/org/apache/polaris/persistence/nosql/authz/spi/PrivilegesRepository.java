@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.persistence.nosql.authz.spi;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
+import org.jspecify.annotations.NonNull;
 
 /**
  * API to maintain the Polaris system-wide mapping of {@linkplain Privilege privilege} {@linkplain
@@ -29,9 +29,8 @@ import org.apache.polaris.persistence.nosql.authz.api.Privilege;
  * <p>Implementation is provided as an {@link ApplicationScoped @ApplicationScoped} bean.
  */
 public interface PrivilegesRepository {
-  @Nonnull
-  PrivilegesMapping fetchPrivilegesMapping();
+  @NonNull PrivilegesMapping fetchPrivilegesMapping();
 
   boolean updatePrivilegesMapping(
-      @Nonnull PrivilegesMapping expectedState, @Nonnull PrivilegesMapping newState);
+      @NonNull PrivilegesMapping expectedState, @NonNull PrivilegesMapping newState);
 }

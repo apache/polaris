@@ -19,11 +19,11 @@
 
 package org.apache.polaris.core.persistence.resolver;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public class ResolutionManifestFactoryImpl implements ResolutionManifestFactory {
 
@@ -32,18 +32,18 @@ public class ResolutionManifestFactoryImpl implements ResolutionManifestFactory 
   private final ResolverFactory resolverFactory;
 
   public ResolutionManifestFactoryImpl(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull RealmContext realmContext,
-      @Nonnull ResolverFactory resolverFactory) {
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull RealmContext realmContext,
+      @NonNull ResolverFactory resolverFactory) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.resolverFactory = resolverFactory;
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PolarisResolutionManifest createResolutionManifest(
-      @Nonnull PolarisPrincipal principal, @Nullable String referenceCatalogName) {
+      @NonNull PolarisPrincipal principal, @Nullable String referenceCatalogName) {
     return new PolarisResolutionManifest(
         diagnostics, realmContext, resolverFactory, principal, referenceCatalogName);
   }

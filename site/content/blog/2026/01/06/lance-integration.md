@@ -81,7 +81,7 @@ making it particularly flexible for organizing Lance tables in complex data arch
 ## What is the Generic Table API in Apache Polaris?
 
 Apache Polaris is best known as an open-source catalog for Apache Iceberg.
-In addition, Apache Polaris also offers the [**Generic Table API**]({{% ref "../../../../in-dev/unreleased/generic-table.md" %}})
+In addition, Apache Polaris also offers the [**Generic Table API**](/releases/latest/generic-table/)
 that can be used for managing non-Iceberg table formats such as Delta, Apache Hudi, Lance, and others.
 
 ### Generic Table Definition
@@ -150,7 +150,7 @@ and access them from any engine that supports Lance.
 Whether you're ingesting data with Spark, running feature engineering with Ray,
 building RAG applications with LanceDB, or analyzing with Trino,
 all these engines can work with the same Lance tables managed through Apache Polaris.
-For more information on getting started with Apache Polaris, see the [Apache Polaris Getting Started Guide](https://polaris.apache.org/in-dev/unreleased/getting-started/).
+For more information on getting started with Apache Polaris, see the [Apache Polaris Getting Started Guide](https://polaris.apache.org/releases/latest/getting-started/).
 
 Let's walk through a complete end-to-end workflow using the [BeIR/quora](https://huggingface.co/datasets/BeIR/quora)
 dataset from Hugging Face to build a question-answering system.

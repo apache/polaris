@@ -18,6 +18,7 @@
 #
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import (
     StorageType,
     CatalogType,
@@ -30,9 +31,9 @@ from apache_polaris.cli.constants import (
 )
 from apache_polaris.cli.options.option_tree import Argument
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pydantic import StrictStr, SecretStr
-from typing import Dict, List, Optional, Union, Tuple, Callable
+from typing import Dict, List, Optional, Union, Tuple, Callable, cast
 
 from apache_polaris.sdk.management import (
     PolarisDefaultApi,
@@ -67,66 +68,92 @@ class CatalogsCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris catalogs create cat_name --storage-type s3 --default-base-location s3://bucket/path --role-arn ...
-        * ./polaris catalogs update cat_name --default-base-location s3://new-bucket/new-location
-        * ./polaris catalogs list
+        * polaris catalogs create cat_name --storage-type s3 --default-base-location s3://bucket/path --role-arn ...
+        * polaris catalogs update cat_name --default-base-location s3://new-bucket/new-location
+        * polaris catalogs list
     """
 
     catalogs_subcommand: str
-    catalog_type: str
-    default_base_location: str
-    storage_type: str
-    allowed_locations: List[str]
-    role_arn: str
-    external_id: str
-    user_arn: str
-    region: str
-    tenant_id: str
-    multi_tenant_app_name: str
-    hierarchical: bool
-    consent_url: str
-    service_account: str
-    catalog_name: str
-    properties: Dict[str, StrictStr]
-    set_properties: Dict[str, StrictStr]
-    remove_properties: List[str]
-    hadoop_warehouse: str
-    hive_warehouse: str
-    iceberg_remote_catalog_name: str
-    endpoint: str
-    endpoint_internal: str
-    sts_endpoint: str
-    sts_unavailable: bool
-    kms_unavailable: bool
-    path_style_access: bool
-    current_kms_key: str
-    allowed_kms_keys: List[str]
-    catalog_connection_type: str
-    catalog_authentication_type: str
-    catalog_service_identity_type: str
-    catalog_service_identity_iam_arn: str
-    catalog_uri: str
-    catalog_token_uri: str
-    catalog_client_id: str
-    catalog_client_secret: str
-    catalog_client_scopes: List[str]
-    catalog_bearer_token: str
-    catalog_role_arn: str
-    catalog_role_session_name: str
-    catalog_external_id: str
-    catalog_signing_region: str
-    catalog_signing_name: str
+    catalog_type: Optional[str] = None
+    default_base_location: Optional[str] = None
+    storage_type: Optional[str] = None
+    allowed_locations: Optional[List[str]] = None
+    role_arn: Optional[str] = None
+    external_id: Optional[str] = None
+    user_arn: Optional[str] = None
+    region: Optional[str] = None
+    tenant_id: Optional[str] = None
+    multi_tenant_app_name: Optional[str] = None
+    hierarchical: Optional[bool] = None
+    consent_url: Optional[str] = None
+    service_account: Optional[str] = None
+    catalog_name: Optional[str] = None
+    properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    set_properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    remove_properties: Optional[List[str]] = None
+    hadoop_warehouse: Optional[str] = None
+    hive_warehouse: Optional[str] = None
+    iceberg_remote_catalog_name: Optional[str] = None
+    endpoint: Optional[str] = None
+    endpoint_internal: Optional[str] = None
+    sts_endpoint: Optional[str] = None
+    sts_unavailable: Optional[bool] = None
+    kms_unavailable: Optional[bool] = None
+    path_style_access: Optional[bool] = None
+    current_kms_key: Optional[str] = None
+    allowed_kms_keys: Optional[List[str]] = None
+    catalog_connection_type: Optional[str] = None
+    catalog_authentication_type: Optional[str] = None
+    catalog_service_identity_type: Optional[str] = None
+    catalog_service_identity_iam_arn: Optional[str] = None
+    catalog_uri: Optional[str] = None
+    catalog_token_uri: Optional[str] = None
+    catalog_client_id: Optional[str] = None
+    catalog_client_secret: Optional[str] = None
+    catalog_client_scopes: Optional[List[str]] = None
+    catalog_bearer_token: Optional[str] = None
+    catalog_role_arn: Optional[str] = None
+    catalog_role_session_name: Optional[str] = None
+    catalog_external_id: Optional[str] = None
+    catalog_signing_region: Optional[str] = None
+    catalog_signing_name: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        if self.properties is None:
+            self.properties = {}
+        if self.set_properties is None:
+            self.set_properties = {}
+        if self.hierarchical is None:
+            self.hierarchical = False
+        if self.sts_unavailable is None:
+            self.sts_unavailable = False
+        if self.kms_unavailable is None:
+            self.kms_unavailable = False
+        if self.path_style_access is None:
+            self.path_style_access = False
 
     def validate(self) -> None:
+        if self.catalogs_subcommand in {
+            Subcommands.CREATE,
+            Subcommands.DELETE,
+            Subcommands.GET,
+            Subcommands.UPDATE,
+            Subcommands.SUMMARIZE,
+        }:
+            if not self.catalog_name:
+                raise CliError(
+                    f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
+                )
+
         if self.catalogs_subcommand == Subcommands.CREATE:
             if self.catalog_type != CatalogType.EXTERNAL.value:
                 if not self.storage_type:
-                    raise Exception(
+                    raise CliError(
                         f"Missing required argument:"
                         f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
                     )
                 if not self.default_base_location:
-                    raise Exception(
+                    raise CliError(
                         f"Missing required argument:"
                         f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
                     )
@@ -136,9 +163,10 @@ class CatalogsCommand(Command):
                         not self.catalog_token_uri
                         or not self.catalog_client_id
                         or not self.catalog_client_secret
+                        or not self.catalog_client_scopes
                         or len(self.catalog_client_scopes) == 0
                     ):
-                        raise Exception(
+                        raise CliError(
                             f"Authentication type 'OAUTH' requires"
                             f" {Argument.to_flag_name(Arguments.CATALOG_TOKEN_URI)},"
                             f" {Argument.to_flag_name(Arguments.CATALOG_CLIENT_ID)},"
@@ -149,41 +177,41 @@ class CatalogsCommand(Command):
                     self.catalog_authentication_type == AuthenticationType.BEARER.value
                 ):
                     if not self.catalog_bearer_token:
-                        raise Exception(
+                        raise CliError(
                             f"Missing required argument for authentication type 'BEARER':"
                             f" {Argument.to_flag_name(Arguments.CATALOG_BEARER_TOKEN)}"
                         )
                 elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
                     if not self.catalog_role_arn or not self.catalog_signing_region:
-                        raise Exception(
+                        raise CliError(
                             f"Authentication type 'SIGV4' requires"
                             f" {Argument.to_flag_name(Arguments.CATALOG_ROLE_ARN)}"
                             f" and {Argument.to_flag_name(Arguments.CATALOG_SIGNING_REGION)}"
                         )
                 if self.catalog_connection_type == CatalogConnectionType.HADOOP.value:
                     if not self.hadoop_warehouse or not self.catalog_uri:
-                        raise Exception(
+                        raise CliError(
                             f"Missing required argument for connection type 'hadoop':"
                             f" {Argument.to_flag_name(Arguments.HADOOP_WAREHOUSE)}"
                             f" and {Argument.to_flag_name(Arguments.CATALOG_URI)}"
                         )
                 elif self.catalog_connection_type == CatalogConnectionType.HIVE.value:
                     if not self.hive_warehouse or not self.catalog_uri:
-                        raise Exception(
+                        raise CliError(
                             f"Missing required argument for connection type 'hive':"
                             f" {Argument.to_flag_name(Arguments.HIVE_WAREHOUSE)}"
                             f" and {Argument.to_flag_name(Arguments.CATALOG_URI)}"
                         )
         if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM.value:
             if not self.catalog_service_identity_iam_arn:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument for service identity type 'AWS_IAM':"
                     f" {Argument.to_flag_name(Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN)}"
                 )
 
         if self.storage_type == StorageType.S3.value:
             if self._has_azure_storage_info() or self._has_gcs_storage_info():
-                raise Exception(
+                raise CliError(
                     f"Storage type 's3' supports the options"
                     f" {Argument.to_flag_name(Arguments.ROLE_ARN)},"
                     f" {Argument.to_flag_name(Arguments.REGION)},"
@@ -200,12 +228,12 @@ class CatalogsCommand(Command):
                 )
         elif self.storage_type == StorageType.AZURE.value:
             if not self.tenant_id:
-                raise Exception(
+                raise CliError(
                     "Missing required argument for storage type 'azure': "
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)}"
                 )
             if self._has_aws_storage_info() or self._has_gcs_storage_info():
-                raise Exception(
+                raise CliError(
                     "Storage type 'azure' supports the options"
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)},"
                     f" {Argument.to_flag_name(Arguments.MULTI_TENANT_APP_NAME)}, and"
@@ -213,7 +241,7 @@ class CatalogsCommand(Command):
                 )
         elif self.storage_type == StorageType.GCS.value:
             if self._has_aws_storage_info() or self._has_azure_storage_info():
-                raise Exception(
+                raise CliError(
                     "Storage type 'gcs' supports the storage credential"
                     f" {Argument.to_flag_name(Arguments.SERVICE_ACCOUNT)}"
                 )
@@ -223,7 +251,7 @@ class CatalogsCommand(Command):
                 or self._has_azure_storage_info()
                 or self._has_gcs_storage_info()
             ):
-                raise Exception(
+                raise CliError(
                     "Storage type 'file' does not support any additional options"
                 )
 
@@ -333,8 +361,8 @@ class CatalogsCommand(Command):
                 authentication_type=self.catalog_authentication_type.upper()
             )
         elif self.catalog_authentication_type is not None:
-            raise Exception(
-                "Unknown authentication type:", self.catalog_authentication_type
+            raise CliError(
+                f"Unknown authentication type: {self.catalog_authentication_type}"
             )
 
         service_identity = None
@@ -344,8 +372,8 @@ class CatalogsCommand(Command):
                 iam_arn=self.catalog_service_identity_iam_arn,
             )
         elif self.catalog_service_identity_type is not None:
-            raise Exception(
-                "Unknown service identity type:", self.catalog_service_identity_type
+            raise CliError(
+                f"Unknown service identity type: {self.catalog_service_identity_type}"
             )
 
         config = None
@@ -374,20 +402,23 @@ class CatalogsCommand(Command):
                 warehouse=self.hive_warehouse,
             )
         elif self.catalog_connection_type is not None:
-            raise Exception(
-                "Unknown catalog connection type:", self.catalog_connection_type
+            raise CliError(
+                f"Unknown catalog connection type: {self.catalog_connection_type}"
             )
         return config
 
     def execute(self, api: PolarisDefaultApi) -> None:
+        catalog_type = cast(str, self.catalog_type)
+        catalog_name = cast(str, self.catalog_name)
+
         if self.catalogs_subcommand == Subcommands.CREATE:
             storage_config = self._build_storage_config_info()
             connection_config = self._build_connection_config_info()
             if self.catalog_type == CatalogType.EXTERNAL.value:
                 request = CreateCatalogRequest(
                     catalog=ExternalCatalog(
-                        type=self.catalog_type.upper(),
-                        name=self.catalog_name,
+                        type=catalog_type.upper(),
+                        name=catalog_name,
                         storage_config_info=storage_config,
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
@@ -399,8 +430,8 @@ class CatalogsCommand(Command):
             else:
                 request = CreateCatalogRequest(
                     catalog=PolarisCatalog(
-                        type=self.catalog_type.upper(),
-                        name=self.catalog_name,
+                        type=catalog_type.upper(),
+                        name=catalog_name,
                         storage_config_info=storage_config,
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
@@ -411,14 +442,14 @@ class CatalogsCommand(Command):
                 )
             api.create_catalog(request)
         elif self.catalogs_subcommand == Subcommands.DELETE:
-            api.delete_catalog(self.catalog_name)
+            api.delete_catalog(catalog_name)
         elif self.catalogs_subcommand == Subcommands.GET:
-            print(api.get_catalog(self.catalog_name).to_json())
+            print(api.get_catalog(catalog_name).to_json())
         elif self.catalogs_subcommand == Subcommands.LIST:
             for catalog in api.list_catalogs().catalogs:
                 print(catalog.to_json())
         elif self.catalogs_subcommand == Subcommands.UPDATE:
-            catalog = api.get_catalog(self.catalog_name)
+            catalog = api.get_catalog(catalog_name)
 
             if (
                 self.default_base_location
@@ -474,7 +505,7 @@ class CatalogsCommand(Command):
                     # is uppercase but we defined the StorageType enums as lowercase.
                     storage_type = updated_storage_info.storage_type
                     if storage_type.lower() != StorageType.S3.value:
-                        raise Exception(
+                        raise CliError(
                             f"--region requires S3 storage_type, got: {storage_type}"
                         )
                     updated_storage_info.region = self.region
@@ -490,17 +521,18 @@ class CatalogsCommand(Command):
                     properties=catalog.properties.to_dict(),
                 )
 
-            api.update_catalog(self.catalog_name, request)
+            api.update_catalog(catalog_name, request)
         elif self.catalogs_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api)
         else:
-            raise Exception(f"{self.catalogs_subcommand} is not supported in the CLI")
+            raise CliError(f"{self.catalogs_subcommand} is not supported in the CLI")
 
     def _generate_summary(self, api: PolarisDefaultApi) -> None:
-        print(f"Catalog: {self.catalog_name}")
+        catalog_name = cast(str, self.catalog_name)
+        print(f"Catalog: {catalog_name}")
         print("-" * 80)
         # Metadata
-        catalog = api.get_catalog(self.catalog_name)
+        catalog = api.get_catalog(catalog_name)
         print("Metadata")
         print(f"  {'Type:':<30} {catalog.type}")
         storage_info = catalog.storage_config_info
@@ -522,11 +554,11 @@ class CatalogsCommand(Command):
         print(f"  {'Views:':<30} {total_views}")
 
         # Access Control
-        catalog_roles = api.list_catalog_roles(self.catalog_name).roles or []
+        catalog_roles = api.list_catalog_roles(catalog_name).roles or []
         principal_roles_names = set()
         for catalog_role in catalog_roles:
             pr_resp = api.list_assignee_principal_roles_for_catalog_role(
-                self.catalog_name, catalog_role.name
+                catalog_name, catalog_role.name
             )
             roles = pr_resp.roles or []
             for pr in roles:
@@ -537,7 +569,7 @@ class CatalogsCommand(Command):
 
         # Policies
         policy_api = PolicyAPI(catalog_api.api_client)
-        policies_resp = policy_api.get_applicable_policies(prefix=self.catalog_name)
+        policies_resp = policy_api.get_applicable_policies(prefix=catalog_name)
         print("\nApplicable Policies")
         applicable_policies = policies_resp.applicable_policies or []
         if applicable_policies:
@@ -550,9 +582,11 @@ class CatalogsCommand(Command):
     def _get_sub_entities_count(
         self, catalog_api: IcebergCatalogAPI
     ) -> Tuple[int, int, int]:
+        catalog_name = cast(str, self.catalog_name)
+
         def count_entities(func: Callable, ns_str: str) -> int:
             try:
-                resp = func(prefix=self.catalog_name, namespace=ns_str)
+                resp = func(prefix=catalog_name, namespace=ns_str)
                 return len(resp.identifiers or [])
             except Exception as e:
                 print(
@@ -561,9 +595,7 @@ class CatalogsCommand(Command):
                 return 0
 
         def recursive(parent: Optional[str] = None) -> Tuple[int, int, int]:
-            ns_resp = catalog_api.list_namespaces(
-                prefix=self.catalog_name, parent=parent
-            )
+            ns_resp = catalog_api.list_namespaces(prefix=catalog_name, parent=parent)
             namespaces = ns_resp.namespaces or []
             total_ns, total_tables, total_views = len(namespaces), 0, 0
             for ns in namespaces:

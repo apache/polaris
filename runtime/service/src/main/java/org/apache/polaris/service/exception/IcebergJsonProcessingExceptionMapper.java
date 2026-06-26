@@ -27,7 +27,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -36,6 +35,7 @@ import jakarta.ws.rs.ext.Provider;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

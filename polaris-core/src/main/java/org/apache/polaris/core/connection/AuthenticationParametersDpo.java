@@ -22,13 +22,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.NonNull;
 
 /**
  * The internal persistence-object counterpart to AuthenticationParameters defined in the API model.
@@ -43,6 +43,7 @@ import org.apache.polaris.core.secrets.SecretReference;
   @JsonSubTypes.Type(value = BearerAuthenticationParametersDpo.class, name = "2"),
   @JsonSubTypes.Type(value = ImplicitAuthenticationParametersDpo.class, name = "3"),
   @JsonSubTypes.Type(value = SigV4AuthenticationParametersDpo.class, name = "4"),
+  @JsonSubTypes.Type(value = GcpAuthenticationParametersDpo.class, name = "5"),
 })
 public abstract class AuthenticationParametersDpo implements IcebergCatalogPropertiesProvider {
 
@@ -66,13 +67,16 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
     return AuthenticationType.fromCode(authenticationTypeCode);
   }
 
-  public abstract @Nonnull AuthenticationParameters asAuthenticationParametersModel();
+  public abstract @NonNull AuthenticationParameters asAuthenticationParametersModel();
 
   public static AuthenticationParametersDpo fromAuthenticationParametersModelWithSecrets(
       AuthenticationParameters authenticationParameters,
       Map<String, SecretReference> secretReferences) {
     final AuthenticationParametersDpo config;
     switch (authenticationParameters.getAuthenticationType()) {
+      case GCP:
+        config = new GcpAuthenticationParametersDpo();
+        break;
       case OAUTH:
         OAuthClientCredentialsParameters oauthClientCredentialsModel =
             (OAuthClientCredentialsParameters) authenticationParameters;

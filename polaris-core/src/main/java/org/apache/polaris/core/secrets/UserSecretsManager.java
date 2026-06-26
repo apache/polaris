@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.secrets;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Manages secrets specified by users of the Polaris API, either directly or as an intermediary
@@ -43,8 +43,8 @@ public interface UserSecretsManager {
    * @return A reference object that can be used to retrieve the secret which is safe to store in
    *     its entirety within a persisted PolarisEntity
    */
-  @Nonnull
-  SecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntityCore forEntity);
+  @NonNull SecretReference writeSecret(
+      @NonNull String secret, @NonNull PolarisEntityCore forEntity);
 
   /**
    * Retrieve a secret using the {@code secretReference}. See {@link SecretReference} for details
@@ -53,15 +53,14 @@ public interface UserSecretsManager {
    * @param secretReference Reference object for retrieving the original secret
    * @return The stored secret, or null if it no longer exists
    */
-  @Nonnull
-  String readSecret(@Nonnull SecretReference secretReference);
+  @NonNull String readSecret(@NonNull SecretReference secretReference);
 
   /**
    * Delete a stored secret. See {@link SecretReference} for details about identifiers and payloads.
    *
    * @param secretReference Reference object for retrieving the original secret
    */
-  void deleteSecret(@Nonnull SecretReference secretReference);
+  void deleteSecret(@NonNull SecretReference secretReference);
 
   /**
    * Builds a URN string from the given secret manager type and type-specific identifier.
@@ -70,9 +69,9 @@ public interface UserSecretsManager {
    *     components with underscores and hyphens).
    * @return The constructed URN string.
    */
-  @Nonnull
+  @NonNull
   default String buildUrn(
-      @Nonnull String secretManagerType, @Nonnull String typeSpecificIdentifier) {
+      @NonNull String secretManagerType, @NonNull String typeSpecificIdentifier) {
     return SecretReference.buildUrnString(secretManagerType, typeSpecificIdentifier);
   }
 }

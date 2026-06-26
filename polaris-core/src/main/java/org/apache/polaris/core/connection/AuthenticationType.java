@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.connection;
 
-import jakarta.annotation.Nonnull;
 import java.util.Arrays;
+import org.jspecify.annotations.NonNull;
 
 /**
  * The internal persistence-object counterpart to AuthenticationParameters.AuthenticationTypeEnum
@@ -35,6 +35,7 @@ public enum AuthenticationType {
   BEARER(2),
   IMPLICIT(3),
   SIGV4(4),
+  GCP(5),
   ;
 
   private static final AuthenticationType[] REVERSE_MAPPING_ARRAY;
@@ -69,7 +70,7 @@ public enum AuthenticationType {
    * @param authTypeCode code associated to the authentication type
    * @return AuthenticationType corresponding to that code or null if mapping not found
    */
-  public static @Nonnull AuthenticationType fromCode(int authTypeCode) {
+  public static @NonNull AuthenticationType fromCode(int authTypeCode) {
     // ensure it is within bounds
     if (authTypeCode < 0 || authTypeCode >= REVERSE_MAPPING_ARRAY.length) {
       return NULL_TYPE;

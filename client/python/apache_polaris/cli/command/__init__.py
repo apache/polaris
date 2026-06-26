@@ -21,6 +21,7 @@ from abc import ABC
 from typing import Callable, Optional, Any
 
 from apache_polaris.cli.constants import Commands, Arguments
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.options.parser import Parser
 from apache_polaris.sdk.management import PolarisDefaultApi
 
@@ -239,24 +240,31 @@ class Command(ABC):
                 catalog_name=options_get(Arguments.CATALOG),
                 type_filter=options_get(Arguments.TYPE),
             )
+        elif options.command == Commands.REPL:
+            from apache_polaris.cli.command.repl import ReplCommand
+
+            command = ReplCommand(
+                profile=options_get(Arguments.PROFILE),
+                catalog=options_get(Arguments.CATALOG),
+            )
 
         if command is not None:
             command.validate()
             return command
         else:
-            raise Exception(
-                "Please specify a command or run ./polaris --help to view the available commands"
+            raise CliError(
+                "Please specify a command or run 'polaris --help' to view the available commands"
             )
 
     def execute(self, api: PolarisDefaultApi) -> None:
         """
         Execute a given command and, where applicable, print the response as JSON.
         """
-        raise Exception("`execute` called on abstract `Command`")
+        raise NotImplementedError("`execute` called on abstract `Command`")
 
     def validate(self) -> None:
         """
         Used to validate a command. Should always be called before `execute`. The arg parser will catch many issues
         with options, but this is used to apply additional constraints that the arg parser can't currently handle.
         """
-        raise Exception("`validate` called on abstract `Command`")
+        raise NotImplementedError("`validate` called on abstract `Command`")

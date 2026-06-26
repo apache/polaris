@@ -59,7 +59,7 @@ Polaris is configured with 3 realms:
   issued by both Polaris and Keycloak.
 
 For more information about how to configure Polaris with external authentication, see the
-[Polaris documentation](../../in-dev/unreleased).
+[Polaris documentation](/releases/latest/).
 
 ## Starting the Example
 

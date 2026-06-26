@@ -18,15 +18,14 @@
  */
 package org.apache.polaris.persistence.nosql.nodeids.spi;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.ids.api.IdGenerator;
+import org.jspecify.annotations.NonNull;
 
 public interface NodeStoreFactory {
-  @Nonnull
-  NodeStore createNodeStore(@Nonnull IdGenerator idGenerator);
+  @NonNull NodeStore createNodeStore(@NonNull IdGenerator idGenerator);
 
   Optional<NodeManagementState> fetchManagementState();
 
-  boolean storeManagementState(@Nonnull NodeManagementState state);
+  boolean storeManagementState(@NonNull NodeManagementState state);
 }

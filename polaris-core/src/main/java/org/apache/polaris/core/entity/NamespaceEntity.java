@@ -20,17 +20,16 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Namespace-specific subclass of the {@link PolarisEntity} that provides accessors interacting with
  * internalProperties specific to the NAMESPACE type.
  */
 public class NamespaceEntity extends PolarisEntity implements LocationBasedEntity {
-  // RESTUtil-encoded parent namespace.
+  // Encoded parent namespace.
   public static final String PARENT_NAMESPACE_KEY = "parent-namespace";
 
   public NamespaceEntity(PolarisBaseEntity sourceEntity) {
@@ -55,7 +54,7 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
     if (encodedNamespace == null) {
       return Namespace.empty();
     }
-    return RESTUtil.decodeNamespace(encodedNamespace);
+    return PolarisEntityUtils.decodeNamespace(encodedNamespace);
   }
 
   public Namespace asNamespace() {
@@ -89,7 +88,7 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
 
     public Builder setParentNamespace(Namespace namespace) {
       if (namespace != null && !namespace.isEmpty()) {
-        internalProperties.put(PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
+        internalProperties.put(PARENT_NAMESPACE_KEY, PolarisEntityUtils.encodeNamespace(namespace));
       }
       return this;
     }

@@ -84,7 +84,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: getCatalog
       description: Get the details of a catalog
@@ -187,7 +187,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: getPrincipal
       description: Get the principal details
@@ -248,7 +248,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     post:
       operationId: rotateCredentials
       description: Rotate a principal's credentials. The new credentials will be returned in the response. This is the only
@@ -275,7 +275,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     post:
       operationId: resetCredentials
       description: >-
@@ -310,7 +310,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listPrincipalRolesAssigned
       description: List the roles assigned to the principal
@@ -354,7 +354,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: principalRoleName
         in: path
         description: The name of the role
@@ -363,7 +363,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     delete:
       operationId: revokePrincipalRole
       description: Remove a role from a catalog principal
@@ -421,7 +421,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: getPrincipalRole
       description: Get the principal role details
@@ -482,7 +482,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listAssigneePrincipalsForPrincipalRole
       description: List the Principals to whom the target principal role has been assigned
@@ -508,7 +508,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogName
         in: path
         required: true
@@ -517,7 +517,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listCatalogRolesForPrincipalRole
       description: Get the catalog roles mapped to the principal role
@@ -559,7 +559,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogName
         in: path
         description: The name of the catalog that contains the role to revoke
@@ -568,7 +568,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogRoleName
         in: path
         description: The name of the catalog role that should be revoked
@@ -577,7 +577,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     delete:
       operationId: revokeCatalogRoleFromPrincipalRole
       description: Remove a catalog role from a principal role
@@ -599,7 +599,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listCatalogRoles
       description: List existing roles in the catalog
@@ -640,7 +640,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogRoleName
         in: path
         description: The name of the role
@@ -649,7 +649,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: getCatalogRole
       description: Get the details of an existing role
@@ -708,7 +708,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogRoleName
         in: path
         required: true
@@ -717,7 +717,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listAssigneePrincipalRolesForCatalogRole
       description: List the PrincipalRoles to which the target catalog role has been assigned
@@ -743,7 +743,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
       - name: catalogRoleName
         in: path
         required: true
@@ -752,7 +752,7 @@ paths:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     get:
       operationId: listGrantsForCatalogRole
       description: List the grants the catalog role holds
@@ -854,10 +854,11 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
           description: The name of the catalog
         properties:
           type: object
+          x-polaris-skip-valid-annotation: true
           properties:
             default-base-location:
               type: string
@@ -917,6 +918,7 @@ components:
             - ICEBERG_REST
             - HADOOP
             - HIVE
+            - BIGQUERY
           description: The type of remote catalog service represented by this connection
         uri:
           type: string
@@ -925,6 +927,11 @@ components:
           $ref: "#/components/schemas/AuthenticationParameters"
         serviceIdentity:
           $ref: '#/components/schemas/ServiceIdentityInfo'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional connection properties
       required:
         - connectionType
       discriminator:
@@ -933,6 +940,7 @@ components:
           ICEBERG_REST: "#/components/schemas/IcebergRestConnectionConfigInfo"
           HADOOP: "#/components/schemas/HadoopConnectionConfigInfo"
           HIVE: "#/components/schemas/HiveConnectionConfigInfo"
+          BIGQUERY: "#/components/schemas/BigQueryMetastoreConnectionConfigInfo"
 
     IcebergRestConnectionConfigInfo:
       type: object
@@ -965,6 +973,16 @@ components:
         warehouse:
           type: string
           description: The warehouse location for the hive catalog.
+    
+    BigQueryMetastoreConnectionConfigInfo:
+      type: object
+      description: |
+        Configuration necessary for connecting to a BigQuery Metastore Catalog.
+        Required properties in the properties map:
+        - gcp.bigquery.project-id: The GCP project ID
+        - warehouse: The warehouse location for the BigQuery Metastore Catalog
+      allOf:
+        - $ref: '#/components/schemas/ConnectionConfigInfo'
 
     AuthenticationParameters:
       type: object
@@ -977,6 +995,7 @@ components:
             - BEARER
             - SIGV4
             - IMPLICIT
+            - GCP
           description: The type of authentication to use when connecting to the remote rest service
       required:
         - authenticationType
@@ -987,6 +1006,13 @@ components:
           BEARER: "#/components/schemas/BearerAuthenticationParameters"
           SIGV4: "#/components/schemas/SigV4AuthenticationParameters"
           IMPLICIT: "#/components/schemas/ImplicitAuthenticationParameters"
+          GCP: "#/components/schemas/GcpAuthenticationParameters"
+
+    GcpAuthenticationParameters:
+      type: object
+      description: Uses GCP authentication from the Iceberg codebase
+      allOf:
+        - $ref: '#/components/schemas/AuthenticationParameters'
 
     OAuthClientCredentialsParameters:
       type: object
@@ -1291,7 +1317,7 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
         clientId:
           type: string
           description: The output-only OAuth clientId associated with this principal if applicable
@@ -1369,7 +1395,7 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
           description: The name of the role
         federated:
           type: boolean
@@ -1436,7 +1462,7 @@ components:
           type: string
           minLength: 1
           maxLength: 256
-          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
           description: The name of the role
         properties:
           type: object

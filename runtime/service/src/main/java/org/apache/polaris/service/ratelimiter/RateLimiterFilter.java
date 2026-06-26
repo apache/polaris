@@ -24,9 +24,11 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import java.io.IOException;
+import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
@@ -63,15 +65,27 @@ public class RateLimiterFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext ctx) throws IOException {
     if (!rateLimiter.canProceed()) {
-      polarisEventDispatcher.dispatch(
-          new PolarisEvent(
-              PolarisEventType.BEFORE_LIMIT_REQUEST_RATE,
-              eventMetadataFactory.create(),
-              new EventAttributeMap()
-                  .put(EventAttributes.HTTP_METHOD, ctx.getMethod())
-                  .put(
-                      EventAttributes.REQUEST_URI, ctx.getUriInfo().getAbsolutePath().toString())));
-      ctx.abortWith(Response.status(Response.Status.TOO_MANY_REQUESTS).build());
+      if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE)) {
+        polarisEventDispatcher.dispatch(
+            new PolarisEvent(
+                PolarisEventType.BEFORE_LIMIT_REQUEST_RATE,
+                eventMetadataFactory.create(),
+                new EventAttributeMap()
+                    .put(EventAttributes.HTTP_METHOD, ctx.getMethod())
+                    .put(
+                        EventAttributes.REQUEST_URI,
+                        ctx.getUriInfo().getAbsolutePath().toString())));
+      }
+      ctx.abortWith(
+          Response.status(Response.Status.TOO_MANY_REQUESTS)
+              .type(MediaType.APPLICATION_JSON_TYPE)
+              .entity(
+                  ErrorResponse.builder()
+                      .responseCode(Response.Status.TOO_MANY_REQUESTS.getStatusCode())
+                      .withType("TooManyRequestsException")
+                      .withMessage("Rate exceeded")
+                      .build())
+              .build());
       LOGGER.atDebug().log("Rate limiting request");
     }
   }

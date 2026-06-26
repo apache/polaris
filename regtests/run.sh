@@ -54,7 +54,7 @@ cd ${REGTEST_HOME}
 
 if [ -z "${1}" ]; then
   loginfo 'Running all tests'
-  TEST_LIST="../client/python/test $(find t_* -wholename '*t_*/src/*')"
+  TEST_LIST="../client/python/tests $(find t_* -wholename '*t_*/src/*')"
 else
   loginfo "Running single test ${1}"
   TEST_LIST=${1}
@@ -65,6 +65,28 @@ export PYTHONDONTWRITEBYTECODE=1
 NUM_FAILURES=0
 NUM_SUCCESSES=0
 
+# Determine test mode (default to MinIO for local S3)
+if [ -z "${S3_TEST_BACKEND}" ]; then
+  export S3_TEST_BACKEND=minio
+  loginfo "S3_TEST_BACKEND not set, defaulting to minio"
+fi
+
+# Run S3 backend setup if not in real AWS mode
+if [ "${S3_TEST_BACKEND}" == "minio" ] || [ "${S3_TEST_BACKEND}" == "rustfs" ] ; then
+  loginfo "Setting up ${S3_TEST_BACKEND} for tests"
+
+  export AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://s3.local:9000}
+
+  if ! ${REGTEST_HOME}/s3-setup.sh; then
+    logred "${S3_TEST_BACKEND} setup failed; aborting regression tests"
+    exit 1
+  fi
+  loginfo "${S3_TEST_BACKEND} mode enabled"
+else
+  loginfo "AWS mode enabled"
+fi
+
+# Clear static credentials so tests use vended credentials from the catalog
 export AWS_ACCESS_KEY_ID=''
 export AWS_SECRET_ACCESS_KEY=''
 
@@ -79,13 +101,13 @@ if [[ -z "$REGTEST_ROOT_BEARER_TOKEN" ]]; then
     exit 1
   fi
 
-  token=$(echo "$output" | awk -F\" '{print $4}')
+  token=$(echo "$output" | jq -r '.access_token // empty')
 
-  if [ "$token" == "unauthorized_client" ]; then
-    logred "Error: Failed to retrieve bearer token"
+  if [ -z "$token" ]; then
+    logred "Error: Failed to retrieve bearer token — response: $output"
     exit 1
   fi
-
+  
   export REGTEST_ROOT_BEARER_TOKEN=$token
 fi
 
@@ -93,7 +115,7 @@ echo "Root bearer token: ${REGTEST_ROOT_BEARER_TOKEN}"
 
 for TEST_FILE in ${TEST_LIST}; do
   # Special-case running all client pytests
-  if [ "${TEST_FILE}" == '../client/python/test' ]; then
+  if [ "${TEST_FILE}" == '../client/python/tests' ]; then
     loginfo "Starting pytest for entire client suite"
     SCRIPT_DIR="$SCRIPT_DIR" python3 -m pytest ${TEST_FILE}
     CODE=$?
@@ -142,9 +164,9 @@ for TEST_FILE in ${TEST_LIST}; do
       fi
   fi
   if [[ "${TEST_SHORTNAME}" =~ .*.s3.*.sh ]]; then
-      if  [ -z "$AWS_TEST_ENABLED" ] || [ "$AWS_TEST_ENABLED" != "true" ] || [ -z "$AWS_TEST_BASE" ] ; then
-          loginfo "AWS tests not enabled, skip running test ${TEST_FILE}"
-          continue
+      # Run if any S3-compatible backend is configured
+      if [[ "${S3_TEST_BACKEND}" != "aws" ]] && [[ "${S3_TEST_BACKEND}" != "minio" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
+          loginfo "S3 backend not configured, skip running test ${TEST_FILE}"
       fi
   fi
   if [[ "${TEST_SHORTNAME}" =~ .*.gcp.sh ]]; then

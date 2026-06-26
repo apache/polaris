@@ -31,6 +31,7 @@ dependencies {
   implementation(libs.guava)
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -39,6 +40,9 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
 
   testImplementation(testFixtures(project(":polaris-async-api")))
+
+  testCompileOnly(platform(libs.jackson.bom))
+  testCompileOnly("com.fasterxml.jackson.core:jackson-databind")
 }
 
 tasks.withType<Javadoc> { isFailOnError = false }

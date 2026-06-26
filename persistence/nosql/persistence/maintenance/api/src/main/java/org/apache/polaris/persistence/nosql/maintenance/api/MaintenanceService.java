@@ -18,9 +18,10 @@
  */
 package org.apache.polaris.persistence.nosql.maintenance.api;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
+import java.util.OptionalLong;
 import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus;
+import org.jspecify.annotations.NonNull;
 
 public interface MaintenanceService {
   /**
@@ -28,23 +29,25 @@ public interface MaintenanceService {
    * RealmStatus#ACTIVE ACTIVE} and {@link RealmStatus#INACTIVE INACTIVE} as "to retain" and realms
    * in state {@link RealmStatus#PURGING PURGING} as "to purge".
    */
-  @Nonnull
-  MaintenanceRunSpec buildMaintenanceRunSpec();
+  @NonNull MaintenanceRunSpec buildMaintenanceRunSpec();
 
   /**
    * Perform maintenance.
    *
    * @param maintenanceRunSpec define the mandatory run-specification, see {@link
    *     #buildMaintenanceRunSpec()}
+   * @param overrideRunId optional run ID of the currently unfinished maintenance run that shall be
+   *     superseded
    * @return information about the maintenance run
+   * @throws MaintenanceRunInProgressException if the latest maintenance run has not finished and
+   *     {@code overrideRunId} is empty or does not match that latest unfinished run
    */
-  @Nonnull
-  MaintenanceRunInformation performMaintenance(@Nonnull MaintenanceRunSpec maintenanceRunSpec);
+  @NonNull MaintenanceRunInformation performMaintenance(
+      @NonNull MaintenanceRunSpec maintenanceRunSpec, @NonNull OptionalLong overrideRunId);
 
   /**
    * Retrieve information about recent maintenance runs. The number of available elements is
    * configured via {@link MaintenanceConfig#retainedRuns()}.
    */
-  @Nonnull
-  List<MaintenanceRunInformation> maintenanceRunLog();
+  @NonNull List<MaintenanceRunInformation> maintenanceRunLog();
 }

@@ -30,7 +30,10 @@ plugins {
 
 description = "Polaris ID generation implementation"
 
-val jcstressRuntime by configurations.creating
+val jcstressRuntime = configurations.create("jcstressRuntime")
+val jcstressMode = providers.gradleProperty("jcstressMode").orElse("quick")
+val jcstressSplitPerActor =
+  providers.gradleProperty("jcstressSplitPerActor").map(String::toBoolean).orElse(false)
 
 dependencies {
   implementation(project(":polaris-idgen-api"))
@@ -40,6 +43,7 @@ dependencies {
   implementation(libs.slf4j.api)
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -74,23 +78,29 @@ tasks.named("compileJcstressJava") { dependsOn("jandex") }
 
 tasks.named("check") { dependsOn("jcstress") }
 
-jcstress { jcstressDependency = libs.jcstress.core.get().toString() }
+jcstress {
+  jcstressDependency = libs.jcstress.core.get().toString()
+  mode = jcstressMode.get()
+  splitPerActor = jcstressSplitPerActor.get()
+}
 
 tasks.named<JcstressTask>("jcstress") {
-  inputs.properties(
-    System.getProperties()
-      .mapKeys { it.key.toString() }
-      .filterKeys {
-        setOf("os.name", "os.arch", "os.version", "java.runtime.name", "java.runtime.version")
-          .contains(it)
-      }
-  )
-  inputs.property("availableProcessors", Runtime.getRuntime().availableProcessors())
-  inputs.files(jcstressRuntime)
-  inputs.files(configurations.runtimeClasspath)
-  outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
+  notCompatibleWithConfigurationCache("Jcstress plugin is not compatible with configuration cache")
 
-  if (!System.getProperty("jcstress-no-capture").toBoolean()) {
+  listOf("os.name", "os.arch", "os.version", "java.runtime.name", "java.runtime.version").forEach {
+    inputs.property(it, providers.systemProperty(it).orElse(""))
+  }
+  inputs.property("availableProcessors", Runtime.getRuntime().availableProcessors())
+  inputs.property("jcstressMode", jcstressMode.get())
+  inputs.property("jcstressSplitPerActor", jcstressSplitPerActor.get())
+  inputs.files(jcstressRuntime).withNormalizer(ClasspathNormalizer::class.java)
+  inputs.files(configurations.runtimeClasspath).withNormalizer(ClasspathNormalizer::class.java)
+  outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
+  outputs.cacheIf { true }
+
+  val noCapture = providers.systemProperty("jcstress-no-capture").orElse("false").get().toBoolean()
+  inputs.property("jcstress-no-capture", noCapture)
+  if (!noCapture) {
     // Capture jcstress output in a log file, dump that in case of a failure.
 
     val logDir = project.layout.buildDirectory.dir("reports/jcstress").get().asFile

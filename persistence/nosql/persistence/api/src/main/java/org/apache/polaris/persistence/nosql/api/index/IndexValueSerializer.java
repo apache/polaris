@@ -18,24 +18,30 @@
  */
 package org.apache.polaris.persistence.nosql.api.index;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public interface IndexValueSerializer<V> {
   int serializedSize(@Nullable V value);
 
   /** Serialize {@code value} into {@code target}, returns {@code target}. */
-  @Nonnull
-  ByteBuffer serialize(@Nullable V value, @Nonnull ByteBuffer target);
+  @NonNull ByteBuffer serialize(@Nullable V value, @NonNull ByteBuffer target);
 
   /**
    * Deserialize a value from {@code buffer}. Implementations must not assume that the given {@link
    * ByteBuffer} only contains data for the value to deserialize, other data likely follows.
    */
-  @Nullable
-  V deserialize(@Nonnull ByteBuffer buffer);
+  @Nullable V deserialize(@NonNull ByteBuffer buffer);
+
+  /**
+   * Determines whether the serialized value at the current {@code buffer} position represents
+   * {@code null}.
+   *
+   * <p>Implementations must not modify the caller-visible state of {@code buffer}.
+   */
+  boolean isNullSerialized(@NonNull ByteBuffer buffer);
 
   /** Skips an element, only updating the {@code buffer}'s {@link ByteBuffer#position()}. */
-  void skip(@Nonnull ByteBuffer buffer);
+  void skip(@NonNull ByteBuffer buffer);
 }

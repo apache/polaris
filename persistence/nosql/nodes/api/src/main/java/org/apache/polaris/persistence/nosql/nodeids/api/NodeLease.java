@@ -18,19 +18,21 @@
  */
 package org.apache.polaris.persistence.nosql.nodeids.api;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public interface NodeLease {
   /**
    * Returns the {@link Node} representation for this lease if the lease has not been released or
    * {@code null}.
    */
-  @Nullable
-  Node node();
+  @Nullable Node node();
 
   /**
-   * Permanently release the lease. Does nothing, if already released. Throws if persisting the
-   * released state fails.
+   * Permanently release the lease. Does nothing, if already released.
+   *
+   * <p>If persisting the released state fails, this lease is still considered locally released and
+   * cannot be retried or reused. The backend lease may therefore remain live until it expires
+   * naturally.
    */
   void release();
 

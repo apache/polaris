@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.maintenance.spi;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Implementations of this interface are called for objects that have been identified to be
@@ -41,8 +41,7 @@ public interface ObjTypeRetainedIdentifier {
   String name();
 
   /** The object type that the implementation handles. */
-  @Nonnull
-  ObjType handledObjType();
+  @NonNull ObjType handledObjType();
 
   /**
    * Called for every scanned object with the ID {@code objRef} having the object type yielded by
@@ -54,5 +53,5 @@ public interface ObjTypeRetainedIdentifier {
    * @param collector instance that collects the objects and references to retain
    * @param objRef ID of the object that has been scanned
    */
-  void identifyRelatedObj(@Nonnull RetainedCollector collector, @Nonnull ObjRef objRef);
+  void identifyRelatedObj(@NonNull RetainedCollector collector, @NonNull ObjRef objRef);
 }

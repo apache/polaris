@@ -22,7 +22,7 @@ import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.databind.InjectableValues;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 public final class ObjSerializationHelper {
   private ObjSerializationHelper() {}
@@ -50,8 +50,8 @@ public final class ObjSerializationHelper {
    * #OBJ_NUM_PARTS_KEY}.
    */
   public static ObjectReader contextualReader(
-      @Nonnull ObjectMapper mapper,
-      @Nonnull ObjType objType,
+      @NonNull ObjectMapper mapper,
+      @NonNull ObjType objType,
       long id,
       int numParts,
       String objVersionToken,

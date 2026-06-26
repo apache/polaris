@@ -18,15 +18,22 @@
  */
 package org.apache.polaris.service.it;
 
+import io.quarkus.test.common.http.TestHTTPResourceManager;
+import io.quarkus.test.config.ConfigInjector;
+import io.quarkus.test.config.ValueRegistryInjector;
+import io.quarkus.value.registry.ValueRegistry;
 import java.net.URI;
+import java.util.Optional;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.Server;
 import org.apache.polaris.service.it.ext.PolarisServerManager;
-import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class ServerManager implements PolarisServerManager {
+
+  private static final ValueRegistry.RuntimeKey<Integer> MANAGEMENT_PORT =
+      ValueRegistry.RuntimeKey.intKey("quarkus.management.port");
 
   @Override
   public Server serverForContext(ExtensionContext context) {
@@ -34,7 +41,21 @@ public class ServerManager implements PolarisServerManager {
 
       @Override
       public URI baseUri() {
-        return URI.create(String.format("http://localhost:%d", getQuarkusTestPort()));
+        var registry = ValueRegistryInjector.get(context);
+        var config = ConfigInjector.get(context);
+        return URI.create(TestHTTPResourceManager.testUrl(registry, config));
+      }
+
+      @Override
+      public Optional<URI> managementUri() {
+        var registry = ValueRegistryInjector.get(context);
+        var config = ConfigInjector.get(context);
+        // Probe whether the actual port to use has been registered. If not, the management
+        // interface is not available, and we are likely in a @QuarkusIntegrationTest.
+        int dynamicPort = registry.getOrDefault(MANAGEMENT_PORT, -1);
+        return dynamicPort == -1
+            ? Optional.empty()
+            : Optional.of(URI.create(TestHTTPResourceManager.testManagementUrl(registry, config)));
       }
 
       @Override
@@ -49,10 +70,5 @@ public class ServerManager implements PolarisServerManager {
         // Nothing to do
       }
     };
-  }
-
-  private static int getQuarkusTestPort() {
-    var quarkusHttpPort = ConfigProvider.getConfig().getConfigValue("quarkus.http.port");
-    return Integer.parseInt(quarkusHttpPort.getValue());
   }
 }

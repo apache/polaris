@@ -32,6 +32,7 @@ services:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
       POLARIS_PERSISTENCE_TYPE: relational-jdbc
+      POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE: ${POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE:-postgresql}
       POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_RETRIES: 5
       POLARIS_PERSISTENCE_RELATIONAL_JDBC_INITIAL_DELAY_IN_MS: 100
       POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_DURATION_IN_MS: 5000
@@ -52,7 +53,7 @@ services:
       start_period: 10s
 
   polaris-setup:
-    image: alpine/curl:8.17.0
+    image: alpine/curl:8.20.0
     depends_on:
       polaris:
         condition: service_healthy
@@ -73,6 +74,8 @@ services:
         condition: service_completed_successfully
     stdin_open: true
     tty: true
+    extra_hosts:
+      - "polaris:host-gateway"
     ports:
       - "4040-4045:4040-4045"
     healthcheck:
@@ -95,12 +98,14 @@ services:
     ]
 
   trino:
-    image: trinodb/trino:480
+    image: trinodb/trino:482
     depends_on:
       polaris-setup:
         condition: service_completed_successfully
     stdin_open: true
     tty: true
+    extra_hosts:
+      - "polaris:host-gateway"
     ports:
       - "8080:8080"
     environment:

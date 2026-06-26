@@ -73,16 +73,20 @@ receive tokens with access to the federated namespace.
 
 ## Outbound HTTP settings
 
-Iceberg REST federation uses Iceberg's HTTP client. You can pass through HTTP settings by adding
-catalog properties when creating or updating the external catalog (via `--property` or
-`--set-property`).
+Iceberg REST federation uses Iceberg's HTTP client. You can pass through non-sensitive HTTP
+settings by adding catalog properties when creating or updating the external catalog (via
+`--property` or `--set-property`).
+
+{{< alert warning >}}
+Catalog properties are returned to authenticated catalog clients as part of the Iceberg REST
+`/config` response. Only place non-sensitive client configuration in catalog properties. Do not put
+passwords, tokens, access keys, or other secrets into catalog properties.
+{{< /alert >}}
 
 Common settings include:
 
 - `rest.client.proxy.hostname`
 - `rest.client.proxy.port`
-- `rest.client.proxy.username`
-- `rest.client.proxy.password`
 - `rest.client.connection-timeout-ms`
 - `rest.client.socket-timeout-ms`
 
@@ -104,5 +108,8 @@ Connection config properties (URI and authentication) take precedence if the sam
   the REST endpoint is unreachable or authentication is rejected.
 - **Feature parity:** Federation exposes whatever table/namespace operations the remote service
   implements. Unsupported features return the remote error directly to callers.
+- **Register table overwrite:** `POST /v1/{catalog}/namespaces/{namespace}/register` with
+  `overwrite=true` is currently supported only for internal Polaris catalogs.
+  For federated external catalogs, Polaris rejects overwrite registration requests.
 - **Generic tables:** The REST federation path currently surfaces Iceberg tables only; generic table
   federation is not implemented.

@@ -19,7 +19,6 @@
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.primitives.Ints.checkedCast;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.persistence.nosql.api.index.IndexStripe.indexStripe;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
@@ -29,8 +28,6 @@ import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.newStoreIndex;
 
 import com.google.common.collect.AbstractIterator;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -46,26 +43,30 @@ import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.nosql.api.index.UpdatableIndex;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements UpdatableIndex<V> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UpdatableIndexImpl.class);
+  static final int FORCE_SPILL_MAX_EMBEDDED_ENTRY_DIVISOR = 4;
 
   private final IndexContainer<V> indexContainer;
   private final PersistenceParams params;
   private final LongSupplier idGenerator;
   private final IndexValueSerializer<V> serializer;
+  private boolean hasOversizedEmbeddedEntry;
   private boolean finalized;
 
   UpdatableIndexImpl(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexSpi<V> embedded,
-      @Nonnull IndexSpi<V> reference,
-      @Nonnull PersistenceParams params,
-      @Nonnull LongSupplier idGenerator,
-      @Nonnull IndexValueSerializer<V> serializer) {
+      @NonNull IndexSpi<V> embedded,
+      @NonNull IndexSpi<V> reference,
+      @NonNull PersistenceParams params,
+      @NonNull LongSupplier idGenerator,
+      @NonNull IndexValueSerializer<V> serializer) {
     super(reference, embedded);
     this.indexContainer = indexContainer;
     this.params = params;
@@ -75,13 +76,14 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
   @Override
   public IndexContainer<V> toIndexed(
-      @Nonnull String prefix, @Nonnull BiConsumer<String, ? super Obj> persistObj) {
+      @NonNull String prefix, @NonNull BiConsumer<String, ? super Obj> persistObj) {
     checkNotFinalized();
     finalized = true;
 
     var indexContainerBuilder = ImmutableIndexContainer.<V>builder();
 
-    if (embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()) {
+    if (embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()
+        || hasOversizedEmbeddedEntry) {
       // The serialized representation of the embedded index is probably bigger than the configured
       // limit. Spill out the embedded index.
       spillOutEmbedded(prefix, persistObj, indexContainerBuilder);
@@ -99,7 +101,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
   @Override
   public Optional<IndexContainer<V>> toOptionalIndexed(
-      @Nonnull String prefix, @Nonnull BiConsumer<String, ? super Obj> persistObj) {
+      @NonNull String prefix, @NonNull BiConsumer<String, ? super Obj> persistObj) {
     var indexContainer = toIndexed(prefix, persistObj);
     return indexContainer.embedded().remaining() == 0 && indexContainer.stripes().isEmpty()
         ? Optional.empty()
@@ -127,7 +129,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
   private void spillOutEmbedded(
       String prefix,
-      @Nonnull BiConsumer<String, ? super Obj> persistObj,
+      @NonNull BiConsumer<String, ? super Obj> persistObj,
       ImmutableIndexContainer.Builder<V> indexedBuilder) {
     var mutableReference = reference.asMutableIndex();
 
@@ -181,15 +183,17 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
       // Only use stripe if it (still) has elements.
       if (stripe.hasElements()) {
         var serSize = stripe.estimatedSerializedSize();
-        var desiredSplits = checkedCast(serSize / params.maxIndexStripeSize().asLong() + 1);
-        if (desiredSplits > 1) {
+        var maxStripeSize = params.maxIndexStripeSize().asLong();
+        if (serSize > maxStripeSize) {
           // The stripe became too big, needs to be split further
+          var splitStripes = stripe.splitByTargetSize(maxStripeSize);
           LOGGER.debug(
-              "Splitting index stripe {}, modified={}, into {} parts",
+              "Splitting index stripe {}, modified={}, into {} stripes for target size {}",
               stripe.getObjId(),
               stripe.isModified(),
-              desiredSplits);
-          survivingStripes.addAll(stripe.divide(desiredSplits));
+              splitStripes.size(),
+              maxStripeSize);
+          survivingStripes.addAll(splitStripes);
         } else {
           LOGGER.debug(
               "Keeping index stripe {}, modified={}", stripe.getObjId(), stripe.isModified());
@@ -212,7 +216,8 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
       var last = stripe.last();
       ObjRef id;
       if (stripe.isModified()) {
-        var obj = indexStripeObj(idGenerator.getAsLong(), stripe.serialize());
+        var serialized = stripe.serialize();
+        var obj = indexStripeObj(idGenerator.getAsLong(), serialized);
         // Persist updated stripes
         persistObj.accept(first.toSafeString(prefix), obj);
         id = objRef(obj);
@@ -228,8 +233,18 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   // Mutators
 
   @Override
-  public boolean add(@Nonnull InternalIndexElement<V> element) {
+  public boolean add(@NonNull InternalIndexElement<V> element) {
     checkNotFinalized();
+
+    var maxEmbeddedIndexSize = params.maxEmbeddedIndexSize().asLong();
+    var maxEmbeddedEntrySizeBeforeForcedSpill =
+        Math.max(1L, maxEmbeddedIndexSize / FORCE_SPILL_MAX_EMBEDDED_ENTRY_DIVISOR);
+    var entrySerializedSizeUpperBound =
+        IndexImpl.singleEntrySerializedSizeUpperBound(
+            element.key(), element.contentSerializedSize(serializer));
+
+    hasOversizedEmbeddedEntry |=
+        entrySerializedSizeUpperBound > maxEmbeddedEntrySizeBeforeForcedSpill;
     var added = embedded.add(element);
     if (added) {
       return !reference.containsElement(element.key());
@@ -238,7 +253,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   }
 
   @Override
-  public boolean remove(@Nonnull IndexKey key) {
+  public boolean remove(@NonNull IndexKey key) {
     checkNotFinalized();
     var updExisting = embedded.getElement(key);
     if (updExisting != null && updExisting.valueNullable() == null) {
@@ -266,19 +281,19 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   // readers
 
   @Override
-  public boolean containsElement(@Nonnull IndexKey key) {
+  public boolean containsElement(@NonNull IndexKey key) {
     checkNotFinalized();
     return super.containsElement(key);
   }
 
   @Nullable
   @Override
-  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@NonNull IndexKey key) {
     checkNotFinalized();
     return super.getElement(key);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ByteBuffer serialize() {
     throw unsupported();
@@ -295,7 +310,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   }
 
   @Override
-  public List<IndexSpi<V>> divide(int parts) {
+  public List<IndexSpi<V>> splitByTargetSize(long targetSerializedSize) {
     throw unsupported();
   }
 
@@ -313,7 +328,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
     return new UnsupportedOperationException("Updatable indexes do not support this operation");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {

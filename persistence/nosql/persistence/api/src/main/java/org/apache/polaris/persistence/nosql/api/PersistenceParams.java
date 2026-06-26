@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.persistence.nosql.api;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.smallrye.config.ConfigMapping;
@@ -82,6 +84,11 @@ public interface PersistenceParams {
   /** The maximum size of a serialized value in a persisted database row. */
   @WithDefault(DEFAULT_MAX_SERIALIZED_VALUE_SIZE_STRING)
   MemorySize maxSerializedValueSize();
+
+  @Value.Check
+  default void check() {
+    checkState(bucketizedBulkFetchSize() > 0, "bucketizedBulkFetchSize must be positive");
+  }
 
   @PolarisImmutable
   interface BuildablePersistenceParams extends PersistenceParams {

@@ -19,12 +19,12 @@
 package org.apache.polaris.service.auth.internal.broker;
 
 import com.google.common.base.Splitter;
-import jakarta.annotation.Nonnull;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.auth.PolarisCredential;
 import org.immutables.value.Value;
+import org.jspecify.annotations.NonNull;
 
 /**
  * A specialized {@link PolarisCredential} used for internal authentication, when Polaris is the
@@ -50,12 +50,12 @@ abstract class InternalPolarisToken implements PolarisCredential {
         .build();
   }
 
-  @Nonnull // switch from nullable to non-nullable
+  @NonNull // switch from nullable to non-nullable
   @Override
   @SuppressWarnings("NullableProblems")
   public abstract String getPrincipalName();
 
-  @Nonnull // switch from nullable to non-nullable
+  @NonNull // switch from nullable to non-nullable
   @Override
   @SuppressWarnings("NullableProblems")
   public abstract Long getPrincipalId();

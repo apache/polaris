@@ -29,8 +29,6 @@ client/python/uv.lock
 client/python/.openapi-generator/
 client/python/docs/
 client/python/apache_polaris/sdk/
-client/python/test/
-!client/python/test/test_cli_parsing.py
 
 # Polaris CLI profile
 .polaris.json
@@ -71,6 +69,8 @@ gradle/wrapper/gradle-wrapper-*.sha256
 /.gradle
 /build-logic/.gradle
 /build-logic/.kotlin
+/gradle/server-test-runner/.gradle
+/gradle/server-test-runner/.kotlin
 **/build/
 !src/**/build/
 
@@ -112,3 +112,16 @@ venv
 # to override default properties for local development.
 # And then use `./gradlew run -Dquarkus.profile=local` to run Polaris with dev profile.
 application-local.properties
+
+/.env
+
+# AI / Agentic Development Tools
+.agents/
+.aider/
+.aider.chat.history.md
+.aider.input.history
+.codex/
+.claude/
+.cursor/
+.opencode/
+skills-lock.json

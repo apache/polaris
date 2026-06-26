@@ -17,16 +17,56 @@
 # under the License.
 #
 
+x-aws-client-creds: &aws-client-creds
+  AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-polarisadmin}
+  AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-polarisadmin}
+  AWS_REGION: us-west-2
+
 services:
+  minio:
+    image: minio/minio:latest
+    profiles: ["minio"]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      default:
+        aliases:
+          - s3.local
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-polarisadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-polarisadmin}
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  rustfs:
+    image: rustfs/rustfs:1.0.0-beta.2
+    profiles: ["rustfs"]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      default:
+        aliases:
+          - s3.local
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-polarisadmin}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-polarisadmin}
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   polaris:
     image: apache/polaris:latest
     ports:
       - "8181"
       - "8182"
     environment:
-      AWS_REGION: us-west-2
-      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+      <<: *aws-client-creds
       GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS
       AZURE_TENANT_ID: $AZURE_TENANT_ID
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
@@ -57,9 +97,16 @@ services:
     depends_on:
       polaris:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+        required: false
+      rustfs:
+        condition: service_healthy
+        required: false
     environment:
-      AWS_TEST_ENABLED: $AWS_TEST_ENABLED
-      AWS_STORAGE_BUCKET: $AWS_STORAGE_BUCKET
+      <<: *aws-client-creds
+      S3_TEST_BACKEND: ${S3_TEST_BACKEND:-minio}
+      AWS_STORAGE_BUCKET: ${AWS_STORAGE_BUCKET:-polaris-test-bucket}
       AWS_ROLE_ARN: $AWS_ROLE_ARN
       AWS_TEST_BASE: $AWS_TEST_BASE
       GCS_TEST_ENABLED: $GCS_TEST_ENABLED

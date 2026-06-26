@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -133,7 +133,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -147,7 +147,7 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Java
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -158,7 +158,7 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
           gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
           git_user_signingkey: true
@@ -201,7 +201,6 @@ jobs:
           exec_process mkdir -p "${version_dir}"
           exec_process cp build/distributions/* "${version_dir}/"
           exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
-          exec_process rm -f "${version_dir}/*vote-email{-subject,-body}.txt"
 
           exec_process cd "${dist_dev_dir}"
           exec_process svn add "${version_without_rc}"
@@ -267,7 +266,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -291,7 +290,7 @@ jobs:
           docker buildx inspect
 
       - name: Set up Java
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -340,7 +339,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -354,7 +353,7 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
           version: 'latest'
 
@@ -364,7 +363,7 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
           gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
           git_user_signingkey: true
@@ -524,10 +523,130 @@ jobs:
           | Artifact Hub metadata | ✅ Committed to dist dev |
           EOT
 
+  publish-python-client-rc:
+    name: Publish Python Client RC to PyPI
+    runs-on: ubuntu-latest
+    needs: [prerequisite-checks]
+    permissions:
+      contents: read
+      # IMPORTANT: this permission is mandatory for Trusted Publishing to PyPI
+      id-token: write
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up JDK for openapi-generator-cli
+        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Build Python client RC for SVN
+        run: |
+          make client-rc-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
+
+      - name: Sign and checksum Python wheel
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          wheel_file=$(ls client/python/dist/*.whl)
+          calculate_sha512 "${wheel_file}"
+          exec_process gpg --armor --output "${wheel_file}.asc" --detach-sig "${wheel_file}"
+
+      - name: Stage Python wheel to Apache dist dev repository
+        env:
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
+        run: |
+          echo "::add-mask::$SVN_PASSWORD"
+
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
+
+          # Retry logic for SVN checkout (Apache SVN can have transient connectivity issues)
+          exec_process_with_retries 5 60 "${dist_dev_dir}" svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
+
+          python_client_version_dir="${dist_dev_dir}/python-client/${version_without_rc}"
+
+          # If the python-client version directory already exists in SVN (e.g. re-running the workflow),
+          # delete it so we can re-add fresh artifacts without "already versioned" errors.
+          if svn info "${python_client_version_dir}" &>/dev/null 2>&1; then
+            exec_process svn delete "${python_client_version_dir}"
+          fi
+
+          exec_process mkdir -p "${python_client_version_dir}"
+          exec_process cp client/python/dist/* "${python_client_version_dir}/"
+
+          exec_process cd "${dist_dev_dir}"
+          exec_process svn add --parents "python-client/${version_without_rc}"
+
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Python client ${version_without_rc} RC${rc_number}"
+
+      - name: Build Python client RC for Test PyPI
+        run: |
+          rm -rf client/python/dist/
+          make client-rc-testpypi-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
+
+      - name: Publish Python client RC to Test PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: client/python/dist/
+
+      - name: Update step summary
+        run: |
+          echo "## Python Client RC" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Python client RC published successfully:
+
+          | Property | Value |
+          | --- | --- |
+          | Version | \`${version_without_rc}\` |
+          | Apache dist dev | \`python-client/${version_without_rc}\` |
+          | Registry | Test PyPI |
+          EOT
+
   generate-release-email:
     name: Generate Release Email Body
     runs-on: ubuntu-latest
-    needs: [prerequisite-checks, build-and-publish-artifacts, build-docker, build-and-stage-helm-chart]
+    needs:
+      - prerequisite-checks
+      - build-and-publish-artifacts
+      - build-docker
+      - build-and-stage-helm-chart
+      - publish-python-client-rc
     permissions:
       contents: read
     env:
@@ -539,7 +658,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -582,10 +701,16 @@ jobs:
 
           NB: you have to build the Docker images locally in order to test Helm charts.
 
+          The Python CLI wheel is available on:
+          * https://dist.apache.org/repos/dist/dev/polaris/python-client/${version_without_rc}
+
+          The Python CLI is also available on Test PyPI:
+          * https://test.pypi.org/project/apache-polaris/${version_without_rc}rc${rc_number}/
+
           You can find the KEYS file here:
           * https://downloads.apache.org/polaris/KEYS
 
-          Convenience binary artifacts are staged on Nexus. The Maven repositories URLs are:
+          Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
           * https://repository.apache.org/content/repositories/${staging_repository_id}/
 
           Please download, verify, and test according to the release verification guide, which can be found at:
@@ -593,7 +718,7 @@ jobs:
 
           Please vote in the next 72 hours.
 
-          [ ] +1 Release this as Apache polaris ${version_without_rc}
+          [ ] +1 Release this as Apache Polaris ${version_without_rc}
           [ ] +0
           [ ] -1 Do not release this because...
 

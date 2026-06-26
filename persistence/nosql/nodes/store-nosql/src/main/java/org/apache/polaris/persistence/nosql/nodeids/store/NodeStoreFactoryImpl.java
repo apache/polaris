@@ -22,7 +22,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.polaris.persistence.nosql.api.Realms.SYSTEM_REALM_ID;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
@@ -32,6 +31,7 @@ import org.apache.polaris.persistence.nosql.api.StartupPersistence;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeManagementState;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStore;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStoreFactory;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 class NodeStoreFactoryImpl implements NodeStoreFactory {
@@ -48,8 +48,8 @@ class NodeStoreFactoryImpl implements NodeStoreFactory {
   }
 
   @Override
-  @Nonnull
-  public NodeStore createNodeStore(@Nonnull IdGenerator idGenerator) {
+  @NonNull
+  public NodeStore createNodeStore(@NonNull IdGenerator idGenerator) {
     return new NodeStoreImpl(startupPersistence, idGenerator);
   }
 
@@ -62,7 +62,7 @@ class NodeStoreFactoryImpl implements NodeStoreFactory {
   }
 
   @Override
-  public boolean storeManagementState(@Nonnull NodeManagementState state) {
+  public boolean storeManagementState(@NonNull NodeManagementState state) {
     return startupPersistence.conditionalInsert(
             ImmutableNodeManagementObj.builder().from(state).build(), NodeManagementObj.class)
         != null;

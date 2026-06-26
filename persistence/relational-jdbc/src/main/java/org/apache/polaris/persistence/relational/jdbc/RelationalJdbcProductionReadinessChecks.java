@@ -22,8 +22,6 @@ package org.apache.polaris.persistence.relational.jdbc;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
-import java.sql.SQLException;
-import javax.sql.DataSource;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
@@ -32,26 +30,17 @@ public class RelationalJdbcProductionReadinessChecks {
   @Produces
   public ProductionReadinessCheck checkRelationalJdbc(
       MetaStoreManagerFactory metaStoreManagerFactory,
-      Instance<DataSource> dataSource,
-      RelationalJdbcConfiguration relationalJdbcConfiguration) {
+      Instance<DatasourceOperations> datasourceOperations) {
     // This check should only be applicable when persistence uses RelationalJdbc.
     if (!(metaStoreManagerFactory instanceof JdbcMetaStoreManagerFactory)) {
       return ProductionReadinessCheck.OK;
     }
 
-    try {
-      DatasourceOperations datasourceOperations =
-          new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
-      if (datasourceOperations.getDatabaseType().equals(DatabaseType.H2)) {
-        return ProductionReadinessCheck.of(
-            ProductionReadinessCheck.Error.of(
-                "The current persistence (jdbc:h2) is intended for tests only.",
-                "quarkus.datasource.jdbc.url"));
-      }
-    } catch (SQLException e) {
+    if (datasourceOperations.get().getDatabaseType().equals(DatabaseType.H2)) {
       return ProductionReadinessCheck.of(
           ProductionReadinessCheck.Error.of(
-              "Misconfigured JDBC datasource", "quarkus.datasource.jdbc.url"));
+              "The current persistence (jdbc:h2) is intended for tests only.",
+              "quarkus.datasource.jdbc.url"));
     }
     return ProductionReadinessCheck.OK;
   }

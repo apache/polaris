@@ -22,7 +22,6 @@ import static jakarta.ws.rs.core.Response.Status.NO_CONTENT;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.common.base.Joiner;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
@@ -36,12 +35,13 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.rest.ErrorHandler;
 import org.apache.iceberg.rest.ErrorHandlers;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
+import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.polaris.core.rest.NamespaceUtils;
 
 /**
  * A simple, non-exhaustive set of helper methods for accessing the Iceberg REST API.
@@ -68,9 +68,9 @@ public class CatalogApi extends PolarisRestApi {
   public List<Namespace> listNamespaces(String catalog, Namespace parent) {
     Map<String, String> queryParams = new HashMap<>();
     if (!parent.isEmpty()) {
-      // TODO change this for Iceberg 1.7.2:
-      //   queryParams.put("parent", RESTUtil.encodeNamespace(parent));
-      queryParams.put("parent", Joiner.on('\u001f').join(parent.levels()));
+      queryParams.put(
+          "parent",
+          NamespaceUtils.joinNamespace(parent, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
     }
     try (Response response =
         request("v1/{cat}/namespaces", Map.of("cat", catalog), queryParams).get()) {
@@ -84,9 +84,9 @@ public class CatalogApi extends PolarisRestApi {
       String catalog, Namespace parent, String pageToken, String pageSize) {
     Map<String, String> queryParams = new HashMap<>();
     if (!parent.isEmpty()) {
-      // TODO change this for Iceberg 1.7.2:
-      //   queryParams.put("parent", RESTUtil.encodeNamespace(parent));
-      queryParams.put("parent", Joiner.on('\u001f').join(parent.levels()));
+      queryParams.put(
+          "parent",
+          NamespaceUtils.joinNamespace(parent, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
     }
     queryParams.put("pageToken", pageToken);
     queryParams.put("pageSize", pageSize);
@@ -113,9 +113,9 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public void deleteNamespace(String catalog, Namespace namespace) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response response =
-        request("v1/{cat}/namespaces/" + ns, Map.of("cat", catalog)).delete()) {
+        request("v1/{cat}/namespaces/{ns}", Map.of("cat", catalog, "ns", ns)).delete()) {
       assertThat(response.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
     }
   }
@@ -131,9 +131,9 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public List<TableIdentifier> listTables(String catalog, Namespace namespace) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
-        request("v1/{cat}/namespaces/" + ns + "/tables", Map.of("cat", catalog)).get()) {
+        request("v1/{cat}/namespaces/{ns}/tables", Map.of("cat", catalog, "ns", ns)).get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListTablesResponse.class).identifiers();
     }
@@ -141,26 +141,100 @@ public class CatalogApi extends PolarisRestApi {
 
   public ListTablesResponse listTables(
       String catalog, Namespace namespace, String pageToken, String pageSize) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("pageToken", pageToken);
     queryParams.put("pageSize", pageSize);
     try (Response res =
-        request("v1/{cat}/namespaces/" + ns + "/tables", Map.of("cat", catalog), queryParams)
+        request("v1/{cat}/namespaces/{ns}/tables", Map.of("cat", catalog, "ns", ns), queryParams)
             .get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListTablesResponse.class);
     }
   }
 
+  public void renameTable(String catalog, TableIdentifier source, TableIdentifier destination) {
+    try (Response res =
+        request("v1/{cat}/tables/rename", Map.of("cat", catalog))
+            .post(
+                Entity.json(
+                    RenameTableRequest.builder()
+                        .withSource(source)
+                        .withDestination(destination)
+                        .build()))) {
+      assertThat(res.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
+    }
+  }
+
   public void dropTable(String catalog, TableIdentifier id) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
-                "v1/{cat}/namespaces/" + ns + "/tables/{table}",
-                Map.of("cat", catalog, "table", id.name()))
+                "v1/{cat}/namespaces/{ns}/tables/{table}",
+                Map.of("cat", catalog, "ns", ns, "table", id.name()))
             .delete()) {
       assertThat(res.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
+    }
+  }
+
+  public LoadTableResponse registerTable(
+      String catalog,
+      Namespace namespace,
+      String tableName,
+      String metadataLocation,
+      boolean overwrite) {
+    return registerTable(catalog, namespace, tableName, metadataLocation, overwrite, Map.of());
+  }
+
+  public LoadTableResponse registerTableWithAccessDelegation(
+      String catalog,
+      Namespace namespace,
+      String tableName,
+      String metadataLocation,
+      boolean overwrite) {
+    return registerTable(
+        catalog,
+        namespace,
+        tableName,
+        metadataLocation,
+        overwrite,
+        Map.of("X-Iceberg-Access-Delegation", "vended-credentials"));
+  }
+
+  public LoadTableResponse registerTable(
+      String catalog,
+      Namespace namespace,
+      String tableName,
+      String metadataLocation,
+      boolean overwrite,
+      Map<String, String> headers) {
+    HashMap<String, String> allHeaders = new HashMap<>(defaultHeaders());
+    allHeaders.putAll(headers);
+
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    try (Response res =
+        request(
+                "v1/{cat}/namespaces/{ns}/register",
+                Map.of("cat", catalog, "ns", ns),
+                Map.of(),
+                allHeaders)
+            .post(
+                Entity.json(
+                    Map.of(
+                        "name",
+                        tableName,
+                        "metadata-location",
+                        metadataLocation,
+                        "overwrite",
+                        overwrite)))) {
+      if (res.getStatus() == Response.Status.OK.getStatusCode()) {
+        return res.readEntity(LoadTableResponse.class);
+      }
+      throw new RESTException(
+          "Unhandled error: %s",
+          ((ErrorHandler) ErrorHandlers.defaultErrorHandler())
+              .parseResponse(res.getStatus(), res.readEntity(String.class)));
     }
   }
 
@@ -175,11 +249,12 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public LoadCredentialsResponse loadCredentials(String catalog, TableIdentifier id) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
-                "v1/{cat}/namespaces/" + ns + "/tables/{table}/credentials",
-                Map.of("cat", catalog, "table", id.name()))
+                "v1/{cat}/namespaces/{ns}/tables/{table}/credentials",
+                Map.of("cat", catalog, "ns", ns, "table", id.name()))
             .get()) {
       assertThat(res.getStatus()).isEqualTo(OK.getStatusCode());
       return res.readEntity(LoadCredentialsResponse.class);
@@ -191,11 +266,12 @@ public class CatalogApi extends PolarisRestApi {
     HashMap<String, String> allHeaders = new HashMap<>(defaultHeaders());
     allHeaders.putAll(headers);
 
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
-                "v1/{cat}/namespaces/" + ns + "/tables/{table}",
-                Map.of("cat", catalog, "table", id.name()),
+                "v1/{cat}/namespaces/{ns}/tables/{table}",
+                Map.of("cat", catalog, "ns", ns, "table", id.name()),
                 snapshots == null ? Map.of() : Map.of("snapshots", snapshots),
                 allHeaders)
             .get()) {
@@ -210,9 +286,9 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public List<TableIdentifier> listViews(String catalog, Namespace namespace) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
-        request("v1/{cat}/namespaces/" + ns + "/views", Map.of("cat", catalog)).get()) {
+        request("v1/{cat}/namespaces/{ns}/views", Map.of("cat", catalog, "ns", ns)).get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListTablesResponse.class).identifiers();
     }
@@ -220,12 +296,12 @@ public class CatalogApi extends PolarisRestApi {
 
   public ListTablesResponse listViews(
       String catalog, Namespace namespace, String pageToken, String pageSize) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("pageToken", pageToken);
     queryParams.put("pageSize", pageSize);
     try (Response res =
-        request("v1/{cat}/namespaces/" + ns + "/views", Map.of("cat", catalog), queryParams)
+        request("v1/{cat}/namespaces/{ns}/views", Map.of("cat", catalog, "ns", ns), queryParams)
             .get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListTablesResponse.class);
@@ -233,11 +309,12 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public void dropView(String catalog, TableIdentifier id) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
-                "v1/{cat}/namespaces/" + ns + "/views/{view}",
-                Map.of("cat", catalog, "view", id.name()))
+                "v1/{cat}/namespaces/{ns}/views/{view}",
+                Map.of("cat", catalog, "ns", ns, "view", id.name()))
             .delete()) {
       assertThat(res.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
     }

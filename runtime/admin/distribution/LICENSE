@@ -214,7 +214,7 @@ This product bundles and includes code from Apache Iceberg.
 
 Copyright: Copyright 2017-2025 The Apache Software Foundation
 Home page: https://iceberg.apache.org
-License: https://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
@@ -245,7 +245,7 @@ This product bundles and includes code from Netty.
 
 Copyright: Copyright © 2025 The Netty project
 Home page: https://netty.io/
-License: https://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
@@ -299,7 +299,6 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-development-mode-spi
 * Maven group:artifact IDs: io.quarkus:quarkus-devservices
 * Maven group:artifact IDs: io.quarkus:quarkus-fs-util
-* Maven group:artifact IDs: io.quarkus:quarkus-ide-launcher
 * Maven group:artifact IDs: io.quarkus:quarkus-jdbc-postgresql
 * Maven group:artifact IDs: io.quarkus:quarkus-jsonp
 * Maven group:artifact IDs: io.quarkus:quarkus-micrometer
@@ -356,7 +355,6 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web-common
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-api
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-mutiny
-* Maven group:artifact IDs: io.smallrye.reactive:vertx-mutiny-generator
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-api
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-jta
@@ -398,6 +396,36 @@ This product bundles Brotli4j.
 
 Project URL: https://github.com/hyperxpro/Brotli4j
 License: Apache License 2.0 - https://github.com/hyperxpro/Brotli4j/blob/v1.16.0/LICENSE
+
+--------------------------------------------------------------------------------
+
+This product bundles Auth0 Java JWT.
+
+* Maven group:artifact IDs: com.auth0:java-jwt
+
+Project URL: https://github.com/auth0/java-jwt
+License: MIT License
+| The MIT License (MIT)
+|
+| Copyright (c) 2015 Auth0, Inc. <support@auth0.com> (http://auth0.com)
+|
+| Permission is hereby granted, free of charge, to any person obtaining a copy
+| of this software and associated documentation files (the "Software"), to deal
+| in the Software without restriction, including without limitation the rights
+| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+| copies of the Software, and to permit persons to whom the Software is
+| furnished to do so, subject to the following conditions:
+|
+| The above copyright notice and this permission notice shall be included in all
+| copies or substantial portions of the Software.
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+| SOFTWARE.
 
 --------------------------------------------------------------------------------
 
@@ -450,6 +478,8 @@ This product bundles Jackson.
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-guava
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jdk8
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jsr310
+* Maven group:artifact IDs: tools.jackson.core:jackson-core
+* Maven group:artifact IDs: tools.jackson.core:jackson-databind
 
 Project URL: https://github.com/FasterXML/jackson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1017,12 +1047,12 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Jakarta Activation APi.
+This product bundles Jakarta Activation API.
 
 * Maven group:artifact IDs: jakarta.activation:jakarta.activation-api
 
 Project URL: https://github.com/jakartaee/jaf-api
-License: EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
@@ -1031,7 +1061,7 @@ This product bundles Jakarta Annotation API.
 * Maven group:artifact IDs: jakarta.annotation:jakarta.annotation-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.ca
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1040,7 +1070,7 @@ This product bundles Jakarta EL API.
 * Maven group:artifact IDs: jakarta.el:jakarta.el-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.el
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1076,7 +1106,7 @@ This product bundles Jakarta Interceptor API.
 * Maven group:artifact IDs: jakarta.interceptor:jakarta.interceptor-api
 
 Project URL: https://github.com/jakartaee/interceptors
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1094,7 +1124,7 @@ This product bundles Jakarta Resource API.
 * Maven group:artifact IDs: jakarta.resource:jakarta.resource-api
 
 Project URL: https://jakarta.ee/specifications/connectors/
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1103,7 +1133,7 @@ This product bundles Jakarta Servlet API.
 * Maven group:artifact IDs: jakarta.servlet:jakarta.servlet-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.servlet
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1112,7 +1142,7 @@ This product bundles Jakarta Transaction API.
 * Maven group:artifact IDs: jakarta.transaction:jakarta.transaction-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.jta
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1130,7 +1160,7 @@ This product bundles Jakarta RESTful Web Services.
 * Maven group:artifact IDs: jakarta.ws.rs:jakarta.ws.rs-api
 
 Project URL: https://github.com/eclipse-ee4j/jaxrs-api
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1234,7 +1264,7 @@ This product bundles animal-sniffer-annotations.
 * Maven group:artifact IDs: org.codehaus.mojo:animal-sniffer-annotations
 
 Project URL: https://www.mojohaus.org/animal-sniffer
-License: MIT license
+License: MIT License
 | The MIT License
 |
 | Copyright (c) 2009 codehaus.org.
@@ -1384,7 +1414,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles JBoss (logmanager, transaction, narayana).
 
-* Maven group:artifact IDs: org.jboss.invocation:jboss-invocation
 * Maven group:artifact IDs: org.jboss:jboss-transaction-spi
 * Maven group:artifact IDs: org.jboss.logging:commons-logging-jboss-logging
 * Maven group:artifact IDs: org.jboss.narayana.jta:narayana-jta

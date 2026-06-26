@@ -18,7 +18,7 @@
  */
 
 import io.quarkus.gradle.tasks.QuarkusBuild
-import io.quarkus.gradle.tasks.QuarkusRun
+import io.quarkus.gradle.tasks.QuarkusDev
 
 plugins {
   alias(libs.plugins.quarkus)
@@ -27,8 +27,10 @@ plugins {
   id("polaris-license-report")
 }
 
-val quarkusRunner by
-  configurations.creating { description = "Used to reference the generated runner-jar" }
+val quarkusRunner =
+  configurations.create("quarkusRunner") {
+    description = "Used to reference the generated runner-jar"
+  }
 
 dependencies {
   implementation(project(":polaris-runtime-service"))
@@ -38,13 +40,21 @@ dependencies {
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
+  runtimeOnly(project(":polaris-extensions-auth-ranger"))
 
-  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {
+  val nonRestCatalogs = providers.gradleProperty("NonRESTCatalogs").orNull
+  if (nonRestCatalogs?.contains("HIVE") == true) {
     runtimeOnly(project(":polaris-extensions-federation-hive"))
+  }
+  if (nonRestCatalogs?.contains("BIGQUERY") == true) {
+    runtimeOnly(project(":polaris-extensions-federation-bigquery"))
   }
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
-  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    exclude(group = "com.google.protobuf", module = "protobuf-java")
+    exclude(group = "com.google.protobuf", module = "protobuf-java-util")
+  }
   implementation("io.quarkus:quarkus-container-image-docker")
 }
 
@@ -63,15 +73,18 @@ quarkus {
         .toMap()
     }
   )
+  buildForkOptions {
+    maxHeapSize = "2G"
+  }
 }
 
 tasks.register("run") {
   group = "application"
   description = "Runs the Apache Polaris server application"
-  dependsOn("quarkusRun")
+  dependsOn("quarkusDev")
 }
 
-tasks.named<QuarkusRun>("quarkusRun") {
+tasks.named<QuarkusDev>("quarkusDev") {
   jvmArgs =
     listOf(
       "-Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t",
@@ -86,14 +99,14 @@ tasks.named<QuarkusRun>("quarkusRun") {
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 
 // Configuration to expose distribution artifacts
-val distributionElements by
-  configurations.creating {
+val distributionElements =
+  configurations.create("distributionElements") {
     isCanBeConsumed = true
     isCanBeResolved = false
   }
 
-val licenseNoticeElements by
-  configurations.creating {
+val licenseNoticeElements =
+  configurations.create("licenseNoticeElements") {
     isCanBeConsumed = true
     isCanBeResolved = false
   }
@@ -101,9 +114,11 @@ val licenseNoticeElements by
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.
 artifacts {
-  add(quarkusRunner.name, provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") }) {
+  add(quarkusRunner.name, quarkusBuild.map { it.fastJar.resolve("quarkus-run.jar") }) {
     builtBy(quarkusBuild)
   }
-  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
-  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
+  add(distributionElements.name, layout.buildDirectory.dir("quarkus-app")) {
+    builtBy("quarkusBuild")
+  }
+  add(licenseNoticeElements.name, layout.projectDirectory.dir("distribution"))
 }

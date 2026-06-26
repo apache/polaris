@@ -27,16 +27,16 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Map;
+import org.apache.polaris.core.admin.model.BigQueryMetastoreConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.connection.bigquery.BigQueryMetastoreConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.hive.HiveConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
@@ -44,6 +44,8 @@ import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInf
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The internal persistence-object counterpart to ConnectionConfigInfo defined in the API model.
@@ -57,6 +59,7 @@ import org.apache.polaris.core.secrets.SecretReference;
   @JsonSubTypes.Type(value = IcebergRestConnectionConfigInfoDpo.class, name = "1"),
   @JsonSubTypes.Type(value = HadoopConnectionConfigInfoDpo.class, name = "2"),
   @JsonSubTypes.Type(value = HiveConnectionConfigInfoDpo.class, name = "3"),
+  @JsonSubTypes.Type(value = BigQueryMetastoreConnectionConfigInfoDpo.class, name = "4"),
 })
 public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertiesProvider {
   // The type of the connection
@@ -71,26 +74,41 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   // The Polaris service identity info of the connection
   private final ServiceIdentityInfoDpo serviceIdentity;
 
+  // Additional connection properties
+  private final Map<String, String> properties;
+
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
-      @JsonProperty(value = "uri", required = true) @Nonnull String uri,
-      @JsonProperty(value = "authenticationParameters", required = true) @Nullable
-          AuthenticationParametersDpo authenticationParameters,
-      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
-          ServiceIdentityInfoDpo serviceIdentity) {
-    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, true);
+      @JsonProperty(value = "uri", required = true) @NonNull String uri,
+      @JsonProperty(value = "authenticationParameters", required = true)
+          @Nullable AuthenticationParametersDpo authenticationParameters,
+      @JsonProperty(value = "serviceIdentity", required = false)
+          @Nullable ServiceIdentityInfoDpo serviceIdentity,
+      @JsonProperty(value = "properties", required = false)
+          @Nullable Map<String, String> properties) {
+    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, properties, true);
+  }
+
+  public ConnectionConfigInfoDpo(
+      int connectionTypeCode,
+      @NonNull String uri,
+      @Nullable AuthenticationParametersDpo authenticationParameters,
+      @Nullable ServiceIdentityInfoDpo serviceIdentity) {
+    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, null);
   }
 
   protected ConnectionConfigInfoDpo(
       int connectionTypeCode,
-      @Nonnull String uri,
+      @NonNull String uri,
       @Nullable AuthenticationParametersDpo authenticationParameters,
       @Nullable ServiceIdentityInfoDpo serviceIdentity,
+      @Nullable Map<String, String> properties,
       boolean validateUri) {
     this.connectionTypeCode = connectionTypeCode;
     this.uri = uri;
     this.authenticationParameters = authenticationParameters;
     this.serviceIdentity = serviceIdentity;
+    this.properties = properties != null ? properties : Map.of();
     if (validateUri) {
       validateUri(uri);
     }
@@ -117,6 +135,11 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return serviceIdentity;
   }
 
+  @JsonInclude(JsonInclude.Include.NON_EMPTY)
+  public Map<String, String> getProperties() {
+    return properties;
+  }
+
   private static final ObjectMapper DEFAULT_MAPPER;
 
   static {
@@ -137,7 +160,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     }
   }
 
-  public static ConnectionConfigInfoDpo deserialize(final @Nonnull String jsonStr) {
+  public static ConnectionConfigInfoDpo deserialize(final @NonNull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
     } catch (JsonProcessingException ex) {
@@ -182,7 +205,8 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 icebergRestConfigModel.getUri(),
                 authenticationParameters,
                 null /*Service Identity Info*/,
-                icebergRestConfigModel.getRemoteCatalogName());
+                icebergRestConfigModel.getRemoteCatalogName(),
+                icebergRestConfigModel.getProperties());
         break;
       case HADOOP:
         HadoopConnectionConfigInfo hadoopConfigModel =
@@ -210,6 +234,23 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 hiveConfigModel.getWarehouse(),
                 null /*Service Identity Info*/);
         break;
+      case BIGQUERY:
+        BigQueryMetastoreConnectionConfigInfo bigqueryConfigModel =
+            (BigQueryMetastoreConnectionConfigInfo) connectionConfigurationModel;
+        authenticationParameters =
+            AuthenticationParametersDpo.fromAuthenticationParametersModelWithSecrets(
+                bigqueryConfigModel.getAuthenticationParameters(), secretReferences);
+        String bigqueryUri =
+            bigqueryConfigModel.getUri() != null
+                ? bigqueryConfigModel.getUri()
+                : BigQueryMetastoreConnectionConfigInfoDpo.DEFAULT_URI;
+        config =
+            new BigQueryMetastoreConnectionConfigInfoDpo(
+                bigqueryUri,
+                authenticationParameters,
+                bigqueryConfigModel.getProperties(),
+                null /*Service Identity Info*/);
+        break;
       default:
         throw new IllegalStateException(
             "Unsupported connection type: " + connectionConfigurationModel.getConnectionType());
@@ -224,7 +265,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
    * @return A new copy of the ConnectionConfigInfoDpo with the given service identity info.
    */
   public abstract ConnectionConfigInfoDpo withServiceIdentity(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
+      @NonNull ServiceIdentityInfoDpo serviceIdentityInfo);
 
   /**
    * Produces the corresponding API-model ConnectionConfigInfo for this persistence object; many

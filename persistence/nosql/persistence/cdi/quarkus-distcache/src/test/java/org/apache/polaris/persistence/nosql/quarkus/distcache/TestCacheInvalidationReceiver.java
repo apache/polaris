@@ -23,6 +23,7 @@ import static org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.
 import static org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheInvalidationEvictReference.cacheInvalidationEvictReference;
 import static org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.cacheInvalidations;
 import static org.apache.polaris.persistence.nosql.quarkus.distcache.CacheInvalidationReceiver.CACHE_INVALIDATION_TOKEN_HEADER;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -30,6 +31,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServerRequest;
@@ -43,6 +47,7 @@ import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations;
 import org.apache.polaris.persistence.nosql.api.cache.DistributedCacheInvalidation;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 public class TestCacheInvalidationReceiver {
   private static final ObjRef SOME_OBJ_REF = ObjRef.objRef("foo", 1234);
@@ -65,6 +70,40 @@ public class TestCacheInvalidationReceiver {
             r -> {
               when(r.getParam("sender")).thenReturn(senderId.instanceId());
               when(r.getHeader(CACHE_INVALIDATION_TOKEN_HEADER)).thenReturn(token);
+            });
+    var reqBody = mock(RequestBody.class);
+    when(reqBody.asString()).thenReturn(new ObjectMapper().writeValueAsString(invalidations));
+    when(rc.body()).thenReturn(reqBody);
+
+    receiver.cacheInvalidations(rc);
+
+    verify(rc.response()).setStatusCode(204);
+    verify(rc.response()).setStatusMessage("No content");
+
+    verify(distributedCacheInvalidation).evictObj("repo", SOME_OBJ_REF);
+    verify(distributedCacheInvalidation).evictReference("repo", "refs/foo/bar");
+    verifyNoMoreInteractions(distributedCacheInvalidation);
+  }
+
+  @Test
+  public void senderReceiverAcceptsJsonContentTypeWithParameters() throws Exception {
+    var distributedCacheInvalidation = mock(DistributedCacheInvalidation.Receiver.class);
+
+    var token = "cafe";
+    var tokens = singletonList(token);
+    var receiverId = ServerInstanceId.of("receiverId");
+    var senderId = ServerInstanceId.of("senderId");
+
+    var receiver = buildReceiver(tokens, receiverId, distributedCacheInvalidation);
+
+    var invalidations = cacheInvalidations(allInvalidationTypes());
+
+    var rc =
+        expectResponse(
+            r -> {
+              when(r.getParam("sender")).thenReturn(senderId.instanceId());
+              when(r.getHeader(CACHE_INVALIDATION_TOKEN_HEADER)).thenReturn(token);
+              when(r.getHeader("Content-Type")).thenReturn("application/json; charset=utf-8");
             });
     var reqBody = mock(RequestBody.class);
     when(reqBody.asString()).thenReturn(new ObjectMapper().writeValueAsString(invalidations));
@@ -134,15 +173,28 @@ public class TestCacheInvalidationReceiver {
     CacheInvalidationReceiver receiver =
         buildReceiver(tokens, receiverId, distributedCacheInvalidation);
 
-    RoutingContext rc = expectResponse();
-    receiver.cacheInvalidations(
-        rc,
-        () -> cacheInvalidations(allInvalidationTypes()),
-        senderId.instanceId(),
-        differentToken);
+    var rc = expectResponse();
+    var logger = (Logger) LoggerFactory.getLogger(CacheInvalidationReceiver.class);
+    var appender = new ListAppender<ILoggingEvent>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      receiver.cacheInvalidations(
+          rc,
+          () -> cacheInvalidations(allInvalidationTypes()),
+          senderId.instanceId(),
+          differentToken);
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
 
     verify(rc.response()).setStatusCode(400);
     verify(rc.response()).setStatusMessage("Invalid token");
+    assertThat(appender.list)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .contains("Received cache invalidation with a missing or invalid token")
+        .allSatisfy(message -> assertThat(message).doesNotContain(differentToken));
 
     verifyNoMoreInteractions(distributedCacheInvalidation);
   }

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.api.backend;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,12 +29,12 @@ import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.PersistenceParams;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 /** Provides "low-level" access to the database-specific backend. */
 public interface Backend extends AutoCloseable {
   /** Name of this backend. This value serves as an identifier to select the correct backend. */
-  @Nonnull
-  String type();
+  @NonNull String type();
 
   /**
    * Called to set up the database schema.
@@ -44,10 +43,9 @@ public interface Backend extends AutoCloseable {
    */
   Optional<String> setupSchema();
 
-  @Nonnull
-  Persistence newPersistence(
+  @NonNull Persistence newPersistence(
       Function<Backend, Backend> backendWrapper,
-      @Nonnull PersistenceParams persistenceParams,
+      @NonNull PersistenceParams persistenceParams,
       String realmId,
       MonotonicClock monotonicClock,
       IdGenerator idGenerator);
@@ -88,7 +86,7 @@ public interface Backend extends AutoCloseable {
      * @param createdAtMicros the timestamp in microseconds since (Unix) epoch at which the item was
      *     created in the database
      */
-    void call(@Nonnull String realmId, @Nonnull String refName, long createdAtMicros);
+    void call(@NonNull String realmId, @NonNull String refName, long createdAtMicros);
   }
 
   /** Callback interface for {@link #scanBackend(ReferenceScanCallback, ObjScanCallback)}. */
@@ -104,7 +102,7 @@ public interface Backend extends AutoCloseable {
      *     created in the database
      */
     void call(
-        @Nonnull String realmId, @Nonnull String type, @Nonnull PersistId id, long createdAtMicros);
+        @NonNull String realmId, @NonNull String type, @NonNull PersistId id, long createdAtMicros);
   }
 
   /**
@@ -112,44 +110,42 @@ public interface Backend extends AutoCloseable {
    * provided callbacks. This functionality is primarily needed for the maintenance service.
    */
   void scanBackend(
-      @Nonnull ReferenceScanCallback referenceConsumer, @Nonnull ObjScanCallback objConsumer);
+      @NonNull ReferenceScanCallback referenceConsumer, @NonNull ObjScanCallback objConsumer);
 
-  boolean createReference(@Nonnull String realmId, @Nonnull Reference newRef);
+  boolean createReference(@NonNull String realmId, @NonNull Reference newRef);
 
-  void createReferences(@Nonnull String realmId, @Nonnull List<Reference> newRefs);
+  void createReferences(@NonNull String realmId, @NonNull List<Reference> newRefs);
 
   boolean updateReference(
-      @Nonnull String realmId,
-      @Nonnull Reference updatedRef,
-      @Nonnull Optional<ObjRef> expectedPointer);
+      @NonNull String realmId,
+      @NonNull Reference updatedRef,
+      @NonNull Optional<ObjRef> expectedPointer);
 
-  @Nonnull
-  Reference fetchReference(@Nonnull String realmId, @Nonnull String name);
+  @NonNull Reference fetchReference(@NonNull String realmId, @NonNull String name);
 
-  @Nonnull
-  Map<PersistId, FetchedObj> fetch(@Nonnull String realmId, @Nonnull Set<PersistId> ids);
+  @NonNull Map<PersistId, FetchedObj> fetch(@NonNull String realmId, @NonNull Set<PersistId> ids);
 
-  void write(@Nonnull String realmId, @Nonnull List<WriteObj> writes);
+  void write(@NonNull String realmId, @NonNull List<WriteObj> writes);
 
-  void delete(@Nonnull String realmId, @Nonnull Set<PersistId> ids);
+  void delete(@NonNull String realmId, @NonNull Set<PersistId> ids);
 
   boolean conditionalInsert(
-      @Nonnull String realmId,
+      @NonNull String realmId,
       String objTypeId,
-      @Nonnull PersistId persistId,
+      @NonNull PersistId persistId,
       long createdAtMicros,
-      @Nonnull String versionToken,
-      @Nonnull byte[] serializedValue);
+      @NonNull String versionToken,
+      @NonNull byte[] serializedValue);
 
   boolean conditionalUpdate(
-      @Nonnull String realmId,
+      @NonNull String realmId,
       String objTypeId,
-      @Nonnull PersistId persistId,
+      @NonNull PersistId persistId,
       long createdAtMicros,
-      @Nonnull String updateToken,
-      @Nonnull String expectedToken,
-      @Nonnull byte[] serializedValue);
+      @NonNull String updateToken,
+      @NonNull String expectedToken,
+      @NonNull byte[] serializedValue);
 
   boolean conditionalDelete(
-      @Nonnull String realmId, @Nonnull PersistId persistId, @Nonnull String expectedToken);
+      @NonNull String realmId, @NonNull PersistId persistId, @NonNull String expectedToken);
 }

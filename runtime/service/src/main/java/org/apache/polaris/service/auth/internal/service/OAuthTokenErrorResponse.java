@@ -19,8 +19,8 @@
 package org.apache.polaris.service.auth.internal.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.jspecify.annotations.Nullable;
 
 /** An OAuth Error Token Response as defined by the Iceberg REST API OpenAPI Spec. */
 @PolarisImmutable

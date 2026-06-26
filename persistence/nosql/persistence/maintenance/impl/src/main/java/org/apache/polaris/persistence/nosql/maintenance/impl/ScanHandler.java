@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.maintenance.impl;
 import static org.apache.polaris.persistence.nosql.api.Realms.SYSTEM_REALM_PREFIX;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -32,6 +31,7 @@ import java.util.function.LongSupplier;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.backend.PersistId;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -174,7 +174,7 @@ final class ScanHandler<I> implements AutoCloseable {
 
     @SuppressWarnings("unchecked")
     @Override
-    public void call(@Nonnull String realmId, @Nonnull String refName, long createdAtMicros) {
+    public void call(@NonNull String realmId, @NonNull String refName, long createdAtMicros) {
       called("references");
       ((ScanHandler<String>) ScanHandler.this).scanned(realmId, refName, createdAtMicros);
     }
@@ -189,9 +189,9 @@ final class ScanHandler<I> implements AutoCloseable {
     @SuppressWarnings("unchecked")
     @Override
     public void call(
-        @Nonnull String realmId,
-        @Nonnull String type,
-        @Nonnull PersistId id,
+        @NonNull String realmId,
+        @NonNull String type,
+        @NonNull PersistId id,
         long createdAtMicros) {
       called("objects");
       ((ScanHandler<ObjRef>) ScanHandler.this)

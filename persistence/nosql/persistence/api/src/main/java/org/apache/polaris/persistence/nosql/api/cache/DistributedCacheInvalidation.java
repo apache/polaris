@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.persistence.nosql.api.cache;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
 
 public interface DistributedCacheInvalidation {
-  void evictObj(@Nonnull String realmId, @Nonnull ObjRef objRef);
+  void evictObj(@NonNull String realmId, @NonNull ObjRef objRef);
 
-  void evictReference(@Nonnull String realmId, @Nonnull String refName);
+  void evictReference(@NonNull String realmId, @NonNull String refName);
 
   interface Receiver extends DistributedCacheInvalidation {}
 

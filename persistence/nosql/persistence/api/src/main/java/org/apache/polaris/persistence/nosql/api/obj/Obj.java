@@ -28,10 +28,10 @@ import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonView;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.immutables.value.Value;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public interface Obj {
 
@@ -90,16 +90,13 @@ public interface Obj {
   @JsonView(ObjSerializeAll.class)
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JacksonInject(OBJ_VERSION_TOKEN)
-  @Nullable
-  String versionToken();
+  @Nullable String versionToken();
 
   @SuppressWarnings("NullableProblems")
-  @Nonnull
-  Obj withCreatedAtMicros(long createdAt);
+  @NonNull Obj withCreatedAtMicros(long createdAt);
 
   @SuppressWarnings("NullableProblems")
-  @Nonnull
-  Obj withNumParts(int numParts);
+  @NonNull Obj withNumParts(int numParts);
 
   class ObjSerializeAll {
     private ObjSerializeAll() {}

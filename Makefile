@@ -98,6 +98,14 @@ build-spark-plugin-3.5-2.13: check-dependencies ## Build Spark plugin v3.5 with 
 		:polaris-spark-3.5_2.13:assemble
 	@echo "--- Spark plugin v3.5 with Scala v2.13 build complete ---"
 
+build-spark-plugin-4.0-2.13: DEPENDENCIES := java21
+.PHONY: build-spark-plugin-4.0-2.13
+build-spark-plugin-4.0-2.13: check-dependencies ## Build Spark plugin v4.0 with Scala v2.13
+	@echo "--- Building Spark plugin v4.0 with Scala v2.13 ---"
+	@./gradlew \
+		:polaris-spark-4.0_2.13:assemble
+	@echo "--- Spark plugin v4.0 with Scala v2.13 build complete ---"
+
 spotless-apply: DEPENDENCIES := java21
 .PHONY: spotless-apply
 spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradle plugin.
@@ -113,32 +121,22 @@ $(VENV_DIR):
 	@$(PYTHON) -m venv $(VENV_DIR)
 	@echo "Virtual environment created."
 
-.PHONY: client-install-dependencies
-client-install-dependencies: $(VENV_DIR)
-	@echo "Installing UV and project dependencies into $(VENV_DIR)..."
-	@$(VENV_DIR)/bin/pip install --upgrade pip
-	@if [ ! -f "$(VENV_DIR)/bin/uv" ]; then \
-		$(VENV_DIR)/bin/pip install --upgrade "uv$(UV_VERSION)"; \
-	fi
-	@$(ACTIVATE_AND_CD) && uv lock && uv sync --active --all-extras
-	@echo "uv and dependencies installed."
-
-.PHONY: client-setup-env
-client-setup-env: $(VENV_DIR) client-install-dependencies
-
 .PHONY: client-build
-client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format.
+client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format, and VERSION to stamp the version before building.
 	@echo "--- Building client distribution ---"
+	@if [ -n "$(VERSION)" ]; then \
+		$(ACTIVATE_AND_CD) && uv version "$(VERSION)"; \
+	fi
 	@if [ -n "$(FORMAT)" ]; then \
 		if [ "$(FORMAT)" != "sdist" ] && [ "$(FORMAT)" != "wheel" ]; then \
 			echo "Error: Invalid format '$(FORMAT)'. Supported formats are 'sdist' and 'wheel'." >&2; \
 			exit 1; \
 		fi; \
 		echo "Building with format: $(FORMAT)"; \
-		$(ACTIVATE_AND_CD) && uv build --format $(FORMAT); \
+		$(ACTIVATE_AND_CD) && uv build --$(FORMAT); \
 	else \
 		echo "Building default distribution (sdist and wheel)"; \
-		$(ACTIVATE_AND_CD) && uv build; \
+		$(ACTIVATE_AND_CD) && uv build --clear; \
 	fi
 	@echo "--- Client distribution build complete ---"
 
@@ -157,8 +155,17 @@ client-cleanup: ## Cleanup virtual environment and Python cache files
 	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -delete
 	@echo "--- Virtual environment and Python cache cleanup complete ---"
 
-.PHONY: client-integration-test
-client-integration-test: build-server client-setup-env ## Run client integration tests
+.PHONY: client-setup-env
+client-setup-env: $(VENV_DIR) ## Set up Python client environment (venv + dependencies)
+	@echo "--- Setting up Python client environment ---"
+	@$(VENV_DIR)/bin/pip install --upgrade pip
+	@if [ ! -f "$(VENV_DIR)/bin/uv" ]; then \
+		$(VENV_DIR)/bin/pip install --upgrade "uv$(UV_VERSION)"; \
+	fi
+	@$(ACTIVATE_AND_CD) && uv lock && uv sync --active --all-extras
+	@echo "--- Python client environment setup complete ---"
+
+run-client-integration-test: client-setup-env
 	@echo "--- Starting client integration tests ---"
 	@echo "Ensuring Docker Compose services are stopped and removed..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml kill || true # `|| true` prevents make from failing if containers don't exist
@@ -176,6 +183,9 @@ client-integration-test: build-server client-setup-env ## Run client integration
 	@echo "Tearing down Docker Compose services..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
 
+.PHONY: client-integration-test
+client-integration-test: build-server run-client-integration-test ## Run client integration tests
+
 .PHONY: client-license-check
 client-license-check: client-setup-env ## Run license compliance check
 	@echo "--- Starting license compliance check ---"
@@ -188,18 +198,27 @@ client-lint: client-setup-env ## Run linting checks for Polaris client
 	@$(ACTIVATE_AND_CD) && uv run --active pre-commit run --files integration_tests/* generate_clients.py apache_polaris/cli/* apache_polaris/cli/command/* apache_polaris/cli/options/* test/*
 	@echo "--- Client linting checks complete ---"
 
-.PHONY: client-nightly-publish
-client-nightly-publish: client-setup-env ## Build and publish nightly version to Test PyPI
-	@echo "--- Starting nightly publish ---"
-	@$(ACTIVATE_AND_CD) && \
-	CURRENT_VERSION=$$(uv version --short) && \
-	DATE_SUFFIX=$$(date -u +%Y%m%d%H%M%S) && \
-	NIGHTLY_VERSION="$${CURRENT_VERSION}.dev$${DATE_SUFFIX}" && \
-	echo "Publishing nightly version: $${NIGHTLY_VERSION}" && \
-	uv version "$${NIGHTLY_VERSION}" && \
-	uv build --clear && \
-	uv publish --index testpypi
-	@echo "--- Nightly publish complete ---"
+.PHONY: client-nightly-build
+client-nightly-build: client-setup-env ## Build nightly version for publishing to Test PyPI
+	@$(MAKE) client-build \
+		VERSION="$$($(VENV_DIR)/bin/uv --directory $(PYTHON_CLIENT_DIR) version --short).dev$$(date -u +%Y%m%d%H%M%S)" \
+		FORMAT=wheel
+
+.PHONY: client-rc-build
+client-rc-build: client-setup-env ## Build RC wheel for staging to Apache dist dev (requires RC_VERSION and RC_NUMBER)
+	@if [ -z "$(RC_VERSION)" ]; then echo "ERROR: RC_VERSION is not set"; exit 1; fi
+	@if [ -z "$(RC_NUMBER)" ]; then echo "ERROR: RC_NUMBER is not set"; exit 1; fi
+	@echo "--- Building RC wheel for version $(RC_VERSION) RC$(RC_NUMBER) ---"
+	@$(ACTIVATE_AND_CD) && uv version "$(RC_VERSION)" && uv build --wheel
+	@echo "--- RC wheel build complete ---"
+
+.PHONY: client-rc-testpypi-build
+client-rc-testpypi-build: client-setup-env ## Build RC wheel with rc suffix for Test PyPI (requires RC_VERSION and RC_NUMBER)
+	@if [ -z "$(RC_VERSION)" ]; then echo "ERROR: RC_VERSION is not set"; exit 1; fi
+	@if [ -z "$(RC_NUMBER)" ]; then echo "ERROR: RC_NUMBER is not set"; exit 1; fi
+	@echo "--- Building RC wheel for Test PyPI: $(RC_VERSION)rc$(RC_NUMBER) ---"
+	@$(ACTIVATE_AND_CD) && uv version "$(RC_VERSION)rc$(RC_NUMBER)" && uv build --wheel
+	@echo "--- RC wheel build for Test PyPI complete ---"
 
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code
@@ -210,13 +229,13 @@ client-regenerate: client-setup-env ## Regenerate the client code
 .PHONY: client-unit-test
 client-unit-test: client-setup-env ## Run client unit tests
 	@echo "--- Running client unit tests ---"
-	@$(ACTIVATE_AND_CD) && uv run --active pytest test/
+	@$(ACTIVATE_AND_CD) && uv run --active pytest tests/
 	@echo "--- Client unit tests complete ---"
 
 ##@ Helm
 
 .PHONY: helm
-helm: helm-schema-generate helm-doc-generate helm-lint helm-unittest ## Run all Helm targets (schema, docs, unittest, lint)
+helm: helm-schema-generate helm-doc-generate helm-lint helm-unittest ## Run most Helm targets (schema, docs, unittest, lint) excluding integration tests
 
 helm-doc-generate: DEPENDENCIES := helm-docs
 .PHONY: helm-doc-generate
@@ -318,9 +337,6 @@ helm-integration-test: build minikube-load-images helm-fixtures check-dependenci
 	@ct install --namespace polaris --charts ./helm/polaris
 	@echo "--- Helm chart integration tests complete ---"
 
-.PHONY: helm
-helm: helm-schema-generate helm-doc-generate helm-lint helm-unittest ## Run most Helm targets (schema, docs, unittest, lint) excluding integration tests
-
 ##@ Minikube
 
 minikube-cleanup: DEPENDENCIES := minikube $(DOCKER)
@@ -373,6 +389,28 @@ minikube-stop-cluster: check-dependencies ## Stop the Minikube cluster
 		echo "--- Minikube cluster is already stopped or does not exist. Skipping stop ---"; \
 	fi
 
+##@ Regression Tests
+
+regtest-minio: DEPENDENCIES := $(DOCKER)
+.PHONY: regtest-minio
+regtest-minio: check-dependencies ## Run regression tests with MinIO
+	@echo "--- Running regression tests with MinIO ---"
+	@S3_TEST_BACKEND=minio $(DOCKER) compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+	@echo "--- Regression tests with MinIO completed ---"
+
+regtest-rustfs: DEPENDENCIES := $(DOCKER)
+.PHONY: regtest-rustfs
+regtest-rustfs: check-dependencies ## Run regression tests with RustFS
+	@echo "--- Running regression tests with RustFS ---"
+	@S3_TEST_BACKEND=rustfs $(DOCKER) compose --profile rustfs -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+	@echo "--- Regression tests with RustFS completed ---"
+
+regtest-cleanup: DEPENDENCIES := $(DOCKER)
+.PHONY: regtest-cleanup
+regtest-cleanup: check-dependencies ## Stop and remove regression test containers, networks, and volumes
+	@echo "--- Cleaning up all regression tests resources ---"
+	@$(DOCKER) compose --profile minio --profile rustfs -f ./regtests/docker-compose.yml down --volumes --remove-orphans
+	@echo "--- All regression resources cleanup completed ---"
 
 ##@ Pre-commit
 

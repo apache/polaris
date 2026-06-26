@@ -67,7 +67,7 @@ services:
       start_period: 10s
 
   setup_bucket:
-    image: amazon/aws-cli:2.34.24
+    image: amazon/aws-cli:2.35.11
     depends_on:
       rustfs:
         condition: service_healthy
@@ -85,13 +85,14 @@ services:
         echo Bucket setup complete.
 
   polaris-setup:
-    image: alpine/curl:8.17.0
+    image: alpine/curl:8.20.0
     depends_on:
       polaris:
         condition: service_healthy
     environment:
       - CLIENT_ID=root
       - CLIENT_SECRET=s3cr3t
+      - S3_ENDPOINT=${S3_ENDPOINT:-http://localhost:9000}
     volumes:
       - ../assets/polaris/:/polaris
     entrypoint: "/bin/sh"
@@ -101,9 +102,10 @@ services:
         source /polaris/obtain-token.sh &&
         echo Creating catalog... &&
         export STORAGE_CONFIG_INFO='{"storageType":"S3",
-          "endpoint":"http://localhost:9000",
+          "endpoint":"'$$S3_ENDPOINT'",
           "endpointInternal":"http://rustfs:9000",
-          "pathStyleAccess":true}' &&
+          "pathStyleAccess":true,
+          "region":"us-west-2"}' &&
         export STORAGE_LOCATION='s3://bucket123' &&
         /polaris/create-catalog.sh POLARIS $$TOKEN &&
         echo Extra grants... &&

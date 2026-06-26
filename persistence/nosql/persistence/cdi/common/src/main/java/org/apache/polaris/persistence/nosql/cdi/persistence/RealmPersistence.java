@@ -20,7 +20,6 @@ package org.apache.polaris.persistence.nosql.cdi.persistence;
 
 import static com.google.common.base.Preconditions.checkState;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.ids.api.IdGenerator;
@@ -29,6 +28,7 @@ import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.PersistenceParams;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 class RealmPersistence implements RealmPersistenceFactory {
@@ -61,7 +61,7 @@ class RealmPersistence implements RealmPersistenceFactory {
       private boolean consumed;
 
       @Override
-      public RealmPersistenceBuilder realmId(@Nonnull String realmId) {
+      public RealmPersistenceBuilder realmId(@NonNull String realmId) {
         checkState(this.realmId == null, "RealmPersistenceBuilder can only be used once");
         this.realmId = realmId;
         return this;

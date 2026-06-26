@@ -19,8 +19,6 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,6 +32,8 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utility class to generate parameterized SQL queries (SELECT, INSERT, UPDATE, DELETE). Ensures
@@ -60,9 +60,9 @@ public class QueryGenerator {
    * @throws IllegalArgumentException if any whereClause column isn't in projections.
    */
   public static PreparedQuery generateSelectQuery(
-      @Nonnull List<String> projections,
-      @Nonnull String tableName,
-      @Nonnull Map<String, Object> whereClause) {
+      @NonNull List<String> projections,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereClause) {
     return generateSelectQuery(projections, tableName, whereClause, Map.of(), null);
   }
 
@@ -76,10 +76,10 @@ public class QueryGenerator {
    * @throws IllegalArgumentException if any whereClause column isn't in projections.
    */
   public static PreparedQuery generateSelectQuery(
-      @Nonnull List<String> projections,
-      @Nonnull String tableName,
-      @Nonnull Map<String, Object> whereEquals,
-      @Nonnull Map<String, Object> whereGreater,
+      @NonNull List<String> projections,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereEquals,
+      @NonNull Map<String, Object> whereGreater,
       @Nullable String orderByColumn) {
     QueryFragment where =
         generateWhereClause(new HashSet<>(projections), whereEquals, whereGreater);
@@ -95,7 +95,7 @@ public class QueryGenerator {
    * @return A DELETE query removing all grants for this entity.
    */
   public static PreparedQuery generateDeleteQueryForEntityGrantRecords(
-      @Nonnull PolarisEntityCore entity, @Nonnull String realmId) {
+      @NonNull PolarisEntityCore entity, @NonNull String realmId) {
     String where =
         """
              WHERE (
@@ -119,7 +119,7 @@ public class QueryGenerator {
    * @throws IllegalArgumentException if entityIds is empty.
    */
   public static PreparedQuery generateSelectQueryWithEntityIds(
-      @Nonnull String realmId, int schemaVersion, @Nonnull List<PolarisEntityId> entityIds) {
+      @NonNull String realmId, int schemaVersion, @NonNull List<PolarisEntityId> entityIds) {
     if (entityIds.isEmpty()) {
       throw new IllegalArgumentException("Empty entity ids");
     }
@@ -148,8 +148,8 @@ public class QueryGenerator {
    * @return INSERT query with value bindings.
    */
   public static PreparedQuery generateInsertQuery(
-      @Nonnull List<String> allColumns,
-      @Nonnull String tableName,
+      @NonNull List<String> allColumns,
+      @NonNull String tableName,
       List<Object> values,
       String realmId) {
     List<String> finalColumns = new ArrayList<>(allColumns);
@@ -179,10 +179,10 @@ public class QueryGenerator {
    * @return UPDATE query with parameter values.
    */
   public static PreparedQuery generateUpdateQuery(
-      @Nonnull List<String> allColumns,
-      @Nonnull String tableName,
-      @Nonnull List<Object> values,
-      @Nonnull Map<String, Object> whereClause) {
+      @NonNull List<String> allColumns,
+      @NonNull String tableName,
+      @NonNull List<Object> values,
+      @NonNull Map<String, Object> whereClause) {
     List<Object> bindingParams = new ArrayList<>(values);
     QueryFragment where = generateWhereClause(new HashSet<>(allColumns), whereClause, Map.of());
     String setClause = allColumns.stream().map(c -> c + " = ?").collect(Collectors.joining(", "));
@@ -210,14 +210,14 @@ public class QueryGenerator {
    * @return UPDATE query with parameter bindings.
    */
   public static PreparedQuery generateUpdateQuery(
-      @Nonnull List<String> tableColumns,
-      @Nonnull String tableName,
-      @Nonnull Map<String, Object> setClause,
-      @Nonnull Map<String, Object> whereEquals,
-      @Nonnull Map<String, Object> whereGreater,
-      @Nonnull Map<String, Object> whereLess,
-      @Nonnull Set<String> whereIsNull,
-      @Nonnull Set<String> whereIsNotNull) {
+      @NonNull List<String> tableColumns,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> setClause,
+      @NonNull Map<String, Object> whereEquals,
+      @NonNull Map<String, Object> whereGreater,
+      @NonNull Map<String, Object> whereLess,
+      @NonNull Set<String> whereIsNull,
+      @NonNull Set<String> whereIsNotNull) {
     if (setClause.isEmpty()) {
       throw new IllegalArgumentException("Empty setClause");
     }
@@ -255,9 +255,9 @@ public class QueryGenerator {
    * @return DELETE query with parameter bindings.
    */
   public static PreparedQuery generateDeleteQuery(
-      @Nonnull List<String> tableColumns,
-      @Nonnull String tableName,
-      @Nonnull Map<String, Object> whereClause) {
+      @NonNull List<String> tableColumns,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereClause) {
     QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
     return new PreparedQuery(
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
@@ -268,13 +268,13 @@ public class QueryGenerator {
    * IS NULL, IS NOT NULL).
    */
   public static PreparedQuery generateDeleteQuery(
-      @Nonnull List<String> tableColumns,
-      @Nonnull String tableName,
-      @Nonnull Map<String, Object> whereEquals,
-      @Nonnull Map<String, Object> whereGreater,
-      @Nonnull Map<String, Object> whereLess,
-      @Nonnull Set<String> whereIsNull,
-      @Nonnull Set<String> whereIsNotNull) {
+      @NonNull List<String> tableColumns,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereEquals,
+      @NonNull Map<String, Object> whereGreater,
+      @NonNull Map<String, Object> whereLess,
+      @NonNull Set<String> whereIsNull,
+      @NonNull Set<String> whereIsNotNull) {
     Set<String> columns = new HashSet<>(tableColumns);
     QueryFragment where =
         generateWhereClauseExtended(
@@ -284,9 +284,9 @@ public class QueryGenerator {
   }
 
   private static PreparedQuery generateSelectQuery(
-      @Nonnull List<String> columnNames,
-      @Nonnull String tableName,
-      @Nonnull String filter,
+      @NonNull List<String> columnNames,
+      @NonNull String tableName,
+      @NonNull String filter,
       @Nullable String orderByColumn) {
     String sql =
         "SELECT "
@@ -302,15 +302,15 @@ public class QueryGenerator {
 
   @VisibleForTesting
   static QueryFragment generateWhereClause(
-      @Nonnull Set<String> tableColumns,
-      @Nonnull Map<String, Object> whereEquals,
-      @Nonnull Map<String, Object> whereGreater) {
+      @NonNull Set<String> tableColumns,
+      @NonNull Map<String, Object> whereEquals,
+      @NonNull Map<String, Object> whereGreater) {
     return generateWhereClauseExtended(
         tableColumns, whereEquals, whereGreater, Map.of(), Set.of(), Set.of());
   }
 
   private static void validateColumns(
-      @Nonnull Set<String> tableColumns, @Nonnull Set<String> columns) {
+      @NonNull Set<String> tableColumns, @NonNull Set<String> columns) {
     for (String column : columns) {
       if (!tableColumns.contains(column) && !column.equals("realm_id")) {
         throw new IllegalArgumentException("Invalid query column: " + column);
@@ -320,12 +320,12 @@ public class QueryGenerator {
 
   @VisibleForTesting
   static QueryFragment generateWhereClauseExtended(
-      @Nonnull Set<String> tableColumns,
-      @Nonnull Map<String, Object> whereEquals,
-      @Nonnull Map<String, Object> whereGreater,
-      @Nonnull Map<String, Object> whereLess,
-      @Nonnull Set<String> whereIsNull,
-      @Nonnull Set<String> whereIsNotNull) {
+      @NonNull Set<String> tableColumns,
+      @NonNull Map<String, Object> whereEquals,
+      @NonNull Map<String, Object> whereGreater,
+      @NonNull Map<String, Object> whereLess,
+      @NonNull Set<String> whereIsNull,
+      @NonNull Set<String> whereIsNotNull) {
     validateColumns(tableColumns, whereEquals.keySet());
     validateColumns(tableColumns, whereGreater.keySet());
     validateColumns(tableColumns, whereLess.keySet());

@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.service.auth.internal.broker;
 
-import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 @PolarisImmutable
 public interface TokenResponse {
@@ -38,17 +38,14 @@ public interface TokenResponse {
     return ImmutableTokenResponse.builder().error(error).build();
   }
 
-  @Nullable
-  OAuthError getError();
+  @Nullable OAuthError getError();
 
-  @Nullable
-  String getAccessToken();
+  @Nullable String getAccessToken();
 
   @Value.Default
   default int getExpiresIn() {
     return 0;
   }
 
-  @Nullable
-  String getTokenType();
+  @Nullable String getTokenType();
 }

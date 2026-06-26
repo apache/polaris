@@ -24,6 +24,7 @@ import static org.apache.polaris.core.config.FeatureConfiguration.DEFAULT_LOCATI
 import static org.apache.polaris.core.config.FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
 import java.nio.file.Path;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -43,6 +45,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.common.LocationUtils;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,6 +58,9 @@ public class IcebergOverlappingTableTest {
 
   private static final String namespace = "ns";
   private static final String catalog = "test-catalog";
+
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
 
   private String getTableName() {
     return "table_" + UUID.randomUUID();
@@ -76,6 +82,55 @@ public class IcebergOverlappingTableTest {
                 namespace,
                 createTableRequest,
                 null,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      return response.getStatus();
+    } catch (ForbiddenException e) {
+      return Response.Status.FORBIDDEN.getStatusCode();
+    }
+  }
+
+  private int createGenericTable(TestServices services, String location) {
+    CreateGenericTableRequest createTableRequest =
+        CreateGenericTableRequest.builder()
+            .setName(getTableName())
+            .setBaseLocation(location)
+            .build();
+    try (Response response =
+        services
+            .genericTableApi()
+            .createGenericTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                null,
+                services.realmContext(),
+                services.securityContext())) {
+      return response.getStatus();
+    } catch (ForbiddenException e) {
+      return Response.Status.FORBIDDEN.getStatusCode();
+    }
+  }
+
+  /** Attempt to stage-create a table at a given location, and return the response code. */
+  private int createTableStaged(TestServices services, String location) {
+    CreateTableRequest createTableRequest =
+        CreateTableRequest.builder()
+            .withName(getTableName())
+            .withLocation(location)
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+    try (Response response =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                "vended-credentials",
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       return response.getStatus();
@@ -99,6 +154,7 @@ public class IcebergOverlappingTableTest {
                 namespace,
                 createTableRequest,
                 null,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       if (response.getStatus() != Response.Status.OK.getStatusCode()) {
@@ -149,6 +205,7 @@ public class IcebergOverlappingTableTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -219,6 +276,11 @@ public class IcebergOverlappingTableTest {
                 services, String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
         .isEqualTo(Response.Status.OK.getStatusCode());
 
+    assertThat(
+            createGenericTable(
+                services, String.format("%s/%s/%s/generic_1", baseLocation, catalog, namespace)))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+
     // Unrelated path
     assertThat(
             createTable(
@@ -235,6 +297,10 @@ public class IcebergOverlappingTableTest {
     assertThat(
             createTable(
                 services, String.format("%s/%s/%s/table_100", baseLocation, catalog, namespace)))
+        .isEqualTo(expectedStatusForOverlaps);
+    assertThat(
+            createTable(
+                services, String.format("%s/%s/%s/generic_1", baseLocation, catalog, namespace)))
         .isEqualTo(expectedStatusForOverlaps);
 
     // Parent of existing location
@@ -420,5 +486,192 @@ public class IcebergOverlappingTableTest {
     // is okay to change in the future.
     assertThat(createTableWithName(services, "determinism_check").substring(baseLocation.length()))
         .isEqualTo("/test-catalog/1110/1010/0001/01111010/ns/determinism_check");
+  }
+
+  @Test
+  @DisplayName("Stage create accepts caller-specified allowed location")
+  void testStagedCreateAcceptsCustomLocation(@TempDir Path tempDir) {
+    Map<String, Object> strictServices =
+        Map.of(
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
+            "true",
+            "ALLOW_TABLE_LOCATION_OVERLAP",
+            "false",
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"));
+    TestServices services = TestServices.builder().config(strictServices).build();
+
+    String baseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (baseLocation.endsWith("/")) {
+      baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
+    }
+    createCatalogAndNamespace(services, Map.of(), baseLocation);
+
+    String someLocation = baseLocation + "/" + catalog + "/" + namespace + "/arbitrary-location";
+    assertThat(createTableStaged(services, someLocation))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+  }
+
+  @Test
+  @DisplayName("Stage create rejects same-name as existing table")
+  void testStagedCreateRejectsExistingIdentifier(@TempDir Path tempDir) {
+    Map<String, Object> strictServices =
+        Map.of(
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
+            "true",
+            "ALLOW_TABLE_LOCATION_OVERLAP",
+            "false",
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"));
+    TestServices services = TestServices.builder().config(strictServices).build();
+
+    String baseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (baseLocation.endsWith("/")) {
+      baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
+    }
+    createCatalogAndNamespace(services, Map.of(), baseLocation);
+
+    String existing = "existing_table";
+    assertThat(createTableWithName(services, existing)).isNotNull();
+
+    CreateTableRequest request =
+        CreateTableRequest.builder().withName(existing).withSchema(SCHEMA).stageCreate().build();
+    assertThatThrownBy(
+            () ->
+                services
+                    .restApi()
+                    .createTable(
+                        catalog,
+                        namespace,
+                        request,
+                        null,
+                        IDEMPOTENCY_KEY,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(AlreadyExistsException.class);
+  }
+
+  @Test
+  @DisplayName("Stage create rejects derived location overlap with sibling")
+  void testStagedCreateRejectsDerivedLocationOverlap(@TempDir Path tempDir) {
+    Map<String, Object> strictServices =
+        Map.of(
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
+            "true",
+            "ALLOW_TABLE_LOCATION_OVERLAP",
+            "false",
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"));
+    TestServices services = TestServices.builder().config(strictServices).build();
+
+    String baseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (baseLocation.endsWith("/")) {
+      baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
+    }
+    createCatalogAndNamespace(services, Map.of(), baseLocation);
+
+    // Create a table with custom location
+    assertThat(
+            createTable(
+                services, String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+
+    // Stage-create "table_1" with no caller-specified location:
+    // derived default location will overlap
+    CreateTableRequest request2 =
+        CreateTableRequest.builder().withName("table_1").withSchema(SCHEMA).stageCreate().build();
+    assertThatThrownBy(
+            () ->
+                services
+                    .restApi()
+                    .createTable(
+                        catalog,
+                        namespace,
+                        request2,
+                        null,
+                        IDEMPOTENCY_KEY,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("Stage create accepts derived location overlap with sibling")
+  void testStagedCreateAcceptsDerivedLocationOverlap(@TempDir Path tempDir) {
+    Map<String, Object> laxServices =
+        Map.of(
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
+            "true",
+            "ALLOW_TABLE_LOCATION_OVERLAP",
+            "true",
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"));
+    TestServices services = TestServices.builder().config(laxServices).build();
+
+    String baseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (baseLocation.endsWith("/")) {
+      baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
+    }
+    createCatalogAndNamespace(services, Map.of(), baseLocation);
+
+    // Create a table with custom location
+    assertThat(
+            createTable(
+                services, String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+
+    // Stage-create "table_1" with no caller-specified location:
+    // derived default location will overlap
+    CreateTableRequest request =
+        CreateTableRequest.builder().withName("table_1").withSchema(SCHEMA).stageCreate().build();
+    try (Response response =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                request,
+                null,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  @DisplayName("Stage create rejects caller-specified location when structured layout is enforced")
+  void testStagedCreateRejectsCustomLocationWhenStructured(@TempDir Path tempDir) {
+    Map<String, Object> strictServices =
+        Map.of(
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
+            "false",
+            "ALLOW_TABLE_LOCATION_OVERLAP",
+            "false",
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"),
+            OPTIMIZED_SIBLING_CHECK.key(),
+            "true");
+    TestServices services = TestServices.builder().config(strictServices).build();
+
+    String baseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (baseLocation.endsWith("/")) {
+      baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
+    }
+    createCatalogAndNamespace(services, Map.of(), baseLocation);
+
+    String someLocation = baseLocation + "/" + catalog + "/unstructured-location";
+    assertThat(createTableStaged(services, someLocation))
+        .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
   }
 }

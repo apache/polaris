@@ -27,20 +27,34 @@ ENV POLARIS_HOST=${POLARIS_HOST} \
 USER root
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends diffutils wget curl python3.10-venv jq && \
+    apt-get install -y --no-install-recommends diffutils wget curl python3.10-venv jq unzip && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        AWS_CLI_ARCH="x86_64"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        AWS_CLI_ARCH="aarch64"; \
+    else \
+      echo "Unsupported architecture: ${ARCH}" && exit 1; \
+    fi && \
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_CLI_ARCH}.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    apt-get purge -y unzip && \
+    apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /home/spark /tmp/polaris-regtests /opt/spark/conf && \
     chown -R spark:spark /home/spark /tmp/polaris-regtests && \
-    chmod -R 777 /opt/spark/conf
+    chmod -R 777 /opt/spark/conf && \
+    aws --version
 
 COPY --chown=spark:spark ./regtests/setup.sh ./regtests/pyspark-setup.sh ./regtests/requirements.txt /home/spark/polaris/regtests/
 COPY --chown=spark:spark ./client/python /home/spark/polaris/client/python
-COPY --chown=spark:spark ./polaris /home/spark/polaris/polaris
 COPY --chown=spark:spark ./spec /home/spark/polaris/spec
 COPY --chown=spark:spark ./regtests /home/spark/polaris/regtests
 
 # /home/spark/regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
-RUN chmod -R go+rwx /home/spark/polaris
+RUN chmod -R go+rwx /home/spark/polaris && \
+    chmod +x /home/spark/polaris/regtests/s3-setup.sh
 
 USER spark
 

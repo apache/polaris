@@ -19,8 +19,14 @@
 package org.apache.polaris.service.events;
 
 import com.google.common.reflect.TypeToken;
+import io.quarkus.runtime.annotations.RegisterForReflection;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -29,6 +35,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -65,6 +72,7 @@ import org.apache.polaris.service.types.UpdatePolicyRequest;
  * Standard attribute keys for Polaris events. These keys provide type-safe access to common event
  * attributes and enable automatic pruning/filtering logic.
  */
+@RegisterForReflection
 public final class EventAttributes {
   private EventAttributes() {}
 
@@ -132,6 +140,8 @@ public final class EventAttributes {
       new AttributeKey<>("view_identifier", TableIdentifier.class);
   public static final AttributeKey<CreateViewRequest> CREATE_VIEW_REQUEST =
       new AttributeKey<>("create_view_request", CreateViewRequest.class);
+  public static final AttributeKey<RegisterViewRequest> REGISTER_VIEW_REQUEST =
+      new AttributeKey<>("register_view_request", RegisterViewRequest.class);
   public static final AttributeKey<CommitViewRequest> COMMIT_VIEW_REQUEST =
       new AttributeKey<>("commit_view_request", CommitViewRequest.class);
   public static final AttributeKey<ViewMetadata> VIEW_METADATA_BEFORE =
@@ -237,4 +247,42 @@ public final class EventAttributes {
       new AttributeKey<>("detach_policy_request", DetachPolicyRequest.class);
   public static final AttributeKey<GetApplicablePoliciesResponse> GET_APPLICABLE_POLICIES_RESPONSE =
       new AttributeKey<>("get_applicable_policies_response", GetApplicablePoliciesResponse.class);
+
+  public static Optional<AttributeKey<?>> findByName(String name) {
+    return Optional.ofNullable(AttributeLookupHolder.ALL_BY_NAME.get(name));
+  }
+
+  public static Map<String, AttributeKey<?>> allByName() {
+    return AttributeLookupHolder.ALL_BY_NAME;
+  }
+
+  private static Map<String, AttributeKey<?>> collectAllByName() {
+    Map<String, AttributeKey<?>> byName = new LinkedHashMap<>();
+    for (Field field : EventAttributes.class.getDeclaredFields()) {
+      if (!Modifier.isPublic(field.getModifiers())
+          || !Modifier.isStatic(field.getModifiers())
+          || !AttributeKey.class.isAssignableFrom(field.getType())) {
+        continue;
+      }
+
+      try {
+        AttributeKey<?> key = (AttributeKey<?>) field.get(null);
+        AttributeKey<?> previous = byName.putIfAbsent(key.name(), key);
+        if (previous != null) {
+          throw new IllegalStateException("Duplicate event attribute name: " + key.name());
+        }
+      } catch (IllegalAccessException ex) {
+        throw new IllegalStateException(
+            "Failed to read event attribute key from field " + field.getName(), ex);
+      }
+    }
+
+    return Collections.unmodifiableMap(byName);
+  }
+
+  private static final class AttributeLookupHolder {
+    private static final Map<String, AttributeKey<?>> ALL_BY_NAME = collectAllByName();
+
+    private AttributeLookupHolder() {}
+  }
 }

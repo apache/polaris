@@ -19,20 +19,9 @@
 package org.apache.polaris.service.metrics;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
+import org.apache.polaris.service.Profiles;
 
 @QuarkusTest
-@TestProfile(UserPrincipalTagDisabledMetricsTest.Profile.class)
-public class UserPrincipalTagDisabledMetricsTest extends MetricsTestBase {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.metrics.tags.environment", "prod", "polaris.realm-context.type", "test");
-    }
-  }
-}
+@TestProfile(Profiles.TagsDisabledMetricsProfile.class)
+public class UserPrincipalTagDisabledMetricsTest extends MetricsTestBase {}

@@ -23,13 +23,13 @@ import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.newStoreIndex;
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.referenceIndex;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.nosql.api.index.UpdatableIndex;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Factory methods for store indexes. */
 public final class IndexesProvider {
@@ -37,8 +37,8 @@ public final class IndexesProvider {
 
   public static <V> Index<V> buildReadIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull Persistence persistence,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull Persistence persistence,
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     if (indexContainer != null) {
       var embedded = deserializeStoreIndex(indexContainer.embedded(), indexValueSerializer);
       var reference = referenceIndex(indexContainer, persistence, indexValueSerializer);
@@ -51,8 +51,8 @@ public final class IndexesProvider {
 
   public static <V> UpdatableIndex<V> buildWriteIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull Persistence persistence,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull Persistence persistence,
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     var embedded =
         indexContainer != null
             ? deserializeStoreIndex(indexContainer.embedded(), indexValueSerializer)

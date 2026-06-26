@@ -302,15 +302,8 @@ helm upgrade --install polaris polaris/polaris \
   --namespace polaris \
   --create-namespace \
   --values polaris-values.yaml \
-  --version 1.3.0-incubating \
   --wait --timeout 3m
 ```
-
-> **Note:** The Apache Polaris project graduated from the Incubator in February 2026, but
-> the Helm chart hasn't been republished under a non-incubating version yet. Helm skips
-> pre-release versions by default, so `--version 1.3.0-incubating` is required for now.
-> Once a post-graduation chart is released, the version string will drop the `-incubating`
-> suffix (e.g. `--version 1.4.0`), or you can omit `--version` entirely to get the latest.
 
 Verify:
 

@@ -16,7 +16,6 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.idempotency;
 
-import jakarta.annotation.Nonnull;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -36,13 +35,14 @@ import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelIdempotencyRecord;
+import org.jspecify.annotations.NonNull;
 
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
 
   public RelationalJdbcIdempotencyStore(
-      @Nonnull DataSource dataSource, @Nonnull RelationalJdbcConfiguration cfg)
+      @NonNull DataSource dataSource, @NonNull RelationalJdbcConfiguration cfg)
       throws SQLException {
     this.datasourceOperations = new DatasourceOperations(dataSource, cfg);
   }
@@ -83,7 +83,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       datasourceOperations.executeUpdate(insert);
       return new ReserveResult(ReserveResultType.OWNED, Optional.empty());
     } catch (SQLException e) {
-      if (datasourceOperations.isConstraintViolation(e)) {
+      if (datasourceOperations.isUniquenessConstraintViolation(e)) {
         return new ReserveResult(ReserveResultType.DUPLICATE, load(realmId, idempotencyKey));
       }
       throw new IdempotencyPersistenceException("Failed to reserve idempotency key", e);

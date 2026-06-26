@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.config;
 
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Function;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,7 +172,7 @@ public abstract class PolarisConfiguration<T> {
    * In some cases, we may extract a value that doesn't match the expected type for a config. This
    * method can be used to attempt to force-cast it using `String.valueOf`
    */
-  private @Nonnull T tryCast(Object value) {
+  private @NonNull T tryCast(Object value) {
     if (value == null) {
       return defaultValue();
     }

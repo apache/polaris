@@ -41,6 +41,7 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -60,6 +61,7 @@ dependencies {
   testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-annotations")
   testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-databind")
 
+  testFixturesImplementation(libs.jspecify)
   testFixturesImplementation(libs.jakarta.annotation.api)
   testFixturesImplementation(libs.jakarta.validation.api)
   testFixturesCompileOnly(libs.jakarta.enterprise.cdi.api)

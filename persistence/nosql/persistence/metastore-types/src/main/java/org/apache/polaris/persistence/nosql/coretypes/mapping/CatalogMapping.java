@@ -23,7 +23,6 @@ import static org.apache.polaris.core.entity.CatalogEntity.CATALOG_TYPE_PROPERTY
 import static org.apache.polaris.core.entity.CatalogEntity.DEFAULT_BASE_LOCATION_KEY;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj.CATALOGS_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -36,6 +35,7 @@ import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStatus;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogType;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj;
+import org.jspecify.annotations.NonNull;
 
 final class CatalogMapping extends BaseMapping<CatalogObj, CatalogObj.Builder> {
   CatalogMapping() {
@@ -43,14 +43,14 @@ final class CatalogMapping extends BaseMapping<CatalogObj, CatalogObj.Builder> {
   }
 
   @Override
-  public CatalogObj.Builder newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public CatalogObj.Builder newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return CatalogObj.builder();
   }
 
   @Override
   void mapToObjTypeSpecific(
       CatalogObj.Builder baseBuilder,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> principalSecrets,
       Map<String, String> properties,
       Map<String, String> internalProperties) {

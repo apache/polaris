@@ -85,6 +85,9 @@ public class MongoDbBackendTestFactory implements BackendTestFactory {
     for (var retry = 0; ; retry++) {
       var c = new MongoDBContainer(dockerImage).withLogConsumer(new Slf4jLogConsumer(LOGGER));
       containerNetworkId.ifPresent(c::withNetworkMode);
+      // TODO Remove when https://jira.mongodb.org/browse/SERVER-121912 is fixed and available in a
+      // release.
+      c.withEnv("GLIBC_TUNABLES", "glibc.pthread.rseq=1");
       try {
         c.start();
         container = c;

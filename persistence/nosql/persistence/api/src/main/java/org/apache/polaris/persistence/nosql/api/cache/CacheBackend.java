@@ -20,13 +20,13 @@ package org.apache.polaris.persistence.nosql.api.cache;
 
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Provides the cache primitives for a caching {@link Persistence} facade, suitable for multiple
@@ -77,57 +77,57 @@ public interface CacheBackend {
         }
 
         @Override
-        @Nonnull
+        @NonNull
         public Obj withCreatedAtMicros(long createdAtMicros) {
           throw new UnsupportedOperationException();
         }
 
         @Override
-        @Nonnull
+        @NonNull
         public Obj withNumParts(int numParts) {
           throw new UnsupportedOperationException();
         }
       };
 
   /** Returns the {@link Obj} for the given {@link ObjRef id}. */
-  Obj get(@Nonnull String realmId, @Nonnull ObjRef id);
+  Obj get(@NonNull String realmId, @NonNull ObjRef id);
 
   /**
    * Adds the given object to the local cache and sends a cache-invalidation message to Polaris
    * peers.
    */
-  void put(@Nonnull String realmId, @Nonnull Obj obj);
+  void put(@NonNull String realmId, @NonNull Obj obj);
 
   /** Adds the given object only to the local cache, does not send a cache-invalidation message. */
-  void putLocal(@Nonnull String realmId, @Nonnull Obj obj);
+  void putLocal(@NonNull String realmId, @NonNull Obj obj);
 
   /** Record the "not found" sentinel for the given {@link ObjRef id} and {@link ObjType type}. */
-  void putNegative(@Nonnull String realmId, @Nonnull ObjRef id);
+  void putNegative(@NonNull String realmId, @NonNull ObjRef id);
 
-  void remove(@Nonnull String realmId, @Nonnull ObjRef id);
+  void remove(@NonNull String realmId, @NonNull ObjRef id);
 
-  void clear(@Nonnull String realmId);
+  void clear(@NonNull String realmId);
 
   void purge();
 
   long estimatedSize();
 
-  Persistence wrap(@Nonnull Persistence persist);
+  Persistence wrap(@NonNull Persistence persist);
 
-  Reference getReference(@Nonnull String realmId, @Nonnull String name);
+  Reference getReference(@NonNull String realmId, @NonNull String name);
 
-  void removeReference(@Nonnull String realmId, @Nonnull String name);
+  void removeReference(@NonNull String realmId, @NonNull String name);
 
   /**
    * Adds the given reference to the local cache and sends a cache-invalidation message to Polaris
    * peers.
    */
-  void putReference(@Nonnull String realmId, @Nonnull Reference reference);
+  void putReference(@NonNull String realmId, @NonNull Reference reference);
 
   /**
    * Adds the given reference only to the local cache, does not send a cache-invalidation message.
    */
-  void putReferenceLocal(@Nonnull String realmId, @Nonnull Reference reference);
+  void putReferenceLocal(@NonNull String realmId, @NonNull Reference reference);
 
-  void putReferenceNegative(@Nonnull String realmId, @Nonnull String name);
+  void putReferenceNegative(@NonNull String realmId, @NonNull String name);
 }

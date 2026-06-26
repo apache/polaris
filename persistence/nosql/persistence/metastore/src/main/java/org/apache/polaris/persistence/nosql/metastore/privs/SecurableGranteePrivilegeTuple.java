@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.privs;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.jspecify.annotations.NonNull;
 
 public record SecurableGranteePrivilegeTuple(
-    @Nonnull PolarisEntityCore securable,
-    @Nonnull PolarisEntityCore grantee,
-    @Nonnull PolarisPrivilege privilege) {}
+    @NonNull PolarisEntityCore securable,
+    @NonNull PolarisEntityCore grantee,
+    @NonNull PolarisPrivilege privilege) {}

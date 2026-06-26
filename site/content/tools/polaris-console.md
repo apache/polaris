@@ -20,6 +20,10 @@
 title: Polaris Console
 type: docs
 weight: 999
+menus:
+  main:
+    parent: tools
+    weight: 500
 ---
 
 The Polaris Console is a modern web interface for the Polaris server.

@@ -1086,6 +1086,24 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testResetCredentialsClientIdCollision() {
+    PrincipalWithCredentials principalA =
+        managementApi.createPrincipal(client.newEntityName(("principal-a")));
+    String principalAClientId = principalA.getCredentials().getClientId();
+    PrincipalWithCredentials principalB =
+        managementApi.createPrincipal(client.newEntityName(("principal-b")));
+    String principalBName = principalB.getPrincipal().getName();
+    Map<String, String> collidingBody =
+        Map.of("clientId", principalAClientId, "clientSecret", "new-secret");
+    try (Response response =
+        managementApi
+            .request("v1/principals/{p}/reset", Map.of("p", principalBName))
+            .post(Entity.json(collidingBody))) {
+      assertThat(response).returns(Response.Status.CONFLICT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
   public void testCreateFederatedPrincipalRoleSucceeds() {
     // Create a federated Principal Role
     PrincipalRole federatedPrincipalRole =
@@ -1103,6 +1121,10 @@ public class PolarisManagementServiceIntegrationTest {
             .request("v1/principal-roles")
             .post(Entity.json(new CreatePrincipalRoleRequest(federatedPrincipalRole)))) {
       assertThat(createResponse).returns(CREATED.getStatusCode(), Response::getStatus);
+
+      // Verify that the returned principal role has federated=true
+      PrincipalRole createdRole = createResponse.readEntity(PrincipalRole.class);
+      assertThat(createdRole.getFederated()).isTrue();
     }
   }
 
@@ -1977,6 +1999,38 @@ public class PolarisManagementServiceIntegrationTest {
       ErrorResponse errorResponse = response.readEntity(ErrorResponse.class);
       assertThat(errorResponse.message()).contains("Operation failed: GRANT_NOT_FOUND");
     }
+  }
+
+  @Test
+  public void testAddGrantIsIdempotent() {
+    String catalogName = client.newEntityName("mycatalog_addgrant_idempotent");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    managementApi.createCatalog(catalog);
+
+    String catalogRoleName = client.newEntityName("mycr_addgrant_idempotent");
+    managementApi.createCatalogRole(catalogName, catalogRoleName);
+
+    CatalogGrant grant =
+        new CatalogGrant(CatalogPrivilege.TABLE_WRITE_DATA, GrantResource.TypeEnum.CATALOG);
+
+    // First PUT creates the grant.
+    managementApi.addGrant(catalogName, catalogRoleName, grant);
+    // Second PUT of the same grant must succeed idempotently.
+    managementApi.addGrant(catalogName, catalogRoleName, grant);
+
+    // The grant should appear exactly once.
+    assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
+        .filteredOn(
+            g ->
+                g instanceof CatalogGrant cg
+                    && cg.getPrivilege() == CatalogPrivilege.TABLE_WRITE_DATA)
+        .hasSize(1);
   }
 
   @Test

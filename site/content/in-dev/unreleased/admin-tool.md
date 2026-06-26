@@ -109,8 +109,9 @@ Usage: polaris-admin-tool.jar bootstrap [-hV] [-v=<schema version>]
 Bootstraps realms and root principal credentials.
   -h, --help                Show this help message and exit.
   -v, --schema-version=<schema version>
-                            The version of the schema to load in [1, 2, 3,
-                              LATEST].
+                            The version of the schema to load. The set of valid
+                              values depends on the backend type. If omitted the
+                              latest schema version will be used.
   -V, --version             Print version information and exit.
 Standard Input Options:
   -c, --credential=<realm,clientId,clientSecret>
@@ -279,8 +280,13 @@ It defaults to `1.1`.
 All NoSQL maintenance configuration options are under the `polaris.persistence.nosql.maintenance` namespace.
 See the `Configuration Reference` pages for more information.
 
-Avoid running multiple instances of the `nosql maintenance-run` command at the same time to avoid an unnecessary
-database load, although this does not cause any other issues.
+The `nosql maintenance-run` command refuses to start a new run if the latest recorded maintenance run
+has not finished yet.
+If the previous run is known to be abandoned, rerun the command using the run ID reported by the
+failure message via `--supersede-run=<run-id>`.
+
+Avoid superseding a maintenance run unless you are certain that the previous run is no longer active,
+because doing so may cause overlapping maintenance work and unnecessary database load.
 
 ### Inspecting NoSQL maintenance run logs
 

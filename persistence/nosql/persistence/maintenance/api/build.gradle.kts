@@ -37,9 +37,11 @@ dependencies {
   compileOnly(libs.smallrye.config.core)
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
 
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
+  compileOnly(libs.jakarta.enterprise.cdi.api)
 }

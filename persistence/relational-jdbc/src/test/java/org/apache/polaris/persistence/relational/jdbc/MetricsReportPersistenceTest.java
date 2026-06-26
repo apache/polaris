@@ -29,9 +29,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,22 +57,12 @@ class MetricsReportPersistenceTest {
     datasourceOperations.executeScript(schemaStream);
 
     PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
-    PolarisStorageIntegrationProvider storageProvider =
-        new PolarisStorageIntegrationProvider() {
-          @Override
-          public <T extends PolarisStorageConfigurationInfo>
-              PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-                  PolarisStorageConfigurationInfo config) {
-            return null;
-          }
-        };
 
     metricsPersistence =
         new JdbcBasePersistenceImpl(
             diagnostics,
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
-            storageProvider,
             "TEST_REALM",
             4);
   }

@@ -17,19 +17,23 @@
  * under the License.
  */
 
+import bom.VerifyBomDependenciesTask
+
 plugins { id("polaris-bom") }
 
 description = "Apache Polaris - Bill of Materials (BOM)"
 
 dependencies {
   constraints {
-    api(rootProject)
+    api(project(":"))
     api(project(":polaris-api-catalog-service"))
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
 
     api(project(":polaris-container-spec-helper"))
+    api(project(":polaris-azurite-testcontainer"))
+    api(project(":polaris-gcs-testcontainer"))
     api(project(":polaris-minio-testcontainer"))
     api(project(":polaris-rustfs-testcontainer"))
     api(project(":polaris-immutables"))
@@ -44,6 +48,7 @@ dependencies {
     api(project(":polaris-idgen-api"))
     api(project(":polaris-idgen-impl"))
     api(project(":polaris-idgen-spi"))
+    api(project(":polaris-idgen-mocks"))
 
     api(project(":polaris-nodes-api"))
     api(project(":polaris-nodes-impl"))
@@ -90,6 +95,18 @@ dependencies {
     api(project(":polaris-relational-jdbc"))
 
     api(project(":polaris-extensions-auth-opa"))
+    api(project(":polaris-extensions-auth-ranger"))
+    api(project(":polaris-extensions-federation-bigquery"))
+    api(project(":polaris-extensions-federation-hadoop"))
+    api(project(":polaris-extensions-federation-hive"))
+    api(project(":polaris-hms-testcontainer"))
+
+    api(project(":polaris-spark-3.5_2.12"))
+    val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
+    if (!ideaActive) {
+      api(project(":polaris-spark-3.5_2.13"))
+      api(project(":polaris-spark-4.0_2.13"))
+    }
 
     api(project(":polaris-admin"))
     api(project(":polaris-runtime-common"))
@@ -102,3 +119,25 @@ dependencies {
     api(project(":polaris-tests"))
   }
 }
+
+tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
+  group = "verification"
+  description = "Checks if the BOM dependencies are complete"
+
+  bomDependencyCoordinates.set(
+    configurations.api.map { it.dependencyConstraints.map { "${it.group}:${it.name}" } }
+  )
+  projectCoordinatesByPath.set(
+    provider { rootProject.allprojects.associate { it.path to "${it.group}:${it.name}" } }
+  )
+  excludedProjectPaths.set(
+    setOf(
+      ":polaris-bom",
+      ":aggregated-license-report",
+      ":polaris-config-docs-site",
+      ":polaris-distribution",
+    )
+  )
+}
+
+tasks.named("check") { dependsOn("verifyBomDependencies") }

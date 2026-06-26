@@ -19,30 +19,16 @@
 
 package org.apache.polaris.service.events.listeners.inmemory;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
+import org.apache.polaris.service.Profiles;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@TestProfile(InMemoryBufferEventListenerBufferTimeTest.Profile.class)
+@TestProfile(Profiles.InMemoryBufferEventListenerBufferTimeProfile.class)
 class InMemoryBufferEventListenerBufferTimeTest extends InMemoryBufferEventListenerTestBase {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(BASE_CONFIG)
-          .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "100ms")
-          .put("polaris.event-listener.persistence-in-memory-buffer.max-buffer-size", "1000")
-          .build();
-    }
-  }
 
   @Test
   void testFlushOnTimeout() {

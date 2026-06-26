@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.credentials.connection;
 
+import static org.apache.polaris.service.credentials.TestObjectFactory.createConnectionConfig;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
@@ -34,6 +36,7 @@ import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,11 +55,13 @@ public class SigV4ConnectionCredentialVendorTest {
   private SigV4ConnectionCredentialVendor vendor;
   private StsClient mockStsClient;
   private ServiceIdentityProvider mockServiceIdentityProvider;
+  private AtomicReference<StsClientProvider.StsDestination> capturedDestination;
 
   @BeforeEach
   void setup() {
     mockStsClient = mock(StsClient.class);
     mockServiceIdentityProvider = Mockito.mock(ServiceIdentityProvider.class);
+    capturedDestination = new AtomicReference<>();
 
     // Mock STS AssumeRole response
     Credentials stsCredentials =
@@ -81,10 +86,14 @@ public class SigV4ConnectionCredentialVendorTest {
     when(mockServiceIdentityProvider.getServiceIdentityCredential(any()))
         .thenReturn(Optional.of(mockCredential));
 
-    // Create vendor with mocked dependencies
+    // Create vendor with lambda that captures the destination
     vendor =
         new SigV4ConnectionCredentialVendor(
-            (destination) -> mockStsClient, mockServiceIdentityProvider);
+            (destination) -> {
+              capturedDestination.set(destination);
+              return mockStsClient;
+            },
+            mockServiceIdentityProvider);
   }
 
   @Test
@@ -105,8 +114,7 @@ public class SigV4ConnectionCredentialVendorTest {
 
     // Create connection config with service identity and auth params
     IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
+        createConnectionConfig(authParams, serviceIdentity);
 
     // Get credentials
     ConnectionCredentials credentials = vendor.getConnectionCredentials(connectionConfig);
@@ -149,8 +157,7 @@ public class SigV4ConnectionCredentialVendorTest {
 
     // Create connection config with service identity and auth params
     IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
+        createConnectionConfig(authParams, serviceIdentity);
 
     ConnectionCredentials credentials = vendor.getConnectionCredentials(connectionConfig);
 
@@ -170,5 +177,50 @@ public class SigV4ConnectionCredentialVendorTest {
         .isEqualTo("arn:aws:iam::123456789012:role/customer-role");
     Assertions.assertThat(capturedRequest.roleSessionName()).isEqualTo("polaris");
     Assertions.assertThat(capturedRequest.externalId()).isNull();
+  }
+
+  @Test
+  public void testStsDestinationUsesSigningRegion() {
+    ServiceIdentityInfoDpo serviceIdentity =
+        new AwsIamServiceIdentityInfoDpo(
+            new SecretReference("urn:polaris-secret:test:my-realm:AWS_IAM", Map.of()));
+
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/customer-role",
+            "my-session",
+            "external-id-123",
+            "eu-west-1",
+            "glue");
+
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        createConnectionConfig(authParams, serviceIdentity);
+
+    vendor.getConnectionCredentials(connectionConfig);
+
+    // Verify the STS client was created with the correct region from sigV4 params
+    Assertions.assertThat(capturedDestination.get().region()).isPresent().hasValue("eu-west-1");
+    Assertions.assertThat(capturedDestination.get().endpoint()).isEmpty();
+  }
+
+  @Test
+  public void testStsDestinationUsesDifferentRegions() {
+    ServiceIdentityInfoDpo serviceIdentity =
+        new AwsIamServiceIdentityInfoDpo(
+            new SecretReference("urn:polaris-secret:test:my-realm:AWS_IAM", Map.of()));
+
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/customer-role", null, null, "ap-southeast-1", null);
+
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        createConnectionConfig(authParams, serviceIdentity);
+
+    vendor.getConnectionCredentials(connectionConfig);
+
+    Assertions.assertThat(capturedDestination.get().region())
+        .isPresent()
+        .hasValue("ap-southeast-1");
+    Assertions.assertThat(capturedDestination.get().endpoint()).isEmpty();
   }
 }

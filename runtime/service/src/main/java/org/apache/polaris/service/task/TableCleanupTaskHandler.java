@@ -189,7 +189,6 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .log("Queueing task to delete manifest file");
               return new TaskEntity.Builder()
                   .setName(taskName)
-                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
                   .setCreateTimestamp(clock.millis())
                   .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
                   .withData(
@@ -233,7 +232,9 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
                   .withData(
                       new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                          tableEntity.getTableIdentifier(), metadataBatch))
+                          tableEntity.getTableIdentifier(),
+                          metadataBatch,
+                          BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
                   .build();
             });

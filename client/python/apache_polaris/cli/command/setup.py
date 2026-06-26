@@ -21,9 +21,10 @@ import logging
 import yaml
 import json
 from dataclasses import dataclass
-from typing import Dict, Optional, List, Any, Set, cast
+from typing import Dict, Optional, List, Any, Set
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import (
     PrincipalType,
     Subcommands,
@@ -62,8 +63,8 @@ class SetupCommand(Command):
     itself.
 
     Example commands:
-        * ./polaris setup apply setup-config.yaml
-        * ./polaris setup export
+        * polaris setup apply setup-config.yaml
+        * polaris setup export
     """
 
     setup_subcommand: str
@@ -518,7 +519,7 @@ class SetupCommand(Command):
     def validate(self) -> None:
         """Validate the command arguments."""
         if self.setup_subcommand == Subcommands.APPLY and self.setup_config is None:
-            raise Exception("`setup_config` is required for the `apply` subcommand")
+            raise CliError("`setup_config` is required for the `apply` subcommand")
 
     def execute(self, api: PolarisDefaultApi) -> None:
         """Execute the setup command based on the subcommand (apply or export)."""
@@ -578,7 +579,7 @@ class SetupCommand(Command):
         elif self.setup_subcommand == Subcommands.EXPORT:
             self._export_config(api)
         else:
-            raise Exception(f"Unsupported subcommand: {self.setup_subcommand}")
+            raise CliError(f"Unsupported subcommand: {self.setup_subcommand}")
 
     def _log_dry_run(
         self,
@@ -631,10 +632,6 @@ class SetupCommand(Command):
                                 "type", PrincipalType.SERVICE.value
                             ).lower(),
                             properties=principal_data.get("properties", {}),
-                            client_id="",
-                            principal_role="",
-                            set_properties={},
-                            remove_properties=[],
                         )
                         principal_cmd.validate()
                         principal_cmd.execute(api)
@@ -677,11 +674,6 @@ class SetupCommand(Command):
                             principal_roles_subcommand=Subcommands.GRANT,
                             principal_name=principal_name,
                             principal_role_name=role_name,
-                            catalog_name="",
-                            catalog_role_name="",
-                            properties={},
-                            set_properties={},
-                            remove_properties=[],
                         )
                         role_cmd.validate()
                         role_cmd.execute(api)
@@ -723,12 +715,6 @@ class SetupCommand(Command):
                     cmd = PrincipalRolesCommand(
                         principal_roles_subcommand=Subcommands.CREATE,
                         principal_role_name=role_name,
-                        principal_name="",
-                        catalog_name="",
-                        catalog_role_name="",
-                        properties={},
-                        set_properties={},
-                        remove_properties=[],
                     )
                     cmd.validate()
                     cmd.execute(api)
@@ -905,73 +891,62 @@ class SetupCommand(Command):
                         catalogs_subcommand=command_args.get(
                             "catalogs_subcommand", Subcommands.CREATE
                         ),
-                        catalog_name=command_args.get("catalog_name", ""),
-                        catalog_type=command_args.get("catalog_type", "INTERNAL"),
-                        default_base_location=command_args.get(
-                            "default_base_location", ""
-                        ),
-                        storage_type=command_args.get("storage_type", ""),
-                        allowed_locations=command_args.get("allowed_locations") or [],
-                        properties=command_args.get("properties") or {},
-                        set_properties=command_args.get("set_properties") or {},
-                        remove_properties=command_args.get("remove_properties") or [],
-                        role_arn=command_args.get("role_arn", ""),
-                        external_id=command_args.get("external_id", ""),
-                        user_arn=command_args.get("user_arn", ""),
-                        region=command_args.get("region", ""),
-                        tenant_id=command_args.get("tenant_id", ""),
-                        multi_tenant_app_name=command_args.get(
-                            "multi_tenant_app_name", ""
-                        ),
-                        consent_url=command_args.get("consent_url", ""),
-                        service_account=command_args.get("service_account", ""),
-                        hierarchical=command_args.get("hierarchical", False),
-                        endpoint=command_args.get("endpoint", ""),
-                        endpoint_internal=command_args.get("endpoint_internal", ""),
-                        sts_endpoint=command_args.get("sts_endpoint", ""),
-                        sts_unavailable=command_args.get("sts_unavailable", False),
-                        kms_unavailable=command_args.get("kms_unavailable", False),
-                        path_style_access=command_args.get("path_style_access", False),
-                        current_kms_key=command_args.get("current_kms_key", ""),
-                        allowed_kms_keys=command_args.get("allowed_kms_keys") or [],
+                        catalog_name=command_args.get("catalog_name"),
+                        catalog_type=command_args.get("catalog_type"),
+                        default_base_location=command_args.get("default_base_location"),
+                        storage_type=command_args.get("storage_type"),
+                        allowed_locations=command_args.get("allowed_locations"),
+                        properties=command_args.get("properties"),
+                        set_properties=command_args.get("set_properties"),
+                        remove_properties=command_args.get("remove_properties"),
+                        role_arn=command_args.get("role_arn"),
+                        external_id=command_args.get("external_id"),
+                        user_arn=command_args.get("user_arn"),
+                        region=command_args.get("region"),
+                        tenant_id=command_args.get("tenant_id"),
+                        multi_tenant_app_name=command_args.get("multi_tenant_app_name"),
+                        consent_url=command_args.get("consent_url"),
+                        service_account=command_args.get("service_account"),
+                        hierarchical=command_args.get("hierarchical"),
+                        endpoint=command_args.get("endpoint"),
+                        endpoint_internal=command_args.get("endpoint_internal"),
+                        sts_endpoint=command_args.get("sts_endpoint"),
+                        sts_unavailable=command_args.get("sts_unavailable"),
+                        kms_unavailable=command_args.get("kms_unavailable"),
+                        path_style_access=command_args.get("path_style_access"),
+                        current_kms_key=command_args.get("current_kms_key"),
+                        allowed_kms_keys=command_args.get("allowed_kms_keys"),
                         catalog_connection_type=command_args.get(
-                            "catalog_connection_type", ""
+                            "catalog_connection_type"
                         ),
-                        catalog_uri=command_args.get("catalog_uri", ""),
-                        hadoop_warehouse=command_args.get("hadoop_warehouse", ""),
-                        hive_warehouse=command_args.get("hive_warehouse", ""),
+                        catalog_uri=command_args.get("catalog_uri"),
+                        hadoop_warehouse=command_args.get("hadoop_warehouse"),
+                        hive_warehouse=command_args.get("hive_warehouse"),
                         iceberg_remote_catalog_name=command_args.get(
-                            "iceberg_remote_catalog_name", ""
+                            "iceberg_remote_catalog_name"
                         ),
                         catalog_authentication_type=command_args.get(
-                            "catalog_authentication_type", ""
+                            "catalog_authentication_type"
                         ),
-                        catalog_token_uri=command_args.get("catalog_token_uri", ""),
-                        catalog_client_id=command_args.get("catalog_client_id", ""),
-                        catalog_client_secret=command_args.get(
-                            "catalog_client_secret", ""
-                        ),
-                        catalog_client_scopes=command_args.get("catalog_client_scopes")
-                        or [],
-                        catalog_bearer_token=command_args.get(
-                            "catalog_bearer_token", ""
-                        ),
-                        catalog_role_arn=command_args.get("catalog_role_arn", ""),
+                        catalog_token_uri=command_args.get("catalog_token_uri"),
+                        catalog_client_id=command_args.get("catalog_client_id"),
+                        catalog_client_secret=command_args.get("catalog_client_secret"),
+                        catalog_client_scopes=command_args.get("catalog_client_scopes"),
+                        catalog_bearer_token=command_args.get("catalog_bearer_token"),
+                        catalog_role_arn=command_args.get("catalog_role_arn"),
                         catalog_role_session_name=command_args.get(
-                            "catalog_role_session_name", ""
+                            "catalog_role_session_name"
                         ),
-                        catalog_external_id=command_args.get("catalog_external_id", ""),
+                        catalog_external_id=command_args.get("catalog_external_id"),
                         catalog_signing_region=command_args.get(
-                            "catalog_signing_region", ""
+                            "catalog_signing_region"
                         ),
-                        catalog_signing_name=command_args.get(
-                            "catalog_signing_name", ""
-                        ),
+                        catalog_signing_name=command_args.get("catalog_signing_name"),
                         catalog_service_identity_type=command_args.get(
-                            "catalog_service_identity_type", ""
+                            "catalog_service_identity_type"
                         ),
                         catalog_service_identity_iam_arn=command_args.get(
-                            "catalog_service_identity_iam_arn", ""
+                            "catalog_service_identity_iam_arn"
                         ),
                     )
                     cmd.validate()
@@ -1016,10 +991,7 @@ class SetupCommand(Command):
                             catalog_roles_subcommand=Subcommands.CREATE,
                             catalog_role_name=role_name,
                             catalog_name=catalog_name,
-                            properties=role_data.get("properties", {}),
-                            principal_role_name="",
-                            set_properties={},
-                            remove_properties=[],
+                            properties=role_data.get("properties"),
                         )
                         cmd.validate()
                         cmd.execute(api)
@@ -1061,9 +1033,6 @@ class SetupCommand(Command):
                             catalog_role_name=role_name,
                             principal_role_name=principal_role_name,
                             catalog_name=catalog_name,
-                            properties=None,
-                            set_properties={},
-                            remove_properties=[],
                         )
                         cmd.validate()
                         cmd.execute(api)
@@ -1121,16 +1090,7 @@ class SetupCommand(Command):
         try:
             log_message = f"privilege '{privilege}' on {level} '{namespace or catalog_name}' to role '{catalog_role_name}'"
             logger.info(f"Granting {log_message}")
-            privilege_args = {
-                "action": Actions.GRANT,
-                "cascade": False,
-                "privilege": privilege,
-                "catalog_role_name": catalog_role_name,
-                "catalog_name": catalog_name,
-            }
-            if level == "namespace":
-                if namespace:
-                    privilege_args["namespace"] = namespace.split(".")
+
             subcommand_map = {
                 "catalog": Subcommands.CATALOG,
                 "namespace": Subcommands.NAMESPACE,
@@ -1139,16 +1099,17 @@ class SetupCommand(Command):
             if not privileges_subcommand:
                 logger.warning(f"Unsupported privilege level '{level}'")
                 return
+
             cmd = PrivilegesCommand(
                 privileges_subcommand=privileges_subcommand,
-                action=str(privilege_args.get("action")),
-                cascade=bool(privilege_args.get("cascade")),
-                privilege=str(privilege_args.get("privilege")),
-                catalog_role_name=str(privilege_args.get("catalog_role_name")),
-                catalog_name=str(privilege_args.get("catalog_name")),
-                namespace=cast(List[str], privilege_args.get("namespace") or []),
-                view="",
-                table="",
+                action=Actions.GRANT,
+                cascade=False,
+                privilege=privilege,
+                catalog_role_name=catalog_role_name,
+                catalog_name=catalog_name,
+                namespace=namespace.split(".")
+                if level == "namespace" and namespace
+                else None,
             )
             cmd.validate()
             cmd.execute(api)
@@ -1202,7 +1163,11 @@ class SetupCommand(Command):
             parts = ns_name.split(".")
             if len(parts) > 1:
                 parent_ns = ".".join(parts[:-1])
-                if parent_ns in existing_namespaces and parent_ns not in listed_parents:
+                if (
+                    not dry_run
+                    and parent_ns in existing_namespaces
+                    and parent_ns not in listed_parents
+                ):
                     try:
                         sub_ns = catalog_api.list_namespaces(
                             prefix=catalog_name, parent=UNIT_SEPARATOR.join(parts[:-1])
@@ -1236,9 +1201,8 @@ class SetupCommand(Command):
                         namespaces_subcommand=Subcommands.CREATE,
                         catalog=catalog_name,
                         namespace=ns_name.split("."),
-                        parent=[],
-                        location=ns_data.get("location") or "",
-                        properties=ns_data.get("properties", {}),
+                        location=ns_data.get("location"),
+                        properties=ns_data.get("properties"),
                     )
                     cmd.validate()
                     cmd.execute(api)
@@ -1385,11 +1349,6 @@ class SetupCommand(Command):
                             attachment_type=attachment_type,
                             attachment_path=attachment_path,
                             parameters=attachment.get("parameters"),
-                            policy_file="",
-                            policy_type="",
-                            policy_description="",
-                            target_name="",
-                            detach_all=False,
                             applicable=False,
                         )
                         cmd.validate()

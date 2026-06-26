@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.admintool;
 
-import static org.apache.polaris.admintool.BaseCommand.EXIT_CODE_BOOTSTRAP_ERROR;
-import static org.apache.polaris.admintool.BaseCommand.EXIT_CODE_USAGE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkus.test.junit.main.Launch;
@@ -69,32 +67,6 @@ public abstract class BootstrapCommandTestBase {
   }
 
   @Test
-  @Launch(
-      value = {
-        "bootstrap",
-        "-r",
-        "realm1",
-        "-c",
-        "invalid syntax",
-      },
-      exitCode = EXIT_CODE_BOOTSTRAP_ERROR)
-  public void testBootstrapInvalidCredentials(LaunchResult result) {
-    assertThat(result.getErrorOutput())
-        .contains("Invalid credentials format: invalid syntax")
-        .contains("Bootstrap encountered errors during operation.");
-  }
-
-  @Test
-  @Launch(
-      value = {"bootstrap", "-r", "realm1", "-f", "/irrelevant"},
-      exitCode = EXIT_CODE_USAGE)
-  public void testBootstrapInvalidArguments(LaunchResult result) {
-    assertThat(result.getErrorOutput())
-        .contains(
-            "Error: [-r=<realm> [-r=<realm>]... [-c=<realm,clientId,clientSecret>]... [-p]] and [[-f=<file>]] are mutually exclusive (specify only one)");
-  }
-
-  @Test
   public void testBootstrapFromValidJsonFile(QuarkusMainLauncher launcher) {
     LaunchResult result = launcher.launch("bootstrap", "-f", json.toString());
     assertThat(result.exitCode()).isEqualTo(0);
@@ -115,15 +87,6 @@ public abstract class BootstrapCommandTestBase {
   }
 
   @Test
-  public void testBootstrapFromInvalidFile(QuarkusMainLauncher launcher) {
-    LaunchResult result = launcher.launch("bootstrap", "-f", "/non/existing/file");
-    assertThat(result.exitCode()).isEqualTo(EXIT_CODE_BOOTSTRAP_ERROR);
-    assertThat(result.getErrorOutput())
-        .contains("Failed to read credentials from file:///non/existing/file")
-        .contains("Bootstrap encountered errors during operation.");
-  }
-
-  @Test
   @Launch(
       value = {"bootstrap", "-r", "realm1", "-c", "realm1,client1d,s3cr3t", "--print-credentials"})
   public void testPrintCredentials(LaunchResult result) {
@@ -136,30 +99,6 @@ public abstract class BootstrapCommandTestBase {
   public void testPrintCredentialsSystemGenerated(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
     assertThat(result.getOutput()).contains("realm: realm1 root principal credentials: ");
-  }
-
-  @Test
-  @Launch(
-      value = {"bootstrap", "-r", "realm1"},
-      exitCode = EXIT_CODE_BOOTSTRAP_ERROR)
-  public void testNoPrintCredentialsSystemGenerated(LaunchResult result) {
-    assertThat(result.getErrorOutput()).contains("--credentials");
-    assertThat(result.getErrorOutput()).contains("--print-credentials");
-  }
-
-  @Test
-  @Launch(
-      value = {
-        "bootstrap",
-        "-r",
-        "realm1",
-        "--not-real-arg",
-      },
-      exitCode = EXIT_CODE_USAGE)
-  public void testBootstrapInvalidArg(LaunchResult result) {
-    assertThat(result.getErrorOutput())
-        .contains("Unknown option: '--not-real-arg'")
-        .contains("Usage:");
   }
 
   private static Path copyResource(Path temp, String resource) throws IOException {

@@ -23,8 +23,6 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.persistence.nosql.nodeids.impl.NodeManagementImpl.RESCHEDULE_AFTER_FAILURE;
 import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.polaris.ids.api.IdGeneratorSpec;
@@ -35,6 +33,8 @@ import org.apache.polaris.persistence.nosql.nodeids.spi.NodeState;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -126,7 +126,7 @@ public class TestNodeLeases {
           @Nullable
           @Override
           public NodeState persist(
-              int nodeId, Optional<NodeState> expectedNodeState, @Nonnull NodeState newState) {
+              int nodeId, Optional<NodeState> expectedNodeState, @NonNull NodeState newState) {
             if (persistFailure.compareAndSet(true, false)) {
               throw new RuntimeException("forced persist failure");
             }

@@ -41,6 +41,33 @@ from apache_polaris.sdk.management import PolarisDefaultApi, Principal, Principa
   CreatePrincipalRequest, AddGrantRequest, GrantCatalogRoleRequest, GrantPrincipalRoleRequest, UpdateCatalogRequest
 
 
+_requires_s3_backend = pytest.mark.skipif(
+    os.environ.get('S3_TEST_BACKEND') not in ('aws', 'minio', 'rustfs'),
+    reason='S3_TEST_BACKEND is not set to aws, minio, or rustfs'
+)
+
+
+def create_s3_client_from_config(config):
+    """Create boto3 S3 client from Polaris config response.
+
+    Uses credentials, session token, and endpoint from the loadTable
+    response config. Works for both AWS (vended credentials) and
+    MinIO (STS credentials with endpoint override).
+    """
+    client_kwargs = {
+        'aws_access_key_id': config.get('s3.access-key-id'),
+        'aws_secret_access_key': config.get('s3.secret-access-key')
+    }
+
+    if 's3.session-token' in config:
+        client_kwargs['aws_session_token'] = config['s3.session-token']
+
+    if 's3.endpoint' in config:
+        client_kwargs['endpoint_url'] = config['s3.endpoint']
+
+    return boto3.client('s3', **client_kwargs)
+
+
 @pytest.fixture
 def snowman(polaris_url, polaris_catalog_url, root_client, snowflake_catalog):
   """
@@ -235,8 +262,7 @@ def reader_catalog_client(polaris_catalog_url, reader):
                                                           host=polaris_catalog_url)))
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, snowman, reader):
   """
   Basic spark test - using snowman, create namespaces and a table. Insert into the table and read records back.
@@ -298,8 +324,7 @@ def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, 
     spark.sql('DROP NAMESPACE db1')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_cannot_create_table_outside_of_namespace_dir(root_client, snowflake_catalog, polaris_catalog_url,
                                                             snowman, reader):
   """
@@ -329,8 +354,7 @@ def test_spark_cannot_create_table_outside_of_namespace_dir(root_client, snowfla
       assert "is not in the list of allowed locations" in e.java_exception.getMessage()
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                      reader):
   """
@@ -368,8 +392,7 @@ def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_cata
         spark.sql('DROP TABLE table_in_custom_namespace_location PURGE')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_can_create_table_in_custom_allowed_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                       reader):
   """
@@ -398,8 +421,7 @@ def test_spark_can_create_table_in_custom_allowed_dir(root_client, snowflake_cat
     spark.sql("drop table iceberg_table_outside_namespace PURGE")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                     reader):
   """
@@ -432,8 +454,7 @@ def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catal
     spark.sql("drop table my_iceberg_table PURGE")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                   snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
@@ -490,10 +511,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
     assert 's3.secret-access-key' in response.config
     assert 's3.session-token' in response.config
 
-    s3 = boto3.client('s3',
-                      aws_access_key_id=response.config['s3.access-key-id'],
-                      aws_secret_access_key=response.config['s3.secret-access-key'],
-                      aws_session_token=response.config['s3.session-token'])
+    s3 = create_s3_client_from_config(response.config)
 
     # Extract the table location from the metadata_location in the response
     # metadata_location format: s3://bucket/path/to/table/metadata/v1.metadata.json
@@ -548,8 +566,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
       pytest.fail(f"Expected all data to be deleted, but found data files {objects['Contents']}")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                         snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
@@ -613,10 +630,7 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
     assert 's3.secret-access-key' in response.config
     assert 's3.session-token' in response.config
 
-    s3 = boto3.client('s3',
-                      aws_access_key_id=response.config['s3.access-key-id'],
-                      aws_secret_access_key=response.config['s3.secret-access-key'],
-                      aws_session_token=response.config['s3.session-token'])
+    s3 = create_s3_client_from_config(response.config)
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                               Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/{table_name}data/')
@@ -655,8 +669,7 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
                       Delete={'Objects': objs_to_delete})
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                    snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
@@ -716,10 +729,7 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
     assert 's3.secret-access-key' in response.config
     assert 's3.session-token' in response.config
 
-    s3 = boto3.client('s3',
-                      aws_access_key_id=response.config['s3.access-key-id'],
-                      aws_secret_access_key=response.config['s3.secret-access-key'],
-                      aws_session_token=response.config['s3.session-token'])
+    s3 = create_s3_client_from_config(response.config)
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                               Prefix=table_base_dir)
@@ -755,8 +765,7 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
                       Delete={'Objects': objs_to_delete})
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 # @pytest.mark.skip(reason="This test is flaky")
 def test_spark_credentials_can_create_views(snowflake_catalog, polaris_catalog_url, snowman):
   """
@@ -814,8 +823,7 @@ def test_spark_credentials_can_create_views(snowflake_catalog, polaris_catalog_u
     spark.sql(f"drop table {table_name} PURGE")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, polaris_catalog_url,
                                                 snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
@@ -850,10 +858,7 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
   assert 's3.secret-access-key' in response.config
   assert 's3.session-token' in response.config
 
-  s3 = boto3.client('s3',
-                    aws_access_key_id=response.config['s3.access-key-id'],
-                    aws_secret_access_key=response.config['s3.secret-access-key'],
-                    aws_session_token=response.config['s3.session-token'])
+  s3 = create_s3_client_from_config(response.config)
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                             Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/')
@@ -906,8 +911,7 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
     spark.sql('DROP NAMESPACE db1')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'false').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalog, polaris_catalog_url,
                                                    snowman, reader_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
@@ -944,10 +948,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
   assert 's3.secret-access-key' in response.config
   assert 's3.session-token' in response.config
 
-  s3 = boto3.client('s3',
-                    aws_access_key_id=response.config['s3.access-key-id'],
-                    aws_secret_access_key=response.config['s3.secret-access-key'],
-                    aws_session_token=response.config['s3.session-token'])
+  s3 = create_s3_client_from_config(response.config)
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                             Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/metadata/')
@@ -996,8 +997,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
     spark.sql('DROP NAMESPACE db1')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'false').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_credentials_s3_direct_without_read(
     snowflake_catalog, snowman_catalog_client, creator_catalog_client, test_bucket):
   """
@@ -1053,8 +1053,7 @@ def create_principal(polaris_url, polaris_catalog_url, api, principal_name):
   return rotate_credentials
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, snowflake_catalog, polaris_catalog_url,
                                                                 snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
@@ -1093,15 +1092,9 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
   # ensure that the slashes are removed before "/metadata/"
   assert response2.metadata_location.startswith(f"s3://{test_bucket}/{prefix2}/metadata/")
 
-  s3_1 = boto3.client('s3',
-                      aws_access_key_id=response1.config['s3.access-key-id'],
-                      aws_secret_access_key=response1.config['s3.secret-access-key'],
-                      aws_session_token=response1.config['s3.session-token'])
+  s3_1 = create_s3_client_from_config(response1.config)
 
-  s3_2 = boto3.client('s3',
-                      aws_access_key_id=response2.config['s3.access-key-id'],
-                      aws_secret_access_key=response2.config['s3.secret-access-key'],
-                      aws_session_token=response2.config['s3.session-token'])
+  s3_2 = create_s3_client_from_config(response2.config)
   for client, prefix in [(s3_1, prefix1), (s3_2, prefix2)]:
     objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
                                   Prefix=f'{prefix}/metadata/')
@@ -1132,8 +1125,7 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
     spark.sql('DROP NAMESPACE db1')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
   """
   Create a table using CTAS and ensure that credentials are vended
@@ -1161,8 +1153,7 @@ def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
     spark.sql(f"drop table {table_name}_t2 PURGE")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
-                    reason='AWS_TEST_ENABLED is not set or is false')
+@_requires_s3_backend
 def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, snowflake_catalog, polaris_catalog_url,
                                                 snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
     """
@@ -1194,10 +1185,7 @@ def test_spark_credentials_s3_exception_on_metadata_file_deletion(root_client, s
     assert 's3.secret-access-key' in response.config
     assert 's3.session-token' in response.config
 
-    s3 = boto3.client('s3',
-                      aws_access_key_id=response.config['s3.access-key-id'],
-                      aws_secret_access_key=response.config['s3.secret-access-key'],
-                      aws_session_token=response.config['s3.session-token'])
+    s3 = create_s3_client_from_config(response.config)
 
     # Get metadata files
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',

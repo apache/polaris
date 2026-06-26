@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.admintool.nosql.maintenance;
 
-import jakarta.inject.Inject;
-import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
+import java.util.OptionalLong;
+import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInProgressException;
 import picocli.CommandLine;
 
 @CommandLine.Command(
@@ -27,7 +27,12 @@ import picocli.CommandLine;
     mixinStandardHelpOptions = true,
     description = {"Run Polaris persistence maintenance."})
 public class NoSqlMaintenanceRunCommand extends BaseNoSqlMaintenanceCommand {
-  @Inject MaintenanceService maintenanceService;
+  @CommandLine.Option(
+      names = {"--supersede-run"},
+      paramLabel = "<run-id>",
+      description =
+          "Supersede the latest unfinished maintenance run if its run ID matches <run-id>.")
+  Long supersedeRun;
 
   // TODO once there's a fully-tested tasks "client" and 'MaintenanceTaskBehavior', _running_
   //  maintenance should be directed through the tasks-API, giving users the option to run
@@ -48,10 +53,31 @@ public class NoSqlMaintenanceRunCommand extends BaseNoSqlMaintenanceCommand {
         "This can run for quite some time, messages may be not be printed immediately, stay patient...");
     out.println();
 
-    var runInformation = maintenanceService.performMaintenance(runSpec);
+    try {
+      var runInformation =
+          maintenanceService.performMaintenance(
+              runSpec, supersedeRun != null ? OptionalLong.of(supersedeRun) : OptionalLong.empty());
 
-    printRunInformation(runInformation, false);
+      printRunInformation(runInformation, false);
 
-    return 0;
+      return 0;
+    } catch (MaintenanceRunInProgressException e) {
+      var err = spec.commandLine().getErr();
+      err.println();
+      if (supersedeRun != null) {
+        err.printf(
+            "Cannot start NoSql persistence maintenance: requested supersede run ID %d does not match latest unfinished run %d.%n",
+            supersedeRun, e.runId());
+      } else {
+        err.printf(
+            "Cannot start NoSql persistence maintenance: latest run %d started at %s has not finished.%n",
+            e.runId(), e.runInformation().started());
+      }
+      err.printf(
+          "Use '--supersede-run=%d' to start a new maintenance run if that run is no longer active.%n",
+          e.runId());
+      err.println();
+      return EXIT_CODE_MAINTENANCE_ERROR;
+    }
   }
 }

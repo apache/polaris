@@ -43,6 +43,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -128,7 +129,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .isNotNull()
         .hasSize(2)
         .extracting(PolarisEntity::toCore)
-        .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
+        .containsExactlyInAnyOrder(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
     Assertions.assertThat(createdEntities).containsExactlyInAnyOrderElementsOf(listedEntities);
   }
@@ -264,6 +265,12 @@ public abstract class BasePolarisMetaStoreManagerTest {
     polarisTestMetaStoreManager.testPrivileges();
   }
 
+  /** Test that duplicate grant writes are idempotent */
+  @Test
+  protected void testGrantRecordWriteIsIdempotent() {
+    polarisTestMetaStoreManager.testGrantRecordWriteIsIdempotent();
+  }
+
   /** test entity rename */
   @Test
   protected void testRename() {
@@ -287,6 +294,21 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testLoadResolvedEntitiesGranteeVsSecurableRecords() {
     polarisTestMetaStoreManager.testLoadResolvedEntitiesGranteeVsSecurableRecords();
+  }
+
+  /** test that resolved entities do not include grant records referencing dropped grantees */
+  @Test
+  protected void testLoadResolvedEntitySkipsDroppedGranteeReferences() {
+    polarisTestMetaStoreManager.testLoadResolvedEntitySkipsDroppedGranteeReferences();
+  }
+
+  /**
+   * Test that loadGrantsToGrantee/loadGrantsOnSecurable return only grants where the entity plays
+   * the expected role — regression test for entities that are both grantee and securable.
+   */
+  @Test
+  protected void testLoadGrantsGranteeVsSecurableRecords() {
+    polarisTestMetaStoreManager.testLoadGrantsGranteeVsSecurableRecords();
   }
 
   /** Test the set of functions for the entity cache */
@@ -505,5 +527,22 @@ public abstract class BasePolarisMetaStoreManagerTest {
       executorService.shutdown();
       Assertions.assertThat(executorService.awaitTermination(10, TimeUnit.MINUTES)).isTrue();
     }
+  }
+
+  @Test
+  protected void testResetCredentialsClientIdCollision() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+
+    PrincipalEntity principalA = polarisTestMetaStoreManager.createPrincipal("principalA");
+    PrincipalEntity principalB = polarisTestMetaStoreManager.createPrincipal("principalB");
+
+    String principalAClientId = principalA.getClientId();
+
+    Assertions.assertThatThrownBy(
+            () ->
+                metaStoreManager.resetPrincipalSecrets(
+                    callCtx, principalB.getId(), principalAClientId, null))
+        .isInstanceOf(AlreadyExistsException.class);
   }
 }

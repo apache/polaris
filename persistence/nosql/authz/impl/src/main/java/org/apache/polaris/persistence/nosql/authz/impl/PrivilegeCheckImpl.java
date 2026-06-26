@@ -18,17 +18,17 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
-import jakarta.annotation.Nonnull;
 import java.util.Set;
 import org.apache.polaris.persistence.nosql.authz.api.AclChain;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeCheck;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import org.jspecify.annotations.NonNull;
 
 record PrivilegeCheckImpl(Set<String> roleIds, Privileges privileges) implements PrivilegeCheck {
 
   @Override
-  public PrivilegeSet effectivePrivilegeSet(@Nonnull AclChain aclChain) {
+  public PrivilegeSet effectivePrivilegeSet(@NonNull AclChain aclChain) {
     // Collect granted+restricted from the direct ACL
     PrivilegeSet.PrivilegeSetBuilder topGranted = privileges.newPrivilegesSetBuilder();
     PrivilegeSet.PrivilegeSetBuilder topRestricted = privileges.newPrivilegesSetBuilder();

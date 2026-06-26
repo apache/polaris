@@ -25,7 +25,6 @@ import static org.apache.polaris.core.policy.PolicyEntity.POLICY_TYPE_CODE_KEY;
 import static org.apache.polaris.core.policy.PolicyEntity.POLICY_VERSION_KEY;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -37,6 +36,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.PolicyObj;
+import org.jspecify.annotations.NonNull;
 
 final class PolicyMapping extends BaseCatalogContentMapping<PolicyObj, PolicyObj.Builder> {
   PolicyMapping() {
@@ -48,14 +48,14 @@ final class PolicyMapping extends BaseCatalogContentMapping<PolicyObj, PolicyObj
   }
 
   @Override
-  public PolicyObj.Builder newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public PolicyObj.Builder newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return PolicyObj.builder();
   }
 
   @Override
   void mapToObjTypeSpecific(
       PolicyObj.Builder baseBuilder,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> principalSecrets,
       Map<String, String> properties,
       Map<String, String> internalProperties) {

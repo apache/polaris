@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.policy;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
-import jakarta.annotation.Nonnull;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -29,12 +28,13 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
+import org.jspecify.annotations.NonNull;
 
 public class PolicyCatalogUtils {
 
   public static PolarisResolvedPathWrapper getResolvedPathWrapper(
-      @Nonnull PolarisResolutionManifestCatalogView resolutionManifest,
-      @Nonnull PolicyAttachmentTarget target) {
+      @NonNull PolarisResolutionManifestCatalogView resolutionManifest,
+      @NonNull PolicyAttachmentTarget target) {
     return switch (target.getType()) {
       // get the current catalog entity, since policy cannot apply across catalog at this moment
       case CATALOG -> resolutionManifest.getResolvedReferenceCatalogEntity();

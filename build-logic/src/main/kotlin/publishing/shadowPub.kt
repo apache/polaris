@@ -43,84 +43,91 @@ internal fun configureShadowPublishing(
   project: Project,
   mavenPublication: MavenPublication,
   softwareComponentFactory: SoftwareComponentFactory,
-) =
-  project.run {
-    fun isPublishable(element: ConfigurationVariant): Boolean {
-      for (artifact in element.artifacts) {
-        if (JavaBasePlugin.UNPUBLISHABLE_VARIANT_ARTIFACTS.contains(artifact.type)) {
-          return false
-        }
-      }
-      return true
-    }
-
-    val shadowJar = project.tasks.named("shadowJar")
-
-    val shadowApiElements =
-      project.configurations.create("shadowApiElements") {
-        isCanBeConsumed = true
-        isCanBeResolved = false
-        attributes {
-          attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage::class.java, Usage.JAVA_API))
-          attribute(
-            Category.CATEGORY_ATTRIBUTE,
-            project.objects.named(Category::class.java, Category.LIBRARY),
-          )
-          attribute(
-            LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
-            project.objects.named(LibraryElements::class.java, LibraryElements.JAR),
-          )
-          attribute(
-            Bundling.BUNDLING_ATTRIBUTE,
-            project.objects.named(Bundling::class.java, Bundling.SHADOWED),
-          )
-        }
-        outgoing.artifact(shadowJar)
-      }
-
-    val component = softwareComponentFactory.adhoc("shadow")
-    component.addVariantsFromConfiguration(shadowApiElements) {
-      if (isPublishable(configurationVariant)) {
-        mapToMavenScope("compile")
-      } else {
-        skip()
+) = project.run {
+  fun isPublishable(element: ConfigurationVariant): Boolean {
+    for (artifact in element.artifacts) {
+      if (JavaBasePlugin.UNPUBLISHABLE_VARIANT_ARTIFACTS.contains(artifact.type)) {
+        return false
       }
     }
-    // component.addVariantsFromConfiguration(configurations.getByName("runtimeElements")) {
-    component.addVariantsFromConfiguration(
-      project.configurations.getByName("shadowRuntimeElements")
-    ) {
-      if (isPublishable(configurationVariant)) {
-        mapToMavenScope("runtime")
-      } else {
-        skip()
+    return true
+  }
+
+  val shadowJar = project.tasks.named("shadowJar")
+
+  val shadowApiElements =
+    project.configurations.create("shadowApiElements") {
+      isCanBeConsumed = true
+      isCanBeResolved = false
+      attributes {
+        attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage::class.java, Usage.JAVA_API))
+        attribute(
+          Category.CATEGORY_ATTRIBUTE,
+          project.objects.named(Category::class.java, Category.LIBRARY),
+        )
+        attribute(
+          LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+          project.objects.named(LibraryElements::class.java, LibraryElements.JAR),
+        )
+        attribute(
+          Bundling.BUNDLING_ATTRIBUTE,
+          project.objects.named(Bundling::class.java, Bundling.SHADOWED),
+        )
       }
+      outgoing.artifact(shadowJar)
     }
-    // Sonatype requires the javadoc and sources jar to be present, but the
-    // Shadow extension does not publish those.
-    component.addVariantsFromConfiguration(project.configurations.getByName("javadocElements")) {}
-    component.addVariantsFromConfiguration(project.configurations.getByName("sourcesElements")) {}
-    mavenPublication.from(component)
 
-    // This a replacement to add dependencies to the pom, if necessary. Equivalent to
-    // 'shadowExtension.component(mavenPublication)', which we cannot use.
+  val component = softwareComponentFactory.adhoc("shadow")
+  component.addVariantsFromConfiguration(shadowApiElements) {
+    if (isPublishable(configurationVariant)) {
+      mapToMavenScope("compile")
+    } else {
+      skip()
+    }
+  }
+  component.addVariantsFromConfiguration(
+    project.configurations.getByName("shadowRuntimeElements")
+  ) {
+    if (isPublishable(configurationVariant)) {
+      mapToMavenScope("runtime")
+    } else {
+      skip()
+    }
+  }
+  // Sonatype requires the javadoc and sources jar to be present, but the
+  // Shadow extension does not publish those.
+  project.configurations
+    .matching { it.name == "javadocElements" || it.name == "sourcesElements" }
+    .configureEach { component.addVariantsFromConfiguration(this) {} }
+  mavenPublication.from(component)
 
-    mavenPublication.pom {
-      withXml {
-        val node = asNode()
-        val depNode = node.get("dependencies")
-        val dependenciesNode =
-          if ((depNode as NodeList).isNotEmpty()) depNode[0] as Node
-          else node.appendNode("dependencies")
-        project.configurations.getByName("shadow").allDependencies.forEach {
-          if (it is ProjectDependency) {
-            val dependencyNode = dependenciesNode.appendNode("dependency")
-            dependencyNode.appendNode("groupId", it.group)
-            dependencyNode.appendNode("artifactId", it.name)
-            dependencyNode.appendNode("version", it.version)
-            dependencyNode.appendNode("scope", "runtime")
-          }
-        }
+  // This a replacement to add dependencies to the pom, if necessary. Equivalent to
+  // 'shadowExtension.component(mavenPublication)', which we cannot use.
+
+  val pomDependencies = project.provider {
+    project.configurations
+      .getByName("shadow")
+      .allDependencies
+      .filter { it is ProjectDependency }
+      .map { PomDependency(it.group, it.name, it.version) }
+  }
+
+  mavenPublication.pom {
+    withXml {
+      val node = asNode()
+      val depNode = node.get("dependencies")
+      val dependenciesNode =
+        if ((depNode as NodeList).isNotEmpty()) depNode[0] as Node
+        else node.appendNode("dependencies")
+      pomDependencies.get().forEach {
+        val dependencyNode = dependenciesNode.appendNode("dependency")
+        dependencyNode.appendNode("groupId", it.group)
+        dependencyNode.appendNode("artifactId", it.name)
+        dependencyNode.appendNode("version", it.version)
+        dependencyNode.appendNode("scope", "runtime")
       }
     }
   }
+}
+
+private data class PomDependency(val group: String?, val name: String, val version: String?)

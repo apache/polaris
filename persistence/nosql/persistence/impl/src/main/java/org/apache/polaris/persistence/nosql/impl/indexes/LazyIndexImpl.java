@@ -18,41 +18,109 @@
  */
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
-import static org.apache.polaris.persistence.nosql.impl.indexes.SupplyOnce.memoize;
-
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class LazyIndexImpl<V> implements IndexSpi<V> {
+  private static final Object STATE_UNLOADED = new Object();
+  private static final Object STATE_LOADING = new Object();
 
   private final Supplier<IndexSpi<V>> loader;
-  private boolean loaded;
-  private ObjRef objRef;
+  private volatile Object loadState = STATE_UNLOADED;
+  private volatile ObjRef objRef;
   private final IndexKey firstKey;
   private final IndexKey lastKey;
+  private Thread loadingThread;
 
   LazyIndexImpl(Supplier<IndexSpi<V>> supplier, IndexKey firstKey, IndexKey lastKey) {
     this.firstKey = firstKey;
     this.lastKey = lastKey;
-    this.loader =
-        memoize(
-            () -> {
-              try {
-                return supplier.get();
-              } finally {
-                loaded = true;
-              }
-            });
+    this.loader = supplier;
   }
 
   private IndexSpi<V> loaded() {
-    return loader.get();
+    var state = loadState;
+    if (notLoadedYet(state)) {
+      return loadOrAwait();
+    }
+    return resolvedState(state);
+  }
+
+  private static boolean notLoadedYet(Object state) {
+    return state == STATE_UNLOADED || state == STATE_LOADING;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <V> IndexSpi<V> resolvedState(Object state) {
+    if (state instanceof RuntimeException re) {
+      throw re;
+    }
+    if (state instanceof Error err) {
+      throw err;
+    }
+    return (IndexSpi<V>) state;
+  }
+
+  private IndexSpi<V> loadOrAwait() {
+    Thread current = Thread.currentThread();
+    synchronized (this) {
+      var state = loadState;
+      if (state == STATE_UNLOADED) {
+        loadState = STATE_LOADING;
+        loadingThread = current;
+      } else if (state == STATE_LOADING) {
+        if (loadingThread == current) {
+          throw new IllegalStateException("Recursive call to LazyIndexImpl.loaded() detected");
+        }
+        var interrupted = false;
+        try {
+          while ((state = loadState) == STATE_LOADING) {
+            try {
+              wait();
+            } catch (InterruptedException e) {
+              interrupted = true;
+            }
+          }
+        } finally {
+          if (interrupted) {
+            current.interrupt();
+          }
+        }
+        return resolvedState(state);
+      } else {
+        return resolvedState(state);
+      }
+    }
+
+    try {
+      var loaded = loader.get();
+      completeLoad(loaded);
+      return loaded;
+    } catch (RuntimeException | Error e) {
+      completeLoad(e);
+      throw e;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void completeLoad(Object state) {
+    synchronized (this) {
+      if (state instanceof IndexSpi<?> index) {
+        var objRef = this.objRef;
+        if (objRef != null) {
+          ((IndexSpi<V>) index).setObjId(objRef);
+        }
+      }
+      loadState = state;
+      loadingThread = null;
+      notifyAll();
+    }
   }
 
   @Override
@@ -62,13 +130,19 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
 
   @Override
   public IndexSpi<V> setObjId(ObjRef objRef) {
-    this.objRef = objRef;
+    synchronized (this) {
+      this.objRef = objRef;
+      var state = loadState;
+      if (!notLoadedYet(state)) {
+        resolvedState(state).setObjId(objRef);
+      }
+    }
     return this;
   }
 
   @Override
   public boolean isModified() {
-    if (!loaded) {
+    if (notLoadedYet(loadState)) {
       return false;
     }
     return loaded().isModified();
@@ -81,7 +155,7 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
 
   @Override
   public boolean isLoaded() {
-    return loaded;
+    return !notLoadedYet(loadState);
   }
 
   @Override
@@ -91,15 +165,15 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
 
   @Override
   public boolean isMutable() {
-    if (!loaded) {
+    if (notLoadedYet(loadState)) {
       return false;
     }
     return loaded().isMutable();
   }
 
   @Override
-  public List<IndexSpi<V>> divide(int parts) {
-    return loaded().divide(parts);
+  public List<IndexSpi<V>> splitByTargetSize(long targetSerializedSize) {
+    return loaded().splitByTargetSize(targetSerializedSize);
   }
 
   @Override
@@ -123,26 +197,26 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@Nonnull InternalIndexElement<V> element) {
+  public boolean add(@NonNull InternalIndexElement<V> element) {
     return loaded().add(element);
   }
 
   @Override
-  public boolean remove(@Nonnull IndexKey key) {
+  public boolean remove(@NonNull IndexKey key) {
     return loaded().remove(key);
   }
 
   @Override
-  public boolean contains(@Nonnull IndexKey key) {
-    if (!loaded && (key.equals(firstKey) || key.equals(lastKey))) {
+  public boolean contains(@NonNull IndexKey key) {
+    if (notLoadedYet(loadState) && (key.equals(firstKey) || key.equals(lastKey))) {
       return true;
     }
     return loaded().contains(key);
   }
 
   @Override
-  public boolean containsElement(@Nonnull IndexKey key) {
-    if (!loaded && (key.equals(firstKey) || key.equals(lastKey))) {
+  public boolean containsElement(@NonNull IndexKey key) {
+    if (notLoadedYet(loadState) && (key.equals(firstKey) || key.equals(lastKey))) {
       return true;
     }
     return loaded().containsElement(key);
@@ -150,26 +224,26 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
 
   @Override
   @Nullable
-  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@NonNull IndexKey key) {
     return loaded().getElement(key);
   }
 
   @Override
   @Nullable
   public IndexKey first() {
-    if (loaded || firstKey == null) {
-      return loaded().first();
+    if (notLoadedYet(loadState) && firstKey != null) {
+      return firstKey;
     }
-    return firstKey;
+    return loaded().first();
   }
 
   @Override
   @Nullable
   public IndexKey last() {
-    if (loaded || lastKey == null) {
-      return loaded().last();
+    if (notLoadedYet(loadState) && lastKey != null) {
+      return lastKey;
     }
-    return lastKey;
+    return loaded().last();
   }
 
   @Override
@@ -178,21 +252,21 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return loaded().elementIterator(lower, higher, prefetch);
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return loaded().reverseElementIterator(lower, higher, prefetch);
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public ByteBuffer serialize() {
     return loaded().serialize();
   }

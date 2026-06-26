@@ -17,10 +17,14 @@ specific language governing permissions and limitations
 under the License.
 */}}
 {{- $sectionName := .Get 0 -}}
-{{- $pagePath := printf "/in-dev/unreleased/configuration/config-sections/%s" $sectionName -}}
+{{- $pagePath := "" -}}
+{{- with .Page.Params.release_version -}}
+  {{- $pagePath = printf "/releases/%s/configuration/config-sections/%s" . $sectionName -}}
+{{- else -}}
+  {{- $pagePath = printf "/in-dev/unreleased/configuration/config-sections/%s" $sectionName -}}
+{{- end -}}
 {{- with site.GetPage $pagePath -}}
   {{- .RawContent | $.Page.RenderString -}}
 {{- else -}}
   {{- errorf "include-config-section: page not found: %s" $pagePath -}}
 {{- end -}}
-

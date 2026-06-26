@@ -22,8 +22,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.polaris.persistence.nosql.api.Realms.SYSTEM_REALM_ID;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.polaris.ids.api.IdGenerator;
@@ -32,6 +30,8 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.nodeids.spi.ImmutableNodeState;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeState;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStore;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 record NodeStoreImpl(Persistence startupPersistence, IdGenerator idGenerator) implements NodeStore {
   NodeStoreImpl {
@@ -44,7 +44,7 @@ record NodeStoreImpl(Persistence startupPersistence, IdGenerator idGenerator) im
   @Override
   @Nullable
   public NodeState persist(
-      int nodeId, Optional<NodeState> expectedNodeState, @Nonnull NodeState newState) {
+      int nodeId, Optional<NodeState> expectedNodeState, @NonNull NodeState newState) {
     checkArgument(nodeId >= 0, "Illegal node ID %s", nodeId);
 
     var persistenceId = idGenerator.systemIdForNode(nodeId);
@@ -75,8 +75,8 @@ record NodeStoreImpl(Persistence startupPersistence, IdGenerator idGenerator) im
   }
 
   @Override
-  @Nonnull
-  public NodeState[] fetchMany(@Nonnull int... nodeIds) {
+  @NonNull
+  public NodeState[] fetchMany(@NonNull int... nodeIds) {
     var objIds = new ObjRef[nodeIds.length];
     for (int i = 0; i < nodeIds.length; i++) {
       var nodeId = nodeIds[i];

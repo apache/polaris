@@ -68,14 +68,13 @@ import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -138,7 +137,7 @@ public abstract class AbstractPolicyCatalogTest {
   @Inject PolarisPrincipalHolder polarisPrincipalHolder;
 
   private PolicyCatalog policyCatalog;
-  private IcebergCatalog icebergCatalog;
+  private LocalIcebergCatalog icebergCatalog;
   private AwsStorageConfigInfo storageConfigModel;
   private String realmName;
   private PolarisCallContext polarisContext;
@@ -204,7 +203,6 @@ public abstract class AbstractPolicyCatalogTest {
                 new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                     .addProperty(
                         FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                     .addProperty(
@@ -230,18 +228,23 @@ public abstract class AbstractPolicyCatalogTest {
                         .sessionToken(SESSION_TOKEN)
                         .build())
                 .build());
-    PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
+    AwsStorageConfigurationInfo mockAwsConfig =
+        AwsStorageConfigurationInfo.builder()
+            .roleARN("arn:aws:iam::012345678901:role/mock")
+            .build();
+    AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (AwsStorageConfigurationInfo)
-                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
-            stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
-        .thenReturn((PolarisStorageIntegration) storageIntegration);
+            (destination) -> stsClient,
+            config -> java.util.Optional.empty(),
+            storageCredentialCache,
+            mockAwsConfig,
+            callContext.getRealmConfig());
+    when(storageIntegrationProvider.getStorageIntegration(Mockito.anyList()))
+        .thenReturn(storageIntegration);
 
     this.policyCatalog = new PolicyCatalog(metaStoreManager, polarisContext, passthroughView);
     this.icebergCatalog =
-        new IcebergCatalog(
+        new LocalIcebergCatalog(
             diagServices,
             resolverFactory,
             metaStoreManager,

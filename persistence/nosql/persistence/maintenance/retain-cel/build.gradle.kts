@@ -32,6 +32,7 @@ dependencies {
   implementation(libs.caffeine)
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
 
   compileOnly(platform(libs.jackson.bom))

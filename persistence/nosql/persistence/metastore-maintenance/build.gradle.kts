@@ -27,6 +27,7 @@ description = "Polaris NoSQL persistence core types"
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-persistence-nosql-api"))
+  implementation(project(":polaris-persistence-nosql-authz-api"))
   implementation(project(":polaris-idgen-api"))
   implementation(project(":polaris-persistence-nosql-maintenance-api"))
   implementation(project(":polaris-persistence-nosql-maintenance-spi"))
@@ -50,6 +51,7 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -60,6 +62,7 @@ dependencies {
   testRuntimeOnly(project(":polaris-persistence-nosql-authz-impl"))
   testRuntimeOnly(project(":polaris-persistence-nosql-authz-store-nosql"))
 
+  testFixturesImplementation(libs.jspecify)
   testFixturesImplementation(libs.jakarta.annotation.api)
   testFixturesImplementation(libs.jakarta.validation.api)
   testFixturesImplementation(libs.jakarta.enterprise.cdi.api)

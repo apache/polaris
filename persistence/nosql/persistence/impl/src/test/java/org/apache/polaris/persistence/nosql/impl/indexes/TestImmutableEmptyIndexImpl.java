@@ -67,7 +67,7 @@ public class TestImmutableEmptyIndexImpl {
 
     soft.assertThat(index.asMutableIndex()).isNotSameAs(index);
     soft.assertThat(index.isMutable()).isFalse();
-    soft.assertThatThrownBy(() -> index.divide(3))
+    soft.assertThatThrownBy(() -> index.splitByTargetSize(3))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 

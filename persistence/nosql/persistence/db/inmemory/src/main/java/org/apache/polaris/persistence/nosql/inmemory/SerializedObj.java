@@ -18,5 +18,16 @@
  */
 package org.apache.polaris.persistence.nosql.inmemory;
 
+import java.util.Arrays;
+
 record SerializedObj(
-    String type, long createdAtMicros, String versionToken, byte[] serializedValue, int partNum) {}
+    String type, long createdAtMicros, String versionToken, byte[] serializedValue, int partNum) {
+  SerializedObj {
+    serializedValue = Arrays.copyOf(serializedValue, serializedValue.length);
+  }
+
+  @Override
+  public byte[] serializedValue() {
+    return Arrays.copyOf(serializedValue, serializedValue.length);
+  }
+}

@@ -36,4 +36,10 @@ jobs:
     # The 'name' MUST BE CONSTANT, as it becomes a part of the required_checks in .asf.yaml !!
     # Do not rename this job, this is referenced in .asf.yaml!
     name: CI/PR
+    # security-events: write is required so that ci.yml's docker-image-scan job
+    # can upload Trivy SARIF to Code Scanning. Permissions at this job level
+    # become the ceiling for the reusable workflow's jobs.
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/ci.yml

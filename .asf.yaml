@@ -41,6 +41,11 @@ github:
 
   del_branch_on_merge: true
 
+  copilot_code_review:
+    enabled: true
+    review_drafts: false
+    review_on_push: false
+
   protected_branches:
     main:
       required_pull_request_reviews:
@@ -60,6 +65,8 @@ github:
           # "CI/PR" is the name of the workflow _job_ (jobs.ci-pr.name in ci-pr.yml),
           # "Required Checks" is the name of the workflow _job_ in ci.yml.
           - "CI/PR / Required Checks"
+          - "Zizmor"
+          - "CodeQL Analyze"
 
   features:
     wiki: false
@@ -74,6 +81,7 @@ github:
     # Adding renovate-bot as a collaborator, so CI doesn't need to be manually approved.
     # The list of collaborators is limited to 10 elements.
     - renovate-bot
+    - flyingImer
 
 notifications:
   commits:      commits@polaris.apache.org

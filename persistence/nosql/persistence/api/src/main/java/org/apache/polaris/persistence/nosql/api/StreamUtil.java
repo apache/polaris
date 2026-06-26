@@ -19,6 +19,8 @@
 
 package org.apache.polaris.persistence.nosql.api;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Spliterator;
@@ -37,6 +39,7 @@ public final class StreamUtil {
    */
   public static <S, R> Stream<R> bucketized(
       Stream<S> source, Function<List<S>, List<R>> bucketFetcher, int bucketSize) {
+    checkArgument(bucketSize > 0, "bucketSize must be positive");
     var sourceIter = source.iterator();
 
     var split =

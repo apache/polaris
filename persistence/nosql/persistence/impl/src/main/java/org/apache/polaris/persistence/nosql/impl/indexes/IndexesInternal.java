@@ -22,8 +22,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexLoader.notLoading;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +33,8 @@ import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.IndexStripe;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class IndexesInternal {
   private IndexesInternal() {}
@@ -104,9 +104,9 @@ final class IndexesInternal {
    */
   @SuppressWarnings("unchecked")
   static <V> IndexSpi<V> indexFromStripes(
-      @Nonnull List<IndexSpi<V>> stripes,
-      @Nonnull List<IndexKey> firstLastKeys,
-      @Nonnull IndexLoader<V> indexLoader) {
+      @NonNull List<IndexSpi<V>> stripes,
+      @NonNull List<IndexKey> firstLastKeys,
+      @NonNull IndexLoader<V> indexLoader) {
     var stripesArr = stripes.toArray(new IndexSpi[0]);
     var firstLastKeysArr = firstLastKeys.toArray(new IndexKey[0]);
     return new StripedIndexImpl<V>(stripesArr, firstLastKeysArr, indexLoader);
@@ -119,8 +119,8 @@ final class IndexesInternal {
   @Nullable
   static <V> IndexSpi<V> referenceIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull Persistence persistence,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull Persistence persistence,
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     if (indexContainer != null) {
       var commitStripes = indexContainer.stripes();
       if (!commitStripes.isEmpty()) {
@@ -132,9 +132,9 @@ final class IndexesInternal {
   }
 
   private static <V> IndexSpi<V> referenceIndexFromStripes(
-      @Nonnull Persistence persistence,
-      @Nonnull List<IndexStripe> indexStripes,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull Persistence persistence,
+      @NonNull List<IndexStripe> indexStripes,
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     var stripes = new ArrayList<IndexSpi<V>>(indexStripes.size());
     var firstLastKeys = new ArrayList<IndexKey>(indexStripes.size() * 2);
 
@@ -191,9 +191,9 @@ final class IndexesInternal {
   }
 
   private static <V> IndexSpi<V>[] loadIndexSegments(
-      @Nonnull Persistence persistence,
-      @Nonnull ObjRef[] indexes,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull Persistence persistence,
+      @NonNull ObjRef[] indexes,
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     var objs = persistence.fetchMany(IndexStripeObj.class, indexes);
     @SuppressWarnings("unchecked")
     IndexSpi<V>[] r = new IndexSpi[indexes.length];
@@ -207,9 +207,9 @@ final class IndexesInternal {
   }
 
   private static <V> IndexSpi<V> loadIndexSegment(
-      @Nonnull Persistence persistence,
-      @Nonnull ObjRef indexId,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull Persistence persistence,
+      @NonNull ObjRef indexId,
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     var index = persistence.fetch(indexId, IndexStripeObj.class);
     if (index == null) {
       throw new IllegalStateException(

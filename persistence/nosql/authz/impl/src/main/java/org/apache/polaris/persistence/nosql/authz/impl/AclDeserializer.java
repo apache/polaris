@@ -18,23 +18,34 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
+import static java.util.Objects.requireNonNull;
+
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import java.io.IOException;
+import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.authz.api.Acl;
 import org.apache.polaris.persistence.nosql.authz.api.AclEntry;
+import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 
 class AclDeserializer extends JsonDeserializer<Acl> {
+  private final Supplier<Privileges> privilegesResolver;
+
+  AclDeserializer(Supplier<Privileges> privilegesResolver) {
+    this.privilegesResolver =
+        requireNonNull(privilegesResolver, "privilegesResolver must not be null");
+  }
+
   @Override
   public Acl deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
     if (p.currentToken() != JsonToken.START_OBJECT) {
       throw new JsonMappingException(p, "Unexpected token " + p.currentToken());
     }
 
-    var privileges = JacksonPrivilegesModule.currentPrivileges();
+    var privileges = privilegesResolver.get();
     var builder = AclImpl.builder(privileges);
     for (var t = p.nextToken(); t != JsonToken.END_OBJECT; t = p.nextToken()) {
       if (t == JsonToken.FIELD_NAME) {

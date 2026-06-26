@@ -21,27 +21,27 @@ package org.apache.polaris.persistence.nosql.testextension;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.function.Predicate;
+import org.jspecify.annotations.NonNull;
 
 public final class BackendTestFactoryLoader {
   private BackendTestFactoryLoader() {}
 
-  @Nonnull
-  public static BackendTestFactory findFactoryByName(@Nonnull String name) {
+  @NonNull
+  public static BackendTestFactory findFactoryByName(@NonNull String name) {
     return findFactory(f -> f.name().equals(name));
   }
 
-  @Nonnull
+  @NonNull
   public static BackendTestFactory findAny() {
     return findFactory(x -> true);
   }
 
-  @Nonnull
-  public static BackendTestFactory findFactory(@Nonnull Predicate<BackendTestFactory> filter) {
+  @NonNull
+  public static BackendTestFactory findFactory(@NonNull Predicate<BackendTestFactory> filter) {
     ServiceLoader<BackendTestFactory> loader = ServiceLoader.load(BackendTestFactory.class);
     List<BackendTestFactory> candidates = new ArrayList<>();
     boolean any = false;

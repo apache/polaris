@@ -34,7 +34,6 @@ import java.util.function.Supplier;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
-import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,9 +145,6 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
 
   @Override
   public void onEvent(PolarisEvent event) {
-    if (event.type() != PolarisEventType.AFTER_REFRESH_TABLE) {
-      return;
-    }
     HashMap<String, Object> properties = new HashMap<>();
     properties.put("event_type", event.type().name());
     event

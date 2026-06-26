@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "request": { "authzOp": "DELETE_CATALOG", "principal": { "name": "admin1" }, "target": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "UPDATE_CATALOG", "principal": { "name": "admin1" }, "target": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "GET_CATALOG", "principal": { "name": "admin1" }, "target": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "ATTACH_POLICY_TO_CATALOG", "principal": { "name": "admin1" }, "target": "POLICY:POLARIS/catalog1/namespace1/policy1", "secondary": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "DETACH_POLICY_FROM_CATALOG", "principal": { "name": "admin1" }, "target": "POLICY:POLARIS/catalog1/namespace1/policy1", "secondary": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "GET_APPLICABLE_POLICIES_ON_CATALOG", "principal": { "name": "admin1" }, "target": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "GET_APPLICABLE_POLICIES_ON_CATALOG", "principal": { "name": "admin1" }, "target": "CATALOG:POLARIS/catalog1" },
+      "result":  { "isAllowed": true }
+    }
+  ]
+}

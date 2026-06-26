@@ -512,7 +512,7 @@ mkdir -p "${maven_local_dir}"
 )
 log_part_end
 
-# Check that the the set of locally built Maven artifacts and staged Maven artifacts is the same.
+# Check that the set of locally built Maven artifacts and staged Maven artifacts is the same.
 echo "Listing locally built Maven artifacts..."
 (cd "${maven_local_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
   | sort \

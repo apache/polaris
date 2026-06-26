@@ -53,7 +53,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.exceptions.RESTException;
+import org.apache.iceberg.exceptions.NoSuchWarehouseException;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTSessionCatalog;
@@ -70,7 +70,6 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
@@ -208,10 +207,7 @@ public class PolarisApplicationIntegrationTest {
       StorageConfigInfo storageConfig,
       String defaultBaseLocation,
       Map<String, String> additionalProperties) {
-    CatalogProperties.Builder propsBuilder =
-        CatalogProperties.builder(defaultBaseLocation)
-            .addProperty(
-                CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:/");
+    CatalogProperties.Builder propsBuilder = CatalogProperties.builder(defaultBaseLocation);
     for (var entry : additionalProperties.entrySet()) {
       propsBuilder.addProperty(entry.getKey(), entry.getValue());
     }
@@ -280,9 +276,8 @@ public class PolarisApplicationIntegrationTest {
   @Test
   public void testConfigureCatalogCaseSensitive() {
     assertThatThrownBy(() -> newSessionCatalog("TESTCONFIGURECATALOGCASESENSITIVE"))
-        .isInstanceOf(RESTException.class)
-        .hasMessage(
-            "Unable to process: Unable to find warehouse TESTCONFIGURECATALOGCASESENSITIVE");
+        .isInstanceOf(NoSuchWarehouseException.class)
+        .hasMessageContaining("Unable to find warehouse TESTCONFIGURECATALOGCASESENSITIVE");
   }
 
   @Test
@@ -707,6 +702,20 @@ public class PolarisApplicationIntegrationTest {
       } else {
         assertThatCode(createBadChildGoodParent).doesNotThrowAnyException();
       }
+    }
+  }
+
+  @Test
+  public void testRenameTableNonExistentSourceReportsSourceIdentifier() throws IOException {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      sessionCatalog.createNamespace(sessionContext, Namespace.of("ns1"));
+      TableIdentifier nonExistentSource = TableIdentifier.of("ns1", "no_such_table");
+      TableIdentifier destination = TableIdentifier.of("ns1", "another");
+      assertThatThrownBy(
+              () -> sessionCatalog.renameTable(sessionContext, nonExistentSource, destination))
+          .isInstanceOf(NoSuchTableException.class)
+          .hasMessageContaining(nonExistentSource.toString());
     }
   }
 }

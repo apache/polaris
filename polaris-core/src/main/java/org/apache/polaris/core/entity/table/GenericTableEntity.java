@@ -20,16 +20,16 @@ package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link TableLikeEntity} implementation for generic tables. These tables are not Iceberg-like in
@@ -107,7 +107,7 @@ public class GenericTableEntity extends TableLikeEntity {
     public GenericTableEntity.Builder setParentNamespace(Namespace namespace) {
       if (namespace != null && !namespace.isEmpty()) {
         internalProperties.put(
-            NamespaceEntity.PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
+            NamespaceEntity.PARENT_NAMESPACE_KEY, PolarisEntityUtils.encodeNamespace(namespace));
       }
       return this;
     }

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.credentials.connection;
 
+import static org.apache.polaris.service.credentials.TestObjectFactory.createConnectionConfig;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -57,9 +58,7 @@ public class BearerConnectionCredentialVendorTest {
     BearerAuthenticationParametersDpo authParams =
         new BearerAuthenticationParametersDpo(bearerTokenRef);
 
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://catalog.example.com", authParams, null, "test-catalog");
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
 
     // Execute
     ConnectionCredentials credentials = bearerVendor.getConnectionCredentials(connectionConfig);
@@ -97,9 +96,7 @@ public class BearerConnectionCredentialVendorTest {
     BearerAuthenticationParametersDpo authParams =
         new BearerAuthenticationParametersDpo(invalidSecretRef);
 
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://catalog.example.com", authParams, null, "test-catalog");
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
 
     // Execute & Verify - should propagate the exception from secrets manager
     Assertions.assertThatThrownBy(() -> bearerVendor.getConnectionCredentials(connectionConfig))

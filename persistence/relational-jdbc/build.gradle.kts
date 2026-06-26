@@ -27,11 +27,10 @@ dependencies {
   implementation(libs.slf4j.api)
   implementation(libs.guava)
 
-  compileOnly(platform(libs.jackson.bom))
-  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  compileOnly("com.fasterxml.jackson.core:jackson-core")
-  compileOnly("com.fasterxml.jackson.core:jackson-databind")
-  compileOnly(libs.jakarta.annotation.api)
+  implementation(platform(libs.jackson3.bom))
+  implementation("tools.jackson.core:jackson-core")
+  implementation("tools.jackson.core:jackson-databind")
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(platform(libs.opentelemetry.instrumentation.bom.alpha))
@@ -44,6 +43,7 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   testImplementation(libs.mockito.junit.jupiter)
+  testImplementation(libs.jakarta.enterprise.cdi.api)
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
 

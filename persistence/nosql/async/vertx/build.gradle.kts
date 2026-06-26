@@ -37,10 +37,12 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
 
+  testFixturesApi(libs.jspecify)
   testFixturesApi(libs.jakarta.annotation.api)
   testFixturesApi(libs.jakarta.validation.api)
   testFixturesApi(libs.jakarta.inject.api)
@@ -50,6 +52,9 @@ dependencies {
   testFixturesApi("io.vertx:vertx-core")
 
   testImplementation(testFixtures(project(":polaris-async-api")))
+
+  testCompileOnly(platform(libs.jackson.bom))
+  testCompileOnly("com.fasterxml.jackson.core:jackson-databind")
 }
 
 tasks.withType<Javadoc> {

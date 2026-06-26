@@ -20,9 +20,11 @@ package org.apache.polaris.persistence.nosql.maintenance.impl;
 
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.maintenance.impl.MutableMaintenanceConfig.GRACE_TIME;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.inject.Inject;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,8 +32,11 @@ import org.apache.polaris.ids.api.SnowflakeIdGenerator;
 import org.apache.polaris.ids.mocks.MutableMonotonicClock;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
+import org.apache.polaris.persistence.nosql.api.SystemPersistence;
 import org.apache.polaris.persistence.nosql.api.exceptions.ReferenceNotFoundException;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig;
+import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInProgressException;
+import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation.MaintenanceStats;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunSpec;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
@@ -52,7 +57,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class TestMaintenance {
   @InjectSoftAssertions protected SoftAssertions soft;
 
-  @WeldSetup WeldInitiator weld = WeldInitiator.performDefaultDiscovery();
+  @SuppressWarnings("unused")
+  @WeldSetup
+  WeldInitiator weld = WeldInitiator.performDefaultDiscovery();
 
   String realmOne;
   String realmTwo;
@@ -60,6 +67,7 @@ public class TestMaintenance {
   Persistence persTwo;
 
   @Inject MaintenanceService maintenance;
+  @Inject @SystemPersistence Persistence systemPersistence;
   @Inject RealmPersistenceFactory realmPersistenceFactory;
   @Inject MutableMonotonicClock mutableMonotonicClock;
 
@@ -92,7 +100,8 @@ public class TestMaintenance {
         MaintenanceRunSpec.builder()
             .includeSystemRealm(false)
             .realmsToPurge(Set.of(realmOne, realmTwo))
-            .build());
+            .build(),
+        latestUnfinishedMaintenanceRunId());
   }
 
   @Test
@@ -108,7 +117,7 @@ public class TestMaintenance {
     // Run maintenance, no realm given to retain or purge, must not purge anything
     var runInfo =
         maintenance.performMaintenance(
-            MaintenanceRunSpec.builder().includeSystemRealm(false).build());
+            MaintenanceRunSpec.builder().includeSystemRealm(false).build(), OptionalLong.empty());
 
     soft.assertThat(runInfo.referenceStats())
         .contains(MaintenanceStats.builder().scanned(2L).purged(0L).retained(2L).newer(0L).build());
@@ -147,7 +156,8 @@ public class TestMaintenance {
             MaintenanceRunSpec.builder()
                 .includeSystemRealm(false)
                 .realmsToProcess(Set.of(realmOne, realmTwo))
-                .build());
+                .build(),
+            OptionalLong.empty());
 
     soft.assertThat(runInfo.referenceStats())
         .contains(MaintenanceStats.builder().scanned(4L).purged(4L).retained(0L).newer(0L).build());
@@ -187,7 +197,8 @@ public class TestMaintenance {
         maintenance.performMaintenance(
             MaintenanceRunSpec.builder()
                 .includeSystemRealm(true) // default
-                .build());
+                .build(),
+            OptionalLong.empty());
 
     soft.assertThat(systemRealmCalled).hasValue(1);
 
@@ -230,7 +241,8 @@ public class TestMaintenance {
             MaintenanceRunSpec.builder()
                 .includeSystemRealm(false)
                 .realmsToProcess(Set.of(realmOne, realmTwo))
-                .build());
+                .build(),
+            OptionalLong.empty());
 
     soft.assertThat(runInfo.referenceStats())
         .contains(MaintenanceStats.builder().scanned(4L).purged(3L).retained(1L).newer(0L).build());
@@ -281,7 +293,8 @@ public class TestMaintenance {
             MaintenanceRunSpec.builder()
                 .includeSystemRealm(false)
                 .realmsToProcess(Set.of(realmOne, realmTwo))
-                .build());
+                .build(),
+            OptionalLong.empty());
 
     soft.assertThat(runInfo.referenceStats())
         .contains(MaintenanceStats.builder().scanned(4L).purged(3L).retained(1L).newer(0L).build());
@@ -341,7 +354,8 @@ public class TestMaintenance {
             MaintenanceRunSpec.builder()
                 .includeSystemRealm(false)
                 .realmsToProcess(Set.of(realmOne, realmTwo))
-                .build());
+                .build(),
+            OptionalLong.empty());
 
     soft.assertThat(runInfo.referenceStats())
         .contains(MaintenanceStats.builder().scanned(0L).purged(0L).retained(0L).newer(0L).build());
@@ -378,7 +392,8 @@ public class TestMaintenance {
             MaintenanceRunSpec.builder()
                 .includeSystemRealm(false)
                 .realmsToProcess(Set.of(realmOne, realmTwo))
-                .build());
+                .build(),
+            OptionalLong.empty());
 
     soft.assertThat(runInfo.referenceStats())
         .contains(MaintenanceStats.builder().scanned(4L).purged(0L).retained(4L).newer(0L).build());
@@ -389,5 +404,79 @@ public class TestMaintenance {
 
     soft.assertThat(persOne.fetch(objRef(rOneObj1), ObjOne.class)).isEqualTo(rOneObj1);
     soft.assertThat(persTwo.fetch(objRef(rTwoObj2), ObjTwo.class)).isEqualTo(rTwoObj2);
+  }
+
+  @Test
+  public void overrideRuns() {
+    var runId = createUnfinishedMaintenanceRun();
+
+    soft.assertThatExceptionOfType(MaintenanceRunInProgressException.class)
+        .isThrownBy(
+            () ->
+                maintenance.performMaintenance(
+                    MaintenanceRunSpec.builder().includeSystemRealm(false).build(),
+                    OptionalLong.empty()))
+        .satisfies(e -> assertThat(e.runId()).isEqualTo(runId));
+
+    soft.assertThatExceptionOfType(MaintenanceRunInProgressException.class)
+        .isThrownBy(
+            () ->
+                maintenance.performMaintenance(
+                    MaintenanceRunSpec.builder().includeSystemRealm(false).build(),
+                    OptionalLong.of(runId + 1)))
+        .satisfies(e -> assertThat(e.runId()).isEqualTo(runId));
+
+    var runInfo =
+        maintenance.performMaintenance(
+            MaintenanceRunSpec.builder().includeSystemRealm(false).build(), OptionalLong.of(runId));
+
+    soft.assertThat(runInfo.finished()).isPresent();
+    soft.assertThat(runInfo.success()).isTrue();
+    soft.assertThat(latestUnfinishedMaintenanceRunId()).isEmpty();
+  }
+
+  private long createUnfinishedMaintenanceRun() {
+    systemPersistence.createReferenceSilent(MaintenanceRunsObj.MAINTENANCE_RUNS_REF_NAME);
+
+    return systemPersistence
+        .createCommitter(
+            MaintenanceRunsObj.MAINTENANCE_RUNS_REF_NAME,
+            MaintenanceRunsObj.class,
+            MaintenanceRunObj.class)
+        .commitRuntimeException(
+            (state, refObjSupplier) -> {
+              var refObj = refObjSupplier.get();
+              var runObj =
+                  MaintenanceRunObj.builder()
+                      .id(systemPersistence.generateId())
+                      .runInformation(
+                          MaintenanceRunInformation.builder()
+                              .started(mutableMonotonicClock.currentInstant())
+                              .build())
+                      .build();
+
+              state.writeIfNew("unfinished-run", runObj, MaintenanceRunObj.class);
+
+              return state.commitResult(
+                  runObj, MaintenanceRunsObj.builder().maintenanceRunId(objRef(runObj)), refObj);
+            })
+        .orElseThrow()
+        .id();
+  }
+
+  private OptionalLong latestUnfinishedMaintenanceRunId() {
+    try {
+      return systemPersistence
+          .fetchReferenceHead(
+              MaintenanceRunsObj.MAINTENANCE_RUNS_REF_NAME, MaintenanceRunsObj.class)
+          .map(MaintenanceRunsObj::maintenanceRunId)
+          .map(id -> systemPersistence.fetch(id, MaintenanceRunObj.class))
+          .filter(run -> run.runInformation().finished().isEmpty())
+          .stream()
+          .mapToLong(MaintenanceRunObj::id)
+          .findFirst();
+    } catch (ReferenceNotFoundException e) {
+      return OptionalLong.empty();
+    }
   }
 }

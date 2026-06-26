@@ -20,8 +20,6 @@ package org.apache.polaris.core.connection.hive;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +33,8 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The internal persistence-object counterpart to {@link
@@ -45,12 +45,12 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   private final String warehouse;
 
   public HiveConnectionConfigInfoDpo(
-      @JsonProperty(value = "uri", required = true) @Nonnull String uri,
-      @JsonProperty(value = "authenticationParameters", required = false) @Nullable
-          AuthenticationParametersDpo authenticationParameters,
+      @JsonProperty(value = "uri", required = true) @NonNull String uri,
+      @JsonProperty(value = "authenticationParameters", required = false)
+          @Nullable AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "warehouse", required = false) @Nullable String warehouse,
-      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
-          ServiceIdentityInfoDpo serviceIdentity) {
+      @JsonProperty(value = "serviceIdentity", required = false)
+          @Nullable ServiceIdentityInfoDpo serviceIdentity) {
     super(ConnectionType.HIVE.getCode(), uri, authenticationParameters, serviceIdentity);
     this.warehouse = warehouse;
   }
@@ -70,7 +70,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   }
 
   @Override
-  public @Nonnull Map<String, String> asIcebergCatalogProperties(
+  public @NonNull Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager polarisCredentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     properties.put(CatalogProperties.URI, getUri());
@@ -91,7 +91,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
 
   @Override
   public ConnectionConfigInfoDpo withServiceIdentity(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
+      @NonNull ServiceIdentityInfoDpo serviceIdentityInfo) {
     return new HiveConnectionConfigInfoDpo(
         getUri(), getAuthenticationParameters(), warehouse, serviceIdentityInfo);
   }

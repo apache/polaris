@@ -20,6 +20,10 @@
 title: Polaris Synchronizer
 type: docs
 weight: 999
+menus:
+  main:
+    parent: tools
+    weight: 400
 ---
 
 The Polaris Synchronizer is a tool to migrate entities from one Polaris instance to another.

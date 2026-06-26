@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.persistence.nosql.api.backend;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Factory responsible to produce {@link Backend} instances. Usually only one {@link Backend}
@@ -28,8 +28,7 @@ public interface BackendFactory<RUNTIME_CONFIG, CONFIG_INTERFACE> {
   /** Human-readable name. */
   String name();
 
-  @Nonnull
-  Backend buildBackend(@Nonnull RUNTIME_CONFIG backendConfig);
+  @NonNull Backend buildBackend(@NonNull RUNTIME_CONFIG backendConfig);
 
   Class<CONFIG_INTERFACE> configurationInterface();
 

@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.core.config;
 
-import jakarta.annotation.Nullable;
 import java.util.Collections;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.jspecify.annotations.Nullable;
 
 public class RealmConfigImpl implements RealmConfig {
 

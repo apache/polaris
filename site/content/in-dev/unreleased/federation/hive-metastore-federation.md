@@ -92,6 +92,28 @@ kinit -kt /etc/polaris/keytabs/polaris.keytab polaris/service@EXAMPLE.COM
 - Keep the keytab readable solely by the Polaris service user; the implicit authenticator consumes
   the TGT at startup and for periodic renewal.
 
+## Warehouse access patterns
+
+When Polaris federates to HMS, the server-side `HiveCatalog` must be able to reach the warehouse
+storage itself in order to load table metadata. This happens before Polaris can return any
+client-side storage credentials. In practice, Hive federation therefore works cleanly only when the
+Polaris server already has a working access path to the warehouse.
+
+The current runtime behavior after building Polaris with `-PNonRESTCatalogs=HIVE` is best
+understood as follows:
+
+| Pattern                                                                              | Works after a `-PNonRESTCatalogs=HIVE` build | Notes                                                                                                                                                                                                                                                                                          |
+|--------------------------------------------------------------------------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| HDFS or warehouse access fully handled by ambient Hadoop config and process identity | Yes                                          | Recommended fit for the current design. Provide `hive-site.xml` / `core-site.xml` plus any required Kerberos or Hadoop client configuration.                                                                                                                                                   |
+| `HadoopFileIO` with `s3a://` warehouses                                              | Only with extra runtime packaging            | A HIVE-enabled Polaris build still needs `hadoop-aws` and related filesystem dependencies. They are not included just by enabling the `HIVE` build flag.                                                                                                                                       |
+| `S3FileIO` with ambient AWS credentials                                              | Sometimes                                    | Can work when Polaris is explicitly configured to use `S3FileIO` and the process already has valid AWS credentials and region settings. This is not the general documented production path today, and non-secret endpoint or path-style settings may still be needed for S3-compatible stores. |
+| **UNSAFE!** Putting object-store credentials in catalog properties                   | **DO NOT USE / THIS IS UNSAFE**              | Unsafe. Secrets placed in catalog properties are returned to authenticated catalog clients through `/config`. This may look like a workaround in some S3-compatible deployments, but it **exposes passwords, access keys, session tokens, or other secrets as plain text**.                    |
+
+`hive-site.xml` and `core-site.xml` can be mounted via `HADOOP_CONF_DIR` / `HIVE_CONF_DIR`; they do
+not by themselves require rebuilding Polaris. By contrast, adding missing filesystem client
+libraries such as `hadoop-aws` does require custom packaging of the Polaris runtime or container
+image.
+
 ## Creating a federated catalog
 
 Use the Management API (or the Python CLI) to create an external catalog whose connection type is

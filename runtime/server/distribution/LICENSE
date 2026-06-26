@@ -214,7 +214,7 @@ This product bundles and includes code from Apache Iceberg.
 
 Copyright: Copyright 2017-2025 The Apache Software Foundation
 Home page: https://iceberg.apache.org
-License: https://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
@@ -245,7 +245,7 @@ This product bundles and includes code from Netty.
 
 Copyright: Copyright © 2025 The Netty project
 Home page: https://netty.io/
-License: https://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
@@ -308,7 +308,6 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-fs-util
 * Maven group:artifact IDs: io.quarkus:quarkus-grpc-common
 * Maven group:artifact IDs: io.quarkus:quarkus-hibernate-validator
-* Maven group:artifact IDs: io.quarkus:quarkus-ide-launcher
 * Maven group:artifact IDs: io.quarkus:quarkus-jackson
 * Maven group:artifact IDs: io.quarkus:quarkus-jdbc-postgresql
 * Maven group:artifact IDs: io.quarkus:quarkus-jsonp
@@ -382,7 +381,6 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web-common
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-api
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-mutiny
-* Maven group:artifact IDs: io.smallrye.reactive:vertx-mutiny-generator
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-api
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-jta
@@ -539,6 +537,8 @@ This product bundles Jackson.
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jdk8
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jsr310
 * Maven group:artifact IDs: com.fasterxml.jackson.module:jackson-module-parameter-names
+* Maven group:artifact IDs: tools.jackson.core:jackson-core
+* Maven group:artifact IDs: tools.jackson.core:jackson-databind
 
 Project URL: https://github.com/FasterXML/jackson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -654,7 +654,7 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-This product bundles Google Storage APIs.
+This product bundles Google Cloud Storage APIs.
 
 * Maven group:artifact IDs: com.google.api.grpc:gapic-google-cloud-storage-v2
 * Maven group:artifact IDs: com.google.api.grpc:grpc-google-cloud-storage-v2
@@ -782,7 +782,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Google j2objc.
+This product bundles Google j2objc annotations.
 
 * Maven group:artifact IDs: com.google.j2objc:j2objc-annotations
 
@@ -1111,8 +1111,8 @@ This product bundles OpenTelemetry Java Instrumentation.
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-api
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-api-incubator
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-jdbc
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry-java17
-* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry-java8
 
 Project URL: https://github.com/open-telemetry/opentelemetry-java-instrumentation
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1224,12 +1224,12 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Jakarta Activation APi.
+This product bundles Jakarta Activation API.
 
 * Maven group:artifact IDs: jakarta.activation:jakarta.activation-api
 
 Project URL: https://github.com/jakartaee/jaf-api
-License: EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
@@ -1238,7 +1238,7 @@ This product bundles Jakarta Annotation API.
 * Maven group:artifact IDs: jakarta.annotation:jakarta.annotation-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.ca
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1247,7 +1247,7 @@ This product bundles Jakarta EL API.
 * Maven group:artifact IDs: jakarta.el:jakarta.el-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.el
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1283,7 +1283,7 @@ This product bundles Jakarta Interceptor API.
 * Maven group:artifact IDs: jakarta.interceptor:jakarta.interceptor-api
 
 Project URL: https://github.com/jakartaee/interceptors
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1301,7 +1301,7 @@ This product bundles Jakarta Resource API.
 * Maven group:artifact IDs: jakarta.resource:jakarta.resource-api
 
 Project URL: https://jakarta.ee/specifications/connectors/
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1310,7 +1310,7 @@ This product bundles Jakarta Servlet API.
 * Maven group:artifact IDs: jakarta.servlet:jakarta.servlet-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.servlet
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1319,7 +1319,7 @@ This product bundles Jakarta Transaction API.
 * Maven group:artifact IDs: jakarta.transaction:jakarta.transaction-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.jta
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1337,7 +1337,7 @@ This product bundles Jakarta RESTful Web Services.
 * Maven group:artifact IDs: jakarta.ws.rs:jakarta.ws.rs-api
 
 Project URL: https://github.com/eclipse-ee4j/jaxrs-api
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1528,21 +1528,12 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-This product bundles jettison.
-
-* Maven group:artifact IDs: org.codehaus.jettison:jettison
-
-Project URL: https://github.com/jettison-json/jettison
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles animal-sniffer-annotations.
 
 * Maven group:artifact IDs: org.codehaus.mojo:animal-sniffer-annotations
 
 Project URL: https://www.mojohaus.org/animal-sniffer
-License: MIT license
+License: MIT License
 | The MIT License
 | 
 | Copyright (c) 2009 codehaus.org.
@@ -1629,7 +1620,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Parsson.
 
 * Maven group:artifact IDs: org.eclipse.parsson:parsson
-* Maven group:artifact IDs: org.eclipse.parsson:jakarta.json
 
 Project URL: https://github.com/eclipse-ee4j/parsson
 License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
@@ -1641,7 +1631,7 @@ This product bundles expressly.
 * Maven group:artifact IDs: org.glassfish.expressly:expressly
 
 Project URL: https://projects.eclipse.org/projects/ee4j
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1715,7 +1705,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles JBoss (logmanager, transaction, narayana).
 
-* Maven group:artifact IDs: org.jboss.invocation:jboss-invocation
 * Maven group:artifact IDs: org.jboss:jboss-transaction-spi
 * Maven group:artifact IDs: org.jboss.logging:commons-logging-jboss-logging
 * Maven group:artifact IDs: org.jboss.narayana.jta:narayana-jta
@@ -2019,5 +2008,258 @@ This product bundles Agrona.
 
 Project URL: https://github.com/aeron-io/agrona
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Apache Ranger libraries.
+
+* Maven group:artifact IDs: org.apache.ranger:authz-embedded
+* Maven group:artifact IDs: org.apache.ranger:ranger-audit-core
+* Maven group:artifact IDs: org.apache.ranger:ranger-audit-dest-solr
+* Maven group:artifact IDs: org.apache.ranger:ranger-authz-api
+* Maven group:artifact IDs: org.apache.ranger:ranger-plugin-classloader
+* Maven group:artifact IDs: org.apache.ranger:ranger-plugins-common
+* Maven group:artifact IDs: org.apache.ranger:ranger-plugins-cred
+* Maven group:artifact IDs: org.apache.ranger:ugsync-util
+
+Project URL: https://github.com/apache/ranger
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Jetty libraries.
+
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-client
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-http
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-io
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-util
+
+Home page: https://github.com/jetty/jetty.project/
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles FasterXML libraries.
+
+* Maven group:artifact IDs: com.fasterxml.jackson.jaxrs:jackson-jaxrs-base
+* Maven group:artifact IDs: com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider
+* Maven group:artifact IDs: com.fasterxml.jackson.module:jackson-module-jaxb-annotations
+
+Home page: https://github.com/FasterXML/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles HttpComponents libraries.
+
+* Maven group:artifact IDs: org.apache.httpcomponents:httpasyncclient
+* Maven group:artifact IDs: org.apache.httpcomponents:httpcore-nio
+* Maven group:artifact IDs: org.apache.httpcomponents:httpmime
+
+Home page: https://hc.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles JSON Smart libraries.
+
+* Maven group:artifact IDs: net.minidev:json-smart
+* Maven group:artifact IDs: net.minidev:accessors-smart
+
+Home page: https://github.com/netplex/json-smart-v2
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Apache Zookeeper libraries.
+
+* Maven group:artifact IDs: org.apache.zookeeper:zookeeper
+* Maven group:artifact IDs: org.apache.zookeeper:zookeeper-jute
+
+Home page: https://github.com/apache/zookeeper
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Commons Collections library.
+
+* Maven group:artifact IDs: commons-collections:commons-collections
+
+Home page: https://github.com/apache/commons-collections
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Commons Lang library.
+
+* Maven group:artifact IDs: commons-lang:commons-lang
+
+Home page: https://github.com/apache/commons-lang
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles High Performance Primitive Collections library.
+
+* Maven group:artifact IDs: com.carrotsearch:hppc
+
+Home page: https://github.com/carrotsearch/hppc
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Joda Time library.
+
+* Maven group:artifact IDs: joda-time:joda-time
+
+Home page: https://github.com/JodaOrg/joda-time
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Apache Solr library.
+
+* Maven group:artifact IDs: org.apache.solr:solr-solrj
+
+Home page: https://github.com/apache/solr
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Apache Yetus library.
+
+* Maven group:artifact IDs: org.apache.yetus:audience-annotations
+
+Home page: https://github.com/apache/yetus
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles ASM library.
+
+* Maven group:artifact IDs: org.ow2.asm:asm
+
+Home page: https://gitlab.ow2.org/asm/asm
+License: BSD 3-Clause - https://gitlab.ow2.org/asm/asm/-/blob/master/LICENSE.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Gethostname4j library.
+
+* Maven group:artifact IDs: com.kstruct:gethostname4j
+
+Home page: https://github.com/mattsheppard/gethostname4j
+License: MIT License - https://mit-license.org/
+
+--------------------------------------------------------------------------------
+
+This product bundles Jersey Bundle library.
+
+* Maven group:artifact IDs: com.sun.jersey:jersey-bundle
+
+Home page: https://github.com/eclipse-ee4j/jersey
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles JAXB API library.
+
+* Maven group:artifact IDs: javax.xml.bind:jaxb-api
+
+Home page: https://javaee.github.io/jaxb-v2/
+License: CDDL - https://javaee.github.io/jaxb-v2/LICENSE
+
+--------------------------------------------------------------------------------
+
+This product bundles GraalVM libraries.
+
+* Maven group:artifact IDs: org.graalvm.js:js-language
+* Maven group:artifact IDs: org.graalvm.js:js-scriptengine
+* Maven group:artifact IDs: org.graalvm.polyglot:polyglot
+* Maven group:artifact IDs: org.graalvm.regex:regex
+* Maven group:artifact IDs: org.graalvm.sdk:collections
+* Maven group:artifact IDs: org.graalvm.sdk:jniutils
+* Maven group:artifact IDs: org.graalvm.sdk:nativeimage
+* Maven group:artifact IDs: org.graalvm.sdk:word
+* Maven group:artifact IDs: org.graalvm.shadowed:xz
+* Maven group:artifact IDs: org.graalvm.truffle:truffle-api
+* Maven group:artifact IDs: org.graalvm.truffle:truffle-compiler
+* Maven group:artifact IDs: org.graalvm.truffle:truffle-runtime
+
+Home page: https://github.com/oracle/graal/
+License: Universal Permissive License (UPL) 1.0 - https://github.com/oracle/graal/blob/master/LICENSE
+
+--------------------------------------------------------------------------------
+
+This product bundles GraalVM shadowed ICU4J.
+
+* Maven group:artifact IDs: org.graalvm.shadowed:icu4j
+
+Home page: https://unicode-org.github.io/icu/userguide/icu4j/
+License: Unicode/ICU License
+| UNICODE LICENSE V3
+|
+| COPYRIGHT AND PERMISSION NOTICE
+|
+| Copyright © 2016-2025 Unicode, Inc.
+|
+| NOTICE TO USER: Carefully read the following legal agreement. BY
+| DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+| SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+| TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+| DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+|
+| Permission is hereby granted, free of charge, to any person obtaining a
+| copy of data files and any associated documentation (the "Data Files") or
+| software and any associated documentation (the "Software") to deal in the
+| Data Files or Software without restriction, including without limitation
+| the rights to use, copy, modify, merge, publish, distribute, and/or sell
+| copies of the Data Files or Software, and to permit persons to whom the
+| Data Files or Software are furnished to do so, provided that either (a)
+| this copyright and permission notice appear with all copies of the Data
+| Files or Software, or (b) this copyright and permission notice appear in
+| associated Documentation.
+|
+| THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+| KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+| MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+| THIRD PARTY RIGHTS.
+|
+| IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+| BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+| OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+| WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+| ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+| FILES OR SOFTWARE.
+|
+| Except as contained in this notice, the name of a copyright holder shall
+| not be used in advertising or otherwise to promote the sale, use or other
+| dealings in these Data Files or Software without prior written
+| authorization of the copyright holder.
+|
+| SPDX-License-Identifier: Unicode-3.0
+
+--------------------------------------------------------------------------------
+
+This product bundles XZ for Java shaded by GraalVM.
+
+* Maven group:artifact IDs: org.graalvm.shadowed:xz
+
+Home page: https://tukaani.org/xz/java.html
+License: BSD 0-Clause
+Note: GraalVM licensing documentation identifies this shaded code as XZ for Java 1.10, which is in XZ for Java's 0BSD-licensed release line.
+|  Copyright (C) The XZ for Java authors and contributors
+|  
+|  Permission to use, copy, modify, and/or distribute this
+|  software for any purpose with or without fee is hereby granted.
+|  
+|  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+|  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+|  WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
+|  THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+|  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+|  LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+|  NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+|  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------

@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.persistence.nosql.nodeids.impl;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeState;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStore;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public class MockNodeStore implements NodeStore {
   private final Map<Integer, NodeState> nodeStates = new ConcurrentHashMap<>();
@@ -32,7 +32,7 @@ public class MockNodeStore implements NodeStore {
   @Nullable
   @Override
   public NodeState persist(
-      int nodeId, Optional<NodeState> expectedNodeState, @Nonnull NodeState newState) {
+      int nodeId, Optional<NodeState> expectedNodeState, @NonNull NodeState newState) {
     if (nodeId >= 0 && expectedNodeState.isPresent()) {
       var result =
           nodeStates.computeIfPresent(
@@ -54,9 +54,9 @@ public class MockNodeStore implements NodeStore {
     return null;
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public NodeState[] fetchMany(@Nonnull int... nodeIds) {
+  public NodeState[] fetchMany(@NonNull int... nodeIds) {
     var r = new NodeState[nodeIds.length];
     for (int i = 0; i < nodeIds.length; i++) {
       var id = nodeIds[i];

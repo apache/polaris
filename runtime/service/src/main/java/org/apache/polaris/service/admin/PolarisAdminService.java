@@ -24,8 +24,6 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNam
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
 import com.google.common.base.Strings;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
@@ -125,6 +123,8 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.PolicyIdentifier;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,14 +154,14 @@ public class PolarisAdminService {
 
   @Inject
   public PolarisAdminService(
-      @Nonnull CallContext callContext,
-      @Nonnull ResolutionManifestFactory resolutionManifestFactory,
-      @Nonnull PolarisMetaStoreManager metaStoreManager,
-      @Nonnull UserSecretsManager userSecretsManager,
-      @Nonnull ServiceIdentityProvider serviceIdentityProvider,
-      @Nonnull PolarisPrincipal principal,
-      @Nonnull PolarisAuthorizer authorizer,
-      @Nonnull ReservedProperties reservedProperties) {
+      @NonNull CallContext callContext,
+      @NonNull ResolutionManifestFactory resolutionManifestFactory,
+      @NonNull PolarisMetaStoreManager metaStoreManager,
+      @NonNull UserSecretsManager userSecretsManager,
+      @NonNull ServiceIdentityProvider serviceIdentityProvider,
+      @NonNull PolarisPrincipal principal,
+      @NonNull PolarisAuthorizer authorizer,
+      @NonNull ReservedProperties reservedProperties) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -639,50 +639,49 @@ public class PolarisAdminService {
    * references to the stored secret.
    */
   private Map<String, SecretReference> extractSecretReferences(
-      CreateCatalogRequest catalogRequest, PolarisEntity forEntity) {
+      ExternalCatalog catalog, PolarisEntity forEntity) {
     Map<String, SecretReference> secretReferences = new HashMap<>();
-    Catalog catalog = catalogRequest.getCatalog();
     UserSecretsManager secretsManager = getUserSecretsManager();
-    if (catalog instanceof ExternalCatalog externalCatalog) {
-      if (externalCatalog.getConnectionConfigInfo() != null) {
-        ConnectionConfigInfo connectionConfig = externalCatalog.getConnectionConfigInfo();
-        AuthenticationParameters authenticationParameters =
-            connectionConfig.getAuthenticationParameters();
+    if (catalog.getConnectionConfigInfo() != null) {
+      ConnectionConfigInfo connectionConfig = catalog.getConnectionConfigInfo();
+      AuthenticationParameters authenticationParameters =
+          connectionConfig.getAuthenticationParameters();
 
-        switch (authenticationParameters.getAuthenticationType()) {
-          case OAUTH:
-            {
-              OAuthClientCredentialsParameters oauthClientCredentialsModel =
-                  (OAuthClientCredentialsParameters) authenticationParameters;
-              String inlineClientSecret = oauthClientCredentialsModel.getClientSecret();
-              SecretReference secretReference =
-                  secretsManager.writeSecret(inlineClientSecret, forEntity);
-              secretReferences.put(
-                  AuthenticationParametersDpo.INLINE_CLIENT_SECRET_REFERENCE_KEY, secretReference);
-              break;
-            }
-          case BEARER:
-            {
-              BearerAuthenticationParameters bearerAuthenticationParametersModel =
-                  (BearerAuthenticationParameters) authenticationParameters;
-              String inlineBearerToken = bearerAuthenticationParametersModel.getBearerToken();
-              SecretReference secretReference =
-                  secretsManager.writeSecret(inlineBearerToken, forEntity);
-              secretReferences.put(
-                  AuthenticationParametersDpo.INLINE_BEARER_TOKEN_REFERENCE_KEY, secretReference);
-              break;
-            }
-          case SIGV4:
-            {
-              // SigV4 authentication is not based on users provided secrets but based on the
-              // service identity managed by Polaris. Nothing to do here.
-              break;
-            }
-          default:
-            throw new IllegalStateException(
-                "Unsupported authentication type: "
-                    + authenticationParameters.getAuthenticationType());
-        }
+      switch (authenticationParameters.getAuthenticationType()) {
+        case OAUTH:
+          {
+            OAuthClientCredentialsParameters oauthClientCredentialsModel =
+                (OAuthClientCredentialsParameters) authenticationParameters;
+            String inlineClientSecret = oauthClientCredentialsModel.getClientSecret();
+            SecretReference secretReference =
+                secretsManager.writeSecret(inlineClientSecret, forEntity);
+            secretReferences.put(
+                AuthenticationParametersDpo.INLINE_CLIENT_SECRET_REFERENCE_KEY, secretReference);
+            break;
+          }
+        case BEARER:
+          {
+            BearerAuthenticationParameters bearerAuthenticationParametersModel =
+                (BearerAuthenticationParameters) authenticationParameters;
+            String inlineBearerToken = bearerAuthenticationParametersModel.getBearerToken();
+            SecretReference secretReference =
+                secretsManager.writeSecret(inlineBearerToken, forEntity);
+            secretReferences.put(
+                AuthenticationParametersDpo.INLINE_BEARER_TOKEN_REFERENCE_KEY, secretReference);
+            break;
+          }
+        case SIGV4:
+          {
+            // SigV4 authentication is not based on users provided secrets but based on the
+            // service identity managed by Polaris. Nothing to do here.
+            break;
+          }
+        case GCP:
+          break; // only contains user IDs, not credentials
+        default:
+          throw new IllegalStateException(
+              "Unsupported authentication type: "
+                  + authenticationParameters.getAuthenticationType());
       }
     }
     return secretReferences;
@@ -692,20 +691,20 @@ public class PolarisAdminService {
    * @see #extractSecretReferences
    */
   private boolean requiresSecretReferenceExtraction(
-      @Nonnull ConnectionConfigInfo connectionConfigInfo) {
+      @NonNull ConnectionConfigInfo connectionConfigInfo) {
     return connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
         != AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT;
   }
 
   public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
-    authorizeBasicRootOperationOrThrow(op);
+    authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.CREATE_CATALOG);
+    Catalog catalog = catalogRequest.getCatalog();
 
-    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalogRequest.getCatalog());
+    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalog);
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
-    if (catalogOverlapsWithExistingCatalog((CatalogEntity) entity)) {
+    if (catalogOverlapsWithExistingCatalog(entity)) {
       throw new ValidationException(
           "Cannot create Catalog %s. One or more of its locations overlaps with an existing catalog",
           entity.getName());
@@ -719,7 +718,6 @@ public class PolarisAdminService {
             .setProperties(reservedProperties.removeReservedProperties(entity.getPropertiesAsMap()))
             .build();
 
-    Catalog catalog = catalogRequest.getCatalog();
     if (catalog instanceof ExternalCatalog externalCatalog) {
       ConnectionConfigInfo connectionConfigInfo = externalCatalog.getConnectionConfigInfo();
 
@@ -749,7 +747,7 @@ public class PolarisAdminService {
                       .name()),
               "Authentication type %s is not supported.",
               connectionConfigInfo.getAuthenticationParameters().getAuthenticationType());
-          processedSecretReferences = extractSecretReferences(catalogRequest, entity);
+          processedSecretReferences = extractSecretReferences(externalCatalog, entity);
         } else {
           // Support no-auth catalog federation only when the feature is enabled.
           checkState(
@@ -819,7 +817,7 @@ public class PolarisAdminService {
     }
   }
 
-  public @Nonnull CatalogEntity getCatalog(String name) {
+  public @NonNull CatalogEntity getCatalog(String name) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.GET_CATALOG;
     PolarisResolutionManifest resolutionManifest =
         authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.CATALOG);
@@ -880,7 +878,7 @@ public class PolarisAdminService {
     }
   }
 
-  public @Nonnull CatalogEntity updateCatalog(String name, UpdateCatalogRequest updateRequest) {
+  public @NonNull CatalogEntity updateCatalog(String name, UpdateCatalogRequest updateRequest) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_CATALOG;
     PolarisResolutionManifest resolutionManifest =
         authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.CATALOG);
@@ -1017,7 +1015,7 @@ public class PolarisAdminService {
     }
   }
 
-  public @Nonnull PrincipalEntity getPrincipal(String name) {
+  public @NonNull PrincipalEntity getPrincipal(String name) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.GET_PRINCIPAL;
     PolarisResolutionManifest resolutionManifest =
         authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.PRINCIPAL);
@@ -1025,7 +1023,7 @@ public class PolarisAdminService {
     return getPrincipalByName(resolutionManifest, name);
   }
 
-  public @Nonnull PrincipalEntity updatePrincipal(
+  public @NonNull PrincipalEntity updatePrincipal(
       String name, UpdatePrincipalRequest updateRequest) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_PRINCIPAL;
     PolarisResolutionManifest resolutionManifest =
@@ -1064,7 +1062,7 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
-  private @Nonnull PrincipalWithCredentials resetCredentialsHelper(
+  private @NonNull PrincipalWithCredentials resetCredentialsHelper(
       PolarisResolutionManifest resolutionManifest,
       String principalName,
       String customClientId,
@@ -1074,6 +1072,16 @@ public class PolarisAdminService {
     if (FederatedEntities.isFederated(currentPrincipalEntity)) {
       throw new ValidationException(
           "Cannot reset credentials for a federated principal: %s", principalName);
+    }
+    if (customClientId != null) {
+      PolarisPrincipalSecrets collidingSecrets =
+          metaStoreManager
+              .loadPrincipalSecrets(getCurrentPolarisContext(), customClientId)
+              .getPrincipalSecrets();
+      if (collidingSecrets != null
+          && collidingSecrets.getPrincipalId() != currentPrincipalEntity.getId()) {
+        throw new AlreadyExistsException("Client ID already in use: %s", customClientId);
+      }
     }
     PolarisPrincipalSecrets currentSecrets =
         metaStoreManager
@@ -1128,7 +1136,7 @@ public class PolarisAdminService {
             newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
   }
 
-  private @Nonnull PrincipalWithCredentials rotateOrResetCredentialsHelper(
+  private @NonNull PrincipalWithCredentials rotateOrResetCredentialsHelper(
       PolarisResolutionManifest resolutionManifest, String principalName, boolean shouldReset) {
     PrincipalEntity currentPrincipalEntity = getPrincipalByName(resolutionManifest, principalName);
 
@@ -1174,7 +1182,7 @@ public class PolarisAdminService {
             newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
   }
 
-  public @Nonnull PrincipalWithCredentials rotateCredentials(String principalName) {
+  public @NonNull PrincipalWithCredentials rotateCredentials(String principalName) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ROTATE_CREDENTIALS;
     PolarisResolutionManifest resolutionManifest =
         authorizeBasicTopLevelEntityOperationOrThrow(
@@ -1183,7 +1191,7 @@ public class PolarisAdminService {
     return rotateOrResetCredentialsHelper(resolutionManifest, principalName, false);
   }
 
-  public @Nonnull PrincipalWithCredentials resetCredentials(
+  public @NonNull PrincipalWithCredentials resetCredentials(
       String principalName, ResetPrincipalRequest resetPrincipalRequest) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
         realmConfig, FeatureConfiguration.ENABLE_CREDENTIAL_RESET);
@@ -1260,7 +1268,7 @@ public class PolarisAdminService {
     }
   }
 
-  public @Nonnull PrincipalRoleEntity getPrincipalRole(String name) {
+  public @NonNull PrincipalRoleEntity getPrincipalRole(String name) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.GET_PRINCIPAL_ROLE;
     PolarisResolutionManifest resolutionManifest =
         authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.PRINCIPAL_ROLE);
@@ -1268,7 +1276,7 @@ public class PolarisAdminService {
     return getPrincipalRoleByName(resolutionManifest, name);
   }
 
-  public @Nonnull PrincipalRoleEntity updatePrincipalRole(
+  public @NonNull PrincipalRoleEntity updatePrincipalRole(
       String name, UpdatePrincipalRoleRequest updateRequest) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_PRINCIPAL_ROLE;
     PolarisResolutionManifest resolutionManifest =
@@ -1380,7 +1388,7 @@ public class PolarisAdminService {
     }
   }
 
-  public @Nonnull CatalogRoleEntity getCatalogRole(String catalogName, String name) {
+  public @NonNull CatalogRoleEntity getCatalogRole(String catalogName, String name) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.GET_CATALOG_ROLE;
     PolarisResolutionManifest resolutionManifest =
         authorizeBasicCatalogRoleOperationOrThrow(op, catalogName, name);
@@ -1388,7 +1396,7 @@ public class PolarisAdminService {
     return getCatalogRoleByName(resolutionManifest, name);
   }
 
-  public @Nonnull CatalogRoleEntity updateCatalogRole(
+  public @NonNull CatalogRoleEntity updateCatalogRole(
       String catalogName, String name, UpdateCatalogRoleRequest updateRequest) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_CATALOG_ROLE;
     PolarisResolutionManifest resolutionManifest =
@@ -1556,7 +1564,7 @@ public class PolarisAdminService {
    * @return list of grantees or securables matching the filter
    */
   private List<PolarisEntity> buildEntitiesFromGrantResults(
-      @Nonnull LoadGrantsResult grantList,
+      @NonNull LoadGrantsResult grantList,
       boolean grantees,
       PolarisEntityType entityType,
       @Nullable Function<PolarisGrantRecord, Boolean> grantFilter) {

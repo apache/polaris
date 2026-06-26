@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.maintenance.impl;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.function.Function;
 import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 public class RealmIdentOne implements PerRealmRetainedIdentifier {
@@ -34,7 +34,7 @@ public class RealmIdentOne implements PerRealmRetainedIdentifier {
   }
 
   @Override
-  public boolean identifyRetained(@Nonnull RetainedCollector collector) {
+  public boolean identifyRetained(@NonNull RetainedCollector collector) {
     return testCallback != null ? testCallback.apply(collector) : false;
   }
 }

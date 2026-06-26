@@ -51,6 +51,7 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -67,6 +68,7 @@ dependencies {
 
   testFixturesImplementation(project(":polaris-core"))
   testFixturesImplementation(testFixtures(project(":polaris-core")))
+  testFixturesImplementation(libs.jspecify)
   testFixturesImplementation(libs.jakarta.annotation.api)
   testFixturesImplementation(libs.jakarta.validation.api)
   testFixturesImplementation(libs.jakarta.enterprise.cdi.api)

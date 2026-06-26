@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.service.catalog;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.EnumSet;
 import java.util.Optional;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Resolves the optimal {@link AccessDelegationMode} to use based on the client's requested modes
@@ -43,7 +43,6 @@ public interface AccessDelegationModeResolver {
    *     AccessDelegationMode#VENDED_CREDENTIALS} on an external catalog whose credential vending
    *     feature is disabled).
    */
-  @Nonnull
-  Optional<AccessDelegationMode> resolve(
-      @Nonnull EnumSet<AccessDelegationMode> requestedModes, @Nullable CatalogEntity catalogEntity);
+  @NonNull Optional<AccessDelegationMode> resolve(
+      @NonNull EnumSet<AccessDelegationMode> requestedModes, @Nullable CatalogEntity catalogEntity);
 }

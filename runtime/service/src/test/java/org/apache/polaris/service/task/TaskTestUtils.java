@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.task;
 
-import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
@@ -56,6 +55,7 @@ import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.jspecify.annotations.NonNull;
 
 public class TaskTestUtils {
   static ManifestFile manifestFile(
@@ -143,7 +143,7 @@ public class TaskTestUtils {
     return tableMetadata;
   }
 
-  static @Nonnull TestSnapshot newSnapshot(
+  static @NonNull TestSnapshot newSnapshot(
       FileIO fileIO,
       String manifestListLocation,
       long sequenceNumber,

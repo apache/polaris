@@ -20,7 +20,6 @@ package org.apache.polaris.service.credentials.connection;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -38,6 +37,7 @@ import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.service.credentials.CredentialVendorPriorities;
+import org.jspecify.annotations.NonNull;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
@@ -79,8 +79,8 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
   }
 
   @Override
-  public @Nonnull ConnectionCredentials getConnectionCredentials(
-      @Nonnull ConnectionConfigInfoDpo connectionConfig) {
+  public @NonNull ConnectionCredentials getConnectionCredentials(
+      @NonNull ConnectionConfigInfoDpo connectionConfig) {
 
     // Validate and extract authentication parameters
     Preconditions.checkArgument(
@@ -142,11 +142,12 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
   }
 
   @VisibleForTesting
-  StsClient getStsClient(@Nonnull SigV4AuthenticationParametersDpo sigv4Params) {
+  StsClient getStsClient(@NonNull SigV4AuthenticationParametersDpo sigv4Params) {
     // Get STS client from the provider (potentially pooled)
     // The Polaris service identity credentials are set on the AssumeRole request via
     // overrideConfiguration, not on the STS client itself
-    // TODO: Configure proper StsDestination with region/endpoint from sigv4Params
-    return stsClientProvider.stsClient(StsClientProvider.StsDestination.of(null, null));
+    // TODO: Configure proper StsDestination with endpoint from sigv4Params
+    return stsClientProvider.stsClient(
+        StsClientProvider.StsDestination.of(null, sigv4Params.getSigningRegion()));
   }
 }

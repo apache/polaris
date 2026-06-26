@@ -111,7 +111,7 @@ class CacheInvalidationReceiver {
       String senderId,
       String token) {
     if (token == null || !validTokens.contains(token)) {
-      LOGGER.warn("Received cache invalidation with invalid token {}", token);
+      LOGGER.warn("Received cache invalidation with a missing or invalid token");
       responseInvalidToken(rc);
       return;
     }
@@ -120,7 +120,7 @@ class CacheInvalidationReceiver {
       responseNoContent(rc);
       return;
     }
-    if (!"application/json".equals(rc.request().getHeader("Content-Type"))) {
+    if (!acceptsJsonContentType(rc.request().getHeader("Content-Type"))) {
       LOGGER.warn("Received cache invalidation with invalid HTTP content type");
       responseInvalidContentType(rc);
       return;
@@ -154,6 +154,15 @@ class CacheInvalidationReceiver {
     }
 
     responseNoContent(rc);
+  }
+
+  private boolean acceptsJsonContentType(String contentType) {
+    if (contentType == null) {
+      return false;
+    }
+    var separator = contentType.indexOf(';');
+    var mimeType = separator >= 0 ? contentType.substring(0, separator) : contentType;
+    return "application/json".equalsIgnoreCase(mimeType.trim());
   }
 
   private void responseServerError(RoutingContext rc) {

@@ -60,25 +60,31 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_CREATE_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.CREATE_POLICY_REQUEST, createPolicyRequest)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_CREATE_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_CREATE_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.CREATE_POLICY_REQUEST, createPolicyRequest)));
+    }
     Response resp =
         delegate.createPolicy(
             prefix, namespace, createPolicyRequest, realmContext, securityContext);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.AFTER_CREATE_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.LOAD_POLICY_RESPONSE, (LoadPolicyResponse) resp.getEntity())));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_CREATE_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_CREATE_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(
+                      EventAttributes.LOAD_POLICY_RESPONSE,
+                      (LoadPolicyResponse) resp.getEntity())));
+    }
     return resp;
   }
 
@@ -92,25 +98,29 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_LIST_POLICIES,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_TYPE, policyType)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_LIST_POLICIES)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_LIST_POLICIES,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_TYPE, policyType)));
+    }
     Response resp =
         delegate.listPolicies(
             prefix, namespace, pageToken, pageSize, policyType, realmContext, securityContext);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.AFTER_LIST_POLICIES,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_TYPE, policyType)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_LIST_POLICIES)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_LIST_POLICIES,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_TYPE, policyType)));
+    }
     return resp;
   }
 
@@ -122,24 +132,30 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_LOAD_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_NAME, policyName)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_LOAD_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_LOAD_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_NAME, policyName)));
+    }
     Response resp =
         delegate.loadPolicy(prefix, namespace, policyName, realmContext, securityContext);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.AFTER_LOAD_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.LOAD_POLICY_RESPONSE, (LoadPolicyResponse) resp.getEntity())));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_LOAD_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_LOAD_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(
+                      EventAttributes.LOAD_POLICY_RESPONSE,
+                      (LoadPolicyResponse) resp.getEntity())));
+    }
     return resp;
   }
 
@@ -152,26 +168,32 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_UPDATE_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_NAME, policyName)
-                .put(EventAttributes.UPDATE_POLICY_REQUEST, updatePolicyRequest)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_UPDATE_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_UPDATE_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_NAME, policyName)
+                  .put(EventAttributes.UPDATE_POLICY_REQUEST, updatePolicyRequest)));
+    }
     Response resp =
         delegate.updatePolicy(
             prefix, namespace, policyName, updatePolicyRequest, realmContext, securityContext);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.AFTER_UPDATE_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.LOAD_POLICY_RESPONSE, (LoadPolicyResponse) resp.getEntity())));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_UPDATE_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_UPDATE_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(
+                      EventAttributes.LOAD_POLICY_RESPONSE,
+                      (LoadPolicyResponse) resp.getEntity())));
+    }
     return resp;
   }
 
@@ -184,27 +206,31 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_DROP_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_NAME, policyName)
-                .put(EventAttributes.DETACH_ALL, detachAll)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_DROP_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_DROP_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_NAME, policyName)
+                  .put(EventAttributes.DETACH_ALL, detachAll)));
+    }
     Response resp =
         delegate.dropPolicy(
             prefix, namespace, policyName, detachAll, realmContext, securityContext);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.AFTER_DROP_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_NAME, policyName)
-                .put(EventAttributes.DETACH_ALL, detachAll)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_DROP_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_DROP_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_NAME, policyName)
+                  .put(EventAttributes.DETACH_ALL, detachAll)));
+    }
     return resp;
   }
 
@@ -217,27 +243,31 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_ATTACH_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_NAME, policyName)
-                .put(EventAttributes.ATTACH_POLICY_REQUEST, attachPolicyRequest)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_ATTACH_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_ATTACH_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_NAME, policyName)
+                  .put(EventAttributes.ATTACH_POLICY_REQUEST, attachPolicyRequest)));
+    }
     Response resp =
         delegate.attachPolicy(
             prefix, namespace, policyName, attachPolicyRequest, realmContext, securityContext);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.AFTER_ATTACH_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_NAME, policyName)
-                .put(EventAttributes.ATTACH_POLICY_REQUEST, attachPolicyRequest)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_ATTACH_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_ATTACH_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_NAME, policyName)
+                  .put(EventAttributes.ATTACH_POLICY_REQUEST, attachPolicyRequest)));
+    }
     return resp;
   }
 
@@ -250,27 +280,31 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_DETACH_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_NAME, policyName)
-                .put(EventAttributes.DETACH_POLICY_REQUEST, detachPolicyRequest)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_DETACH_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_DETACH_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_NAME, policyName)
+                  .put(EventAttributes.DETACH_POLICY_REQUEST, detachPolicyRequest)));
+    }
     Response resp =
         delegate.detachPolicy(
             prefix, namespace, policyName, detachPolicyRequest, realmContext, securityContext);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.AFTER_DETACH_POLICY,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.POLICY_NAME, policyName)
-                .put(EventAttributes.DETACH_POLICY_REQUEST, detachPolicyRequest)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_DETACH_POLICY)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_DETACH_POLICY,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.POLICY_NAME, policyName)
+                  .put(EventAttributes.DETACH_POLICY_REQUEST, detachPolicyRequest)));
+    }
     return resp;
   }
 
@@ -285,15 +319,17 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_GET_APPLICABLE_POLICIES,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.TARGET_NAME, targetName)
-                .put(EventAttributes.POLICY_TYPE, policyType)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_GET_APPLICABLE_POLICIES)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_GET_APPLICABLE_POLICIES,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.TARGET_NAME, targetName)
+                  .put(EventAttributes.POLICY_TYPE, policyType)));
+    }
     Response resp =
         delegate.getApplicablePolicies(
             prefix,
@@ -304,18 +340,20 @@ public class CatalogPolicyEventServiceDelegator
             policyType,
             realmContext,
             securityContext);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.AFTER_GET_APPLICABLE_POLICIES,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE_NAME, namespace)
-                .put(EventAttributes.TARGET_NAME, targetName)
-                .put(EventAttributes.POLICY_TYPE, policyType)
-                .put(
-                    EventAttributes.GET_APPLICABLE_POLICIES_RESPONSE,
-                    (GetApplicablePoliciesResponse) resp.getEntity())));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_GET_APPLICABLE_POLICIES)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_GET_APPLICABLE_POLICIES,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE_NAME, namespace)
+                  .put(EventAttributes.TARGET_NAME, targetName)
+                  .put(EventAttributes.POLICY_TYPE, policyType)
+                  .put(
+                      EventAttributes.GET_APPLICABLE_POLICIES_RESPONSE,
+                      (GetApplicablePoliciesResponse) resp.getEntity())));
+    }
     return resp;
   }
 }

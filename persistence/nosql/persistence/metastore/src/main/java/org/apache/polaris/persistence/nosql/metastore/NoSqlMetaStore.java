@@ -50,8 +50,6 @@ import static org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpda
 import static org.apache.polaris.persistence.nosql.metastore.mutation.UpdateKeyForCatalogAndEntityType.updateKeyForCatalogAndEntityType;
 
 import com.google.common.collect.Streams;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -64,7 +62,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -77,7 +74,6 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -94,9 +90,6 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.Index;
@@ -109,6 +102,7 @@ import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 import org.apache.polaris.persistence.nosql.coretypes.acl.AclObj;
+import org.apache.polaris.persistence.nosql.coretypes.acl.GrantTriplet;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRoleObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj;
@@ -136,9 +130,10 @@ import org.apache.polaris.persistence.nosql.metastore.mutation.PolicyMutation;
 import org.apache.polaris.persistence.nosql.metastore.mutation.PrincipalMutations;
 import org.apache.polaris.persistence.nosql.metastore.mutation.PrincipalMutations.UpdateSecrets.SecretsUpdater;
 import org.apache.polaris.persistence.nosql.metastore.mutation.UpdateKeyForCatalogAndEntityType;
-import org.apache.polaris.persistence.nosql.metastore.privs.GrantTriplet;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableAndGrantee;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -147,28 +142,20 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
   private final Persistence persistence;
   private final Privileges privileges;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final MemoizedIndexedAccess memoizedIndexedAccess;
-  private final PolarisDiagnostics diagnostics;
 
-  NoSqlMetaStore(
-      Persistence persistence,
-      Privileges privileges,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      PolarisDiagnostics diagnostics) {
+  NoSqlMetaStore(Persistence persistence, Privileges privileges) {
     this.persistence = persistence;
     this.privileges = privileges;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.memoizedIndexedAccess = newMemoizedIndexedAccess(persistence);
-    this.diagnostics = diagnostics;
   }
 
   <REF_OBJ extends ContainerObj, RESULT> RESULT performChange(
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Class<REF_OBJ> referencedObjType,
-      @Nonnull Class<RESULT> resultType,
+      @NonNull PolarisEntityType entityType,
+      @NonNull Class<REF_OBJ> referencedObjType,
+      @NonNull Class<RESULT> resultType,
       long catalogStableId,
-      @Nonnull ChangeCommitter<REF_OBJ, RESULT> changeCommitter) {
+      @NonNull ChangeCommitter<REF_OBJ, RESULT> changeCommitter) {
     try {
       var committer =
           persistence
@@ -284,7 +271,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                     catalogAdminRole, effRole, PolarisPrivilege.CATALOG_ROLE_USAGE));
           }
 
-          persistGrantsOrRevokes(true, grants.toArray(SecurableGranteePrivilegeTuple[]::new));
+          persistGrantsOrRevokes(
+              true, false, grants.toArray(SecurableGranteePrivilegeTuple[]::new));
 
           byName.put(nameKey, objRef(catalogObj));
           byId.put(idKey, nameKey);
@@ -300,7 +288,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   CatalogRoleObj createCatalogRoleIdempotent(
-      @Nonnull CatalogObj catalogObj, long catalogRoleStableId, @Nonnull String roleName) {
+      @NonNull CatalogObj catalogObj, long catalogRoleStableId, @NonNull String roleName) {
     return performChange(
         PolarisEntityType.CATALOG_ROLE,
         CatalogRolesObj.class,
@@ -523,6 +511,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                       index.remove(fromIndexKey(key).reverse().toIndexKey());
                     }
 
+                    // Replacing this inline index leaves older mapping objects and stripes stale
+                    // until a later maintenance purge.
                     builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
                     return state.commitResult("", builder, refObj);
                   })
@@ -626,11 +616,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                       .apply()));
     }
 
-    // TODO populate MutationResults.aclsToRemove and handle those, also need a maintenance
-    //  operation to garbage-collect ACL entries for no longer existing entities.
-
-    // TODO handle MutationResults.policyIndexKeysToRemove(), also need a maintenance
-    //  operation to garbage-collect stale policy entries.
+    // Cross-reference cleanup for grants and policy mappings cannot be atomic with the entity drop
+    // commit, because those structures live on separate refs. Stale entries are tolerated on the
+    // read path and are removed later by maintenance.
 
     return mutationResults;
   }
@@ -699,8 +687,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             });
   }
 
-  @Nullable
-  PolarisBaseEntity lookupEntity(long catalogId, long entityId, int entityTypeCode) {
+  @Nullable PolarisBaseEntity lookupEntity(long catalogId, long entityId, int entityTypeCode) {
     if (entityTypeCode == PolarisEntityType.ROOT.getCode()) {
       return (PolarisEntityConstants.getNullId() == catalogId
               && entityId == PolarisEntityConstants.getRootEntityId())
@@ -973,11 +960,11 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   PolicyAttachmentResult attachDetachPolicyOnEntity(
       long policyCatalogId,
       long policyId,
-      @Nonnull PolicyType policyType,
+      @NonNull PolicyType policyType,
       long targetCatalogId,
       long targetId,
       boolean doAttach,
-      @Nonnull Map<String, String> parameters) {
+      @NonNull Map<String, String> parameters) {
     return new PolicyMutation(
             persistence,
             memoizedIndexedAccess,
@@ -991,7 +978,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         .apply();
   }
 
-  // TODO remove entirely?
+  // Dormant reverse-lookup helper kept for possible future policy-to-entity lookups.
   @SuppressWarnings("SameParameterValue")
   LoadPolicyMappingsResult loadEntitiesOnPolicy(
       @Nullable PolarisEntityType entityType,
@@ -1092,6 +1079,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               .byId(key.policyId())
               .flatMap(objBase -> filterIsEntityType(objBase, PolarisEntityType.POLICY))
               .map(obj -> mapToEntity(obj, key.policyCatalogId()))
+              // Missing policy entities indicate tolerated stale mappings that maintenance will
+              // eventually prune.
               .ifPresent(policyEntities::add);
         }
         mappingRecords.add(key.toMappingRecord(elem.value()));
@@ -1137,23 +1126,42 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   LoadGrantsResult loadGrants(long catalogId, long id, int entityTypeCode, boolean onSecurable) {
+    PolarisEntityType entityType = PolarisEntityType.fromCode(entityTypeCode);
     LOGGER.debug(
         "loadGrants on {} for catalog:{}, id:{}, entityType:{}({})",
         onSecurable ? "securable" : "grantee",
         catalogId,
         id,
-        PolarisEntityType.fromCode(entityTypeCode),
+        entityType,
         entityTypeCode);
+
+    var anchorEntity = lookupEntity(catalogId, id, entityTypeCode);
+    if (anchorEntity == null) {
+      LOGGER.trace(
+          "Anchor entity for loadGrants does not exist, returning ENTITY_NOT_FOUND: catalog:{}, id:{}, entityType:{}({})",
+          catalogId,
+          id,
+          entityType,
+          entityTypeCode);
+      return new LoadGrantsResult(ENTITY_NOT_FOUND, null);
+    }
+
     var aclName = new GrantTriplet(true, catalogId, id, entityTypeCode).toRoleName();
 
     var collector = new GrantRecordsCollector();
     var entities = new ArrayList<PolarisBaseEntity>();
     var ids = new HashSet<Long>();
+    // ACLs for a given entity contain two directional entry flavors:
+    //   - reverse ('r/...'): grants where that entity is the grantee
+    //   - directed ('d/...'): grants where that entity is the securable
+    // Filter by direction so callers receive only the requested perspective.
+    Predicate<GrantTriplet> entryFilter = GrantTriplet::reverseOrKey;
+    entryFilter = onSecurable ? entryFilter.negate() : entryFilter;
 
     collectGrantRecords(
         catalogId,
         aclName,
-        ((securableAndGrantee, granted) -> {
+        (securableAndGrantee, granted) -> {
           var targetCatalogId =
               onSecurable
                   ? securableAndGrantee.granteeCatalogId()
@@ -1164,6 +1172,20 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               onSecurable
                   ? securableAndGrantee.granteeTypeCode()
                   : securableAndGrantee.securableTypeCode();
+
+          // Skip self-referencing entries where the target is the anchor entity itself.
+          // The bidirectional ACL model produces these when securable == grantee.
+          if (targetId == id && targetTypeCode == entityTypeCode) {
+            if (LOGGER.isTraceEnabled()) {
+              LOGGER.trace(
+                  "    Skipping self-referencing grant entry for catalog:{}, id:{}, entityType:{}({})",
+                  targetCatalogId,
+                  targetId,
+                  PolarisEntityType.fromCode(targetTypeCode),
+                  targetTypeCode);
+            }
+            return;
+          }
 
           var indexedAccess = memoizedIndexedAccess.indexedAccess(targetCatalogId, targetTypeCode);
           var entityOptional =
@@ -1181,19 +1203,23 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               entities.add(entity);
             }
           } else {
+            // Missing targets indicate tolerated stale grant references that maintenance will
+            // eventually prune.
             LOGGER.trace("    Not returning stale entity reference");
           }
-        }));
+        },
+        entryFilter);
 
     LOGGER.trace(
         "Returning {} grant records for loadGrants for catalog:{}, id:{}, entityType:{}({})",
         collector.grantRecords.size(),
         catalogId,
         id,
-        PolarisEntityType.fromCode(entityTypeCode),
+        entityType,
         entityTypeCode);
 
-    return new LoadGrantsResult(1, collector.grantRecords, entities);
+    return new LoadGrantsResult(
+        anchorEntity.getGrantRecordsVersion(), collector.grantRecords, entities);
   }
 
   private List<PolarisGrantRecord> collectGrantRecords(
@@ -1204,26 +1230,51 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         catalogId,
         aclName,
         (securableAndGrantee, granted) -> {
-          var indexedAccess =
-              memoizedIndexedAccess.indexedAccess(
+          var securableExists =
+              entityExists(
                   securableAndGrantee.securableCatalogId(),
+                  securableAndGrantee.securableId(),
                   securableAndGrantee.securableTypeCode());
-          var existing = indexedAccess.nameKeyById(securableAndGrantee.securableId());
-          if (existing.isPresent()) {
-            collector.handle(securableAndGrantee, granted);
+          if (!securableExists) {
+            // Stale grant entries are tolerated on reads and removed later by maintenance.
+            LOGGER.trace("Skipping stale grant record due to missing securable reference");
+            return;
           }
+
+          var granteeExists =
+              entityExists(
+                  securableAndGrantee.granteeCatalogId(),
+                  securableAndGrantee.granteeId(),
+                  securableAndGrantee.granteeTypeCode());
+          if (!granteeExists) {
+            // Stale grant entries are tolerated on reads and removed later by maintenance.
+            LOGGER.trace("Skipping stale grant record due to missing grantee reference");
+            return;
+          }
+
+          collector.handle(securableAndGrantee, granted);
         },
-        securablesIndex);
+        securablesIndex,
+        triplet -> true);
     return collector.grantRecords;
   }
 
+  private boolean entityExists(long catalogId, long id, int typeCode) {
+    var indexedAccess = memoizedIndexedAccess.indexedAccess(catalogId, typeCode);
+    return indexedAccess.nameKeyById(id).isPresent();
+  }
+
   private void collectGrantRecords(
-      long catalogStableId, String aclName, AclEntryHandler aclEntryConsumer) {
+      long catalogStableId,
+      String aclName,
+      AclEntryHandler aclEntryConsumer,
+      Predicate<GrantTriplet> tripletFilter) {
     LOGGER.debug("Checking ACL '{}'", aclName);
 
     var securablesIndex = memoizedIndexedAccess.grantsIndex();
     if (securablesIndex.isPresent()) {
-      collectGrantRecords(catalogStableId, aclName, aclEntryConsumer, securablesIndex.get());
+      collectGrantRecords(
+          catalogStableId, aclName, aclEntryConsumer, securablesIndex.get(), tripletFilter);
     } else {
       LOGGER.trace("ACL {} does not exist", aclName);
     }
@@ -1233,7 +1284,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       long catalogStableId,
       String aclName,
       AclEntryHandler aclEntryConsumer,
-      Index<ObjRef> securablesIndex) {
+      Index<ObjRef> securablesIndex,
+      Predicate<GrantTriplet> tripletFilter) {
     var securableKey = IndexKey.key(aclName);
 
     LOGGER.trace("Processing existing ACL {}", aclName);
@@ -1246,6 +1298,10 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               acl.forEach(
                   (role, entry) -> {
                     var triplet = GrantTriplet.fromRoleName(role);
+                    if (!tripletFilter.test(triplet)) {
+                      LOGGER.trace("  Skipping ACL entry role '{}' due to direction filter", role);
+                      return;
+                    }
                     LOGGER
                         .atTrace()
                         .setMessage("  ACL has securable {} ({}) with privileges {}")
@@ -1285,18 +1341,18 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     }
   }
 
-  boolean persistGrantsOrRevokes(boolean doGrant, SecurableGranteePrivilegeTuple... grants) {
+  boolean persistGrantsOrRevokes(
+      boolean doGrant, boolean validateEntityReferences, SecurableGranteePrivilegeTuple... grants) {
     LOGGER.debug("Persisting {} for '{}'", doGrant ? "grants" : "revokes", Arrays.asList(grants));
 
-    return new GrantsMutation(persistence, memoizedIndexedAccess, privileges, doGrant, grants)
+    return new GrantsMutation(
+            persistence,
+            memoizedIndexedAccess,
+            privileges,
+            doGrant,
+            validateEntityReferences,
+            grants)
         .apply();
-  }
-
-  <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisBaseEntity entity) {
-    var storageConfig = BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 
   CreatePrincipalResult createPrincipal(
@@ -1319,7 +1375,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         .apply();
   }
 
-  PolarisPrincipalSecrets loadPrincipalSecrets(@Nonnull String clientId) {
+  PolarisPrincipalSecrets loadPrincipalSecrets(@NonNull String clientId) {
     LOGGER.debug("loadPrincipalSecrets clientId: {}", clientId);
 
     var key = IndexKey.key(clientId);

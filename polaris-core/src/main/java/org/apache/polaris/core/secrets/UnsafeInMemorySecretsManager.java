@@ -19,7 +19,6 @@
 package org.apache.polaris.core.secrets;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -29,6 +28,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.DigestUtils;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.jspecify.annotations.NonNull;
 
 /**
  * A minimal in-memory implementation of UserSecretsManager that should only be used for test and
@@ -47,8 +47,8 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
   /** {@inheritDoc} */
   @Override
-  @Nonnull
-  public SecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntityCore forEntity) {
+  @NonNull
+  public SecretReference writeSecret(@NonNull String secret, @NonNull PolarisEntityCore forEntity) {
     // For illustrative purposes and to exercise the control flow of requiring both the stored
     // secret as well as the secretReferencePayload to recover the original secret, we'll use
     // basic XOR encryption and store the randomly generated key in the reference payload.
@@ -102,8 +102,8 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
   /** {@inheritDoc} */
   @Override
-  @Nonnull
-  public String readSecret(@Nonnull SecretReference secretReference) {
+  @NonNull
+  public String readSecret(@NonNull SecretReference secretReference) {
     String secretManagerType = secretReference.getSecretManagerType();
     Preconditions.checkState(
         secretManagerType.equals(SECRET_MANAGER_TYPE),
@@ -145,7 +145,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
   /** {@inheritDoc} */
   @Override
-  public void deleteSecret(@Nonnull SecretReference secretReference) {
+  public void deleteSecret(@NonNull SecretReference secretReference) {
     rawSecretStore.remove(secretReference.urn());
   }
 }

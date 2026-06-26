@@ -18,9 +18,10 @@
 #
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, cast
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.command.utils import (
     get_catalog_api_client,
     crawl_namespace,
@@ -35,14 +36,14 @@ from apache_polaris.sdk.management import PolarisDefaultApi
 @dataclass
 class FindCommand(Command):
     """
-    A Command implemtation to represent `polaris find`. It searches for an identifier across global entities (principals, roles, catalogs)
+    A Command implementation to represent `polaris find`. It searches for an identifier across global entities (principals, roles, catalogs)
     and catalog entities (namespaces, tables, views) using fuzzy matching.
 
     Example commands:
-        * ./polaris find my_table
-        * ./polaris find ns1.my_table
-        * ./polaris find --catalog my_catalog my_table
-        * ./polaris find my_table --type table
+        * polaris find my_table
+        * polaris find ns1.my_table
+        * polaris find --catalog my_catalog my_table
+        * polaris find my_table --type table
     """
 
     identifier: str
@@ -52,12 +53,13 @@ class FindCommand(Command):
     _type_counts: Counter = field(default_factory=Counter, repr=False)
 
     def validate(self) -> None:
-        if not self.identifier.strip():
-            raise Exception("The search identifier cannot be empty.")
+        if not self.identifier or not self.identifier.strip():
+            raise CliError("The search identifier cannot be empty.")
 
     def execute(self, api: PolarisDefaultApi) -> None:
-        print(f"Searching for '{self.identifier}'...")
-        parts = self.identifier.split(".")
+        identifier = cast(str, self.identifier)
+        print(f"Searching for '{identifier}'...")
+        parts = identifier.split(".")
         target_ns = parts[:-1]
         target_leaf = parts[-1]
 
@@ -106,7 +108,7 @@ class FindCommand(Command):
             )
             print(f"\nFound {total_results} matches ({types_str}).")
         else:
-            print(f"No identifiers found matching '{self.identifier}'.")
+            print(f"No identifiers found matching '{identifier}'.")
 
     def _resolve_search_scope(
         self,
@@ -114,12 +116,13 @@ class FindCommand(Command):
         target_ns: List[str],
     ) -> Tuple[Optional[List[str]], List[str]]:
         if self.catalog_name:
+            catalog_name = cast(str, self.catalog_name)
             try:
-                api.get_catalog(self.catalog_name)
-                return [self.catalog_name], target_ns
+                api.get_catalog(catalog_name)
+                return [catalog_name], target_ns
             except Exception as e:
                 if getattr(e, "status", None) == 404:
-                    print(f"Catalog '{self.catalog_name}' not found.")
+                    print(f"Catalog '{catalog_name}' not found.")
                     return None, []
                 handle_api_exception("Catalog Access", e)
                 return [], target_ns

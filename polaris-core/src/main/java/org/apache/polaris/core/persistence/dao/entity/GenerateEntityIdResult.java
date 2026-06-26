@@ -20,8 +20,8 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** the return for a generate new entity id */
 public class GenerateEntityIdResult extends BaseResult {
@@ -36,7 +36,7 @@ public class GenerateEntityIdResult extends BaseResult {
    * @param extraInformation extra information
    */
   public GenerateEntityIdResult(
-      @Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+      @NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.id = null;
   }
@@ -46,14 +46,14 @@ public class GenerateEntityIdResult extends BaseResult {
    *
    * @param id the new id which was generated
    */
-  public GenerateEntityIdResult(@Nonnull Long id) {
+  public GenerateEntityIdResult(@NonNull Long id) {
     super(ReturnStatus.SUCCESS);
     this.id = id;
   }
 
   @JsonCreator
   private GenerateEntityIdResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") @Nullable String extraInformation,
       @JsonProperty("id") @Nullable Long id) {
     super(returnStatus, extraInformation);

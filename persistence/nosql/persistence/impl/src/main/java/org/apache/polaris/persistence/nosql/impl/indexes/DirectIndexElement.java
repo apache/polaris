@@ -18,23 +18,23 @@
  */
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class DirectIndexElement<V> extends AbstractIndexElement<V> {
   private final IndexKey key;
   private final V content;
 
-  DirectIndexElement(@Nonnull IndexKey key, @Nullable V content) {
+  DirectIndexElement(@NonNull IndexKey key, @Nullable V content) {
     this.key = key;
     this.content = content;
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public IndexKey key() {
     return key;
   }

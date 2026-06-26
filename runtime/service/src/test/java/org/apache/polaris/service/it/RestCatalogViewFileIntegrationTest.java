@@ -19,40 +19,11 @@
 package org.apache.polaris.service.it;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import java.lang.reflect.Field;
-import java.nio.file.Path;
-import java.util.Map;
-import org.apache.iceberg.view.ViewCatalogTests;
+import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTestBase;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusTest
-@TestProfile(RestCatalogViewFileIntegrationTest.Profile.class)
+@TestProfile(Profiles.RestCatalogViewFileIntegrationProfile.class)
 public class RestCatalogViewFileIntegrationTest
-    extends PolarisRestCatalogViewFileIntegrationTestBase {
-
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]",
-          "polaris.readiness.ignore-severe-issues",
-          "true");
-    }
-  }
-
-  @BeforeEach
-  public void setUpTempDir(@TempDir Path tempDir) throws Exception {
-    // see https://github.com/quarkusio/quarkus/issues/13261
-    Field field = ViewCatalogTests.class.getDeclaredField("tempDir");
-    field.setAccessible(true);
-    field.set(this, tempDir);
-  }
-}
+    extends PolarisRestCatalogViewFileIntegrationTestBase {}

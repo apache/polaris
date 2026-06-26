@@ -164,16 +164,60 @@ We will proceed with publishing the approved artifacts and sending out the annou
 ## Publish the release
 The final workflow to run is [`Release - 4 - Publish Release After Vote Success`](https://github.com/apache/polaris/actions/workflows/release-4-publish-release.yml). This workflow will:
 * Verify that the release branch HEAD matches the last RC tag
-* Copy artifacts from the dist dev to the dist release SVN repository
-* Update the Helm index in dist release repository accordingly
 * Create a final release tag
 * Rebuild and publish Docker images to Docker Hub
-* Create a Github release with the release artifacts
+* Create a Github release with the release artifacts (downloaded from dist dev)
 * Release the candidate repository on Apache Nexus
 
 This workflow can only be run from the `release/[major].[minor].x` branch for which a vote has passed. The workflow verifies that no commits have been added to the release branch since the last RC was created. It also requires the Nexus staging repository id (`orgapachepolaris-<ID>`) that was created by the previous workflow.
 
 ![Screenshot of the fourth release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-4.png "Screenshot of the fourth release workflow for 1.3.0-incubating")
+
+### Manual steps on dist.apache.org
+
+The workflow does not move artifacts from the dist dev to the dist release SVN repository, because the credentials used by the workflow do not have write access to the release area. A PMC member must run the following commands manually after the workflow completes.
+
+Move the release artifacts, Helm chart, and Python client from `dev/polaris` to `release/polaris`:
+
+```
+svn mv https://dist.apache.org/repos/dist/dev/polaris/[major].[minor].[patch] \
+  https://dist.apache.org/repos/dist/release/polaris/[major].[minor].[patch] \
+  -m "Release Apache Polaris [major].[minor].[patch]"
+
+svn mv https://dist.apache.org/repos/dist/dev/polaris/helm-chart/[major].[minor].[patch] \
+  https://dist.apache.org/repos/dist/release/polaris/helm-chart/[major].[minor].[patch] \
+  -m "Release Apache Polaris Helm chart [major].[minor].[patch]"
+
+svn mv https://dist.apache.org/repos/dist/dev/polaris/python-client/[major].[minor].[patch] \
+  https://dist.apache.org/repos/dist/release/polaris/python-client/[major].[minor].[patch] \
+  -m "Release Apache Polaris Python client [major].[minor].[patch]"
+```
+
+Transfer the Helm index and Artifact Hub metadata from dist dev to dist release. If `index.yaml` and `artifacthub-repo.yml` already exist under `release/polaris/helm-chart/` (which is the case after the first release), remove them first or `svn mv` will fail with "already exists":
+
+```
+svn rm https://dist.apache.org/repos/dist/release/polaris/helm-chart/index.yaml \
+  https://dist.apache.org/repos/dist/release/polaris/helm-chart/artifacthub-repo.yml \
+  -m "Remove previous Helm index and artifacthub-repo.yml (superseded by [major].[minor].[patch])"
+
+svn mv https://dist.apache.org/repos/dist/dev/polaris/helm-chart/index.yaml \
+  https://dist.apache.org/repos/dist/dev/polaris/helm-chart/artifacthub-repo.yml \
+  https://dist.apache.org/repos/dist/release/polaris/helm-chart/ \
+  -m "Transfer Helm index and artifacthub-repo.yml for [major].[minor].[patch] release"
+```
+
+Finally, remove old release versions from `release/polaris`, `release/polaris/helm-chart`, and `release/polaris/python-client` that are superseded by the new release (ASF policy requires keeping only the current release in the `release/` area; older versions are archived automatically). For each old version directory listed by `svn list`:
+
+```
+svn rm https://dist.apache.org/repos/dist/release/polaris/[old-version] \
+  -m "Remove old release [old-version] (superseded by [major].[minor].[patch])"
+
+svn rm https://dist.apache.org/repos/dist/release/polaris/helm-chart/[old-version] \
+  -m "Remove old Helm chart [old-version] (superseded by [major].[minor].[patch])"
+
+svn rm https://dist.apache.org/repos/dist/release/polaris/python-client/[old-version] \
+  -m "Remove old Python client [old-version] (superseded by [major].[minor].[patch])"
+```
 
 ## Publish docs
 These steps have not been automated yet.
@@ -202,6 +246,13 @@ Copy the documentation from the release tag:
 cp -r ../../content/in-dev/unreleased/* [major].[minor].[patch]/
 ```
 
+Update the binary distribution download link in `[major].[minor].[patch]/getting-started/binary-distribution.md`.
+Replace any old release URL with the correct one for this release. For a non-incubating release the URL format is:
+
+```
+https://downloads.apache.org/polaris/[major].[minor].[patch]/polaris-bin-[major].[minor].[patch].tgz
+```
+
 Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
 `site/content/in-dev/release_index.md` and perform the following modifications:
 
@@ -212,6 +263,8 @@ Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
 * Adjust the `menus` section to register this release in the Documentation dropdown menu (see existing releases for examples).
 * Adjust the `cascade` section accordingly.
 * Remove the `alert warning` block that warns that the documentation is for the main branch.
+
+Update the "latest" redirect in the versioned-docs branch: edit `releases/latest/index.md` (i.e. `site/content/releases/latest/index.md` when using the Git worktree) and update the `redirect_to` parameter in the front matter to point to the new release (e.g., change `redirect_to: '/releases/1.3.0/'` to `redirect_to: '/releases/[major].[minor].[patch]/'`).
 
 Commit and push to your fork:
 
@@ -247,7 +300,17 @@ Create a new directory and file for the release under `site/content/downloads/[m
 Refer to the `README.md` file under `site/content/downloads/README.md` for a full description of the
 downloads page structure and requirements when adding a new release.
 
+Also edit `site/content/downloads/latest/index.md` and update the `redirect_to` parameter to point to
+the new release (e.g., change `redirect_to: '/downloads/1.3.0/'` to `redirect_to: '/downloads/[major].[minor].[patch]/'`).
+
 Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new
 release; remove the oldest release from this list.
+
+Also edit `site/static/.htaccess` and update the version in both `RewriteRule` lines for `releases/latest/` to point to the new release (e.g., change `1.3.0` to `[major].[minor].[patch]`):
+
+```
+RewriteRule ^releases/latest$ /releases/[major].[minor].[patch]/ [R=302,L]
+RewriteRule ^releases/latest/(.*)$ /releases/[major].[minor].[patch]/$1 [R=302,L]
+```
 
 Then open a PR against the `main` branch with your changes.

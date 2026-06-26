@@ -22,6 +22,12 @@ title: 'Polaris Tools'
 weight: 150
 cascade:
   type: docs
+menus:
+  main:
+    parent: tools
+    weight: 1
+    identifier: tools-overview
+    name: Overview
 ---
 
 Polaris has a set of tools to bolster the Polaris ecosystem and provide additional functionality to work with Polaris and data lakehouses.
@@ -33,5 +39,5 @@ These include:
 | [Polaris Benchmarks](./polaris-benchmarks/)             | Performance benchmarks for Polaris.                                                |
 | [Polaris Synchronizer](./polaris-synchronizer/)         | A tool to migrate entities from one Polaris instance to another.                   |
 | [Polaris MCP Server](./polaris-mcp-server/)             | A Polaris MCP server implementation.                                               |
-| [Polaris Console](./polaris-console/)                           | A Web Console for the Polaris server.                                              |
+| [Polaris Console](./polaris-console/)                   | A Web Console for the Polaris server.                                              |
 

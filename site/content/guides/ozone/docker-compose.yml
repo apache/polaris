@@ -20,7 +20,7 @@
 services:
 
   ozone-datanode:
-    image: &ozone-image apache/ozone:2.1.0
+    image: &ozone-image apache/ozone:2.1.1
     ports:
       - "9864"
     command: ["ozone","datanode"]
@@ -127,7 +127,7 @@ services:
       start_period: 10s
 
   polaris-setup:
-    image: alpine/curl:8.17.0
+    image: alpine/curl:8.20.0
     depends_on:
       polaris:
         condition: service_healthy

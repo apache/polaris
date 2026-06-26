@@ -21,7 +21,6 @@ package org.apache.polaris.maintenance.cel;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Scheduler;
-import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +28,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
+import org.jspecify.annotations.NonNull;
 import org.projectnessie.cel.checker.Decls;
 import org.projectnessie.cel.relocated.com.google.api.expr.v1alpha1.Decl;
 import org.projectnessie.cel.tools.Script;
@@ -116,12 +116,12 @@ public class CelReferenceContinuePredicate<O extends BaseCommitObj> implements P
   private long numCommit;
 
   public CelReferenceContinuePredicate(
-      @Nonnull String refName, @Nonnull Persistence persistence, @Nonnull String script) {
+      @NonNull String refName, @NonNull Persistence persistence, @NonNull String script) {
     this(refName, persistence::objAge, script);
   }
 
   public CelReferenceContinuePredicate(
-      @Nonnull String refName, @Nonnull Function<O, Duration> objAge, @Nonnull String script) {
+      @NonNull String refName, @NonNull Function<O, Duration> objAge, @NonNull String script) {
     this.refName = refName;
     this.objAge = objAge;
     this.script = getScript(script);

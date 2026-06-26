@@ -71,6 +71,9 @@ public class IcebergAllowedLocationTest {
               ImmutableSQLViewRepresentation.builder().sql(VIEW_QUERY).dialect("spark").build())
           .build();
 
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
+
   private String getTableName() {
     return "table_" + UUID.randomUUID();
   }
@@ -102,6 +105,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     null,
+                    IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -131,10 +135,147 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext());
 
     assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
+  }
+
+  @Test
+  void testCreateTableStagedOutsideOfCatalogAllowedLocations(@TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = tmpDir.resolve(namespace).toAbsolutePath().toUri().toString();
+    assertNotEquals(catalogLocation, namespaceLocation);
+
+    createCatalog(services, Map.of(), catalogLocation, null);
+
+    // create a namespace outside of catalog allowed locations
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder()
+            .withName(getTableName())
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            services
+                .restApi()
+                .createTable(
+                    catalog,
+                    namespace,
+                    createTableRequest,
+                    "vended-credentials",
+                    IDEMPOTENCY_KEY,
+                    services.realmContext(),
+                    services.securityContext()));
+  }
+
+  @Test
+  void testCreateTableStagedInsideCatalogAllowedLocations(@TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = tmpDir.resolve(namespace).toAbsolutePath().toUri().toString();
+    assertNotEquals(catalogLocation, namespaceLocation);
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(namespaceLocation));
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder()
+            .withName(getTableName())
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    try (Response response =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                "vended-credentials",
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  void testCreateTableStagedWithExplicitLocationOutsideAllowedLocations(@TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = catalogLocation + "/" + namespace;
+    var externalLocation = tmpDir.resolve("external-location").toAbsolutePath().toUri().toString();
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder()
+            .withLocation(externalLocation)
+            .withName(getTableName())
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            services
+                .restApi()
+                .createTable(
+                    catalog,
+                    namespace,
+                    createTableRequest,
+                    null,
+                    IDEMPOTENCY_KEY,
+                    services.realmContext(),
+                    services.securityContext()));
+  }
+
+  @Test
+  void testCreateTableStagedWithExplicitLocationInsideAllowedLocations(@TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = catalogLocation + "/" + namespace;
+    var customLocation = namespaceLocation + "/custom-location";
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder()
+            .withLocation(customLocation)
+            .withName(getTableName())
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    try (Response response =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                "vended-credentials",
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
+    }
   }
 
   private static TestServices getTestServices() {
@@ -327,6 +468,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext());
     assertThat(createResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -401,6 +543,7 @@ public class IcebergAllowedLocationTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());

@@ -19,8 +19,6 @@
 package org.apache.polaris.service.persistence;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -38,6 +36,8 @@ import org.apache.polaris.core.persistence.transactional.TransactionalPersistenc
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 @ApplicationScoped
 @Identifier("in-memory")
@@ -45,33 +45,36 @@ public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<TreeMapMetaStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
+  private final RootCredentialsSet rootCredentialsSet;
   private final Set<String> bootstrappedRealms = new HashSet<>();
 
   @SuppressWarnings("unused") // Required by CDI
   protected InMemoryPolarisMetaStoreManagerFactory() {
-    this(null, null, null);
+    this(null, null, null, null);
   }
 
   @Inject
   public InMemoryPolarisMetaStoreManagerFactory(
       Clock clock,
       PolarisDiagnostics diagnostics,
-      PolarisStorageIntegrationProvider storageIntegration) {
+      PolarisStorageIntegrationProvider storageIntegration,
+      RootCredentialsSet rootCredentialsSet) {
     super(clock, diagnostics);
     this.storageIntegration = storageIntegration;
+    this.rootCredentialsSet = rootCredentialsSet;
   }
 
   @Override
-  protected TreeMapMetaStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
+  protected TreeMapMetaStore createBackingStore(@NonNull PolarisDiagnostics diagnostics) {
     return new TreeMapMetaStore(diagnostics);
   }
 
   @Override
   protected TransactionalPersistence createMetaStoreSession(
-      @Nonnull TreeMapMetaStore store,
-      @Nonnull RealmContext realmContext,
+      @NonNull TreeMapMetaStore store,
+      @NonNull RealmContext realmContext,
       @Nullable RootCredentialsSet rootCredentialsSet,
-      @Nonnull PolarisDiagnostics diagnostics) {
+      @NonNull PolarisDiagnostics diagnostics) {
     return new TreeMapTransactionalPersistenceImpl(
         diagnostics, store, storageIntegration, secretsGenerator(realmContext, rootCredentialsSet));
   }
@@ -81,7 +84,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsFromEnvironment(List.of(realmId));
+      bootstrapRealms(List.of(realmId), rootCredentialsSet);
     }
     return super.getOrCreateMetaStoreManager(realmContext);
   }
@@ -90,14 +93,9 @@ public class InMemoryPolarisMetaStoreManagerFactory
   public synchronized TransactionalPersistence getOrCreateSession(RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsFromEnvironment(List.of(realmId));
+      bootstrapRealms(List.of(realmId), rootCredentialsSet);
     }
     return super.getOrCreateSession(realmContext);
-  }
-
-  private void bootstrapRealmsFromEnvironment(List<String> realms) {
-    RootCredentialsSet rootCredentialsSet = RootCredentialsSet.fromEnvironment();
-    this.bootstrapRealms(realms, rootCredentialsSet);
   }
 
   @Override

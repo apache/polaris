@@ -24,11 +24,34 @@ weight: 400
 
 This page documents various entities that can be managed in Apache Polaris.
 
+## Entity name constraints
+
+The REST layer enforces the following rules for entity names (namespace levels, table names, view names, and generic table names). Names that violate these rules are rejected with HTTP 400.
+
+A valid entity name:
+
+- is not empty;
+- is not `.` or `..`;
+- does not contain ISO control characters (U+0000–U+001F or U+007F–U+009F);
+- does not contain any of the following characters: <code>/\:*?"<>|#+`</code>;
+- does not start or end with whitespace.
+
+These constraints apply to **create**, **register**, and **rename** operations. Existing entities whose names pre-date this validation are not affected by read or update operations.
+
+[Policy](#policy) names are subject to stricter constraints; see below.
+
 ## Catalog
 
 A catalog is a top-level entity in Polaris that may contain other entities like [namespaces](#namespace) and [tables](#table). These map directly to [Apache Iceberg catalogs](https://iceberg.apache.org/terms/#catalog).
 
 For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see [the CreateCatalogRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
+
+{{< alert warning >}}
+Catalog properties are client-visible configuration values. Polaris returns them to authenticated
+catalog clients through the Iceberg REST `/config` response. Use catalog properties only for
+non-sensitive client configuration. Do not store passwords, tokens, access keys, or other secrets
+in catalog properties.
+{{< /alert >}}
 
 ### Storage Type
 
@@ -52,11 +75,21 @@ Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.
 
 For information on managing tables with the REST API or for more information on what data can be associated with a table, see [the CreateTableRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
+{{< alert warning >}}
+Table properties are readable metadata, not a secret store. Do not store passwords, tokens, access
+keys, or other secrets in table properties.
+{{< /alert >}}
+
 ## View
 
 Polaris views are entities that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).
 
 For information on managing views with the REST API or for more information on what data can be associated with a view, see [the CreateViewRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
+
+{{< alert warning >}}
+View properties are readable metadata, not a secret store. Do not store passwords, tokens, access
+keys, or other secrets in view properties.
+{{< /alert >}}
 
 ## Principal
 
@@ -79,6 +112,8 @@ Each catalog role may have multiple [privileges](#privilege) granted to it, and 
 ## Policy
 
 Polaris policy is a set of rules governing actions on specified resources under predefined conditions. Polaris support policy for Iceberg table compaction, snapshot expiry, row-level access control, and custom policy definitions.
+
+Policy names may only contain letters (`A–Z`, `a–z`), digits (`0–9`), hyphens (`-`), and underscores (`_`). Names that do not match this pattern are rejected with HTTP 400.
 
 Policy can be applied at catalog level, namespace level, or table level. Policy inheritance can be achieved by attaching one to a higher-level scope, such as namespace or catalog. As a result, tables registered under those entities do not need to be declared individually for the same policy. If a table or a namespace requires a different policy, user can assign a different policy, hence overriding policy of the same type declared at the higher level entities.
 

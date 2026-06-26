@@ -21,7 +21,7 @@ package org.apache.polaris.core.policy;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.collect.ImmutableMap;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /* Represents all predefined policy types in Polaris */
 public enum PredefinedPolicyTypes implements PolicyType {

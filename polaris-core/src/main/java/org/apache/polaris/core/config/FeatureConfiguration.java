@@ -68,14 +68,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION")
           .description(
-              "If set to true, skip credential-subscoping indirection entirely whenever trying\n"
-                  + "   to obtain storage credentials for instantiating a FileIO. If 'true', no attempt is made\n"
-                  + "   to use StorageConfigs to generate table-specific storage credentials, but instead the default\n"
-                  + "   fallthrough of table-level credential properties or else provider-specific APPLICATION_DEFAULT\n"
-                  + "   credential-loading will be used for the FileIO.\n"
-                  + "   Typically this setting is used in single-tenant server deployments that don't rely on\n"
-                  + "   \"credential-vending\" and can use server-default environment variables or credential config\n"
-                  + "   files for all storage access, or in test/dev scenarios.")
+              "Test/dev-only. If true, bypass credential subscoping entirely: FileIO falls back to\n"
+                  + "   the server's ambient credentials (pod IAM role, env vars, credential files).\n"
+                  + "   Intended for tests with fake storage paths (no real STS). NOT for production:\n"
+                  + "   those credentials are handed to every client, breaking defense-in-depth. For\n"
+                  + "   S3-compatible storage without STS, set stsUnavailable: true on the storage config\n"
+                  + "   instead.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -139,6 +137,139 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(List.<String>of())
           .buildFeatureConfiguration();
 
+  /**
+   * The set of fields supported for composing the AWS STS role session name during credential
+   * vending.
+   *
+   * <p>Supported values:
+   *
+   * <ul>
+   *   <li>{@code realm} - The realm identifier for the request
+   *   <li>{@code catalog} - The name of the catalog vending credentials
+   *   <li>{@code namespace} - The namespace being accessed (dot-separated)
+   *   <li>{@code table} - The table name being accessed
+   *   <li>{@code principal} - The principal name requesting credentials
+   * </ul>
+   */
+  public static final List<String> SUPPORTED_SESSION_NAME_FIELDS =
+      List.<String>of("realm", "catalog", "namespace", "table", "principal");
+
+  /**
+   * Ordered list of fields to include in the session name during credential vending. Applies to
+   * systems that support session-based sub-scoped credentials (e.g. S3 with STS). Fields are joined
+   * with {@code -} and prefixed with {@code p-} by default. The result is truncated to 64
+   * characters; any budget unused by a short field is carried forward to subsequent fields.
+   *
+   * <p>When empty (default), falls back to {@link #INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL}
+   * behaviour for backward compatibility.
+   *
+   * <p>Supported fields: realm, catalog, namespace, table, principal.
+   *
+   * <p><b>Field order is significant.</b> The fields appear in the session name in the order they
+   * are listed. Changing the order changes the session name structure, which affects CloudTrail
+   * queries and log correlation.
+   *
+   * <p>The prefix can be customised by including a {@code prefix-X} token anywhere in the list
+   * (e.g. {@code ["prefix-myorg", "catalog", "principal"]} → {@code myorg-catalog-principal}).
+   * Defaults to {@code p-}.
+   *
+   * <p>Example: setting {@code ["realm","catalog","table","principal"]} produces session names like
+   * {@code p-acme-hr_catalog-employee-etl_writer} (truncated to 64 chars).
+   *
+   * <p>Note: enabling this flag causes the session name to vary per request context, which may
+   * reduce credential cache reuse depending on which fields are configured.
+   */
+  public static final FeatureConfiguration<List<String>>
+      SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL")
+              .description(
+                  "Ordered list of fields to include in the session name during credential vending.\n"
+                      + "Applies to systems that support session-based sub-scoped credentials (e.g. S3 with STS).\n"
+                      + "Fields are joined with '-' and prefixed with 'p-' by default. The result is truncated to\n"
+                      + "64 characters (the AWS STS session name limit); budget unused by a short field flows to\n"
+                      + "subsequent fields.\n"
+                      + "When empty (default), falls back to INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL behaviour.\n"
+                      + "\n"
+                      + "Supported fields: "
+                      + String.join(", ", SUPPORTED_SESSION_NAME_FIELDS)
+                      + "\n"
+                      + "\n"
+                      + "Field order is significant: fields appear in the session name in the order listed.\n"
+                      + "Changing the order changes the session name structure and will affect CloudTrail queries.\n"
+                      + "\n"
+                      + "To customise the prefix, include a 'prefix-X' token (e.g. 'prefix-myorg' sets the prefix\n"
+                      + "to 'myorg-'). Defaults to 'p-'.\n"
+                      + "\n"
+                      + "Example: [\"realm\",\"catalog\",\"table\",\"principal\"] produces session names like\n"
+                      + "'p-acme-hr_catalog-employee-etl_writer' (truncated to 64 chars).\n"
+                      + "\n"
+                      + "Note: enabling this flag may reduce credential cache reuse when context-specific fields\n"
+                      + "(e.g. table, namespace) are included, since credentials are keyed partly on session name.")
+              .defaultValue(List.<String>of())
+              .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> GCS_PRINCIPAL_ATTRIBUTION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_ENABLED")
+          .description(
+              "Enables GCS principal attribution via Workload Identity Federation.\n"
+                  + "When true, credential vending chains a catalog-signed JWT through an STS token\n"
+                  + "exchange and service-account impersonation so the Polaris principal appears in GCS\n"
+                  + "Data Access audit logs (serviceAccountDelegationInfo.principalSubject).\n"
+                  + "Requires GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE, GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER,\n"
+                  + "and GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE to also be set;\n"
+                  + "a missing required value is a fatal configuration error.\n"
+                  + "Also requires a gcpServiceAccount on the catalog StorageConfiguration.\n"
+                  + "Default: false (attribution disabled).")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE")
+          .description(
+              "Full resource name of the Workload Identity Pool provider used for GCS principal\n"
+                  + "attribution, e.g.\n"
+                  + "//iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>.\n"
+                  + "Used as both the attribution JWT 'aud' claim and the STS token-exchange audience.\n"
+                  + "Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER")
+          .description(
+              "Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer\n"
+                  + "configured on the Workload Identity Pool OIDC provider. The provider verifies\n"
+                  + "signatures against its uploaded JWKS, so no public discovery endpoint is required.\n"
+                  + "Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE")
+          .description(
+              "Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs\n"
+                  + "(RS256). The corresponding public key must be published in the Workload Identity\n"
+                  + "Pool provider's uploaded JWKS. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID")
+          .description(
+              "Key ID (kid) written into the header of GCS attribution JWTs so the Workload Identity\n"
+                  + "Pool provider can select the right public key from its JWKS during key rotation\n"
+                  + "(when the JWKS holds both the old and new keys). Must match the kid of the JWKS\n"
+                  + "entry for the configured signing key. Empty omits the header (only safe with a\n"
+                  + "single-key JWKS).")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")
@@ -155,8 +286,10 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .catalogConfig("polaris.config.allow.overlapping.table.location")
           .legacyCatalogConfig("allow.overlapping.table.location")
           .description(
-              "If set to true, allow one table's location to reside within another table's location. "
-                  + "This is only enforced within a given namespace.")
+              "If set to true, Polaris allows table or view locations to overlap existing table "
+                  + "or namespace locations. This disables Polaris location-overlap protection "
+                  + "for table-like objects in the catalog and should only be used for "
+                  + "compatibility cases where storage isolation is enforced outside Polaris.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -173,7 +306,10 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_METADATA_FILE_LOCATION")
           .description(
-              "If set to true, allows metadata files to be located outside the default metadata directory.")
+              "If set to true, Polaris allows metadata files to be located outside the table's "
+                  + "default metadata directory. This relaxes the normal check that metadata "
+                  + "stays under the table location and should only be used when metadata is "
+                  + "intentionally stored in separately controlled locations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -189,7 +325,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
           .catalogConfig("polaris.config.allow.unstructured.table.location")
           .legacyCatalogConfig("allow.unstructured.table.location")
-          .description("If set to true, allows unstructured table locations.")
+          .description(
+              "If set to true, Polaris allows caller-specified table and view locations outside "
+                  + "the structured namespace layout. This removes the default constraint that "
+                  + "confines new table locations to the parent namespace location. Allowed-"
+                  + "location validation still applies, but this should only be enabled for "
+                  + "catalogs that must support externally managed or migrated table locations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -199,7 +340,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .catalogConfig("polaris.config.allow.external.table.location")
           .legacyCatalogConfig("allow.external.table.location")
           .description(
-              "If set to true, allows tables to have external locations outside the default structure.")
+              "If set to true, Polaris treats table locations as externally managed instead of "
+                  + "assuming the default managed structure. Allowed-location validation still "
+                  + "applies, but metadata location checks are relaxed, so operators should keep "
+                  + "allowed locations narrow and specific. This setting is typically used "
+                  + "together with ALLOW_UNSTRUCTURED_TABLE_LOCATION.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -216,8 +361,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_WILDCARD_LOCATION")
           .description(
-              "Indicates whether asterisks ('*') in configuration values defining allowed"
-                  + " storage locations are processed as meaning 'any location'.")
+              "Indicates whether asterisks ('*') in configured allowed locations are processed "
+                  + "as meaning 'any location'. If enabled and '*' is present in an allowed-"
+                  + "locations list, Polaris accepts every requested location. This removes the "
+                  + "normal location allowlist boundary and should only be used for tightly "
+                  + "controlled compatibility or test scenarios.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -380,6 +528,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   List.of(
                       AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name(),
                       AuthenticationParameters.AuthenticationTypeEnum.BEARER.name(),
+                      AuthenticationParameters.AuthenticationTypeEnum.GCP.name(),
                       AuthenticationParameters.AuthenticationTypeEnum.SIGV4.name()))
               .buildFeatureConfiguration();
 
@@ -434,9 +583,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_OPTIMIZED_SIBLING_CHECK")
           .description(
-              "When set to true, Polaris will permit enabling the feature OPTIMIZED_SIBLING_CHECK "
-                  + "for catalogs, this is done to prevent accidental enabling the feature in cases such as schema migrations, without backfill and hence leading to potential data integrity issues.\n"
-                  + "This will be removed in 2.0.0 when polaris ships with the necessary migrations to backfill the index.")
+              "When set to true, Polaris permits OPTIMIZED_SIBLING_CHECK to be enabled after "
+                  + "explicit operator acknowledgment. Only acknowledge this when the realm has "
+                  + "the required index and backfill state; enabling the check in previously used "
+                  + "realms without that state may lead to incorrect overlap validation. This "
+                  + "flag is temporary and will be removed when Polaris can backfill the required "
+                  + "data automatically.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -444,11 +596,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("OPTIMIZED_SIBLING_CHECK")
           .description(
-              "When set, an index is used to perform the sibling check between tables, views, and namespaces. New "
-                  + "locations will be checked against previous ones based on components, so the new location "
-                  + "/foo/bar/ will check for a sibling at /, /foo/ and /foo/bar/%. In order for this check to "
-                  + "be correct, locations should end with a slash. See ADD_TRAILING_SLASH_TO_LOCATION for a way "
-                  + "to enforce this when new locations are added. Only supported by the JDBC metastore.")
+              "When set, Polaris uses an index to perform sibling overlap checks between tables, "
+                  + "views, and namespaces. This is not a bypass mode, but enabling or disabling "
+                  + "it can change overlap-detection coverage for non-standard location layouts. "
+                  + "Only enable it when the required index and backfill state is known to be "
+                  + "correct. For correct results, locations should end with a slash; see "
+                  + "ADD_TRAILING_SLASH_TO_LOCATION. Supported by the JDBC and NoSQL metastore "
+                  + "implementations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

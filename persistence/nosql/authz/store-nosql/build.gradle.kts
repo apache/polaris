@@ -41,6 +41,7 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -56,6 +57,7 @@ dependencies {
   testImplementation(testFixtures(project(":polaris-persistence-nosql-inmemory")))
   testImplementation(libs.threeten.extra)
 
+  testCompileOnly(libs.jspecify)
   testCompileOnly(libs.jakarta.annotation.api)
   testCompileOnly(libs.jakarta.validation.api)
   testCompileOnly(libs.jakarta.inject.api)

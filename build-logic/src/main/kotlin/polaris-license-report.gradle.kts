@@ -25,39 +25,41 @@ import com.github.jk1.license.render.XmlReportRenderer
 import com.github.jk1.license.task.ReportTask
 import licenses.LicenseFileValidation
 import licenses.NoticeFileLicenseFilter
+import licenses.QuarkusAppDependencyFilter
 
 plugins { id("com.github.jk1.dependency-license-report") }
 
-afterEvaluate {
-  licenseReport {
-    filters =
-      arrayOf(
-        LicenseBundleNormalizer(
-          "${rootProject.projectDir}/gradle/license/normalizer-bundle.json",
-          false,
-        ),
-        NoticeFileLicenseFilter(),
-        LicenseFileValidation(),
-      )
-    allowedLicensesFile = rootProject.projectDir.resolve("gradle/license/allowed-licenses.json")
-    renderers =
-      arrayOf<ReportRenderer>(
-        InventoryHtmlReportRenderer("index.html"),
-        JsonReportRenderer(),
-        XmlReportRenderer(),
-      )
-    excludeBoms = true
-    outputDir = "${project.layout.buildDirectory.get()}/reports/dependency-license"
-    configurations = arrayOf("quarkusProdRuntimeClasspathConfiguration")
-  }
+val normalizerBundle = layout.settingsDirectory.file("gradle/license/normalizer-bundle.json")
+val allowedLicenses = layout.settingsDirectory.file("gradle/license/allowed-licenses.json")
+
+licenseReport {
+  filters =
+    arrayOf(
+      QuarkusAppDependencyFilter(),
+      LicenseBundleNormalizer(normalizerBundle.asFile.absolutePath, false),
+      NoticeFileLicenseFilter(),
+      LicenseFileValidation(),
+    )
+  allowedLicensesFile = allowedLicenses.asFile
+  renderers =
+    arrayOf<ReportRenderer>(
+      InventoryHtmlReportRenderer("index.html"),
+      JsonReportRenderer(),
+      XmlReportRenderer(),
+    )
+  excludeBoms = true
+  outputDir = layout.buildDirectory.dir("reports/dependency-license").get().asFile.absolutePath
+  configurations = arrayOf("quarkusProdRuntimeClasspathConfiguration")
 }
 
 val generateLicenseReport =
   tasks.named<ReportTask>("generateLicenseReport") {
+    dependsOn("quarkusBuild")
     inputs
       .files(
-        rootProject.projectDir.resolve("gradle/license/normalizer-bundle.json"),
-        rootProject.projectDir.resolve("gradle/license/allowed-licenses.json"),
+        normalizerBundle,
+        allowedLicenses,
+        project.layout.buildDirectory.file("quarkus-app/quarkus-app-dependencies.txt"),
       )
       .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("renderersHash", licenseReport.renderers.contentHashCode())
@@ -76,8 +78,8 @@ val licenseReportZip =
     archiveExtension.set("zip")
   }
 
-val licenseReports by
-  configurations.creating {
+val licenseReports =
+  configurations.create("licenseReports") {
     isCanBeConsumed = true
     isCanBeResolved = false
     description = "License report files"

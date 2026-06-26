@@ -21,10 +21,10 @@ package org.apache.polaris.persistence.nosql.coretypes.mapping;
 
 import static org.apache.polaris.persistence.nosql.coretypes.realm.RootObj.ROOT_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.coretypes.realm.RootObj;
+import org.jspecify.annotations.NonNull;
 
 final class RootMapping extends BaseMapping<RootObj, RootObj.Builder> {
   RootMapping() {
@@ -32,7 +32,7 @@ final class RootMapping extends BaseMapping<RootObj, RootObj.Builder> {
   }
 
   @Override
-  public RootObj.Builder newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public RootObj.Builder newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return RootObj.builder();
   }
 }

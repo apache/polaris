@@ -38,7 +38,6 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -59,9 +58,9 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.it.env.CatalogConfig;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IcebergHelper;
@@ -110,7 +109,7 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final PolicyIdentifier NS1_P3 = new PolicyIdentifier(NS1, "P3");
   private static final TableIdentifier NS2_T1 = TableIdentifier.of(NS2, "T1");
 
-  private static final String NS1_NAME = RESTUtil.encodeNamespace(NS1);
+  private static final String NS1_NAME = NS1.level(0);
   private static final String INVALID_NAMESPACE = "INVALID_NAMESPACE";
   private static final String INVALID_POLICY = "INVALID_POLICY";
   private static final String INVALID_TABLE = "INVALID_TABLE";
@@ -182,11 +181,6 @@ public class PolarisPolicyServiceIntegrationTest {
         IntegrationTestsHelper.mergeFromAnnotatedElements(
             testInfo, CatalogConfig.class, CatalogConfig::properties);
     catalogPropsBuilder.putAll(catalogProperties);
-
-    if (!s3BucketBase.getScheme().equals("file")) {
-      catalogPropsBuilder.addProperty(
-          CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
-    }
 
     Catalog.TypeEnum catalogType =
         IntegrationTestsHelper.extractFromAnnotatedElements(
@@ -296,7 +290,9 @@ public class PolarisPolicyServiceIntegrationTest {
     restCatalog.createNamespace(NS1);
     PolicyIdentifier policyIdentifier = new PolicyIdentifier(NS1, policyName);
 
-    String ns = RESTUtil.encodeNamespace(policyIdentifier.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(
+            policyIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     CreatePolicyRequest request =
         CreatePolicyRequest.builder()
             .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())

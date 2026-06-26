@@ -92,7 +92,7 @@ class BackendProvider {
       var setupSchemaResult = backend.setupSchema().orElse("");
       LOGGER.info("Opened new persistence backend '{}' {}", backend.type(), setupSchemaResult);
 
-      return builder.buildBackend();
+      return backend;
     } catch (Exception e) {
       try {
         backend.close();

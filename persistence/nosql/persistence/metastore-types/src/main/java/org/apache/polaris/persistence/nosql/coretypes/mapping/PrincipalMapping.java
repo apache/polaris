@@ -22,7 +22,6 @@ package org.apache.polaris.persistence.nosql.coretypes.mapping;
 import static org.apache.polaris.core.entity.PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE;
 import static org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj.PRINCIPALS_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalObj;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
+import org.jspecify.annotations.NonNull;
 
 final class PrincipalMapping extends BaseMapping<PrincipalObj, PrincipalObj.Builder> {
   PrincipalMapping() {
@@ -40,14 +40,14 @@ final class PrincipalMapping extends BaseMapping<PrincipalObj, PrincipalObj.Buil
   }
 
   @Override
-  public PrincipalObj.Builder newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public PrincipalObj.Builder newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return PrincipalObj.builder();
   }
 
   @Override
   void mapToObjTypeSpecific(
       PrincipalObj.Builder baseBuilder,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> principalSecrets,
       Map<String, String> properties,
       Map<String, String> internalProperties) {

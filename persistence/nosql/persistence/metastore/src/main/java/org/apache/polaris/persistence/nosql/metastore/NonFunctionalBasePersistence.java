@@ -19,20 +19,18 @@
 
 package org.apache.polaris.persistence.nosql.metastore;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
@@ -42,6 +40,8 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,14 +49,14 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
   private static final Logger LOGGER = LoggerFactory.getLogger(NonFunctionalBasePersistence.class);
 
   @Override
-  public long generateNewId(@Nonnull PolarisCallContext callCtx) {
+  public long generateNewId(@NonNull PolarisCallContext callCtx) {
     throw unimplemented();
   }
 
   @Override
   public void writeEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
       // nameOrParentChanged is `true` if originalEntity==null or the parentId or the name changed
       boolean nameOrParentChanged,
       @Nullable PolarisBaseEntity originalEntity) {
@@ -65,140 +65,140 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
 
   @Override
   public void writeEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisBaseEntity> entities,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities) {
     throw useMetaStoreManager("create/update/rename/delete");
   }
 
   @Override
   public void writeToGrantRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
     throw unimplemented();
   }
 
   @Override
-  public void deleteEntity(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
+  public void deleteEntity(@NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
     throw unimplemented();
   }
 
   @Override
   public void deleteFromGrantRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
     throw unimplemented();
   }
 
   @Override
   public void deleteAllEntityGrantRecords(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
-      @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
-      @Nonnull List<PolarisGrantRecord> grantsOnSecurable) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore entity,
+      @NonNull List<PolarisGrantRecord> grantsOnGrantee,
+      @NonNull List<PolarisGrantRecord> grantsOnSecurable) {
     throw unimplemented();
   }
 
   @Nullable
   @Override
   public PolarisBaseEntity lookupEntity(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int entityTypeCode) {
+      @NonNull PolarisCallContext callCtx, long catalogId, long entityId, int entityTypeCode) {
     throw useMetaStoreManager("lookupEntity/loadResolvedEntityById");
   }
 
   @Nullable
   @Override
   public PolarisBaseEntity lookupEntityByName(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       int entityTypeCode,
-      @Nonnull String name) {
+      @NonNull String name) {
     throw useMetaStoreManager("readEntityByName");
   }
 
   @Override
   public EntityNameLookupRecord lookupEntityIdAndSubTypeByName(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       int typeCode,
-      @Nonnull String name) {
+      @NonNull String name) {
     throw unimplemented();
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisBaseEntity> lookupEntities(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
+      @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     throw unimplemented();
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisChangeTrackingVersions> lookupEntityVersions(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
+      @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     throw unimplemented();
   }
 
   @Override
   public boolean hasChildren(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId) {
     throw unimplemented();
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public <T> Page<T> listFullEntities(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
+      @NonNull Function<PolarisBaseEntity, T> transformer,
       PageToken pageToken) {
     throw useMetaStoreManager("listFullEntities");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken) {
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull PageToken pageToken) {
     throw unimplemented();
   }
 
   @Override
   public void writeToPolicyMappingRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     throw useMetaStoreManager("attachPolicyToEntity");
   }
 
   @Override
   public void deleteFromPolicyMappingRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     throw useMetaStoreManager("detachPolicyFromEntity");
   }
 
   @Override
   public void deleteAllEntityPolicyMappingRecords(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
-      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
-      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      @NonNull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @NonNull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     throw unimplemented();
   }
 
   @Nullable
   @Override
   public PolarisPolicyMappingRecord lookupPolicyMappingRecord(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long targetCatalogId,
       long targetId,
       int policyTypeCode,
@@ -207,20 +207,20 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
     throw unimplemented();
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long targetCatalogId,
       long targetId,
       int policyTypeCode) {
     throw useMetaStoreManager("loadPoliciesOnEntityByType");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long policyCatalogId,
       long policyId,
       int policyTypeCode) {
@@ -230,23 +230,23 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
     // throw useMetaStoreManager("loadEntitiesOnPolicy");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisPolicyMappingRecord> loadAllPoliciesOnTarget(
-      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+      @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
     throw useMetaStoreManager("loadPoliciesOnEntity");
   }
 
   @Override
   public int lookupEntityGrantRecordsVersion(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
+      @NonNull PolarisCallContext callCtx, long catalogId, long entityId) {
     throw useMetaStoreManager("loadGrantsOnSecurable");
   }
 
   @Nullable
   @Override
   public PolarisGrantRecord lookupGrantRecord(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
       long granteeCatalogId,
@@ -255,95 +255,86 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
     throw useMetaStoreManager("loadGrantsOnSecurable");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
+      @NonNull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     throw useMetaStoreManager("loadGrantsOnSecurable");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
-      @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
+      @NonNull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     throw useMetaStoreManager("loadGrantsToGrantee");
   }
 
   @Override
-  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration) {
+  public void persistStorageIntegrationIfNeeded(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      @Nullable PolarisStorageIntegration storageIntegration) {
     throw unimplemented();
   }
 
   @Nullable
   @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegration(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+  public PolarisStorageIntegration createStorageIntegration(
+      @NonNull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     throw unimplemented();
-  }
-
-  @Nullable
-  @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    throw useMetaStoreManager("getSubscopedCredsForEntity");
   }
 
   @Override
   public void deletePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId, long principalId) {
     throw useMetaStoreManager("deletePrincipalSecrets");
   }
 
   @Nullable
   @Override
   public PolarisPrincipalSecrets rotatePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash) {
+      @NonNull String oldSecretHash) {
     throw useMetaStoreManager("rotatePrincipalSecrets");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PolarisPrincipalSecrets generateNewPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId) {
+      @NonNull PolarisCallContext callCtx, @NonNull String principalName, long principalId) {
     throw unimplemented();
   }
 
   @Nullable
   @Override
   public PolarisPrincipalSecrets loadPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId) {
     throw unimplemented();
   }
 
   @Nullable
   @Override
   public PolarisPrincipalSecrets storePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long principalId,
-      @Nonnull String resolvedClientId,
+      @NonNull String resolvedClientId,
       String customClientSecret) {
     throw useMetaStoreManager("storePrincipalSecrets");
   }
 
   @Override
-  public void writeEvents(@Nonnull List<PolarisEvent> events) {
+  public void writeEvents(@NonNull List<EventEntity> events) {
     throw unimplemented();
   }
 
   @Override
-  public void deleteAll(@Nonnull PolarisCallContext callCtx) {
+  public void deleteAll(@NonNull PolarisCallContext callCtx) {
     throw unimplemented();
   }
 

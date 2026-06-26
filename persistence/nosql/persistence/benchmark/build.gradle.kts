@@ -20,8 +20,8 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
-  id("polaris-server")
   id("com.gradleup.shadow")
+  id("polaris-server")
   alias(libs.plugins.jmh)
 }
 
@@ -43,6 +43,7 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
 
   jmhImplementation(libs.jmh.core)

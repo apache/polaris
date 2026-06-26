@@ -41,12 +41,12 @@ final class ExclusiveCommitSynchronizer implements CommitSynchronizer {
     semaphore.release();
   }
 
-  @SuppressWarnings("ResultOfMethodCallIgnored") // fine in this case, it'll time out
   @Override
-  public void before(long nanosRemaining) {
+  public boolean before(long nanosRemaining) {
     try {
-      semaphore.tryAcquire(nanosRemaining, TimeUnit.NANOSECONDS);
+      return semaphore.tryAcquire(nanosRemaining, TimeUnit.NANOSECONDS);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new RuntimeException(e);
     }
   }

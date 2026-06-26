@@ -19,7 +19,6 @@
 package org.apache.polaris.service.credentials.connection;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -32,6 +31,7 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.credentials.CredentialVendorPriorities;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Connection credential vendor for Bearer token authentication.
@@ -59,8 +59,8 @@ public class BearerConnectionCredentialVendor implements ConnectionCredentialVen
   }
 
   @Override
-  public @Nonnull ConnectionCredentials getConnectionCredentials(
-      @Nonnull ConnectionConfigInfoDpo connectionConfig) {
+  public @NonNull ConnectionCredentials getConnectionCredentials(
+      @NonNull ConnectionConfigInfoDpo connectionConfig) {
 
     // Validate authentication parameters type
     Preconditions.checkArgument(

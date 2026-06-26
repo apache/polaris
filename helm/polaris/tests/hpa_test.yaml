@@ -45,7 +45,7 @@ tests:
           kind: HorizontalPodAutoscaler
           apiVersion: autoscaling/v2
 
-  # metadata.name (with with autoscaling enabled)
+  # metadata.name (with autoscaling enabled)
   - it: should set HPA name
     set:
       autoscaling.enabled: true

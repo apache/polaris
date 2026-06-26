@@ -91,7 +91,8 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
       @CommandLine.Option(
           names = {"-v", "--schema-version"},
           paramLabel = "<schema version>",
-          description = "The version of the schema to load in [1, 2, 3, LATEST].")
+          description =
+              "The version of the schema to load. The set of valid values depends on the backend type. If omitted the latest schema version will be used.")
       Integer schemaVersion;
     }
   }
@@ -162,7 +163,7 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
               && inputOptions.rootCredentialsOptions.stdinOptions.printCredentials) {
             String msg =
                 String.format(
-                    "realm: %1s root principal credentials: %2s:%3s",
+                    "realm: %1$s root principal credentials: %2$s:%3$s",
                     result.getKey(),
                     result.getValue().getPrincipalSecrets().getPrincipalClientId(),
                     result.getValue().getPrincipalSecrets().getMainSecret());

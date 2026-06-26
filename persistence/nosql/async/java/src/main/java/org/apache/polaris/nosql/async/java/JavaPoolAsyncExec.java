@@ -47,7 +47,6 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.nosql.async.AsyncConfiguration;
 import org.apache.polaris.nosql.async.AsyncExec;
 import org.apache.polaris.nosql.async.Cancelable;
@@ -64,6 +63,7 @@ import org.slf4j.MDC;
 public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(JavaPoolAsyncExec.class.getName());
   private static final Duration MAX_DURATION = Duration.ofDays(7);
+  private static final long SUBMISSION_RETRY_MILLIS = 10L;
 
   public static final String EXECUTOR_THREAD_NAME_PREFIX = "JavaPoolTaskExecutor#";
   public static final String SCHEDULER_THREAD_NAME_PREFIX = "JavaPoolTaskScheduler#";
@@ -88,6 +88,7 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
     this(AsyncConfiguration.builder().build());
   }
 
+  @SuppressWarnings("unused")
   @Inject
   JavaPoolAsyncExec(Instance<AsyncConfiguration> asyncConfiguration) {
     this(
@@ -125,6 +126,8 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
             // keep-alive time
             asyncConfiguration.threadKeepAlive().orElse(DEFAULT_THREAD_KEEP_ALIVE).toMillis(),
             MILLISECONDS,
+            // Avoid queueing work before reaching maxThreads; SynchronousQueue makes the pool grow
+            // up to the configured maximum instead of buffering tasks behind too few workers.
             new SynchronousQueue<>(),
             // thread factory
             r -> {
@@ -199,6 +202,7 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
     var delayMillis = Math.max(delay.toMillis(), 0L);
     var cf = new CancelableFuture<>(callable);
     tasks.add(cf);
+    taskTrackedHook(cf);
 
     if (delayMillis > 0) {
       delayed(cf, delayMillis);
@@ -223,6 +227,7 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
 
     var cf = new CancelableFuture<Void>(runnable, delayMillis);
     tasks.add(cf);
+    taskTrackedHook(cf);
 
     if (initialMillis > 0) {
       delayed(cf, initialMillis);
@@ -235,21 +240,50 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
 
   @SuppressWarnings("FutureReturnValueIgnored")
   private void immediate(CancelableFuture<?> cancelable) {
-    executorService.submit(cancelable);
+    try {
+      executorService.submit(cancelable);
+    } catch (RejectedExecutionException e) {
+      taskSubmissionRejectedHook(cancelable);
+      // In case the pool is being shut-down, do not attempt to reschedule.
+      if (!cancelable.cancelledOrShutdown()) {
+        try {
+          delayed(cancelable, SUBMISSION_RETRY_MILLIS);
+        } catch (RejectedExecutionException retryRejected) {
+          cancelable.completeExceptionally(retryRejected);
+        }
+      }
+    }
   }
 
   @SuppressWarnings("FutureReturnValueIgnored")
   private void delayed(CancelableFuture<?> cancelable, long delayMillis) {
-    cancelable.setScheduledFuture(
-        scheduler.schedule(() -> immediate(cancelable), delayMillis, MILLISECONDS));
+    var generation = cancelable.nextScheduledGeneration();
+    var scheduledFuture =
+        scheduler.schedule(() -> immediate(cancelable), delayMillis, MILLISECONDS);
+    delayedTaskScheduledHook(scheduledFuture);
+    cancelable.setScheduledFuture(generation, scheduledFuture);
+    delayedTaskRecordedHook(scheduledFuture);
   }
+
+  @VisibleForTesting
+  void delayedTaskScheduledHook(ScheduledFuture<?> scheduledFuture) {}
+
+  @VisibleForTesting
+  void delayedTaskRecordedHook(ScheduledFuture<?> scheduledFuture) {}
+
+  @VisibleForTesting
+  void taskTrackedHook(Cancelable<?> cancelable) {}
+
+  @VisibleForTesting
+  void taskSubmissionRejectedHook(Cancelable<?> cancelable) {}
 
   private final class CancelableFuture<R> implements Cancelable<R>, Runnable {
     private final CompletableFuture<R> completable = new CompletableFuture<>();
     private final Runnable runnable;
     private final Callable<R> callable;
     private final long repeatMillis;
-    private final AtomicReference<ScheduledFuture<?>> scheduledFuture = new AtomicReference<>();
+    private long scheduledGeneration;
+    private ScheduledFuture<?> scheduledFuture;
 
     CancelableFuture(Runnable runnable, long repeatMillis) {
       this.runnable = requireNonNull(runnable, "Runnable must not be null");
@@ -263,10 +297,22 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
       this.repeatMillis = -1L;
     }
 
-    void setScheduledFuture(ScheduledFuture<?> scheduledFuture) {
-      var previous = this.scheduledFuture.getAndSet(scheduledFuture);
-      if (previous != null) {
-        previous.cancel(false);
+    synchronized long nextScheduledGeneration() {
+      return ++scheduledGeneration;
+    }
+
+    void setScheduledFuture(long generation, ScheduledFuture<?> scheduledFuture) {
+      ScheduledFuture<?> toCancel;
+      synchronized (this) {
+        if (generation != scheduledGeneration || cancelledOrShutdown()) {
+          toCancel = scheduledFuture;
+        } else {
+          toCancel = this.scheduledFuture;
+          this.scheduledFuture = scheduledFuture;
+        }
+      }
+      if (toCancel != null) {
+        toCancel.cancel(false);
       }
     }
 
@@ -311,6 +357,11 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
       return completable.isCancelled() || shutdown;
     }
 
+    private void completeExceptionally(Throwable t) {
+      completable.completeExceptionally(t);
+      tasks.remove(this);
+    }
+
     @Override
     public CompletionStage<R> completionStage() {
       return completable;
@@ -318,9 +369,14 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
 
     @Override
     public void cancel() {
-      var previous = this.scheduledFuture.getAndSet(null);
-      if (previous != null) {
-        previous.cancel(false);
+      ScheduledFuture<?> toCancel;
+      synchronized (this) {
+        scheduledGeneration++;
+        toCancel = scheduledFuture;
+        scheduledFuture = null;
+      }
+      if (toCancel != null) {
+        toCancel.cancel(false);
       }
       completable.cancel(false);
       tasks.remove(this);

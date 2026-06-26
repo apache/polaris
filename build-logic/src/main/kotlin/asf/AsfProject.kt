@@ -24,7 +24,9 @@ import groovy.json.JsonSlurper
 import java.io.FileNotFoundException
 import java.net.URI
 import org.gradle.api.Project
-import org.gradle.kotlin.dsl.extra
+import org.gradle.api.provider.Property
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
 
 class AsfProject(
   val apacheId: String,
@@ -39,14 +41,14 @@ class AsfProject(
   companion object {
 
     fun memoized(project: Project, asfName: String): AsfProject {
-      val rootProject = project.rootProject
-      return if (rootProject.extra.has("asfProject")) {
-        unsafeCast(rootProject.extra["asfProject"]) as AsfProject
-      } else {
-        val asfProject = fetchProjectInformation(asfName)
-        rootProject.extra["asfProject"] = asfProject
-        return asfProject
-      }
+      val service =
+        project.gradle.sharedServices.registerIfAbsent(
+          "asfProject-${asfName}",
+          AsfProjectService::class.java,
+        ) {
+          parameters.asfName.set(asfName)
+        }
+      return service.get().asfProject
     }
 
     internal fun <T : Any> unsafeCast(o: Any?): T {
@@ -183,5 +185,15 @@ class AsfProject(
         inceptionYear,
       )
     }
+  }
+}
+
+abstract class AsfProjectService : BuildService<AsfProjectService.Parameters> {
+  interface Parameters : BuildServiceParameters {
+    val asfName: Property<String>
+  }
+
+  val asfProject: AsfProject by lazy {
+    AsfProject.fetchProjectInformation(parameters.asfName.get())
   }
 }

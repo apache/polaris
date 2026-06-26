@@ -126,22 +126,23 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -746,16 +747,138 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    throw new UnsupportedOperationException(
-        "resolveAuthorizationInputs is not implemented yet for PolarisAuthorizerImpl");
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
+    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
+    resolutionManifest.resolveAll();
   }
 
   @Override
+  @NonNull
   public AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    throw new UnsupportedOperationException(
-        "authorize is not implemented yet for PolarisAuthorizerImpl");
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
+    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
+    for (AuthorizationIntent intent : request.intents()) {
+      AuthorizationDecision decision =
+          authorizeIntent(request.principal(), resolutionManifest, intent);
+      if (!decision.isAllowed()) {
+        return decision;
+      }
+    }
+    return AuthorizationDecision.allow();
+  }
+
+  private AuthorizationDecision authorizeIntent(
+      PolarisPrincipal polarisPrincipal,
+      PolarisResolutionManifest resolutionManifest,
+      AuthorizationIntent intent) {
+    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(intent.getOperation());
+    boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
+    try {
+      List<PolarisResolvedPathWrapper> resolvedTargets;
+      List<PolarisResolvedPathWrapper> resolvedSecondaries;
+      if (intent instanceof TargetlessAuthorizationIntent) {
+        resolvedTargets =
+            prependRootContainer
+                ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
+                : null;
+        resolvedSecondaries = null;
+      } else if (intent instanceof SingleTargetAuthorizationIntent singleTargetIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, singleTargetIntent.target(), prependRootContainer));
+        resolvedSecondaries = null;
+      } else if (intent instanceof RenameAuthorizationIntent renameIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, renameIntent.from(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(resolutionManifest, renameIntent.to(), prependRootContainer));
+      } else if (intent instanceof PolicyAttachmentAuthorizationIntent policyAttachmentIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, policyAttachmentIntent.policy(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, policyAttachmentIntent.attachedTo(), prependRootContainer));
+      } else if (intent instanceof RoleAssignmentAuthorizationIntent roleAssignmentIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, roleAssignmentIntent.role(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, roleAssignmentIntent.assignee(), prependRootContainer));
+      } else if (intent instanceof PrivilegeGrantAuthorizationIntent privilegeGrantIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, privilegeGrantIntent.grantTarget(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, privilegeGrantIntent.grantee(), prependRootContainer));
+      } else if (intent instanceof RootPrivilegeGrantAuthorizationIntent rootPrivilegeGrantIntent) {
+        resolvedTargets = List.of(resolutionManifest.getResolvedRootContainerEntityAsPath());
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, rootPrivilegeGrantIntent.grantee(), prependRootContainer));
+      } else {
+        throw new IllegalStateException("Unsupported authorization intent: " + intent.getClass());
+      }
+      authorizeOrThrow(
+          polarisPrincipal,
+          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+          intent.getOperation(),
+          resolvedTargets,
+          resolvedSecondaries);
+      return AuthorizationDecision.allow();
+    } catch (ForbiddenException e) {
+      LOGGER.debug(
+          "Authorization denied for principalName {} intent {}",
+          polarisPrincipal.getName(),
+          intent,
+          e);
+      return AuthorizationDecision.deny(e.getMessage());
+    }
+  }
+
+  private PolarisResolvedPathWrapper getResolvedSecurable(
+      PolarisResolutionManifest resolutionManifest,
+      PolarisSecurable securable,
+      boolean prependRootContainer) {
+    PolarisResolvedPathWrapper resolvedSecurable =
+        securable.getLeaf().entityType().isTopLevel()
+            ? resolutionManifest.getResolvedTopLevelEntity(
+                securable.getLeaf().name(), securable.getLeaf().entityType())
+            : resolutionManifest.getResolvedPath(
+                ResolvedPathKey.of(
+                    getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
+                prependRootContainer);
+    Preconditions.checkState(
+        resolvedSecurable != null,
+        "Resolved path for securable is null for entityType=%s leaf=%s parents=%s",
+        securable.getLeaf().entityType(),
+        securable.getLeaf(),
+        securable.getParents());
+    return resolvedSecurable;
+  }
+
+  private List<String> getPathNamesWithinCatalog(PolarisSecurable securable) {
+    // Resolver path keys are scoped within the reference catalog, so the explicit catalog
+    // path segment is omitted from the PolarisSecurable path before lookup.
+    return securable.getPathSegments().stream()
+        .filter(
+            segment ->
+                segment.entityType() != org.apache.polaris.core.entity.PolarisEntityType.CATALOG)
+        .map(PathSegment::name)
+        .toList();
   }
 
   /**
@@ -779,9 +902,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary) {
     authorizeOrThrow(
@@ -794,24 +917,15 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
-    boolean enforceCredentialRotationRequiredState =
-        realmConfig.getConfig(
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+    AuthorizationPreConditions.checkCredentialRotationRequired(
+        polarisPrincipal, authzOp, realmConfig);
     boolean isRoot = getRootPrincipalName().equals(polarisPrincipal.getName());
-    if (enforceCredentialRotationRequiredState
-        && polarisPrincipal
-            .getProperties()
-            .containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
-        && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS) {
-      throw new ForbiddenException(
-          "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE",
-          polarisPrincipal.getName(), authzOp);
-    } else if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
+    if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
       if (!isRoot) {
         throw new ForbiddenException("Only Root principal(service-admin) can perform %s", authzOp);
       }
@@ -835,9 +949,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
    * the operation.
    */
   public boolean isAuthorized(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary) {
     return isAuthorized(
@@ -849,9 +963,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   public boolean isAuthorized(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     Set<Long> entityIdSet =
@@ -898,7 +1012,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
    * errors/exceptions.
    */
   public boolean hasTransitivePrivilege(
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Set<Long> activatedGranteeIds,
       PolarisPrivilege desiredPrivilege,
       PolarisResolvedPathWrapper resolvedPath) {
