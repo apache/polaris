@@ -104,6 +104,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
 
 ### Fixes
+- Fixed native catalog credential vending paths (`loadCredentials` and `loadTable` with delegation) to re-validate locations against the *current* catalog `allowedLocations`. Previously these paths trusted persisted table entity locations, allowing stale credentials after an admin tightened allowed locations on a native catalog. (The federated path had a partial check.)
 
 ## [1.4.0]
 
@@ -157,7 +158,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `PolarisConfigurationStore` has been deprecated for removal.
 
 ### Fixes
-
 - Fixed error propagation in drop operations (`dropTable`, `dropView`, `dropNamespace`). Server errors now return appropriate HTTP status codes based on persistence result instead of always returning NotFound
 - Enable non-AWS STS role ARNs
 - Helm chart: fixed a bug that prevented CORS settings to be properly applied. A new setting `cors.enabled` has been introduced in the chart as part of the fix.
@@ -235,7 +235,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   endpoints at `/q/metrics` and `/q/health` instead.
 
 ### Fixes
-
 - Fixed incorrect Azure expires at field for the credentials refresh response, leading to client failure via #2633
 
 ## [1.1.0-incubating]
