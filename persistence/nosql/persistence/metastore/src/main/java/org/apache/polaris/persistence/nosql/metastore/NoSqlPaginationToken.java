@@ -19,13 +19,16 @@
 
 package org.apache.polaris.persistence.nosql.metastore;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.nio.ByteBuffer;
 import org.apache.polaris.core.persistence.pagination.Token;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.immutables.value.Value;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Pagination token for NoSQL that refers to the next {@link IndexKey}. The next request will refer
@@ -34,14 +37,33 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableNoSqlPaginationToken.class)
 @JsonDeserialize(as = ImmutableNoSqlPaginationToken.class)
+@com.fasterxml.jackson.databind.annotation.JsonSerialize(as = ImmutableNoSqlPaginationToken.class)
+@com.fasterxml.jackson.databind.annotation.JsonDeserialize(as = ImmutableNoSqlPaginationToken.class)
 public interface NoSqlPaginationToken extends Token {
   String ID = "n";
 
+  // This implementation decouples the direct use of the `ObjRef` and `IndexKey` and with
+  // that their Jackson version specific (de)serializers by using "neutral" byte buffers.
+  // Once both `:polaris-core` and `:polaris-persistence-nosql-*` are both using Jackson 3, the
+  // change that introduced the `ByteBuffer` indirection can optionally be reverted.
+
   @JsonProperty("c")
-  ObjRef containerObjRef();
+  ByteBuffer containerObjRefBytes();
+
+  @JsonIgnore
+  @Value.Lazy
+  default ObjRef containerObjRef() {
+    return ObjRef.fromByteBuffer(containerObjRefBytes().duplicate());
+  }
 
   @JsonProperty("k")
-  IndexKey key();
+  ByteBuffer keyBytes();
+
+  @JsonIgnore
+  @Value.Lazy
+  default IndexKey key() {
+    return IndexKey.key(keyBytes().duplicate());
+  }
 
   @Override
   default String getT() {
@@ -50,8 +72,8 @@ public interface NoSqlPaginationToken extends Token {
 
   static NoSqlPaginationToken paginationToken(ObjRef containerObjRef, IndexKey key) {
     return ImmutableNoSqlPaginationToken.builder()
-        .containerObjRef(containerObjRef)
-        .key(key)
+        .containerObjRefBytes(containerObjRef.toByteBuffer())
+        .keyBytes(key.asByteBuffer())
         .build();
   }
 
