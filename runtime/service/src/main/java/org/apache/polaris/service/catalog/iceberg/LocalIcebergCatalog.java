@@ -35,6 +35,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -101,6 +102,7 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.EntityIdempotency;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -196,6 +198,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private final FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
 
+  // Entity-property idempotency (prototype): when set by the handler before
+  // buildTable(...).create(),
+  // this key and expiry are stamped into the new table entity's internal properties within the same
+  // transaction as the create, so the operation and its idempotency marker commit atomically.
+  private UUID pendingIdempotencyKey;
+  private Instant pendingIdempotencyExpiry;
+
   /**
    * @param callContext the current CallContext
    * @param resolvedEntityView accessor to resolved entity paths that have been pre-vetted to ensure
@@ -234,6 +243,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   @Override
   public String name() {
     return catalogName;
+  }
+
+  /**
+   * Provide an idempotency key to embed into the next table created via this catalog instance. The
+   * key (expiring at {@code expiry}) is written into the created entity's internal properties
+   * within the same transaction as the create, so the operation and its idempotency marker commit
+   * atomically (entity-property idempotency model).
+   */
+  public void setPendingIdempotency(UUID idempotencyKey, Instant expiry) {
+    this.pendingIdempotencyKey = idempotencyKey;
+    this.pendingIdempotencyExpiry = expiry;
   }
 
   @VisibleForTesting
@@ -1811,12 +1831,20 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       String existingLocation;
       if (null == entity) {
         existingLocation = null;
+        Map<String, String> internalProperties = storedProperties;
+        if (pendingIdempotencyKey != null) {
+          // Embed the idempotency key into the new entity's internal properties so it is persisted
+          // in the same transaction as the table create (no separate idempotency-store write).
+          internalProperties =
+              EntityIdempotency.recordKey(
+                  storedProperties, pendingIdempotencyKey, pendingIdempotencyExpiry, Instant.now());
+        }
         entity =
             new IcebergTableLikeEntity.Builder(
                     PolarisEntitySubType.ICEBERG_TABLE,
                     tableIdentifier,
                     Map.of(),
-                    storedProperties,
+                    internalProperties,
                     newLocation)
                 .setCatalogId(getCatalogId())
                 .setBaseLocation(metadata.location())
