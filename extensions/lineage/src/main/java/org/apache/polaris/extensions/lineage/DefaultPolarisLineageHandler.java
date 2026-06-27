@@ -16,23 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.extensions.lineage.LineageGraph;
-import org.apache.polaris.extensions.lineage.LineageQueryRequest;
-import org.apache.polaris.extensions.lineage.LineageService;
 
 @RequestScoped
-public class DefaultLineageService implements LineageService {
+public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
   private final CallContext callContext;
   private final LineageConfiguration configuration;
 
   @Inject
-  public DefaultLineageService(CallContext callContext, LineageConfiguration configuration) {
+  public DefaultPolarisLineageHandler(CallContext callContext, LineageConfiguration configuration) {
     this.callContext = callContext;
     this.configuration = configuration;
   }

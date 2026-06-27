@@ -19,6 +19,24 @@
 
 plugins {
   id("polaris-client")
+  id("org.kordamp.gradle.jandex")
 }
 
 description = "Polaris lineage model and service contract"
+
+dependencies {
+  implementation(project(":polaris-core"))
+
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-arc")
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
+  compileOnly(libs.smallrye.config.core)
+
+  testImplementation(platform(libs.junit.bom))
+  testImplementation("org.junit.jupiter:junit-jupiter")
+  testImplementation(libs.assertj.core)
+  testImplementation(libs.mockito.core)
+}
+
+tasks.named("javadoc") { dependsOn("jandex") }
