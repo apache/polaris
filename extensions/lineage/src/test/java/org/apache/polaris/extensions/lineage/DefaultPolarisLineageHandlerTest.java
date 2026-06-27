@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
@@ -24,33 +24,30 @@ import static org.mockito.Mockito.when;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.extensions.lineage.LineageDirection;
-import org.apache.polaris.extensions.lineage.LineageGranularity;
-import org.apache.polaris.extensions.lineage.LineageQueryRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-public class DefaultLineageServiceTest {
+public class DefaultPolarisLineageHandlerTest {
   @Mock private CallContext callContext;
   @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
 
-  private DefaultLineageService service;
+  private DefaultPolarisLineageHandler handler;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
-    service = new DefaultLineageService(callContext, configuration);
+    handler = new DefaultPolarisLineageHandler(callContext, configuration);
   }
 
   @Test
   void throwsWhenStaticConfigDisabled() {
     when(configuration.enabled()).thenReturn(false);
 
-    assertThatThrownBy(() -> service.query(queryRequest()))
+    assertThatThrownBy(() -> handler.query(queryRequest()))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("polaris.lineage.enabled");
   }
@@ -60,7 +57,7 @@ public class DefaultLineageServiceTest {
     when(configuration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(false);
 
-    assertThatThrownBy(() -> service.query(queryRequest()))
+    assertThatThrownBy(() -> handler.query(queryRequest()))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining(FeatureConfiguration.ENABLE_LINEAGE.key());
   }
@@ -70,7 +67,7 @@ public class DefaultLineageServiceTest {
     when(configuration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
 
-    assertThatThrownBy(() -> service.query(queryRequest()))
+    assertThatThrownBy(() -> handler.query(queryRequest()))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("Lineage query is not implemented yet");
   }
