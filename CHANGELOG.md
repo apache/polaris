@@ -72,6 +72,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The admin tool `purge` command now prints the underlying exception stack trace to stderr when a purge fails unexpectedly, matching the `bootstrap` command. Previously a failed purge printed only a generic message, giving operators no diagnostic information.
 - The access token carried in `PolarisCredential` is now redacted from its `toString()`, so it is no longer written to authentication logs (including at WARN level on failed authentication).
 - JWT verification now validates the issuer claim (`"polaris"`) in addition to the active claim. Tokens signed with the same key but carrying a different issuer are now rejected.
+- Renaming a table or view now maps concurrent-modification and resolution failures to meaningful HTTP status codes instead of HTTP 500. A concurrent modification of the source returns 503 (Service Unavailable, retryable); a source or target path that no longer resolves (concurrently dropped or replaced) returns 404 (Not Found). HTTP 409 is intentionally not used because the Iceberg REST rename endpoint reserves 409 for "the target already exists".
 - Inheritable policy mapping inserts in the JDBC backend now use the active transaction connection, so they roll back correctly with the surrounding transaction.
 - Generic table drop now accepts table-scoped `TABLE_DROP` privilege.
 - Azure SAS tokens are now signed for the configured duration instead of a hardcoded 1 hour, so long jobs no longer fail with expired credentials.
