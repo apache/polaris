@@ -21,6 +21,7 @@ package org.apache.polaris.service.spark.it;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,7 +44,7 @@ final class PropertiesRustfsAccess implements RustfsAccess {
 
   static PropertiesRustfsAccess from(Path path) {
     Properties properties = new Properties();
-    try (InputStream input = java.nio.file.Files.newInputStream(path)) {
+    try (InputStream input = Files.newInputStream(path)) {
       properties.load(input);
     } catch (IOException e) {
       throw new IllegalStateException("Failed to load RustFS properties from " + path, e);
