@@ -17,22 +17,22 @@
 # under the License.
 #
 
-import json
-
-import os
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Any, cast
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import (
     Subcommands,
     Arguments,
     DEFAULT_HEADER,
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
-    CONFIG_DIR,
-    CONFIG_FILE,
+)
+from apache_polaris.cli.exceptions import CliError
+from apache_polaris.cli.profile_config import (
+    format_profile_for_display,
+    load_profiles,
+    save_profiles,
 )
 from apache_polaris.sdk.management import PolarisDefaultApi
 
@@ -56,16 +56,10 @@ class ProfilesCommand(Command):
     profile_name: Optional[str] = None
 
     def _load_profiles(self) -> Dict[str, Dict[str, Any]]:
-        if not os.path.exists(CONFIG_FILE):
-            return {}
-        with open(CONFIG_FILE, "r") as f:
-            return json.load(f)
+        return load_profiles()
 
     def _save_profiles(self, profiles: Dict[str, Dict[str, Any]]) -> None:
-        if not os.path.exists(CONFIG_DIR):
-            os.makedirs(CONFIG_DIR)
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(profiles, f, indent=2)
+        save_profiles(profiles)
 
     def _create_profile(self, name: str) -> None:
         profiles = self._load_profiles()
@@ -119,7 +113,7 @@ class ProfilesCommand(Command):
                 input(f"Polaris Client ID [{current_client_id}]: ") or current_client_id
             )
             client_secret = (
-                input(f"Polaris Client Secret [{current_client_secret}]: ")
+                input("Enter Polaris Client Secret (empty to reuse previous value): ")
                 or current_client_secret
             )
             host = input(f"Polaris Host [{current_host}]: ") or current_host
@@ -165,7 +159,10 @@ class ProfilesCommand(Command):
             profile_name = cast(str, self.profile_name)
             profile = self._get_profile(profile_name)
             if profile:
-                print(f"Polaris profile {profile_name}: {profile}")
+                print(
+                    f"Polaris profile {profile_name}: "
+                    f"{format_profile_for_display(profile)}"
+                )
             else:
                 print(f"Polaris profile {profile_name} not found.")
         elif self.profiles_subcommand == Subcommands.LIST:
