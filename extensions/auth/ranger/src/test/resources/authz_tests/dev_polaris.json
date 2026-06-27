@@ -307,11 +307,12 @@
       { "itemId": 28, "name": "table-create",     "label": "Table Create",     "category": "CREATE", "impliedGrants": [ "table-list" ] },
       { "itemId": 29, "name": "table-drop",       "label": "Table Drop",       "category": "DELETE" },
       { "itemId": 30, "name": "table-list",       "label": "Table List",       "category": "READ" },
-      { "itemId": 31, "name": "table-data-read",  "label": "Table Data Read",  "category": "READ",   "impliedGrants": [ "table-list", "table-properties-read" ] },
+      { "itemId": 31, "name": "table-data-read",  "label": "Table Data Read",  "category": "READ",   "impliedGrants": [ "table-list", "table-properties-read", "table-metrics-read" ] },
       { "itemId": 32, "name": "table-data-write", "label": "Table Data Write", "category": "UPDATE",
         "impliedGrants": [
           "table-list",
           "table-data-read",
+          "table-metrics-read",
           "table-properties-read",
           "table-properties-set",
           "table-properties-remove",
@@ -338,6 +339,7 @@
           "table-create",
           "table-drop",
           "table-list",
+          "table-metrics-read",
           "table-properties-read",
           "table-properties-write",
           "table-properties-set",
@@ -423,6 +425,7 @@
           "table-statistics-remove"
         ]
       },
+      { "itemId": 70, "name": "table-metrics-read",           "label": "Table Metrics Read",           "category": "READ", "impliedGrants": [ "table-list" ] },
 
       { "itemId": 56,  "name": "view-create",           "label": "View Create",           "category": "CREATE", "impliedGrants": [ "view-list" ] },
       { "itemId": 57,  "name": "view-drop",             "label": "View Drop",             "category": "DELETE" },

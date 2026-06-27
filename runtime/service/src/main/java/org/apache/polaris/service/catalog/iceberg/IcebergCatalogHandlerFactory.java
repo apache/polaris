@@ -33,12 +33,12 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.extension.metrics.spi.IcebergMetricsReporter;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributeMap;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 
 @RequestScoped
 public class IcebergCatalogHandlerFactory {
@@ -57,7 +57,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject EventAttributeMap eventAttributeMap;
-  @Inject PolarisMetricsReporter metricsReporter;
+  @Inject IcebergMetricsReporter metricsReporter;
   @Inject Clock clock;
   @Inject AccessDelegationModeResolver accessDelegationModeResolver;
 

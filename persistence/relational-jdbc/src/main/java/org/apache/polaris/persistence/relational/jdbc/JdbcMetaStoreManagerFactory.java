@@ -252,7 +252,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Override
   public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
-    return createJdbcPersistence(realmContext);
+    return new MetricsPersistence() {};
   }
 
   @Override

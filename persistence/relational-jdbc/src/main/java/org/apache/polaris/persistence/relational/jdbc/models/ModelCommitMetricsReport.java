@@ -20,9 +20,11 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
@@ -314,6 +316,64 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     } catch (JacksonException e) {
       return "{}";
     }
+  }
+
+  private static Map<String, String> parseMetadata(@Nullable String metadata) {
+    if (metadata == null || metadata.isBlank()) {
+      return Map.of();
+    }
+    try {
+      Map<String, String> parsed =
+          OBJECT_MAPPER.readValue(
+              metadata, new tools.jackson.core.type.TypeReference<Map<String, String>>() {});
+      return parsed != null ? parsed : Map.of();
+    } catch (JacksonException e) {
+      return Map.of();
+    }
+  }
+
+  /**
+   * Converts this JDBC model back to the backend-agnostic SPI record.
+   *
+   * @return a CommitMetricsRecord built from this model's fields
+   */
+  default CommitMetricsRecord toRecord() {
+    return CommitMetricsRecord.builder()
+        .reportId(getReportId())
+        .catalogId(getCatalogId())
+        .tableId(getTableId())
+        .timestamp(Instant.ofEpochMilli(getTimestampMs()))
+        .metadata(parseMetadata(getMetadata()))
+        .principalName(getPrincipalName())
+        .requestId(getRequestId())
+        .otelTraceId(getOtelTraceId())
+        .otelSpanId(getOtelSpanId())
+        .snapshotId(getSnapshotId())
+        .sequenceNumber(Optional.ofNullable(getSequenceNumber()))
+        .operation(getOperation())
+        .addedDataFiles(getAddedDataFiles())
+        .removedDataFiles(getRemovedDataFiles())
+        .totalDataFiles(getTotalDataFiles())
+        .addedDeleteFiles(getAddedDeleteFiles())
+        .removedDeleteFiles(getRemovedDeleteFiles())
+        .totalDeleteFiles(getTotalDeleteFiles())
+        .addedEqualityDeleteFiles(getAddedEqualityDeleteFiles())
+        .removedEqualityDeleteFiles(getRemovedEqualityDeleteFiles())
+        .addedPositionalDeleteFiles(getAddedPositionalDeleteFiles())
+        .removedPositionalDeleteFiles(getRemovedPositionalDeleteFiles())
+        .addedRecords(getAddedRecords())
+        .removedRecords(getRemovedRecords())
+        .totalRecords(getTotalRecords())
+        .addedFileSizeBytes(getAddedFileSizeBytes())
+        .removedFileSizeBytes(getRemovedFileSizeBytes())
+        .totalFileSizeBytes(getTotalFileSizeBytes())
+        // TODO(#4397): total_duration_ms is NOT NULL, so 0L is ambiguous between "unknown" and a
+        // genuine zero-duration commit. Make the column nullable as part of the metrics schema
+        // consolidation in #4397 so null vs 0 can be represented without this workaround.
+        .totalDurationMs(
+            getTotalDurationMs() == 0L ? Optional.empty() : Optional.of(getTotalDurationMs()))
+        .attempts(getAttempts())
+        .build();
   }
 
   /** Dummy instance to be used as a Converter when calling fromResultSet(). */

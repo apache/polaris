@@ -62,6 +62,7 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
+import org.apache.polaris.extension.metrics.spi.IcebergMetricsReporter;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -83,7 +84,6 @@ import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
 import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
@@ -458,9 +458,19 @@ public class ServiceProducers {
 
   @Produces
   @ApplicationScoped
-  public PolarisMetricsReporter metricsReporter(
-      MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
-    return reporters.select(Identifier.Literal.of(config.type())).get();
+  public IcebergMetricsReporter metricsReporter(
+      MetricsReportingConfiguration config, @Any Instance<IcebergMetricsReporter> reporters) {
+    var selected = reporters.select(Identifier.Literal.of(config.type()));
+    if (selected.isUnsatisfied()) {
+      // NoOpMetricsReporter and LoggingMetricsReporter live in polaris-extensions-metrics-reports
+      // (not SPI). If that module is absent from the classpath, fall back to a silent no-op so
+      // core service startup is not blocked by a missing metrics extension.
+      LOGGER.warn(
+          "No IcebergMetricsReporter found for type '{}'; Iceberg metrics will be dropped",
+          config.type());
+      return (catalogName, catalogId, table, tableId, metricsReport, receivedTimestamp) -> {};
+    }
+    return selected.get();
   }
 
   @Produces
