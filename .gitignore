@@ -117,6 +117,16 @@ application-local.properties
 
 # AI / Agentic Development Tools
 .agents/
+# Permit the polaris-extensibility-eval skill so it can be a tracked,
+# reproducible part of this fork. Other .agents/ contents stay local.
+!.agents/
+!.agents/skills/
+!.agents/skills/polaris-extensibility-eval/
+!.agents/skills/polaris-extensibility-eval/**
+
+# polaris-extensibility-eval run artifacts
+.meta-eval/
+
 .aider/
 .aider.chat.history.md
 .aider.input.history
