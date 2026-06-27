@@ -24,6 +24,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -1387,7 +1388,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     catalogHandlerUtils().renameView(viewCatalog, request);
   }
 
-  private @NonNull LoadTableResponse filterResponseToSnapshots(
+  @VisibleForTesting
+  @NonNull LoadTableResponse filterResponseToSnapshots(
       LoadTableResponse loadTableResponse, String snapshots) {
     if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
       return loadTableResponse;
@@ -1402,8 +1404,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       TableMetadata filteredMetadata =
           metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
 
+      TableMetadata filteredMetadataWithLocation =
+          TableMetadata.buildFrom(filteredMetadata)
+              .withMetadataLocation(loadTableResponse.metadataLocation())
+              .discardChanges()
+              .build();
+
       return LoadTableResponse.builder()
-          .withTableMetadata(filteredMetadata)
+          .withTableMetadata(filteredMetadataWithLocation)
           .addAllConfig(loadTableResponse.config())
           .addAllCredentials(loadTableResponse.credentials())
           .build();
