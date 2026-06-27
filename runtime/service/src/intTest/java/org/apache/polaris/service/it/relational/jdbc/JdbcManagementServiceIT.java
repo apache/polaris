@@ -21,8 +21,8 @@ package org.apache.polaris.service.it.relational.jdbc;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
-import org.apache.polaris.test.commons.RelationalJdbcProfile;
+import org.apache.polaris.test.commons.PostgresRelationalJdbcProfile;
 
-@TestProfile(RelationalJdbcProfile.class)
+@TestProfile(PostgresRelationalJdbcProfile.class)
 @QuarkusIntegrationTest
 public class JdbcManagementServiceIT extends PolarisManagementServiceIntegrationTest {}

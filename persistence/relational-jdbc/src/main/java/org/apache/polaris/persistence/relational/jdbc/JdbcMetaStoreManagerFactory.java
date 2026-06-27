@@ -22,8 +22,6 @@ import static org.apache.polaris.core.auth.AuthBootstrapUtil.createPolarisPrinci
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
-import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.time.Clock;
@@ -32,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
@@ -90,13 +87,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject RealmConfigurationSource realmConfigurationSource;
 
   protected JdbcMetaStoreManagerFactory() {}
-
-  @Produces
-  @ApplicationScoped
-  static DatasourceOperations produceDatasourceOperations(
-      Instance<DataSource> dataSource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
-    return new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
-  }
 
   protected PrincipalSecretsGenerator secretsGenerator(
       String realmId, @Nullable RootCredentialsSet rootCredentialsSet) {

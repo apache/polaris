@@ -40,7 +40,7 @@ public class RelationalJdbcProductionReadinessChecks {
       return ProductionReadinessCheck.of(
           ProductionReadinessCheck.Error.of(
               "The current persistence (jdbc:h2) is intended for tests only.",
-              "quarkus.datasource.jdbc.url"));
+              "polaris.persistence.relational.jdbc.datasource"));
     }
     return ProductionReadinessCheck.OK;
   }

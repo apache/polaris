@@ -19,7 +19,34 @@
 package org.apache.polaris.quarkus.common.config.jdbc;
 
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithName;
+import java.util.Optional;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
 @ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
-public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}
+public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {
+
+  /** The maximum number of retries before giving up the operation. */
+  @Override
+  Optional<Integer> maxRetries();
+
+  /** The maximum retry duration in milliseconds. */
+  @Override
+  Optional<Long> maxDurationInMs();
+
+  /** The initial retry delay. */
+  @Override
+  Optional<Long> initialDelayInMs();
+
+  /**
+   * Explicitly configured database type. If not specified, the database type will be inferred from
+   * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
+   */
+  @Override
+  Optional<String> databaseType();
+
+  /** The datasource name to use. Required. */
+  @Override
+  @WithName("datasource")
+  String dataSource();
+}

@@ -1470,12 +1470,12 @@ tests:
   - it: should set relational-jdbc persistence environment variables
     template: deployment.yaml
     set:
-      persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence", username: "username", password: "password", jdbcUrl: "jdbcUrl" } } }
+      persistence: { type: "relational-jdbc", relationalJdbc: { datasource: "postgresql", secret: { name: "polaris-persistence", username: "username", password: "password", jdbcUrl: "jdbcUrl" } } }
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: quarkus.datasource.username
+            name: quarkus.datasource.postgresql.username
             valueFrom:
               secretKeyRef:
                 name: polaris-persistence
@@ -1483,7 +1483,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: quarkus.datasource.password
+            name: quarkus.datasource.postgresql.password
             valueFrom:
               secretKeyRef:
                 name: polaris-persistence
@@ -1491,7 +1491,37 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: quarkus.datasource.jdbc.url
+            name: quarkus.datasource.postgresql.jdbc.url
+            valueFrom:
+              secretKeyRef:
+                name: polaris-persistence
+                key: jdbcUrl
+
+  - it: should set relational-jdbc persistence environment variables for custom datasource name
+    template: deployment.yaml
+    set:
+      persistence: { type: "relational-jdbc", relationalJdbc: { datasource: "mydb", secret: { name: "polaris-persistence", username: "username", password: "password", jdbcUrl: "jdbcUrl" } } }
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.mydb.username
+            valueFrom:
+              secretKeyRef:
+                name: polaris-persistence
+                key: username
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.mydb.password
+            valueFrom:
+              secretKeyRef:
+                name: polaris-persistence
+                key: password
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.datasource.mydb.jdbc.url
             valueFrom:
               secretKeyRef:
                 name: polaris-persistence

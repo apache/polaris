@@ -265,6 +265,7 @@ weight: 900
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | persistence.type | string | `"in-memory"` | The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta). |
+| persistence.relationalJdbc.datasource | string | `"postgresql"` | The name of the Quarkus named datasource to use for relational persistence. Must match one of the built-in named datasources (h2, postgresql), or a custom datasource configured via extraEnv / extraConfig (in this case, you must use a custom Polaris server image including the custom datasource). Polaris will activate this datasource automatically. |
 | persistence.relationalJdbc.secret.name | string | `""` | The secret name to pull database connection properties from |
 | persistence.relationalJdbc.secret.username | string | `"username"` | The secret key holding the database username for authentication |
 | persistence.relationalJdbc.secret.password | string | `"password"` | The secret key holding the database password for authentication |

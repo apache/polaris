@@ -133,9 +133,10 @@ Example for the PostgreSQL backend:
 ```bash
 docker run --rm -it \
   --env="polaris.persistence.type=relational-jdbc" \
-  --env="quarkus.datasource.username=<your-username>" \
-  --env="quarkus.datasource.password=<your-password>" \
-  --env="quarkus.datasource.jdbc.url=<jdbc-url-of-postgres>" \
+  --env="polaris.persistence.relational.jdbc.datasource=postgresql" \
+  --env="quarkus.datasource.postgresql.username=<your-username>" \
+  --env="quarkus.datasource.postgresql.password=<your-password>" \
+  --env="quarkus.datasource.postgresql.jdbc.url=<jdbc-url-of-postgres>" \
   apache/polaris-admin-tool:latest bootstrap -r realm1 -c realm1,admin,admin
 ```
 
@@ -193,9 +194,10 @@ Example for the PostgreSQL backend:
 ```bash
 docker run --rm -it \
   --env="polaris.persistence.type=relational-jdbc" \
-  --env="quarkus.datasource.username=<your-username>" \
-  --env="quarkus.datasource.password=<your-password>" \
-  --env="quarkus.datasource.jdbc.url=<jdbc-url-of-postgres>" \
+  --env="polaris.persistence.relational.jdbc.datasource=postgresql" \
+  --env="quarkus.datasource.postgresql.username=<your-username>" \
+  --env="quarkus.datasource.postgresql.password=<your-password>" \
+  --env="quarkus.datasource.postgresql.jdbc.url=<jdbc-url-of-postgres>" \
   apache/polaris-admin-tool:latest purge -r realm1
 ```
 

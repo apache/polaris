@@ -61,16 +61,12 @@ public class PostgresRelationalJdbcLifeCycleManagement
     return Map.ofEntries(
         Map.entry("polaris.persistence.type", "relational-jdbc"),
         Map.entry("polaris.persistence.relational.jdbc.max-retries", "2"),
-        Map.entry("quarkus.datasource.db-kind", "postgresql"),
-        Map.entry("quarkus.datasource.jdbc.url", postgres.getJdbcUrl()),
-        Map.entry("quarkus.datasource.username", postgres.getUsername()),
-        Map.entry("quarkus.datasource.password", postgres.getPassword()),
-        Map.entry("quarkus.datasource.jdbc.initial-size", "10"),
-        // Configure metrics named datasource to use the same PostgreSQL instance
-        Map.entry("quarkus.datasource.metrics.db-kind", "postgresql"),
-        Map.entry("quarkus.datasource.metrics.jdbc.url", postgres.getJdbcUrl()),
-        Map.entry("quarkus.datasource.metrics.username", postgres.getUsername()),
-        Map.entry("quarkus.datasource.metrics.password", postgres.getPassword()));
+        Map.entry("polaris.persistence.relational.jdbc.database-type", "postgresql"),
+        Map.entry("polaris.persistence.relational.jdbc.datasource", "postgresql"),
+        Map.entry("quarkus.datasource.postgresql.jdbc.url", postgres.getJdbcUrl()),
+        Map.entry("quarkus.datasource.postgresql.username", postgres.getUsername()),
+        Map.entry("quarkus.datasource.postgresql.password", postgres.getPassword()),
+        Map.entry("quarkus.datasource.postgresql.jdbc.initial-size", "10"));
   }
 
   @Override

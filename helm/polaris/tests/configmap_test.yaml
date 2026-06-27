@@ -122,9 +122,10 @@ tests:
 
   - it: should configure relational-jdbc persistence
     set:
-      persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence" } } }
+      persistence: { type: "relational-jdbc", relationalJdbc: { datasource: "postgresql", secret: { name: "polaris-persistence" } } }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=relational-jdbc" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.relational.jdbc.datasource=postgresql" }
 
   - it: should configure nosql persistence with default values
     set:

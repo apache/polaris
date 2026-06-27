@@ -56,4 +56,10 @@ final class SimpleRelationalJdbcConfiguration implements RelationalJdbcConfigura
   public Optional<String> databaseType() {
     return Optional.of(databaseType);
   }
+
+  @Override
+  public String dataSource() {
+    // The datasource name is irrelevant for tests that do not leverage CDI
+    return "datasource1";
+  }
 }
