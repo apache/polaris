@@ -23,7 +23,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -45,7 +44,7 @@ public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCa
     return this.genericTables.keySet().stream()
         .filter(t -> t.namespace().equals(ns))
         .sorted(Comparator.comparing(TableIdentifier::toString))
-        .collect(Collectors.toList());
+        .toList();
   }
 
   @Override

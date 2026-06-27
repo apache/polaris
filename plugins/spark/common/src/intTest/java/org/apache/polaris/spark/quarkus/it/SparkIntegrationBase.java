@@ -26,7 +26,6 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
@@ -169,7 +168,7 @@ public abstract class SparkIntegrationBase {
   }
 
   protected List<Object[]> rowsToJava(List<Row> rows) {
-    return rows.stream().map(this::toJava).collect(Collectors.toList());
+    return rows.stream().map(this::toJava).toList();
   }
 
   private Object[] toJava(Row row) {

@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -432,7 +431,7 @@ public abstract class BaseResolverTest {
                                 metaStoreManager().findPrincipalRoleByName(callCtx(), roleName))
                         .filter(Optional::isPresent)
                         .map(Optional::get)
-                        .collect(Collectors.toList()));
+                        .toList());
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(
             PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()));

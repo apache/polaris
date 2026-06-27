@@ -21,7 +21,6 @@ package org.apache.polaris.core.storage.aws;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import software.amazon.awssdk.services.sts.model.Tag;
 
@@ -60,7 +59,7 @@ public final class AwsSessionTagsBuilder {
     return enabledFields.stream()
         .map(field -> field.buildTag(principalName, context))
         .flatMap(Optional::stream)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   /**

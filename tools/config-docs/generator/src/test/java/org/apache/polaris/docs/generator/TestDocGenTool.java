@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
@@ -35,9 +34,7 @@ public class TestDocGenTool {
   @Test
   public void docGenTool(@TempDir Path dir) throws Exception {
     var classpath =
-        Arrays.stream(System.getProperty("testing.libraries").split(":"))
-            .map(Paths::get)
-            .collect(Collectors.toList());
+        Arrays.stream(System.getProperty("testing.libraries").split(":")).map(Paths::get).toList();
 
     var tool =
         new ReferenceConfigDocsGenerator(List.of(Paths.get("src/test/java")), classpath, dir, true);

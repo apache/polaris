@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence.transactional;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -281,7 +280,7 @@ public class PolarisEntityResolver {
                         entityCore.getParentId(),
                         entityCore.getTypeCode(),
                         entityCore.getName()))
-            .collect(Collectors.toList());
+            .toList();
 
     // now lookup all these entities by name
     Iterator<EntityNameLookupRecord> activeRecordIt =

@@ -29,7 +29,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -229,7 +228,7 @@ public class InMemoryEntityCacheTest {
             .filter(
                 grantRecord ->
                     grantRecord.getPrivilegeCode() == PolarisPrivilege.TABLE_READ_DATA.getCode())
-            .collect(Collectors.toList());
+            .toList();
     assertThat(matchPriv).hasSize(1);
     gr = matchPriv.get(0);
     assertThat(gr.getGranteeId()).isEqualTo(cacheEntry_R1.getEntity().getId());

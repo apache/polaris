@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -140,7 +139,7 @@ public class PolarisEntity extends PolarisBaseEntity {
   public static List<PolarisEntityCore> toCoreList(List<PolarisEntity> path) {
     return Optional.ofNullable(path)
         .filter(Predicate.not(List::isEmpty))
-        .map(list -> list.stream().map(PolarisEntity::toCore).collect(Collectors.toList()))
+        .map(list -> list.stream().map(PolarisEntity::toCore).toList())
         .orElse(null);
   }
 
@@ -150,7 +149,7 @@ public class PolarisEntity extends PolarisBaseEntity {
             list ->
                 list.stream()
                     .map(record -> new NameAndId(record.getName(), record.getId()))
-                    .collect(Collectors.toList()))
+                    .toList())
         .orElse(null);
   }
 

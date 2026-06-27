@@ -462,7 +462,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
                     throw new RuntimeException(e);
                   }
                 })
-            .collect(Collectors.toList());
+            .toList();
     Assertions.assertThat(responses)
         .hasSize(3)
         .satisfies(l -> Assertions.assertThat(l.stream().flatMap(Set::stream)).hasSize(100));
@@ -511,7 +511,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
                       throw new RuntimeException(e);
                     }
                   })
-              .collect(Collectors.toList());
+              .toList();
 
       Assertions.assertThat(responses)
           .hasSize(10)

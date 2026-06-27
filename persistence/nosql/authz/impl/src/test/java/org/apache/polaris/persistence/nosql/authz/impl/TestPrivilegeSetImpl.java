@@ -31,7 +31,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
@@ -237,8 +236,7 @@ public class TestPrivilegeSetImpl {
     }
 
     soft.assertThat(values)
-        .containsExactlyInAnyOrderElementsOf(
-            inJson.stream().map(Privilege::name).collect(Collectors.toList()));
+        .containsExactlyInAnyOrderElementsOf(inJson.stream().map(Privilege::name).toList());
   }
 
   static Stream<Arguments> compositeByNameSerialization() {
