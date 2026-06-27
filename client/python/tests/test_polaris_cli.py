@@ -25,6 +25,7 @@ from unittest.mock import MagicMock, patch
 import urllib3
 
 from apache_polaris.cli.constants import Commands
+from apache_polaris.cli.log_sanitizer import OAUTH_TOKEN_BODY_REDACTED, REDACTED
 from apache_polaris.cli.polaris_cli import PolarisCli
 
 
@@ -146,6 +147,8 @@ class TestPolarisCliDebugLogging(unittest.TestCase):
         output = mock_stderr.getvalue()
         self.assertIn("Request: GET http://localhost:8080/api/management/v1/catalogs", output)
         self.assertIn("Headers:", output)
+        self.assertIn(REDACTED, output)
+        self.assertNotIn("secret-token", output)
         self.assertIn("Body:", output)
 
     @patch("apache_polaris.cli.polaris_cli.Command.from_options")
@@ -200,7 +203,9 @@ class TestPolarisCliDebugLogging(unittest.TestCase):
 
         output = mock_stderr.getvalue()
         self.assertIn(f"Request: POST {oauth_url}", output)
-        self.assertIn(f"Body: {oauth_body}", output)
+        self.assertIn(f"Body: {OAUTH_TOKEN_BODY_REDACTED}", output)
+        self.assertIn(f"Response Body: {OAUTH_TOKEN_BODY_REDACTED}", output)
+        self.assertNotIn("client_secret=secret", output)
 
 
 if __name__ == "__main__":
