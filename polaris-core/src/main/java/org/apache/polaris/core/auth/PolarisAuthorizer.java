@@ -80,4 +80,19 @@ public interface PolarisAuthorizer {
       @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries);
+
+  /**
+   * Filters a candidate list of securables to only those the principal is authorized to see.
+   *
+   * <p>The default implementation returns all candidates unchanged, preserving backward
+   * compatibility for authorizers that do not implement visibility filtering.
+   *
+   * <p>If filtering encounters an error, implementations should throw rather than fall
+   * back to returning unfiltered results.
+   */
+  @NonNull
+  default List<PolarisSecurable> filterByVisibility(
+      @NonNull AuthorizationState authzState, @NonNull VisibilityFilterRequest request) {
+    return request.candidates();
+  }
 }
