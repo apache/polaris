@@ -46,9 +46,9 @@ dependencies {
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
-  compileOnly(platform(libs.jackson.bom))
+  compileOnly(platform(libs.jackson3.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  compileOnly("com.fasterxml.jackson.core:jackson-databind")
+  compileOnly("tools.jackson.core:jackson-databind")
 
   testFixturesApi(testFixtures(project(":polaris-persistence-nosql-impl")))
 

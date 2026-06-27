@@ -33,9 +33,9 @@ dependencies {
   testFixturesImplementation(project(":polaris-idgen-impl"))
   testFixturesImplementation(project(":polaris-idgen-spi"))
 
-  testFixturesApi(platform(libs.jackson.bom))
+  testFixturesApi(platform(libs.jackson3.bom))
   testFixturesApi("com.fasterxml.jackson.core:jackson-annotations")
-  testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
+  testFixturesApi("tools.jackson.core:jackson-databind")
 
   testFixturesImplementation(libs.jakarta.annotation.api)
   testFixturesImplementation(libs.jspecify)

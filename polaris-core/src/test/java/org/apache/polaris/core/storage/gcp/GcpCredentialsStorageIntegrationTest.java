@@ -25,10 +25,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
@@ -82,6 +78,10 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
@@ -92,9 +92,10 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   private static final ObjectMapper MAPPER =
       JsonMapper.builder()
-          .defaultPropertyInclusion(
-              JsonInclude.Value.construct(
-                  JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+          .changeDefaultPropertyInclusion(
+              incl ->
+                  incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                      .withContentInclusion(JsonInclude.Include.NON_NULL))
           .build();
 
   private static List<LocationGrant> toGrants(
@@ -238,11 +239,11 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   private Set<JsonNode> canonicalRules(JsonNode rules) {
     Set<JsonNode> canonical = new HashSet<>();
     for (JsonNode rule : rules.path("accessBoundaryRules")) {
-      ObjectNode copy = rule.deepCopy();
+      JsonNode copy = rule.deepCopy();
       JsonNode condition = copy.path("availabilityCondition");
       JsonNode expression = condition.path("expression");
-      if (expression.isTextual()) {
-        String[] clauses = expression.asText().split(" \\|\\| ");
+      if (expression.isString()) {
+        String[] clauses = expression.asString().split(" \\|\\| ");
         Arrays.sort(clauses);
         ((ObjectNode) condition).put("expression", String.join(" || ", clauses));
       }
@@ -428,7 +429,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .get(0)
                 .path("availabilityCondition")
                 .path("expression")
-                .asText())
+                .asString())
         .contains("projects/_/buckets/bucket1/objects/path/to/data?with?question")
         .contains("path/to/data?with?question");
   }
@@ -550,7 +551,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .path(ruleIndex)
         .path("availabilityCondition")
         .path("expression")
-        .asText();
+        .asString();
   }
 
   private static RealmConfig configWith(Map<String, String> values) {

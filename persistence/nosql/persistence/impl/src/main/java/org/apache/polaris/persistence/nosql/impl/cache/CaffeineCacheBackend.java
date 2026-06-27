@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.impl.cache;
 
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
-import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -39,11 +37,9 @@ import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBacke
 import static org.apache.polaris.persistence.varint.VarInt.putVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.readVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.varIntLen;
+import static tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static tools.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
@@ -54,7 +50,6 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.BaseUnits;
 import io.micrometer.core.instrument.binder.cache.CaffeineStatsCounter;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Arrays;
@@ -76,6 +71,9 @@ import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
+import tools.jackson.dataformat.smile.SmileMapper;
 
 class CaffeineCacheBackend implements CacheBackend {
 
@@ -635,22 +633,14 @@ class CaffeineCacheBackend implements CacheBackend {
               ? new String(key, buf.position(), key.length - buf.position(), UTF_8)
               : null;
 
-      try {
-        return contextualReader(SMILE_MAPPER, type, id, numParts, versionToken, createdAtMicros)
-            .readValue(serialized);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      return contextualReader(SMILE_MAPPER, type, id, numParts, versionToken, createdAtMicros)
+          .readValue(serialized);
     }
 
     Reference getReference() {
       var kind = key[0];
       checkState(kind == KIND_REFERENCE, "Cache value content is not a reference");
-      try {
-        return SMILE_MAPPER.readValue(serialized, Reference.class);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      return SMILE_MAPPER.readValue(serialized, Reference.class);
     }
   }
 
@@ -708,18 +698,10 @@ class CaffeineCacheBackend implements CacheBackend {
   private static final ObjectWriter OBJ_WRITER = SMILE_MAPPER.writer().withView(Object.class);
 
   static byte[] serializeObj(Obj obj) {
-    try {
-      return OBJ_WRITER.writeValueAsBytes(obj);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
+    return OBJ_WRITER.writeValueAsBytes(obj);
   }
 
   static byte[] serializeReference(Reference ref) {
-    try {
-      return SMILE_MAPPER.writeValueAsBytes(ref);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
+    return SMILE_MAPPER.writeValueAsBytes(ref);
   }
 }

@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.impl;
 
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
-import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
@@ -28,12 +26,9 @@ import static org.apache.polaris.persistence.nosql.api.backend.PersistId.persist
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjSerializationHelper.contextualReader;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjTypes.objTypeById;
+import static tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static tools.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
-import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import com.google.common.primitives.Ints;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -70,6 +65,10 @@ import org.apache.polaris.persistence.nosql.impl.commits.CommitFactory;
 import org.apache.polaris.persistence.nosql.impl.indexes.IndexesProvider;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.util.ByteBufferBackedInputStream;
+import tools.jackson.dataformat.smile.SmileMapper;
 
 /**
  * Base implementation that every database-specific implementation is encouraged to extend.
@@ -544,11 +543,7 @@ public final class PersistenceImplementation implements Persistence {
     if (binary == null) {
       return null;
     }
-    try {
-      return SMILE_MAPPER.readValue(binary, clazz);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    return SMILE_MAPPER.readValue(binary, clazz);
   }
 
   /** Deserialize a byte array into an object of the given type, consumes the {@link ByteBuffer}. */
@@ -556,30 +551,18 @@ public final class PersistenceImplementation implements Persistence {
     if (binary == null) {
       return null;
     }
-    try {
-      return SMILE_MAPPER.readValue(new ByteBufferBackedInputStream(binary), clazz);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    return SMILE_MAPPER.readValue(new ByteBufferBackedInputStream(binary), clazz);
   }
 
   public static byte[] serialize(Object o) {
-    try {
-      return SMILE_MAPPER.writeValueAsBytes(o);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
+    return SMILE_MAPPER.writeValueAsBytes(o);
   }
 
   public static byte[] serializeObj(Obj o) {
-    try {
-      // OBJ_WRITES uses the Jackson view mechanism to exclude the
-      // type, id, createdAtMicros, versionToken attributes from being
-      // serialized by Jackson here.
-      return OBJ_WRITER.writeValueAsBytes(o);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
+    // OBJ_WRITES uses the Jackson view mechanism to exclude the
+    // type, id, createdAtMicros, versionToken attributes from being
+    // serialized by Jackson here.
+    return OBJ_WRITER.writeValueAsBytes(o);
   }
 
   public static <T> T deserializeObj(
@@ -605,7 +588,7 @@ public final class PersistenceImplementation implements Persistence {
 
     var obj =
         contextualReader(SMILE_MAPPER, objType, id, partNum, versionToken, createdAtMicros)
-            .readValue(in, typeClass);
+            .readValue(in);
     @SuppressWarnings("unchecked")
     var r = (T) obj;
     return r;

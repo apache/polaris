@@ -20,15 +20,6 @@ package org.apache.polaris.persistence.nosql.api.obj;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.Persistence;
@@ -36,6 +27,14 @@ import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.immutables.value.Value;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Describes a reference to an object.
@@ -161,17 +160,17 @@ public interface ObjRef {
     return ObjRefSerialization.fromBytes(bytes);
   }
 
-  class ObjRefSerializer extends JsonSerializer<ObjRef> {
+  class ObjRefSerializer extends ValueSerializer<ObjRef> {
     @Override
-    public void serialize(ObjRef value, JsonGenerator gen, SerializerProvider serializers)
-        throws IOException {
+    public void serialize(
+        ObjRef value, JsonGenerator gen, SerializationContext serializationContext) {
       gen.writeBinary(value.toBytes());
     }
   }
 
-  class ObjRefDeserializer extends JsonDeserializer<ObjRef> {
+  class ObjRefDeserializer extends ValueDeserializer<ObjRef> {
     @Override
-    public ObjRef deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public ObjRef deserialize(JsonParser p, DeserializationContext ctxt) {
       return ObjRef.fromBytes(p.getBinaryValue());
     }
   }

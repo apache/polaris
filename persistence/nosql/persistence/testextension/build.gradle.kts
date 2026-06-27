@@ -42,7 +42,7 @@ dependencies {
   compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
 
-  compileOnly(platform(libs.jackson.bom))
+  compileOnly(platform(libs.jackson3.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
   testCompileOnly(platform(libs.jackson.bom))
   testCompileOnly("com.fasterxml.jackson.core:jackson-annotations")

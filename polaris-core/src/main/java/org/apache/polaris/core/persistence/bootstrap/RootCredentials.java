@@ -27,6 +27,8 @@ import org.immutables.value.Value;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableRootCredentials.class)
 @JsonDeserialize(as = ImmutableRootCredentials.class)
+@tools.jackson.databind.annotation.JsonSerialize(as = ImmutableRootCredentials.class)
+@tools.jackson.databind.annotation.JsonDeserialize(as = ImmutableRootCredentials.class)
 public interface RootCredentials {
 
   @Value.Parameter(order = 1)

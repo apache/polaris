@@ -30,6 +30,9 @@ import org.jspecify.annotations.Nullable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableAzureStorageConfigurationInfo.class)
 @JsonDeserialize(as = ImmutableAzureStorageConfigurationInfo.class)
+@tools.jackson.databind.annotation.JsonSerialize(as = ImmutableAzureStorageConfigurationInfo.class)
+@tools.jackson.databind.annotation.JsonDeserialize(
+    as = ImmutableAzureStorageConfigurationInfo.class)
 @JsonTypeName("AzureStorageConfigurationInfo")
 public abstract class AzureStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
