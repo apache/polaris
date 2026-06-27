@@ -43,6 +43,24 @@ public class PolarisEndpoints {
           .add(V1_LOAD_GENERIC_TABLE)
           .build();
 
+  // Directory endpoints
+  public static final Endpoint V1_LIST_DIRECTORIES =
+      Endpoint.create("GET", PolarisResourcePaths.V1_DIRECTORIES);
+  public static final Endpoint V1_LOAD_DIRECTORY =
+      Endpoint.create("GET", PolarisResourcePaths.V1_DIRECTORY);
+  public static final Endpoint V1_CREATE_DIRECTORY =
+      Endpoint.create("POST", PolarisResourcePaths.V1_DIRECTORIES);
+  public static final Endpoint V1_DELETE_DIRECTORY =
+      Endpoint.create("DELETE", PolarisResourcePaths.V1_DIRECTORY);
+
+  public static final Set<Endpoint> DIRECTORY_ENDPOINTS =
+      ImmutableSet.<Endpoint>builder()
+          .add(V1_LIST_DIRECTORIES)
+          .add(V1_CREATE_DIRECTORY)
+          .add(V1_DELETE_DIRECTORY)
+          .add(V1_LOAD_DIRECTORY)
+          .build();
+
   // Policy store endpoints
   public static final Endpoint V1_LIST_POLICIES =
       Endpoint.create("GET", PolarisResourcePaths.V1_POLICIES);
@@ -82,6 +100,15 @@ public class PolarisEndpoints {
     boolean genericTableEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES);
 
     return genericTableEnabled ? GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
+  }
+
+  /**
+   * Get the directory endpoints. Returns DIRECTORY_ENDPOINTS if ENABLE_DIRECTORIES is set to true,
+   * otherwise, returns an empty set.
+   */
+  public static Set<Endpoint> getSupportedDirectoryEndpoints(RealmConfig realmConfig) {
+    boolean directoriesEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_DIRECTORIES);
+    return directoriesEnabled ? DIRECTORY_ENDPOINTS : ImmutableSet.of();
   }
 
   /**
