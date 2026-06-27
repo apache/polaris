@@ -674,4 +674,57 @@ public class IcebergOverlappingTableTest {
     assertThat(createTableStaged(services, someLocation))
         .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
   }
+
+  @Test
+  @DisplayName(
+      "Parent/child namespace and table overlaps are rejected when OPTIMIZED_SIBLING_CHECK is enabled")
+  void testParentChildOverlapWithOptimizedSiblingCheck(@TempDir Path tempDir) {
+    Map<String, Object> servicesWithOptimized =
+        Map.of(
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION",
+            "true",
+            "ALLOW_TABLE_LOCATION_OVERLAP",
+            "false",
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE", "S3"),
+            OPTIMIZED_SIBLING_CHECK.key(),
+            "true");
+
+    // Use similar catalog config as other flag-enabled tests (hashed) to allow creation.
+    Map<String, String> catalogConfig =
+        Map.of(
+            DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(), "true",
+            ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true");
+
+    TestServices services = TestServices.builder().config(servicesWithOptimized).build();
+
+    String baseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (baseLocation.endsWith("/")) {
+      baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
+    }
+    createCatalogAndNamespace(services, catalogConfig, baseLocation);
+
+    // Test that you cannot create a table at the namespace's own location (parent case)
+    String nsLocation = String.format("%s/%s/%s", baseLocation, catalog, namespace);
+    assertThat(createTable(services, nsLocation))
+        .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+
+    // Create a table using no explicit location (lets server derive a proper one under the ns)
+    String derivedLocation = createTableWithName(services, getTableName());
+    assertThat(derivedLocation).isNotNull();
+
+    // Repeat of the derived location should be forbidden
+    assertThat(createTable(services, derivedLocation))
+        .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+
+    // Parent of the derived table location (the ns location) should be forbidden
+    assertThat(createTable(services, nsLocation))
+        .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+
+    // Child of the derived table location should be forbidden
+    assertThat(createTable(services, derivedLocation + "/child"))
+        .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+  }
 }
