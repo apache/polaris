@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SnapshotRef;
@@ -1198,7 +1199,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // validations.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
         new TransactionWorkspaceMetaStoreManager(diagnostics(), metaStoreManager());
-    ((LocalIcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
+
+    List<LocalIcebergCatalog.MetadataFileCleanup> pendingCleanups = new ArrayList<>();
+
+    ((LocalIcebergCatalog) baseCatalog)
+        .setMetaStoreManager(transactionMetaStoreManager, pendingCleanups::add);
 
     // Group all changes by table identifier to handle them atomically.
     // This prevents conflicts when multiple changes target the same table entity.
@@ -1221,6 +1226,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // See also the TODO in TransactionWorkspaceMetaStoreManager for a more general (but more
     // complex) alternative that would intercept at the MetaStoreManager layer.
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
+
     changesByTable.forEach(
         (tableIdentifier, changes) -> {
           Table table = baseCatalog.loadTable(tableIdentifier);
@@ -1269,7 +1275,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             currentMetadata = metadataBuilder.build();
           }
 
-          // Commit all accumulated changes for this table in a single atomic operation
+          // Commit all accumulated changes for this table in a single atomic operation.
+          // The delete logic (set above to collectCleanup) will record instead of delete.
           if (!currentMetadata.changes().isEmpty()) {
             tableOps.commit(baseMetadata, currentMetadata);
           }
@@ -1288,6 +1295,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       throw new CommitFailedException(
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());
+    }
+
+    // It is now safe to delete removed metadata files for all tables that were part of
+    // this transaction (if the table has write.metadata.delete-after-commit.enabled).
+    // Because we reach here, the DB pointers have been updated to the new metadata.
+    for (LocalIcebergCatalog.MetadataFileCleanup cleanup : pendingCleanups) {
+      CatalogUtil.deleteRemovedMetadataFiles(
+          cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
     }
 
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);

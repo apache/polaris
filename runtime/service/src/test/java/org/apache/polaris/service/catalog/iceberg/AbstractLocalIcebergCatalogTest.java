@@ -118,6 +118,7 @@ import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -2690,6 +2691,101 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           Mockito.times(expectedReads));
     } finally {
       catalog.dropTable(TABLE, true);
+    }
+  }
+
+  @Test
+  public void testDeleteRemovedMetadataFilesIsSkippedUnderTransactionWorkspace() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    catalog.createNamespace(NS);
+
+    // Enable delete-after-commit so that CatalogUtil will attempt deletes on commit.
+    Map<String, String> deleteAfterCommitProps =
+        ImmutableMap.of(TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true");
+
+    Table table1 =
+        catalog.buildTable(TABLE, SCHEMA).withProperties(deleteAfterCommitProps).create();
+    TableIdentifier table2Id = TableIdentifier.of(NS, "table-for-txn-sibling");
+    Table table2 =
+        catalog.buildTable(table2Id, SCHEMA).withProperties(deleteAfterCommitProps).create();
+
+    // Perform an initial append on table1 so that the create metadata becomes removable
+    // on the next commit.
+    table1.newFastAppend().appendFile(FILE_A).commit();
+    BaseTable baseTable1 = (BaseTable) catalog.loadTable(TABLE);
+    TableOperations ops1 = baseTable1.operations();
+    TableMetadata preCommitMeta1 = ops1.current();
+
+    // The pre-commit metadata file should be a candidate for deletion after next commit.
+    String previousMetadataLocation = preCommitMeta1.metadataFileLocation();
+
+    // Simulate exactly what commitTransaction does: swap in the workspace manager.
+    // (The real handler also does requirement checks etc., but the key for deletion
+    // is the manager instance seen by BasePolarisTableOperations.)
+    PolarisMetaStoreManager realManager = metaStoreManager;
+    TransactionWorkspaceMetaStoreManager ws =
+        new TransactionWorkspaceMetaStoreManager(diagServices, realManager);
+    LocalIcebergCatalog localCatalog = (LocalIcebergCatalog) catalog;
+    localCatalog.setMetaStoreManager(ws);
+
+    try {
+      // Now perform a commit "as if" inside commitTransaction for table1.
+      // This should write new metadata but must NOT delete the previous one.
+      Schema newSchema =
+          new Schema(
+              Types.NestedField.optional(100, "txn_col", Types.LongType.get()),
+              Types.NestedField.required(1, "id", Types.LongType.get()),
+              Types.NestedField.optional(2, "data", Types.StringType.get()));
+      TableMetadata newMeta1 =
+          TableMetadata.buildFrom(preCommitMeta1).setCurrentSchema(newSchema, 100).build();
+
+      ops1.commit(preCommitMeta1, newMeta1);
+
+      // Critical assertion for the bug fix: the previous metadata file must still exist.
+      // If deleteRemovedMetadataFiles had run, InMemoryFileIO would have removed it
+      // and the read would fail.
+      boolean oldStillPresent;
+      try {
+        TableMetadataParser.read(fileIO, previousMetadataLocation);
+        oldStillPresent = true;
+      } catch (Exception e) {
+        oldStillPresent = false;
+      }
+      assertThat(oldStillPresent)
+          .as("Old metadata file must NOT be deleted while TransactionWorkspace is active")
+          .isTrue();
+
+      // Verify the *new* metadata was written (write happens inside doCommit, before the
+      // guarded delete). Prefer the ops' local current after commit (if makeMetadataCurrentOnCommit
+      // updated the in-memory view), else fall back. This makes the check robust to how the
+      // written location is computed inside the ops.
+      String newLocToCheck = newMeta1.metadataFileLocation();
+      try {
+        TableMetadata post = ops1.current();
+        if (post != null && post.metadataFileLocation() != null) {
+          newLocToCheck = post.metadataFileLocation();
+        }
+      } catch (Exception ignored) {
+      }
+      boolean newWritten;
+      try {
+        TableMetadataParser.read(fileIO, newLocToCheck);
+        newWritten = true;
+      } catch (Exception e) {
+        newWritten = false;
+      }
+      assertThat(newWritten).as("New metadata file must have been written").isTrue();
+
+      // Now simulate a failure later in the transaction (never call the real batch update).
+      // Reset the manager (as handler would discard the workspace on error path).
+    } finally {
+      localCatalog.setMetaStoreManager(realManager);
+      // Clean up tables created for this test.
+      catalog.dropTable(TABLE, false);
+      catalog.dropTable(table2Id, false);
     }
   }
 
