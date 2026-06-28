@@ -21,8 +21,6 @@ package org.apache.polaris.service.task;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
@@ -255,10 +253,9 @@ public class TaskExecutorImplTest {
 
     AtomicInteger handlerCalls = new AtomicInteger(0);
 
-    ExecutorService testExecutor = Executors.newSingleThreadExecutor();
     TaskExecutorImpl executor =
         new TaskExecutorImpl(
-            testExecutor,
+            Runnable::run,
             null,
             testServices.clock(),
             testServices.metaStoreManagerFactory(),
@@ -289,14 +286,12 @@ public class TaskExecutorImplTest {
           }
         });
 
-    // This starts the async processing. The first handle runs (sync with our executor),
-    // returns false -> throws inside the future (handled by retry compose).
+    // This starts the async processing. With Runnable::run the first handleTask runs
+    // synchronously in the current thread (so handler is called immediately), returns false
+    // -> throws inside the future (the exception path is taken, which is what we verify).
     executor.addTaskHandlerContext(taskEntity.getId(), polarisCallCtx);
 
-    // With direct or single-thread executor the initial call is synchronous.
     // We verify at least the first call happened (return-false leads to exception path).
     assertThat(handlerCalls.get()).isGreaterThanOrEqualTo(1);
-
-    testExecutor.shutdownNow();
   }
 }
