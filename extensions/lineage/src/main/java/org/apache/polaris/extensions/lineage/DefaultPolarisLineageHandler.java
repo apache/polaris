@@ -18,20 +18,18 @@
  */
 package org.apache.polaris.extensions.lineage;
 
-import jakarta.enterprise.context.RequestScoped;
-import jakarta.inject.Inject;
+import jakarta.enterprise.inject.Vetoed;
 import java.time.Instant;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 
-@RequestScoped
+@Vetoed
 public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
   private final CallContext callContext;
   private final LineageConfiguration configuration;
   private final LineageStoreManager storeManager;
 
-  @Inject
   public DefaultPolarisLineageHandler(
       CallContext callContext,
       LineageConfiguration configuration,
