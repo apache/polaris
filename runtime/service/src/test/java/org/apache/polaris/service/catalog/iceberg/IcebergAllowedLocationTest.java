@@ -574,6 +574,7 @@ public class IcebergAllowedLocationTest {
         UpdateCatalogRequest.builder()
             .setCurrentEntityVersion(fetched.getEntityVersion())
             .setStorageConfigInfo(newConfig)
+            .setProperties(Map.of("default-base-location", newAllowedLocations.get(0)))
             .build();
 
     try (Response updateResp =
@@ -595,7 +596,7 @@ public class IcebergAllowedLocationTest {
     var disallowedAfterShrink = baseDir + "/other-data";
 
     // Catalog initially allows the original location
-    createCatalog(services, Map.of(), baseDir, List.of(allowedWhenCreated));
+    createCatalog(services, Map.of(), allowedWhenCreated, List.of(allowedWhenCreated));
     createNamespace(services, allowedWhenCreated + "/" + namespace);
 
     String tableName = getTableName();
