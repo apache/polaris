@@ -118,6 +118,7 @@ import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -2690,6 +2691,83 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           Mockito.times(expectedReads));
     } finally {
       catalog.dropTable(TABLE, true);
+    }
+  }
+
+  @Test
+  public void testDeleteRemovedMetadataFilesIsSkippedUnderTransactionWorkspace() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    catalog.createNamespace(NS);
+
+    // Enable delete-after-commit and keep only one previous version so the original
+    // metadata file becomes a deletion candidate on the next commit.
+    Map<String, String> deleteAfterCommitProps =
+        ImmutableMap.of(
+            TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true",
+            TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1");
+
+    Table table1 =
+        catalog.buildTable(TABLE, SCHEMA).withProperties(deleteAfterCommitProps).create();
+    TableIdentifier table2Id = TableIdentifier.of(NS, "table-for-txn-sibling");
+    catalog.buildTable(table2Id, SCHEMA).withProperties(deleteAfterCommitProps).create();
+
+    // Capture the create metadata (v1) location; with previous-versions-max=1 this becomes
+    // eligible for deletion after the next commit.
+    String createMetadataLocation =
+        ((BaseTable) table1).operations().current().metadataFileLocation();
+
+    // Perform an initial append on table1 (v1 -> v2).
+    table1.newFastAppend().appendFile(FILE_A).commit();
+    BaseTable baseTable1 = (BaseTable) catalog.loadTable(TABLE);
+    TableOperations ops1 = baseTable1.operations();
+    TableMetadata preCommitMeta1 = ops1.current();
+
+    // Simulate exactly what commitTransaction does: swap in the workspace manager.
+    PolarisMetaStoreManager realManager = metaStoreManager;
+    TransactionWorkspaceMetaStoreManager ws =
+        new TransactionWorkspaceMetaStoreManager(diagServices, realManager);
+    catalog.setMetaStoreManager(ws, cleanup -> {});
+
+    try {
+      // Now perform a commit "as if" inside commitTransaction for table1 (v2 -> v3).
+      // This should write new metadata but must NOT delete the create metadata (v1).
+      Schema newSchema =
+          new Schema(
+              Types.NestedField.optional(100, "txn_col", Types.LongType.get()),
+              Types.NestedField.required(1, "id", Types.LongType.get()),
+              Types.NestedField.optional(2, "data", Types.StringType.get()));
+      TableMetadata newMeta1 =
+          TableMetadata.buildFrom(preCommitMeta1).setCurrentSchema(newSchema, 100).build();
+
+      ops1.commit(preCommitMeta1, newMeta1);
+
+      // Critical assertion: without the fix, deleteRemovedMetadataFiles would run eagerly
+      // and remove v1. With the fix it is deferred/collected by the workspace-aware consumer.
+      assertThat(fileIO.newInputFile(createMetadataLocation).exists())
+          .as("Old metadata file must NOT be deleted while TransactionWorkspace is active")
+          .isTrue();
+
+      // Verify the new metadata was written.
+      String newLocToCheck = newMeta1.metadataFileLocation();
+      try {
+        TableMetadata post = ops1.current();
+        if (post != null && post.metadataFileLocation() != null) {
+          newLocToCheck = post.metadataFileLocation();
+        }
+      } catch (Exception ignored) {
+      }
+      assertThat(fileIO.newInputFile(newLocToCheck).exists())
+          .as("New metadata file must have been written")
+          .isTrue();
+
+    } finally {
+      catalog.setMetaStoreManager(realManager);
+      // Clean up tables created for this test.
+      catalog.dropTable(TABLE, false);
+      catalog.dropTable(table2Id, false);
     }
   }
 
