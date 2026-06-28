@@ -49,6 +49,8 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterTest.Profile;
+import org.hawkular.agent.prometheus.types.Histogram;
+import org.hawkular.agent.prometheus.types.Metric;
 import org.hawkular.agent.prometheus.types.MetricFamily;
 import org.hawkular.agent.prometheus.types.Summary;
 import org.junit.jupiter.api.AfterAll;
@@ -198,10 +200,7 @@ public class RateLimiterFilterTest {
                       Map.entry("outcome", "CLIENT_ERROR"),
                       Map.entry("status", String.valueOf(Status.TOO_MANY_REQUESTS.getStatusCode())),
                       Map.entry("uri", "/api/management/v1/principal-roles"));
-              assertThat(metric)
-                  .asInstanceOf(type(Summary.class))
-                  .extracting(Summary::getSampleCount)
-                  .isEqualTo(3L);
+              assertThat(httpSampleCount(metric)).isEqualTo(3L);
             });
 
     assertThat(metrics.get("polaris_principal_roles_listPrincipalRoles_seconds").getMetrics())
@@ -221,6 +220,13 @@ public class RateLimiterFilterTest {
                   .extracting(Summary::getSampleCount)
                   .isEqualTo(3L);
             });
+  }
+
+  private static long httpSampleCount(Metric metric) {
+    if (metric instanceof Histogram histogram) {
+      return histogram.getSampleCount();
+    }
+    return ((Summary) metric).getSampleCount();
   }
 
   /**
