@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.service.metrics;
 
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.config.MeterFilter;
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import io.micrometer.core.instrument.internal.OnlyOnceLoggingDenyMeterFilter;
 import io.quarkus.micrometer.runtime.binder.HttpBinderConfiguration;
 import jakarta.enterprise.inject.Produces;
@@ -57,5 +59,27 @@ public class MeterFilterProducer {
         RealmIdTagContributor.TAG_REALM,
         metricsConfiguration.realmIdTag().httpMetricsMaxCardinality(),
         denyFilter);
+  }
+
+  @Produces
+  @Singleton
+  public MeterFilter httpServerRequestHistogramFilter() {
+    if (!metricsConfiguration.httpServerRequests().publishHistogram()) {
+      return new MeterFilter() {};
+    }
+    String httpServerRequestsName = binderConfiguration.getHttpServerRequestsName();
+    return new MeterFilter() {
+      @Override
+      public DistributionStatisticConfig configure(
+          Meter.Id id, DistributionStatisticConfig config) {
+        if (httpServerRequestsName.equals(id.getName()) && id.getType() == Meter.Type.TIMER) {
+          return DistributionStatisticConfig.builder()
+              .percentilesHistogram(true)
+              .build()
+              .merge(config);
+        }
+        return config;
+      }
+    };
   }
 }

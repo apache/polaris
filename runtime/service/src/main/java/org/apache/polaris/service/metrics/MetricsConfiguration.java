@@ -35,6 +35,9 @@ public interface MetricsConfiguration {
   /** Configuration for the user principal metric tag. */
   UserPrincipalTag userPrincipalTag();
 
+  /** Configuration for the HTTP server request metrics. */
+  HttpServerRequests httpServerRequests();
+
   interface RealmIdTag {
 
     /**
@@ -67,6 +70,19 @@ public interface MetricsConfiguration {
     @WithDefault("100")
     @Min(1)
     int httpMetricsMaxCardinality();
+  }
+
+  interface HttpServerRequests {
+
+    /**
+     * Whether to publish Prometheus histogram buckets for HTTP server request metrics.
+     *
+     * <p>When enabled, bucket series are emitted so Prometheus compatible backends can compute
+     * aggregable percentiles (e.g. p95, p99). Disabled by default because histogram buckets add
+     * many additional series per unique label combination.
+     */
+    @WithDefault("false")
+    boolean publishHistogram();
   }
 
   interface UserPrincipalTag {

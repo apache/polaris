@@ -54,6 +54,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
 - Added Polaris Spark 4.0 client.
 - Added `maintenance` support in Helm chart.
+- Added supported for publishing Prometheus histogram buckets for HTTP server request duration
 
 - Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
 

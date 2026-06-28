@@ -254,6 +254,24 @@ public final class Profiles {
     }
   }
 
+  public static class HttpServerRequestHistogramEnabledMetricsProfile
+      implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.metrics.tags.environment",
+          "prod",
+          "polaris.metrics.user-principal-tag.enable-in-api-metrics",
+          "false",
+          "polaris.metrics.realm-id-tag.enable-in-api-metrics",
+          "false",
+          "polaris.metrics.realm-id-tag.enable-in-http-metrics",
+          "false",
+          "polaris.metrics.http-server-requests.publish-histogram",
+          "true");
+    }
+  }
+
   public static class PolarisEventListenersTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
