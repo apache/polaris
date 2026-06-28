@@ -16,10 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
-/** Supported query granularities for lineage lookups. */
-public enum LineageGranularity {
-  DATASET,
-  COLUMN
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
+
+@ConfigMapping(prefix = "polaris.lineage")
+public interface LineageConfiguration {
+
+  @WithDefault("false")
+  boolean enabled();
+
+  @WithName("persistence")
+  PersistenceConfiguration persistence();
+
+  @WithName("dataset-resolution")
+  DatasetResolutionConfiguration datasetResolution();
+
+  interface PersistenceConfiguration {
+    @WithDefault("false")
+    boolean enabled();
+
+    @WithDefault("relational-jdbc")
+    String type();
+  }
+
+  interface DatasetResolutionConfiguration {
+    @WithDefault("false")
+    boolean enabled();
+  }
 }

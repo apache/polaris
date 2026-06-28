@@ -16,49 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Instant;
 import java.util.List;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.lineage.LineageColumnEdge;
-import org.apache.polaris.core.lineage.LineageDataset;
-import org.apache.polaris.core.lineage.LineageEdge;
-import org.apache.polaris.core.lineage.LineageGraph;
-import org.apache.polaris.core.lineage.LineagePersistence;
-import org.apache.polaris.core.lineage.LineageQueryRequest;
 
-/** Placeholder persistence until a concrete lineage backend is added. */
+/** Default no-op lineage store manager used when no concrete backend is configured. */
 @DefaultBean
 @ApplicationScoped
-public class DisabledLineagePersistence implements LineagePersistence {
-  private static final String MESSAGE =
-      "No lineage persistence implementation is configured for this deployment.";
-
+public class NoopLineageStoreManager implements LineageStoreManager {
   @Override
-  public void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets) {
-    throw new UnsupportedOperationException(MESSAGE);
-  }
+  public void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets) {}
 
   @Override
   public void replaceDatasetEdges(
       RealmContext realmContext,
       List<LineageDataset> targetDatasets,
       List<LineageEdge> edges,
-      Instant lastEventAt) {
-    throw new UnsupportedOperationException(MESSAGE);
-  }
+      Instant lastEventAt) {}
 
   @Override
   public void upsertColumnEdges(
-      RealmContext realmContext, List<LineageColumnEdge> columnEdges, Instant lastEventAt) {
-    throw new UnsupportedOperationException(MESSAGE);
-  }
+      RealmContext realmContext, List<LineageColumnEdge> columnEdges, Instant lastEventAt) {}
 
   @Override
   public LineageGraph loadLineage(RealmContext realmContext, LineageQueryRequest request) {
-    throw new UnsupportedOperationException(MESSAGE);
+    LineageNodeType nodeType =
+        request.granularity() == LineageGranularity.COLUMN
+            ? LineageNodeType.COLUMN
+            : LineageNodeType.DATASET;
+    return new LineageGraph(
+        new LineageNode(request.nodeId(), nodeType, null, true), List.of(), List.of());
   }
 }

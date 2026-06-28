@@ -16,14 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
 
-import java.util.Objects;
-
-/** A field-level lineage relationship between two dataset columns. */
-public record LineageColumnEdge(LineageFieldReference source, LineageFieldReference target) {
-  public LineageColumnEdge {
-    Objects.requireNonNull(source, "source must be non-null");
-    Objects.requireNonNull(target, "target must be non-null");
-  }
+plugins {
+  id("polaris-client")
+  id("org.kordamp.gradle.jandex")
 }
+
+dependencies {
+  implementation(project(":polaris-core"))
+
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-arc")
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
+  compileOnly(libs.smallrye.config.core)
+
+  testImplementation(platform(libs.junit.bom))
+  testImplementation("org.junit.jupiter:junit-jupiter")
+  testImplementation(libs.assertj.core)
+  testImplementation(libs.mockito.core)
+}
+
+tasks.named("javadoc") { dependsOn("jandex") }

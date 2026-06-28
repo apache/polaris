@@ -56,18 +56,6 @@ import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
-import org.apache.polaris.core.lineage.LineageColumnEdge;
-import org.apache.polaris.core.lineage.LineageData;
-import org.apache.polaris.core.lineage.LineageDataset;
-import org.apache.polaris.core.lineage.LineageDirection;
-import org.apache.polaris.core.lineage.LineageEdge;
-import org.apache.polaris.core.lineage.LineageFieldMapping;
-import org.apache.polaris.core.lineage.LineageGranularity;
-import org.apache.polaris.core.lineage.LineageGraph;
-import org.apache.polaris.core.lineage.LineageNode;
-import org.apache.polaris.core.lineage.LineageNodeType;
-import org.apache.polaris.core.lineage.LineagePersistence;
-import org.apache.polaris.core.lineage.LineageQueryRequest;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
@@ -86,6 +74,18 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.extensions.lineage.LineageColumnEdge;
+import org.apache.polaris.extensions.lineage.LineageData;
+import org.apache.polaris.extensions.lineage.LineageDataset;
+import org.apache.polaris.extensions.lineage.LineageDirection;
+import org.apache.polaris.extensions.lineage.LineageEdge;
+import org.apache.polaris.extensions.lineage.LineageFieldMapping;
+import org.apache.polaris.extensions.lineage.LineageGranularity;
+import org.apache.polaris.extensions.lineage.LineageGraph;
+import org.apache.polaris.extensions.lineage.LineageNode;
+import org.apache.polaris.extensions.lineage.LineageNodeType;
+import org.apache.polaris.extensions.lineage.LineageQueryRequest;
+import org.apache.polaris.extensions.lineage.LineageStoreManager;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
@@ -105,7 +105,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class JdbcBasePersistenceImpl
-    implements BasePersistence, IntegrationPersistence, MetricsPersistence, LineagePersistence {
+    implements BasePersistence, IntegrationPersistence, MetricsPersistence, LineageStoreManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
@@ -1432,13 +1432,14 @@ public class JdbcBasePersistenceImpl
   }
 
   // ============================================================================
-  // LineagePersistence Implementation
+  // LineageStoreManager Implementation
   // ============================================================================
 
   @Override
   public void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets) {
-    verifyLineagePersistenceSupported();
-    String realmId = realmContext.getRealmIdentifier();
+    verifyLineageStoreManagerSupported();
+    verifyLineageRealm(realmContext);
+    String realmId = this.realmId;
     long nowMillis = Instant.now().toEpochMilli();
     for (LineageDataset dataset : datasets) {
       long datasetId =
@@ -1462,8 +1463,9 @@ public class JdbcBasePersistenceImpl
       List<LineageDataset> targetDatasets,
       List<LineageEdge> edges,
       Instant lastEventAt) {
-    verifyLineagePersistenceSupported();
-    String realmId = realmContext.getRealmIdentifier();
+    verifyLineageStoreManagerSupported();
+    verifyLineageRealm(realmContext);
+    String realmId = this.realmId;
     long lastEventAtMillis = lastEventAt.toEpochMilli();
     Map<Long, List<ModelLineageEdge>> edgesByTargetDatasetId = new LinkedHashMap<>();
     for (LineageDataset targetDataset : targetDatasets) {
@@ -1545,8 +1547,9 @@ public class JdbcBasePersistenceImpl
   @Override
   public void upsertColumnEdges(
       RealmContext realmContext, List<LineageColumnEdge> columnEdges, Instant lastEventAt) {
-    verifyLineagePersistenceSupported();
-    String realmId = realmContext.getRealmIdentifier();
+    verifyLineageStoreManagerSupported();
+    verifyLineageRealm(realmContext);
+    String realmId = this.realmId;
     long lastEventAtMillis = lastEventAt.toEpochMilli();
     for (LineageColumnEdge columnEdge : columnEdges) {
       ModelLineageDataset targetDataset =
@@ -1575,8 +1578,9 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public LineageGraph loadLineage(RealmContext realmContext, LineageQueryRequest request) {
-    verifyLineagePersistenceSupported();
-    String realmId = realmContext.getRealmIdentifier();
+    verifyLineageStoreManagerSupported();
+    verifyLineageRealm(realmContext);
+    String realmId = this.realmId;
     Optional<ModelLineageDataset> requested =
         lookupLineageDatasetByNodeId(realmId, request.nodeId());
     if (requested.isEmpty()) {
@@ -1682,14 +1686,15 @@ public class JdbcBasePersistenceImpl
     try {
       List<ModelLineageDataset> datasets =
           datasourceOperations.executeSelect(query, ModelLineageDataset.CONVERTER);
+      Map<Long, List<LineageFieldMapping>> fieldMappings =
+          includeColumns
+              ? loadFieldMappingsByAdjacentDataset(realmId, datasetId, datasets, upstream)
+              : Map.of();
       return datasets.stream()
           .map(
               dataset ->
                   toLineageNode(
-                      dataset,
-                      includeColumns
-                          ? loadFieldMappings(realmId, datasetId, dataset.getDatasetId(), upstream)
-                          : List.of()))
+                      dataset, fieldMappings.getOrDefault(dataset.getDatasetId(), List.of())))
           .toList();
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -1697,19 +1702,48 @@ public class JdbcBasePersistenceImpl
     }
   }
 
-  private List<LineageFieldMapping> loadFieldMappings(
-      String realmId, long requestedDatasetId, long adjacentDatasetId, boolean upstream) {
+  private Map<Long, List<LineageFieldMapping>> loadFieldMappingsByAdjacentDataset(
+      String realmId,
+      long requestedDatasetId,
+      List<ModelLineageDataset> adjacentDatasets,
+      boolean upstream) {
+    if (adjacentDatasets.isEmpty()) {
+      return Map.of();
+    }
+
     String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageColumnEdge.TABLE_NAME);
-    long sourceDatasetId = upstream ? adjacentDatasetId : requestedDatasetId;
-    long targetDatasetId = upstream ? requestedDatasetId : adjacentDatasetId;
+    String adjacentColumn = upstream ? "source_dataset_id" : "target_dataset_id";
+    String requestedColumn = upstream ? "target_dataset_id" : "source_dataset_id";
+    String placeholders = String.join(", ", Collections.nCopies(adjacentDatasets.size(), "?"));
+
+    List<Object> values = new ArrayList<>();
+    values.add(realmId);
+    values.add(requestedDatasetId);
+    adjacentDatasets.stream().map(ModelLineageDataset::getDatasetId).forEach(values::add);
+
     PreparedQuery query =
         new PreparedQuery(
-            "SELECT source_field, target_field FROM "
+            "SELECT "
+                + adjacentColumn
+                + " AS adjacent_dataset_id, source_field, target_field FROM "
                 + table
-                + " WHERE realm_id = ? AND source_dataset_id = ? AND target_dataset_id = ?",
-            List.of(realmId, sourceDatasetId, targetDatasetId));
+                + " WHERE realm_id = ? AND "
+                + requestedColumn
+                + " = ? AND "
+                + adjacentColumn
+                + " IN ("
+                + placeholders
+                + ")",
+            values);
     try {
-      return datasourceOperations.executeSelect(query, new LineageFieldMappingConverter());
+      return datasourceOperations
+          .executeSelect(query, new AdjacentLineageFieldMappingConverter())
+          .stream()
+          .collect(
+              Collectors.groupingBy(
+                  AdjacentLineageFieldMapping::adjacentDatasetId,
+                  Collectors.mapping(
+                      AdjacentLineageFieldMapping::fieldMapping, Collectors.toList())));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to load lineage field mappings due to %s", e.getMessage()), e);
@@ -1736,14 +1770,25 @@ public class JdbcBasePersistenceImpl
         "dataset:%s:%s.%s", dataset.getCatalog(), dataset.getNamespace(), dataset.getName());
   }
 
-  private void verifyLineagePersistenceSupported() {
+  private void verifyLineageStoreManagerSupported() {
     if (schemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
       return;
     }
     throw new IllegalStateException(
         String.format(
-            "Lineage persistence requires JDBC schema version %d or newer for realm '%s'; current schema version is %d. Upgrade the JDBC schema to v%d to persist lineage.",
+            "Lineage store manager requires JDBC schema version %d or newer for realm '%s'; current schema version is %d. Upgrade the JDBC schema to v%d to persist lineage.",
             MIN_LINEAGE_SCHEMA_VERSION, realmId, schemaVersion, MIN_LINEAGE_SCHEMA_VERSION));
+  }
+
+  private void verifyLineageRealm(RealmContext realmContext) {
+    String requestedRealmId = realmContext.getRealmIdentifier();
+    if (realmId.equals(requestedRealmId)) {
+      return;
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            "Lineage store manager for realm '%s' cannot operate on realm '%s'.",
+            realmId, requestedRealmId));
   }
 
   private PreparedQuery generateLineageDatasetUpsert(ModelLineageDataset model) {
@@ -1915,10 +1960,16 @@ public class JdbcBasePersistenceImpl
         values);
   }
 
-  private static class LineageFieldMappingConverter implements Converter<LineageFieldMapping> {
+  private record AdjacentLineageFieldMapping(
+      long adjacentDatasetId, LineageFieldMapping fieldMapping) {}
+
+  private static class AdjacentLineageFieldMappingConverter
+      implements Converter<AdjacentLineageFieldMapping> {
     @Override
-    public LineageFieldMapping fromResultSet(java.sql.ResultSet rs) throws SQLException {
-      return new LineageFieldMapping(rs.getString("source_field"), rs.getString("target_field"));
+    public AdjacentLineageFieldMapping fromResultSet(java.sql.ResultSet rs) throws SQLException {
+      return new AdjacentLineageFieldMapping(
+          rs.getLong("adjacent_dataset_id"),
+          new LineageFieldMapping(rs.getString("source_field"), rs.getString("target_field")));
     }
 
     @Override

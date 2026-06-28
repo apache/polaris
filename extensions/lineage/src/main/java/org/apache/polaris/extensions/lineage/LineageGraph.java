@@ -16,26 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import java.util.List;
 import java.util.Objects;
 
-/** A node returned in a lineage query response. */
-public record LineageNode(
-    String id,
-    LineageNodeType type,
-    LineageData data,
-    boolean opaque,
-    List<LineageFieldMapping> fieldMappings) {
-  public LineageNode {
-    Objects.requireNonNull(id, "id must be non-null");
-    Objects.requireNonNull(type, "type must be non-null");
-    fieldMappings =
-        List.copyOf(Objects.requireNonNull(fieldMappings, "fieldMappings must be non-null"));
-  }
-
-  public LineageNode(String id, LineageNodeType type, LineageData data, boolean opaque) {
-    this(id, type, data, opaque, List.of());
+/** Normalized response model for lineage queries. */
+public record LineageGraph(
+    LineageNode node, List<LineageNode> upstream, List<LineageNode> downstream) {
+  public LineageGraph {
+    Objects.requireNonNull(node, "node must be non-null");
+    upstream = List.copyOf(Objects.requireNonNull(upstream, "upstream must be non-null"));
+    downstream = List.copyOf(Objects.requireNonNull(downstream, "downstream must be non-null"));
   }
 }

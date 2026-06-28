@@ -16,17 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
-import java.util.List;
 import java.util.Objects;
 
-/** Normalized response model for lineage queries. */
-public record LineageGraph(
-    LineageNode node, List<LineageNode> upstream, List<LineageNode> downstream) {
-  public LineageGraph {
-    Objects.requireNonNull(node, "node must be non-null");
-    upstream = List.copyOf(Objects.requireNonNull(upstream, "upstream must be non-null"));
-    downstream = List.copyOf(Objects.requireNonNull(downstream, "downstream must be non-null"));
+/** A dataset-level lineage relationship. */
+public record LineageEdge(LineageDataset source, LineageDataset target) {
+  public LineageEdge {
+    Objects.requireNonNull(source, "source must be non-null");
+    Objects.requireNonNull(target, "target must be non-null");
   }
 }

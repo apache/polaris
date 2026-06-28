@@ -16,22 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import java.util.Objects;
-import java.util.OptionalLong;
 
-/** A dataset participating in lineage. */
-public record LineageDataset(
-    String catalog, String namespace, String name, OptionalLong polarisEntityId) {
-  public LineageDataset {
-    Objects.requireNonNull(catalog, "catalog must be non-null");
-    Objects.requireNonNull(namespace, "namespace must be non-null");
-    Objects.requireNonNull(name, "name must be non-null");
-    Objects.requireNonNull(polarisEntityId, "polarisEntityId must be non-null");
-  }
-
-  public LineageDataset(String catalog, String namespace, String name) {
-    this(catalog, namespace, name, OptionalLong.empty());
+/** A field-level lineage relationship between two dataset columns. */
+public record LineageColumnEdge(LineageFieldReference source, LineageFieldReference target) {
+  public LineageColumnEdge {
+    Objects.requireNonNull(source, "source must be non-null");
+    Objects.requireNonNull(target, "target must be non-null");
   }
 }

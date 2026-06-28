@@ -34,13 +34,13 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.lineage.LineageColumnEdge;
-import org.apache.polaris.core.lineage.LineageDataset;
-import org.apache.polaris.core.lineage.LineageEdge;
-import org.apache.polaris.core.lineage.LineageFieldReference;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.extensions.lineage.LineageColumnEdge;
+import org.apache.polaris.extensions.lineage.LineageDataset;
+import org.apache.polaris.extensions.lineage.LineageEdge;
+import org.apache.polaris.extensions.lineage.LineageFieldReference;
 import org.apache.polaris.test.commons.CockroachRelationalJdbcLifeCycleManagement;
 import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
 import org.junit.jupiter.api.Test;
@@ -52,7 +52,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /** JDBC integration tests for OpenLineage graph persistence on non-H2 databases. */
 @Testcontainers
-class LineagePersistenceJdbcIT {
+class LineageStoreManagerJdbcIT {
   private static final String POSTGRES_REALM_ID = "POSTGRES_REALM";
   private static final String COCKROACH_REALM_ID = "COCKROACH_REALM";
   private static final Instant EVENT_TIME = Instant.parse("2026-01-01T00:00:00Z");

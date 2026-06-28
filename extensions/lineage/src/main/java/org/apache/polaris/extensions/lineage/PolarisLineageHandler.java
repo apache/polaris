@@ -16,34 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage;
+package org.apache.polaris.extensions.lineage;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import io.smallrye.config.WithName;
+/** Handler boundary for lineage operations used by transport-layer adapters. */
+public interface PolarisLineageHandler {
+  void ingest(LineageIngestRequest request);
 
-@ConfigMapping(prefix = "polaris.lineage")
-public interface LineageConfiguration {
-
-  @WithDefault("false")
-  boolean enabled();
-
-  @WithName("persistence")
-  PersistenceConfiguration persistence();
-
-  @WithName("dataset-resolution")
-  DatasetResolutionConfiguration datasetResolution();
-
-  interface PersistenceConfiguration {
-    @WithDefault("false")
-    boolean enabled();
-
-    @WithDefault("relational-jdbc")
-    String type();
-  }
-
-  interface DatasetResolutionConfiguration {
-    @WithDefault("false")
-    boolean enabled();
-  }
+  LineageGraph query(LineageQueryRequest request);
 }

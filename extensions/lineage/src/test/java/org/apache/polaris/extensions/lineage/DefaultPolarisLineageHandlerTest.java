@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,37 +32,27 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.lineage.LineageDataset;
-import org.apache.polaris.core.lineage.LineageDirection;
-import org.apache.polaris.core.lineage.LineageEdge;
-import org.apache.polaris.core.lineage.LineageGranularity;
-import org.apache.polaris.core.lineage.LineageGraph;
-import org.apache.polaris.core.lineage.LineageIngestRequest;
-import org.apache.polaris.core.lineage.LineageNode;
-import org.apache.polaris.core.lineage.LineageNodeType;
-import org.apache.polaris.core.lineage.LineagePersistence;
-import org.apache.polaris.core.lineage.LineageQueryRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-public class DefaultLineageServiceTest {
+public class DefaultPolarisLineageHandlerTest {
   @Mock private CallContext callContext;
   @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
-  @Mock private LineagePersistence persistence;
+  @Mock private LineageStoreManager persistence;
   @Mock private RealmContext realmContext;
 
-  private DefaultLineageService service;
+  private DefaultPolarisLineageHandler service;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(callContext.getRealmContext()).thenReturn(realmContext);
-    service = new DefaultLineageService(callContext, configuration, persistence);
+    service = new DefaultPolarisLineageHandler(callContext, configuration, persistence);
   }
 
   @Test
