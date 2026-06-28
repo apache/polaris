@@ -29,32 +29,36 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.lineage.LineageColumnEdge;
-import org.apache.polaris.core.lineage.LineageDataset;
-import org.apache.polaris.core.lineage.LineageDirection;
-import org.apache.polaris.core.lineage.LineageEdge;
-import org.apache.polaris.core.lineage.LineageFieldReference;
-import org.apache.polaris.core.lineage.LineageGranularity;
-import org.apache.polaris.core.lineage.LineageGraph;
-import org.apache.polaris.core.lineage.LineageQueryRequest;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.extensions.lineage.LineageColumnEdge;
+import org.apache.polaris.extensions.lineage.LineageDataset;
+import org.apache.polaris.extensions.lineage.LineageDirection;
+import org.apache.polaris.extensions.lineage.LineageEdge;
+import org.apache.polaris.extensions.lineage.LineageFieldReference;
+import org.apache.polaris.extensions.lineage.LineageGranularity;
+import org.apache.polaris.extensions.lineage.LineageGraph;
+import org.apache.polaris.extensions.lineage.LineageNode;
+import org.apache.polaris.extensions.lineage.LineageQueryRequest;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** JDBC tests for OpenLineage graph persistence. */
-class LineagePersistenceTest {
+class LineageStoreManagerTest {
   private static final String REALM_ID = "TEST_REALM";
   private static final RealmContext REALM_CONTEXT = () -> REALM_ID;
   private static final Instant EVENT_TIME = Instant.parse("2026-01-01T00:00:00Z");
@@ -87,7 +91,21 @@ class LineagePersistenceTest {
   }
 
   @Test
-  void upsertLineageDatasetInsertsAndUpdatesByOpenLineageIdentity() throws SQLException {
+  void lineageWritesRejectMismatchedRealmContext() {
+    RealmContext otherRealmContext = () -> "OTHER_REALM";
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> lineagePersistence.upsertDatasets(otherRealmContext, List.of(sourceDataset())));
+
+    assertEquals(
+        "Lineage store manager for realm 'TEST_REALM' cannot operate on realm 'OTHER_REALM'.",
+        exception.getMessage());
+  }
+
+  @Test
+  void upsertLineageDatasetUsesNamespaceAndNameAsOpenLineageIdentity() throws SQLException {
     LineageDataset first = new LineageDataset("polaris", "analytics", "orders");
     LineageDataset second =
         new LineageDataset("polaris-prod", "analytics", "orders", OptionalLong.of(42L));
@@ -98,8 +116,7 @@ class LineagePersistenceTest {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement =
             connection.prepareStatement(
-                "SELECT catalog, polaris_entity_id "
-                    + "FROM POLARIS_SCHEMA.lineage_datasets WHERE realm_id = ?")) {
+                "SELECT catalog, polaris_entity_id FROM POLARIS_SCHEMA.lineage_datasets WHERE realm_id = ?")) {
       statement.setString(1, REALM_ID);
       try (ResultSet rs = statement.executeQuery()) {
         rs.next();
@@ -306,6 +323,60 @@ class LineagePersistenceTest {
   }
 
   @Test
+  void loadLineageBatchesColumnMappingsForAdjacentDatasets() {
+    upsertSourceAlternativeAndTargetDatasets();
+    LineageColumnEdge alternativeColumnEdge =
+        new LineageColumnEdge(
+            new LineageFieldReference(alternativeSourceDataset(), "name"),
+            new LineageFieldReference(targetDataset(), "customer_name"));
+
+    lineagePersistence.replaceDatasetEdges(
+        REALM_CONTEXT,
+        List.of(targetDataset()),
+        List.of(
+            new LineageEdge(sourceDataset(), targetDataset()),
+            new LineageEdge(alternativeSourceDataset(), targetDataset())),
+        EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(
+        REALM_CONTEXT, List.of(columnEdge(), alternativeColumnEdge), EVENT_TIME);
+
+    LineageGraph graph =
+        lineagePersistence.loadLineage(
+            REALM_CONTEXT,
+            new LineageQueryRequest(
+                "dataset:polaris:analytics.orders_daily",
+                LineageDirection.UPSTREAM,
+                LineageGranularity.COLUMN));
+
+    Map<String, LineageNode> upstreamById =
+        graph.upstream().stream().collect(Collectors.toMap(LineageNode::id, Function.identity()));
+
+    assertEquals(2, upstreamById.size());
+    assertEquals(1, upstreamById.get("dataset:polaris:analytics.orders").fieldMappings().size());
+    assertEquals(
+        "price",
+        upstreamById.get("dataset:polaris:analytics.orders").fieldMappings().get(0).sourceField());
+    assertEquals(
+        "total",
+        upstreamById.get("dataset:polaris:analytics.orders").fieldMappings().get(0).targetField());
+    assertEquals(1, upstreamById.get("dataset:polaris:analytics.customers").fieldMappings().size());
+    assertEquals(
+        "name",
+        upstreamById
+            .get("dataset:polaris:analytics.customers")
+            .fieldMappings()
+            .get(0)
+            .sourceField());
+    assertEquals(
+        "customer_name",
+        upstreamById
+            .get("dataset:polaris:analytics.customers")
+            .fieldMappings()
+            .get(0)
+            .targetField());
+  }
+
+  @Test
   void lineageUpsertsFailForSchemaBeforeV5() throws SQLException {
     DataSource v4DataSource =
         JdbcConnectionPool.create(
@@ -317,7 +388,7 @@ class LineagePersistenceTest {
     InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
     datasourceOperations.executeScript(schemaStream);
 
-    JdbcBasePersistenceImpl v4LineagePersistence =
+    JdbcBasePersistenceImpl v4LineageStoreManager =
         new JdbcBasePersistenceImpl(
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
@@ -330,11 +401,11 @@ class LineagePersistenceTest {
     // of silently dropping data.
     assertThrows(
         IllegalStateException.class,
-        () -> v4LineagePersistence.upsertDatasets(REALM_CONTEXT, List.of(sourceDataset())));
+        () -> v4LineageStoreManager.upsertDatasets(REALM_CONTEXT, List.of(sourceDataset())));
     assertThrows(
         IllegalStateException.class,
         () ->
-            v4LineagePersistence.replaceDatasetEdges(
+            v4LineageStoreManager.replaceDatasetEdges(
                 REALM_CONTEXT,
                 List.of(targetDataset()),
                 List.of(new LineageEdge(sourceDataset(), targetDataset())),
@@ -342,7 +413,7 @@ class LineagePersistenceTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            v4LineagePersistence.upsertColumnEdges(
+            v4LineageStoreManager.upsertColumnEdges(
                 REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME));
   }
 

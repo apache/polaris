@@ -16,14 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
+import java.util.List;
 import java.util.Objects;
 
-/** A dataset-level lineage relationship. */
-public record LineageEdge(LineageDataset source, LineageDataset target) {
-  public LineageEdge {
-    Objects.requireNonNull(source, "source must be non-null");
-    Objects.requireNonNull(target, "target must be non-null");
+/** A node returned in a lineage query response. */
+public record LineageNode(
+    String id,
+    LineageNodeType type,
+    LineageData data,
+    boolean opaque,
+    List<LineageFieldMapping> fieldMappings) {
+  public LineageNode {
+    Objects.requireNonNull(id, "id must be non-null");
+    Objects.requireNonNull(type, "type must be non-null");
+    fieldMappings =
+        List.copyOf(Objects.requireNonNull(fieldMappings, "fieldMappings must be non-null"));
+  }
+
+  public LineageNode(String id, LineageNodeType type, LineageData data, boolean opaque) {
+    this(id, type, data, opaque, List.of());
   }
 }

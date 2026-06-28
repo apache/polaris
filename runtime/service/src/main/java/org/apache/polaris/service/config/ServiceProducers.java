@@ -62,6 +62,9 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
+import org.apache.polaris.extensions.lineage.LineageConfiguration;
+import org.apache.polaris.extensions.lineage.LineageStoreManager;
+import org.apache.polaris.extensions.lineage.NoopLineageStoreManager;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -102,6 +105,7 @@ import software.amazon.awssdk.http.apache.ApacheHttpClient;
 
 public class ServiceProducers {
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceProducers.class);
+  private static final String LINEAGE_PERSISTENCE_TYPE_RELATIONAL_JDBC = "relational-jdbc";
 
   @Produces
   @ApplicationScoped // cannot be singleton because it is mocked in tests
@@ -148,6 +152,33 @@ public class ServiceProducers {
   public MetricsPersistence metricsPersistence(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
+  }
+
+  @Produces
+  @RequestScoped
+  public LineageStoreManager lineageStoreManager(
+      RealmContext realmContext,
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      LineageConfiguration lineageConfiguration) {
+    if (!lineageConfiguration.persistence().enabled()) {
+      return new NoopLineageStoreManager();
+    }
+
+    String persistenceType = lineageConfiguration.persistence().type();
+    if (!LINEAGE_PERSISTENCE_TYPE_RELATIONAL_JDBC.equals(persistenceType)) {
+      throw new UnsupportedOperationException(
+          "Unsupported lineage persistence type: " + persistenceType);
+    }
+
+    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    if (metaStore instanceof LineageStoreManager lineageStoreManager) {
+      return lineageStoreManager;
+    }
+
+    throw new UnsupportedOperationException(
+        "Lineage persistence is enabled, but the configured metastore session does not implement "
+            + LineageStoreManager.class.getSimpleName()
+            + ".");
   }
 
   @Produces

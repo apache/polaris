@@ -24,7 +24,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.lineage.LineageDataset;
+import org.apache.polaris.extensions.lineage.LineageDataset;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 

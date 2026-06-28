@@ -24,6 +24,7 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-extensions-lineage"))
   implementation(libs.slf4j.api)
   implementation(libs.guava)
 

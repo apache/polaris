@@ -16,44 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
 import java.util.Objects;
 import java.util.OptionalLong;
 
-/** Dataset metadata returned in a lineage query response. */
-public record LineageData(
-    OptionalLong catalogId,
-    OptionalLong datasetId,
-    String namespace,
-    String name,
-    String subType,
-    OptionalLong createdAt,
-    OptionalLong updatedAt) {
-  public LineageData {
-    Objects.requireNonNull(catalogId, "catalogId must be non-null");
-    Objects.requireNonNull(datasetId, "datasetId must be non-null");
+/** A dataset participating in lineage. */
+public record LineageDataset(
+    String catalog, String namespace, String name, OptionalLong polarisEntityId) {
+  public LineageDataset {
+    Objects.requireNonNull(catalog, "catalog must be non-null");
     Objects.requireNonNull(namespace, "namespace must be non-null");
     Objects.requireNonNull(name, "name must be non-null");
-    Objects.requireNonNull(createdAt, "createdAt must be non-null");
-    Objects.requireNonNull(updatedAt, "updatedAt must be non-null");
+    Objects.requireNonNull(polarisEntityId, "polarisEntityId must be non-null");
   }
 
-  public LineageData(
-      long catalogId,
-      long datasetId,
-      String namespace,
-      String name,
-      String subType,
-      long createdAt,
-      long updatedAt) {
-    this(
-        OptionalLong.of(catalogId),
-        OptionalLong.of(datasetId),
-        namespace,
-        name,
-        subType,
-        OptionalLong.of(createdAt),
-        OptionalLong.of(updatedAt));
+  public LineageDataset(String catalog, String namespace, String name) {
+    this(catalog, namespace, name, OptionalLong.empty());
   }
 }

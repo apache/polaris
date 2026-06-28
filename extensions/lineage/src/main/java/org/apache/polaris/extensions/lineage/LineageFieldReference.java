@@ -16,10 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.lineage;
+package org.apache.polaris.extensions.lineage;
 
-/** Node kinds surfaced by normalized lineage queries. */
-public enum LineageNodeType {
-  DATASET,
-  COLUMN
+import java.util.Objects;
+
+/** A reference to a specific field on a lineage dataset. */
+public record LineageFieldReference(LineageDataset dataset, String field) {
+  public LineageFieldReference {
+    Objects.requireNonNull(dataset, "dataset must be non-null");
+    Objects.requireNonNull(field, "field must be non-null");
+  }
 }
