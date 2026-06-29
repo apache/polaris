@@ -18,8 +18,13 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
+import java.util.Set;
+import org.apache.iceberg.rest.Endpoint;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributor;
 
@@ -27,6 +32,15 @@ import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributo
 public class GenericTableConfigEndpoints {
   @Produces
   public CatalogConfigEndpointContributor genericTableEndpoints() {
-    return PolarisEndpoints::getSupportedGenericTableEndpoints;
+    return GenericTableConfigEndpoints::getSupportedGenericTableEndpoints;
+  }
+
+  /**
+   * Get the generic table endpoints. Returns GENERIC_TABLE_ENDPOINTS if ENABLE_GENERIC_TABLES is
+   * set to true, otherwise, returns an empty set.
+   */
+  public static Set<Endpoint> getSupportedGenericTableEndpoints(RealmConfig realmConfig) {
+    boolean genericTableEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES);
+    return genericTableEnabled ? PolarisEndpoints.GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
   }
 }

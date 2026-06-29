@@ -59,7 +59,6 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -81,6 +80,7 @@ import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServic
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandlerFactory;
+import org.apache.polaris.service.catalog.generic.GenericTableConfigEndpoints;
 import org.apache.polaris.service.catalog.generic.ImmutableGenericTableCatalogHandler;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
@@ -92,6 +92,7 @@ import org.apache.polaris.service.catalog.iceberg.ImmutableIcebergCatalogHandler
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.catalog.policy.PolicyConfigEndpoints;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
@@ -374,9 +375,9 @@ public record TestServices(
       Instance<CatalogConfigEndpointContributor> configEndpointContributors =
           Mockito.mock(Instance.class);
       CatalogConfigEndpointContributor genericTableEndpoints =
-          PolarisEndpoints::getSupportedGenericTableEndpoints;
+          GenericTableConfigEndpoints::getSupportedGenericTableEndpoints;
       CatalogConfigEndpointContributor policyEndpoints =
-          PolarisEndpoints::getSupportedPolicyEndpoints;
+          PolicyConfigEndpoints::getSupportedPolicyEndpoints;
       Mockito.when(configEndpointContributors.stream())
           .thenAnswer(invocation -> Stream.of(genericTableEndpoints, policyEndpoints));
       CatalogConfigHandler catalogConfigHandler =
