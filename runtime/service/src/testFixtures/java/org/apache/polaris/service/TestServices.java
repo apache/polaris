@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -58,6 +59,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -71,8 +73,12 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.catalog.api.PolarisCatalogConfigApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
+import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributor;
+import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
+import org.apache.polaris.service.catalog.config.PolarisCatalogConfigAdapter;
 import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServiceDelegator;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
@@ -113,6 +119,7 @@ public record TestServices(
     Clock clock,
     PolarisCatalogsApi catalogsApi,
     IcebergRestCatalogApi restApi,
+    PolarisCatalogConfigApi polarisConfigurationApi,
     PolarisCatalogGenericTableApi genericTableApi,
     IcebergRestConfigurationApi restConfigurationApi,
     IcebergCatalogAdapter catalogAdapter,
@@ -366,9 +373,29 @@ public record TestServices(
             }
           };
 
+      @SuppressWarnings("unchecked")
+      Instance<CatalogConfigEndpointContributor> configEndpointContributors =
+          Mockito.mock(Instance.class);
+      CatalogConfigEndpointContributor genericTableEndpoints =
+          PolarisEndpoints::getSupportedGenericTableEndpoints;
+      CatalogConfigEndpointContributor policyEndpoints =
+          PolarisEndpoints::getSupportedPolicyEndpoints;
+      Mockito.when(configEndpointContributors.stream())
+          .thenAnswer(invocation -> Stream.of(genericTableEndpoints, policyEndpoints));
+      CatalogConfigHandler catalogConfigHandler =
+          new CatalogConfigHandler(
+              callContext,
+              new DefaultCatalogPrefixParser(),
+              resolverFactory,
+              configEndpointContributors);
+
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
-              callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
+              callContext,
+              new DefaultCatalogPrefixParser(),
+              reservedProperties,
+              handlerFactory,
+              catalogConfigHandler);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;
@@ -389,6 +416,10 @@ public record TestServices(
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(finalRestCatalogService);
       IcebergRestConfigurationApi restConfigurationApi =
           new IcebergRestConfigurationApi(finalRestConfigurationService);
+      PolarisCatalogConfigAdapter polarisCatalogConfigAdapter =
+          new PolarisCatalogConfigAdapter(catalogConfigHandler);
+      PolarisCatalogConfigApi polarisConfigurationApi =
+          new PolarisCatalogConfigApi(polarisCatalogConfigAdapter);
 
       GenericTableCatalogHandlerFactory genericHandlerFactory =
           new GenericTableCatalogHandlerFactory() {
@@ -444,6 +475,7 @@ public record TestServices(
           clock,
           catalogsApi,
           restApi,
+          polarisConfigurationApi,
           genericTableApi,
           restConfigurationApi,
           catalogService,
