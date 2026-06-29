@@ -34,7 +34,6 @@ import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -84,11 +83,11 @@ public class CatalogConfigHandler {
 
   @Inject
   public CatalogConfigHandler(
-      CallContext callContext,
+      RealmConfig realmConfig,
       CatalogPrefixParser prefixParser,
       ResolverFactory resolverFactory,
       @Any Instance<CatalogConfigEndpointContributor> endpointContributors) {
-    this.realmConfig = callContext.getRealmConfig();
+    this.realmConfig = realmConfig;
     this.prefixParser = prefixParser;
     this.resolverFactory = resolverFactory;
     this.endpointContributors = endpointContributors;

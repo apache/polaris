@@ -390,7 +390,7 @@ public record TestServices(
             Mockito.when(configEndpointContributors.stream())
                 .thenAnswer(invocation -> Stream.of(genericTableEndpoints, policyEndpoints));
             return new CatalogConfigHandler(
-                callContext,
+                realmConfig,
                 new DefaultCatalogPrefixParser(),
                 resolverFactory,
                 configEndpointContributors);
