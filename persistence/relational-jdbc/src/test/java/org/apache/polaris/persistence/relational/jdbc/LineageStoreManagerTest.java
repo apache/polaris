@@ -40,10 +40,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.extensions.lineage.LineageColumnEdge;
 import org.apache.polaris.extensions.lineage.LineageDataset;
 import org.apache.polaris.extensions.lineage.LineageDirection;
@@ -85,7 +82,6 @@ class LineageStoreManagerTest {
             diagnostics,
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
-            storageProvider(),
             REALM_ID,
             5);
   }
@@ -393,7 +389,6 @@ class LineageStoreManagerTest {
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
-            storageProvider(),
             REALM_ID,
             4);
 
@@ -472,16 +467,6 @@ class LineageStoreManagerTest {
         assertFalse(rs.next());
       }
     }
-  }
-
-  private static PolarisStorageIntegrationProvider storageProvider() {
-    return new PolarisStorageIntegrationProvider() {
-      @Override
-      public PolarisStorageIntegration getStorageIntegration(
-          List<PolarisEntity> resolvedEntityPath) {
-        return null;
-      }
-    };
   }
 
   private static class TestJdbcConfiguration implements RelationalJdbcConfiguration {

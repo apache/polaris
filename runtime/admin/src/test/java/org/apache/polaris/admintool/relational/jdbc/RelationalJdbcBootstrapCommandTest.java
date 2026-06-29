@@ -33,7 +33,7 @@ public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase
   @Test
   public void testBootstrapWithExplicitSchemaVersion(QuarkusMainLauncher launcher) {
     LaunchResult result1 =
-        launcher.launch("bootstrap", "-v", "4", "-r", "realm1", "-c", "realm1,root,s3cr3t");
+        launcher.launch("bootstrap", "-v", "5", "-r", "realm1", "-c", "realm1,root,s3cr3t");
     assertThat(result1.exitCode()).isEqualTo(0);
     assertThat(result1.getOutput()).contains("Bootstrap completed successfully.");
   }

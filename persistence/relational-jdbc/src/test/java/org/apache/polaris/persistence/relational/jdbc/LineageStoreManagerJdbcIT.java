@@ -33,10 +33,7 @@ import java.util.OptionalLong;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.extensions.lineage.LineageColumnEdge;
 import org.apache.polaris.extensions.lineage.LineageDataset;
 import org.apache.polaris.extensions.lineage.LineageEdge;
@@ -107,7 +104,6 @@ class LineageStoreManagerJdbcIT {
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
-            storageProvider(),
             realmId,
             5);
     RealmContext realmContext = () -> realmId;
@@ -169,16 +165,6 @@ class LineageStoreManagerJdbcIT {
         assertEquals(expected, rs.getLong(1));
       }
     }
-  }
-
-  private static PolarisStorageIntegrationProvider storageProvider() {
-    return new PolarisStorageIntegrationProvider() {
-      @Override
-      public PolarisStorageIntegration getStorageIntegration(
-          List<PolarisEntity> resolvedEntityPath) {
-        return null;
-      }
-    };
   }
 
   private static class TestJdbcConfiguration implements RelationalJdbcConfiguration {
