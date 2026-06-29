@@ -75,12 +75,10 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
-import org.apache.polaris.service.catalog.api.PolarisCatalogConfigApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributor;
 import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
-import org.apache.polaris.service.catalog.config.PolarisCatalogConfigAdapter;
 import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServiceDelegator;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
@@ -121,7 +119,6 @@ public record TestServices(
     Clock clock,
     Supplier<PolarisCatalogsApi> catalogsApiSupplier,
     Supplier<IcebergRestCatalogApi> restApiSupplier,
-    Supplier<PolarisCatalogConfigApi> polarisConfigurationApiSupplier,
     Supplier<PolarisCatalogGenericTableApi> genericTableApiSupplier,
     Supplier<IcebergRestConfigurationApi> restConfigurationApiSupplier,
     Supplier<IcebergCatalogAdapter> catalogAdapterSupplier,
@@ -148,10 +145,6 @@ public record TestServices(
 
   public IcebergRestCatalogApi restApi() {
     return restApiSupplier.get();
-  }
-
-  public PolarisCatalogConfigApi polarisConfigurationApi() {
-    return polarisConfigurationApiSupplier.get();
   }
 
   public PolarisCatalogGenericTableApi genericTableApi() {
@@ -459,10 +452,6 @@ public record TestServices(
             return new IcebergRestCatalogApi(finalRestCatalogService);
           };
 
-      Supplier<PolarisCatalogConfigApi> polarisConfigurationApiSupplier =
-          () -> new PolarisCatalogConfigApi(
-              new PolarisCatalogConfigAdapter(catalogConfigHandlerSupplier.get()));
-
       Supplier<IcebergRestConfigurationApi> restConfigurationApiSupplier =
           () -> {
             IcebergCatalogAdapter catalogService = catalogAdapterSupplier.get();
@@ -533,7 +522,6 @@ public record TestServices(
           clock,
           catalogsApiSupplier,
           restApiSupplier,
-          polarisConfigurationApiSupplier,
           genericTableApiSupplier,
           restConfigurationApiSupplier,
           catalogAdapterSupplier,
