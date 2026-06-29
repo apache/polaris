@@ -248,6 +248,15 @@ components:
       pattern: '^[A-Za-z0-9\-_]+$'
       example: 'tpcds_retail_model'
 
+    EntityVersion:
+      type: string
+      maxLength: 255
+      description: |
+        An opaque UTF-8 string (at most 255 characters) identifying a version of a semantic-model
+        entity, used for optimistic concurrency. A create/load/update response returns the entity's
+        current version; supply the value you last read on a subsequent update so the change applies
+        only if it still matches the version stored in the catalog.
+
     SemanticModelDocument:
       type: object
       description: An Open Semantic Interchange (OSI) document body.
@@ -297,10 +306,7 @@ components:
         document:
           $ref: '#/components/schemas/SemanticModelDocument'
         entity-version:
-          type: string
-          description: |
-            An opaque string identifying the version the client last read for this semantic model. The update applies 
-            only if it matches the version currently stored in the catalog (optimistic concurrency).
+          $ref: '#/components/schemas/EntityVersion'
 
     LoadSemanticModelResponse:
       type: object
@@ -311,10 +317,7 @@ components:
         document:
           $ref: '#/components/schemas/SemanticModelDocument'
         entity-version:
-          type: string
-          description: |
-            An opaque string identifying the current version of the stored semantic-model entity. It
-            changes whenever the model is updated. 
+          $ref: '#/components/schemas/EntityVersion'
 
     ListSemanticModelsResponse:
       type: object
