@@ -18,8 +18,13 @@
  */
 package org.apache.polaris.service.catalog.policy;
 
+import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
+import java.util.Set;
+import org.apache.iceberg.rest.Endpoint;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributor;
 
@@ -27,6 +32,15 @@ import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributo
 public class PolicyConfigEndpoints {
   @Produces
   public CatalogConfigEndpointContributor policyEndpoints() {
-    return PolarisEndpoints::getSupportedPolicyEndpoints;
+    return PolicyConfigEndpoints::getSupportedPolicyEndpoints;
+  }
+
+  /**
+   * Get the policy store endpoints. Returns POLICY_ENDPOINTS if ENABLE_POLICY_STORE is set to true,
+   * otherwise, returns an empty set.
+   */
+  public static Set<Endpoint> getSupportedPolicyEndpoints(RealmConfig realmConfig) {
+    boolean policyStoreEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_POLICY_STORE);
+    return policyStoreEnabled ? PolarisEndpoints.POLICY_STORE_ENDPOINTS : ImmutableSet.of();
   }
 }

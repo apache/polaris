@@ -21,8 +21,6 @@ package org.apache.polaris.core.rest;
 import com.google.common.collect.ImmutableSet;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
 
 public class PolarisEndpoints {
   // Generic table endpoints
@@ -72,7 +70,6 @@ public class PolarisEndpoints {
           .add(V1_DETACH_POLICY)
           .add(V1_GET_APPLICABLE_POLICIES)
           .build();
-
   // Semantic model endpoints
   public static final Endpoint V1_LIST_SEMANTIC_MODELS =
       Endpoint.create("GET", PolarisResourcePaths.V1_SEMANTIC_MODELS);
@@ -93,34 +90,4 @@ public class PolarisEndpoints {
           .add(V1_UPDATE_SEMANTIC_MODEL)
           .add(V1_DROP_SEMANTIC_MODEL)
           .build();
-
-  /**
-   * Get the generic table endpoints. Returns GENERIC_TABLE_ENDPOINTS if ENABLE_GENERIC_TABLES is
-   * set to true, otherwise, returns an empty set.
-   */
-  public static Set<Endpoint> getSupportedGenericTableEndpoints(RealmConfig realmConfig) {
-    // add the generic table endpoints as supported endpoints if generic table feature is enabled.
-    boolean genericTableEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES);
-
-    return genericTableEnabled ? GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
-  }
-
-  /**
-   * Get the policy store endpoints. Returns POLICY_ENDPOINTS if ENABLE_POLICY_STORE is set to true,
-   * otherwise, returns an empty set
-   */
-  public static Set<Endpoint> getSupportedPolicyEndpoints(RealmConfig realmConfig) {
-    boolean policyStoreEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_POLICY_STORE);
-    return policyStoreEnabled ? POLICY_STORE_ENDPOINTS : ImmutableSet.of();
-  }
-
-  /**
-   * Get the semantic model endpoints. Returns SEMANTIC_MODEL_ENDPOINTS if ENABLE_SEMANTIC_MODELS is
-   * set to true, otherwise, returns an empty set.
-   */
-  public static Set<Endpoint> getSupportedSemanticModelEndpoints(RealmConfig realmConfig) {
-    boolean semanticModelsEnabled =
-        realmConfig.getConfig(FeatureConfiguration.ENABLE_SEMANTIC_MODELS);
-    return semanticModelsEnabled ? SEMANTIC_MODEL_ENDPOINTS : ImmutableSet.of();
-  }
 }
