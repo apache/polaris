@@ -381,7 +381,7 @@ public record TestServices(
           .thenAnswer(invocation -> Stream.of(genericTableEndpoints, policyEndpoints));
       CatalogConfigHandler catalogConfigHandler =
           new CatalogConfigHandler(
-              callContext,
+              realmConfig,
               new DefaultCatalogPrefixParser(),
               resolverFactory,
               configEndpointContributors);
