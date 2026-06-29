@@ -34,6 +34,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -60,6 +61,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -73,8 +75,12 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.catalog.api.PolarisCatalogConfigApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
+import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributor;
+import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
+import org.apache.polaris.service.catalog.config.PolarisCatalogConfigAdapter;
 import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServiceDelegator;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
@@ -115,6 +121,7 @@ public record TestServices(
     Clock clock,
     Supplier<PolarisCatalogsApi> catalogsApiSupplier,
     Supplier<IcebergRestCatalogApi> restApiSupplier,
+    Supplier<PolarisCatalogConfigApi> polarisConfigurationApiSupplier,
     Supplier<PolarisCatalogGenericTableApi> genericTableApiSupplier,
     Supplier<IcebergRestConfigurationApi> restConfigurationApiSupplier,
     Supplier<IcebergCatalogAdapter> catalogAdapterSupplier,
@@ -141,6 +148,10 @@ public record TestServices(
 
   public IcebergRestCatalogApi restApi() {
     return restApiSupplier.get();
+  }
+
+  public PolarisCatalogConfigApi polarisConfigurationApi() {
+    return polarisConfigurationApiSupplier.get();
   }
 
   public PolarisCatalogGenericTableApi genericTableApi() {
@@ -374,6 +385,24 @@ public record TestServices(
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
+      Supplier<CatalogConfigHandler> catalogConfigHandlerSupplier =
+          () -> {
+            @SuppressWarnings("unchecked")
+            Instance<CatalogConfigEndpointContributor> configEndpointContributors =
+                Mockito.mock(Instance.class);
+            CatalogConfigEndpointContributor genericTableEndpoints =
+                PolarisEndpoints::getSupportedGenericTableEndpoints;
+            CatalogConfigEndpointContributor policyEndpoints =
+                PolarisEndpoints::getSupportedPolicyEndpoints;
+            Mockito.when(configEndpointContributors.stream())
+                .thenAnswer(invocation -> Stream.of(genericTableEndpoints, policyEndpoints));
+            return new CatalogConfigHandler(
+                callContext,
+                new DefaultCatalogPrefixParser(),
+                resolverFactory,
+                configEndpointContributors);
+          };
+
       Supplier<IcebergCatalogAdapter> catalogAdapterSupplier =
           () -> {
             IcebergCatalogHandlerFactory handlerFactory =
@@ -407,7 +436,11 @@ public record TestServices(
                 };
 
             return new IcebergCatalogAdapter(
-                callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
+                callContext,
+                new DefaultCatalogPrefixParser(),
+                reservedProperties,
+                handlerFactory,
+                catalogConfigHandlerSupplier.get());
           };
 
       Supplier<IcebergRestCatalogApi> restApiSupplier =
@@ -425,6 +458,10 @@ public record TestServices(
             }
             return new IcebergRestCatalogApi(finalRestCatalogService);
           };
+
+      Supplier<PolarisCatalogConfigApi> polarisConfigurationApiSupplier =
+          () -> new PolarisCatalogConfigApi(
+              new PolarisCatalogConfigAdapter(catalogConfigHandlerSupplier.get()));
 
       Supplier<IcebergRestConfigurationApi> restConfigurationApiSupplier =
           () -> {
@@ -496,6 +533,7 @@ public record TestServices(
           clock,
           catalogsApiSupplier,
           restApiSupplier,
+          polarisConfigurationApiSupplier,
           genericTableApiSupplier,
           restConfigurationApiSupplier,
           catalogAdapterSupplier,

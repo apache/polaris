@@ -101,7 +101,7 @@ openApiGenerate {
   ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
   removeOperationIdPrefix.set(true)
   templateDir.set(provider { templatesDir.asFile.absolutePath })
-  globalProperties.put("apis", "GenericTableApi,PolicyApi")
+  globalProperties.put("apis", "ConfigApi,GenericTableApi,PolicyApi")
   globalProperties.put("models", models)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
@@ -120,6 +120,7 @@ openApiGenerate {
   serverVariables.put("basePath", "api/catalog")
   importMappings =
     mapOf(
+      "CatalogConfig" to "org.apache.iceberg.rest.responses.ConfigResponse",
       "ErrorModel" to "org.apache.iceberg.rest.responses.ErrorResponse",
       "IcebergErrorResponse" to "org.apache.iceberg.rest.responses.ErrorResponse",
       "TableIdentifier" to "org.apache.iceberg.catalog.TableIdentifier",
