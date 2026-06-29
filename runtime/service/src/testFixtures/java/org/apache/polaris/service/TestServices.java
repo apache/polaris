@@ -73,12 +73,10 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
-import org.apache.polaris.service.catalog.api.PolarisCatalogConfigApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributor;
 import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
-import org.apache.polaris.service.catalog.config.PolarisCatalogConfigAdapter;
 import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServiceDelegator;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
@@ -119,7 +117,6 @@ public record TestServices(
     Clock clock,
     PolarisCatalogsApi catalogsApi,
     IcebergRestCatalogApi restApi,
-    PolarisCatalogConfigApi polarisConfigurationApi,
     PolarisCatalogGenericTableApi genericTableApi,
     IcebergRestConfigurationApi restConfigurationApi,
     IcebergCatalogAdapter catalogAdapter,
@@ -416,10 +413,6 @@ public record TestServices(
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(finalRestCatalogService);
       IcebergRestConfigurationApi restConfigurationApi =
           new IcebergRestConfigurationApi(finalRestConfigurationService);
-      PolarisCatalogConfigAdapter polarisCatalogConfigAdapter =
-          new PolarisCatalogConfigAdapter(catalogConfigHandler);
-      PolarisCatalogConfigApi polarisConfigurationApi =
-          new PolarisCatalogConfigApi(polarisCatalogConfigAdapter);
 
       GenericTableCatalogHandlerFactory genericHandlerFactory =
           new GenericTableCatalogHandlerFactory() {
@@ -475,7 +468,6 @@ public record TestServices(
           clock,
           catalogsApi,
           restApi,
-          polarisConfigurationApi,
           genericTableApi,
           restConfigurationApi,
           catalogService,

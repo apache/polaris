@@ -56,7 +56,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `maintenance` support in Helm chart.
 
 - Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
-- Added a Polaris catalog configuration endpoint at `/api/catalog/polaris/v1/config` for Polaris-aware capability discovery.
 
 ### Changes
 - Added REPL support to Polaris CLI.

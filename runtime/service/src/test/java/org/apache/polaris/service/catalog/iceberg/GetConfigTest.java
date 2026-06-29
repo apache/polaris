@@ -79,23 +79,11 @@ public class GetConfigTest {
         services
             .restConfigurationApi()
             .getConfig(catalogName, services.realmContext(), services.securityContext());
-    ConfigResponse icebergConfigResponse = response.readEntity(ConfigResponse.class);
+    ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
 
-    response =
-        services
-            .polarisConfigurationApi()
-            .getPolarisConfig(catalogName, services.realmContext(), services.securityContext());
-    ConfigResponse polarisConfigResponse = response.readEntity(ConfigResponse.class);
-
-    assertThat(polarisConfigResponse.defaults()).isEqualTo(icebergConfigResponse.defaults());
-    assertThat(polarisConfigResponse.overrides()).isEqualTo(icebergConfigResponse.overrides());
-    assertThat(polarisConfigResponse.endpoints())
-        .containsExactlyInAnyOrderElementsOf(icebergConfigResponse.endpoints());
-
-    assertThat(icebergConfigResponse.overrides()).contains(Map.entry("prefix", catalogName));
-    assertThat(polarisConfigResponse.endpoints()).contains(PolarisEndpoints.V1_CREATE_POLICY);
-    assertGenericTableEndpoints(icebergConfigResponse, enableGenericTable);
-    assertGenericTableEndpoints(polarisConfigResponse, enableGenericTable);
+    assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
+    assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_CREATE_POLICY);
+    assertGenericTableEndpoints(configResponse, enableGenericTable);
   }
 
   private static void assertGenericTableEndpoints(
