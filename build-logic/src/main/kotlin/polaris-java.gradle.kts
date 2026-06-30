@@ -155,6 +155,12 @@ testing {
         implementation(testFixtures(project()))
         if (!plugins.hasPlugin("io.quarkus")) {
           implementation(requiredLib("logback-classic"))
+          // Exclude the JBoss SLF4J provider from all non-Quarkus test suites to prevent
+          // dual SLF4J provider warnings when a module such as polaris-runtime-test-common
+          // is on the classpath.
+          configurations.named(sources.implementationConfigurationName) {
+            exclude(group = "org.jboss.slf4j", module = "slf4j-jboss-logmanager")
+          }
         }
         implementation(requiredLib("assertj-core"))
         implementation(requiredLib("mockito-core"))
