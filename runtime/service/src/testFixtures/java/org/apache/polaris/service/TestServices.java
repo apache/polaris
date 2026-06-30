@@ -87,7 +87,9 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandlerFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestCatalogEventServiceDelegator;
+import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigEndpoints;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigurationEventServiceDelegator;
+import org.apache.polaris.service.catalog.iceberg.IcebergViewConfigEndpoints;
 import org.apache.polaris.service.catalog.iceberg.ImmutableIcebergCatalogHandler;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
@@ -374,11 +376,19 @@ public record TestServices(
       @SuppressWarnings("unchecked")
       Instance<CatalogConfigEndpointContributor> configEndpointContributors =
           Mockito.mock(Instance.class);
+      CatalogConfigEndpointContributor icebergRestEndpoints = new IcebergRestConfigEndpoints();
+      CatalogConfigEndpointContributor icebergViewEndpoints = new IcebergViewConfigEndpoints();
       CatalogConfigEndpointContributor genericTableEndpoints =
           new GenericTableConfigEndpoints(realmConfig);
       CatalogConfigEndpointContributor policyEndpoints = new PolicyConfigEndpoints(realmConfig);
       Mockito.when(configEndpointContributors.stream())
-          .thenAnswer(invocation -> Stream.of(genericTableEndpoints, policyEndpoints));
+          .thenAnswer(
+              invocation ->
+                  Stream.of(
+                      icebergRestEndpoints,
+                      icebergViewEndpoints,
+                      genericTableEndpoints,
+                      policyEndpoints));
       CatalogConfigHandler catalogConfigHandler =
           new CatalogConfigHandler(
               new DefaultCatalogPrefixParser(), resolverFactory, configEndpointContributors);
