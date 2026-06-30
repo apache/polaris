@@ -29,7 +29,9 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
+import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.FileFormat;
+import org.apache.iceberg.FileMetadata;
 import org.apache.iceberg.GenericBlobMetadata;
 import org.apache.iceberg.GenericStatisticsFile;
 import org.apache.iceberg.ImmutableGenericPartitionStatisticsFile;
@@ -70,6 +72,27 @@ public class TaskTestUtils {
               .withFileSizeInBytes(100L)
               .withFormat(FileFormat.PARQUET)
               .withPath(dataFile)
+              .withRecordCount(10)
+              .build());
+    }
+    writer.close();
+    return writer.toManifestFile();
+  }
+
+  static ManifestFile deleteManifestFile(
+      FileIO fileIO, String manifestFilePath, long snapshotId, String... deleteFiles)
+      throws IOException {
+    PartitionSpec spec = PartitionSpec.unpartitioned();
+    ManifestWriter<DeleteFile> writer =
+        ManifestFiles.writeDeleteManifest(
+            2, spec, fileIO.newOutputFile(manifestFilePath), snapshotId);
+    for (String deleteFile : deleteFiles) {
+      writer.add(
+          FileMetadata.deleteFileBuilder(spec)
+              .ofPositionDeletes()
+              .withFormat(FileFormat.PARQUET)
+              .withPath(deleteFile)
+              .withFileSizeInBytes(100L)
               .withRecordCount(10)
               .build());
     }
