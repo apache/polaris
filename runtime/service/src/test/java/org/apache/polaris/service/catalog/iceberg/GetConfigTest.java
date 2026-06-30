@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -84,7 +85,26 @@ public class GetConfigTest {
 
     assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
     assertThat(configResponse.endpoints()).contains(PolicyEndpoints.V1_CREATE_POLICY);
+    assertEndpointOrder(configResponse, enableGenericTable);
     assertGenericTableEndpoints(configResponse, enableGenericTable);
+  }
+
+  private static void assertEndpointOrder(
+      ConfigResponse configResponse, boolean enableGenericTable) {
+    if (enableGenericTable) {
+      assertThat(configResponse.endpoints())
+          .containsSubsequence(
+              Endpoint.V1_LIST_NAMESPACES,
+              Endpoint.V1_REGISTER_VIEW,
+              GenericTableEndpoints.V1_CREATE_GENERIC_TABLE,
+              PolicyEndpoints.V1_CREATE_POLICY);
+    } else {
+      assertThat(configResponse.endpoints())
+          .containsSubsequence(
+              Endpoint.V1_LIST_NAMESPACES,
+              Endpoint.V1_REGISTER_VIEW,
+              PolicyEndpoints.V1_CREATE_POLICY);
+    }
   }
 
   private static void assertGenericTableEndpoints(

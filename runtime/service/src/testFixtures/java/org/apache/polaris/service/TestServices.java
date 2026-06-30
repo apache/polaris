@@ -24,6 +24,8 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.enterprise.inject.Instance;
+import jakarta.enterprise.inject.Instance.Handle;
+import jakarta.enterprise.inject.spi.Bean;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
@@ -381,14 +383,17 @@ public record TestServices(
       CatalogConfigEndpointContributor genericTableEndpoints =
           new GenericTableConfigEndpoints(realmConfig);
       CatalogConfigEndpointContributor policyEndpoints = new PolicyConfigEndpoints(realmConfig);
-      Mockito.when(configEndpointContributors.stream())
+      Mockito.when(configEndpointContributors.handlesStream())
           .thenAnswer(
               invocation ->
                   Stream.of(
-                      icebergRestEndpoints,
-                      icebergViewEndpoints,
-                      genericTableEndpoints,
-                      policyEndpoints));
+                      endpointContributorHandle(
+                          GenericTableConfigEndpoints.class, genericTableEndpoints),
+                      endpointContributorHandle(PolicyConfigEndpoints.class, policyEndpoints),
+                      endpointContributorHandle(
+                          IcebergRestConfigEndpoints.class, icebergRestEndpoints),
+                      endpointContributorHandle(
+                          IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
       CatalogConfigHandler catalogConfigHandler =
           new CatalogConfigHandler(
               new DefaultCatalogPrefixParser(), resolverFactory, configEndpointContributors);
@@ -495,6 +500,18 @@ public record TestServices(
           eventMetadataFactory,
           storageAccessConfigProvider);
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Handle<CatalogConfigEndpointContributor> endpointContributorHandle(
+      Class<? extends CatalogConfigEndpointContributor> beanClass,
+      CatalogConfigEndpointContributor contributor) {
+    Handle<CatalogConfigEndpointContributor> handle = Mockito.mock(Handle.class);
+    Bean<CatalogConfigEndpointContributor> bean = Mockito.mock(Bean.class);
+    Mockito.doReturn(beanClass).when(bean).getBeanClass();
+    Mockito.when(handle.getBean()).thenReturn(bean);
+    Mockito.when(handle.get()).thenReturn(contributor);
+    return handle;
   }
 
   public PolarisCallContext newCallContext() {

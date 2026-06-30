@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.generic;
 
 import com.google.common.collect.ImmutableSet;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Set;
@@ -29,6 +30,7 @@ import org.apache.polaris.core.rest.CatalogConfigEndpointContributor;
 import org.apache.polaris.core.rest.GenericTableEndpoints;
 
 @ApplicationScoped
+@Priority(300)
 public class GenericTableConfigEndpoints implements CatalogConfigEndpointContributor {
   private final RealmConfig realmConfig;
 

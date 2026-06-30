@@ -19,12 +19,14 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.collect.ImmutableSet;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.polaris.core.rest.CatalogConfigEndpointContributor;
 
 @ApplicationScoped
+@Priority(200)
 public class IcebergViewConfigEndpoints implements CatalogConfigEndpointContributor {
   public static final Set<Endpoint> ICEBERG_VIEW_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
