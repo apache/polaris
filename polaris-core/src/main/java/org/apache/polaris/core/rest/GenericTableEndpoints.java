@@ -22,6 +22,9 @@ import com.google.common.collect.ImmutableSet;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 
+// TODO: This is a temporary hack to share generic-table endpoint constants with clients.
+// Endpoint definitions should not be exposed from polaris-core; move these to a dedicated
+// shared API module when one exists.
 public class GenericTableEndpoints {
   private GenericTableEndpoints() {}
 
