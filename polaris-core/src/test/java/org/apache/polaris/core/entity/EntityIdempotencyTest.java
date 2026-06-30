@@ -25,11 +25,24 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class EntityIdempotencyTest {
 
   private static final Instant NOW = Instant.parse("2026-01-01T00:00:00Z");
   private static final Instant LATER = NOW.plusSeconds(300);
+
+  @Test
+  public void encodedExpiryIsNumericInJson() {
+    UUID key = UUID.randomUUID();
+    Map<String, String> internal = EntityIdempotency.recordKey(Map.of(), key, LATER, NOW);
+
+    String windowJson = internal.get(IDEMPOTENCY_KEYS_PROPERTY);
+    assertThat(windowJson).startsWith("ID1");
+    assertThat(windowJson).contains("\"" + key + "\":" + LATER.toEpochMilli());
+    assertThat(windowJson).doesNotContain("\"" + LATER.toEpochMilli() + "\"");
+  }
 
   @Test
   public void recordKeyStampsKeyWithExpiry() {
@@ -100,5 +113,26 @@ public class EntityIdempotencyTest {
 
     assertThat(EntityIdempotency.hasLiveKey(internal, first, NOW)).isTrue();
     assertThat(EntityIdempotency.hasLiveKey(internal, second, NOW)).isTrue();
+  }
+
+  /**
+   * {@code createTable} always stamps exactly one key, but the retry check ({@link
+   * EntityIdempotency#hasLiveKey}) must still find the right key when the entity carries a larger
+   * window — the shape a future {@code updateTable} path would produce. Parameter values match the
+   * JMH benchmark key counts (1, 8, 64, 300).
+   */
+  @ParameterizedTest
+  @ValueSource(ints = {1, 8, 64, 300})
+  public void hasLiveKeyFindsTargetAmongManyKeys(int numberOfKeys) {
+    Map<String, String> internal = Map.of("metadata-location", "s3://bucket/ns/tbl/metadata.json");
+    UUID targetKey = UUID.randomUUID();
+
+    for (int i = 0; i < numberOfKeys - 1; i++) {
+      internal = EntityIdempotency.recordKey(internal, UUID.randomUUID(), LATER, NOW);
+    }
+    internal = EntityIdempotency.recordKey(internal, targetKey, LATER, NOW);
+
+    assertThat(EntityIdempotency.hasLiveKey(internal, targetKey, NOW)).isTrue();
+    assertThat(EntityIdempotency.hasLiveKey(internal, UUID.randomUUID(), NOW)).isFalse();
   }
 }

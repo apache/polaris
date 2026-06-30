@@ -83,6 +83,7 @@ import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -1870,7 +1871,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         eventMetadataFactory,
         metaStoreManager,
         callContext,
-        authenticatedRoot) {
+        authenticatedRoot,
+        new IdempotencyRequestContext()) {
       @Override
       public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
         Catalog catalog = super.createCatalog(resolvedManifest);

@@ -63,7 +63,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @State(Scope.Thread)
 public class EntityIdempotencyBench {
 
-  @Param({"1", "8", "64"})
+  @Param({"1", "8", "64", "300"})
   public int windowSize;
 
   private Instant now;

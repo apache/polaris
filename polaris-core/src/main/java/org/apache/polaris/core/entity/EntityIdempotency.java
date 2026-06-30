@@ -39,7 +39,7 @@ import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
  * expiry timestamp (epoch millis):
  *
  * <pre>{@code
- * {"018f...a1": 1716840000000, "018f...b2": 1716840300000}
+ * ID1{"018f...a1": 1716840000000, "018f...b2": 1716840300000}
  * }</pre>
  *
  * <p>For {@code createTable} this map holds a single entry, but the shape generalizes to a bounded
@@ -51,6 +51,12 @@ public final class EntityIdempotency {
 
   /** Internal-properties key under which the per-entity idempotency key window is stored. */
   public static final String IDEMPOTENCY_KEYS_PROPERTY = "polaris-idempotency-keys";
+
+  /** Upper bound on live idempotency keys stored on a single entity. */
+  public static final int MAX_WINDOW_SIZE = 64;
+
+  /** Magic prefix for version 1 of the encoded key window ({@code ID1} + JSON object). */
+  private static final String WINDOW_FORMAT_V1 = "ID1";
 
   private EntityIdempotency() {}
 
@@ -68,33 +74,56 @@ public final class EntityIdempotency {
    * Returns a copy of {@code internalProperties} with {@code key} recorded (expiring at {@code
    * expiry}) and any keys already expired as of {@code now} dropped. This is the inline
    * purge-on-write step: it runs within the same transaction that persists the entity, so no
-   * separate maintenance pass is required to bound the window.
+   * separate maintenance pass is required to bound the window. Capped at {@link #MAX_WINDOW_SIZE}.
    */
   public static Map<String, String> recordKey(
       Map<String, String> internalProperties, UUID key, Instant expiry, Instant now) {
     Map<String, Long> window =
         new HashMap<>(decode(internalProperties.get(IDEMPOTENCY_KEYS_PROPERTY)));
     window.values().removeIf(existingExpiry -> existingExpiry <= now.toEpochMilli());
-    window.put(key.toString(), expiry.toEpochMilli());
+    String keyString = key.toString();
+    if (!window.containsKey(keyString)) {
+      while (window.size() >= MAX_WINDOW_SIZE) {
+        String evictKey = null;
+        long earliestExpiry = Long.MAX_VALUE;
+        for (Map.Entry<String, Long> entry : window.entrySet()) {
+          if (entry.getValue() < earliestExpiry) {
+            earliestExpiry = entry.getValue();
+            evictKey = entry.getKey();
+          }
+        }
+        if (evictKey != null) {
+          window.remove(evictKey);
+        }
+      }
+    }
+    window.put(keyString, expiry.toEpochMilli());
 
     Map<String, String> updated = new HashMap<>(internalProperties);
     updated.put(IDEMPOTENCY_KEYS_PROPERTY, encode(window));
     return updated;
   }
 
+  @SuppressWarnings("unchecked")
   private static Map<String, Long> decode(String raw) {
     if (raw == null || raw.isEmpty()) {
       return Map.of();
     }
-    Map<String, String> asStrings = PolarisObjectMapperUtil.deserializeProperties(raw);
-    Map<String, Long> window = new HashMap<>(asStrings.size());
-    asStrings.forEach((k, v) -> window.put(k, Long.parseLong(v)));
+    String json = raw.startsWith(WINDOW_FORMAT_V1) ? raw.substring(WINDOW_FORMAT_V1.length()) : raw;
+    Map<String, ?> parsed = PolarisObjectMapperUtil.deserialize(json, Map.class);
+    Map<String, Long> window = new HashMap<>(parsed.size());
+    parsed.forEach(
+        (key, value) -> {
+          if (value instanceof Number number) {
+            window.put(key, number.longValue());
+          } else {
+            window.put(key, Long.parseLong(value.toString()));
+          }
+        });
     return window;
   }
 
   private static String encode(Map<String, Long> window) {
-    Map<String, String> asStrings = new HashMap<>(window.size());
-    window.forEach((k, v) -> asStrings.put(k, Long.toString(v)));
-    return PolarisObjectMapperUtil.serializeProperties(asStrings);
+    return WINDOW_FORMAT_V1 + PolarisObjectMapperUtil.serialize(window);
   }
 }

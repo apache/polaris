@@ -84,6 +84,7 @@ import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -483,7 +484,7 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisLocalCatalogFactory() {
-      this(null, null, null, null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
@@ -497,7 +498,8 @@ public abstract class PolarisAuthzTestBase {
         PolarisEventMetadataFactory eventMetadataFactory,
         PolarisMetaStoreManager metaStoreManager,
         CallContext callContext,
-        PolarisPrincipal principal) {
+        PolarisPrincipal principal,
+        IdempotencyRequestContext idempotencyRequestContext) {
       super(
           diagnostics,
           resolverFactory,
@@ -508,7 +510,8 @@ public abstract class PolarisAuthzTestBase {
           eventMetadataFactory,
           metaStoreManager,
           callContext,
-          principal);
+          principal,
+          idempotencyRequestContext);
     }
 
     @Override

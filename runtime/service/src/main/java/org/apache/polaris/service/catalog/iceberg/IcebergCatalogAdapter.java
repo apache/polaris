@@ -63,6 +63,7 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -84,6 +85,7 @@ public class IcebergCatalogAdapter
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
   private final IdempotencyConfiguration idempotencyConfiguration;
+  private final IdempotencyRequestContext idempotencyRequestContext;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -91,12 +93,14 @@ public class IcebergCatalogAdapter
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
       IcebergCatalogHandlerFactory handlerFactory,
-      IdempotencyConfiguration idempotencyConfiguration) {
+      IdempotencyConfiguration idempotencyConfiguration,
+      IdempotencyRequestContext idempotencyRequestContext) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
     this.idempotencyConfiguration = idempotencyConfiguration;
+    this.idempotencyRequestContext = idempotencyRequestContext;
   }
 
   /**
@@ -312,6 +316,7 @@ public class IcebergCatalogAdapter
                 effectiveKey
                     .map(k -> Instant.now().plus(idempotencyConfiguration.ttl()))
                     .orElse(null);
+            idempotencyRequestContext.setPending(effectiveKey.orElse(null), idempotencyExpiry);
             LoadTableResponse response =
                 catalog.createTableDirect(
                     ns,
