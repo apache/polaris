@@ -87,8 +87,8 @@ public interface PolarisAuthorizer {
    * <p>The default implementation returns all candidates unchanged, preserving backward
    * compatibility for authorizers that do not implement visibility filtering.
    *
-   * <p>If filtering encounters an error, implementations should throw rather than fall
-   * back to returning unfiltered results.
+   * <p>If filtering encounters an error, implementations should throw rather than fall back to
+   * returning unfiltered results.
    */
   @NonNull
   default List<PolarisSecurable> filterByVisibility(

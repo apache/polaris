@@ -21,9 +21,7 @@ package org.apache.polaris.core.auth;
 import java.util.List;
 import org.jspecify.annotations.NonNull;
 
-/**
- * Carries the context used to filter LIST-operation candidates by visibility.
- */
+/** Carries the context used to filter LIST-operation candidates by visibility. */
 public record VisibilityFilterRequest(
     @NonNull PolarisAuthorizableOperation listOperation,
     @NonNull PolarisSecurable container,
