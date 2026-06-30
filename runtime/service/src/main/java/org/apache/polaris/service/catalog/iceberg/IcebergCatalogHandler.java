@@ -1286,14 +1286,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // causes doRefresh() to read from the store where the entity hasn't been persisted yet.
     // The pendingUpdates entities have the correct new location set by doCommit().
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
-    List<Map.Entry<FileIO, String>> writtenMetadataFiles =
+    List<FileToDelete> writtenMetadataFiles =
         pendingUpdates.stream()
             .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
             .filter(entity -> entity != null && entity.getMetadataLocation() != null)
             .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
             .map(
                 entity ->
-                    Map.entry(
+                    new FileToDelete(
                         tableFileIOs.get(entity.getTableIdentifier()),
                         entity.getMetadataLocation()))
             .toList();
@@ -1313,16 +1313,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
   }
 
-  private static void cleanupWrittenMetadataFiles(
-      List<Map.Entry<FileIO, String>> writtenMetadataFiles) {
-    for (Map.Entry<FileIO, String> entry : writtenMetadataFiles) {
+  private record FileToDelete(FileIO io, String location) {
+    void cleanup() {
       try {
-        entry.getKey().deleteFile(entry.getValue());
+        io.deleteFile(location);
       } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to clean up metadata file {} after transaction failure", entry.getValue(), e);
+        LOGGER.warn("Failed to clean up metadata file {} after transaction failure", location, e);
       }
     }
+  }
+
+  private static void cleanupWrittenMetadataFiles(List<FileToDelete> writtenMetadataFiles) {
+    writtenMetadataFiles.forEach(FileToDelete::cleanup);
   }
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
