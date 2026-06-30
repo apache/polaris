@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.config;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -44,38 +43,6 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 
 @RequestScoped
 public class CatalogConfigHandler {
-  private static final Set<Endpoint> ICEBERG_REST_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(Endpoint.V1_LIST_NAMESPACES)
-          .add(Endpoint.V1_LOAD_NAMESPACE)
-          .add(Endpoint.V1_NAMESPACE_EXISTS)
-          .add(Endpoint.V1_CREATE_NAMESPACE)
-          .add(Endpoint.V1_UPDATE_NAMESPACE)
-          .add(Endpoint.V1_DELETE_NAMESPACE)
-          .add(Endpoint.V1_LIST_TABLES)
-          .add(Endpoint.V1_LOAD_TABLE)
-          .add(Endpoint.V1_TABLE_EXISTS)
-          .add(Endpoint.V1_CREATE_TABLE)
-          .add(Endpoint.V1_UPDATE_TABLE)
-          .add(Endpoint.V1_DELETE_TABLE)
-          .add(Endpoint.V1_RENAME_TABLE)
-          .add(Endpoint.V1_REGISTER_TABLE)
-          .add(Endpoint.V1_REPORT_METRICS)
-          .add(Endpoint.V1_COMMIT_TRANSACTION)
-          .build();
-
-  private static final Set<Endpoint> ICEBERG_VIEW_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(Endpoint.V1_LIST_VIEWS)
-          .add(Endpoint.V1_LOAD_VIEW)
-          .add(Endpoint.V1_VIEW_EXISTS)
-          .add(Endpoint.V1_CREATE_VIEW)
-          .add(Endpoint.V1_UPDATE_VIEW)
-          .add(Endpoint.V1_DELETE_VIEW)
-          .add(Endpoint.V1_RENAME_VIEW)
-          .add(Endpoint.V1_REGISTER_VIEW)
-          .build();
-
   private final CatalogPrefixParser prefixParser;
   private final ResolverFactory resolverFactory;
   private final Instance<CatalogConfigEndpointContributor> endpointContributors;
@@ -116,8 +83,6 @@ public class CatalogConfigHandler {
 
   private Set<Endpoint> supportedEndpoints() {
     Set<Endpoint> endpoints = new LinkedHashSet<>();
-    endpoints.addAll(ICEBERG_REST_ENDPOINTS);
-    endpoints.addAll(ICEBERG_VIEW_ENDPOINTS);
     endpointContributors.stream()
         .map(CatalogConfigEndpointContributor::endpoints)
         .forEach(endpoints::addAll);
