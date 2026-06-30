@@ -36,6 +36,7 @@ import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -327,6 +328,65 @@ public class CommitTransactionEventTest {
                         testServices.securityContext()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing");
+  }
+
+  @Test
+  void testRollbackOnFailedUpdate_stagedCreateNotPersisted() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    // Create an existing table that we'll attempt to update with a failing requirement
+    String existingTableName = "rollback-existing-table";
+    createTable(testServices, existingTableName, catalogLocation);
+
+    // Build a staged-create for a brand new table
+    String newTableName = "rollback-new-table";
+    String newTableLocation =
+        String.format("%s/%s/%s/%s", catalogLocation, catalog, namespace, newTableName);
+    UpdateTableRequest stagedCreateChange =
+        buildStagedCreateRequest(TableIdentifier.of(namespace, newTableName), newTableLocation);
+
+    // Build a failing update for the existing table (schema ID -1 does not exist)
+    UpdateTableRequest failingUpdate =
+        UpdateTableRequest.create(
+            TableIdentifier.of(namespace, existingTableName),
+            List.of(new UpdateRequirement.AssertCurrentSchemaID(-1)),
+            List.of(new MetadataUpdate.SetProperties(Map.of("key1", "value1"))));
+
+    // Commit both: staged-create + failing update
+    CommitTransactionRequest req =
+        new CommitTransactionRequest(List.of(stagedCreateChange, failingUpdate));
+
+    // The transaction should fail due to the bad schema requirement on the existing table
+    assertThatThrownBy(
+            () ->
+                testServices
+                    .restApi()
+                    .commitTransaction(
+                        catalog,
+                        req,
+                        IDEMPOTENCY_KEY,
+                        testServices.realmContext(),
+                        testServices.securityContext()))
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("current schema");
+
+    // Verify the staged-create was NOT persisted — the table should not exist
+    try (Response listResponse =
+        testServices
+            .restApi()
+            .listTables(
+                catalog,
+                namespace,
+                null,
+                null,
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(listResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      ListTablesResponse tablesResponse = (ListTablesResponse) listResponse.getEntity();
+      assertThat(tablesResponse.identifiers())
+          .doesNotContain(TableIdentifier.of(namespace, newTableName));
+    }
   }
 
   private void createCatalogAndNamespace(

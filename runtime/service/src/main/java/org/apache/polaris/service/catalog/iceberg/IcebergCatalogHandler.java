@@ -1306,110 +1306,116 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
     // Track staged-creates for deferred location validation after the real metastore is restored.
     List<Map.Entry<TableIdentifier, TableMetadata>> stagedCreateEntries = new ArrayList<>();
-    changesByTable.forEach(
-        (tableIdentifier, changes) -> {
-          boolean isStagedCreate = changes.stream().anyMatch(CatalogHandlerUtils::isCreate);
+    try {
+      changesByTable.forEach(
+          (tableIdentifier, changes) -> {
+            boolean isStagedCreate = changes.stream().anyMatch(CatalogHandlerUtils::isCreate);
 
-          // Reject invalid groups: a table cannot have both staged-create and regular
-          // update requests in the same transaction. If any request asserts the table
-          // does not exist, ALL requests for that table must be staged-creates.
-          if (isStagedCreate
-              && changes.stream().anyMatch(change -> !CatalogHandlerUtils.isCreate(change))) {
-            throw new BadRequestException(
-                "Invalid transaction: table '%s' has both staged-create and"
-                    + " regular update requests",
-                tableIdentifier);
-          }
-
-          if (isStagedCreate) {
-            // For staged-creates, the table does not yet exist in the metastore.
-            // Use newTableOps directly to get TableOperations for creation.
-            // The workspace buffers the createEntityIfNotExists call.
-            TableOperations tableOps =
-                ((LocalIcebergCatalog) baseCatalog).newTableOps(tableIdentifier);
-
-            // Build metadata from empty, applying all updates from the staged-create.
-            // Apply update filters to enforce location transformations (e.g., preventing
-            // a user from staging a table to an unauthorized storage path).
-            // Validate requirements against null (table does not exist yet) — this enforces
-            // AssertTableDoesNotExist and any other requirements the client sends.
-            TableMetadata.Builder metadataBuilder = TableMetadata.buildFromEmpty();
-            for (UpdateTableRequest change : changes) {
-              UpdateTableRequest filteredChange = applyUpdateFilters(change);
-              filteredChange.requirements().forEach(req -> req.validate((TableMetadata) null));
-              for (MetadataUpdate singleUpdate : filteredChange.updates()) {
-                singleUpdate.applyTo(metadataBuilder);
-              }
+            // Reject invalid groups: a table cannot have both staged-create and regular
+            // update requests in the same transaction. If any request asserts the table
+            // does not exist, ALL requests for that table must be staged-creates.
+            if (isStagedCreate
+                && changes.stream().anyMatch(change -> !CatalogHandlerUtils.isCreate(change))) {
+              throw new BadRequestException(
+                  "Invalid transaction: table '%s' has both staged-create and"
+                      + " regular update requests",
+                  tableIdentifier);
             }
 
-            // Commit with null base to create the table entity (buffered in workspace)
-            tableOps.commit(null, metadataBuilder.build());
-            TableMetadata createdMetadata = tableOps.current();
-            tableMetadataObjs.add(createdMetadata);
-            stagedCreateEntries.add(Map.entry(tableIdentifier, createdMetadata));
+            if (isStagedCreate) {
+              // For staged-creates, the table does not yet exist in the metastore.
+              // Use newTableOps directly to get TableOperations for creation.
+              // The workspace buffers the createEntityIfNotExists call.
+              TableOperations tableOps =
+                  ((LocalIcebergCatalog) baseCatalog).newTableOps(tableIdentifier);
 
-          } else {
-            // Regular update: load existing table and apply changes.
-            // The workspace buffers the updateEntityPropertiesIfNotChanged call.
-            Table table = baseCatalog.loadTable(tableIdentifier);
-            if (!(table instanceof BaseTable baseTable)) {
-              throw new IllegalStateException(
-                  "Cannot wrap catalog that does not produce BaseTable");
-            }
-
-            TableOperations tableOps = baseTable.operations();
-            TableMetadata baseMetadata = tableOps.current();
-
-            // Apply each change sequentially: validate requirements against current state,
-            // then apply updates. This ensures conflicts are detected (e.g., if two changes
-            // both expect schema ID 0, the second will fail after the first increments it).
-            // Apply update filters to enforce location transformations.
-            TableMetadata currentMetadata = baseMetadata;
-            for (UpdateTableRequest change : changes) {
-              UpdateTableRequest filteredChange = applyUpdateFilters(change);
-              final TableMetadata metadataForValidation = currentMetadata;
-              filteredChange.requirements().forEach(req -> req.validate(metadataForValidation));
-
-              TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
-              for (MetadataUpdate singleUpdate : filteredChange.updates()) {
-                if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
-                  if (!currentMetadata.location().equals(setLocation.location())
-                      && !realmConfig()
-                          .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
-                    throw new BadRequestException(
-                        "Unsupported operation: commitTransaction containing SetLocation"
-                            + " for table '%s' and new location '%s'",
-                        filteredChange.identifier(), setLocation.location());
-                  }
+              // Build metadata from empty, applying all updates from the staged-create.
+              // Apply update filters to enforce location transformations (e.g., preventing
+              // a user from staging a table to an unauthorized storage path).
+              // Validate the AssertTableDoesNotExist requirement against null metadata
+              // (table does not exist yet). This is the only requirement allowed for staged
+              // creates — CatalogHandlerUtils.isCreate() rejects any others.
+              TableMetadata.Builder metadataBuilder = TableMetadata.buildFromEmpty();
+              for (UpdateTableRequest change : changes) {
+                UpdateTableRequest filteredChange = applyUpdateFilters(change);
+                filteredChange.requirements().forEach(req -> req.validate((TableMetadata) null));
+                for (MetadataUpdate singleUpdate : filteredChange.updates()) {
+                  singleUpdate.applyTo(metadataBuilder);
                 }
-                singleUpdate.applyTo(metadataBuilder);
               }
-              currentMetadata = metadataBuilder.build();
+
+              // Commit with null base to create the table entity (buffered in workspace)
+              tableOps.commit(null, metadataBuilder.build());
+              TableMetadata createdMetadata = tableOps.current();
+              tableMetadataObjs.add(createdMetadata);
+              stagedCreateEntries.add(Map.entry(tableIdentifier, createdMetadata));
+
+            } else {
+              // Regular update: load existing table and apply changes.
+              // The workspace buffers the updateEntityPropertiesIfNotChanged call.
+              Table table = baseCatalog.loadTable(tableIdentifier);
+              if (!(table instanceof BaseTable baseTable)) {
+                throw new IllegalStateException(
+                    "Cannot wrap catalog that does not produce BaseTable");
+              }
+
+              TableOperations tableOps = baseTable.operations();
+              TableMetadata baseMetadata = tableOps.current();
+
+              // Apply each change sequentially: validate requirements against current state,
+              // then apply updates. This ensures conflicts are detected (e.g., if two changes
+              // both expect schema ID 0, the second will fail after the first increments it).
+              // Apply update filters to enforce location transformations.
+              TableMetadata currentMetadata = baseMetadata;
+              for (UpdateTableRequest change : changes) {
+                UpdateTableRequest filteredChange = applyUpdateFilters(change);
+                final TableMetadata metadataForValidation = currentMetadata;
+                filteredChange.requirements().forEach(req -> req.validate(metadataForValidation));
+
+                TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
+                for (MetadataUpdate singleUpdate : filteredChange.updates()) {
+                  if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
+                    if (!currentMetadata.location().equals(setLocation.location())
+                        && !realmConfig()
+                            .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+                      throw new BadRequestException(
+                          "Unsupported operation: commitTransaction containing SetLocation"
+                              + " for table '%s' and new location '%s'",
+                          filteredChange.identifier(), setLocation.location());
+                    }
+                  }
+                  singleUpdate.applyTo(metadataBuilder);
+                }
+                currentMetadata = metadataBuilder.build();
+              }
+
+              // Commit all accumulated changes for this table in a single atomic operation
+              if (!currentMetadata.changes().isEmpty()) {
+                tableOps.commit(baseMetadata, currentMetadata);
+              }
+
+              tableMetadataObjs.add(currentMetadata);
             }
-
-            // Commit all accumulated changes for this table in a single atomic operation
-            if (!currentMetadata.changes().isEmpty()) {
-              tableOps.commit(baseMetadata, currentMetadata);
-            }
-
-            tableMetadataObjs.add(currentMetadata);
-          }
-        });
-
-    // Restore the real metastore manager for deferred validation and atomic commit.
-    ((LocalIcebergCatalog) baseCatalog).setMetaStoreManager(metaStoreManager());
+          });
+    } finally {
+      // Always restore the real metastore manager, even if processing throws.
+      ((LocalIcebergCatalog) baseCatalog).setMetaStoreManager(metaStoreManager());
+    }
 
     // Deferred validation: validate location overlap for pending creations using the real
     // metastore (which supports listEntities/hasOverlappingSiblings). During the loop above,
     // the workspace returned no-op results for these calls.
     // Also check for intra-transaction overlaps: two creates in the same batch must not
-    // claim the same location, since the DB check won't see uncommitted peers.
+    // claim overlapping locations (including write.data.path and write.metadata.path),
+    // since the DB overlap check won't see uncommitted peers.
     Set<String> claimedLocationsInTx = new HashSet<>();
     for (Map.Entry<TableIdentifier, TableMetadata> entry : stagedCreateEntries) {
-      String location = entry.getValue().location();
-      if (!claimedLocationsInTx.add(location)) {
-        throw new BadRequestException(
-            "Transaction contains multiple creates pointing to the same location: %s", location);
+      Set<String> dataLocations = StorageUtil.getLocationsUsedByTable(entry.getValue());
+      for (String location : dataLocations) {
+        if (!claimedLocationsInTx.add(location)) {
+          throw new BadRequestException(
+              "Transaction contains multiple creates pointing to the same location: %s", location);
+        }
       }
       ((LocalIcebergCatalog) baseCatalog)
           .validateStagedTableCreate(entry.getKey(), entry.getValue());
