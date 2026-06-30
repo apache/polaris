@@ -58,7 +58,7 @@ def sanitize_headers(headers: dict[str, Any] | None) -> dict[str, Any] | None:
     if headers is None:
         return headers
     return {
-        key: REDACTED if str(key).lower() == "authorization" else value
+        key: REDACTED if key == "Authorization" else value
         for key, value in headers.items()
     }
 
