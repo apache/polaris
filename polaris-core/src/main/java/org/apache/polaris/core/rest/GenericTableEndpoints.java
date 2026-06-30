@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.generic;
+package org.apache.polaris.core.rest;
 
 import com.google.common.collect.ImmutableSet;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
-import org.apache.polaris.core.rest.PolarisResourcePaths;
 
 public class GenericTableEndpoints {
   private GenericTableEndpoints() {}
