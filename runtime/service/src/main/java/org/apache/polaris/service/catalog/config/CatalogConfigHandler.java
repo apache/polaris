@@ -20,10 +20,13 @@ package org.apache.polaris.service.catalog.config;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
+import jakarta.enterprise.inject.Instance.Handle;
 import jakarta.inject.Inject;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -83,9 +86,19 @@ public class CatalogConfigHandler {
 
   private Set<Endpoint> supportedEndpoints() {
     Set<Endpoint> endpoints = new LinkedHashSet<>();
-    endpointContributors.stream()
+    endpointContributors
+        .handlesStream()
+        .sorted(
+            Comparator.comparingInt(CatalogConfigHandler::priority)
+                .thenComparing(handle -> handle.getBean().getBeanClass().getName()))
+        .map(Handle::get)
         .map(CatalogConfigEndpointContributor::endpoints)
         .forEach(endpoints::addAll);
     return endpoints;
+  }
+
+  private static int priority(Handle<CatalogConfigEndpointContributor> handle) {
+    Priority priority = handle.getBean().getBeanClass().getAnnotation(Priority.class);
+    return priority == null ? Integer.MAX_VALUE : priority.value();
   }
 }
