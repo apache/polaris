@@ -27,6 +27,8 @@ import io.quarkus.micrometer.runtime.binder.HttpBinderConfiguration;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.time.Duration;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class MeterFilterProducer {
@@ -63,10 +65,13 @@ public class MeterFilterProducer {
 
   @Produces
   @Singleton
-  public MeterFilter httpServerRequestHistogramFilter() {
-    if (!metricsConfiguration.httpServerRequests().publishHistogram()) {
+  public MeterFilter httpServerRequestsHistogramFilter() {
+    List<Duration> slos =
+        metricsConfiguration.httpServerRequests().histogramSlos().orElse(List.of());
+    if (slos.isEmpty()) {
       return new MeterFilter() {};
     }
+    double[] sloNanos = slos.stream().mapToDouble(d -> (double) d.toNanos()).toArray();
     String httpServerRequestsName = binderConfiguration.getHttpServerRequestsName();
     return new MeterFilter() {
       @Override
@@ -74,7 +79,7 @@ public class MeterFilterProducer {
           Meter.Id id, DistributionStatisticConfig config) {
         if (httpServerRequestsName.equals(id.getName()) && id.getType() == Meter.Type.TIMER) {
           return DistributionStatisticConfig.builder()
-              .percentilesHistogram(true)
+              .serviceLevelObjectives(sloNanos)
               .build()
               .merge(config);
         }

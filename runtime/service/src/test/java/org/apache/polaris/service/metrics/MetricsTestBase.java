@@ -34,10 +34,7 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.ratelimiter.MockRateLimiter;
-import org.assertj.core.api.InstanceOfAssertFactories;
 import org.awaitility.Awaitility;
-import org.hawkular.agent.prometheus.types.Histogram;
-import org.hawkular.agent.prometheus.types.Metric;
 import org.hawkular.agent.prometheus.types.MetricFamily;
 import org.hawkular.agent.prometheus.types.Summary;
 import org.junit.jupiter.api.AfterAll;
@@ -152,7 +149,10 @@ public abstract class MetricsTestBase {
               } else {
                 assertThat(metric.getLabels()).doesNotContainKey("realm_id");
               }
-              assertThat(httpSampleCount(metric)).isEqualTo(1L);
+              assertThat(metric)
+                  .asInstanceOf(type(Summary.class))
+                  .extracting(Summary::getSampleCount)
+                  .isEqualTo(1L);
             });
   }
 
@@ -204,35 +204,11 @@ public abstract class MetricsTestBase {
               } else {
                 assertThat(metric.getLabels()).doesNotContainKey("realm_id");
               }
-              assertThat(httpSampleCount(metric)).isEqualTo(1L);
+              assertThat(metric)
+                  .asInstanceOf(type(Summary.class))
+                  .extracting(Summary::getSampleCount)
+                  .isEqualTo(1L);
             });
-  }
-
-  @Test
-  public void testHttpHistogramBucketsConfig() {
-    sendSuccessfulRequest();
-    Map<String, MetricFamily> allMetrics = fetchMetrics();
-    boolean histogramEnabled = metricsConfiguration.httpServerRequests().publishHistogram();
-    assertThat(allMetrics.get(HTTP_METRIC_NAME).getMetrics())
-        .allSatisfy(
-            metrics -> {
-              if (histogramEnabled) {
-                assertThat(metrics)
-                    .asInstanceOf(type(Histogram.class))
-                    .extracting(Histogram::getBuckets)
-                    .asInstanceOf(InstanceOfAssertFactories.LIST)
-                    .isNotEmpty();
-              } else {
-                assertThat(metrics).isInstanceOf(Summary.class);
-              }
-            });
-  }
-
-  public static long httpSampleCount(Metric metrics) {
-    if (metrics instanceof Histogram histogram) {
-      return histogram.getSampleCount();
-    }
-    return ((Summary) metrics).getSampleCount();
   }
 
   private int sendRequest(String principalName) {

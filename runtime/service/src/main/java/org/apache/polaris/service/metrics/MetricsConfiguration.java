@@ -21,7 +21,10 @@ package org.apache.polaris.service.metrics;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import jakarta.validation.constraints.Min;
+import java.time.Duration;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @ConfigMapping(prefix = "polaris.metrics")
 public interface MetricsConfiguration {
@@ -75,14 +78,12 @@ public interface MetricsConfiguration {
   interface HttpServerRequests {
 
     /**
-     * Whether to publish Prometheus histogram buckets for HTTP server request metrics.
+     * Service Level Objective (SLO) boundaries for the HTTP server request duration histogram.
      *
-     * <p>When enabled, bucket series are emitted so Prometheus compatible backends can compute
-     * aggregable percentiles (e.g. p95, p99). Disabled by default because histogram buckets add
-     * many additional series per unique label combination.
+     * <p>When set, one histogram bucket is published per boundary so backends can compute
+     * percentiles (e.g. p95, p99) at the configured durations.
      */
-    @WithDefault("false")
-    boolean publishHistogram();
+    Optional<List<Duration>> histogramSlos();
   }
 
   interface UserPrincipalTag {

@@ -69,17 +69,17 @@ HTTP request metrics will be recorded. This threshold can be changed by setting 
 ### HTTP Request Histogram Buckets
 
 By default, the HTTP server request duration timer exports only the count, sum, and max series.
-These support average and worse-case latency but cannot be used to compute aggregable percentiles (e.g. p95, p99)
-across instances.
+These support average and worse-case latency but cannot be used to compute aggregable percentiles
+(e.g. p95, p99) across instances.
 
-To publish Prometheus histogram buckets for HTTP server request duration:
+To publish histogram buckets for HTTP server request duration, configure the Service Level
+Objective (SLO) boundaries to publish:
 
 ```properties
-polaris.metrics.http-server-requests.publish-histogram=true
+polaris.metrics.http-server-requests.histogram-slos=10ms,50ms,100ms,1s,5s
 ```
 
-When enabled, bucket series are emitted alongside the existing ones. This is default by default because each unique
-label combination gains many additional series.
+One bucket series is emitted per configured boundry. No buckets are published when the property is unset.
 
 ## Traces
 
