@@ -48,7 +48,9 @@ class TestGetToken(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.response.data = response_body
 
-        with patch("apache_polaris.cli.api_client_builder.ApiClient") as mock_api_client:
+        with patch(
+            "apache_polaris.cli.api_client_builder.ApiClient"
+        ) as mock_api_client:
             mock_api_client.return_value.call_api.return_value = mock_response
             return builder._get_token()
 
@@ -97,7 +99,9 @@ class TestGetToken(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.response.data = '{"access_token": "abc123"}'
 
-        with patch("apache_polaris.cli.api_client_builder.ApiClient") as mock_api_client:
+        with patch(
+            "apache_polaris.cli.api_client_builder.ApiClient"
+        ) as mock_api_client:
             mock_api_client.return_value.call_api.return_value = mock_response
             token = builder._get_token()
 

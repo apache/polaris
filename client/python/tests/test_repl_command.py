@@ -50,9 +50,7 @@ class TestReplCommand(CLITestBase):
         "apache_polaris.cli.options.parser.Parser.parse",
         side_effect=RuntimeError("boom"),
     )
-    def test_repl_handles_unexpected_exception(
-        self, _mock_parse: MagicMock
-    ) -> None:
+    def test_repl_handles_unexpected_exception(self, _mock_parse: MagicMock) -> None:
         repl = PolarisRepl(self.build_mock_client())
         with patch("sys.stderr", new_callable=io.StringIO) as mock_stderr:
             repl.default("bad command")
@@ -95,9 +93,7 @@ class TestReplCommand(CLITestBase):
         repl.default("catalogs list")
         mock_print_api_exc.assert_called_once_with(api_exc)
 
-    @patch(
-        "apache_polaris.cli.options.parser.Parser.parse", side_effect=SystemExit(2)
-    )
+    @patch("apache_polaris.cli.options.parser.Parser.parse", side_effect=SystemExit(2))
     def test_repl_swallows_system_exit(self, _mock_parse: MagicMock) -> None:
         repl = PolarisRepl(self.build_mock_client())
         repl.default("--help")
@@ -144,7 +140,9 @@ class TestReplCommand(CLITestBase):
         )
         # Test without catalog
         ReplCommand(profile="test-profile").execute(mock_client)
-        mock_repl_class.assert_called_with(mock_client, profile="test-profile", catalog=None)
+        mock_repl_class.assert_called_with(
+            mock_client, profile="test-profile", catalog=None
+        )
         self.assertEqual(mock_repl_instance.cmdloop.call_count, 2)
 
     def test_repl_prompt_resolution(self) -> None:
@@ -153,7 +151,9 @@ class TestReplCommand(CLITestBase):
         repl_with_profile = PolarisRepl(mock_client, profile="prod")
         self.assertEqual(repl_with_profile.prompt, "polaris@prod> ")
         repl_with_catalog = PolarisRepl(mock_client, catalog="test-catalog")
-        self.assertEqual(repl_with_catalog.prompt, "polaris@localhost:8080/test-catalog> ")
+        self.assertEqual(
+            repl_with_catalog.prompt, "polaris@localhost:8080/test-catalog> "
+        )
         mock_client.api_client.configuration.host = (
             "http://resolved-host:9000/api/management/v1"
         )
@@ -162,7 +162,9 @@ class TestReplCommand(CLITestBase):
 
     @patch("apache_polaris.cli.options.parser.Parser.parse")
     @patch("apache_polaris.cli.command.Command.from_options")
-    def test_repl_catalog_injestion(self, mock_from_options: MagicMock, mock_parse: MagicMock) -> None:
+    def test_repl_catalog_injestion(
+        self, mock_from_options: MagicMock, mock_parse: MagicMock
+    ) -> None:
         mock_client = self.build_mock_client()
         repl = PolarisRepl(mock_client, catalog="test-catalog")
         fake_options = MagicMock()

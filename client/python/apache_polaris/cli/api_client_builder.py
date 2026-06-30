@@ -87,7 +87,9 @@ class BuilderConfig:
         # Support explicit --catalog-url (or profile) for custom IRC base URIs
         # (e.g. when a proxy maps a path directly to the catalog root).
         # Falls back to standard Polaris layout under the base URL.
-        direct = getattr(self.options, "catalog_url", None) or self.profile.get(Arguments.CATALOG_URL)
+        direct = getattr(self.options, "catalog_url", None) or self.profile.get(
+            Arguments.CATALOG_URL
+        )
         if direct:
             return direct.rstrip("/")
         return f"{self.base_url}/api/catalog"
