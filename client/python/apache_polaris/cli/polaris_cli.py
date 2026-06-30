@@ -46,6 +46,7 @@ class PolarisCli:
     * polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principal-roles create example_role
     * polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} catalog-roles list
     * polaris --client-id ${id} --client-secret ${secret} --base-url https://custom-polaris-domain.example.com/service-prefix catalogs list
+    * polaris --access-token $TOKEN --catalog-url http://localhost:8181/server1 namespaces list --catalog polaris
     """
 
     # Can be enabled if the client is able to authenticate directly without first fetching a token

@@ -172,6 +172,9 @@ class TestParserBasic(CLITestBase):
             ["--base-url", "https://customservice.com/subpath", "catalogs", "list"]
         )
         Parser.parse(
+            ["--catalog-url", "http://localhost:8181/server1", "namespaces", "list", "--catalog", "polaris"]
+        )
+        Parser.parse(
             [
                 "privileges",
                 "catalog",

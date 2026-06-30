@@ -32,10 +32,18 @@ from apache_polaris.cli.constants import UNIT_SEPARATOR, EntityType
 
 def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:
     """
-    Convert a management API to a catalog API client
+    Convert a management API to a catalog API client.
+
+    If a direct catalog base was provided via --catalog-url (or profile),
+    it is attached to the management client config and used verbatim.
+    This supports custom IRC base URIs where the base already points at the
+    catalog root (see https://github.com/apache/polaris/issues/4927).
     """
     mgmt_config = api.api_client.configuration
-    catalog_host = re.sub(r"/api/management(?:/v1)?", "/api/catalog", mgmt_config.host)
+    if hasattr(mgmt_config, "_polaris_catalog_base") and mgmt_config._polaris_catalog_base:
+        catalog_host = mgmt_config._polaris_catalog_base
+    else:
+        catalog_host = re.sub(r"/api/management(?:/v1)?", "/api/catalog", mgmt_config.host)
     configuration = Configuration(
         host=catalog_host,
         username=mgmt_config.username,
