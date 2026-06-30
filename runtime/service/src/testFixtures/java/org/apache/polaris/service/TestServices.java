@@ -61,6 +61,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.rest.CatalogConfigEndpointContributor;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -76,7 +77,6 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
-import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributor;
 import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
 import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServiceDelegator;
 import org.apache.polaris.service.catalog.generic.GenericTableConfigEndpoints;
@@ -385,9 +385,9 @@ public record TestServices(
             Instance<CatalogConfigEndpointContributor> configEndpointContributors =
                 Mockito.mock(Instance.class);
             CatalogConfigEndpointContributor genericTableEndpoints =
-                GenericTableConfigEndpoints::getSupportedGenericTableEndpoints;
+                () -> GenericTableConfigEndpoints.getSupportedGenericTableEndpoints(realmConfig);
             CatalogConfigEndpointContributor policyEndpoints =
-                PolicyConfigEndpoints::getSupportedPolicyEndpoints;
+                () -> PolicyConfigEndpoints.getSupportedPolicyEndpoints(realmConfig);
             Mockito.when(configEndpointContributors.stream())
                 .thenAnswer(invocation -> Stream.of(genericTableEndpoints, policyEndpoints));
             return new CatalogConfigHandler(
