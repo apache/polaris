@@ -1281,29 +1281,29 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           tableMetadataObjs.add(currentMetadata);
         });
 
-    // Extract newly written metadata locations from the buffered entity updates.
-    // We cannot use tableOps.current().metadataFileLocation() because requestRefresh()
-    // causes doRefresh() to read from the store where the entity hasn't been persisted yet.
-    // The pendingUpdates entities have the correct new location set by doCommit().
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
-    List<FileToDelete> writtenMetadataFiles =
-        pendingUpdates.stream()
-            .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
-            .filter(entity -> entity != null && entity.getMetadataLocation() != null)
-            .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
-            .map(
-                entity ->
-                    new FileToDelete(
-                        tableFileIOs.get(entity.getTableIdentifier()),
-                        entity.getMetadataLocation()))
-            .toList();
-
     EntitiesResult result =
         metaStoreManager()
             .updateEntitiesPropertiesIfNotChanged(
                 callContext().getPolarisCallContext(), pendingUpdates);
     if (!result.isSuccess()) {
       // TODO: Retries on failure
+
+      // Clean up metadata files written during doCommit() since the transaction failed.
+      // We derive locations from pendingUpdates (not tableOps.current()) because
+      // requestRefresh() triggers doRefresh() against the store where the entity
+      // hasn't been persisted yet.
+      List<FileToDelete> writtenMetadataFiles =
+          pendingUpdates.stream()
+              .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
+              .filter(entity -> entity != null && entity.getMetadataLocation() != null)
+              .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
+              .map(
+                  entity ->
+                      new FileToDelete(
+                          tableFileIOs.get(entity.getTableIdentifier()),
+                          entity.getMetadataLocation()))
+              .toList();
       cleanupWrittenMetadataFiles(writtenMetadataFiles);
       throw new CommitFailedException(
           "Transaction commit failed with status: %s, extraInfo: %s",
