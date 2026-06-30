@@ -20,7 +20,7 @@ package org.apache.polaris.service.catalog.policy;
 
 import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Inject;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -28,10 +28,17 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.rest.CatalogConfigEndpointContributor;
 
 @ApplicationScoped
-public class PolicyConfigEndpoints {
-  @Produces
-  public CatalogConfigEndpointContributor policyEndpoints(RealmConfig realmConfig) {
-    return () -> getSupportedPolicyEndpoints(realmConfig);
+public class PolicyConfigEndpoints implements CatalogConfigEndpointContributor {
+  private final RealmConfig realmConfig;
+
+  @Inject
+  public PolicyConfigEndpoints(RealmConfig realmConfig) {
+    this.realmConfig = realmConfig;
+  }
+
+  @Override
+  public Set<Endpoint> endpoints() {
+    return getSupportedPolicyEndpoints(realmConfig);
   }
 
   /**

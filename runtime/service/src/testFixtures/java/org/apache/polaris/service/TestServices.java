@@ -385,13 +385,11 @@ public record TestServices(
             Instance<CatalogConfigEndpointContributor> configEndpointContributors =
                 Mockito.mock(Instance.class);
             CatalogConfigEndpointContributor genericTableEndpoints =
-                () -> GenericTableConfigEndpoints.getSupportedGenericTableEndpoints(realmConfig);
-            CatalogConfigEndpointContributor policyEndpoints =
-                () -> PolicyConfigEndpoints.getSupportedPolicyEndpoints(realmConfig);
+                new GenericTableConfigEndpoints(realmConfig);
+            CatalogConfigEndpointContributor policyEndpoints = new PolicyConfigEndpoints(realmConfig);
             Mockito.when(configEndpointContributors.stream())
                 .thenAnswer(invocation -> Stream.of(genericTableEndpoints, policyEndpoints));
             return new CatalogConfigHandler(
-                realmConfig,
                 new DefaultCatalogPrefixParser(),
                 resolverFactory,
                 configEndpointContributors);
