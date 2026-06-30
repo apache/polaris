@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.config;
+package org.apache.polaris.core.rest;
 
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
-import org.apache.polaris.core.config.RealmConfig;
 
 /** Contributes endpoints advertised in catalog configuration responses. */
 @FunctionalInterface
 public interface CatalogConfigEndpointContributor {
-  Set<Endpoint> endpoints(RealmConfig realmConfig);
+  Set<Endpoint> endpoints();
 }

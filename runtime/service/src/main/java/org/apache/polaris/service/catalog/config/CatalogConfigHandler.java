@@ -33,12 +33,12 @@ import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.rest.CatalogConfigEndpointContributor;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 
@@ -76,18 +76,15 @@ public class CatalogConfigHandler {
           .add(Endpoint.V1_REGISTER_VIEW)
           .build();
 
-  private final RealmConfig realmConfig;
   private final CatalogPrefixParser prefixParser;
   private final ResolverFactory resolverFactory;
   private final Instance<CatalogConfigEndpointContributor> endpointContributors;
 
   @Inject
   public CatalogConfigHandler(
-      RealmConfig realmConfig,
       CatalogPrefixParser prefixParser,
       ResolverFactory resolverFactory,
       @Any Instance<CatalogConfigEndpointContributor> endpointContributors) {
-    this.realmConfig = realmConfig;
     this.prefixParser = prefixParser;
     this.resolverFactory = resolverFactory;
     this.endpointContributors = endpointContributors;
@@ -122,7 +119,7 @@ public class CatalogConfigHandler {
     endpoints.addAll(ICEBERG_REST_ENDPOINTS);
     endpoints.addAll(ICEBERG_VIEW_ENDPOINTS);
     endpointContributors.stream()
-        .map(contributor -> contributor.endpoints(realmConfig))
+        .map(CatalogConfigEndpointContributor::endpoints)
         .forEach(endpoints::addAll);
     return endpoints;
   }
