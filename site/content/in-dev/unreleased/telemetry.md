@@ -79,7 +79,7 @@ Objective (SLO) boundaries to publish:
 polaris.metrics.http-server-requests.histogram-slos=10ms,50ms,100ms,1s,5s
 ```
 
-One bucket series is emitted per configured boundry. No buckets are published when the property is unset.
+These buckets can be used by Prometheus `histogram_quantile` to estimate p95/p99; accuracy depends on the configured bucket boundaries.
 
 ## Traces
 
