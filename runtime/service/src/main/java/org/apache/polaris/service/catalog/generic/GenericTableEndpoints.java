@@ -19,27 +19,27 @@
 package org.apache.polaris.service.catalog.generic;
 
 import com.google.common.collect.ImmutableSet;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Produces;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributor;
+import org.apache.polaris.core.rest.PolarisResourcePaths;
 
-@ApplicationScoped
-public class GenericTableConfigEndpoints {
-  @Produces
-  public CatalogConfigEndpointContributor genericTableEndpoints() {
-    return GenericTableConfigEndpoints::getSupportedGenericTableEndpoints;
-  }
+public class GenericTableEndpoints {
+  private GenericTableEndpoints() {}
 
-  /**
-   * Get the generic table endpoints. Returns GENERIC_TABLE_ENDPOINTS if ENABLE_GENERIC_TABLES is
-   * set to true, otherwise, returns an empty set.
-   */
-  public static Set<Endpoint> getSupportedGenericTableEndpoints(RealmConfig realmConfig) {
-    boolean genericTableEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES);
-    return genericTableEnabled ? GenericTableEndpoints.GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
-  }
+  public static final Endpoint V1_LIST_GENERIC_TABLES =
+      Endpoint.create("GET", PolarisResourcePaths.V1_GENERIC_TABLES);
+  public static final Endpoint V1_LOAD_GENERIC_TABLE =
+      Endpoint.create("GET", PolarisResourcePaths.V1_GENERIC_TABLE);
+  public static final Endpoint V1_CREATE_GENERIC_TABLE =
+      Endpoint.create("POST", PolarisResourcePaths.V1_GENERIC_TABLES);
+  public static final Endpoint V1_DELETE_GENERIC_TABLE =
+      Endpoint.create("DELETE", PolarisResourcePaths.V1_GENERIC_TABLE);
+
+  public static final Set<Endpoint> GENERIC_TABLE_ENDPOINTS =
+      ImmutableSet.<Endpoint>builder()
+          .add(V1_LIST_GENERIC_TABLES)
+          .add(V1_CREATE_GENERIC_TABLE)
+          .add(V1_DELETE_GENERIC_TABLE)
+          .add(V1_LOAD_GENERIC_TABLE)
+          .build();
 }

@@ -25,7 +25,6 @@ import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.service.catalog.config.CatalogConfigEndpointContributor;
 
 @ApplicationScoped
@@ -41,6 +40,6 @@ public class PolicyConfigEndpoints {
    */
   public static Set<Endpoint> getSupportedPolicyEndpoints(RealmConfig realmConfig) {
     boolean policyStoreEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_POLICY_STORE);
-    return policyStoreEnabled ? PolarisEndpoints.POLICY_STORE_ENDPOINTS : ImmutableSet.of();
+    return policyStoreEnabled ? PolicyEndpoints.POLICY_STORE_ENDPOINTS : ImmutableSet.of();
   }
 }
