@@ -2181,7 +2181,6 @@ This product bundles GraalVM libraries.
 * Maven group:artifact IDs: org.graalvm.sdk:jniutils
 * Maven group:artifact IDs: org.graalvm.sdk:nativeimage
 * Maven group:artifact IDs: org.graalvm.sdk:word
-* Maven group:artifact IDs: org.graalvm.shadowed:xz
 * Maven group:artifact IDs: org.graalvm.truffle:truffle-api
 * Maven group:artifact IDs: org.graalvm.truffle:truffle-compiler
 * Maven group:artifact IDs: org.graalvm.truffle:truffle-runtime
