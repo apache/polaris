@@ -181,7 +181,7 @@ public abstract class AbstractLocalIcebergCatalogViewTest
                     realmConfig,
                     new FileStorageConfigInfo(
                         StorageConfigInfo.StorageTypeEnum.FILE,
-                        List.of("file://tmp", "file://", "/", "*"),
+                        List.of("file://", "/", "*"),
                         null),
                     "file://tmp")
                 .build()
