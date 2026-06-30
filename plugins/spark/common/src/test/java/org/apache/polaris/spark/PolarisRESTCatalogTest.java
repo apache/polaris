@@ -36,10 +36,11 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
-import org.apache.polaris.core.rest.PolarisEndpoints;
+import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.polaris.spark.rest.ListGenericTablesRESTResponse;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
@@ -52,6 +53,14 @@ public class PolarisRESTCatalogTest {
   private RESTClient mockClient;
   private OAuth2Util.AuthSession mockAuthSession;
   private PolarisRESTCatalog catalog;
+  private static final Endpoint V1_LIST_GENERIC_TABLES =
+      Endpoint.create("GET", PolarisResourcePaths.V1_GENERIC_TABLES);
+  private static final Endpoint V1_LOAD_GENERIC_TABLE =
+      Endpoint.create("GET", PolarisResourcePaths.V1_GENERIC_TABLE);
+  private static final Endpoint V1_CREATE_GENERIC_TABLE =
+      Endpoint.create("POST", PolarisResourcePaths.V1_GENERIC_TABLES);
+  private static final Endpoint V1_DELETE_GENERIC_TABLE =
+      Endpoint.create("DELETE", PolarisResourcePaths.V1_GENERIC_TABLE);
 
   @BeforeEach
   public void setup() {
@@ -88,10 +97,7 @@ public class PolarisRESTCatalogTest {
         ConfigResponse.builder()
             .withDefaults(ImmutableMap.of())
             .withOverrides(ImmutableMap.of())
-            .withEndpoints(
-                ImmutableList.of(
-                    PolarisEndpoints.V1_LIST_GENERIC_TABLES,
-                    PolarisEndpoints.V1_CREATE_GENERIC_TABLE))
+            .withEndpoints(ImmutableList.of(V1_LIST_GENERIC_TABLES, V1_CREATE_GENERIC_TABLE))
             .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
@@ -328,10 +334,10 @@ public class PolarisRESTCatalogTest {
             .withOverrides(ImmutableMap.of())
             .withEndpoints(
                 ImmutableList.of(
-                    PolarisEndpoints.V1_LIST_GENERIC_TABLES,
-                    PolarisEndpoints.V1_CREATE_GENERIC_TABLE,
-                    PolarisEndpoints.V1_LOAD_GENERIC_TABLE,
-                    PolarisEndpoints.V1_DELETE_GENERIC_TABLE))
+                    V1_LIST_GENERIC_TABLES,
+                    V1_CREATE_GENERIC_TABLE,
+                    V1_LOAD_GENERIC_TABLE,
+                    V1_DELETE_GENERIC_TABLE))
             .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))

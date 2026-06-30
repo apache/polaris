@@ -32,8 +32,9 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.generic.GenericTableEndpoints;
+import org.apache.polaris.service.catalog.policy.PolicyEndpoints;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -82,25 +83,28 @@ public class GetConfigTest {
     ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
 
     assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
-    assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_CREATE_POLICY);
+    assertThat(configResponse.endpoints()).contains(PolicyEndpoints.V1_CREATE_POLICY);
     assertGenericTableEndpoints(configResponse, enableGenericTable);
   }
 
   private static void assertGenericTableEndpoints(
       ConfigResponse configResponse, boolean enableGenericTable) {
     if (enableGenericTable) {
-      assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
-      assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_DELETE_GENERIC_TABLE);
-      assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_LIST_GENERIC_TABLES);
-      assertThat(configResponse.endpoints()).contains(PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
+      assertThat(configResponse.endpoints())
+          .contains(GenericTableEndpoints.V1_CREATE_GENERIC_TABLE);
+      assertThat(configResponse.endpoints())
+          .contains(GenericTableEndpoints.V1_DELETE_GENERIC_TABLE);
+      assertThat(configResponse.endpoints()).contains(GenericTableEndpoints.V1_LIST_GENERIC_TABLES);
+      assertThat(configResponse.endpoints()).contains(GenericTableEndpoints.V1_LOAD_GENERIC_TABLE);
     } else {
       assertThat(configResponse.endpoints())
-          .doesNotContain(PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+          .doesNotContain(GenericTableEndpoints.V1_CREATE_GENERIC_TABLE);
       assertThat(configResponse.endpoints())
-          .doesNotContain(PolarisEndpoints.V1_DELETE_GENERIC_TABLE);
+          .doesNotContain(GenericTableEndpoints.V1_DELETE_GENERIC_TABLE);
       assertThat(configResponse.endpoints())
-          .doesNotContain(PolarisEndpoints.V1_LIST_GENERIC_TABLES);
-      assertThat(configResponse.endpoints()).doesNotContain(PolarisEndpoints.V1_LOAD_GENERIC_TABLE);
+          .doesNotContain(GenericTableEndpoints.V1_LIST_GENERIC_TABLES);
+      assertThat(configResponse.endpoints())
+          .doesNotContain(GenericTableEndpoints.V1_LOAD_GENERIC_TABLE);
     }
   }
 }

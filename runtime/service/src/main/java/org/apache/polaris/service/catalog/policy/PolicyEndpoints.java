@@ -16,32 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.rest;
+package org.apache.polaris.service.catalog.policy;
 
 import com.google.common.collect.ImmutableSet;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
+import org.apache.polaris.core.rest.PolarisResourcePaths;
 
-public class PolarisEndpoints {
-  // Generic table endpoints
-  public static final Endpoint V1_LIST_GENERIC_TABLES =
-      Endpoint.create("GET", PolarisResourcePaths.V1_GENERIC_TABLES);
-  public static final Endpoint V1_LOAD_GENERIC_TABLE =
-      Endpoint.create("GET", PolarisResourcePaths.V1_GENERIC_TABLE);
-  public static final Endpoint V1_CREATE_GENERIC_TABLE =
-      Endpoint.create("POST", PolarisResourcePaths.V1_GENERIC_TABLES);
-  public static final Endpoint V1_DELETE_GENERIC_TABLE =
-      Endpoint.create("DELETE", PolarisResourcePaths.V1_GENERIC_TABLE);
+public class PolicyEndpoints {
+  private PolicyEndpoints() {}
 
-  public static final Set<Endpoint> GENERIC_TABLE_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(V1_LIST_GENERIC_TABLES)
-          .add(V1_CREATE_GENERIC_TABLE)
-          .add(V1_DELETE_GENERIC_TABLE)
-          .add(V1_LOAD_GENERIC_TABLE)
-          .build();
-
-  // Policy store endpoints
   public static final Endpoint V1_LIST_POLICIES =
       Endpoint.create("GET", PolarisResourcePaths.V1_POLICIES);
   public static final Endpoint V1_CREATE_POLICY =
