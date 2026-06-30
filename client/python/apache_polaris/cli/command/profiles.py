@@ -55,14 +55,8 @@ class ProfilesCommand(Command):
     profiles_subcommand: str
     profile_name: Optional[str] = None
 
-    def _load_profiles(self) -> Dict[str, Dict[str, Any]]:
-        return load_profiles()
-
-    def _save_profiles(self, profiles: Dict[str, Dict[str, Any]]) -> None:
-        save_profiles(profiles)
-
     def _create_profile(self, name: str) -> None:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         if name not in profiles:
             client_id = input("Polaris Client ID: ")
             client_secret = input("Polaris Client Secret: ")
@@ -81,26 +75,26 @@ class ProfilesCommand(Command):
                 Arguments.REALM: realm,
                 Arguments.HEADER: header,
             }
-            self._save_profiles(profiles)
+            save_profiles(profiles)
         else:
             raise CliError(f"Profile {name} already exists.")
 
     def _get_profile(self, name: str) -> Optional[Dict[str, Any]]:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         return profiles.get(name)
 
     def _list_profiles(self) -> List[str]:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         return list(profiles.keys())
 
     def _delete_profile(self, name: str) -> None:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         if name in profiles:
             del profiles[name]
-            self._save_profiles(profiles)
+            save_profiles(profiles)
 
     def _update_profile(self, name: str) -> None:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         if name in profiles:
             current_client_id = profiles[name].get("client_id")
             current_client_secret = profiles[name].get("client_secret")
@@ -131,7 +125,7 @@ class ProfilesCommand(Command):
                 Arguments.REALM: realm,
                 Arguments.HEADER: header,
             }
-            self._save_profiles(profiles)
+            save_profiles(profiles)
         else:
             raise CliError(f"Profile {name} does not exist.")
 

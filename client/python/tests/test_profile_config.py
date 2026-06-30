@@ -29,21 +29,11 @@ from apache_polaris.cli.profile_config import (
     MASKED_CLIENT_SECRET,
     format_profile_for_display,
     load_profiles,
-    mask_client_secret,
     save_profiles,
 )
 
 
 class TestProfileConfig(unittest.TestCase):
-    def test_mask_client_secret_none(self) -> None:
-        self.assertIsNone(mask_client_secret(None))
-
-    def test_mask_client_secret_empty(self) -> None:
-        self.assertEqual(mask_client_secret(""), "")
-
-    def test_mask_client_secret_non_empty(self) -> None:
-        self.assertEqual(mask_client_secret("abcdef123456"), MASKED_CLIENT_SECRET)
-
     def test_format_profile_for_display_masks_long_secret(self) -> None:
         profile = {
             "client_id": "root",
@@ -59,16 +49,16 @@ class TestProfileConfig(unittest.TestCase):
         displayed = format_profile_for_display(profile)
         self.assertEqual(displayed["client_secret"], MASKED_CLIENT_SECRET)
 
-    def test_format_profile_for_display_preserves_none_secret(self) -> None:
+    def test_format_profile_for_display_masks_none_secret(self) -> None:
         profile = {"client_id": "root", "client_secret": None}
         displayed = format_profile_for_display(profile)
-        self.assertIsNone(displayed["client_secret"])
+        self.assertEqual(displayed["client_secret"], MASKED_CLIENT_SECRET)
         self.assertEqual(displayed["client_id"], "root")
 
     def test_format_profile_for_display_masks_empty_secret(self) -> None:
         profile = {"client_id": "root", "client_secret": ""}
         displayed = format_profile_for_display(profile)
-        self.assertEqual(displayed["client_secret"], "")
+        self.assertEqual(displayed["client_secret"], MASKED_CLIENT_SECRET)
         self.assertEqual(displayed["client_id"], "root")
 
     def test_save_profiles_sets_restrictive_permissions(self) -> None:
