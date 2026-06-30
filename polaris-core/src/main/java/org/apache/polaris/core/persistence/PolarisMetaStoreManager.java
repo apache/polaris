@@ -285,6 +285,31 @@ public interface PolarisMetaStoreManager
       @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities);
 
   /**
+   * Commits a batch of entity creations and property updates within a single transaction. Creates
+   * are applied first, then updates.
+   *
+   * @param callCtx call context
+   * @param creates entities to create
+   * @param updates entities to update (compare-and-swap)
+   * @return result indicating success or failure
+   */
+  default @NonNull EntitiesResult commitTransactionBatch(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<EntityWithPath> creates,
+      @NonNull List<EntityWithPath> updates) {
+    for (EntityWithPath create : creates) {
+      EntityResult result = createEntityIfNotExists(callCtx, create.catalogPath(), create.entity());
+      if (!result.isSuccess()) {
+        return new EntitiesResult(result.getReturnStatus(), result.getExtraInformation());
+      }
+    }
+    if (!updates.isEmpty()) {
+      return updateEntitiesPropertiesIfNotChanged(callCtx, updates);
+    }
+    return new EntitiesResult(Page.fromItems(List.of()));
+  }
+
+  /**
    * Rename an entity, potentially re-parenting it.
    *
    * @param callCtx call context

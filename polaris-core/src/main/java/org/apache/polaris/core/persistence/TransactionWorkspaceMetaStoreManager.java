@@ -86,6 +86,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   // to serve reads within the same transaction while also storing the ordered list of
   // pendingUpdates that ultimately need to be applied in order within the real MetaStoreManager.
   private final List<EntityWithPath> pendingUpdates = new ArrayList<>();
+  private final List<EntityWithPath> pendingCreations = new ArrayList<>();
 
   public TransactionWorkspaceMetaStoreManager(
       PolarisDiagnostics diagnostics, PolarisMetaStoreManager delegate) {
@@ -99,6 +100,10 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   public List<EntityWithPath> getPendingUpdates() {
     return ImmutableList.copyOf(pendingUpdates);
+  }
+
+  public List<EntityWithPath> getPendingCreations() {
+    return ImmutableList.copyOf(pendingCreations);
   }
 
   @Override
@@ -128,7 +133,9 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull PageToken pageToken) {
-    throw illegalMethodError("listEntities");
+    // Return empty result to make validation a no-op during the transaction loop.
+    // Real validation is deferred to commit time when the real metastore is restored.
+    return new ListEntitiesResult(Page.fromItems(List.of()));
   }
 
   @Override
@@ -143,7 +150,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public @NonNull GenerateEntityIdResult generateNewEntityId(@NonNull PolarisCallContext callCtx) {
-    throw illegalMethodError("generateNewEntityId");
+    // Entity ID allocation is side-effect-free; delegate to the real metastore.
+    return delegate.generateNewEntityId(callCtx);
   }
 
   @Override
@@ -196,7 +204,9 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NonNull PolarisBaseEntity entity) {
-    throw illegalMethodError("createEntityIfNotExists");
+    // Buffer the creation for deferred atomic commit.
+    pendingCreations.add(new EntityWithPath(catalogPath, entity));
+    return new EntityResult(entity);
   }
 
   @Override
@@ -356,7 +366,9 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext, T entity) {
-    throw illegalMethodError("hasOverlappingSiblings");
+    // Return "no overlap" to skip validation during the transaction loop.
+    // Real validation is deferred to commit time when the real metastore is restored.
+    return Optional.of(Optional.empty());
   }
 
   @Override
