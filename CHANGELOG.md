@@ -54,6 +54,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
 - Added Polaris Spark 4.0 client.
 - Added `maintenance` support in Helm chart.
+- Python CLI: added `--catalog-url` to specify a custom base URL for the Iceberg REST Catalog (IRC) API. Allows use with deployments that map a path (e.g. `/server1`) directly to the catalog root instead of the standard `/api/catalog`. See #4927.
 
 - Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
 

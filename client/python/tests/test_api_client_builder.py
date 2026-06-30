@@ -29,6 +29,7 @@ from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 def _builder_options() -> Namespace:
     return Namespace(
         base_url="http://localhost:8181",
+        catalog_url=None,
         host=None,
         port=None,
         proxy=None,
