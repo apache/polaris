@@ -19,7 +19,7 @@
 
 services:
   cockroachdb:
-    image: cockroachdb/cockroach:v26.2.2
+    image: cockroachdb/cockroach:v26.2.3
     command: start-single-node --insecure
     ports:
       - "26257:26257"
@@ -31,7 +31,7 @@ services:
       timeout: 2s
       retries: 15
   cockroachdb-init:
-    image: cockroachdb/cockroach:v26.2.2
+    image: cockroachdb/cockroach:v26.2.3
     depends_on:
       cockroachdb:
         condition: service_healthy
