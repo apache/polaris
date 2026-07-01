@@ -83,16 +83,19 @@ class BuilderConfig:
         return f"{self.base_url}/api/management/v1"
 
     @cached_property
-    def catalog_url(self) -> str:
-        # Support explicit --catalog-url (or profile) for custom IRC base URIs
-        # (e.g. when a proxy maps a path directly to the catalog root).
-        # Falls back to standard Polaris layout under the base URL.
+    def explicit_catalog_url(self) -> Optional[str]:
+        # Direct catalog base URL provided via --catalog-url (or profile).
+        # Used verbatim for custom IRC paths (e.g. proxy-mapped roots).
         direct = getattr(self.options, "catalog_url", None) or self.profile.get(
             Arguments.CATALOG_URL
         )
-        if direct:
-            return direct.rstrip("/")
-        return f"{self.base_url}/api/catalog"
+        return direct.rstrip("/") if direct else None
+
+    @cached_property
+    def catalog_url(self) -> str:
+        # Falls back to standard Polaris layout under the base URL if no explicit
+        # --catalog-url is provided.
+        return self.explicit_catalog_url or f"{self.base_url}/api/catalog"
 
     @cached_property
     def client_id(self) -> Optional[str]:
@@ -208,13 +211,13 @@ class ApiClientBuilder:
             client_params["header_value"] = self.conf.realm
 
         api_client = ApiClient(config, **client_params)
-        # Attach direct catalog base (if provided via --catalog-url) so that
-        # get_catalog_api_client() can use it verbatim instead of the regex hack.
-        # This enables custom IRC base URIs (issue #4927).
-        try:
-            api_client.configuration._polaris_catalog_base = self.conf.catalog_url
-        except Exception:
-            pass
+        if self.conf.explicit_catalog_url:
+            # Attach direct catalog base so that get_catalog_api_client() can use
+            # it verbatim instead of the regex hack. This enables custom IRC base
+            # URIs (see https://github.com/apache/polaris/issues/4927).
+            api_client.configuration._polaris_catalog_base = (
+                self.conf.explicit_catalog_url
+            )
         return api_client
 
     def get_api_client(self) -> ApiClient:

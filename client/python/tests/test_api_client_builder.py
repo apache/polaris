@@ -22,7 +22,7 @@ import unittest
 from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
-from apache_polaris.cli.api_client_builder import ApiClientBuilder
+from apache_polaris.cli.api_client_builder import ApiClientBuilder, BuilderConfig
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 
 
@@ -107,6 +107,64 @@ class TestGetToken(unittest.TestCase):
 
         self.assertEqual(token, "abc123")
         mock_loads.assert_called_once_with('{"access_token": "abc123"}')
+
+
+class TestBuilderConfigCatalogUrl(unittest.TestCase):
+    def _options(self, *, catalog_url: str | None = None) -> Namespace:
+        return Namespace(
+            base_url="http://localhost:8181",
+            catalog_url=catalog_url,
+            host=None,
+            port=None,
+            proxy=None,
+            access_token=None,
+            client_id=None,
+            client_secret=None,
+            realm=None,
+            header=None,
+            profile=None,
+        )
+
+    def test_explicit_catalog_url_when_provided(self) -> None:
+        opts = self._options(catalog_url="http://localhost:8181/server1")
+        cfg = BuilderConfig(opts)
+        self.assertEqual(cfg.explicit_catalog_url, "http://localhost:8181/server1")
+        self.assertEqual(cfg.catalog_url, "http://localhost:8181/server1")
+
+    def test_catalog_url_falls_back_when_not_provided(self) -> None:
+        opts = self._options(catalog_url=None)
+        cfg = BuilderConfig(opts)
+        self.assertIsNone(cfg.explicit_catalog_url)
+        self.assertEqual(cfg.catalog_url, "http://localhost:8181/api/catalog")
+
+    def test_explicit_catalog_url_set_on_client(self) -> None:
+        opts = self._options(catalog_url="http://localhost:8181/server1")
+        opts.client_id = "id"
+        opts.client_secret = "secret"
+        builder = ApiClientBuilder(opts, direct_authentication=True)
+        with patch("apache_polaris.cli.api_client_builder.ApiClient") as mock_api:
+            mock_client = MagicMock()
+            mock_api.return_value = mock_client
+            builder.get_api_client()
+            self.assertTrue(hasattr(mock_client.configuration, "_polaris_catalog_base"))
+            self.assertEqual(
+                mock_client.configuration._polaris_catalog_base,
+                "http://localhost:8181/server1",
+            )
+
+    def test_no_explicit_when_not_set(self) -> None:
+        opts = self._options(catalog_url=None)
+        opts.client_id = "id"
+        opts.client_secret = "secret"
+        builder = ApiClientBuilder(opts, direct_authentication=True)
+        with patch("apache_polaris.cli.api_client_builder.ApiClient") as mock_api:
+            # Use plain object so we can assert attr was never set
+            mock_config = type("obj", (object,), {})()
+            mock_client = MagicMock()
+            mock_client.configuration = mock_config
+            mock_api.return_value = mock_client
+            builder.get_api_client()
+            self.assertFalse(hasattr(mock_config, "_polaris_catalog_base"))
 
 
 if __name__ == "__main__":
