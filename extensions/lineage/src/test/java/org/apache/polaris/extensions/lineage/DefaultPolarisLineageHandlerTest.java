@@ -31,7 +31,6 @@ import java.util.Optional;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -44,7 +43,6 @@ public class DefaultPolarisLineageHandlerTest {
   @Mock private LineageConfiguration configuration;
   @Mock private LineageConfiguration.PersistenceConfiguration persistenceConfiguration;
   @Mock private LineageStoreManager storeManager;
-  @Mock private RealmContext realmContext;
 
   private DefaultPolarisLineageHandler service;
 
@@ -52,7 +50,6 @@ public class DefaultPolarisLineageHandlerTest {
   void setUp() {
     MockitoAnnotations.openMocks(this);
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
-    when(callContext.getRealmContext()).thenReturn(realmContext);
     when(configuration.persistence()).thenReturn(persistenceConfiguration);
     service = new DefaultPolarisLineageHandler(callContext, configuration, storeManager);
   }
@@ -104,10 +101,10 @@ public class DefaultPolarisLineageHandlerTest {
             new LineageNode("dataset:test:orders", LineageNodeType.DATASET, null, false),
             List.of(),
             List.of());
-    when(storeManager.loadLineage(realmContext, request)).thenReturn(graph);
+    when(storeManager.loadLineage(request)).thenReturn(graph);
 
     assertThat(service.query(request)).isSameAs(graph);
-    verify(storeManager).loadLineage(realmContext, request);
+    verify(storeManager).loadLineage(request);
   }
 
   @Test
@@ -121,9 +118,9 @@ public class DefaultPolarisLineageHandlerTest {
 
     Instant lastEventAt = Instant.parse("2026-01-01T00:00:00Z");
     InOrder inOrder = inOrder(storeManager);
-    inOrder.verify(storeManager).upsertDatasets(realmContext, request.datasets());
-    inOrder.verify(storeManager).replaceDatasetEdges(realmContext, request.edges(), lastEventAt);
-    inOrder.verify(storeManager).upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
+    inOrder.verify(storeManager).upsertDatasets(request.datasets());
+    inOrder.verify(storeManager).replaceDatasetEdges(request.edges(), lastEventAt);
+    inOrder.verify(storeManager).upsertColumnEdges(request.columnEdges(), lastEventAt);
   }
 
   private static LineageQueryRequest queryRequest() {

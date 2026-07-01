@@ -19,28 +19,25 @@
 package org.apache.polaris.extensions.lineage;
 
 import io.quarkus.arc.DefaultBean;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import java.time.Instant;
 import java.util.List;
-import org.apache.polaris.core.context.RealmContext;
 
 /** Default lineage store manager used when no durable lineage backend is configured. */
 @DefaultBean
-@ApplicationScoped
+@RequestScoped
 public class NoopLineageStoreManager implements LineageStoreManager {
   @Override
-  public void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets) {}
+  public void upsertDatasets(List<LineageDataset> datasets) {}
 
   @Override
-  public void replaceDatasetEdges(
-      RealmContext realmContext, List<LineageEdge> edges, Instant lastEventAt) {}
+  public void replaceDatasetEdges(List<LineageEdge> edges, Instant lastEventAt) {}
 
   @Override
-  public void upsertColumnEdges(
-      RealmContext realmContext, List<LineageColumnEdge> columnEdges, Instant lastEventAt) {}
+  public void upsertColumnEdges(List<LineageColumnEdge> columnEdges, Instant lastEventAt) {}
 
   @Override
-  public LineageGraph loadLineage(RealmContext realmContext, LineageQueryRequest request) {
+  public LineageGraph loadLineage(LineageQueryRequest request) {
     LineageNodeType nodeType =
         request.granularity() == LineageGranularity.COLUMN
             ? LineageNodeType.COLUMN

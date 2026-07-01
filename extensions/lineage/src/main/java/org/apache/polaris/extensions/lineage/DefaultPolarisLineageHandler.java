@@ -23,7 +23,6 @@ import jakarta.inject.Inject;
 import java.time.Instant;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 
 @RequestScoped
 public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
@@ -42,17 +41,16 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
   @Override
   public void ingest(LineageIngestRequest request) {
     ensureEnabled();
-    RealmContext realmContext = callContext.getRealmContext();
     Instant lastEventAt = request.eventTime().orElseGet(Instant::now);
-    storeManager.upsertDatasets(realmContext, request.datasets());
-    storeManager.replaceDatasetEdges(realmContext, request.edges(), lastEventAt);
-    storeManager.upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
+    storeManager.upsertDatasets(request.datasets());
+    storeManager.replaceDatasetEdges(request.edges(), lastEventAt);
+    storeManager.upsertColumnEdges(request.columnEdges(), lastEventAt);
   }
 
   @Override
   public LineageGraph query(LineageQueryRequest request) {
     ensureEnabled();
-    return storeManager.loadLineage(callContext.getRealmContext(), request);
+    return storeManager.loadLineage(request);
   }
 
   private void ensureEnabled() {
