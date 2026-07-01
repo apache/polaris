@@ -207,52 +207,59 @@ listOf("intTestCompileClasspath", "intTestRuntimeClasspath").forEach {
   }
 }
 
-tasks.register<ShadowJar>("createPolarisSparkJar") {
-  archiveClassifier = "bundle"
-  isZip64 = true
+val createPolarisSparkJar =
+  tasks.register<ShadowJar>("createPolarisSparkJar") {
+    archiveClassifier = "bundle"
+    isZip64 = true
 
-  // pack both the source code and dependencies
-  from(sourceSets.main.map { it.output })
-  configurations = provider { listOf(project.configurations.runtimeClasspath.get()) }
+    // pack both the source code and dependencies
+    from(sourceSets.main.map { it.output })
+    configurations = provider { listOf(project.configurations.runtimeClasspath.get()) }
 
-  // Includes _all_ duplicates (this is applied files processed by `ShadowJar`).
-  duplicatesStrategy = DuplicatesStrategy.INCLUDE
-  // This setting applies to the _result_ of the `ShadowJar`.
-  failOnDuplicateEntries = true
+    // Includes _all_ duplicates (this is applied files processed by `ShadowJar`).
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    // This setting applies to the _result_ of the `ShadowJar`.
+    failOnDuplicateEntries = true
 
-  // Generally, preserve META-INF/maven/*/*/pom.* files for downstream tools that
-  // can analyze dependency jars.
-  //
-  // There are quite a few _duplicated_ occurrences of failureaccess, guava,
-  // listenablefuture, error_prone_annotations, j2objc-annotations, gson.
-  // Leave those here so that dependency analyzing tools can pick those up.
+    // Generally, preserve META-INF/maven/*/*/pom.* files for downstream tools that
+    // can analyze dependency jars.
+    //
+    // There are quite a few _duplicated_ occurrences of failureaccess, guava,
+    // listenablefuture, error_prone_annotations, j2objc-annotations, gson.
+    // Leave those here so that dependency analyzing tools can pick those up.
 
-  exclude(
-    // Recursively remove all LICENSE and NOTICE file under META-INF, includes
-    // directories contains 'license' in the name.
-    "META-INF/**/*LICENSE*",
-    "META-INF/**/*NOTICE*",
-    // exclude the top level LICENSE, LICENSE-*.txt and NOTICE
-    "LICENSE*",
-    "NOTICE*",
+    exclude(
+      // Recursively remove all LICENSE and NOTICE file under META-INF, includes
+      // directories contains 'license' in the name.
+      "META-INF/**/*LICENSE*",
+      "META-INF/**/*NOTICE*",
+      // exclude the top level LICENSE, LICENSE-*.txt and NOTICE
+      "LICENSE*",
+      "NOTICE*",
 
-    // Exclude Jandex indexes
-    "META-INF/jandex.idx",
+      // Exclude Jandex indexes
+      "META-INF/jandex.idx",
 
-    // From Hive/Hadoop - exclude those to not confuse people.
-    "META-INF/DEPENDENCIES",
-  )
+      // From Hive/Hadoop - exclude those to not confuse people.
+      "META-INF/DEPENDENCIES",
+    )
 
-  // add polaris customized LICENSE and NOTICE for the bundle jar at top level. Note that the
-  // customized LICENSE and NOTICE file are called BUNDLE-LICENSE and BUNDLE-NOTICE,
-  // and renamed to LICENSE and NOTICE after include, this is to avoid the file
-  // being excluded due to the exclude pattern matching used above.
-  from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
-  from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
-}
+    // add polaris customized LICENSE and NOTICE for the bundle jar at top level. Note that the
+    // customized LICENSE and NOTICE file are called BUNDLE-LICENSE and BUNDLE-NOTICE,
+    // and renamed to LICENSE and NOTICE after include, this is to avoid the file
+    // being excluded due to the exclude pattern matching used above.
+    from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
+    from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
+  }
 
 // ensure the shadow jar job (which will automatically run license addition) is run for both
 // `assemble` and `build` task
-tasks.named("assemble") { dependsOn("createPolarisSparkJar") }
+tasks.named("assemble") { dependsOn(createPolarisSparkJar) }
 
-tasks.named("build") { dependsOn("createPolarisSparkJar") }
+tasks.named("build") { dependsOn(createPolarisSparkJar) }
+
+publishing {
+  publications.named<MavenPublication>("maven") {
+    artifact(createPolarisSparkJar)
+  }
+}
