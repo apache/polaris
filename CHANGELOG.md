@@ -75,6 +75,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Inheritable policy mapping inserts in the JDBC backend now use the active transaction connection, so they roll back correctly with the surrounding transaction.
 - Generic table drop now accepts table-scoped `TABLE_DROP` privilege.
 - Azure SAS tokens are now signed for the configured duration instead of a hardcoded 1 hour, so long jobs no longer fail with expired credentials.
+- `ManifestFileCleanupTaskHandler` now handles Iceberg v2 delete manifests in addition to data manifests. Previously, `DROP TABLE PURGE` on a v2 table that had been updated via merge-on-read DML left position-delete files and their manifests as orphans in object storage; the cleanup task failed silently because `ManifestFiles.read()` rejects delete manifests.
 
 ## [1.5.0]
 
