@@ -21,7 +21,11 @@ package org.apache.polaris.service.spi;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 
-/** Contributes endpoints advertised in catalog configuration responses. */
+/**
+ * Contributes endpoints advertised in catalog configuration responses.
+ *
+ * <p>Implementations are discovered through CDI as {@code CatalogConfigEndpointContributor} beans.
+ */
 @FunctionalInterface
 public interface CatalogConfigEndpointContributor {
   Set<Endpoint> endpoints();
