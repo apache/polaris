@@ -27,6 +27,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
@@ -97,6 +98,8 @@ import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
@@ -312,6 +315,24 @@ public record TestServices(
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
       PolarisEventDispatcher polarisEventDispatcher = new InMemoryEventCollector();
+
+      IdempotencyConfiguration idempotencyConfiguration =
+          new IdempotencyConfiguration() {
+            @Override
+            public boolean enabled() {
+              return Boolean.parseBoolean(
+                  String.valueOf(config.getOrDefault("polaris.idempotency.enabled", "false")));
+            }
+
+            @Override
+            public Duration ttl() {
+              Object value = config.get("polaris.idempotency.ttl");
+              return value == null ? Duration.ofMinutes(5) : Duration.parse(String.valueOf(value));
+            }
+          };
+
+      IdempotencyRequestContext idempotencyRequestContext =
+          new IdempotencyRequestContext(idempotencyConfiguration);
       LocalCatalogFactory localCatalogFactory =
           new PolarisLocalCatalogFactory(
               diagnostics,
@@ -323,7 +344,8 @@ public record TestServices(
               eventMetadataFactory,
               metaStoreManager,
               callContext,
-              principal);
+              principal,
+              idempotencyRequestContext);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
@@ -362,13 +384,19 @@ public record TestServices(
                   .clock(clock)
                   .accessDelegationModeResolver(
                       new DefaultAccessDelegationModeResolver(realmConfig))
+                  .idempotencyConfiguration(idempotencyConfiguration)
                   .build();
             }
           };
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
-              callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
+              callContext,
+              new DefaultCatalogPrefixParser(),
+              reservedProperties,
+              handlerFactory,
+              idempotencyConfiguration,
+              idempotencyRequestContext);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;

@@ -22,6 +22,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 
 import com.google.common.collect.ImmutableMap;
 import jakarta.inject.Inject;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
@@ -83,6 +84,8 @@ import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -1870,7 +1873,19 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         eventMetadataFactory,
         metaStoreManager,
         callContext,
-        authenticatedRoot) {
+        authenticatedRoot,
+        new IdempotencyRequestContext(
+            new IdempotencyConfiguration() {
+              @Override
+              public boolean enabled() {
+                return false;
+              }
+
+              @Override
+              public Duration ttl() {
+                return Duration.ofMinutes(5);
+              }
+            })) {
       @Override
       public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
         Catalog catalog = super.createCatalog(resolvedManifest);

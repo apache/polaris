@@ -61,6 +61,8 @@ import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -81,17 +83,23 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
+  private final IdempotencyConfiguration idempotencyConfiguration;
+  private final IdempotencyRequestContext idempotencyRequestContext;
 
   @Inject
   public IcebergCatalogAdapter(
       CallContext callContext,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      IcebergCatalogHandlerFactory handlerFactory) {
+      IcebergCatalogHandlerFactory handlerFactory,
+      IdempotencyConfiguration idempotencyConfiguration,
+      IdempotencyRequestContext idempotencyRequestContext) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
+    this.idempotencyConfiguration = idempotencyConfiguration;
+    this.idempotencyRequestContext = idempotencyRequestContext;
   }
 
   /**
@@ -296,12 +304,28 @@ public class IcebergCatalogAdapter
                         ns, createTableRequest, delegationModes, refreshCredentialsEndpoint))
                 .build();
           } else {
-            LoadTableResponse response =
-                catalog.createTableDirect(
-                    ns, createTableRequest, delegationModes, refreshCredentialsEndpoint);
-            return tryInsertETagHeader(
-                    Response.ok(response), response, namespace, createTableRequest.name())
-                .build();
+            // Entity-property idempotency: only honor the header when the feature is enabled. The
+            // key + expiry are forwarded so the handler can embed them into the new table entity
+            // (single-transaction model) and replay a prior success on retry.
+            Optional<UUID> effectiveKey =
+                idempotencyConfiguration.enabled()
+                    ? Optional.ofNullable(idempotencyKey)
+                    : Optional.empty();
+            try {
+              idempotencyRequestContext.setPendingKey(effectiveKey.orElse(null));
+              LoadTableResponse response =
+                  catalog.createTableDirect(
+                      ns,
+                      createTableRequest,
+                      delegationModes,
+                      refreshCredentialsEndpoint,
+                      effectiveKey);
+              return tryInsertETagHeader(
+                      Response.ok(response), response, namespace, createTableRequest.name())
+                  .build();
+            } finally {
+              idempotencyRequestContext.clearPending();
+            }
           }
         });
   }

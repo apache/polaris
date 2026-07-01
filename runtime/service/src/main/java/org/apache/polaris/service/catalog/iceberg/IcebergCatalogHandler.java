@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
@@ -98,6 +99,7 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.EntityIdempotency;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -130,6 +132,7 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.jspecify.annotations.NonNull;
@@ -214,6 +217,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract Clock clock();
 
   protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
+
+  protected abstract IdempotencyConfiguration idempotencyConfiguration();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -450,11 +455,56 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       CreateTableRequest request,
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
+    return createTableDirect(
+        namespace, request, delegationModes, refreshCredentialsEndpoint, Optional.empty());
+  }
+
+  /**
+   * {@code createTableDirect} with entity-property idempotency support. When {@code idempotencyKey}
+   * is present, the key is embedded into the new table entity's internal properties within the same
+   * transaction as the create (expiry comes from {@code IdempotencyRequestContext}). A subsequent
+   * retry that arrives while the key is still live replays the original success (rebuilding the
+   * load response from current catalog state) instead of returning a 409 conflict.
+   */
+  public LoadTableResponse createTableDirect(
+      Namespace namespace,
+      CreateTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<UUID> idempotencyKey) {
 
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
+
+    // Idempotency replay: on a retry the table already exists and carries the key in its internal
+    // properties (committed atomically with the original create). Rebuild the load response from
+    // current catalog state rather than failing with AlreadyExists.
+    if (idempotencyActive(idempotencyKey)) {
+      IcebergTableLikeEntity existing =
+          passthroughResolveTableEntityForIdempotency(tableIdentifier);
+      if (existing != null
+          && EntityIdempotency.hasLiveKey(
+              existing.getInternalPropertiesAsMap(), idempotencyKey.get(), clock().instant())) {
+        Table table = baseCatalog.loadTable(tableIdentifier);
+        if (table instanceof BaseTable baseTable) {
+          return buildLoadTableResponseWithDelegationCredentials(
+                  tableIdentifier,
+                  baseTable.operations().current(),
+                  resolvedMode,
+                  Set.of(
+                      PolarisStorageActions.READ,
+                      PolarisStorageActions.WRITE,
+                      PolarisStorageActions.LIST),
+                  refreshCredentialsEndpoint)
+              .build();
+        }
+        throw notFoundExceptionForTableLikeEntity(
+            tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+      }
+    }
+
     if (baseCatalog.tableExists(tableIdentifier)) {
       throw alreadyExistsExceptionForTableLikeEntity(
           tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
@@ -464,14 +514,44 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
     properties.putAll(reservedProperties().removeReservedProperties(request.properties()));
 
-    Table table =
-        baseCatalog
-            .buildTable(tableIdentifier, request.schema())
-            .withLocation(request.location())
-            .withPartitionSpec(request.spec())
-            .withSortOrder(request.writeOrder())
-            .withProperties(properties)
-            .create();
+    Table table;
+    try {
+      table =
+          baseCatalog
+              .buildTable(tableIdentifier, request.schema())
+              .withLocation(request.location())
+              .withPartitionSpec(request.spec())
+              .withSortOrder(request.writeOrder())
+              .withProperties(properties)
+              .create();
+    } catch (AlreadyExistsException e) {
+      // Concurrent same-key create: the race winner committed the key atomically with the table, so
+      // a single fresh lookup (no polling/backoff) is enough to replay instead of returning 409.
+      if (idempotencyActive(idempotencyKey)) {
+        IcebergTableLikeEntity winner =
+            passthroughResolveTableEntityForIdempotency(tableIdentifier);
+        if (winner != null
+            && EntityIdempotency.hasLiveKey(
+                winner.getInternalPropertiesAsMap(), idempotencyKey.get(), clock().instant())) {
+          Table existingTable = baseCatalog.loadTable(tableIdentifier);
+          if (existingTable instanceof BaseTable baseTable) {
+            return buildLoadTableResponseWithDelegationCredentials(
+                    tableIdentifier,
+                    baseTable.operations().current(),
+                    resolvedMode,
+                    Set.of(
+                        PolarisStorageActions.READ,
+                        PolarisStorageActions.WRITE,
+                        PolarisStorageActions.LIST),
+                    refreshCredentialsEndpoint)
+                .build();
+          }
+          throw notFoundExceptionForTableLikeEntity(
+              tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+        }
+      }
+      throw e;
+    }
 
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
@@ -714,6 +794,34 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return IcebergTableLikeEntity.of(rawLeafEntity);
     }
     return null; // could be an external catalog
+  }
+
+  private boolean idempotencyActive(Optional<UUID> idempotencyKey) {
+    return idempotencyKey.isPresent() && idempotencyConfiguration().enabled();
+  }
+
+  /**
+   * Resolve the table entity from persistence for idempotency replay, or {@code null} if it does
+   * not exist.
+   *
+   * <p>Uses {@link
+   * PolarisResolutionManifestCatalogView#getPassthroughResolvedPath(ResolvedPathKey)}, which runs a
+   * new {@code Resolver} and loads entities from the metastore (via {@code getOrLoadEntityByName} /
+   * {@code loadResolvedEntityByName}). This is not the authorization-time snapshot from {@link
+   * PolarisResolutionManifestCatalogView#getResolvedPath(ResolvedPathKey)}.
+   */
+  private @Nullable IcebergTableLikeEntity passthroughResolveTableEntityForIdempotency(
+      TableIdentifier tableIdentifier) {
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getPassthroughResolvedPath(ResolvedPathKey.ofTableLike(tableIdentifier));
+    if (target == null) {
+      return null;
+    }
+    PolarisEntity leaf = target.getRawLeafEntity();
+    if (leaf == null || leaf.getType() != PolarisEntityType.TABLE_LIKE) {
+      return null;
+    }
+    return IcebergTableLikeEntity.of(leaf);
   }
 
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
