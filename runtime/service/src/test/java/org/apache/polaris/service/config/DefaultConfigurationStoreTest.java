@@ -199,4 +199,15 @@ public class DefaultConfigurationStoreTest {
     Assertions.assertThat(configurationStore.getConfiguration(realmContext, catalog, safeConfig))
         .isTrue();
   }
+
+  @Test
+  public void testInvalidFeatureConfigurationIsHandled() {
+    // invalid feature key format (simulates malformed configuration input)
+    String invalidKey = "polaris.features.invalid..json";
+
+    Object value = configurationStore.getConfiguration(realmContext, invalidKey);
+
+    // should not crash and should safely return null
+    assertThat(value).isNull();
+  }
 }
