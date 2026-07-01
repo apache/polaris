@@ -74,6 +74,8 @@ Please refer to the documentation here:
 
 Additionally, the retries can be configured via `polaris.persistence.relational.jdbc.*` properties; please refer to the [Configuring Polaris]({{% ref "../configuration" %}}) section.
 
+By default, Polaris stores its tables in a schema named `POLARIS_SCHEMA`. Set `polaris.persistence.relational.jdbc.schema-name` to use a different schema (for example, to run multiple Polaris deployments in the same database or to comply with a schema-naming policy). The value must be a valid SQL identifier: it must start with a letter or underscore and contain only letters, digits, and underscores. Bootstrapping creates the configured schema if it does not already exist.
+
 ## Bootstrapping Polaris
 
 Before using Polaris with the Relational JDBC backend, you must bootstrap the metastore to create the necessary schema and initial realm. This is done using the [Admin Tool]({{% ref "../admin-tool" %}}).
