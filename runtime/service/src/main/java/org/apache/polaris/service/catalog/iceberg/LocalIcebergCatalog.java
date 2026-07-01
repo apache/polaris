@@ -79,7 +79,6 @@ import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
-import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.LocationProvider;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.util.LocationUtil;
@@ -427,9 +426,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             new HashMap<>(tableDefaultProperties),
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
-    InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
-    TableMetadata metadata = TableMetadataParser.read(metadataFile);
-    validateMetadataFileInTableDir(identifier, metadata);
+    TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFileLocation);
+    validateTableMetadataLocations(
+        identifier, metadata, resolvedParent, resolvedParent.getRawFullPath());
+
     ops.commit(null, metadata);
 
     return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
@@ -455,20 +455,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
     TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFileLocation);
-    validateMetadataFileInTableDir(identifier, metadata);
-
-    List<PolarisEntity> resolvedNamespace = resolvedPath.getRawParentPath();
-    var tableLocations = StorageUtil.getLocationsUsedByTable(metadata);
-    CatalogUtils.validateLocationsForTableLike(
-        realmConfig, identifier, tableLocations, resolvedPath);
-    tableLocations.forEach(
-        location ->
-            validateNoLocationOverlap(
-                catalogEntity,
-                identifier,
-                resolvedNamespace,
-                location,
-                resolvedPath.getRawLeafEntity()));
+    validateTableMetadataLocations(
+        identifier, metadata, resolvedPath, resolvedPath.getRawParentPath());
 
     PolarisEntity rawEntity = resolvedPath.getRawLeafEntity();
     if (rawEntity.getSubType() != PolarisEntitySubType.ICEBERG_TABLE) {
@@ -1080,6 +1068,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
+
+    validateLocationForTableLike(identifier, metadataFileLocation, resolvedParent);
+
     FileIO fileIO =
         loadFileIOForTableLike(
             identifier,
@@ -1088,8 +1079,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             new HashMap<>(tableDefaultProperties),
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
-    InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
-    ViewMetadata metadata = ViewMetadataParser.read(metadataFile);
+    ViewMetadata metadata = ViewMetadataParser.read(fileIO, metadataFileLocation);
+
+    validateLocationForTableLike(identifier, metadata.location(), resolvedParent);
+    validateMetadataFileInTableDir(identifier, metadata.location(), metadataFileLocation);
+
     ops.commit(null, metadata);
 
     return new BaseView(ops, ViewUtil.fullViewName(name(), identifier));
@@ -1276,12 +1270,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         StorageUtil.getLocationsUsedByTable(tableMetadata.location(), tableMetadata.properties());
     CatalogUtils.validateLocationsForTableLike(
         realmConfig, tableIdentifier, dataLocations, resolvedStorageEntity);
-    List<PolarisEntity> resolvedNamespace = resolvedStorageEntity.getRawFullPath();
-    PolarisEntity storageLeafEntity = resolvedStorageEntity.getRawLeafEntity();
-    dataLocations.forEach(
-        location ->
-            validateNoLocationOverlap(
-                catalogEntity, tableIdentifier, resolvedNamespace, location, storageLeafEntity));
+    validateNoLocationsOverlap(
+        tableIdentifier,
+        dataLocations,
+        resolvedStorageEntity,
+        resolvedStorageEntity.getRawFullPath());
   }
 
   /**
@@ -1315,6 +1308,35 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedStorageEntity) {
     CatalogUtils.validateLocationsForTableLike(
         realmConfig, identifier, Set.of(location), resolvedStorageEntity);
+  }
+
+  private void validateTableMetadataLocations(
+      TableIdentifier identifier,
+      TableMetadata metadata,
+      PolarisResolvedPathWrapper resolvedStorageEntity,
+      List<PolarisEntity> resolvedNamespace) {
+    // checks throwing ForbiddenException (must come first)
+    Set<String> locations = StorageUtil.getLocationsUsedByTable(metadata);
+    CatalogUtils.validateLocationsForTableLike(
+        realmConfig, identifier, locations, resolvedStorageEntity);
+    validateNoLocationsOverlap(identifier, locations, resolvedStorageEntity, resolvedNamespace);
+    // checks throwing BadRequestException (must come after)
+    validateMetadataFileInTableDir(identifier, metadata);
+  }
+
+  private void validateNoLocationsOverlap(
+      TableIdentifier identifier,
+      Set<String> locations,
+      PolarisResolvedPathWrapper resolvedStorageEntity,
+      List<PolarisEntity> resolvedNamespace) {
+    locations.forEach(
+        location ->
+            validateNoLocationOverlap(
+                catalogEntity,
+                identifier,
+                resolvedNamespace,
+                location,
+                resolvedStorageEntity.getRawLeafEntity()));
   }
 
   /**
@@ -1857,15 +1879,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         // for the storage configuration inherited under this entity's path.
         CatalogUtils.validateLocationsForTableLike(
             realmConfig, tableIdentifier, requestedLocations, resolvedStorageEntity);
-        // also validate that the table location doesn't overlap an existing table
-        requestedLocations.forEach(
-            location ->
-                validateNoLocationOverlap(
-                    catalogEntity,
-                    tableIdentifier,
-                    resolvedNamespace,
-                    location,
-                    resolvedStorageEntity.getRawLeafEntity()));
+        validateNoLocationsOverlap(
+            tableIdentifier, requestedLocations, resolvedStorageEntity, resolvedNamespace);
         // and that the metadata file points to a location within the table's directory structure
         validateMetadataFileInTableDir(
             tableIdentifier, metadata.location(), nextMetadataFileLocation(metadata));
