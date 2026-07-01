@@ -29,14 +29,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.SnapshotParser;
+import org.apache.iceberg.SnapshotRef;
+import org.apache.iceberg.SnapshotRefType;
+import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -154,6 +165,295 @@ public class CommitTransactionEventTest {
     assertThat(metadata.properties()).containsEntry(propertyName, "value2");
   }
 
+  @Test
+  void testStagedCreateViaCommitTransaction() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    // Table 1: empty staged-create (no data files)
+    String emptyTableName = "staged-empty-table";
+    String emptyTableLocation =
+        String.format("%s/%s/%s/%s", catalogLocation, catalog, namespace, emptyTableName);
+    UpdateTableRequest emptyTableCreate =
+        buildStagedCreateRequest(TableIdentifier.of(namespace, emptyTableName), emptyTableLocation);
+
+    // Table 2: staged-create with a snapshot (simulating stageCreate → write → commit flow).
+    // The server doesn't read manifest/data files during commit — it only persists metadata.
+    String dataTableName = "staged-data-table";
+    String dataTableLocation =
+        String.format("%s/%s/%s/%s", catalogLocation, catalog, namespace, dataTableName);
+    String manifestListPath = dataTableLocation + "/metadata/snap-1-manifest-list.avro";
+    long snapshotId = 1L;
+
+    Snapshot snapshot =
+        SnapshotParser.fromJson(
+            String.format(
+                "{\"snapshot-id\":%d,\"timestamp-ms\":%d,\"summary\":{\"operation\":\"append\"},"
+                    + "\"manifest-list\":\"%s\",\"schema-id\":0}",
+                snapshotId, System.currentTimeMillis(), manifestListPath));
+
+    List<MetadataUpdate> dataTableUpdates =
+        List.of(
+            new MetadataUpdate.AssignUUID(UUID.randomUUID().toString()),
+            new MetadataUpdate.SetLocation(dataTableLocation),
+            new MetadataUpdate.AddSchema(SCHEMA),
+            new MetadataUpdate.SetCurrentSchema(0),
+            new MetadataUpdate.AddPartitionSpec(PartitionSpec.unpartitioned()),
+            new MetadataUpdate.SetDefaultPartitionSpec(0),
+            new MetadataUpdate.AddSortOrder(SortOrder.unsorted()),
+            new MetadataUpdate.SetDefaultSortOrder(0),
+            new MetadataUpdate.AddSnapshot(snapshot),
+            new MetadataUpdate.SetSnapshotRef(
+                SnapshotRef.MAIN_BRANCH, snapshotId, SnapshotRefType.BRANCH, null, null, null));
+
+    UpdateTableRequest dataTableCreate =
+        UpdateTableRequest.create(
+            TableIdentifier.of(namespace, dataTableName),
+            List.of(new UpdateRequirement.AssertTableDoesNotExist()),
+            dataTableUpdates);
+
+    // Commit both tables together
+    CommitTransactionRequest req =
+        new CommitTransactionRequest(List.of(emptyTableCreate, dataTableCreate));
+
+    try (Response response =
+        testServices
+            .restApi()
+            .commitTransaction(
+                catalog,
+                req,
+                IDEMPOTENCY_KEY,
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+
+    // Verify the empty table was created with no snapshot
+    try (Response loadResponse =
+        testServices
+            .restApi()
+            .loadTable(
+                catalog,
+                namespace,
+                emptyTableName,
+                null,
+                null,
+                null,
+                null,
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(loadResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      LoadTableResponse loadTableResponse = (LoadTableResponse) loadResponse.getEntity();
+      assertThat(loadTableResponse.tableMetadata().currentSnapshot()).isNull();
+    }
+
+    // Verify the data table was created with the snapshot visible
+    try (Response loadResponse =
+        testServices
+            .restApi()
+            .loadTable(
+                catalog,
+                namespace,
+                dataTableName,
+                null,
+                null,
+                null,
+                null,
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(loadResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      LoadTableResponse loadTableResponse = (LoadTableResponse) loadResponse.getEntity();
+      TableMetadata loadedMetadata = loadTableResponse.tableMetadata();
+      assertThat(loadedMetadata.currentSnapshot()).isNotNull();
+      assertThat(loadedMetadata.currentSnapshot().snapshotId()).isEqualTo(snapshotId);
+      assertThat(loadedMetadata.currentSnapshot().manifestListLocation())
+          .isEqualTo(manifestListPath);
+    }
+  }
+
+  @Test
+  void testMixedStagedCreateAndUpdateViaCommitTransaction() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    // First, create an existing table that we'll update in the same transaction
+    String existingTableName = "existing-table-for-mixed";
+    createTable(testServices, existingTableName, catalogLocation);
+
+    // Build a staged-create for a brand new table
+    String newTableName = "staged-mixed-new-table";
+    String newTableLocation =
+        String.format("%s/%s/%s/%s", catalogLocation, catalog, namespace, newTableName);
+
+    UpdateTableRequest stagedCreateChange =
+        buildStagedCreateRequest(TableIdentifier.of(namespace, newTableName), newTableLocation);
+
+    // Build a regular update for the existing table (set a property)
+    UpdateTableRequest regularUpdate =
+        UpdateTableRequest.create(
+            TableIdentifier.of(namespace, existingTableName),
+            List.of(),
+            List.of(new MetadataUpdate.SetProperties(Map.of("key1", "value1"))));
+
+    // Commit both in the same transaction: regular update + staged-create
+    CommitTransactionRequest req =
+        new CommitTransactionRequest(List.of(regularUpdate, stagedCreateChange));
+
+    try (Response response =
+        testServices
+            .restApi()
+            .commitTransaction(
+                catalog,
+                req,
+                IDEMPOTENCY_KEY,
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+
+    // Verify the new table was created
+    try (Response listResponse =
+        testServices
+            .restApi()
+            .listTables(
+                catalog,
+                namespace,
+                null,
+                null,
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(listResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      ListTablesResponse tablesResponse = (ListTablesResponse) listResponse.getEntity();
+      assertThat(tablesResponse.identifiers())
+          .contains(TableIdentifier.of(namespace, newTableName));
+    }
+  }
+
+  @Test
+  void testStagedCreateFailsWhenTableAlreadyExists() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    // Create an existing table first
+    String existingTableName = "already-existing-table";
+    createTable(testServices, existingTableName, catalogLocation);
+
+    // Now attempt a staged-create for the same table via commitTransaction
+    String tableLocation =
+        String.format("%s/%s/%s/%s-new", catalogLocation, catalog, namespace, existingTableName);
+
+    UpdateTableRequest stagedCreateChange =
+        buildStagedCreateRequest(TableIdentifier.of(namespace, existingTableName), tableLocation);
+
+    CommitTransactionRequest req = new CommitTransactionRequest(List.of(stagedCreateChange));
+
+    // Should fail because the table already exists
+    assertThatThrownBy(
+            () ->
+                testServices
+                    .restApi()
+                    .commitTransaction(
+                        catalog,
+                        req,
+                        IDEMPOTENCY_KEY,
+                        testServices.realmContext(),
+                        testServices.securityContext()))
+        .isInstanceOf(AlreadyExistsException.class);
+  }
+
+  @Test
+  void testStagedCreateFailsOnLocationOverlapWithExistingTable() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    // Create an existing table at a specific location
+    String existingTableName = "overlap-existing-table";
+    String sharedLocation =
+        String.format("%s/%s/%s/%s", catalogLocation, catalog, namespace, existingTableName);
+    createTable(testServices, existingTableName, catalogLocation);
+
+    // Attempt a staged-create for a DIFFERENT table but at the SAME location
+    String newTableName = "overlap-new-table";
+
+    UpdateTableRequest stagedCreateChange =
+        buildStagedCreateRequest(TableIdentifier.of(namespace, newTableName), sharedLocation);
+
+    CommitTransactionRequest req = new CommitTransactionRequest(List.of(stagedCreateChange));
+
+    // Should fail due to location overlap with existing table
+    assertThatThrownBy(
+            () ->
+                testServices
+                    .restApi()
+                    .commitTransaction(
+                        catalog,
+                        req,
+                        IDEMPOTENCY_KEY,
+                        testServices.realmContext(),
+                        testServices.securityContext()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing");
+  }
+
+  @Test
+  void testRollbackOnFailedUpdate_stagedCreateNotPersisted() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    // Create an existing table that we'll attempt to update with a failing requirement
+    String existingTableName = "rollback-existing-table";
+    createTable(testServices, existingTableName, catalogLocation);
+
+    // Build a staged-create for a brand new table
+    String newTableName = "rollback-new-table";
+    String newTableLocation =
+        String.format("%s/%s/%s/%s", catalogLocation, catalog, namespace, newTableName);
+    UpdateTableRequest stagedCreateChange =
+        buildStagedCreateRequest(TableIdentifier.of(namespace, newTableName), newTableLocation);
+
+    // Build a failing update for the existing table (schema ID -1 does not exist)
+    UpdateTableRequest failingUpdate =
+        UpdateTableRequest.create(
+            TableIdentifier.of(namespace, existingTableName),
+            List.of(new UpdateRequirement.AssertCurrentSchemaID(-1)),
+            List.of(new MetadataUpdate.SetProperties(Map.of("key1", "value1"))));
+
+    // Commit both: staged-create + failing update
+    CommitTransactionRequest req =
+        new CommitTransactionRequest(List.of(stagedCreateChange, failingUpdate));
+
+    // The transaction should fail due to the bad schema requirement on the existing table
+    assertThatThrownBy(
+            () ->
+                testServices
+                    .restApi()
+                    .commitTransaction(
+                        catalog,
+                        req,
+                        IDEMPOTENCY_KEY,
+                        testServices.realmContext(),
+                        testServices.securityContext()))
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("current schema");
+
+    // Verify the staged-create was NOT persisted — the table should not exist
+    try (Response listResponse =
+        testServices
+            .restApi()
+            .listTables(
+                catalog,
+                namespace,
+                null,
+                null,
+                testServices.realmContext(),
+                testServices.securityContext())) {
+      assertThat(listResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      ListTablesResponse tablesResponse = (ListTablesResponse) listResponse.getEntity();
+      assertThat(tablesResponse.identifiers())
+          .doesNotContain(TableIdentifier.of(namespace, newTableName));
+    }
+  }
+
   private void createCatalogAndNamespace(
       TestServices services, Map<String, String> catalogConfig, String catalogLocation) {
     CatalogProperties.Builder propertiesBuilder =
@@ -251,6 +551,22 @@ public class CommitTransactionEventTest {
               testServices.securityContext());
     } catch (Exception ignored) {
     }
+  }
+
+  private UpdateTableRequest buildStagedCreateRequest(
+      TableIdentifier tableIdentifier, String location) {
+    List<MetadataUpdate> createUpdates =
+        List.of(
+            new MetadataUpdate.AssignUUID(UUID.randomUUID().toString()),
+            new MetadataUpdate.SetLocation(location),
+            new MetadataUpdate.AddSchema(SCHEMA),
+            new MetadataUpdate.SetCurrentSchema(0),
+            new MetadataUpdate.AddPartitionSpec(PartitionSpec.unpartitioned()),
+            new MetadataUpdate.SetDefaultPartitionSpec(0),
+            new MetadataUpdate.AddSortOrder(SortOrder.unsorted()),
+            new MetadataUpdate.SetDefaultSortOrder(0));
+    return UpdateTableRequest.create(
+        tableIdentifier, List.of(new UpdateRequirement.AssertTableDoesNotExist()), createUpdates);
   }
 
   private CommitTransactionRequest generateCommitTransactionRequest(

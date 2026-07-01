@@ -22,6 +22,7 @@ import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATE
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
 import com.google.common.base.Preconditions;
@@ -93,6 +94,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -111,6 +113,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.core.rest.PolarisEndpoints;
@@ -1170,18 +1173,106 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     catalogHandlerUtils().renameTable(baseCatalog, request);
   }
 
+  private void authorizeCommitTransactionOrThrow(List<UpdateTableRequest> tableChanges) {
+    List<UpdateTableRequest> stagedCreates = new ArrayList<>();
+    List<UpdateTableRequest> regularUpdates = new ArrayList<>();
+    for (UpdateTableRequest change : tableChanges) {
+      if (CatalogHandlerUtils.isCreate(change)) {
+        stagedCreates.add(change);
+      } else {
+        regularUpdates.add(change);
+      }
+    }
+
+    resolutionManifest = newResolutionManifest();
+
+    // Add table paths for regular updates (must exist)
+    for (UpdateTableRequest change : regularUpdates) {
+      resolutionManifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(change.identifier()),
+              PolarisEntityType.TABLE_LIKE));
+    }
+
+    // Add namespace paths (required) + table paths (optional) for staged creates
+    for (UpdateTableRequest change : stagedCreates) {
+      TableIdentifier id = change.identifier();
+      resolutionManifest.addPath(
+          new ResolverPath(Arrays.asList(id.namespace().levels()), PolarisEntityType.NAMESPACE));
+      resolutionManifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(id),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */));
+    }
+
+    ResolverStatus status = resolutionManifest.resolveAll();
+    if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
+      ResolverPath failedPath = status.getFailedToResolvePath();
+      if (failedPath.lastEntityType() == PolarisEntityType.NAMESPACE) {
+        // Staged-create: the parent namespace does not exist
+        throw noSuchNamespaceException(
+            Namespace.of(failedPath.entityNames().toArray(String[]::new)));
+      }
+      TableIdentifier identifier =
+          PolarisCatalogHelpers.listToTableIdentifier(failedPath.entityNames());
+      throw notFoundExceptionForTableLikeEntity(identifier, PolarisEntitySubType.ICEBERG_TABLE);
+    }
+
+    // Authorize regular updates: TABLE_WRITE_PROPERTIES on table entities
+    if (!regularUpdates.isEmpty()) {
+      List<PolarisResolvedPathWrapper> updateTargets =
+          regularUpdates.stream()
+              .map(
+                  change ->
+                      Optional.ofNullable(
+                              resolutionManifest.getResolvedPath(
+                                  ResolvedPathKey.ofTableLike(change.identifier()),
+                                  PolarisEntitySubType.ICEBERG_TABLE,
+                                  true))
+                          .orElseThrow(
+                              () ->
+                                  notFoundExceptionForTableLikeEntity(
+                                      change.identifier(), PolarisEntitySubType.ICEBERG_TABLE)))
+              .toList();
+      authorizer()
+          .authorizeOrThrow(
+              polarisPrincipal(),
+              resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+              PolarisAuthorizableOperation.UPDATE_TABLE,
+              updateTargets,
+              null);
+    }
+
+    // Authorize staged creates: TABLE_CREATE on parent namespace
+    if (!stagedCreates.isEmpty()) {
+      List<PolarisResolvedPathWrapper> createTargets =
+          stagedCreates.stream()
+              .map(
+                  change -> {
+                    Namespace ns = change.identifier().namespace();
+                    PolarisResolvedPathWrapper nsTarget =
+                        resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(ns), true);
+                    if (nsTarget == null) {
+                      throw noSuchNamespaceException(ns);
+                    }
+                    return nsTarget;
+                  })
+              .toList();
+      authorizer()
+          .authorizeOrThrow(
+              polarisPrincipal(),
+              resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+              PolarisAuthorizableOperation.UPDATE_TABLE_FOR_STAGED_CREATE,
+              createTargets,
+              null);
+    }
+
+    initializeCatalog();
+  }
+
   public void commitTransaction(CommitTransactionRequest commitTransactionRequest) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.COMMIT_TRANSACTION;
-    // TODO: The authz actually needs to detect hidden updateForStagedCreate UpdateTableRequests
-    // and have some kind of per-item conditional privilege requirement if we want to make it
-    // so that only the stageCreate updates need TABLE_CREATE whereas everything else only
-    // needs TABLE_WRITE_PROPERTIES.
-    authorizeCollectionOfTableLikeOperationOrThrow(
-        op,
-        PolarisEntitySubType.ICEBERG_TABLE,
-        commitTransactionRequest.tableChanges().stream()
-            .map(UpdateTableRequest::identifier)
-            .toList());
+    authorizeCommitTransactionOrThrow(commitTransactionRequest.tableChanges());
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
@@ -1193,9 +1284,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           baseCatalog.getClass().getName());
     }
 
-    // Swap in TransactionWorkspaceMetaStoreManager for all mutations made by this baseCatalog to
-    // only go into an in-memory collection that we can commit as a single atomic unit after all
-    // validations.
+    // Swap in TransactionWorkspaceMetaStoreManager so all mutations (both creates and updates)
+    // go into an in-memory buffer that we commit as a single atomic unit at the end.
+    // Location validation is deferred: the workspace returns no-op results for validation
+    // calls during the loop, and real validation happens after the loop with the real metastore.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
         new TransactionWorkspaceMetaStoreManager(diagnostics(), metaStoreManager());
     ((LocalIcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
@@ -1205,84 +1297,137 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // LinkedHashMap preserves insertion order for deterministic processing.
     Map<TableIdentifier, List<UpdateTableRequest>> changesByTable = new LinkedHashMap<>();
     for (UpdateTableRequest change : commitTransactionRequest.tableChanges()) {
-      if (CatalogHandlerUtils.isCreate(change)) {
-        throw new BadRequestException(
-            "Unsupported operation: commitTranaction with updateForStagedCreate: %s", change);
-      }
       changesByTable.computeIfAbsent(change.identifier(), k -> new ArrayList<>()).add(change);
     }
 
-    // Process each table's changes in order.
-    // Note: All UpdateTableRequests for a given table are coalesced into a single metadata
-    // update and a single tableOps.commit(), which results in one Polaris entity update per
-    // table. This is subtly different from applying each UpdateTableRequest as an independent
-    // commit (as if each were under a lock). Requirements are still validated sequentially
-    // against the evolving metadata, so conflicts are detected correctly.
-    // See also the TODO in TransactionWorkspaceMetaStoreManager for a more general (but more
-    // complex) alternative that would intercept at the MetaStoreManager layer.
+    // Process each table's changes in order. Both staged-creates and regular updates are
+    // processed within the transaction workspace — creates buffer into pendingCreations,
+    // updates buffer into pendingUpdates.
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
-    changesByTable.forEach(
-        (tableIdentifier, changes) -> {
-          Table table = baseCatalog.loadTable(tableIdentifier);
-          if (!(table instanceof BaseTable baseTable)) {
-            throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-          }
+    // Track staged-creates for deferred location validation after the real metastore is restored.
+    List<Map.Entry<TableIdentifier, TableMetadata>> stagedCreateEntries = new ArrayList<>();
+    try {
+      changesByTable.forEach(
+          (tableIdentifier, changes) -> {
+            boolean isStagedCreate = changes.stream().anyMatch(CatalogHandlerUtils::isCreate);
 
-          TableOperations tableOps = baseTable.operations();
-          TableMetadata baseMetadata = tableOps.current();
+            // Reject invalid groups: a table cannot have both staged-create and regular
+            // update requests in the same transaction. If any request asserts the table
+            // does not exist, ALL requests for that table must be staged-creates.
+            if (isStagedCreate
+                && changes.stream().anyMatch(change -> !CatalogHandlerUtils.isCreate(change))) {
+              throw new BadRequestException(
+                  "Invalid transaction: table '%s' has both staged-create and"
+                      + " regular update requests",
+                  tableIdentifier);
+            }
 
-          // Apply each change sequentially: validate requirements against current state,
-          // then apply updates. This ensures conflicts are detected (e.g., if two changes
-          // both expect schema ID 0, the second will fail after the first increments it).
-          TableMetadata currentMetadata = baseMetadata;
-          for (UpdateTableRequest change : changes) {
-            // Validate requirements against the current metadata state
-            final TableMetadata metadataForValidation = currentMetadata;
-            change
-                .requirements()
-                .forEach(requirement -> requirement.validate(metadataForValidation));
+            if (isStagedCreate) {
+              // For staged-creates, the table does not yet exist in the metastore.
+              // Use newTableOps directly to get TableOperations for creation.
+              // The workspace buffers the createEntityIfNotExists call.
+              TableOperations tableOps =
+                  ((LocalIcebergCatalog) baseCatalog).newTableOps(tableIdentifier);
 
-            // TODO: Refactor to share/reconcile the update-application logic below with
-            // CatalogHandlerUtils to avoid divergence as complexity grows.
-            TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
-            for (MetadataUpdate singleUpdate : change.updates()) {
-              // Note: If location-overlap checking is refactored to be atomic, we could
-              // support validation within a single multi-table transaction as well, but
-              // will need to update the TransactionWorkspaceMetaStoreManager to better
-              // expose the concept of being able to read uncommitted updates.
-              if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
-                if (!currentMetadata.location().equals(setLocation.location())
-                    && !realmConfig()
-                        .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
-                  throw new BadRequestException(
-                      "Unsupported operation: commitTransaction containing SetLocation"
-                          + " for table '%s' and new location '%s'",
-                      change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
+              // Build metadata from empty, applying all updates from the staged-create.
+              // Apply update filters to enforce location transformations (e.g., preventing
+              // a user from staging a table to an unauthorized storage path).
+              // Validate the AssertTableDoesNotExist requirement against null metadata
+              // (table does not exist yet). This is the only requirement allowed for staged
+              // creates — CatalogHandlerUtils.isCreate() rejects any others.
+              TableMetadata.Builder metadataBuilder = TableMetadata.buildFromEmpty();
+              for (UpdateTableRequest change : changes) {
+                UpdateTableRequest filteredChange = applyUpdateFilters(change);
+                filteredChange.requirements().forEach(req -> req.validate((TableMetadata) null));
+                for (MetadataUpdate singleUpdate : filteredChange.updates()) {
+                  singleUpdate.applyTo(metadataBuilder);
                 }
               }
 
-              // Apply updates to builder
-              singleUpdate.applyTo(metadataBuilder);
+              // Commit with null base to create the table entity (buffered in workspace)
+              tableOps.commit(null, metadataBuilder.build());
+              TableMetadata createdMetadata = tableOps.current();
+              tableMetadataObjs.add(createdMetadata);
+              stagedCreateEntries.add(Map.entry(tableIdentifier, createdMetadata));
+
+            } else {
+              // Regular update: load existing table and apply changes.
+              // The workspace buffers the updateEntityPropertiesIfNotChanged call.
+              Table table = baseCatalog.loadTable(tableIdentifier);
+              if (!(table instanceof BaseTable baseTable)) {
+                throw new IllegalStateException(
+                    "Cannot wrap catalog that does not produce BaseTable");
+              }
+
+              TableOperations tableOps = baseTable.operations();
+              TableMetadata baseMetadata = tableOps.current();
+
+              // Apply each change sequentially: validate requirements against current state,
+              // then apply updates. This ensures conflicts are detected (e.g., if two changes
+              // both expect schema ID 0, the second will fail after the first increments it).
+              // Apply update filters to enforce location transformations.
+              TableMetadata currentMetadata = baseMetadata;
+              for (UpdateTableRequest change : changes) {
+                UpdateTableRequest filteredChange = applyUpdateFilters(change);
+                final TableMetadata metadataForValidation = currentMetadata;
+                filteredChange.requirements().forEach(req -> req.validate(metadataForValidation));
+
+                TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
+                for (MetadataUpdate singleUpdate : filteredChange.updates()) {
+                  if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
+                    if (!currentMetadata.location().equals(setLocation.location())
+                        && !realmConfig()
+                            .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+                      throw new BadRequestException(
+                          "Unsupported operation: commitTransaction containing SetLocation"
+                              + " for table '%s' and new location '%s'",
+                          filteredChange.identifier(), setLocation.location());
+                    }
+                  }
+                  singleUpdate.applyTo(metadataBuilder);
+                }
+                currentMetadata = metadataBuilder.build();
+              }
+
+              // Commit all accumulated changes for this table in a single atomic operation
+              if (!currentMetadata.changes().isEmpty()) {
+                tableOps.commit(baseMetadata, currentMetadata);
+              }
+
+              tableMetadataObjs.add(currentMetadata);
             }
+          });
+    } finally {
+      // Always restore the real metastore manager, even if processing throws.
+      ((LocalIcebergCatalog) baseCatalog).setMetaStoreManager(metaStoreManager());
+    }
 
-            // Update currentMetadata to reflect this change for subsequent requirement validation
-            currentMetadata = metadataBuilder.build();
-          }
+    // Deferred validation: validate location overlap for pending creations using the real
+    // metastore (which supports listEntities/hasOverlappingSiblings). During the loop above,
+    // the workspace returned no-op results for these calls.
+    // Also check for intra-transaction overlaps: two creates in the same batch must not
+    // claim overlapping locations (including write.data.path and write.metadata.path),
+    // since the DB overlap check won't see uncommitted peers.
+    Set<String> claimedLocationsInTx = new HashSet<>();
+    for (Map.Entry<TableIdentifier, TableMetadata> entry : stagedCreateEntries) {
+      Set<String> dataLocations = StorageUtil.getLocationsUsedByTable(entry.getValue());
+      for (String location : dataLocations) {
+        if (!claimedLocationsInTx.add(location)) {
+          throw new BadRequestException(
+              "Transaction contains multiple creates pointing to the same location: %s", location);
+        }
+      }
+      ((LocalIcebergCatalog) baseCatalog)
+          .validateStagedTableCreate(entry.getKey(), entry.getValue());
+    }
+    List<EntityWithPath> pendingCreations = transactionMetaStoreManager.getPendingCreations();
 
-          // Commit all accumulated changes for this table in a single atomic operation
-          if (!currentMetadata.changes().isEmpty()) {
-            tableOps.commit(baseMetadata, currentMetadata);
-          }
-
-          tableMetadataObjs.add(currentMetadata);
-        });
-
-    // Commit the collected updates in a single atomic operation
+    // Atomic commit: creates + updates in one transaction via commitTransactionBatch.
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
     EntitiesResult result =
         metaStoreManager()
-            .updateEntitiesPropertiesIfNotChanged(
-                callContext().getPolarisCallContext(), pendingUpdates);
+            .commitTransactionBatch(
+                callContext().getPolarisCallContext(), pendingCreations, pendingUpdates);
     if (!result.isSuccess()) {
       // TODO: Retries and server-side cleanup on failure, review possible exceptions
       throw new CommitFailedException(

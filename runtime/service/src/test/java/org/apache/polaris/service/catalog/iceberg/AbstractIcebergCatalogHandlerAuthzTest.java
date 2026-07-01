@@ -37,6 +37,7 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -1315,9 +1316,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     return authzTestsBuilder("commitTransaction")
         .action(() -> newHandler().commitTransaction(req))
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
@@ -1365,17 +1366,83 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     assertSuccess(
         adminService.grantPrivilegeOnTableToRole(
             CATALOG_NAME, CATALOG_ROLE1, TABLE_NS2_1, PolarisPrivilege.TABLE_WRITE_PROPERTIES));
+    newHandler().commitTransaction(req);
+  }
+
+  @Test
+  public void testCommitTransactionStagedCreateRequiresTableCreateOnNamespace() {
+    // A staged-create is identified by having AssertTableDoesNotExist in requirements.
+    // The updates must include enough metadata to create a valid table.
+    TableIdentifier stagedTable = TableIdentifier.of(NS1, "staged_new_table");
+    List<MetadataUpdate> createUpdates =
+        List.of(
+            new MetadataUpdate.AssignUUID(java.util.UUID.randomUUID().toString()),
+            new MetadataUpdate.SetLocation("file:///tmp/authz/ns1/staged_new_table"),
+            new MetadataUpdate.AddSchema(SCHEMA),
+            new MetadataUpdate.SetCurrentSchema(0),
+            new MetadataUpdate.AddPartitionSpec(PartitionSpec.unpartitioned()),
+            new MetadataUpdate.SetDefaultPartitionSpec(0),
+            new MetadataUpdate.AddSortOrder(SortOrder.unsorted()),
+            new MetadataUpdate.SetDefaultSortOrder(0));
+    UpdateTableRequest stagedCreateChange =
+        UpdateTableRequest.create(
+            stagedTable, List.of(new UpdateRequirement.AssertTableDoesNotExist()), createUpdates);
+
+    CommitTransactionRequest req = new CommitTransactionRequest(List.of(stagedCreateChange));
+
+    // Without TABLE_CREATE on the namespace, should fail with ForbiddenException
     Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
-    // Also grant TABLE_CREATE directly on TABLE_NS2_1
-    // TODO: If we end up having fine-grained differentiation between updateForStagedCreate
-    // and update, then this one should only be TABLE_CREATE on the *parent* of this last table
-    // and the table shouldn't exist.
+    // Grant TABLE_CREATE on NS1 (the parent namespace of the staged table)
     assertSuccess(
-        adminService.grantPrivilegeOnTableToRole(
-            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS2_1, PolarisPrivilege.TABLE_CREATE));
-    newHandler().commitTransaction(req);
+        adminService.grantPrivilegeOnNamespaceToRole(
+            CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.TABLE_CREATE));
+
+    // Now auth passes and the staged-create commits successfully
+    Assertions.assertThatCode(() -> newHandler().commitTransaction(req)).doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testCommitTransactionMixedUpdatesAndStagedCreates() {
+    // Mix of regular updates (on existing tables) and a staged-create
+    TableIdentifier stagedTable = TableIdentifier.of(NS1, "staged_mixed_table");
+    List<MetadataUpdate> createUpdates =
+        List.of(
+            new MetadataUpdate.AssignUUID(java.util.UUID.randomUUID().toString()),
+            new MetadataUpdate.SetLocation("file:///tmp/authz/ns1/staged_mixed_table"),
+            new MetadataUpdate.AddSchema(SCHEMA),
+            new MetadataUpdate.SetCurrentSchema(0),
+            new MetadataUpdate.AddPartitionSpec(PartitionSpec.unpartitioned()),
+            new MetadataUpdate.SetDefaultPartitionSpec(0),
+            new MetadataUpdate.AddSortOrder(SortOrder.unsorted()),
+            new MetadataUpdate.SetDefaultSortOrder(0));
+    UpdateTableRequest regularUpdate = UpdateTableRequest.create(TABLE_NS1_1, List.of(), List.of());
+    UpdateTableRequest stagedCreateChange =
+        UpdateTableRequest.create(
+            stagedTable, List.of(new UpdateRequirement.AssertTableDoesNotExist()), createUpdates);
+
+    CommitTransactionRequest req =
+        new CommitTransactionRequest(List.of(regularUpdate, stagedCreateChange));
+
+    // Without any privileges: ForbiddenException
+    Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
+        .isInstanceOf(ForbiddenException.class);
+
+    // Grant TABLE_WRITE_PROPERTIES on NS1 (covers the regular update on TABLE_NS1_1)
+    assertSuccess(
+        adminService.grantPrivilegeOnNamespaceToRole(
+            CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.TABLE_WRITE_PROPERTIES));
+    // Still fails - staged-create needs TABLE_CREATE on namespace
+    Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
+        .isInstanceOf(ForbiddenException.class);
+
+    // Grant TABLE_CREATE on NS1 (covers the staged-create)
+    assertSuccess(
+        adminService.grantPrivilegeOnNamespaceToRole(
+            CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.TABLE_CREATE));
+    // Both auth checks pass and the transaction commits successfully
+    Assertions.assertThatCode(() -> newHandler().commitTransaction(req)).doesNotThrowAnyException();
   }
 
   @TestFactory

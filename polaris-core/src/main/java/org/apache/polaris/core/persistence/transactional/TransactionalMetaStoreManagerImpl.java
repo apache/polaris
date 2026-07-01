@@ -1172,6 +1172,36 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         callCtx, () -> this.updateEntitiesPropertiesIfNotChanged(callCtx, ms, entities));
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull EntitiesResult commitTransactionBatch(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<EntityWithPath> creates,
+      @NonNull List<EntityWithPath> updates) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    return ms.runInTransaction(
+        callCtx,
+        () -> {
+          // Process creates first
+          for (EntityWithPath create : creates) {
+            EntityResult result =
+                this.createEntityIfNotExists(callCtx, ms, create.catalogPath(), create.entity());
+            if (result.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+              ms.rollback();
+              return new EntitiesResult(result.getReturnStatus(), result.getExtraInformation());
+            }
+          }
+
+          // Then process updates
+          if (!updates.isEmpty()) {
+            return this.updateEntitiesPropertiesIfNotChanged(callCtx, ms, updates);
+          }
+
+          return new EntitiesResult(Page.fromItems(List.of()));
+        });
+  }
+
   /**
    * See {@link PolarisMetaStoreManager#renameEntity(PolarisCallContext, List, PolarisBaseEntity,
    * List, PolarisEntity)}
