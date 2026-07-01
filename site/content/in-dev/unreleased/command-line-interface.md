@@ -46,6 +46,7 @@ Global Options:
   --host HOST                    Polaris server hostname
   --port PORT                    Polaris server port
   --base-url BASE_URL            Complete base URL (overrides host/port)
+  --catalog-url CATALOG_URL      Base URL for the Iceberg REST Catalog (IRC) API. Use when a proxy or deployment maps a custom path directly to the catalog root (no /api/catalog appended).
   --client-id CLIENT_ID          OAuth client ID
   --client-secret CLIENT_SECRET  OAuth client secret
   --access-token ACCESS_TOKEN    OAuth access token

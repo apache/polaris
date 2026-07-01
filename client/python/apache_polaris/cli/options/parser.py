@@ -43,6 +43,11 @@ class Parser(object):
         Argument(
             Arguments.BASE_URL, str, hint="Complete base URL (overrides host/port)"
         ),
+        Argument(
+            Arguments.CATALOG_URL,
+            str,
+            hint="Base URL for the Iceberg REST Catalog (IRC) API. Use when your --base-url or deployment maps directly to the catalog root (no /api/catalog appended).",
+        ),
         Argument(Arguments.CLIENT_ID, str, hint="OAuth client ID"),
         Argument(
             Arguments.CLIENT_SECRET,

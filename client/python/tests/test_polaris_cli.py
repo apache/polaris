@@ -63,9 +63,7 @@ class TestPolarisCliDebugLogging(unittest.TestCase):
             call_order.append("get_api_client") or MagicMock()
         )
 
-        PolarisCli.execute(
-            ["--debug", "--access-token", "token", "catalogs", "list"]
-        )
+        PolarisCli.execute(["--debug", "--access-token", "token", "catalogs", "list"])
 
         mock_enable.assert_called_once()
         mock_builder_instance.get_api_client.assert_called_once()
@@ -145,7 +143,9 @@ class TestPolarisCliDebugLogging(unittest.TestCase):
 
         mock_original_urlopen.assert_called_once()
         output = mock_stderr.getvalue()
-        self.assertIn("Request: GET http://localhost:8080/api/management/v1/catalogs", output)
+        self.assertIn(
+            "Request: GET http://localhost:8080/api/management/v1/catalogs", output
+        )
         self.assertIn("Headers:", output)
         self.assertIn(REDACTED, output)
         self.assertNotIn("secret-token", output)
@@ -168,9 +168,7 @@ class TestPolarisCliDebugLogging(unittest.TestCase):
         mock_default_api.return_value = MagicMock()
         mock_from_options.return_value = MagicMock()
         oauth_url = "http://localhost:8080/api/catalog/v1/oauth/tokens"
-        oauth_body = (
-            b"grant_type=client_credentials&client_id=id&client_secret=secret&scope=PRINCIPAL_ROLE:ALL"
-        )
+        oauth_body = b"grant_type=client_credentials&client_id=id&client_secret=secret&scope=PRINCIPAL_ROLE:ALL"
 
         def get_api_client_with_oauth_request() -> MagicMock:
             mock_response = MagicMock()
@@ -188,7 +186,9 @@ class TestPolarisCliDebugLogging(unittest.TestCase):
             get_api_client_with_oauth_request
         )
 
-        with patch("apache_polaris.cli.polaris_cli.sys.stderr", new_callable=io.StringIO) as mock_stderr:
+        with patch(
+            "apache_polaris.cli.polaris_cli.sys.stderr", new_callable=io.StringIO
+        ) as mock_stderr:
             PolarisCli.execute(
                 [
                     "--debug",

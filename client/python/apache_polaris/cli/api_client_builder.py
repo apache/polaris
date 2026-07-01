@@ -76,8 +76,19 @@ class BuilderConfig:
         return f"{self.base_url}/api/management/v1"
 
     @cached_property
+    def explicit_catalog_url(self) -> Optional[str]:
+        # Direct catalog base URL provided via --catalog-url (or profile).
+        # Used verbatim for custom IRC paths (e.g. proxy-mapped roots).
+        direct = getattr(self.options, "catalog_url", None) or self.profile.get(
+            Arguments.CATALOG_URL
+        )
+        return direct.rstrip("/") if direct else None
+
+    @cached_property
     def catalog_url(self) -> str:
-        return f"{self.base_url}/api/catalog/v1"
+        # Falls back to standard Polaris layout under the base URL if no explicit
+        # --catalog-url is provided.
+        return self.explicit_catalog_url or f"{self.base_url}/api/catalog"
 
     @cached_property
     def client_id(self) -> Optional[str]:
@@ -128,7 +139,7 @@ class ApiClientBuilder:
         api_client = ApiClient(conf)
         response = api_client.call_api(
             "POST",
-            f"{self.conf.catalog_url}/oauth/tokens",
+            f"{self.conf.catalog_url}/v1/oauth/tokens",
             header_params=header_params,
             post_params={
                 "grant_type": "client_credentials",
@@ -192,7 +203,15 @@ class ApiClientBuilder:
             client_params["header_name"] = self.conf.header
             client_params["header_value"] = self.conf.realm
 
-        return ApiClient(config, **client_params)
+        api_client = ApiClient(config, **client_params)
+        if self.conf.explicit_catalog_url:
+            # Attach direct catalog base so that get_catalog_api_client() can use
+            # it verbatim instead of the regex hack. This enables custom IRC base
+            # URIs (see https://github.com/apache/polaris/issues/4927).
+            api_client.configuration._polaris_catalog_base = (
+                self.conf.explicit_catalog_url
+            )
+        return api_client
 
     def get_api_client(self) -> ApiClient:
         return self._build()
