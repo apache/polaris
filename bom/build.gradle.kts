@@ -99,6 +99,7 @@ dependencies {
     api(project(":polaris-extensions-federation-bigquery"))
     api(project(":polaris-extensions-federation-hadoop"))
     api(project(":polaris-extensions-federation-hive"))
+    api(project(":polaris-extensions-lineage"))
     api(project(":polaris-extensions-semantic-models"))
     api(project(":polaris-hms-testcontainer"))
 
