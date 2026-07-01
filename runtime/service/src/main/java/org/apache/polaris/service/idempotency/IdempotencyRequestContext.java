@@ -19,24 +19,41 @@
 package org.apache.polaris.service.idempotency;
 
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Request-scoped holder for a pending entity-property idempotency key. The REST adapter sets this
- * before invoking the handler; {@code LocalIcebergCatalog} reads it at construction time so the key
- * is fixed for the catalog instance rather than applied via a post-construction setter.
+ * Request-scoped holder for a pending entity-property idempotency key. The REST adapter sets the
+ * key before invoking the handler; {@code LocalIcebergCatalog} reads it when committing a create so
+ * the key is stamped atomically with the new entity.
  */
 @RequestScoped
 public class IdempotencyRequestContext {
 
+  private final IdempotencyConfiguration idempotencyConfiguration;
   private @Nullable UUID pendingKey;
   private @Nullable Instant pendingExpiry;
 
-  public void setPending(@Nullable UUID key, @Nullable Instant expiry) {
+  @Inject
+  public IdempotencyRequestContext(IdempotencyConfiguration idempotencyConfiguration) {
+    this.idempotencyConfiguration = idempotencyConfiguration;
+  }
+
+  /**
+   * Records {@code key} for the current request, computing expiry from {@link
+   * IdempotencyConfiguration#ttl()}. No-op when {@code key} is {@code null}.
+   */
+  public void setPendingKey(@Nullable UUID key) {
+    if (pendingKey != null || pendingExpiry != null) {
+      throw new IllegalStateException("Idempotency request context already set");
+    }
+    if (key == null) {
+      return;
+    }
     this.pendingKey = key;
-    this.pendingExpiry = expiry;
+    this.pendingExpiry = Instant.now().plus(idempotencyConfiguration.ttl());
   }
 
   public @Nullable UUID pendingKey() {
@@ -45,5 +62,11 @@ public class IdempotencyRequestContext {
 
   public @Nullable Instant pendingExpiry() {
     return pendingExpiry;
+  }
+
+  /** Clears pending state after the request finishes using the key. */
+  public void clearPending() {
+    pendingKey = null;
+    pendingExpiry = null;
   }
 }

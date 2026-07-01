@@ -34,14 +34,13 @@ public class EntityIdempotencyTest {
   private static final Instant LATER = NOW.plusSeconds(300);
 
   @Test
-  public void encodedExpiryIsNumericInJson() {
+  public void encodedWindowUsesSmileFormat() {
     UUID key = UUID.randomUUID();
     Map<String, String> internal = EntityIdempotency.recordKey(Map.of(), key, LATER, NOW);
 
     String windowJson = internal.get(IDEMPOTENCY_KEYS_PROPERTY);
-    assertThat(windowJson).startsWith("ID1");
-    assertThat(windowJson).contains("\"" + key + "\":" + LATER.toEpochMilli());
-    assertThat(windowJson).doesNotContain("\"" + LATER.toEpochMilli() + "\"");
+    assertThat(windowJson).startsWith("IS1");
+    assertThat(EntityIdempotency.hasLiveKey(internal, key, NOW)).isTrue();
   }
 
   @Test

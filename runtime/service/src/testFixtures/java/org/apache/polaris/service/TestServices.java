@@ -316,7 +316,24 @@ public record TestServices(
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
       PolarisEventDispatcher polarisEventDispatcher = new InMemoryEventCollector();
-      IdempotencyRequestContext idempotencyRequestContext = new IdempotencyRequestContext();
+
+      IdempotencyConfiguration idempotencyConfiguration =
+          new IdempotencyConfiguration() {
+            @Override
+            public boolean enabled() {
+              return Boolean.parseBoolean(
+                  String.valueOf(config.getOrDefault("polaris.idempotency.enabled", "false")));
+            }
+
+            @Override
+            public Duration ttl() {
+              Object value = config.get("polaris.idempotency.ttl");
+              return value == null ? Duration.ofMinutes(5) : Duration.parse(String.valueOf(value));
+            }
+          };
+
+      IdempotencyRequestContext idempotencyRequestContext =
+          new IdempotencyRequestContext(idempotencyConfiguration);
       LocalCatalogFactory localCatalogFactory =
           new PolarisLocalCatalogFactory(
               diagnostics,
@@ -341,21 +358,6 @@ public record TestServices(
       Mockito.when(federatedCatalogFactory.isUnsatisfied()).thenReturn(true);
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
-
-      IdempotencyConfiguration idempotencyConfiguration =
-          new IdempotencyConfiguration() {
-            @Override
-            public boolean enabled() {
-              return Boolean.parseBoolean(
-                  String.valueOf(config.getOrDefault("polaris.idempotency.enabled", "false")));
-            }
-
-            @Override
-            public Duration ttl() {
-              Object value = config.get("polaris.idempotency.ttl");
-              return value == null ? Duration.ofMinutes(5) : Duration.parse(String.valueOf(value));
-            }
-          };
 
       IcebergCatalogHandlerFactory handlerFactory =
           new IcebergCatalogHandlerFactory() {

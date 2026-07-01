@@ -106,8 +106,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
             fileIOFactory,
             polarisEventDispatcher,
             eventMetadataFactory,
-            idempotencyRequestContext.pendingKey(),
-            idempotencyRequestContext.pendingExpiry());
+            idempotencyRequestContext);
 
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getBaseLocation();

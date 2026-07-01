@@ -33,7 +33,6 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.inject.Instance;
 import java.io.Closeable;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -457,23 +456,22 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
     return createTableDirect(
-        namespace, request, delegationModes, refreshCredentialsEndpoint, Optional.empty(), null);
+        namespace, request, delegationModes, refreshCredentialsEndpoint, Optional.empty());
   }
 
   /**
    * {@code createTableDirect} with entity-property idempotency support. When {@code idempotencyKey}
-   * is present, the key (expiring at {@code idempotencyExpiry}) is embedded into the new table
-   * entity's internal properties within the same transaction as the create. A subsequent retry that
-   * arrives while the key is still live replays the original success (rebuilding the load response
-   * from current catalog state) instead of returning a 409 conflict.
+   * is present, the key is embedded into the new table entity's internal properties within the same
+   * transaction as the create (expiry comes from {@code IdempotencyRequestContext}). A subsequent
+   * retry that arrives while the key is still live replays the original success (rebuilding the
+   * load response from current catalog state) instead of returning a 409 conflict.
    */
   public LoadTableResponse createTableDirect(
       Namespace namespace,
       CreateTableRequest request,
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint,
-      Optional<UUID> idempotencyKey,
-      Instant idempotencyExpiry) {
+      Optional<UUID> idempotencyKey) {
 
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
@@ -484,7 +482,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // properties (committed atomically with the original create). Rebuild the load response from
     // current catalog state rather than failing with AlreadyExists.
     if (idempotencyActive(idempotencyKey)) {
-      IcebergTableLikeEntity existing = freshResolveTableEntityForIdempotency(tableIdentifier);
+      IcebergTableLikeEntity existing =
+          passthroughResolveTableEntityForIdempotency(tableIdentifier);
       if (existing != null
           && EntityIdempotency.hasLiveKey(
               existing.getInternalPropertiesAsMap(), idempotencyKey.get(), clock().instant())) {
@@ -529,7 +528,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // Concurrent same-key create: the race winner committed the key atomically with the table, so
       // a single fresh lookup (no polling/backoff) is enough to replay instead of returning 409.
       if (idempotencyActive(idempotencyKey)) {
-        IcebergTableLikeEntity winner = freshResolveTableEntityForIdempotency(tableIdentifier);
+        IcebergTableLikeEntity winner =
+            passthroughResolveTableEntityForIdempotency(tableIdentifier);
         if (winner != null
             && EntityIdempotency.hasLiveKey(
                 winner.getInternalPropertiesAsMap(), idempotencyKey.get(), clock().instant())) {
@@ -801,16 +801,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   /**
-   * Freshly resolve the table entity for idempotency replay, or {@code null} if it does not exist.
+   * Resolve the table entity from persistence for idempotency replay, or {@code null} if it does
+   * not exist.
    *
-   * <p>Unlike {@link #getTableEntity(TableIdentifier)}, which reads the authorization-time path
-   * from {@link PolarisResolutionManifestCatalogView#getResolvedPath(ResolvedPathKey)}, this uses
-   * {@link PolarisResolutionManifestCatalogView#getPassthroughResolvedPath(ResolvedPathKey)} on the
-   * optional create-target passthrough path. That runs a new {@code Resolver} against current
-   * persistence state, so a table created by a concurrent or prior attempt is visible here even
-   * though it was absent when this request was authorized.
+   * <p>Uses {@link
+   * PolarisResolutionManifestCatalogView#getPassthroughResolvedPath(ResolvedPathKey)}, which runs a
+   * new {@code Resolver} and loads entities from the metastore (via {@code getOrLoadEntityByName} /
+   * {@code loadResolvedEntityByName}). This is not the authorization-time snapshot from {@link
+   * PolarisResolutionManifestCatalogView#getResolvedPath(ResolvedPathKey)}.
    */
-  private @Nullable IcebergTableLikeEntity freshResolveTableEntityForIdempotency(
+  private @Nullable IcebergTableLikeEntity passthroughResolveTableEntityForIdempotency(
       TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getPassthroughResolvedPath(ResolvedPathKey.ofTableLike(tableIdentifier));

@@ -18,8 +18,16 @@
  */
 package org.apache.polaris.core.entity;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
+import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
@@ -38,9 +46,12 @@ import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
  * #IDEMPOTENCY_KEYS_PROPERTY}) as a compact JSON object mapping the key (a UUID string) to its
  * expiry timestamp (epoch millis):
  *
- * <pre>{@code
- * ID1{"018f...a1": 1716840000000, "018f...b2": 1716840300000}
- * }</pre>
+ * <p>Wire formats (prefix + payload):
+ *
+ * <ul>
+ *   <li>{@code IS1} + base64url(SMILE map) — current write format
+ *   <li>{@code ID1} + JSON map — prior format, still accepted on read
+ * </ul>
  *
  * <p>For {@code createTable} this map holds a single entry, but the shape generalizes to a bounded
  * per-entity window for repeated mutations (e.g. {@code updateTable}). Expired keys are dropped
@@ -55,8 +66,16 @@ public final class EntityIdempotency {
   /** Upper bound on live idempotency keys stored on a single entity. */
   public static final int MAX_WINDOW_SIZE = 64;
 
-  /** Magic prefix for version 1 of the encoded key window ({@code ID1} + JSON object). */
-  private static final String WINDOW_FORMAT_V1 = "ID1";
+  /** Magic prefix for version 1 JSON window ({@code ID1} + JSON object). Accepted on read only. */
+  private static final String WINDOW_FORMAT_JSON_V1 = "ID1";
+
+  /** Magic prefix for version 1 SMILE window ({@code IS1} + base64url bytes). Used for writes. */
+  private static final String WINDOW_FORMAT_SMILE_V1 = "IS1";
+
+  private static final ObjectMapper SMILE_MAPPER = SmileMapper.builder().build();
+
+  private static final Comparator<KeyEntry> BY_EXPIRY =
+      Comparator.comparingLong((KeyEntry e) -> e.expiryMillis).thenComparing(e -> e.key);
 
   private EntityIdempotency() {}
 
@@ -65,9 +84,14 @@ public final class EntityIdempotency {
    * yet expired as of {@code now}.
    */
   public static boolean hasLiveKey(Map<String, String> internalProperties, UUID key, Instant now) {
-    Map<String, Long> window = decode(internalProperties.get(IDEMPOTENCY_KEYS_PROPERTY));
-    Long expiry = window.get(key.toString());
-    return expiry != null && now.toEpochMilli() < expiry;
+    String keyString = key.toString();
+    long nowMillis = now.toEpochMilli();
+    for (KeyEntry entry : decode(internalProperties.get(IDEMPOTENCY_KEYS_PROPERTY))) {
+      if (entry.key.equals(keyString) && nowMillis < entry.expiryMillis) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -78,26 +102,18 @@ public final class EntityIdempotency {
    */
   public static Map<String, String> recordKey(
       Map<String, String> internalProperties, UUID key, Instant expiry, Instant now) {
-    Map<String, Long> window =
-        new HashMap<>(decode(internalProperties.get(IDEMPOTENCY_KEYS_PROPERTY)));
-    window.values().removeIf(existingExpiry -> existingExpiry <= now.toEpochMilli());
+    List<KeyEntry> window =
+        new ArrayList<>(decode(internalProperties.get(IDEMPOTENCY_KEYS_PROPERTY)));
+    long nowMillis = now.toEpochMilli();
+    window.removeIf(entry -> entry.expiryMillis <= nowMillis);
+
     String keyString = key.toString();
-    if (!window.containsKey(keyString)) {
-      while (window.size() >= MAX_WINDOW_SIZE) {
-        String evictKey = null;
-        long earliestExpiry = Long.MAX_VALUE;
-        for (Map.Entry<String, Long> entry : window.entrySet()) {
-          if (entry.getValue() < earliestExpiry) {
-            earliestExpiry = entry.getValue();
-            evictKey = entry.getKey();
-          }
-        }
-        if (evictKey != null) {
-          window.remove(evictKey);
-        }
-      }
+    window.removeIf(entry -> entry.key.equals(keyString));
+    while (window.size() >= MAX_WINDOW_SIZE) {
+      window.sort(BY_EXPIRY);
+      window.remove(0);
     }
-    window.put(keyString, expiry.toEpochMilli());
+    window.add(new KeyEntry(keyString, expiry.toEpochMilli()));
 
     Map<String, String> updated = new HashMap<>(internalProperties);
     updated.put(IDEMPOTENCY_KEYS_PROPERTY, encode(window));
@@ -105,25 +121,49 @@ public final class EntityIdempotency {
   }
 
   @SuppressWarnings("unchecked")
-  private static Map<String, Long> decode(String raw) {
+  private static List<KeyEntry> decode(String raw) {
     if (raw == null || raw.isEmpty()) {
-      return Map.of();
+      return List.of();
     }
-    String json = raw.startsWith(WINDOW_FORMAT_V1) ? raw.substring(WINDOW_FORMAT_V1.length()) : raw;
-    Map<String, ?> parsed = PolarisObjectMapperUtil.deserialize(json, Map.class);
-    Map<String, Long> window = new HashMap<>(parsed.size());
+    Map<String, ?> parsed;
+    if (raw.startsWith(WINDOW_FORMAT_SMILE_V1)) {
+      byte[] smile = Base64.getUrlDecoder().decode(raw.substring(WINDOW_FORMAT_SMILE_V1.length()));
+      try {
+        parsed = SMILE_MAPPER.readValue(smile, Map.class);
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to decode idempotency key window", e);
+      }
+    } else {
+      String json =
+          raw.startsWith(WINDOW_FORMAT_JSON_V1)
+              ? raw.substring(WINDOW_FORMAT_JSON_V1.length())
+              : raw;
+      parsed = PolarisObjectMapperUtil.deserialize(json, Map.class);
+    }
+    List<KeyEntry> window = new ArrayList<>(parsed.size());
     parsed.forEach(
         (key, value) -> {
-          if (value instanceof Number number) {
-            window.put(key, number.longValue());
-          } else {
-            window.put(key, Long.parseLong(value.toString()));
-          }
+          long expiryMillis =
+              value instanceof Number number
+                  ? number.longValue()
+                  : Long.parseLong(value.toString());
+          window.add(new KeyEntry(key, expiryMillis));
         });
     return window;
   }
 
-  private static String encode(Map<String, Long> window) {
-    return WINDOW_FORMAT_V1 + PolarisObjectMapperUtil.serialize(window);
+  private static String encode(List<KeyEntry> window) {
+    Map<String, Long> asMap = new HashMap<>(window.size());
+    for (KeyEntry entry : window) {
+      asMap.put(entry.key, entry.expiryMillis);
+    }
+    try {
+      byte[] smile = SMILE_MAPPER.writeValueAsBytes(asMap);
+      return WINDOW_FORMAT_SMILE_V1 + Base64.getUrlEncoder().withoutPadding().encodeToString(smile);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("Failed to encode idempotency key window", e);
+    }
   }
+
+  private record KeyEntry(String key, long expiryMillis) {}
 }

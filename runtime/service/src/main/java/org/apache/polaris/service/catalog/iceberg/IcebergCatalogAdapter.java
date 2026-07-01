@@ -26,7 +26,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.UUID;
@@ -312,22 +311,21 @@ public class IcebergCatalogAdapter
                 idempotencyConfiguration.enabled()
                     ? Optional.ofNullable(idempotencyKey)
                     : Optional.empty();
-            Instant idempotencyExpiry =
-                effectiveKey
-                    .map(k -> Instant.now().plus(idempotencyConfiguration.ttl()))
-                    .orElse(null);
-            idempotencyRequestContext.setPending(effectiveKey.orElse(null), idempotencyExpiry);
-            LoadTableResponse response =
-                catalog.createTableDirect(
-                    ns,
-                    createTableRequest,
-                    delegationModes,
-                    refreshCredentialsEndpoint,
-                    effectiveKey,
-                    idempotencyExpiry);
-            return tryInsertETagHeader(
-                    Response.ok(response), response, namespace, createTableRequest.name())
-                .build();
+            try {
+              idempotencyRequestContext.setPendingKey(effectiveKey.orElse(null));
+              LoadTableResponse response =
+                  catalog.createTableDirect(
+                      ns,
+                      createTableRequest,
+                      delegationModes,
+                      refreshCredentialsEndpoint,
+                      effectiveKey);
+              return tryInsertETagHeader(
+                      Response.ok(response), response, namespace, createTableRequest.name())
+                  .build();
+            } finally {
+              idempotencyRequestContext.clearPending();
+            }
           }
         });
   }
