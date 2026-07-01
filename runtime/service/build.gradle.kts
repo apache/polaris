@@ -30,6 +30,7 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
+  implementation(project(":polaris-runtime-service-spi"))
 
   runtimeOnly(project(":polaris-relational-jdbc"))
 
@@ -175,6 +176,7 @@ dependencies {
   testFixturesImplementation(project(":polaris-api-management-service"))
   testFixturesImplementation(project(":polaris-api-iceberg-service"))
   testFixturesImplementation(project(":polaris-api-catalog-service"))
+  testFixturesImplementation(project(":polaris-runtime-service-spi"))
 
   testFixturesImplementation(libs.jakarta.enterprise.cdi.api)
   testFixturesImplementation(libs.jakarta.annotation.api)

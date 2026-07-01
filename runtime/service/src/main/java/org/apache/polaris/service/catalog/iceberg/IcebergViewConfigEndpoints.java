@@ -23,7 +23,7 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
-import org.apache.polaris.core.rest.CatalogConfigEndpointContributor;
+import org.apache.polaris.service.spi.CatalogConfigEndpointContributor;
 
 @ApplicationScoped
 @Priority(200)
