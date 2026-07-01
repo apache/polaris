@@ -46,10 +46,6 @@ All properties listed here are **runtime** properties and can be changed without
 
 {{% include-config-section "flags-polaris_behavior_changes" %}}
 
-### `polaris.lineage`
-
-{{% include-config-section "smallrye-polaris_lineage" %}}
-
 ## Authentication & Authorization
 
 ### `polaris.authentication`
