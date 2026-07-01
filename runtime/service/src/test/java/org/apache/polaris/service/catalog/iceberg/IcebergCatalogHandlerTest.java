@@ -60,12 +60,12 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.extension.metrics.spi.IcebergMetricsReporter;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributeMap;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.junit.jupiter.api.Test;
 
 class IcebergCatalogHandlerTest {
@@ -126,7 +126,7 @@ class IcebergCatalogHandlerTest {
         .catalogHandlerUtils(mock(CatalogHandlerUtils.class))
         .storageAccessConfigProvider(storageAccessConfigProvider)
         .eventAttributeMap(mock(EventAttributeMap.class))
-        .metricsReporter(mock(PolarisMetricsReporter.class))
+        .metricsReporter(mock(IcebergMetricsReporter.class))
         .clock(mock(Clock.class))
         .accessDelegationModeResolver(accessDelegationModeResolver)
         .build();

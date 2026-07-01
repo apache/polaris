@@ -99,7 +99,6 @@ import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.reporting.DefaultMetricsReporter;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -358,7 +357,7 @@ public record TestServices(
                   .federatedCatalogFactories(federatedCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
                   .eventAttributeMap(eventAttributeMap)
-                  .metricsReporter(new DefaultMetricsReporter())
+                  .metricsReporter((_catName, _catId, _table, _tableId, _report, _ts) -> {})
                   .clock(clock)
                   .accessDelegationModeResolver(
                       new DefaultAccessDelegationModeResolver(realmConfig))

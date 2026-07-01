@@ -191,6 +191,43 @@ polaris.log.mdc.region=us-west-2
 
 MDC context is propagated across threads, including in `TaskExecutor` threads.
 
+## Iceberg Metrics Reports API
+
+> **Experimental**: The Metrics Reports REST API and its related Java types (annotated `@Beta`) are
+> experimental. They are subject to change, including **breaking changes**, in any future release
+> without prior notice. The `@Beta` label indicates early-access / proof-of-concept status, not
+> production stability. Do not depend on this API in production environments until it is declared
+> stable.
+
+Polaris collects Iceberg scan and commit metrics reports submitted by clients and routes them to a
+configured reporter. Two built-in reporters are provided:
+
+| Type | Description |
+|------|-------------|
+| `log` (default) | Logs each report at INFO level via SLF4J. |
+| `no-op` | Silently discards all reports. |
+
+The active reporter is selected with:
+
+```properties
+polaris.iceberg-metrics.reporting.type=log
+```
+
+### Durable persistence (extension)
+
+Durable storage of metrics reports and querying via the REST API at
+`/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}` requires the
+`polaris-extensions-metrics-reports-jdbc` extension. Without it, the query endpoint returns HTTP
+501. See the extension documentation for installation and configuration details.
+
+### Prerequisites for the query API
+
+The caller must hold the `TABLE_READ_METRICS` privilege on the target table (or a privilege that
+implies it, such as `TABLE_READ_DATA`, `TABLE_FULL_METADATA`, or `CATALOG_MANAGE_CONTENT`).
+
+See the [Metrics Reports API specification]({{% relref "polaris-api-specs/polaris-metrics-reports-api" %}})
+for the full schema reference.
+
 ## Links
 
 Visit [Using Polaris with telemetry tools]({{% relref "getting-started/using-polaris/telemetry-tools" %}}) to see sample Polaris config with Prometheus and Jaeger.
