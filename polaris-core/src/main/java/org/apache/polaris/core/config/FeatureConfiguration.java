@@ -505,6 +505,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_LINEAGE =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_LINEAGE")
+          .description("If true, lineage services are enabled")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
