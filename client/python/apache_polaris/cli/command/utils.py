@@ -40,10 +40,15 @@ def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:
     catalog root (see https://github.com/apache/polaris/issues/4927).
     """
     mgmt_config = api.api_client.configuration
-    if hasattr(mgmt_config, "_polaris_catalog_base") and mgmt_config._polaris_catalog_base:
+    if (
+        hasattr(mgmt_config, "_polaris_catalog_base")
+        and mgmt_config._polaris_catalog_base
+    ):
         catalog_host = mgmt_config._polaris_catalog_base
     else:
-        catalog_host = re.sub(r"/api/management(?:/v1)?", "/api/catalog", mgmt_config.host)
+        catalog_host = re.sub(
+            r"/api/management(?:/v1)?", "/api/catalog", mgmt_config.host
+        )
     configuration = Configuration(
         host=catalog_host,
         username=mgmt_config.username,
