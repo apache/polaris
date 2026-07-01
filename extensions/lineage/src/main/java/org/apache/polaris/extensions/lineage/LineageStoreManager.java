@@ -20,7 +20,6 @@ package org.apache.polaris.extensions.lineage;
 
 import java.time.Instant;
 import java.util.List;
-import org.apache.polaris.core.context.RealmContext;
 
 /**
  * Storage manager SPI for lineage storage backends.
@@ -39,7 +38,7 @@ public interface LineageStoreManager {
    * dataset already exists, implementations should update mutable metadata such as optional linkage
    * to a Polaris-managed entity.
    */
-  void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets);
+  void upsertDatasets(List<LineageDataset> datasets);
 
   /**
    * Persists dataset-level directed edges in {@code lineage_edges}.
@@ -47,8 +46,7 @@ public interface LineageStoreManager {
    * <p>Repeated events asserting the same relationship should update the stored edge timestamp to
    * {@code lastEventAt} rather than creating duplicate edges.
    */
-  void replaceDatasetEdges(
-      RealmContext realmContext, List<LineageEdge> edges, Instant lastEventAt);
+  void replaceDatasetEdges(List<LineageEdge> edges, Instant lastEventAt);
 
   /**
    * Persists field-level directed edges in {@code lineage_column_edges}.
@@ -56,9 +54,8 @@ public interface LineageStoreManager {
    * <p>Repeated events asserting the same column mapping should update the stored edge timestamp to
    * {@code lastEventAt} rather than creating duplicate edges.
    */
-  void upsertColumnEdges(
-      RealmContext realmContext, List<LineageColumnEdge> columnEdges, Instant lastEventAt);
+  void upsertColumnEdges(List<LineageColumnEdge> columnEdges, Instant lastEventAt);
 
   /** Loads a normalized lineage graph for the requested node and direction. */
-  LineageGraph loadLineage(RealmContext realmContext, LineageQueryRequest request);
+  LineageGraph loadLineage(LineageQueryRequest request);
 }

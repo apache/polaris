@@ -22,27 +22,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.util.List;
-import org.apache.polaris.core.context.RealmContext;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 class NoopLineageStoreManagerTest {
   private final NoopLineageStoreManager storeManager = new NoopLineageStoreManager();
-  private final RealmContext realmContext = Mockito.mock(RealmContext.class);
 
   @Test
   void ignoresDatasetUpsert() {
-    storeManager.upsertDatasets(realmContext, List.of());
+    storeManager.upsertDatasets(List.of());
   }
 
   @Test
   void ignoresDatasetEdgeReplace() {
-    storeManager.replaceDatasetEdges(realmContext, List.of(), Instant.EPOCH);
+    storeManager.replaceDatasetEdges(List.of(), Instant.EPOCH);
   }
 
   @Test
   void ignoresColumnEdgeUpsert() {
-    storeManager.upsertColumnEdges(realmContext, List.of(), Instant.EPOCH);
+    storeManager.upsertColumnEdges(List.of(), Instant.EPOCH);
   }
 
   @Test
@@ -51,7 +48,7 @@ class NoopLineageStoreManagerTest {
         new LineageQueryRequest(
             "dataset:test:orders", LineageDirection.BOTH, LineageGranularity.DATASET);
 
-    var graph = storeManager.loadLineage(realmContext, request);
+    var graph = storeManager.loadLineage(request);
 
     assertThat(graph.node().id()).isEqualTo("dataset:test:orders");
     assertThat(graph.upstream()).isEmpty();
