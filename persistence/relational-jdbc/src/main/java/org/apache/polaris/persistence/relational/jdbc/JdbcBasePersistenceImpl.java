@@ -22,7 +22,10 @@ import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.Prep
 
 import com.google.common.base.Preconditions;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,12 +34,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
@@ -69,11 +74,27 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.extensions.lineage.LineageColumnEdge;
+import org.apache.polaris.extensions.lineage.LineageData;
+import org.apache.polaris.extensions.lineage.LineageDataset;
+import org.apache.polaris.extensions.lineage.LineageDirection;
+import org.apache.polaris.extensions.lineage.LineageEdge;
+import org.apache.polaris.extensions.lineage.LineageFieldMapping;
+import org.apache.polaris.extensions.lineage.LineageGranularity;
+import org.apache.polaris.extensions.lineage.LineageGraph;
+import org.apache.polaris.extensions.lineage.LineageNode;
+import org.apache.polaris.extensions.lineage.LineageNodeType;
+import org.apache.polaris.extensions.lineage.LineageQueryRequest;
+import org.apache.polaris.extensions.lineage.LineageStoreManager;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelLineageColumnEdge;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelLineageDataset;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelLineageEdge;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
@@ -84,7 +105,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class JdbcBasePersistenceImpl
-    implements BasePersistence, IntegrationPersistence, MetricsPersistence {
+    implements BasePersistence, IntegrationPersistence, MetricsPersistence, LineageStoreManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
@@ -96,6 +117,7 @@ public class JdbcBasePersistenceImpl
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
+  private static final int MIN_LINEAGE_SCHEMA_VERSION = 5;
 
   public JdbcBasePersistenceImpl(
       PolarisDiagnostics diagnostics,
@@ -408,6 +430,22 @@ public class JdbcBasePersistenceImpl
                     ModelPolicyMappingRecord.ALL_COLUMNS,
                     ModelPolicyMappingRecord.TABLE_NAME,
                     params));
+            if (schemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
+              datasourceOperations.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelLineageColumnEdge.ALL_COLUMNS,
+                      ModelLineageColumnEdge.TABLE_NAME,
+                      params));
+              datasourceOperations.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelLineageEdge.ALL_COLUMNS, ModelLineageEdge.TABLE_NAME, params));
+              datasourceOperations.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelLineageDataset.ALL_COLUMNS, ModelLineageDataset.TABLE_NAME, params));
+            }
             return true;
           });
     } catch (SQLException e) {
@@ -1390,6 +1428,553 @@ public class JdbcBasePersistenceImpl
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
+    }
+  }
+
+  // ============================================================================
+  // LineageStoreManager Implementation
+  // ============================================================================
+
+  @Override
+  public void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets) {
+    verifyLineageStoreManagerSupported();
+    verifyLineageRealm(realmContext);
+    String realmId = this.realmId;
+    long nowMillis = Instant.now().toEpochMilli();
+    for (LineageDataset dataset : datasets) {
+      long datasetId =
+          lookupLineageDataset(realmId, dataset)
+              .map(ModelLineageDataset::getDatasetId)
+              .orElseGet(IdGenerator.getIdGenerator()::nextId);
+      ModelLineageDataset model =
+          ModelLineageDataset.fromDataset(dataset, realmId, datasetId, nowMillis);
+      try {
+        datasourceOperations.executeUpdate(generateLineageDatasetUpsert(model));
+      } catch (SQLException e) {
+        throw new RuntimeException(
+            String.format("Failed to upsert lineage dataset due to %s", e.getMessage()), e);
+      }
+    }
+  }
+
+  @Override
+  public void replaceDatasetEdges(
+      RealmContext realmContext,
+      List<LineageDataset> targetDatasets,
+      List<LineageEdge> edges,
+      Instant lastEventAt) {
+    verifyLineageStoreManagerSupported();
+    verifyLineageRealm(realmContext);
+    String realmId = this.realmId;
+    long lastEventAtMillis = lastEventAt.toEpochMilli();
+    Map<Long, List<ModelLineageEdge>> edgesByTargetDatasetId = new LinkedHashMap<>();
+    for (LineageDataset targetDataset : targetDatasets) {
+      edgesByTargetDatasetId.putIfAbsent(
+          requireLineageDatasetId(realmId, targetDataset), new ArrayList<>());
+    }
+    for (LineageEdge edge : edges) {
+      ModelLineageEdge model =
+          ModelLineageEdge.fromIds(
+              realmId,
+              requireLineageDatasetId(realmId, edge.source()),
+              requireLineageDatasetId(realmId, edge.target()),
+              lastEventAtMillis);
+      edgesByTargetDatasetId
+          .computeIfAbsent(model.getTargetDatasetId(), ignored -> new ArrayList<>())
+          .add(model);
+    }
+
+    try {
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            for (Map.Entry<Long, List<ModelLineageEdge>> entry :
+                edgesByTargetDatasetId.entrySet()) {
+              long targetDatasetId = entry.getKey();
+              Optional<Long> currentLastEventAt =
+                  loadLineageDatasetLastEventAt(connection, realmId, targetDatasetId);
+              if (currentLastEventAt.isPresent() && currentLastEventAt.get() > lastEventAtMillis) {
+                continue;
+              }
+
+              List<Long> sourceDatasetIds =
+                  entry.getValue().stream()
+                      .map(ModelLineageEdge::getSourceDatasetId)
+                      .distinct()
+                      .toList();
+              datasourceOperations.execute(
+                  connection,
+                  generateDeleteStaleLineageEdges(realmId, targetDatasetId, sourceDatasetIds));
+              datasourceOperations.execute(
+                  connection,
+                  generateDeleteStaleLineageColumnEdges(
+                      realmId, targetDatasetId, sourceDatasetIds));
+              for (ModelLineageEdge model : entry.getValue()) {
+                datasourceOperations.execute(connection, generateLineageEdgeUpsert(model));
+              }
+              datasourceOperations.execute(
+                  connection,
+                  generateLineageDatasetLastEventAtUpdate(
+                      realmId, targetDatasetId, lastEventAtMillis));
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to upsert lineage edge due to %s", e.getMessage()), e);
+    }
+  }
+
+  private Optional<Long> loadLineageDatasetLastEventAt(
+      Connection connection, String realmId, long targetDatasetId) throws SQLException {
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageDataset.TABLE_NAME);
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT last_lineage_event_at FROM "
+                + table
+                + " WHERE realm_id = ? AND dataset_id = ?")) {
+      statement.setString(1, realmId);
+      statement.setLong(2, targetDatasetId);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        if (!resultSet.next()) {
+          return Optional.empty();
+        }
+        long value = resultSet.getLong(1);
+        return resultSet.wasNull() ? Optional.empty() : Optional.of(value);
+      }
+    }
+  }
+
+  @Override
+  public void upsertColumnEdges(
+      RealmContext realmContext, List<LineageColumnEdge> columnEdges, Instant lastEventAt) {
+    verifyLineageStoreManagerSupported();
+    verifyLineageRealm(realmContext);
+    String realmId = this.realmId;
+    long lastEventAtMillis = lastEventAt.toEpochMilli();
+    for (LineageColumnEdge columnEdge : columnEdges) {
+      ModelLineageDataset targetDataset =
+          requireLineageDataset(realmId, columnEdge.target().dataset());
+      Long currentLastEventAt = targetDataset.getLastLineageEventAt();
+      if (currentLastEventAt != null && currentLastEventAt > lastEventAtMillis) {
+        continue;
+      }
+
+      ModelLineageColumnEdge model =
+          ModelLineageColumnEdge.fromIds(
+              realmId,
+              requireLineageDatasetId(realmId, columnEdge.source().dataset()),
+              columnEdge.source().field(),
+              targetDataset.getDatasetId(),
+              columnEdge.target().field(),
+              lastEventAtMillis);
+      try {
+        datasourceOperations.executeUpdate(generateLineageColumnEdgeUpsert(model));
+      } catch (SQLException e) {
+        throw new RuntimeException(
+            String.format("Failed to upsert lineage column edge due to %s", e.getMessage()), e);
+      }
+    }
+  }
+
+  @Override
+  public LineageGraph loadLineage(RealmContext realmContext, LineageQueryRequest request) {
+    verifyLineageStoreManagerSupported();
+    verifyLineageRealm(realmContext);
+    String realmId = this.realmId;
+    Optional<ModelLineageDataset> requested =
+        lookupLineageDatasetByNodeId(realmId, request.nodeId());
+    if (requested.isEmpty()) {
+      return new LineageGraph(
+          new LineageNode(request.nodeId(), LineageNodeType.DATASET, null, true),
+          List.of(),
+          List.of());
+    }
+
+    ModelLineageDataset dataset = requested.get();
+    boolean includeColumns = request.granularity() == LineageGranularity.COLUMN;
+    List<LineageNode> upstream =
+        request.direction() == LineageDirection.UPSTREAM
+                || request.direction() == LineageDirection.BOTH
+            ? loadAdjacentLineageNodes(realmId, dataset.getDatasetId(), true, includeColumns)
+            : List.of();
+    List<LineageNode> downstream =
+        request.direction() == LineageDirection.DOWNSTREAM
+                || request.direction() == LineageDirection.BOTH
+            ? loadAdjacentLineageNodes(realmId, dataset.getDatasetId(), false, includeColumns)
+            : List.of();
+
+    return new LineageGraph(toLineageNode(dataset, List.of()), upstream, downstream);
+  }
+
+  private Optional<ModelLineageDataset> lookupLineageDataset(
+      String realmId, LineageDataset dataset) {
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageDataset.TABLE_NAME);
+    PreparedQuery query =
+        new PreparedQuery(
+            "SELECT realm_id, dataset_id, catalog, namespace, name, polaris_entity_id, last_lineage_event_at, created_at, updated_at "
+                + "FROM "
+                + table
+                + " WHERE realm_id = ? AND namespace = ? AND name = ?",
+            List.of(realmId, dataset.namespace(), dataset.name()));
+    try {
+      List<ModelLineageDataset> results =
+          datasourceOperations.executeSelect(query, ModelLineageDataset.CONVERTER);
+      return results.stream().findFirst();
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to load lineage dataset due to %s", e.getMessage()), e);
+    }
+  }
+
+  private Optional<ModelLineageDataset> lookupLineageDatasetByNodeId(
+      String realmId, String nodeId) {
+    return parseLineageDatasetNodeId(nodeId)
+        .flatMap(dataset -> lookupLineageDataset(realmId, dataset));
+  }
+
+  private Optional<LineageDataset> parseLineageDatasetNodeId(String nodeId) {
+    String prefix = "dataset:";
+    if (!nodeId.startsWith(prefix)) {
+      return Optional.empty();
+    }
+    String identity = nodeId.substring(prefix.length());
+    int catalogSeparator = identity.lastIndexOf(':');
+    int nameSeparator = identity.lastIndexOf('.');
+    if (catalogSeparator < 0 || nameSeparator <= catalogSeparator + 1) {
+      return Optional.empty();
+    }
+    String catalog = identity.substring(0, catalogSeparator);
+    String namespace = identity.substring(catalogSeparator + 1, nameSeparator);
+    String name = identity.substring(nameSeparator + 1);
+    return Optional.of(new LineageDataset(catalog, namespace, name));
+  }
+
+  private long requireLineageDatasetId(String realmId, LineageDataset dataset) {
+    return requireLineageDataset(realmId, dataset).getDatasetId();
+  }
+
+  private ModelLineageDataset requireLineageDataset(String realmId, LineageDataset dataset) {
+    return lookupLineageDataset(realmId, dataset)
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    String.format(
+                        "Lineage dataset '%s.%s' does not exist in realm '%s'. Call upsertDatasets before writing edges.",
+                        dataset.namespace(), dataset.name(), realmId)));
+  }
+
+  private List<LineageNode> loadAdjacentLineageNodes(
+      String realmId, long datasetId, boolean upstream, boolean includeColumns) {
+    String edgesTable = QueryGenerator.getFullyQualifiedTableName(ModelLineageEdge.TABLE_NAME);
+    String datasetsTable =
+        QueryGenerator.getFullyQualifiedTableName(ModelLineageDataset.TABLE_NAME);
+    String adjacentEdgeColumn = upstream ? "source_dataset_id" : "target_dataset_id";
+    String requestedEdgeColumn = upstream ? "target_dataset_id" : "source_dataset_id";
+    PreparedQuery query =
+        new PreparedQuery(
+            "SELECT d.realm_id, d.dataset_id, d.catalog, d.namespace, d.name, d.polaris_entity_id, d.last_lineage_event_at, d.created_at, d.updated_at "
+                + "FROM "
+                + edgesTable
+                + " e JOIN "
+                + datasetsTable
+                + " d ON d.realm_id = e.realm_id AND d.dataset_id = e."
+                + adjacentEdgeColumn
+                + " WHERE e.realm_id = ? AND e."
+                + requestedEdgeColumn
+                + " = ?",
+            List.of(realmId, datasetId));
+    try {
+      List<ModelLineageDataset> datasets =
+          datasourceOperations.executeSelect(query, ModelLineageDataset.CONVERTER);
+      Map<Long, List<LineageFieldMapping>> fieldMappings =
+          includeColumns
+              ? loadFieldMappingsByAdjacentDataset(realmId, datasetId, datasets, upstream)
+              : Map.of();
+      return datasets.stream()
+          .map(
+              dataset ->
+                  toLineageNode(
+                      dataset, fieldMappings.getOrDefault(dataset.getDatasetId(), List.of())))
+          .toList();
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to load adjacent lineage nodes due to %s", e.getMessage()), e);
+    }
+  }
+
+  private Map<Long, List<LineageFieldMapping>> loadFieldMappingsByAdjacentDataset(
+      String realmId,
+      long requestedDatasetId,
+      List<ModelLineageDataset> adjacentDatasets,
+      boolean upstream) {
+    if (adjacentDatasets.isEmpty()) {
+      return Map.of();
+    }
+
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageColumnEdge.TABLE_NAME);
+    String adjacentColumn = upstream ? "source_dataset_id" : "target_dataset_id";
+    String requestedColumn = upstream ? "target_dataset_id" : "source_dataset_id";
+    String placeholders = String.join(", ", Collections.nCopies(adjacentDatasets.size(), "?"));
+
+    List<Object> values = new ArrayList<>();
+    values.add(realmId);
+    values.add(requestedDatasetId);
+    adjacentDatasets.stream().map(ModelLineageDataset::getDatasetId).forEach(values::add);
+
+    PreparedQuery query =
+        new PreparedQuery(
+            "SELECT "
+                + adjacentColumn
+                + " AS adjacent_dataset_id, source_field, target_field FROM "
+                + table
+                + " WHERE realm_id = ? AND "
+                + requestedColumn
+                + " = ? AND "
+                + adjacentColumn
+                + " IN ("
+                + placeholders
+                + ")",
+            values);
+    try {
+      return datasourceOperations
+          .executeSelect(query, new AdjacentLineageFieldMappingConverter())
+          .stream()
+          .collect(
+              Collectors.groupingBy(
+                  AdjacentLineageFieldMapping::adjacentDatasetId,
+                  Collectors.mapping(
+                      AdjacentLineageFieldMapping::fieldMapping, Collectors.toList())));
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to load lineage field mappings due to %s", e.getMessage()), e);
+    }
+  }
+
+  private static LineageNode toLineageNode(
+      ModelLineageDataset dataset, List<LineageFieldMapping> fieldMappings) {
+    LineageData data =
+        new LineageData(
+            OptionalLong.empty(),
+            OptionalLong.of(dataset.getDatasetId()),
+            dataset.getNamespace(),
+            dataset.getName(),
+            null,
+            OptionalLong.of(dataset.getCreatedAt()),
+            OptionalLong.of(dataset.getUpdatedAt()));
+    return new LineageNode(
+        lineageNodeId(dataset), LineageNodeType.DATASET, data, false, fieldMappings);
+  }
+
+  private static String lineageNodeId(ModelLineageDataset dataset) {
+    return String.format(
+        "dataset:%s:%s.%s", dataset.getCatalog(), dataset.getNamespace(), dataset.getName());
+  }
+
+  private void verifyLineageStoreManagerSupported() {
+    if (schemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
+      return;
+    }
+    throw new IllegalStateException(
+        String.format(
+            "Lineage store manager requires JDBC schema version %d or newer for realm '%s'; current schema version is %d. Upgrade the JDBC schema to v%d to persist lineage.",
+            MIN_LINEAGE_SCHEMA_VERSION, realmId, schemaVersion, MIN_LINEAGE_SCHEMA_VERSION));
+  }
+
+  private void verifyLineageRealm(RealmContext realmContext) {
+    String requestedRealmId = realmContext.getRealmIdentifier();
+    if (realmId.equals(requestedRealmId)) {
+      return;
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            "Lineage store manager for realm '%s' cannot operate on realm '%s'.",
+            realmId, requestedRealmId));
+  }
+
+  private PreparedQuery generateLineageDatasetUpsert(ModelLineageDataset model) {
+    List<Object> values = new ArrayList<>();
+    values.add(model.getRealmId());
+    values.add(model.getDatasetId());
+    values.add(model.getCatalog());
+    values.add(model.getNamespace());
+    values.add(model.getName());
+    values.add(model.getPolarisEntityId());
+    values.add(model.getLastLineageEventAt());
+    values.add(model.getCreatedAt());
+    values.add(model.getUpdatedAt());
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageDataset.TABLE_NAME);
+    if (datasourceOperations.getDatabaseType().equals(DatabaseType.H2)) {
+      return new PreparedQuery(
+          "MERGE INTO "
+              + table
+              + " t USING (VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)) "
+              + "v(realm_id, dataset_id, catalog, namespace, name, polaris_entity_id, last_lineage_event_at, created_at, updated_at) "
+              + "ON t.realm_id = v.realm_id AND t.namespace = v.namespace AND t.name = v.name "
+              + "WHEN MATCHED THEN UPDATE SET catalog = v.catalog, polaris_entity_id = v.polaris_entity_id, updated_at = v.updated_at "
+              + "WHEN NOT MATCHED THEN INSERT (realm_id, dataset_id, catalog, namespace, name, polaris_entity_id, last_lineage_event_at, created_at, updated_at) "
+              + "VALUES (v.realm_id, v.dataset_id, v.catalog, v.namespace, v.name, v.polaris_entity_id, v.last_lineage_event_at, v.created_at, v.updated_at)",
+          values);
+    }
+    return new PreparedQuery(
+        "INSERT INTO "
+            + table
+            + " (realm_id, dataset_id, catalog, namespace, name, polaris_entity_id, last_lineage_event_at, created_at, updated_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            + "ON CONFLICT (realm_id, namespace, name) DO UPDATE SET "
+            + "catalog = EXCLUDED.catalog, "
+            + "polaris_entity_id = EXCLUDED.polaris_entity_id, "
+            + "updated_at = EXCLUDED.updated_at",
+        values);
+  }
+
+  private PreparedQuery generateLineageEdgeUpsert(ModelLineageEdge model) {
+    List<Object> values =
+        List.of(
+            model.getRealmId(),
+            model.getSourceDatasetId(),
+            model.getTargetDatasetId(),
+            model.getLastEventAt());
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageEdge.TABLE_NAME);
+    if (datasourceOperations.getDatabaseType().equals(DatabaseType.H2)) {
+      return new PreparedQuery(
+          "MERGE INTO "
+              + table
+              + " t USING (VALUES (?, ?, ?, ?)) "
+              + "v(realm_id, source_dataset_id, target_dataset_id, last_event_at) "
+              + "ON t.realm_id = v.realm_id "
+              + "AND t.source_dataset_id = v.source_dataset_id "
+              + "AND t.target_dataset_id = v.target_dataset_id "
+              + "WHEN MATCHED THEN UPDATE SET last_event_at = GREATEST(t.last_event_at, v.last_event_at) "
+              + "WHEN NOT MATCHED THEN INSERT (realm_id, source_dataset_id, target_dataset_id, last_event_at) "
+              + "VALUES (v.realm_id, v.source_dataset_id, v.target_dataset_id, v.last_event_at)",
+          values);
+    }
+    return new PreparedQuery(
+        "INSERT INTO "
+            + table
+            + " (realm_id, source_dataset_id, target_dataset_id, last_event_at) "
+            + "VALUES (?, ?, ?, ?) "
+            + "ON CONFLICT (realm_id, source_dataset_id, target_dataset_id) DO UPDATE SET "
+            + "last_event_at = GREATEST("
+            + table
+            + ".last_event_at, EXCLUDED.last_event_at)",
+        values);
+  }
+
+  private PreparedQuery generateDeleteStaleLineageEdges(
+      String realmId, long targetDatasetId, List<Long> sourceDatasetIds) {
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageEdge.TABLE_NAME);
+    List<Object> values = new ArrayList<>();
+    values.add(realmId);
+    values.add(targetDatasetId);
+    values.addAll(sourceDatasetIds);
+    return new PreparedQuery(
+        "DELETE FROM "
+            + table
+            + " WHERE realm_id = ? AND target_dataset_id = ?"
+            + sourceExclusionPredicate(sourceDatasetIds),
+        values);
+  }
+
+  private PreparedQuery generateDeleteStaleLineageColumnEdges(
+      String realmId, long targetDatasetId, List<Long> sourceDatasetIds) {
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageColumnEdge.TABLE_NAME);
+    List<Object> values = new ArrayList<>();
+    values.add(realmId);
+    values.add(targetDatasetId);
+    values.addAll(sourceDatasetIds);
+    return new PreparedQuery(
+        "DELETE FROM "
+            + table
+            + " WHERE realm_id = ? AND target_dataset_id = ?"
+            + sourceExclusionPredicate(sourceDatasetIds),
+        values);
+  }
+
+  private PreparedQuery generateLineageDatasetLastEventAtUpdate(
+      String realmId, long targetDatasetId, long lastEventAtMillis) {
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageDataset.TABLE_NAME);
+    return new PreparedQuery(
+        "UPDATE "
+            + table
+            + " SET last_lineage_event_at = CASE "
+            + "WHEN last_lineage_event_at IS NULL OR last_lineage_event_at < ? THEN ? "
+            + "ELSE last_lineage_event_at END, "
+            + "updated_at = CASE WHEN updated_at < ? THEN ? ELSE updated_at END "
+            + "WHERE realm_id = ? AND dataset_id = ?",
+        List.of(
+            lastEventAtMillis,
+            lastEventAtMillis,
+            lastEventAtMillis,
+            lastEventAtMillis,
+            realmId,
+            targetDatasetId));
+  }
+
+  private static String sourceExclusionPredicate(List<Long> sourceDatasetIds) {
+    if (sourceDatasetIds.isEmpty()) {
+      return "";
+    }
+    return " AND source_dataset_id NOT IN (" + placeholders(sourceDatasetIds.size()) + ")";
+  }
+
+  private static String placeholders(int count) {
+    return String.join(", ", Collections.nCopies(count, "?"));
+  }
+
+  private PreparedQuery generateLineageColumnEdgeUpsert(ModelLineageColumnEdge model) {
+    List<Object> values =
+        List.of(
+            model.getRealmId(),
+            model.getSourceDatasetId(),
+            model.getSourceField(),
+            model.getTargetDatasetId(),
+            model.getTargetField(),
+            model.getLastEventAt());
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageColumnEdge.TABLE_NAME);
+    if (datasourceOperations.getDatabaseType().equals(DatabaseType.H2)) {
+      return new PreparedQuery(
+          "MERGE INTO "
+              + table
+              + " t USING (VALUES (?, ?, ?, ?, ?, ?)) "
+              + "v(realm_id, source_dataset_id, source_field, target_dataset_id, target_field, last_event_at) "
+              + "ON t.realm_id = v.realm_id "
+              + "AND t.source_dataset_id = v.source_dataset_id "
+              + "AND t.source_field = v.source_field "
+              + "AND t.target_dataset_id = v.target_dataset_id "
+              + "AND t.target_field = v.target_field "
+              + "WHEN MATCHED THEN UPDATE SET last_event_at = GREATEST(t.last_event_at, v.last_event_at) "
+              + "WHEN NOT MATCHED THEN INSERT (realm_id, source_dataset_id, source_field, target_dataset_id, target_field, last_event_at) "
+              + "VALUES (v.realm_id, v.source_dataset_id, v.source_field, v.target_dataset_id, v.target_field, v.last_event_at)",
+          values);
+    }
+    return new PreparedQuery(
+        "INSERT INTO "
+            + table
+            + " (realm_id, source_dataset_id, source_field, target_dataset_id, target_field, last_event_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?) "
+            + "ON CONFLICT (realm_id, source_dataset_id, source_field, target_dataset_id, target_field) DO UPDATE SET "
+            + "last_event_at = GREATEST("
+            + table
+            + ".last_event_at, EXCLUDED.last_event_at)",
+        values);
+  }
+
+  private record AdjacentLineageFieldMapping(
+      long adjacentDatasetId, LineageFieldMapping fieldMapping) {}
+
+  private static class AdjacentLineageFieldMappingConverter
+      implements Converter<AdjacentLineageFieldMapping> {
+    @Override
+    public AdjacentLineageFieldMapping fromResultSet(java.sql.ResultSet rs) throws SQLException {
+      return new AdjacentLineageFieldMapping(
+          rs.getLong("adjacent_dataset_id"),
+          new LineageFieldMapping(rs.getString("source_field"), rs.getString("target_field")));
+    }
+
+    @Override
+    public Map<String, Object> toMap(DatabaseType databaseType) {
+      return Map.of();
     }
   }
 }
