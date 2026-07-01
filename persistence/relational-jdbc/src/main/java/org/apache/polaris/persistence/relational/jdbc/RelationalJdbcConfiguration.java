@@ -21,13 +21,13 @@ package org.apache.polaris.persistence.relational.jdbc;
 import java.util.Optional;
 
 public interface RelationalJdbcConfiguration {
-  // max retries before giving up
+  /** The maximum number of retries before giving up the operation. */
   Optional<Integer> maxRetries();
 
-  // max retry duration
+  /** The maximum retry duration in milliseconds. */
   Optional<Long> maxDurationInMs();
 
-  // initial delay
+  /** The initial retry delay. */
   Optional<Long> initialDelayInMs();
 
   /**
@@ -35,4 +35,7 @@ public interface RelationalJdbcConfiguration {
    * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
    */
   Optional<String> databaseType();
+
+  /** The datasource name to use. Required. */
+  String dataSource();
 }

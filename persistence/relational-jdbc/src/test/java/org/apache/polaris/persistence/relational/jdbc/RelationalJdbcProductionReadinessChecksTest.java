@@ -72,7 +72,8 @@ class RelationalJdbcProductionReadinessChecksTest {
             error -> {
               assertThat(error.message())
                   .isEqualTo("The current persistence (jdbc:h2) is intended for tests only.");
-              assertThat(error.offendingProperty()).isEqualTo("quarkus.datasource.jdbc.url");
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.persistence.relational.jdbc.datasource");
               assertThat(error.severe()).isFalse();
             });
   }

@@ -49,9 +49,11 @@ This example requires `jq` to be installed on your machine.
 2. Start the docker compose group by running the following command from the root of the repository:
 
     ```shell
-    export QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres:5432/POLARIS
-    export QUARKUS_DATASOURCE_USERNAME=postgres
-    export QUARKUS_DATASOURCE_PASSWORD=postgres
+    export POLARIS_PERSISTENCE_TYPE=relational-jdbc
+    export POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATASOURCE=postgresql
+    export QUARKUS_DATASOURCE_POSTGRESQL_JDBC_URL=jdbc:postgresql://postgres:5432/POLARIS
+    export QUARKUS_DATASOURCE_POSTGRESQL_USERNAME=postgres
+    export QUARKUS_DATASOURCE_POSTGRESQL_PASSWORD=postgres
     export ASSETS_PATH=$(pwd)/site/content/guides/assets/
     export CLIENT_ID=root
     export CLIENT_SECRET=s3cr3t

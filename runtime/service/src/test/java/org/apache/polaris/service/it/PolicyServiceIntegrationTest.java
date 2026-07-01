@@ -24,5 +24,5 @@ import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.it.test.PolarisPolicyServiceIntegrationTest;
 
 @QuarkusTest
-@TestProfile(Profiles.DefaultProfile.class)
+@TestProfile(Profiles.ApplicationIntegrationProfile.class)
 public class PolicyServiceIntegrationTest extends PolarisPolicyServiceIntegrationTest {}

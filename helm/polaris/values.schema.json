@@ -1157,6 +1157,10 @@
                 "relationalJdbc": {
                     "type": "object",
                     "properties": {
+                        "datasource": {
+                            "description": "The name of the Quarkus named datasource to use for relational persistence. Must match one of the built-in named datasources (h2, postgresql), or a custom datasource configured via extraEnv / extraConfig (in this case, you must use a custom Polaris server image including the custom datasource). Polaris will activate this datasource automatically.",
+                            "type": "string"
+                        },
                         "secret": {
                             "type": "object",
                             "properties": {

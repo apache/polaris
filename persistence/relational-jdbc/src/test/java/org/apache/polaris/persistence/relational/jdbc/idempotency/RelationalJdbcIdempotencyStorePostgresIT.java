@@ -82,6 +82,11 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
           public Optional<String> databaseType() {
             return Optional.empty();
           }
+
+          @Override
+          public String dataSource() {
+            return "postgresql";
+          }
         };
     DatasourceOperations ops = new DatasourceOperations(dataSource, cfg);
     try (InputStream is =

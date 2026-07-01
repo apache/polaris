@@ -28,11 +28,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Polaris now supports dynamic datasource activation. This allows operators to switch between supported relational databases without rebuilding Polaris. Currently, the Polaris server ships with two datasources: `postgresql` and `h2`. The admin tool, however, includes only `postgresql` for now. Out-of-the-box support for more datasources and JDBC drivers may be added in the future. The datasource to activate can be selected at runtime by setting the `polaris.persistence.relational.jdbc.datasource` configuration property (the default is `postgresql`).
 
 ### Upgrade notes
 - Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
   - `polaris.event-listener.executor.pool-size` configures the thread pool size.
   - `polaris.event-listener.executor.queue-size` configures the queue size for pending events when all threads are busy.
+- The Helm chart now includes a new `persistence.relationalJdbc.datasource` option to select the relational database to activate. The default is `postgresql`, which matches pre-existing behavior.
 
 ### Breaking changes
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
@@ -42,6 +44,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
     - Names containing control (invisible) characters
     - Names with leading or trailing whitespace
     - Names containing any of these characters: <code>/\:*?"<>|#+`</code>
+- Due to the introduction of dynamic datasource activation, the default (PostgreSQL) datasource is now unused. If you had any custom configuration for that datasource, it should be migrated from `quarkus.datasource.*` to `quarkus.datasource.postgresql.*`. The same is valid for environment variables: `QUARKUS_DATASOURCE_*` should be replaced with `QUARKUS_DATASOURCE_POSTGRESQL_*`.
 
 ### New Features
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.

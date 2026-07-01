@@ -61,17 +61,17 @@ public class CockroachRelationalJdbcLifeCycleManagement
         "relational-jdbc",
         "polaris.persistence.relational.jdbc.database-type",
         "cockroachdb",
+        "polaris.persistence.relational.jdbc.datasource",
+        "postgresql",
         "polaris.persistence.relational.jdbc.max-retries",
         "2",
-        "quarkus.datasource.db-kind",
-        "postgresql",
-        "quarkus.datasource.jdbc.url",
+        "quarkus.datasource.postgresql.jdbc.url",
         cockroach.getJdbcUrl(),
-        "quarkus.datasource.username",
+        "quarkus.datasource.postgresql.username",
         cockroach.getUsername(),
-        "quarkus.datasource.password",
+        "quarkus.datasource.postgresql.password",
         cockroach.getPassword(),
-        "quarkus.datasource.jdbc.initial-size",
+        "quarkus.datasource.postgresql.jdbc.initial-size",
         "10");
   }
 

@@ -30,6 +30,8 @@ import static org.awaitility.Awaitility.await;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.agroal.api.AgroalDataSource;
+import io.quarkus.agroal.DataSource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.inject.Instance;
@@ -44,7 +46,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.List;
-import javax.sql.DataSource;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.SortOrder;
@@ -86,7 +87,9 @@ class InMemoryBufferEventListenerIntegrationTest {
   private String authToken;
   private URI baseLocation;
 
-  @Inject Instance<DataSource> dataSource;
+  @Inject
+  @DataSource("h2")
+  Instance<AgroalDataSource> dataSource;
 
   @BeforeAll
   public void setup(

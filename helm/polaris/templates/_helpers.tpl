@@ -255,9 +255,9 @@ Prints an environment variable for a secret key reference.
 Prints database/persistence connection environment variables.
 */}}
 {{- define "polaris.persistenceEnv" -}}
-{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "username" "quarkus.datasource.username") -}}
-{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "password" "quarkus.datasource.password") -}}
-{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "jdbcUrl" "quarkus.datasource.jdbc.url") -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "username" (printf "quarkus.datasource.%s.username" .Values.persistence.relationalJdbc.datasource)) -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "password" (printf "quarkus.datasource.%s.password" .Values.persistence.relationalJdbc.datasource)) -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "jdbcUrl" (printf "quarkus.datasource.%s.jdbc.url" .Values.persistence.relationalJdbc.datasource)) -}}
 {{- include "polaris.secretToEnv" (list .Values.persistence.nosql.secret "connectionString" "quarkus.mongodb.connection-string") -}}
 {{- end -}}
 

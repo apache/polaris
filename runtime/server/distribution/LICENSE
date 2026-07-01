@@ -309,6 +309,7 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-grpc-common
 * Maven group:artifact IDs: io.quarkus:quarkus-hibernate-validator
 * Maven group:artifact IDs: io.quarkus:quarkus-jackson
+* Maven group:artifact IDs: io.quarkus:quarkus-jdbc-h2
 * Maven group:artifact IDs: io.quarkus:quarkus-jdbc-postgresql
 * Maven group:artifact IDs: io.quarkus:quarkus-jsonp
 * Maven group:artifact IDs: io.quarkus:quarkus-logging-json
@@ -1780,6 +1781,21 @@ License: BSD 2-Clause
 |   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 |   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 |   THE POSSIBILITY OF SUCH DAMAGE.
+
+--------------------------------------------------------------------------------
+
+This product bundles H2 JDBC Driver.
+
+* Maven group:artifact IDs: com.h2database:h2
+
+Project URL: https://www.h2database.com/
+License: Eclipse Public License 1.0 - https://www.eclipse.org/org/documents/epl-1.0/
+| This software contains unmodified binary redistributions for
+| H2 database engine (https://h2database.com/),
+| which is dual licensed and available under the MPL 2.0
+| (Mozilla Public License) or under the EPL 1.0 (Eclipse Public License).
+| An original copy of the license agreement can be found at:
+| https://h2database.com/html/license.html
 
 --------------------------------------------------------------------------------
 
