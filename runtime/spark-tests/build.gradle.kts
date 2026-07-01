@@ -31,8 +31,8 @@ plugins {
 
 val intTestJvmVersion = 21
 val sparkStartupAction = sourceSets.create("sparkStartupAction")
-val sparkStartupActionCompileOnly by configurations.getting
-val sparkStartupActionImplementation by configurations.getting
+val sparkStartupActionCompileOnly = configurations["sparkStartupActionCompileOnly"]
+val sparkStartupActionImplementation = configurations["sparkStartupActionImplementation"]
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 val localPolarisServer = files(provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") })
 
