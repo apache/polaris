@@ -32,7 +32,9 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
 
   @Inject
   public DefaultPolarisLineageHandler(
-      CallContext callContext, LineageConfiguration configuration, LineageStoreManager storeManager) {
+      CallContext callContext,
+      LineageConfiguration configuration,
+      LineageStoreManager storeManager) {
     this.callContext = callContext;
     this.configuration = configuration;
     this.storeManager = storeManager;
