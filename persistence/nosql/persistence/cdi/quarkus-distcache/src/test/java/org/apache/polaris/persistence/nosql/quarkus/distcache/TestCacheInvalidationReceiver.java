@@ -34,7 +34,6 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -48,12 +47,13 @@ import org.apache.polaris.persistence.nosql.api.cache.DistributedCacheInvalidati
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.json.JsonMapper;
 
 public class TestCacheInvalidationReceiver {
   private static final ObjRef SOME_OBJ_REF = ObjRef.objRef("foo", 1234);
 
   @Test
-  public void senderReceiver() throws Exception {
+  public void senderReceiver() {
     var distributedCacheInvalidation = mock(DistributedCacheInvalidation.Receiver.class);
 
     var token = "cafe";
@@ -72,7 +72,8 @@ public class TestCacheInvalidationReceiver {
               when(r.getHeader(CACHE_INVALIDATION_TOKEN_HEADER)).thenReturn(token);
             });
     var reqBody = mock(RequestBody.class);
-    when(reqBody.asString()).thenReturn(new ObjectMapper().writeValueAsString(invalidations));
+    var reqBodyString = JsonMapper.shared().writeValueAsString(invalidations);
+    when(reqBody.asString()).thenReturn(reqBodyString);
     when(rc.body()).thenReturn(reqBody);
 
     receiver.cacheInvalidations(rc);
@@ -106,7 +107,8 @@ public class TestCacheInvalidationReceiver {
               when(r.getHeader("Content-Type")).thenReturn("application/json; charset=utf-8");
             });
     var reqBody = mock(RequestBody.class);
-    when(reqBody.asString()).thenReturn(new ObjectMapper().writeValueAsString(invalidations));
+    var reqBodyValue = JsonMapper.shared().writeValueAsString(invalidations);
+    when(reqBody.asString()).thenReturn(reqBodyValue);
     when(rc.body()).thenReturn(reqBody);
 
     receiver.cacheInvalidations(rc);

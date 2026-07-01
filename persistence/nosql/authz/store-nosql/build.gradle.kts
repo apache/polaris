@@ -34,8 +34,8 @@ dependencies {
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
-  implementation(platform(libs.jackson.bom))
-  implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation(platform(libs.jackson3.bom))
+  implementation("tools.jackson.core:jackson-databind")
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))

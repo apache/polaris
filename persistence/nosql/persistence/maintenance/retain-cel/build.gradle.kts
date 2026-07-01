@@ -27,18 +27,22 @@ description = "Polaris NoSQL persistence maintenance - reference retain check us
 
 dependencies {
   implementation(project(":polaris-persistence-nosql-api"))
+  implementation(libs.caffeine)
+
   implementation(platform(libs.cel.bom))
   implementation("org.projectnessie.cel:cel-standalone")
-  implementation(libs.caffeine)
+  // CEL-standalone still requires the presence Jackson 2 databind
+  runtimeOnly(platform(libs.jackson.bom))
+  runtimeOnly("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
 
-  compileOnly(platform(libs.jackson.bom))
+  compileOnly(platform(libs.jackson3.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
-  testCompileOnly(platform(libs.jackson.bom))
+  testCompileOnly(platform(libs.jackson3.bom))
   testCompileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
   jmhImplementation(libs.jmh.core)

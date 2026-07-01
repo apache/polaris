@@ -19,8 +19,6 @@
 package org.apache.polaris.persistence.nosql.coretypes.acl;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.OptionalInt;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -29,6 +27,8 @@ import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.authz.api.Acl;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /** */
 @PolarisImmutable

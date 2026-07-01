@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.authz.spi;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Map;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Value type holding the Polaris system-wide mapping of {@linkplain Privilege privilege}

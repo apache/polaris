@@ -42,9 +42,6 @@ dependencies {
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
-  implementation(platform(libs.jackson.bom))
-  implementation("com.fasterxml.jackson.core:jackson-core")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
   implementation(platform(libs.jackson3.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("tools.jackson.core:jackson-core")
@@ -69,7 +66,6 @@ dependencies {
   testImplementation(libs.weld.junit5)
   testRuntimeOnly(libs.smallrye.jandex)
 
-  testImplementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
   testImplementation("tools.jackson.dataformat:jackson-dataformat-smile")
 
   testFixturesImplementation(project(":polaris-core"))

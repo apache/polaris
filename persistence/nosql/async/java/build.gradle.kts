@@ -36,8 +36,8 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
 
-  compileOnly(platform(libs.jackson.bom))
-  compileOnly("com.fasterxml.jackson.core:jackson-databind")
+  compileOnly(platform(libs.jackson3.bom))
+  compileOnly("tools.jackson.core:jackson-databind")
 
   testImplementation(testFixtures(project(":polaris-async-api")))
 

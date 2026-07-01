@@ -18,14 +18,14 @@
  */
 package org.apache.polaris.persistence.nosql.api.obj;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 @PolarisImmutable
 @JsonSerialize(as = ImmutableAnotherTestObj.class)
