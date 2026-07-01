@@ -86,6 +86,7 @@ public class ExceptionUtils {
     return switch (subType) {
       case ICEBERG_VIEW -> "View";
       case GENERIC_TABLE -> "Generic table";
+      case DIRECTORY -> "Directory";
       default -> "Table";
     };
   }

@@ -61,12 +61,14 @@ import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
+import org.apache.polaris.service.types.CreateDirectoryRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.GetApplicablePoliciesResponse;
 import org.apache.polaris.service.types.LoadPolicyResponse;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
+import org.apache.polaris.service.types.Directory;
 
 /**
  * Standard attribute keys for Polaris events. These keys provide type-safe access to common event
@@ -225,6 +227,14 @@ public final class EventAttributes {
       new AttributeKey<>("generic_table", GenericTable.class);
   public static final AttributeKey<CreateGenericTableRequest> CREATE_GENERIC_TABLE_REQUEST =
       new AttributeKey<>("create_generic_table_request", CreateGenericTableRequest.class);
+
+  // Directory attributes
+  public static final AttributeKey<String> DIRECTORY_NAME =
+      new AttributeKey<>("directory_name", String.class);
+  public static final AttributeKey<Directory> DIRECTORY =
+      new AttributeKey<>("directory", Directory.class);
+  public static final AttributeKey<CreateDirectoryRequest> CREATE_DIRECTORY_REQUEST =
+      new AttributeKey<>("create_directory_request", CreateDirectoryRequest.class);
 
   // Policy attributes
   public static final AttributeKey<String> POLICY_NAME =

@@ -146,6 +146,15 @@ paths:
   /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}:
     $ref: './polaris-catalog-apis/generic-tables-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1generic-tables~1{generic-table}'
 
+  ##########################
+  # Polaris Directory API  #
+  ##########################
+  /polaris/v1/{prefix}/namespaces/{namespace}/directories:
+    $ref: './polaris-catalog-apis/directories-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1directories'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}:
+    $ref: './polaris-catalog-apis/directories-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1directories~1{directory}'
+
   ######################
   # Polaris Policy API #
   ######################

@@ -63,4 +63,20 @@ public interface FederatedCatalogFactory {
       ConnectionConfigInfoDpo connectionConfig,
       PolarisCredentialManager polarisCredentialManager,
       Map<String, String> catalogProperties);
+
+  /**
+   * Creates a directory catalog for the given connection configuration.
+   *
+   * @param connectionConfig the connection configuration
+   * @param polarisCredentialManager the credential manager for generating connection credentials
+   *     that Polaris uses to access external systems
+   * @param catalogProperties additional properties from the ExternalCatalog entity that should be
+   *     passed through to the underlying catalog
+   * @return the initialized catalog
+   * @throws IllegalStateException if the connection configuration is invalid
+   */
+  DirectoryCatalog createDirectoryCatalog(
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties);
 }
