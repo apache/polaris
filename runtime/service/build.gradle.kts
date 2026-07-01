@@ -30,9 +30,9 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
+  implementation(project(":polaris-extensions-metrics-reports-spi"))
 
   runtimeOnly(project(":polaris-relational-jdbc"))
-
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
 
@@ -144,6 +144,8 @@ dependencies {
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.quarkus:quarkus-jdbc-h2")
+  // Provides jakarta.ws.rs.ext.RuntimeDelegate needed to build Response objects in plain unit tests
+  testRuntimeOnly("io.quarkus.resteasy.reactive:resteasy-reactive")
 
   testImplementation("io.opentelemetry:opentelemetry-sdk-testing")
 
@@ -171,6 +173,7 @@ dependencies {
   testImplementation(project(":polaris-persistence-nosql-impl"))
 
   testFixturesImplementation(project(":polaris-core"))
+  testFixturesImplementation(project(":polaris-extensions-metrics-reports-spi"))
   testFixturesImplementation(project(":polaris-api-management-model"))
   testFixturesImplementation(project(":polaris-api-management-service"))
   testFixturesImplementation(project(":polaris-api-iceberg-service"))
