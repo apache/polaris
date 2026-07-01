@@ -24,6 +24,8 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.enterprise.inject.Instance;
+import jakarta.enterprise.inject.Instance.Handle;
+import jakarta.enterprise.inject.spi.Bean;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
@@ -33,6 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -73,21 +76,27 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
+import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
 import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServiceDelegator;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandlerFactory;
+import org.apache.polaris.service.catalog.generic.GenericTableConfigEndpoints;
 import org.apache.polaris.service.catalog.generic.ImmutableGenericTableCatalogHandler;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandlerFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestCatalogEventServiceDelegator;
+import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigEndpoints;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigurationEventServiceDelegator;
+import org.apache.polaris.service.catalog.iceberg.IcebergViewConfigEndpoints;
 import org.apache.polaris.service.catalog.iceberg.ImmutableIcebergCatalogHandler;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.catalog.policy.PolicyConfigEndpoints;
+import org.apache.polaris.service.catalog.semantic.SemanticModelConfigEndpoints;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
@@ -101,6 +110,7 @@ import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvid
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
+import org.apache.polaris.service.spi.CatalogConfigEndpointContributor;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.mockito.Mockito;
@@ -366,9 +376,40 @@ public record TestServices(
             }
           };
 
+      @SuppressWarnings("unchecked")
+      Instance<CatalogConfigEndpointContributor> configEndpointContributors =
+          Mockito.mock(Instance.class);
+      CatalogConfigEndpointContributor icebergRestEndpoints = new IcebergRestConfigEndpoints();
+      CatalogConfigEndpointContributor icebergViewEndpoints = new IcebergViewConfigEndpoints();
+      CatalogConfigEndpointContributor genericTableEndpoints =
+          new GenericTableConfigEndpoints(realmConfig);
+      CatalogConfigEndpointContributor policyEndpoints = new PolicyConfigEndpoints(realmConfig);
+      CatalogConfigEndpointContributor semanticModelEndpoints =
+          new SemanticModelConfigEndpoints(realmConfig);
+      Mockito.when(configEndpointContributors.handlesStream())
+          .thenAnswer(
+              invocation ->
+                  Stream.of(
+                      endpointContributorHandle(
+                          GenericTableConfigEndpoints.class, genericTableEndpoints),
+                      endpointContributorHandle(PolicyConfigEndpoints.class, policyEndpoints),
+                      endpointContributorHandle(
+                          SemanticModelConfigEndpoints.class, semanticModelEndpoints),
+                      endpointContributorHandle(
+                          IcebergRestConfigEndpoints.class, icebergRestEndpoints),
+                      endpointContributorHandle(
+                          IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
+      CatalogConfigHandler catalogConfigHandler =
+          new CatalogConfigHandler(
+              new DefaultCatalogPrefixParser(), resolverFactory, configEndpointContributors);
+
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
-              callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
+              callContext,
+              new DefaultCatalogPrefixParser(),
+              reservedProperties,
+              handlerFactory,
+              catalogConfigHandler);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;
@@ -464,6 +505,18 @@ public record TestServices(
           eventMetadataFactory,
           storageAccessConfigProvider);
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Handle<CatalogConfigEndpointContributor> endpointContributorHandle(
+      Class<? extends CatalogConfigEndpointContributor> beanClass,
+      CatalogConfigEndpointContributor contributor) {
+    Handle<CatalogConfigEndpointContributor> handle = Mockito.mock(Handle.class);
+    Bean<CatalogConfigEndpointContributor> bean = Mockito.mock(Bean.class);
+    Mockito.doReturn(beanClass).when(bean).getBeanClass();
+    Mockito.when(handle.getBean()).thenReturn(bean);
+    Mockito.when(handle.get()).thenReturn(contributor);
+    return handle;
   }
 
   public PolarisCallContext newCallContext() {
