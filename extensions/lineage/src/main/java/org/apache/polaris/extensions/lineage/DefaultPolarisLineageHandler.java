@@ -21,16 +21,17 @@ package org.apache.polaris.extensions.lineage;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 
 @RequestScoped
 public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
-  private final CallContext callContext;
+  private final RealmConfig realmConfig;
   private final LineageConfiguration configuration;
 
   @Inject
   public DefaultPolarisLineageHandler(CallContext callContext, LineageConfiguration configuration) {
-    this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.configuration = configuration;
   }
 
@@ -46,7 +47,7 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
           "Lineage is disabled: set polaris.lineage.enabled=true to enable it.");
     }
 
-    if (!callContext.getRealmConfig().getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
+    if (!realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
       throw new UnsupportedOperationException(
           "Lineage realm feature is disabled: enable "
               + FeatureConfiguration.ENABLE_LINEAGE.key()
