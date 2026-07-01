@@ -207,7 +207,7 @@ listOf("intTestCompileClasspath", "intTestRuntimeClasspath").forEach {
 // Spark 4.0 requires version 5.0.0 which includes SingleThreadModel
 // Quarkus BOM forces it to 6.x which removed SingleThreadModel
 configurations.named("intTestRuntimeClasspath") {
-  resolutionStrategy { force("jakarta.servlet:jakarta.servlet-api:5.0.0") }
+  resolutionStrategy { force("jakarta.servlet:jakarta.servlet-api:6.1.0") }
 }
 
 tasks.register<ShadowJar>("createPolarisSparkJar") {
