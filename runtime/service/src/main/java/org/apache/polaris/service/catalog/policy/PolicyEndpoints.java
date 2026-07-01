@@ -54,24 +54,4 @@ public class PolicyEndpoints {
           .add(V1_DETACH_POLICY)
           .add(V1_GET_APPLICABLE_POLICIES)
           .build();
-  // Semantic model endpoints
-  public static final Endpoint V1_LIST_SEMANTIC_MODELS =
-      Endpoint.create("GET", PolarisResourcePaths.V1_SEMANTIC_MODELS);
-  public static final Endpoint V1_CREATE_SEMANTIC_MODEL =
-      Endpoint.create("POST", PolarisResourcePaths.V1_SEMANTIC_MODELS);
-  public static final Endpoint V1_LOAD_SEMANTIC_MODEL =
-      Endpoint.create("GET", PolarisResourcePaths.V1_SEMANTIC_MODEL);
-  public static final Endpoint V1_UPDATE_SEMANTIC_MODEL =
-      Endpoint.create("PUT", PolarisResourcePaths.V1_SEMANTIC_MODEL);
-  public static final Endpoint V1_DROP_SEMANTIC_MODEL =
-      Endpoint.create("DELETE", PolarisResourcePaths.V1_SEMANTIC_MODEL);
-
-  public static final Set<Endpoint> SEMANTIC_MODEL_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(V1_LIST_SEMANTIC_MODELS)
-          .add(V1_CREATE_SEMANTIC_MODEL)
-          .add(V1_LOAD_SEMANTIC_MODEL)
-          .add(V1_UPDATE_SEMANTIC_MODEL)
-          .add(V1_DROP_SEMANTIC_MODEL)
-          .build();
 }

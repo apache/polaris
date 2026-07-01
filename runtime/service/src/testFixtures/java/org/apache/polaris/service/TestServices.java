@@ -96,6 +96,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyConfigEndpoints;
+import org.apache.polaris.service.catalog.semantic.SemanticModelConfigEndpoints;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
@@ -383,6 +384,8 @@ public record TestServices(
       CatalogConfigEndpointContributor genericTableEndpoints =
           new GenericTableConfigEndpoints(realmConfig);
       CatalogConfigEndpointContributor policyEndpoints = new PolicyConfigEndpoints(realmConfig);
+      CatalogConfigEndpointContributor semanticModelEndpoints =
+          new SemanticModelConfigEndpoints(realmConfig);
       Mockito.when(configEndpointContributors.handlesStream())
           .thenAnswer(
               invocation ->
@@ -390,6 +393,8 @@ public record TestServices(
                       endpointContributorHandle(
                           GenericTableConfigEndpoints.class, genericTableEndpoints),
                       endpointContributorHandle(PolicyConfigEndpoints.class, policyEndpoints),
+                      endpointContributorHandle(
+                          SemanticModelConfigEndpoints.class, semanticModelEndpoints),
                       endpointContributorHandle(
                           IcebergRestConfigEndpoints.class, icebergRestEndpoints),
                       endpointContributorHandle(
