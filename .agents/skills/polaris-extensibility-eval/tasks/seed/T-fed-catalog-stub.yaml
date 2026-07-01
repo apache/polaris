@@ -1,0 +1,93 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+id: T-fed-catalog-stub
+title: "Stub a new federation extension module that compiles"
+description: >
+  Add a new no-op federation extension module under
+  extensions/federation/dummy/ that compiles. The agent must
+  discover gradle/projects.main.properties and the build.gradle.kts
+  pattern of an existing federation extension (e.g. bigquery).
+  Probes Gradle / projects-properties discoverability.
+
+applies_when:
+  - paths:
+    - "AGENTS.md"
+    - ".agents/skills/**"
+    - "extensions/federation/**"
+    - "gradle/projects.main.properties"
+    - "settings.gradle.kts"
+  - keywords:
+    - "FederatedCatalogFactory"
+    - "federation"
+    - "extension module"
+    - "projects.main.properties"
+
+shared_resource: workspace_env
+time_budget_min: 18
+k: 1
+loads_polaris_context: false
+
+worker_prompt: |
+  Your task: stub a new federation extension module in this Polaris
+  repo. Concretely:
+
+  1. Create a directory `extensions/federation/dummy/` containing
+     a `build.gradle.kts` that mirrors the structure of an
+     existing federation extension's build file (e.g.
+     `extensions/federation/bigquery/build.gradle.kts`). Use a
+     minimal subset of dependencies — just enough for the module
+     to compile. The module name in Gradle should be
+     `polaris-extensions-federation-dummy`.
+  2. Add a single Java source file under that module's
+     `src/main/java/` that declares a placeholder class (it can
+     do nothing — pick any class name in package
+     org.apache.polaris.extensions.federation.dummy and add an
+     appropriate ASF license header — match what's used in other
+     Polaris source files).
+  3. Register the new module in `gradle/projects.main.properties`.
+  4. Verify the new module compiles:
+     `./gradlew --quiet :polaris-extensions-federation-dummy:compileJava`
+
+  Constraints:
+  - Do NOT modify any test file.
+  - Do not commit.
+  - Match the ASF license header used in other Polaris Java
+    source files (see any existing extension class).
+
+  Print "DONE" when compileJava exits 0.
+
+verifier:
+  kind: deterministic
+  command: |
+    set -e
+    test -d extensions/federation/dummy
+    test -f extensions/federation/dummy/build.gradle.kts
+    grep -q "polaris-extensions-federation-dummy" gradle/projects.main.properties
+    git diff --name-only | grep -E "/src/test/" && exit 1
+    # Verify ASF header is present in the new Java file(s)
+    find extensions/federation/dummy/src/main/java -name "*.java" -print0 \
+      | xargs -0 -I{} grep -l "Licensed to the Apache Software Foundation" {} >/dev/null
+    ./gradlew --quiet :polaris-extensions-federation-dummy:compileJava
+  timeout_seconds: 900
+  success_on:
+    exit_code: 0
+
+baseline_verdict:
+  before: PASS
+  after:  PASS
+
+tags: ["federation", "build-system", "extensibility-friction", "agents-md-sensitive"]

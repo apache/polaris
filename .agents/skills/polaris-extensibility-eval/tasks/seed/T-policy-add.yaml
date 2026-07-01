@@ -1,0 +1,86 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+id: T-policy-add
+title: "Add a new predefined system policy type by mirroring snapshot-expiry"
+description: >
+  Add a new predefined system policy type 'view-snapshot-expiry'
+  whose JSON schema mirrors the existing 'snapshot-expiry' policy.
+  The agent must discover the JSON-schema-on-disk pattern and the
+  PredefinedPolicyTypes registry. Probes registry discoverability.
+
+applies_when:
+  - paths:
+    - "AGENTS.md"
+    - ".agents/skills/**"
+    - "polaris-core/src/main/java/org/apache/polaris/core/policy/**"
+    - "polaris-core/src/main/resources/schemas/policies/system/**"
+  - keywords:
+    - "PredefinedPolicyTypes"
+    - "policy type"
+    - "policy schema"
+
+shared_resource: workspace_env
+time_budget_min: 12
+k: 1
+loads_polaris_context: false
+
+worker_prompt: |
+  Your task: add a new predefined system policy type called
+  'view-snapshot-expiry' to this Polaris repo. The schema and
+  registration should mirror the existing 'snapshot-expiry' policy
+  type. Concretely:
+
+  1. Create a directory under
+     polaris-core/src/main/resources/schemas/policies/system/
+     named 'view-snapshot-expiry/' containing a JSON schema file
+     named exactly the same as the file in the existing
+     'snapshot-expiry/' directory (e.g. 2025-02-03.json), with
+     content modified appropriately for view snapshots (you may
+     copy the snapshot-expiry schema verbatim and just change any
+     identifier strings that include 'snapshot-expiry' to
+     'view-snapshot-expiry').
+  2. Whatever Java registry mechanism Polaris uses to enumerate
+     predefined policy types — find it (look in
+     polaris-core/.../policy/) and add an entry for this new type
+     so it shows up alongside the existing predefined types.
+  3. The project must still compile. Run
+     `./gradlew :polaris-core:compileJava` to verify.
+
+  Constraints:
+  - Do NOT modify any existing test file.
+  - Do not commit.
+
+  Print "DONE" when compileJava exits 0.
+
+verifier:
+  kind: deterministic
+  command: |
+    set -e
+    test -d polaris-core/src/main/resources/schemas/policies/system/view-snapshot-expiry
+    ls polaris-core/src/main/resources/schemas/policies/system/view-snapshot-expiry/*.json >/dev/null
+    git diff --name-only | grep -E "^polaris-core/src/test/" && exit 1
+    grep -r -q "view-snapshot-expiry" polaris-core/src/main/java/org/apache/polaris/core/policy/
+    ./gradlew --quiet :polaris-core:compileJava
+  timeout_seconds: 600
+  success_on:
+    exit_code: 0
+
+baseline_verdict:
+  before: PASS
+  after:  PASS
+
+tags: ["policy", "registry-discoverability", "json-schema"]
