@@ -32,6 +32,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.persistence.MaintenanceManager;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -48,6 +49,19 @@ public class AdminToolProducers {
     return metaStoreManagerFactories
         .select(Identifier.Literal.of(persistenceConfiguration.type()))
         .get();
+  }
+
+  @Produces
+  @ApplicationScoped
+  public MaintenanceManager maintenanceManager(
+      QuarkusPersistenceConfiguration persistenceConfiguration,
+      @Any Instance<MaintenanceManager> maintenanceManagers) {
+    Instance<MaintenanceManager> selected =
+        maintenanceManagers.select(Identifier.Literal.of(persistenceConfiguration.type()));
+    if (selected.isResolvable()) {
+      return selected.get();
+    }
+    return null;
   }
 
   @Produces
