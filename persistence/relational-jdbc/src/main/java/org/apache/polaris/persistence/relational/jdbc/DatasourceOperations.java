@@ -39,6 +39,7 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
@@ -67,9 +68,16 @@ public class DatasourceOperations {
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
 
+  // A schema name is interpolated directly into SQL (it cannot be a bind parameter), so it must be
+  // a plain SQL identifier: a leading letter or underscore followed by letters, digits, or
+  // underscores. This guards against SQL injection through the configured value.
+  private static final Pattern VALID_SCHEMA_NAME = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
+
   private final DataSource datasource;
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
   private final DatabaseType databaseType;
+  private final String schemaName;
+  private final QueryGenerator queryGenerator;
 
   private static final Random random = new Random();
 
@@ -77,6 +85,8 @@ public class DatasourceOperations {
       DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
+    this.schemaName = resolveSchemaName(relationalJdbcConfiguration);
+    this.queryGenerator = new QueryGenerator(schemaName);
     try (Connection connection = this.datasource.getConnection()) {
       // Get explicitly configured database type, if any
       DatabaseType configuredType =
@@ -94,8 +104,35 @@ public class DatasourceOperations {
     }
   }
 
+  private static String resolveSchemaName(RelationalJdbcConfiguration configuration) {
+    String schemaName =
+        configuration
+            .schemaName()
+            .map(String::trim)
+            .filter(name -> !name.isEmpty())
+            .orElse(QueryGenerator.DEFAULT_SCHEMA_NAME);
+    if (!VALID_SCHEMA_NAME.matcher(schemaName).matches()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid schema name '%s' configured via polaris.persistence.relational.jdbc.schema-name. "
+                  + "It must start with a letter or underscore and contain only letters, digits, and underscores.",
+              schemaName));
+    }
+    return schemaName;
+  }
+
   DatabaseType getDatabaseType() {
     return databaseType;
+  }
+
+  /** The database schema (namespace) holding the Polaris tables. */
+  public String getSchemaName() {
+    return schemaName;
+  }
+
+  /** The {@link QueryGenerator} bound to the configured schema for this datasource. */
+  public QueryGenerator getQueryGenerator() {
+    return queryGenerator;
   }
 
   /**
@@ -114,7 +151,9 @@ public class DatasourceOperations {
             try (Statement statement = connection.createStatement()) {
               StringBuilder sqlBuffer = new StringBuilder();
               for (String line : scriptLines) {
-                line = line.trim();
+                // Bind the configured schema name; schemaName is validated as a SQL identifier in
+                // resolveSchemaName, so this substitution cannot introduce injection.
+                line = line.trim().replace("${schema}", schemaName);
                 if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
                   sqlBuffer.append(line).append("\n");
                   if (line.endsWith(";")) { // Execute statement when semicolon is found

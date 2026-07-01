@@ -90,6 +90,7 @@ public class JdbcBasePersistenceImpl
 
   private final PolarisDiagnostics diagnostics;
   private final DatasourceOperations datasourceOperations;
+  private final QueryGenerator queryGenerator;
   private final PrincipalSecretsGenerator secretsGenerator;
   private final String realmId;
   private final int schemaVersion;
@@ -105,6 +106,7 @@ public class JdbcBasePersistenceImpl
       int schemaVersion) {
     this.diagnostics = diagnostics;
     this.datasourceOperations = databaseOperations;
+    this.queryGenerator = databaseOperations.getQueryGenerator();
     this.secretsGenerator = secretsGenerator;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
@@ -185,7 +187,7 @@ public class JdbcBasePersistenceImpl
             modelEntity.toMap(datasourceOperations.getDatabaseType()).values().stream().toList();
         queryAction.apply(
             connection,
-            QueryGenerator.generateInsertQuery(
+            queryGenerator.generateInsertQuery(
                 ModelEntity.getAllColumnNames(schemaVersion),
                 ModelEntity.TABLE_NAME,
                 values,
@@ -232,7 +234,7 @@ public class JdbcBasePersistenceImpl
         int rowsUpdated =
             queryAction.apply(
                 connection,
-                QueryGenerator.generateUpdateQuery(
+                queryGenerator.generateUpdateQuery(
                     ModelEntity.getAllColumnNames(schemaVersion),
                     ModelEntity.TABLE_NAME,
                     values,
@@ -260,7 +262,7 @@ public class JdbcBasePersistenceImpl
       List<Object> values =
           modelGrantRecord.toMap(datasourceOperations.getDatabaseType()).values().stream().toList();
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateInsertQuery(
+          queryGenerator.generateInsertQuery(
               ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, values, realmId));
     } catch (SQLException e) {
       if (datasourceOperations.isUniquenessConstraintViolation(e)) {
@@ -281,7 +283,7 @@ public class JdbcBasePersistenceImpl
     try {
       // Generate the SQL using the first event as the reference
       PreparedQuery firstPreparedQuery =
-          QueryGenerator.generateInsertQuery(
+          queryGenerator.generateInsertQuery(
               ModelEvent.ALL_COLUMNS,
               ModelEvent.TABLE_NAME,
               ModelEvent.fromEvent(events.getFirst())
@@ -299,7 +301,7 @@ public class JdbcBasePersistenceImpl
       for (int i = 1; i < events.size(); i++) {
         EventEntity event = events.get(i);
         PreparedQuery pq =
-            QueryGenerator.generateInsertQuery(
+            queryGenerator.generateInsertQuery(
                 ModelEvent.ALL_COLUMNS,
                 ModelEvent.TABLE_NAME,
                 ModelEvent.fromEvent(event)
@@ -342,7 +344,7 @@ public class JdbcBasePersistenceImpl
             realmId);
     try {
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQuery(
+          queryGenerator.generateDeleteQuery(
               ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -359,7 +361,7 @@ public class JdbcBasePersistenceImpl
           modelGrantRecord.toMap(datasourceOperations.getDatabaseType());
       whereClause.put("realm_id", realmId);
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQuery(
+          queryGenerator.generateDeleteQuery(
               ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, whereClause));
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -375,7 +377,7 @@ public class JdbcBasePersistenceImpl
       @NonNull List<PolarisGrantRecord> grantsOnSecurable) {
     try {
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQueryForEntityGrantRecords(entity, realmId));
+          queryGenerator.generateDeleteQueryForEntityGrantRecords(entity, realmId));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to delete grant records due to %s", e.getMessage()), e);
@@ -390,21 +392,21 @@ public class JdbcBasePersistenceImpl
           connection -> {
             datasourceOperations.execute(
                 connection,
-                QueryGenerator.generateDeleteQuery(
+                queryGenerator.generateDeleteQuery(
                     ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
             datasourceOperations.execute(
                 connection,
-                QueryGenerator.generateDeleteQuery(
+                queryGenerator.generateDeleteQuery(
                     ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, params));
             datasourceOperations.execute(
                 connection,
-                QueryGenerator.generateDeleteQuery(
+                queryGenerator.generateDeleteQuery(
                     ModelPrincipalAuthenticationData.ALL_COLUMNS,
                     ModelPrincipalAuthenticationData.TABLE_NAME,
                     params));
             datasourceOperations.execute(
                 connection,
-                QueryGenerator.generateDeleteQuery(
+                queryGenerator.generateDeleteQuery(
                     ModelPolicyMappingRecord.ALL_COLUMNS,
                     ModelPolicyMappingRecord.TABLE_NAME,
                     params));
@@ -422,7 +424,7 @@ public class JdbcBasePersistenceImpl
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "type_code", typeCode, "realm_id", realmId);
     return getPolarisBaseEntity(
-        QueryGenerator.generateSelectQuery(
+        queryGenerator.generateSelectQuery(
             ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
   }
 
@@ -446,7 +448,7 @@ public class JdbcBasePersistenceImpl
             "realm_id",
             realmId);
     return getPolarisBaseEntity(
-        QueryGenerator.generateSelectQuery(
+        queryGenerator.generateSelectQuery(
             ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
   }
 
@@ -476,7 +478,7 @@ public class JdbcBasePersistenceImpl
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     if (entityIds == null || entityIds.isEmpty()) return new ArrayList<>();
     PreparedQuery query =
-        QueryGenerator.generateSelectQueryWithEntityIds(realmId, schemaVersion, entityIds);
+        queryGenerator.generateSelectQueryWithEntityIds(realmId, schemaVersion, entityIds);
     try {
       Map<PolarisEntityId, PolarisBaseEntity> idMap =
           datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion)).stream()
@@ -552,7 +554,7 @@ public class JdbcBasePersistenceImpl
       whereGreater = Map.of();
     }
 
-    return QueryGenerator.generateSelectQuery(
+    return queryGenerator.generateSelectQuery(
         queryProjections, ModelEntity.TABLE_NAME, whereEquals, whereGreater, orderByColumnName);
   }
 
@@ -632,7 +634,7 @@ public class JdbcBasePersistenceImpl
         Map.of("catalog_id", catalogId, "id", entityId, "realm_id", realmId);
     PolarisBaseEntity b =
         getPolarisBaseEntity(
-            QueryGenerator.generateSelectQuery(
+            queryGenerator.generateSelectQuery(
                 ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
     return b == null ? 0 : b.getGrantRecordsVersion();
   }
@@ -662,7 +664,7 @@ public class JdbcBasePersistenceImpl
     try {
       var results =
           datasourceOperations.executeSelect(
-              QueryGenerator.generateSelectQuery(
+              queryGenerator.generateSelectQuery(
                   ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, params),
               new ModelGrantRecord());
       if (results.size() > 1) {
@@ -694,7 +696,7 @@ public class JdbcBasePersistenceImpl
     try {
       var results =
           datasourceOperations.executeSelect(
-              QueryGenerator.generateSelectQuery(
+              queryGenerator.generateSelectQuery(
                   ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, params),
               new ModelGrantRecord());
       return results == null ? Collections.emptyList() : results;
@@ -717,7 +719,7 @@ public class JdbcBasePersistenceImpl
     try {
       var results =
           datasourceOperations.executeSelect(
-              QueryGenerator.generateSelectQuery(
+              queryGenerator.generateSelectQuery(
                   ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, params),
               new ModelGrantRecord());
       return results == null ? Collections.emptyList() : results;
@@ -746,7 +748,7 @@ public class JdbcBasePersistenceImpl
     try {
       var results =
           datasourceOperations.executeSelect(
-              QueryGenerator.generateSelectQuery(
+              queryGenerator.generateSelectQuery(
                   ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params),
               new ModelEntity(schemaVersion));
       return results != null && !results.isEmpty();
@@ -760,7 +762,7 @@ public class JdbcBasePersistenceImpl
 
   static int loadSchemaVersion(
       DatasourceOperations datasourceOperations, boolean fallbackOnDoesNotExist) {
-    PreparedQuery query = QueryGenerator.generateVersionQuery();
+    PreparedQuery query = datasourceOperations.getQueryGenerator().generateVersionQuery();
     try {
       List<SchemaVersion> schemaVersion =
           datasourceOperations.executeSelect(query, new SchemaVersion());
@@ -778,7 +780,7 @@ public class JdbcBasePersistenceImpl
   }
 
   static boolean entityTableExists(DatasourceOperations datasourceOperations) {
-    PreparedQuery query = QueryGenerator.generateEntityTableExistQuery();
+    PreparedQuery query = datasourceOperations.getQueryGenerator().generateEntityTableExistQuery();
     try {
       List<PolarisBaseEntity> entities =
           datasourceOperations.executeSelect(query, new ModelEntity());
@@ -805,7 +807,7 @@ public class JdbcBasePersistenceImpl
     }
 
     PreparedQuery query =
-        QueryGenerator.generateOverlapQuery(
+        queryGenerator.generateOverlapQuery(
             realmId, schemaVersion, entity.getCatalogId(), entity.getBaseLocation());
     try {
       var results = datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
@@ -851,7 +853,7 @@ public class JdbcBasePersistenceImpl
     try {
       var results =
           datasourceOperations.executeSelect(
-              QueryGenerator.generateSelectQuery(
+              queryGenerator.generateSelectQuery(
                   ModelPrincipalAuthenticationData.ALL_COLUMNS,
                   ModelPrincipalAuthenticationData.TABLE_NAME,
                   params),
@@ -894,7 +896,7 @@ public class JdbcBasePersistenceImpl
           lookupPrincipalSecrets.toMap(datasourceOperations.getDatabaseType()).values().stream()
               .toList();
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateInsertQuery(
+          queryGenerator.generateInsertQuery(
               ModelPrincipalAuthenticationData.ALL_COLUMNS,
               ModelPrincipalAuthenticationData.TABLE_NAME,
               values,
@@ -927,7 +929,7 @@ public class JdbcBasePersistenceImpl
       ModelPrincipalAuthenticationData modelPrincipalAuthenticationData =
           ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets);
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateInsertQuery(
+          queryGenerator.generateInsertQuery(
               ModelPrincipalAuthenticationData.ALL_COLUMNS,
               ModelPrincipalAuthenticationData.TABLE_NAME,
               modelPrincipalAuthenticationData
@@ -991,7 +993,7 @@ public class JdbcBasePersistenceImpl
       ModelPrincipalAuthenticationData modelPrincipalAuthenticationData =
           ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets);
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateUpdateQuery(
+          queryGenerator.generateUpdateQuery(
               ModelPrincipalAuthenticationData.ALL_COLUMNS,
               ModelPrincipalAuthenticationData.TABLE_NAME,
               modelPrincipalAuthenticationData
@@ -1021,7 +1023,7 @@ public class JdbcBasePersistenceImpl
         Map.of("principal_client_id", clientId, "principal_id", principalId, "realm_id", realmId);
     try {
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQuery(
+          queryGenerator.generateDeleteQuery(
               ModelPrincipalAuthenticationData.ALL_COLUMNS,
               ModelPrincipalAuthenticationData.TABLE_NAME,
               params));
@@ -1054,7 +1056,7 @@ public class JdbcBasePersistenceImpl
                     .stream()
                     .toList();
             PreparedQuery insertPolicyMappingQuery =
-                QueryGenerator.generateInsertQuery(
+                queryGenerator.generateInsertQuery(
                     ModelPolicyMappingRecord.ALL_COLUMNS,
                     ModelPolicyMappingRecord.TABLE_NAME,
                     values,
@@ -1113,7 +1115,7 @@ public class JdbcBasePersistenceImpl
       ModelPolicyMappingRecord modelPolicyMappingRecord =
           ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
       PreparedQuery updateQuery =
-          QueryGenerator.generateUpdateQuery(
+          queryGenerator.generateUpdateQuery(
               ModelPolicyMappingRecord.ALL_COLUMNS,
               ModelPolicyMappingRecord.TABLE_NAME,
               modelPolicyMappingRecord
@@ -1139,7 +1141,7 @@ public class JdbcBasePersistenceImpl
           modelPolicyMappingRecord.toMap(datasourceOperations.getDatabaseType());
       objectMap.put("realm_id", realmId);
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQuery(
+          queryGenerator.generateDeleteQuery(
               ModelPolicyMappingRecord.ALL_COLUMNS,
               ModelPolicyMappingRecord.TABLE_NAME,
               objectMap));
@@ -1168,7 +1170,7 @@ public class JdbcBasePersistenceImpl
       }
       queryParams.put("realm_id", realmId);
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQuery(
+          queryGenerator.generateDeleteQuery(
               ModelPolicyMappingRecord.ALL_COLUMNS,
               ModelPolicyMappingRecord.TABLE_NAME,
               queryParams));
@@ -1203,7 +1205,7 @@ public class JdbcBasePersistenceImpl
             realmId);
     List<PolarisPolicyMappingRecord> results =
         fetchPolicyMappingRecords(
-            QueryGenerator.generateSelectQuery(
+            queryGenerator.generateSelectQuery(
                 ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
     Preconditions.checkState(results.size() <= 1, "More than one policy mapping records found");
     return results.size() == 1 ? results.getFirst() : null;
@@ -1227,7 +1229,7 @@ public class JdbcBasePersistenceImpl
             "realm_id",
             realmId);
     return fetchPolicyMappingRecords(
-        QueryGenerator.generateSelectQuery(
+        queryGenerator.generateSelectQuery(
             ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
   }
 
@@ -1264,7 +1266,7 @@ public class JdbcBasePersistenceImpl
             "realm_id",
             realmId);
     return fetchPolicyMappingRecords(
-        QueryGenerator.generateSelectQuery(
+        queryGenerator.generateSelectQuery(
             ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params),
         connection);
   }
@@ -1276,7 +1278,7 @@ public class JdbcBasePersistenceImpl
     Map<String, Object> params =
         Map.of("target_catalog_id", targetCatalogId, "target_id", targetId, "realm_id", realmId);
     return fetchPolicyMappingRecords(
-        QueryGenerator.generateSelectQuery(
+        queryGenerator.generateSelectQuery(
             ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
   }
 
@@ -1298,7 +1300,7 @@ public class JdbcBasePersistenceImpl
             "realm_id",
             realmId);
     return fetchPolicyMappingRecords(
-        QueryGenerator.generateSelectQuery(
+        queryGenerator.generateSelectQuery(
             ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
   }
 
@@ -1365,7 +1367,7 @@ public class JdbcBasePersistenceImpl
     DatasourceOperations metricsOps = getMetricsDatasource();
     try {
       PreparedQuery pq =
-          QueryGenerator.generateInsertQuery(
+          queryGenerator.generateInsertQuery(
               ModelScanMetricsReport.ALL_COLUMNS,
               ModelScanMetricsReport.TABLE_NAME,
               report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),
@@ -1381,7 +1383,7 @@ public class JdbcBasePersistenceImpl
     DatasourceOperations metricsOps = getMetricsDatasource();
     try {
       PreparedQuery pq =
-          QueryGenerator.generateInsertQuery(
+          queryGenerator.generateInsertQuery(
               ModelCommitMetricsReport.ALL_COLUMNS,
               ModelCommitMetricsReport.TABLE_NAME,
               report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),

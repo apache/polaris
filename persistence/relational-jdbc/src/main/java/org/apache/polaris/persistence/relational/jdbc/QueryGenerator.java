@@ -41,6 +41,21 @@ import org.jspecify.annotations.Nullable;
  */
 public class QueryGenerator {
 
+  /** Default schema (namespace) used for Polaris tables when none is configured. */
+  public static final String DEFAULT_SCHEMA_NAME = "POLARIS_SCHEMA";
+
+  /** The database schema (namespace) that qualifies every generated table reference. */
+  private final String schemaName;
+
+  /**
+   * @param schemaName The database schema (namespace) that holds the Polaris tables. The value is
+   *     interpolated directly into the generated SQL, so callers are responsible for validating it
+   *     as a plain SQL identifier before construction.
+   */
+  public QueryGenerator(@NonNull String schemaName) {
+    this.schemaName = schemaName;
+  }
+
   /** A container for the SQL string and the ordered parameter values. */
   public record PreparedQuery(String sql, List<Object> parameters) {}
 
@@ -59,7 +74,7 @@ public class QueryGenerator {
    * @return A parameterized SELECT query.
    * @throws IllegalArgumentException if any whereClause column isn't in projections.
    */
-  public static PreparedQuery generateSelectQuery(
+  public PreparedQuery generateSelectQuery(
       @NonNull List<String> projections,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
@@ -75,7 +90,7 @@ public class QueryGenerator {
    * @return A parameterized SELECT query.
    * @throws IllegalArgumentException if any whereClause column isn't in projections.
    */
-  public static PreparedQuery generateSelectQuery(
+  public PreparedQuery generateSelectQuery(
       @NonNull List<String> projections,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereEquals,
@@ -94,7 +109,7 @@ public class QueryGenerator {
    * @param realmId The associated realm.
    * @return A DELETE query removing all grants for this entity.
    */
-  public static PreparedQuery generateDeleteQueryForEntityGrantRecords(
+  public PreparedQuery generateDeleteQueryForEntityGrantRecords(
       @NonNull PolarisEntityCore entity, @NonNull String realmId) {
     String where =
         """
@@ -118,7 +133,7 @@ public class QueryGenerator {
    * @return SELECT query to retrieve matching entities.
    * @throws IllegalArgumentException if entityIds is empty.
    */
-  public static PreparedQuery generateSelectQueryWithEntityIds(
+  public PreparedQuery generateSelectQueryWithEntityIds(
       @NonNull String realmId, int schemaVersion, @NonNull List<PolarisEntityId> entityIds) {
     if (entityIds.isEmpty()) {
       throw new IllegalArgumentException("Empty entity ids");
@@ -147,7 +162,7 @@ public class QueryGenerator {
    * @param realmId Realm value to append.
    * @return INSERT query with value bindings.
    */
-  public static PreparedQuery generateInsertQuery(
+  public PreparedQuery generateInsertQuery(
       @NonNull List<String> allColumns,
       @NonNull String tableName,
       List<Object> values,
@@ -178,7 +193,7 @@ public class QueryGenerator {
    * @param whereClause Conditions for filtering rows to update.
    * @return UPDATE query with parameter values.
    */
-  public static PreparedQuery generateUpdateQuery(
+  public PreparedQuery generateUpdateQuery(
       @NonNull List<String> allColumns,
       @NonNull String tableName,
       @NonNull List<Object> values,
@@ -209,7 +224,7 @@ public class QueryGenerator {
    * @param whereIsNotNull Columns that must be NOT NULL.
    * @return UPDATE query with parameter bindings.
    */
-  public static PreparedQuery generateUpdateQuery(
+  public PreparedQuery generateUpdateQuery(
       @NonNull List<String> tableColumns,
       @NonNull String tableName,
       @NonNull Map<String, Object> setClause,
@@ -254,7 +269,7 @@ public class QueryGenerator {
    * @param whereClause Column-value filters.
    * @return DELETE query with parameter bindings.
    */
-  public static PreparedQuery generateDeleteQuery(
+  public PreparedQuery generateDeleteQuery(
       @NonNull List<String> tableColumns,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
@@ -267,7 +282,7 @@ public class QueryGenerator {
    * Builds a DELETE query that supports richer WHERE predicates (equality, greater-than, less-than,
    * IS NULL, IS NOT NULL).
    */
-  public static PreparedQuery generateDeleteQuery(
+  public PreparedQuery generateDeleteQuery(
       @NonNull List<String> tableColumns,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereEquals,
@@ -283,7 +298,7 @@ public class QueryGenerator {
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
 
-  private static PreparedQuery generateSelectQuery(
+  private PreparedQuery generateSelectQuery(
       @NonNull List<String> columnNames,
       @NonNull String tableName,
       @NonNull String filter,
@@ -357,12 +372,13 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  static PreparedQuery generateVersionQuery() {
-    return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
+  PreparedQuery generateVersionQuery() {
+    return new PreparedQuery(
+        "SELECT version_value FROM " + getFullyQualifiedTableName("VERSION"), List.of());
   }
 
   @VisibleForTesting
-  static PreparedQuery generateEntityTableExistQuery() {
+  PreparedQuery generateEntityTableExistQuery() {
     return new PreparedQuery(
         String.format(
             "SELECT * FROM %s LIMIT 1", getFullyQualifiedTableName(ModelEntity.TABLE_NAME)),
@@ -382,7 +398,7 @@ public class QueryGenerator {
    * @return The list of possibly overlapping entities that meet the criteria
    */
   @VisibleForTesting
-  public static PreparedQuery generateOverlapQuery(
+  public PreparedQuery generateOverlapQuery(
       String realmId, int schemaVersion, long catalogId, String baseLocation) {
     StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
     String locationWithoutScheme = baseStorageLocation.withoutScheme();
@@ -422,8 +438,7 @@ public class QueryGenerator {
     return new PreparedQuery(query.sql(), where.parameters());
   }
 
-  static String getFullyQualifiedTableName(String tableName) {
-    // TODO: make schema name configurable.
-    return "POLARIS_SCHEMA." + tableName;
+  String getFullyQualifiedTableName(String tableName) {
+    return schemaName + "." + tableName;
   }
 }

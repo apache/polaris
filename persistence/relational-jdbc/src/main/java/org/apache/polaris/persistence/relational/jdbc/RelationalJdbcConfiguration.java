@@ -35,4 +35,12 @@ public interface RelationalJdbcConfiguration {
    * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
    */
   Optional<String> databaseType();
+
+  /**
+   * The database schema (namespace) that holds the Polaris tables. If not specified, it defaults to
+   * {@code POLARIS_SCHEMA}. The value is interpolated directly into SQL statements (schema names
+   * cannot be passed as bind parameters), so it must be a plain SQL identifier: it must start with
+   * a letter or underscore and contain only letters, digits, and underscores.
+   */
+  Optional<String> schemaName();
 }

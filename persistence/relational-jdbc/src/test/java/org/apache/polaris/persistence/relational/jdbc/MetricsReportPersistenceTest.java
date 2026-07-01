@@ -189,5 +189,10 @@ class MetricsReportPersistenceTest {
     public Optional<String> databaseType() {
       return Optional.empty();
     }
+
+    @Override
+    public Optional<String> schemaName() {
+      return Optional.empty();
+    }
   }
 }

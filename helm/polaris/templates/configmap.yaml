@@ -55,6 +55,11 @@ data:
     {{- $_ = set $map "polaris.persistence.nosql.backend" .Values.persistence.nosql.backend -}}
     {{- $_ = set $map "quarkus.mongodb.database" .Values.persistence.nosql.database -}}
     {{- end -}}
+    {{- if eq .Values.persistence.type "relational-jdbc" -}}
+    {{- if .Values.persistence.relationalJdbc.schemaName -}}
+    {{- $_ = set $map "polaris.persistence.relational.jdbc.schema-name" .Values.persistence.relationalJdbc.schemaName -}}
+    {{- end -}}
+    {{- end -}}
 
     {{- /* File IO */ -}}
     {{- $_ = set $map "polaris.file-io.type" .Values.fileIo.type -}}

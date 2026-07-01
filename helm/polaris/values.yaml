@@ -922,6 +922,11 @@ persistence:
   type: in-memory  # relational-jdbc, nosql
   # The configuration for the relational-jdbc persistence manager.
   relationalJdbc:
+    # -- The database schema (namespace) holding the Polaris tables. When empty, Polaris uses the
+    # default schema `POLARIS_SCHEMA`. Must be a valid SQL identifier: it must start with a letter or
+    # underscore and contain only letters, digits, and underscores.
+    # @section -- Persistence
+    schemaName: ""
     # The secret name to pull the database connection properties from.
     secret:
       # -- The secret name to pull database connection properties from

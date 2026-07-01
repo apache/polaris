@@ -21,8 +21,8 @@
 --  * Added a `location_without_scheme` column to entities
 --  * Added an index `idx_locations` over (realm_id, catalog_id, location_without_scheme) in entities
 
-CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
-SET SCHEMA POLARIS_SCHEMA;
+CREATE SCHEMA IF NOT EXISTS ${schema};
+SET SCHEMA ${schema};
 
 CREATE TABLE IF NOT EXISTS version (
     version_key VARCHAR PRIMARY KEY,
