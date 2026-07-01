@@ -49,7 +49,7 @@ def fine_grained_authz_test_catalog(root_client, catalog_client):
     from conftest import create_catalog_role
     
     catalog_name = f'fine_grained_authz_test_catalog_{str(uuid.uuid4())[-10:]}'
-    storage_config = FileStorageConfigInfo(storage_type="FILE", allowed_locations=["file:///tmp"])
+    storage_config = FileStorageConfigInfo(storage_type="FILE", allowed_locations=["file:///tmp/polaris"])
     base_location = "file:///tmp/polaris"
     
     # Build properties dict with fine-grained authorization enabled

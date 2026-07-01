@@ -898,24 +898,19 @@ public class PolarisAdminService {
           reservedProperties.removeReservedPropertiesFromUpdate(
               currentCatalogEntity.getPropertiesAsMap(), updateRequest.getProperties());
       updateBuilder.setProperties(updateProperties);
-      String newDefaultBaseLocation =
+      // Treat absent or empty default-base-location as "no change intended": client libraries
+      // often merge additionalProperties without echoing default-base-location.
+      String requestedBaseLocation =
           updateRequest.getProperties().get(CatalogEntity.DEFAULT_BASE_LOCATION_KEY);
-      // Since defaultBaseLocation is a required field during construction of a catalog, and the
-      // syntax of the Catalog API model splits default-base-location out from other keys in
-      // additionalProperties, it's easy for client libraries to focus on adding/merging
-      // additionalProperties while neglecting to "echo" the default-base-location from the
-      // fetched catalog, it's most user-friendly to treat a null or empty default-base-location
-      // as meaning no intended change to the default-base-location.
-      if (Strings.isNullOrEmpty(newDefaultBaseLocation)) {
-        // No default-base-location present at all in the properties of the update request,
-        // so we must restore it explicitly in the updateBuilder.
-        updateBuilder.setDefaultBaseLocation(defaultBaseLocation);
-      } else {
-        // New base location is already in the updated properties; we'll also potentially
-        // plumb it into the logic for setting an updated StorageConfigurationInfo.
-        defaultBaseLocation = newDefaultBaseLocation;
+      boolean defaultBaseLocationChanged = !Strings.isNullOrEmpty(requestedBaseLocation);
+      if (defaultBaseLocationChanged) {
+        defaultBaseLocation = requestedBaseLocation;
       }
+      // setProperties replaces all builder properties; restore defaultBaseLocation explicitly
+      // so it is always set regardless of whether the client included it in the update.
+      updateBuilder.setDefaultBaseLocation(defaultBaseLocation);
     }
+
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(
           realmConfig, updateRequest.getStorageConfigInfo(), defaultBaseLocation);

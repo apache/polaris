@@ -217,7 +217,7 @@ public class RestCatalogMinIOSpecialIT {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(pathStyleAccess)
             .setStsUnavailable(!stsEnabled)
-            .setAllowedLocations(List.of(storageBase.toString()));
+            .setAllowedLocations(List.of(storageBase.toString() + "/" + catalogName));
 
     endpoint.ifPresent(storageConfig::setEndpoint);
     stsEndpoint.ifPresent(storageConfig::setStsEndpoint);
@@ -227,7 +227,7 @@ public class RestCatalogMinIOSpecialIT {
     kmsUnavailable.ifPresent(storageConfig::setKmsUnavailable);
 
     CatalogProperties.Builder catalogProps =
-        CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
+        CatalogProperties.builder(storageBase.toString() + "/" + catalogName);
     if (!stsEnabled) {
       catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), ACCESS_KEY);
       catalogProps.addProperty(TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), SECRET_KEY);
