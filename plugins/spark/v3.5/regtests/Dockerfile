@@ -17,7 +17,7 @@
 # under the License.
 #
 
-FROM docker.io/apache/spark:3.5.6-java17
+FROM docker.io/apache/spark:3.5.8-java17
 
 ARG POLARIS_HOST=polaris \
     CURRENT_SCALA_VERSION=2.12
