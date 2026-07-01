@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -322,5 +323,29 @@ public class DatasourceOperationsTest {
 
     assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
     verify(mockOperation, times(1)).execute();
+  }
+
+  @Test
+  void testDefaultsToPolarisSchemaWhenUnset() {
+    // relationalJdbcConfiguration.schemaName() is unstubbed and defaults to empty.
+    assertEquals(QueryGenerator.DEFAULT_SCHEMA_NAME, datasourceOperations.getSchemaName());
+  }
+
+  @Test
+  void testConfiguredSchemaNameIsUsed() throws SQLException {
+    RelationalJdbcConfiguration cfg = mock(RelationalJdbcConfiguration.class);
+    when(cfg.schemaName()).thenReturn(Optional.of("custom_schema"));
+    DatasourceOperations ops = new DatasourceOperations(mockDataSource, cfg);
+    assertEquals("custom_schema", ops.getSchemaName());
+    assertEquals(
+        "custom_schema.ENTITIES", ops.getQueryGenerator().getFullyQualifiedTableName("ENTITIES"));
+  }
+
+  @Test
+  void testInvalidSchemaNameIsRejected() {
+    RelationalJdbcConfiguration cfg = mock(RelationalJdbcConfiguration.class);
+    when(cfg.schemaName()).thenReturn(Optional.of("invalid-schema; DROP TABLE"));
+    assertThrows(
+        IllegalArgumentException.class, () -> new DatasourceOperations(mockDataSource, cfg));
   }
 }

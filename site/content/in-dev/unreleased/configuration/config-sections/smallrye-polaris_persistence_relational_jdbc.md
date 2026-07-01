@@ -29,3 +29,4 @@ build:
 | `polaris.persistence.relational.jdbc.max-duration-in-ms` |  | `long` |  |
 | `polaris.persistence.relational.jdbc.initial-delay-in-ms` |  | `long` |  |
 | `polaris.persistence.relational.jdbc.database-type` |  | `string` |  |
+| `polaris.persistence.relational.jdbc.schema-name` |  | `string` |  |

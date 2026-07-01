@@ -1157,6 +1157,10 @@
                 "relationalJdbc": {
                     "type": "object",
                     "properties": {
+                        "schemaName": {
+                            "description": "The database schema (namespace) holding the Polaris tables. When empty, Polaris uses the default schema `POLARIS_SCHEMA`. Must be a valid SQL identifier: it must start with a letter or underscore and contain only letters, digits, and underscores.",
+                            "type": "string"
+                        },
                         "secret": {
                             "type": "object",
                             "properties": {
