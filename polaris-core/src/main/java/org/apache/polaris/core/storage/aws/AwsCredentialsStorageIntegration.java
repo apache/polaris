@@ -179,7 +179,7 @@ public class AwsCredentialsStorageIntegration
             .filter(t -> !t.startsWith(AwsSessionNameBuilder.PREFIX_CONFIG_TOKEN))
             .map(SessionNameField::fromConfigName)
             .flatMap(Optional::stream)
-            .collect(Collectors.toList());
+            .toList();
     if (!enabledSessionNameFields.isEmpty()) {
       return buildSessionName(principalName, context, enabledSessionNameFields, sessionNamePrefix);
     }
@@ -235,7 +235,7 @@ public class AwsCredentialsStorageIntegration
       if (!sessionTags.isEmpty()) {
         request.tags(sessionTags);
         // Mark all tags as transitive for role chaining support
-        request.transitiveTagKeys(sessionTags.stream().map(Tag::key).collect(Collectors.toList()));
+        request.transitiveTagKeys(sessionTags.stream().map(Tag::key).toList());
       }
 
       key.credentialsResolver()

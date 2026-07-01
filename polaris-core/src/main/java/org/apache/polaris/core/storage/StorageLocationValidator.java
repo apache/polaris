@@ -71,7 +71,7 @@ public final class StorageLocationValidator {
             .map(str -> str.replace("file:///", "file:/"))
             .collect(Collectors.toSet());
     List<StorageLocation> allowedLocations =
-        allowedLocationStrings.stream().map(StorageLocation::of).collect(Collectors.toList());
+        allowedLocationStrings.stream().map(StorageLocation::of).toList();
 
     boolean allowWildcardLocation = realmConfig.getConfig(ALLOW_WILDCARD_LOCATION);
 

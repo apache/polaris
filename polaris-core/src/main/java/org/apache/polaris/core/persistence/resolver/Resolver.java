@@ -575,7 +575,7 @@ public class Resolver {
                       new PolarisEntityId(
                           resolvedEntity.getEntity().getCatalogId(),
                           resolvedEntity.getEntity().getId()))
-              .collect(Collectors.toList());
+              .toList();
 
       // now get the current backend versions of all these entities
       ChangeTrackingResult changeTrackingResult =
