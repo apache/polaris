@@ -125,7 +125,7 @@ tests:
       persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence" } } }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=relational-jdbc" }
-      - notMatchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.relational.jdbc.schema-name" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.relational.jdbc.schema-name=POLARIS_SCHEMA" }
 
   - it: should configure relational-jdbc persistence with a custom schema name
     set:
