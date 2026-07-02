@@ -40,6 +40,7 @@ dependencies = [
     "boto3~=1.43.1",
     "PyYAML>=6.0.3",
     "prettytable>=3.17.0",
+    "rich>=14.2.0",
 ]
 
 [project.urls]

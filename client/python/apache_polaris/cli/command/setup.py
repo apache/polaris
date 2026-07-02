@@ -23,6 +23,10 @@ import json
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Any, Set
 
+from rich.console import Console
+from rich.logging import RichHandler
+from rich.syntax import Syntax
+
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import (
@@ -51,7 +55,20 @@ from apache_polaris.cli.command.privileges import PrivilegesCommand
 from apache_polaris.cli.command.policies import PoliciesCommand
 from apache_polaris.cli.command.utils import get_catalog_api_client
 
-logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO)
+logging.basicConfig(
+    format="%(message)s",
+    level=logging.INFO,
+    handlers=[
+        RichHandler(
+            show_time=True,
+            show_level=True,
+            show_path=False,
+            rich_tracebacks=False,
+            markup=False,
+            omit_repeated_times=False,
+        )
+    ],
+)
 logger = logging.getLogger(__name__)
 
 
@@ -144,7 +161,7 @@ class SetupCommand(Command):
 
     def _export_config(self, api: PolarisDefaultApi) -> None:
         """Export the current Polaris configuration to YAML."""
-        logger.info("--- Exporting Polaris Configuration ---")
+        logger.info("Exporting Polaris configuration...")
         logger.warning(
             "Exporting policy attachments is not currently supported due to performance "
             "considerations. Attachments will be omitted from the exported configuration."
@@ -154,8 +171,21 @@ class SetupCommand(Command):
             "principal_roles": self._export_principal_roles(api),
             "catalogs": self._export_catalogs(api),
         }
-        print(yaml.safe_dump(config, sort_keys=False, indent=2).rstrip())
-        logger.info("--- Finished Exporting Polaris Configuration ---")
+        yaml_text = yaml.safe_dump(config, sort_keys=False, indent=2).rstrip()
+
+        if os.isatty(1):
+            Console().print(
+                Syntax(
+                    yaml_text,
+                    "yaml",
+                    theme="monokai",
+                    background_color="default",
+                    word_wrap=True,
+                )
+            )
+        else:
+            print(yaml_text)
+        logger.info("Finished exporting Polaris configuration.")
 
     def _export_principals(self, api: PolarisDefaultApi) -> Dict[str, Any]:
         """Export all principals and their assigned roles."""
