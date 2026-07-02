@@ -55,8 +55,12 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
   @Override
   public abstract boolean canHandleTask(TaskEntity task);
 
+  /**
+   * Handles the provided task. A normal return indicates success and the task entity will be
+   * dropped; throwing indicates failure and triggers the task retry path.
+   */
   @Override
-  public abstract boolean handleTask(TaskEntity task, CallContext callContext);
+  public abstract void handleTask(TaskEntity task, CallContext callContext);
 
   /**
    * Attempts to delete a single file with retry logic. If the file does not exist, it logs a

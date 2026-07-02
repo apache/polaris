@@ -209,11 +209,12 @@ public class TaskExecutorImpl implements TaskExecutor {
     }
 
     boolean success = false;
+    PolarisBaseEntity taskEntity = null;
     try {
       LOGGER.info("Handling task entity id {}", taskEntityId);
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
-      PolarisBaseEntity taskEntity =
+      taskEntity =
           metaStoreManager
               .loadEntity(ctx.getPolarisCallContext(), 0L, taskEntityId, PolarisEntityType.TASK)
               .getEntity();
@@ -229,35 +230,33 @@ public class TaskExecutorImpl implements TaskExecutor {
             .addKeyValue("taskEntityId", taskEntityId)
             .addKeyValue("taskType", task.getTaskType())
             .log("Unable to find handler for task type");
-        throw new RuntimeException(
+        throw new TaskHandlerNotFoundException(
             "Unable to find handler for task type "
                 + task.getTaskType()
                 + " for task entity id "
                 + taskEntityId);
       }
       TaskHandler handler = handlerOpt.get();
-      success = handler.handleTask(task, ctx);
-      if (success) {
-        LOGGER
-            .atInfo()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("handlerClass", handler.getClass())
-            .log("Task successfully handled");
-        metaStoreManager.dropEntityIfExists(
-            ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
-      } else {
-        LOGGER
-            .atWarn()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("taskEntityName", taskEntity.getName())
-            .log("Unable to execute async task");
-        throw new RuntimeException(
-            "Task handler returned false for task entity id "
-                + taskEntityId
-                + " (handler: "
-                + handler.getClass().getSimpleName()
-                + ")");
-      }
+      handler.handleTask(task, ctx);
+      success = true;
+      LOGGER
+          .atInfo()
+          .addKeyValue("taskEntityId", taskEntityId)
+          .addKeyValue("handlerClass", handler.getClass())
+          .log("Task successfully handled");
+      metaStoreManager.dropEntityIfExists(
+          ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
+    } catch (TaskHandlerNotFoundException e) {
+      success = false;
+      throw e;
+    } catch (Exception e) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("taskEntityId", taskEntityId)
+          .addKeyValue("taskEntityName", taskEntity != null ? taskEntity.getName() : "")
+          .log("Unable to execute async task");
+      success = false;
+      throw e;
     } finally {
       if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_ATTEMPT_TASK)) {
         polarisEventDispatcher.dispatch(
@@ -306,6 +305,12 @@ public class TaskExecutorImpl implements TaskExecutor {
       } finally {
         span.end();
       }
+    }
+  }
+
+  private static final class TaskHandlerNotFoundException extends RuntimeException {
+    TaskHandlerNotFoundException(String message) {
+      super(message);
     }
   }
 }
