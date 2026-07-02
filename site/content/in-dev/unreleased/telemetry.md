@@ -66,6 +66,21 @@ default. If the number of unique realm IDs exceeds this value, a warning will be
 HTTP request metrics will be recorded. This threshold can be changed by setting the
 `polaris.metrics.realm-id-tag.http-metrics-max-cardinality` property.
 
+### HTTP Request Histogram Buckets
+
+By default, the HTTP server request duration timer exports only the count, sum, and max series.
+These support average and worse-case latency but cannot be used to compute aggregable percentiles
+(e.g. p95, p99) across instances.
+
+To publish histogram buckets for HTTP server request duration, configure the Service Level
+Objective (SLO) boundaries to publish:
+
+```properties
+polaris.metrics.http-server-requests.histogram-slos=10ms,50ms,100ms,1s,5s
+```
+
+These buckets can be used by Prometheus `histogram_quantile` to estimate p95/p99; accuracy depends on the configured bucket boundaries.
+
 ## Traces
 
 Traces are published using [OpenTelemetry].
