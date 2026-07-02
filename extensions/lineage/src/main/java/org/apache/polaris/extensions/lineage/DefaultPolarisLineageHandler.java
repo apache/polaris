@@ -22,20 +22,20 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 
 @RequestScoped
 public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
-  private final CallContext callContext;
+  private final RealmConfig realmConfig;
   private final LineageConfiguration configuration;
   private final LineageStoreManager storeManager;
 
   @Inject
   public DefaultPolarisLineageHandler(
-      CallContext callContext,
+      RealmConfig realmConfig,
       LineageConfiguration configuration,
       LineageStoreManager storeManager) {
-    this.callContext = callContext;
+    this.realmConfig = realmConfig;
     this.configuration = configuration;
     this.storeManager = storeManager;
   }
@@ -67,7 +67,7 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
               + " it.");
     }
 
-    if (!callContext.getRealmConfig().getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
+    if (!realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
       throw new UnsupportedOperationException(
           "Lineage realm feature is disabled: enable "
               + FeatureConfiguration.ENABLE_LINEAGE.key()
