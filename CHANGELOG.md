@@ -56,6 +56,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `maintenance` support in Helm chart.
 - Added support for publishing histogram buckets for HTTP server request duration as configured SLO boundaries.
 - Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
+- Added optional `sessionPolicy` field to `SigV4AuthenticationParameters` for catalog federation. When set, the IAM session policy JSON is attached to the STS AssumeRole request, allowing administrators to restrict vended credentials to only the required AWS services and actions (Principle of Least Privilege).
 
 ### Changes
 - Added REPL support to Polaris CLI.
