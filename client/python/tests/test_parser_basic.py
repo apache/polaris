@@ -151,7 +151,9 @@ class TestParserBasic(CLITestBase):
         )
 
     def test_version(self) -> None:
-        self.check_usage_output(lambda: Parser.parse(["--version"]), needle=f"polaris {__version__}")
+        self.check_usage_output(
+            lambda: Parser.parse(["--version"]), needle=f"polaris {__version__}"
+        )
 
     def test_global_flag_anywhere(self) -> None:
         # Test that global flags work when placed after subcommands
