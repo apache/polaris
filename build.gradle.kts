@@ -87,6 +87,10 @@ tasks.named<RatTask>("rat").configure {
   // Files copied from OpenAPI Generator (ASLv2 licensed) don't have header
   excludes.add("server-templates/*.mustache")
 
+  // Vendored OSI JSON Schema (Apache-2.0, from open-semantic-interchange/OSI); JSON allows no
+  // comments so the ASF header cannot be inlined.
+  excludes.add("extensions/semantic-models/src/main/resources/osi/**")
+
   // Manifest files do not allow comments
   excludes.add("tools/version/src/jarTest/resources/META-INF/FAKE_MANIFEST.MF")
 

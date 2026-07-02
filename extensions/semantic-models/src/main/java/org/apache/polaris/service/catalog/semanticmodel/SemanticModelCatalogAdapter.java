@@ -22,39 +22,57 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.rest.NamespaceUtils;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.catalog.semanticmodel.api.PolarisCatalogSemanticModelApiService;
 import org.apache.polaris.service.catalog.semanticmodel.types.CreateSemanticModelRequest;
+import org.apache.polaris.service.catalog.semanticmodel.types.SemanticModelIdentifier;
 import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticModelRequest;
 
 /**
- * Stub adapter for the OSI semantic-model API. The endpoints are wired and gated by {@link
- * FeatureConfiguration#ENABLE_SEMANTIC_MODELS}, but every operation returns {@code 501 Not
- * Implemented}. Persistence, validation, authorization, and source-link resolution land in
- * subsequent phases.
+ * Adapter for the OSI semantic-model API. The endpoints are gated by {@link
+ * FeatureConfiguration#ENABLE_SEMANTIC_MODELS} and dispatch to {@link SemanticModelCatalogHandler}
+ * for authorization, validation, source resolution, and persistence.
  */
 @RequestScoped
 public class SemanticModelCatalogAdapter
     implements PolarisCatalogSemanticModelApiService, CatalogAdapter {
 
   private final RealmConfig realmConfig;
+  private final CatalogPrefixParser prefixParser;
+  private final SemanticModelCatalogHandlerFactory handlerFactory;
 
   @Inject
-  public SemanticModelCatalogAdapter(CallContext callContext) {
+  public SemanticModelCatalogAdapter(
+      CallContext callContext,
+      CatalogPrefixParser prefixParser,
+      SemanticModelCatalogHandlerFactory handlerFactory) {
     this.realmConfig = callContext.getRealmConfig();
+    this.prefixParser = prefixParser;
+    this.handlerFactory = handlerFactory;
   }
 
-  private void ensureEnabled() {
+  private SemanticModelCatalogHandler newHandler(SecurityContext securityContext, String prefix) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
         realmConfig, FeatureConfiguration.ENABLE_SEMANTIC_MODELS);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
+    return handlerFactory.createHandler(catalogName, principal);
   }
 
-  private static Response notImplemented() {
-    return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+  private static SemanticModelIdentifier identifier(Namespace namespace, String name) {
+    return SemanticModelIdentifier.builder()
+        .setNamespace(List.of(namespace.levels()))
+        .setName(name)
+        .build();
   }
 
   @Override
@@ -64,10 +82,10 @@ public class SemanticModelCatalogAdapter
       CreateSemanticModelRequest createSemanticModelRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    ensureEnabled();
-    // TODO: authorize the principal, validate the OSI document against the bundled OSI JSON Schema,
-    //  then persist a new semantic-model entity and return the stored document.
-    return notImplemented();
+    Namespace ns =
+        NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    SemanticModelCatalogHandler handler = newHandler(securityContext, prefix);
+    return Response.ok(handler.createSemanticModel(ns, createSemanticModelRequest)).build();
   }
 
   @Override
@@ -78,10 +96,10 @@ public class SemanticModelCatalogAdapter
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    ensureEnabled();
-    // TODO: authorize the principal, then page through the namespace's semantic-model entities and
-    //  return their identifiers.
-    return notImplemented();
+    Namespace ns =
+        NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    SemanticModelCatalogHandler handler = newHandler(securityContext, prefix);
+    return Response.ok(handler.listSemanticModels(ns, pageToken, pageSize)).build();
   }
 
   @Override
@@ -91,9 +109,10 @@ public class SemanticModelCatalogAdapter
       String semanticModelName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    ensureEnabled();
-    // TODO: authorize the principal, then read and return the stored OSI document.
-    return notImplemented();
+    Namespace ns =
+        NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    SemanticModelCatalogHandler handler = newHandler(securityContext, prefix);
+    return Response.ok(handler.loadSemanticModel(identifier(ns, semanticModelName))).build();
   }
 
   @Override
@@ -104,10 +123,13 @@ public class SemanticModelCatalogAdapter
       UpdateSemanticModelRequest updateSemanticModelRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    ensureEnabled();
-    // TODO: authorize the principal, validate the OSI document, then replace the stored document
-    //  and return it.
-    return notImplemented();
+    Namespace ns =
+        NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    SemanticModelCatalogHandler handler = newHandler(securityContext, prefix);
+    return Response.ok(
+            handler.updateSemanticModel(
+                identifier(ns, semanticModelName), updateSemanticModelRequest))
+        .build();
   }
 
   @Override
@@ -117,8 +139,10 @@ public class SemanticModelCatalogAdapter
       String semanticModelName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    ensureEnabled();
-    // TODO: authorize the principal, then delete the semantic-model entity.
-    return notImplemented();
+    Namespace ns =
+        NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    SemanticModelCatalogHandler handler = newHandler(securityContext, prefix);
+    handler.dropSemanticModel(identifier(ns, semanticModelName));
+    return Response.noContent().build();
   }
 }

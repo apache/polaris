@@ -54,6 +54,11 @@ public record ResolvedPathKey(List<String> entityNames, PolarisEntityType entity
         PolarisCatalogHelpers.identifierToList(namespace, name), PolarisEntityType.POLICY);
   }
 
+  public static ResolvedPathKey ofSemanticModel(Namespace namespace, String name) {
+    return new ResolvedPathKey(
+        PolarisCatalogHelpers.identifierToList(namespace, name), PolarisEntityType.SEMANTIC_MODEL);
+  }
+
   public static ResolvedPathKey ofCatalogRole(String roleName) {
     return new ResolvedPathKey(List.of(roleName), PolarisEntityType.CATALOG_ROLE);
   }

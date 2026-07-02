@@ -33,6 +33,8 @@ import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
+import org.apache.polaris.core.semantic.exceptions.SemanticModelVersionMismatchException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -58,6 +60,9 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
       case PolicyMappingAlreadyExistsException policyMappingAlreadyExistsException ->
           Response.Status.CONFLICT;
       case PolicyInUseException policyInUseException -> Response.Status.BAD_REQUEST;
+      case NoSuchSemanticModelException noSuchSemanticModelException -> Response.Status.NOT_FOUND;
+      case SemanticModelVersionMismatchException semanticModelVersionMismatchException ->
+          Response.Status.CONFLICT;
       default -> Response.Status.INTERNAL_SERVER_ERROR;
     };
   }

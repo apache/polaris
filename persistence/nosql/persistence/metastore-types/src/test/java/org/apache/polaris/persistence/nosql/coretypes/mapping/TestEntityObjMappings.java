@@ -119,6 +119,8 @@ public class TestEntityObjMappings {
   static Stream<Arguments> entityObjMapping() {
     return Arrays.stream(PolarisEntityType.values())
         .filter(t -> t != PolarisEntityType.NULL_TYPE)
+        // SEMANTIC_MODEL is intentionally not mapped by the NoSQL backend yet (follow-up).
+        .filter(t -> t != PolarisEntityType.SEMANTIC_MODEL)
         .flatMap(
             t -> {
               var subTypes =

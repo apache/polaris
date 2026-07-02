@@ -517,6 +517,24 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false) // beta feature, keep it off by default
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Integer> SEMANTIC_MODEL_MAX_DOCUMENT_BYTES =
+      PolarisConfiguration.<Integer>builder()
+          .key("SEMANTIC_MODEL_MAX_DOCUMENT_BYTES")
+          .description(
+              "The maximum size, in bytes, of a stored OSI semantic-model document. Writes whose "
+                  + "document exceeds this cap are rejected with 400.")
+          .defaultValue(1024 * 1024) // 1 MB
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> SEMANTIC_MODEL_MAX_EXPRESSION_BYTES =
+      PolarisConfiguration.<Integer>builder()
+          .key("SEMANTIC_MODEL_MAX_EXPRESSION_BYTES")
+          .description(
+              "The maximum size, in bytes, of a single expression fragment inside an OSI "
+                  + "semantic-model document. Guards against metadata-as-blob abuse.")
+          .defaultValue(16 * 1024) // 16 KB
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
