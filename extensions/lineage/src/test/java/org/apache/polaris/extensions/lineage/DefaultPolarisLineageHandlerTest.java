@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -39,20 +37,16 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 public class DefaultPolarisLineageHandlerTest {
-  @Mock private CallContext callContext;
   @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
   @Mock private LineageStoreManager persistence;
-  @Mock private RealmContext realmContext;
 
   private DefaultPolarisLineageHandler service;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    when(callContext.getRealmConfig()).thenReturn(realmConfig);
-    when(callContext.getRealmContext()).thenReturn(realmContext);
-    service = new DefaultPolarisLineageHandler(callContext, configuration, persistence);
+    service = new DefaultPolarisLineageHandler(realmConfig, configuration, persistence);
   }
 
   @Test
@@ -88,10 +82,10 @@ public class DefaultPolarisLineageHandlerTest {
             new LineageNode("dataset:test:orders", LineageNodeType.DATASET, null, false),
             List.of(),
             List.of());
-    when(persistence.loadLineage(realmContext, request)).thenReturn(graph);
+    when(persistence.loadLineage(request)).thenReturn(graph);
 
     assertThat(service.query(request)).isSameAs(graph);
-    verify(persistence).loadLineage(realmContext, request);
+    verify(persistence).loadLineage(request);
   }
 
   @Test
@@ -104,11 +98,11 @@ public class DefaultPolarisLineageHandlerTest {
 
     Instant lastEventAt = Instant.parse("2026-01-01T00:00:00Z");
     InOrder inOrder = inOrder(persistence);
-    inOrder.verify(persistence).upsertDatasets(realmContext, request.datasets());
+    inOrder.verify(persistence).upsertDatasets(request.datasets());
     inOrder
         .verify(persistence)
-        .replaceDatasetEdges(realmContext, request.targetDatasets(), request.edges(), lastEventAt);
-    inOrder.verify(persistence).upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
+        .replaceDatasetEdges(request.targetDatasets(), request.edges(), lastEventAt);
+    inOrder.verify(persistence).upsertColumnEdges(request.columnEdges(), lastEventAt);
   }
 
   private static LineageQueryRequest queryRequest() {

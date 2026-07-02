@@ -23,31 +23,25 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.time.Instant;
 import java.util.List;
-import org.apache.polaris.core.context.RealmContext;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 class NoopLineageStoreManagerTest {
   private final NoopLineageStoreManager storeManager = new NoopLineageStoreManager();
-  private final RealmContext realmContext = Mockito.mock(RealmContext.class);
 
   @Test
   void ignoresDatasetUpsert() {
-    assertThatCode(() -> storeManager.upsertDatasets(realmContext, List.of()))
-        .doesNotThrowAnyException();
+    assertThatCode(() -> storeManager.upsertDatasets(List.of())).doesNotThrowAnyException();
   }
 
   @Test
   void ignoresDatasetEdgeUpsert() {
-    assertThatCode(
-            () ->
-                storeManager.replaceDatasetEdges(realmContext, List.of(), List.of(), Instant.EPOCH))
+    assertThatCode(() -> storeManager.replaceDatasetEdges(List.of(), List.of(), Instant.EPOCH))
         .doesNotThrowAnyException();
   }
 
   @Test
   void ignoresColumnEdgeUpsert() {
-    assertThatCode(() -> storeManager.upsertColumnEdges(realmContext, List.of(), Instant.EPOCH))
+    assertThatCode(() -> storeManager.upsertColumnEdges(List.of(), Instant.EPOCH))
         .doesNotThrowAnyException();
   }
 
@@ -57,7 +51,7 @@ class NoopLineageStoreManagerTest {
         new LineageQueryRequest(
             "dataset:test:orders", LineageDirection.BOTH, LineageGranularity.DATASET);
 
-    LineageGraph graph = storeManager.loadLineage(realmContext, request);
+    LineageGraph graph = storeManager.loadLineage(request);
 
     assertThat(graph.node().id()).isEqualTo("dataset:test:orders");
     assertThat(graph.node().type()).isEqualTo(LineageNodeType.DATASET);
@@ -72,7 +66,7 @@ class NoopLineageStoreManagerTest {
         new LineageQueryRequest(
             "column:test:orders:id", LineageDirection.BOTH, LineageGranularity.COLUMN);
 
-    LineageGraph graph = storeManager.loadLineage(realmContext, request);
+    LineageGraph graph = storeManager.loadLineage(request);
 
     assertThat(graph.node().id()).isEqualTo("column:test:orders:id");
     assertThat(graph.node().type()).isEqualTo(LineageNodeType.COLUMN);

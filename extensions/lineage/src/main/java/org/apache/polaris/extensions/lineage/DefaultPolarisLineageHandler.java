@@ -21,20 +21,19 @@ package org.apache.polaris.extensions.lineage;
 import jakarta.enterprise.inject.Vetoed;
 import java.time.Instant;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.config.RealmConfig;
 
 @Vetoed
 public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
-  private final CallContext callContext;
+  private final RealmConfig realmConfig;
   private final LineageConfiguration configuration;
   private final LineageStoreManager storeManager;
 
   public DefaultPolarisLineageHandler(
-      CallContext callContext,
+      RealmConfig realmConfig,
       LineageConfiguration configuration,
       LineageStoreManager storeManager) {
-    this.callContext = callContext;
+    this.realmConfig = realmConfig;
     this.configuration = configuration;
     this.storeManager = storeManager;
   }
@@ -42,18 +41,16 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
   @Override
   public void ingest(LineageIngestRequest request) {
     ensureEnabled();
-    RealmContext realmContext = callContext.getRealmContext();
     Instant lastEventAt = request.eventTime().orElseGet(Instant::now);
-    storeManager.upsertDatasets(realmContext, request.datasets());
-    storeManager.replaceDatasetEdges(
-        realmContext, request.targetDatasets(), request.edges(), lastEventAt);
-    storeManager.upsertColumnEdges(realmContext, request.columnEdges(), lastEventAt);
+    storeManager.upsertDatasets(request.datasets());
+    storeManager.replaceDatasetEdges(request.targetDatasets(), request.edges(), lastEventAt);
+    storeManager.upsertColumnEdges(request.columnEdges(), lastEventAt);
   }
 
   @Override
   public LineageGraph query(LineageQueryRequest request) {
     ensureEnabled();
-    return storeManager.loadLineage(callContext.getRealmContext(), request);
+    return storeManager.loadLineage(request);
   }
 
   private void ensureEnabled() {
@@ -62,7 +59,7 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
           "Lineage is disabled: set polaris.lineage.enabled=true to enable it.");
     }
 
-    if (!callContext.getRealmConfig().getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
+    if (!realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
       throw new UnsupportedOperationException(
           "Lineage realm feature is disabled: enable "
               + FeatureConfiguration.ENABLE_LINEAGE.key()

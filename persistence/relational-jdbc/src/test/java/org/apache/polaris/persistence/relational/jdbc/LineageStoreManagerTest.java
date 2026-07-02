@@ -87,27 +87,13 @@ class LineageStoreManagerTest {
   }
 
   @Test
-  void lineageWritesRejectMismatchedRealmContext() {
-    RealmContext otherRealmContext = () -> "OTHER_REALM";
-
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> lineagePersistence.upsertDatasets(otherRealmContext, List.of(sourceDataset())));
-
-    assertEquals(
-        "Lineage store manager for realm 'TEST_REALM' cannot operate on realm 'OTHER_REALM'.",
-        exception.getMessage());
-  }
-
-  @Test
   void upsertLineageDatasetUsesNamespaceAndNameAsOpenLineageIdentity() throws SQLException {
     LineageDataset first = new LineageDataset("polaris", "analytics", "orders");
     LineageDataset second =
         new LineageDataset("polaris-prod", "analytics", "orders", OptionalLong.of(42L));
 
-    lineagePersistence.upsertDatasets(REALM_CONTEXT, List.of(first));
-    lineagePersistence.upsertDatasets(REALM_CONTEXT, List.of(second));
+    lineagePersistence.upsertDatasets(List.of(first));
+    lineagePersistence.upsertDatasets(List.of(second));
 
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement =
@@ -128,12 +114,10 @@ class LineageStoreManagerTest {
     upsertSourceAndTargetDatasets();
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME);
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME.plusMillis(100));
@@ -148,12 +132,10 @@ class LineageStoreManagerTest {
     upsertSourceAndTargetDatasets();
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME.plusMillis(100));
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME);
@@ -168,21 +150,18 @@ class LineageStoreManagerTest {
     upsertSourceAlternativeAndTargetDatasets();
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME);
-    lineagePersistence.upsertColumnEdges(REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME);
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(alternativeSourceDataset(), targetDataset())),
         EVENT_TIME.plusMillis(100));
 
     LineageGraph graph =
         lineagePersistence.loadLineage(
-            REALM_CONTEXT,
             new LineageQueryRequest(
                 "dataset:polaris:analytics.orders_daily",
                 LineageDirection.UPSTREAM,
@@ -201,21 +180,18 @@ class LineageStoreManagerTest {
     upsertSourceAlternativeAndTargetDatasets();
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(alternativeSourceDataset(), targetDataset())),
         EVENT_TIME.plusMillis(100));
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME);
-    lineagePersistence.upsertColumnEdges(REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME);
 
     LineageGraph graph =
         lineagePersistence.loadLineage(
-            REALM_CONTEXT,
             new LineageQueryRequest(
                 "dataset:polaris:analytics.orders_daily",
                 LineageDirection.UPSTREAM,
@@ -232,24 +208,21 @@ class LineageStoreManagerTest {
     upsertSourceAndTargetDatasets();
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME);
-    lineagePersistence.upsertColumnEdges(REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME);
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT, List.of(targetDataset()), List.of(), EVENT_TIME.plusMillis(100));
+        List.of(targetDataset()), List.of(), EVENT_TIME.plusMillis(100));
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME);
 
     LineageGraph graph =
         lineagePersistence.loadLineage(
-            REALM_CONTEXT,
             new LineageQueryRequest(
                 "dataset:polaris:analytics.orders_daily",
                 LineageDirection.UPSTREAM,
@@ -269,9 +242,8 @@ class LineageStoreManagerTest {
   void upsertLineageColumnEdgeUpdatesLastEventAt() throws SQLException {
     upsertSourceAndTargetDatasets();
 
-    lineagePersistence.upsertColumnEdges(REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME);
-    lineagePersistence.upsertColumnEdges(
-        REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME.plusMillis(200));
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME.plusMillis(200));
 
     assertSingleLong(
         "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_column_edges WHERE realm_id = ?",
@@ -282,9 +254,8 @@ class LineageStoreManagerTest {
   void upsertLineageColumnEdgeDoesNotMoveLastEventAtBackward() throws SQLException {
     upsertSourceAndTargetDatasets();
 
-    lineagePersistence.upsertColumnEdges(
-        REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME.plusMillis(200));
-    lineagePersistence.upsertColumnEdges(REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME.plusMillis(200));
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME);
 
     assertSingleLong(
         "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_column_edges WHERE realm_id = ?",
@@ -295,15 +266,13 @@ class LineageStoreManagerTest {
   void loadLineageReturnsDepthOneGraphWithColumnMappings() {
     upsertSourceAndTargetDatasets();
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME);
-    lineagePersistence.upsertColumnEdges(REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME);
 
     LineageGraph graph =
         lineagePersistence.loadLineage(
-            REALM_CONTEXT,
             new LineageQueryRequest(
                 "dataset:polaris:analytics.orders_daily",
                 LineageDirection.UPSTREAM,
@@ -327,18 +296,15 @@ class LineageStoreManagerTest {
             new LineageFieldReference(targetDataset(), "customer_name"));
 
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(
             new LineageEdge(sourceDataset(), targetDataset()),
             new LineageEdge(alternativeSourceDataset(), targetDataset())),
         EVENT_TIME);
-    lineagePersistence.upsertColumnEdges(
-        REALM_CONTEXT, List.of(columnEdge(), alternativeColumnEdge), EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge(), alternativeColumnEdge), EVENT_TIME);
 
     LineageGraph graph =
         lineagePersistence.loadLineage(
-            REALM_CONTEXT,
             new LineageQueryRequest(
                 "dataset:polaris:analytics.orders_daily",
                 LineageDirection.UPSTREAM,
@@ -396,31 +362,27 @@ class LineageStoreManagerTest {
     // of silently dropping data.
     assertThrows(
         IllegalStateException.class,
-        () -> v4LineageStoreManager.upsertDatasets(REALM_CONTEXT, List.of(sourceDataset())));
+        () -> v4LineageStoreManager.upsertDatasets(List.of(sourceDataset())));
     assertThrows(
         IllegalStateException.class,
         () ->
             v4LineageStoreManager.replaceDatasetEdges(
-                REALM_CONTEXT,
                 List.of(targetDataset()),
                 List.of(new LineageEdge(sourceDataset(), targetDataset())),
                 EVENT_TIME));
     assertThrows(
         IllegalStateException.class,
-        () ->
-            v4LineageStoreManager.upsertColumnEdges(
-                REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME));
+        () -> v4LineageStoreManager.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME));
   }
 
   @Test
   void deleteAllRemovesLineageRowsForRealm() throws SQLException {
     upsertSourceAndTargetDatasets();
     lineagePersistence.replaceDatasetEdges(
-        REALM_CONTEXT,
         List.of(targetDataset()),
         List.of(new LineageEdge(sourceDataset(), targetDataset())),
         EVENT_TIME);
-    lineagePersistence.upsertColumnEdges(REALM_CONTEXT, List.of(columnEdge()), EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge()), EVENT_TIME);
 
     lineagePersistence.deleteAll(new PolarisCallContext(() -> REALM_ID, lineagePersistence));
 
@@ -431,12 +393,12 @@ class LineageStoreManagerTest {
   }
 
   private void upsertSourceAndTargetDatasets() {
-    lineagePersistence.upsertDatasets(REALM_CONTEXT, List.of(sourceDataset(), targetDataset()));
+    lineagePersistence.upsertDatasets(List.of(sourceDataset(), targetDataset()));
   }
 
   private void upsertSourceAlternativeAndTargetDatasets() {
     lineagePersistence.upsertDatasets(
-        REALM_CONTEXT, List.of(sourceDataset(), alternativeSourceDataset(), targetDataset()));
+        List.of(sourceDataset(), alternativeSourceDataset(), targetDataset()));
   }
 
   private static LineageDataset sourceDataset() {

@@ -41,7 +41,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
@@ -1436,9 +1435,8 @@ public class JdbcBasePersistenceImpl
   // ============================================================================
 
   @Override
-  public void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets) {
+  public void upsertDatasets(List<LineageDataset> datasets) {
     verifyLineageStoreManagerSupported();
-    verifyLineageRealm(realmContext);
     String realmId = this.realmId;
     long nowMillis = Instant.now().toEpochMilli();
     for (LineageDataset dataset : datasets) {
@@ -1459,12 +1457,8 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public void replaceDatasetEdges(
-      RealmContext realmContext,
-      List<LineageDataset> targetDatasets,
-      List<LineageEdge> edges,
-      Instant lastEventAt) {
+      List<LineageDataset> targetDatasets, List<LineageEdge> edges, Instant lastEventAt) {
     verifyLineageStoreManagerSupported();
-    verifyLineageRealm(realmContext);
     String realmId = this.realmId;
     long lastEventAtMillis = lastEventAt.toEpochMilli();
     Map<Long, List<ModelLineageEdge>> edgesByTargetDatasetId = new LinkedHashMap<>();
@@ -1545,10 +1539,8 @@ public class JdbcBasePersistenceImpl
   }
 
   @Override
-  public void upsertColumnEdges(
-      RealmContext realmContext, List<LineageColumnEdge> columnEdges, Instant lastEventAt) {
+  public void upsertColumnEdges(List<LineageColumnEdge> columnEdges, Instant lastEventAt) {
     verifyLineageStoreManagerSupported();
-    verifyLineageRealm(realmContext);
     String realmId = this.realmId;
     long lastEventAtMillis = lastEventAt.toEpochMilli();
     for (LineageColumnEdge columnEdge : columnEdges) {
@@ -1577,9 +1569,8 @@ public class JdbcBasePersistenceImpl
   }
 
   @Override
-  public LineageGraph loadLineage(RealmContext realmContext, LineageQueryRequest request) {
+  public LineageGraph loadLineage(LineageQueryRequest request) {
     verifyLineageStoreManagerSupported();
-    verifyLineageRealm(realmContext);
     String realmId = this.realmId;
     Optional<ModelLineageDataset> requested =
         lookupLineageDatasetByNodeId(realmId, request.nodeId());
@@ -1778,17 +1769,6 @@ public class JdbcBasePersistenceImpl
         String.format(
             "Lineage store manager requires JDBC schema version %d or newer for realm '%s'; current schema version is %d. Upgrade the JDBC schema to v%d to persist lineage.",
             MIN_LINEAGE_SCHEMA_VERSION, realmId, schemaVersion, MIN_LINEAGE_SCHEMA_VERSION));
-  }
-
-  private void verifyLineageRealm(RealmContext realmContext) {
-    String requestedRealmId = realmContext.getRealmIdentifier();
-    if (realmId.equals(requestedRealmId)) {
-      return;
-    }
-    throw new IllegalArgumentException(
-        String.format(
-            "Lineage store manager for realm '%s' cannot operate on realm '%s'.",
-            realmId, requestedRealmId));
   }
 
   private PreparedQuery generateLineageDatasetUpsert(ModelLineageDataset model) {

@@ -20,7 +20,6 @@ package org.apache.polaris.extensions.lineage;
 
 import java.time.Instant;
 import java.util.List;
-import org.apache.polaris.core.context.RealmContext;
 
 /**
  * Store manager SPI for lineage storage backends.
@@ -29,6 +28,10 @@ import org.apache.polaris.core.context.RealmContext;
  * OpenLineage run events. The service layer owns event parsing, forwarding, authorization, and
  * dataset resolution. Store managers persist dataset nodes, dataset edges, and column edges, and
  * load normalized lineage graphs.
+ *
+ * <p>Implementations are expected to be request-scoped. If a backend needs the current realm, it
+ * should inject the request {@code RealmContext} instead of requiring callers to pass it through
+ * these methods.
  */
 public interface LineageStoreManager {
 
@@ -39,7 +42,7 @@ public interface LineageStoreManager {
    * dataset already exists, implementations should update mutable metadata such as optional linkage
    * to a Polaris-managed entity.
    */
-  void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets);
+  void upsertDatasets(List<LineageDataset> datasets);
 
   /**
    * Replaces dataset-level directed edges in {@code lineage_edges}.
@@ -50,10 +53,7 @@ public interface LineageStoreManager {
    * target snapshot should not replace newer lineage.
    */
   void replaceDatasetEdges(
-      RealmContext realmContext,
-      List<LineageDataset> targetDatasets,
-      List<LineageEdge> edges,
-      Instant lastEventAt);
+      List<LineageDataset> targetDatasets, List<LineageEdge> edges, Instant lastEventAt);
 
   /**
    * Persists field-level directed edges in {@code lineage_column_edges}.
@@ -61,9 +61,8 @@ public interface LineageStoreManager {
    * <p>Repeated events asserting the same column mapping should update the stored edge timestamp to
    * {@code lastEventAt} rather than creating duplicate edges.
    */
-  void upsertColumnEdges(
-      RealmContext realmContext, List<LineageColumnEdge> columnEdges, Instant lastEventAt);
+  void upsertColumnEdges(List<LineageColumnEdge> columnEdges, Instant lastEventAt);
 
   /** Loads a normalized lineage graph for the requested node and direction. */
-  LineageGraph loadLineage(RealmContext realmContext, LineageQueryRequest request);
+  LineageGraph loadLineage(LineageQueryRequest request);
 }

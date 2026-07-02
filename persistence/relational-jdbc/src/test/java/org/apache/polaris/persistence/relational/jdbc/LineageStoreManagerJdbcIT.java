@@ -32,7 +32,6 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.extensions.lineage.LineageColumnEdge;
 import org.apache.polaris.extensions.lineage.LineageDataset;
@@ -106,28 +105,24 @@ class LineageStoreManagerJdbcIT {
             PrincipalSecretsGenerator.RANDOM_SECRETS,
             realmId,
             5);
-    RealmContext realmContext = () -> realmId;
     LineageDataset source = new LineageDataset("polaris", "analytics", "orders");
     LineageDataset sourceUpdate =
         new LineageDataset("polaris-prod", "analytics", "orders", OptionalLong.of(42L));
     LineageDataset target = new LineageDataset("polaris", "analytics", "orders_daily");
 
-    lineagePersistence.upsertDatasets(realmContext, List.of(source));
-    lineagePersistence.upsertDatasets(realmContext, List.of(sourceUpdate));
+    lineagePersistence.upsertDatasets(List.of(source));
+    lineagePersistence.upsertDatasets(List.of(sourceUpdate));
     assertSingleLong(
         dataSource,
         "SELECT COUNT(*) FROM POLARIS_SCHEMA.lineage_datasets WHERE realm_id = ?",
         realmId,
         1L);
-    lineagePersistence.upsertDatasets(realmContext, List.of(target));
+    lineagePersistence.upsertDatasets(List.of(target));
 
     lineagePersistence.replaceDatasetEdges(
-        realmContext,
-        List.of(target),
-        List.of(new LineageEdge(source, target)),
-        EVENT_TIME.plusMillis(100));
+        List.of(target), List.of(new LineageEdge(source, target)), EVENT_TIME.plusMillis(100));
     lineagePersistence.replaceDatasetEdges(
-        realmContext, List.of(target), List.of(new LineageEdge(source, target)), EVENT_TIME);
+        List.of(target), List.of(new LineageEdge(source, target)), EVENT_TIME);
     assertSingleLong(
         dataSource,
         "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_edges WHERE realm_id = ?",
@@ -137,9 +132,8 @@ class LineageStoreManagerJdbcIT {
     LineageColumnEdge columnEdge =
         new LineageColumnEdge(
             new LineageFieldReference(source, "price"), new LineageFieldReference(target, "total"));
-    lineagePersistence.upsertColumnEdges(
-        realmContext, List.of(columnEdge), EVENT_TIME.plusMillis(200));
-    lineagePersistence.upsertColumnEdges(realmContext, List.of(columnEdge), EVENT_TIME);
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge), EVENT_TIME.plusMillis(200));
+    lineagePersistence.upsertColumnEdges(List.of(columnEdge), EVENT_TIME);
     assertSingleLong(
         dataSource,
         "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_column_edges WHERE realm_id = ?",
