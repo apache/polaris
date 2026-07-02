@@ -22,7 +22,6 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 
 @RequestScoped
 public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
@@ -30,8 +29,8 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
   private final LineageConfiguration configuration;
 
   @Inject
-  public DefaultPolarisLineageHandler(CallContext callContext, LineageConfiguration configuration) {
-    this.realmConfig = callContext.getRealmConfig();
+  public DefaultPolarisLineageHandler(RealmConfig realmConfig, LineageConfiguration configuration) {
+    this.realmConfig = realmConfig;
     this.configuration = configuration;
   }
 

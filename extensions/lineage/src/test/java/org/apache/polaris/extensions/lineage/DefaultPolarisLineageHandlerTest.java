@@ -23,14 +23,12 @@ import static org.mockito.Mockito.when;
 
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 public class DefaultPolarisLineageHandlerTest {
-  @Mock private CallContext callContext;
   @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
 
@@ -39,8 +37,7 @@ public class DefaultPolarisLineageHandlerTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    when(callContext.getRealmConfig()).thenReturn(realmConfig);
-    handler = new DefaultPolarisLineageHandler(callContext, configuration);
+    handler = new DefaultPolarisLineageHandler(realmConfig, configuration);
   }
 
   @Test
