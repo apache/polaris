@@ -2274,3 +2274,22 @@ Note: GraalVM licensing documentation identifies this shaded code as XZ for Java
 |  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
+
+This product bundles Kafka clients.
+
+* Maven group:artifact IDs: org.apache.kafka:kafka-clients
+
+Copyright: Copyright 2026 The Apache Software Foundation
+Home page: https://kafka.apache.org
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles lz4-java.
+
+* Maven group:artifact IDs: at.yawk.lz4:lz4-java
+
+Home page: https://lz4-java.yawk.at
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
