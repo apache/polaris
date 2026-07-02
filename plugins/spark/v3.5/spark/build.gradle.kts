@@ -145,7 +145,7 @@ testing {
         implementation(libs.antlr4.runtime.spark35)
       }
 
-      targets.all {
+      targets.configureEach {
         testTask.configure {
           environment(
             "AWS_REGION",

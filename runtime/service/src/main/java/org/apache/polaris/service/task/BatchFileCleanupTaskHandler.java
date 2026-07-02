@@ -85,7 +85,7 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
         deleteFutures.join();
       } catch (Exception e) {
         LOGGER.error("Exception detected during batch files deletion", e);
-        return false;
+        throw new RuntimeException(e);
       }
 
       return true;

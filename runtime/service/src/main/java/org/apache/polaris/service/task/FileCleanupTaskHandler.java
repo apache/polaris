@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -90,16 +91,17 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
     }
     return CompletableFuture.runAsync(
             () -> {
-              // totally normal for a file to already be missing, e.g. a data file
-              // may be in multiple manifests. There's a possibility we check the
-              // file's existence, but then it is deleted before we have a chance to
-              // send the delete request. In such a case, we <i>should</i> retry
-              // and find
-              if (TaskUtils.exists(file, fileIO)) {
+              // deleteFile is idempotent on cloud object stores (S3 DeleteObject, etc.).
+              // It is totally normal for a data file to already be missing (e.g. present
+              // in multiple manifests across snapshots). We call delete directly.
+              // Some FileIO impls (e.g. InMemory) throw NotFound on missing; we treat that
+              // as success (already deleted).
+              try {
                 fileIO.deleteFile(file);
-              } else {
+              } catch (NotFoundException nfe) {
+                // already gone (e.g. InMemoryFileIO or race)
                 LOGGER
-                    .atInfo()
+                    .atDebug()
                     .addKeyValue("file", file)
                     .addKeyValue("baseFile", baseFile != null ? baseFile : "")
                     .addKeyValue("tableId", tableId)

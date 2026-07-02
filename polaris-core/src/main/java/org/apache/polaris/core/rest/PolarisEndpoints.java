@@ -73,6 +73,27 @@ public class PolarisEndpoints {
           .add(V1_GET_APPLICABLE_POLICIES)
           .build();
 
+  // Semantic model endpoints
+  public static final Endpoint V1_LIST_SEMANTIC_MODELS =
+      Endpoint.create("GET", PolarisResourcePaths.V1_SEMANTIC_MODELS);
+  public static final Endpoint V1_CREATE_SEMANTIC_MODEL =
+      Endpoint.create("POST", PolarisResourcePaths.V1_SEMANTIC_MODELS);
+  public static final Endpoint V1_LOAD_SEMANTIC_MODEL =
+      Endpoint.create("GET", PolarisResourcePaths.V1_SEMANTIC_MODEL);
+  public static final Endpoint V1_UPDATE_SEMANTIC_MODEL =
+      Endpoint.create("PUT", PolarisResourcePaths.V1_SEMANTIC_MODEL);
+  public static final Endpoint V1_DROP_SEMANTIC_MODEL =
+      Endpoint.create("DELETE", PolarisResourcePaths.V1_SEMANTIC_MODEL);
+
+  public static final Set<Endpoint> SEMANTIC_MODEL_ENDPOINTS =
+      ImmutableSet.<Endpoint>builder()
+          .add(V1_LIST_SEMANTIC_MODELS)
+          .add(V1_CREATE_SEMANTIC_MODEL)
+          .add(V1_LOAD_SEMANTIC_MODEL)
+          .add(V1_UPDATE_SEMANTIC_MODEL)
+          .add(V1_DROP_SEMANTIC_MODEL)
+          .build();
+
   /**
    * Get the generic table endpoints. Returns GENERIC_TABLE_ENDPOINTS if ENABLE_GENERIC_TABLES is
    * set to true, otherwise, returns an empty set.
@@ -91,5 +112,15 @@ public class PolarisEndpoints {
   public static Set<Endpoint> getSupportedPolicyEndpoints(RealmConfig realmConfig) {
     boolean policyStoreEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_POLICY_STORE);
     return policyStoreEnabled ? POLICY_STORE_ENDPOINTS : ImmutableSet.of();
+  }
+
+  /**
+   * Get the semantic model endpoints. Returns SEMANTIC_MODEL_ENDPOINTS if ENABLE_SEMANTIC_MODELS is
+   * set to true, otherwise, returns an empty set.
+   */
+  public static Set<Endpoint> getSupportedSemanticModelEndpoints(RealmConfig realmConfig) {
+    boolean semanticModelsEnabled =
+        realmConfig.getConfig(FeatureConfiguration.ENABLE_SEMANTIC_MODELS);
+    return semanticModelsEnabled ? SEMANTIC_MODEL_ENDPOINTS : ImmutableSet.of();
   }
 }

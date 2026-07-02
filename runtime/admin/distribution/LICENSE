@@ -1323,7 +1323,7 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-This product bundles conscrypt (openjdk-uber).
+This product bundles Conscrypt (openjdk-uber).
 
 * Maven group:artifact IDs: org.conscrypt:conscrypt-openjdk-uber
 
