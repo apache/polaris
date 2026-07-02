@@ -112,7 +112,7 @@ testing {
         // Delta and Hudi initialize Log4j classes from the Spark runtime. Keep Log4j Core aligned
         // with the version used by the Spark tests instead of relying on older Hive transitive
         // deps.
-        runtimeOnly("org.apache.logging.log4j:log4j-core:2.26.0")
+        runtimeOnly("org.apache.logging.log4j:log4j-core:2.26.1")
 
         implementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
         implementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:1.1.1")
