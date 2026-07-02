@@ -155,6 +155,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     implements SupportsNamespaces, SupportsNotifications, Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalIcebergCatalog.class);
 
+  static record MetadataFileCleanup(
+      FileIO io, TableMetadata baseMetadata, TableMetadata newMetadata) {}
+
   private static final Joiner SLASH = Joiner.on("/");
 
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
@@ -195,6 +198,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
+
+  private java.util.function.Consumer<MetadataFileCleanup> deleteRemovedMetadataFiles =
+      c -> CatalogUtil.deleteRemovedMetadataFiles(c.io(), c.baseMetadata(), c.newMetadata());
 
   /**
    * @param callContext the current CallContext
@@ -283,7 +289,21 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   public void setMetaStoreManager(PolarisMetaStoreManager newMetaStoreManager) {
+    setMetaStoreManager(newMetaStoreManager, null);
+  }
+
+  /**
+   * Sets the meta store manager and optionally a custom logic for deleting removed metadata files.
+   * This allows the caller (e.g. during commitTransaction) to provide a collector instead of
+   * immediate deletion, avoiding premature deletes that could lead to corruption on rollback.
+   */
+  public void setMetaStoreManager(
+      PolarisMetaStoreManager newMetaStoreManager,
+      java.util.function.Consumer<MetadataFileCleanup> deleteLogic) {
     this.metaStoreManager = newMetaStoreManager;
+    if (deleteLogic != null) {
+      this.deleteRemovedMetadataFiles = deleteLogic;
+    }
   }
 
   @Override
@@ -1633,7 +1653,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
       long start = System.currentTimeMillis();
       doCommit(base, metadata);
-      CatalogUtil.deleteRemovedMetadataFiles(io(), base, metadata);
+      deleteRemovedMetadataFiles.accept(new MetadataFileCleanup(io(), base, metadata));
       requestRefresh();
 
       LOGGER.info(
