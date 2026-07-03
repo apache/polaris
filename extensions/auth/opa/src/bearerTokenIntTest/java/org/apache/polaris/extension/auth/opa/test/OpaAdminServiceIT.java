@@ -189,8 +189,7 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     String catalogRole = "role_" + UUID.randomUUID().toString().replace("-", "");
 
     String baseLocation = tempDir.toUri().toString();
-    createFileCatalog(
-        rootToken, catalogName, baseLocation, List.of(baseLocation));
+    createFileCatalog(rootToken, catalogName, baseLocation, List.of(baseLocation));
 
     createNamespace(rootToken, catalogName, namespace);
 
@@ -315,8 +314,7 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     String catalogRole = "role_" + UUID.randomUUID().toString().replace("-", "");
 
     String baseLocation = tempDir.toUri().toString();
-    createFileCatalog(
-        rootToken, catalogName, baseLocation, List.of(baseLocation));
+    createFileCatalog(rootToken, catalogName, baseLocation, List.of(baseLocation));
     createNamespace(rootToken, catalogName, namespace);
 
     Map<String, Object> registerPayload =
