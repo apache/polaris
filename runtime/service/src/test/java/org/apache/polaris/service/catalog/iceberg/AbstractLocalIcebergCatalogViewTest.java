@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.awaitility.Awaitility.await;
 
 import com.google.common.collect.ImmutableMap;
@@ -32,15 +33,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.view.BaseView;
+import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
+import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.iceberg.view.ViewMetadata;
+import org.apache.iceberg.view.ViewMetadataParser;
 import org.apache.iceberg.view.ViewOperations;
+import org.apache.iceberg.view.ViewVersion;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -54,9 +65,11 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -122,6 +135,7 @@ public abstract class AbstractLocalIcebergCatalogViewTest
   @Inject FileIOFactory fileIOFactory;
 
   private LocalIcebergCatalog catalog;
+  private PolarisEntity catalogEntity;
 
   private String realmName;
   private PolarisCallContext polarisContext;
@@ -172,36 +186,41 @@ public abstract class AbstractLocalIcebergCatalogViewTest
     authorizer = new PolarisAuthorizerImpl(realmConfig);
     reservedProperties = ReservedProperties.NONE;
 
-    newAdminService()
-        .createCatalog(
-            new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setName(CATALOG_NAME)
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
-                        "true")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-                        "true")
-                    .addProperty(
-                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setDefaultBaseLocation("file://tmp")
-                    .setStorageConfigurationInfo(
-                        realmConfig,
-                        new FileStorageConfigInfo(
-                            StorageConfigInfo.StorageTypeEnum.FILE,
-                            List.of("file://tmp", "*"),
-                            null),
-                        "file://tmp")
-                    .build()
-                    .asCatalog(serviceIdentityProvider)));
-
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
+    catalogEntity =
+        newAdminService()
+            .createCatalog(
+                new CreateCatalogRequest(
+                    new CatalogEntity.Builder()
+                        .setName(CATALOG_NAME)
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION
+                                .catalogConfig(),
+                            "true")
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                            "true")
+                        .addProperty(
+                            FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                        .setDefaultBaseLocation("file://tmp")
+                        .setStorageConfigurationInfo(
+                            realmConfig,
+                            new FileStorageConfigInfo(
+                                StorageConfigInfo.StorageTypeEnum.FILE,
+                                List.of("file://tmp", "*"),
+                                null),
+                            "file://tmp")
+                        .build()
+                        .asCatalog(serviceIdentityProvider)));
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     testPolarisEventListener.clear();
+    buildCatalog();
+  }
+
+  private void buildCatalog() {
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     this.catalog =
         new LocalIcebergCatalog(
             diagServices,
@@ -361,5 +380,96 @@ public abstract class AbstractLocalIcebergCatalogViewTest
         writtenLocations.stream().filter(loc -> !legitimateWrites.contains(loc)).toList();
     Assertions.assertThat(orphanCandidates).isNotEmpty();
     Assertions.assertThat(deletedLocations).containsAll(orphanCandidates);
+  }
+
+  @Test
+  public void testRegisterViewRejectsMetadataOutsideAllowedLocations() throws IOException {
+    // Update catalog to disable permissive location settings
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace ns = Namespace.of("restricted_ns1");
+    catalog.createNamespace(ns);
+
+    // Metadata file at a location outside the catalog's allowed locations
+    String unauthorizedLocation = "s3://unauthorized-bucket/some/path";
+    String metadataFileLocation = unauthorizedLocation + "/metadata/v1.metadata.json";
+
+    addViewMetadataFile(ns, unauthorizedLocation, metadataFileLocation);
+
+    TableIdentifier viewIdentifier = TableIdentifier.of(ns, "unauthorized_view");
+
+    Assertions.assertThatThrownBy(() -> catalog.registerView(viewIdentifier, metadataFileLocation))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations")
+        .hasMessageContaining(metadataFileLocation);
+  }
+
+  @Test
+  public void testRegisterViewRejectsMetadataFileOutsideViewDir() throws IOException {
+    // Update catalog: disallow external metadata file location so metadata-in-dir validation
+    // fires, but keep unstructured locations enabled so the storage validation passes
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace ns = Namespace.of("restricted_ns2");
+    catalog.createNamespace(ns);
+
+    // View declares its base location, but metadata file is in a different directory
+    String viewLocation = "file://tmp/restricted_ns2/my_view";
+    String metadataFileLocation = "file://tmp/restricted_ns2/other_view/metadata/v1.metadata.json";
+
+    addViewMetadataFile(ns, viewLocation, metadataFileLocation);
+
+    TableIdentifier viewIdentifier = TableIdentifier.of(ns, "my_view");
+
+    Assertions.assertThatThrownBy(() -> catalog.registerView(viewIdentifier, metadataFileLocation))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("is not allowed outside of table location");
+  }
+
+  private static void addViewMetadataFile(
+      Namespace ns, String viewLocation, String metadataFileLocation) {
+    ViewVersion viewVersion =
+        ImmutableViewVersion.builder()
+            .versionId(1)
+            .timestampMillis(System.currentTimeMillis())
+            .schemaId(0)
+            .defaultNamespace(ns)
+            .addRepresentations(
+                ImmutableSQLViewRepresentation.builder().sql("select 1").dialect("spark").build())
+            .build();
+
+    ViewMetadata viewMetadata =
+        ViewMetadata.builder()
+            .assignUUID(UUID.randomUUID().toString())
+            .setLocation(viewLocation)
+            .setCurrentVersion(viewVersion, TestData.SCHEMA)
+            .build();
+
+    InMemoryFileIO inMemoryFileIO = new InMemoryFileIO();
+    inMemoryFileIO.addFile(
+        metadataFileLocation, ViewMetadataParser.toJson(viewMetadata).getBytes(UTF_8));
+  }
+
+  private void updateCatalogProperties(Map<String, String> properties) throws IOException {
+    CatalogEntity.Builder builder = new CatalogEntity.Builder(CatalogEntity.of(catalogEntity));
+    properties.forEach(builder::addProperty);
+
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext, List.of(PolarisEntity.toCore(catalogEntity)), builder.build());
+    Assertions.assertThat(result.isSuccess()).isTrue();
+    catalogEntity = PolarisEntity.of(result.getEntity());
+    // The catalog snapshots its entity (and its feature-flag properties) at construction time,
+    // so close and rebuild it here to pick up the properties we just wrote.
+    this.catalog.close();
+    buildCatalog();
   }
 }

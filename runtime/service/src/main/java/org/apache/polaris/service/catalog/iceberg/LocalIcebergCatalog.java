@@ -1080,6 +1080,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
+
+    validateLocationForTableLike(identifier, metadataFileLocation, resolvedParent);
+
     FileIO fileIO =
         loadFileIOForTableLike(
             identifier,
@@ -1090,6 +1093,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
     ViewMetadata metadata = ViewMetadataParser.read(metadataFile);
+    validateLocationForTableLike(identifier, metadata.location(), resolvedParent);
+    validateMetadataFileInTableDir(identifier, metadata.location(), metadataFileLocation);
     ops.commit(null, metadata);
 
     return new BaseView(ops, ViewUtil.fullViewName(name(), identifier));
