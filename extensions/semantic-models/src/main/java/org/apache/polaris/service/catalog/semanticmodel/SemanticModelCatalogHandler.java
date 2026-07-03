@@ -55,12 +55,7 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
   @Override
   protected void initializeCatalog() {
     this.semanticModelCatalog =
-        new SemanticModelCatalog(
-            metaStoreManager(),
-            callContext(),
-            this.resolutionManifest,
-            realmConfig().getConfig(FeatureConfiguration.SEMANTIC_MODEL_MAX_DOCUMENT_BYTES),
-            realmConfig().getConfig(FeatureConfiguration.SEMANTIC_MODEL_MAX_EXPRESSION_BYTES));
+        new SemanticModelCatalog(metaStoreManager(), callContext(), this.resolutionManifest);
   }
 
   public LoadSemanticModelResponse createSemanticModel(

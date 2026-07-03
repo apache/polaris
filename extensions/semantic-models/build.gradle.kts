@@ -56,9 +56,6 @@ dependencies {
   implementation(libs.jakarta.servlet.api)
   implementation(libs.jakarta.ws.rs.api)
 
-  // Validates OSI documents against the bundled OSI JSON Schema (draft 2020-12).
-  implementation(libs.json.schema.validator)
-
   implementation(platform(libs.micrometer.bom))
   implementation("io.micrometer:micrometer-core")
 

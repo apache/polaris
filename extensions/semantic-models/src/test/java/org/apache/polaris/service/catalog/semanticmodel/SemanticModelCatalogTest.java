@@ -76,8 +76,6 @@ class SemanticModelCatalogTest {
       SemanticModelIdentifier.builder().setNamespace(List.of("sales")).setName(MODEL).build();
   private static final String VALID_MODEL_JSON =
       "[{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"sales.store_sales\"}]}]";
-  private static final int MAX_DOC = 1024 * 1024;
-  private static final int MAX_EXPR = 16 * 1024;
 
   private PolarisResolutionManifestCatalogView view;
   private PolarisMetaStoreManager metaStoreManager;
@@ -100,7 +98,7 @@ class SemanticModelCatalogTest {
     when(view.getResolvedPath(ResolvedPathKey.ofNamespace(NS)))
         .thenReturn(path(catalogEntity, namespaceEntity));
 
-    catalog = new SemanticModelCatalog(metaStoreManager, callContext, view, MAX_DOC, MAX_EXPR);
+    catalog = new SemanticModelCatalog(metaStoreManager, callContext, view);
   }
 
   private SemanticModelDocument doc(String semanticModelJson) {

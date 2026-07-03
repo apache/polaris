@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.semanticmodel;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -55,34 +56,30 @@ import org.slf4j.LoggerFactory;
 /**
  * Core create/list/load/update/drop logic for OSI semantic models. Mirrors {@link
  * org.apache.polaris.service.catalog.policy.PolicyCatalog}: the OSI document body is stored inside
- * the entity {@code properties} map, writes validate the document and resolve every {@code
- * dataset.source} to a {@code TABLE_LIKE} entity in the current catalog, and updates use optimistic
- * concurrency on the entity version.
+ * the entity {@code properties} map, writes resolve every {@code dataset.source} to a {@code
+ * TABLE_LIKE} entity in the current catalog, and updates use optimistic concurrency on the entity
+ * version. Document schema validation is a separate concern (see {@link
+ * SemanticDocumentValidator}).
  */
 public class SemanticModelCatalog {
   private static final Logger LOGGER = LoggerFactory.getLogger(SemanticModelCatalog.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
   private final long catalogId;
   private final PolarisMetaStoreManager metaStoreManager;
-  private final int maxDocumentBytes;
-  private final int maxExpressionBytes;
 
   public SemanticModelCatalog(
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
-      PolarisResolutionManifestCatalogView resolvedEntityView,
-      int maxDocumentBytes,
-      int maxExpressionBytes) {
+      PolarisResolutionManifestCatalogView resolvedEntityView) {
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.catalogId = catalogEntity.getId();
     this.metaStoreManager = metaStoreManager;
-    this.maxDocumentBytes = maxDocumentBytes;
-    this.maxExpressionBytes = maxExpressionBytes;
   }
 
   public LoadSemanticModelResponse createSemanticModel(
@@ -105,7 +102,7 @@ public class SemanticModelCatalog {
       throw new AlreadyExistsException("Semantic model already exists: %s", identifier.getName());
     }
 
-    // Validate against the bundled OSI schema and size caps, then resolve source tables.
+    // Parse the document and resolve its source tables before persisting.
     validateDocumentAndSources(document);
 
     SemanticModelEntity entity =
@@ -263,17 +260,24 @@ public class SemanticModelCatalog {
   }
 
   /**
-   * Validates the document against the bundled OSI schema and size caps, then resolves every {@code
-   * dataset.source} to a {@code TABLE_LIKE} entity. Shared by create and update.
+   * Parses the OSI document body and resolves every {@code dataset.source} to a {@code TABLE_LIKE}
+   * entity. Shared by create and update. Schema/size validation is a separate concern handled by a
+   * {@link SemanticDocumentValidator} implementation (not yet wired in this phase).
    */
   private void validateDocumentAndSources(SemanticModelDocument document) {
-    JsonNode semanticModel =
-        OsiDocumentValidator.validate(
-            document.getVersion(),
-            document.getSemanticModel(),
-            maxDocumentBytes,
-            maxExpressionBytes);
+    String body = document.getSemanticModel();
+    if (body == null || body.isBlank()) {
+      return;
+    }
+    JsonNode semanticModel;
+    try {
+      semanticModel = MAPPER.readTree(body);
+    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+      throw new BadRequestException(
+          "Field 'semantic_model' is not valid JSON: %s", e.getOriginalMessage());
+    }
     resolveSourcesOrThrow(semanticModel);
+    // TODO call the SemanticDocumentValidator when it's ready
   }
 
   /**
