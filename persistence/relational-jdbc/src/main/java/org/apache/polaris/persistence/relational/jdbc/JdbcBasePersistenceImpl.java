@@ -747,7 +747,7 @@ public class JdbcBasePersistenceImpl
       var results =
           datasourceOperations.executeSelect(
               QueryGenerator.generateSelectQuery(
-                  ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params),
+                  ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params, 1),
               new ModelEntity(schemaVersion));
       return results != null && !results.isEmpty();
     } catch (SQLException e) {

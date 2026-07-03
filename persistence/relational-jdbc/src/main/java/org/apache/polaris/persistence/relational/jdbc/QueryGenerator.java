@@ -57,13 +57,35 @@ public class QueryGenerator {
    * @param tableName Target table name.
    * @param whereClause Column-value pairs used in WHERE filtering.
    * @return A parameterized SELECT query.
-   * @throws IllegalArgumentException if any whereClause column isn't in projections.
+   * @throws IllegalArgumentException if any whereClause column isn't in projections or if limit is
+   *     not positive.
    */
   public static PreparedQuery generateSelectQuery(
       @NonNull List<String> projections,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
     return generateSelectQuery(projections, tableName, whereClause, Map.of(), null);
+  }
+
+  /**
+   * Generates a SELECT query bounded by a row limit. Useful for existence checks that only need to
+   * know whether any matching row exists, avoiding fetching and materializing the full result set.
+   *
+   * @param projections List of columns to retrieve.
+   * @param tableName Target table name.
+   * @param whereClause Column-value pairs used in WHERE filtering.
+   * @param limit Maximum number of rows to return.
+   * @return A parameterized SELECT query with a LIMIT clause.
+   * @throws IllegalArgumentException if any whereClause column isn't in projections.
+   */
+  public static PreparedQuery generateSelectQuery(
+      @NonNull List<String> projections,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereClause,
+      int limit) {
+    QueryFragment where = generateWhereClause(new HashSet<>(projections), whereClause, Map.of());
+    PreparedQuery query = generateSelectQuery(projections, tableName, where.sql(), null, limit);
+    return new PreparedQuery(query.sql(), where.parameters());
   }
 
   /**
@@ -303,6 +325,18 @@ public class QueryGenerator {
       @NonNull String tableName,
       @NonNull String filter,
       @Nullable String orderByColumn) {
+    return generateSelectQuery(columnNames, tableName, filter, orderByColumn, null);
+  }
+
+  private static PreparedQuery generateSelectQuery(
+      @NonNull List<String> columnNames,
+      @NonNull String tableName,
+      @NonNull String filter,
+      @Nullable String orderByColumn,
+      @Nullable Integer limit) {
+    if (limit != null && limit <= 0) {
+      throw new IllegalArgumentException("Limit must be positive");
+    }
     String sql =
         "SELECT "
             + String.join(", ", columnNames)
@@ -311,6 +345,9 @@ public class QueryGenerator {
             + filter;
     if (orderByColumn != null) {
       sql += " ORDER BY " + orderByColumn + " ASC";
+    }
+    if (limit != null) {
+      sql += " LIMIT " + limit;
     }
     return new PreparedQuery(sql, Collections.emptyList());
   }

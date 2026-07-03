@@ -36,6 +36,8 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class QueryGeneratorTest {
 
@@ -53,6 +55,35 @@ public class QueryGeneratorTest {
         QueryGenerator.generateSelectQuery(
                 ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause)
             .sql());
+  }
+
+  @Test
+  void testGenerateSelectQuery_withLimitAppendsLimitClause() {
+    Map<String, Object> whereClause = new LinkedHashMap<>();
+    whereClause.put("catalog_id", 123L);
+    whereClause.put("parent_id", 1L);
+    String expectedQuery =
+        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM POLARIS_SCHEMA.ENTITIES WHERE catalog_id = ? AND parent_id = ? LIMIT 1";
+    QueryGenerator.PreparedQuery query =
+        QueryGenerator.generateSelectQuery(
+            ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause, 1);
+    assertEquals(expectedQuery, query.sql());
+    Assertions.assertThat(query.parameters()).containsExactly(123L, 1L);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, -1})
+  void testGenerateSelectQuery_withNonPositiveLimitThrows(int limit) {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                QueryGenerator.generateSelectQuery(
+                    ModelEntity.getAllColumnNames(2),
+                    ModelEntity.TABLE_NAME,
+                    Map.of("catalog_id", 123L),
+                    limit));
+    assertEquals("Limit must be positive", exception.getMessage());
   }
 
   @Test
