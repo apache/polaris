@@ -193,8 +193,8 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     createFileCatalog(
         rootToken,
         catalogName,
-        baseLocation,
-        List.of(baseLocation, allowedPrefix, allowedPrefix + "/"));
+        allowedPrefix,
+        List.of(allowedPrefix, allowedPrefix + "/"));
 
     createNamespace(rootToken, catalogName, namespace);
 
@@ -323,8 +323,8 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     createFileCatalog(
         rootToken,
         catalogName,
-        baseLocation,
-        List.of(baseLocation, allowedPrefix, allowedPrefix + "/"));
+        allowedPrefix,
+        List.of(allowedPrefix, allowedPrefix + "/"));
     createNamespace(rootToken, catalogName, namespace);
 
     Map<String, Object> registerPayload =
