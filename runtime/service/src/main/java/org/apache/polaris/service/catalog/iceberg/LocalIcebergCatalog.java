@@ -2413,9 +2413,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   private void validateMetadataFileInTableDir(
       TableIdentifier identifier, String tableLocation, String metadataLocation) {
-    boolean allowEscape = realmConfig.getConfig(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+    boolean allowEscape =
+        realmConfig.getConfig(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION, catalogEntity);
     if (!allowEscape
-        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+        && !realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION, catalogEntity)) {
       LOGGER.debug(
           "Validating base location {} for table {} in metadata file {}",
           tableLocation,

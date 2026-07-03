@@ -61,6 +61,7 @@ If set to true, Polaris allows metadata files to be located outside the table's 
 
 - **Type:** `Boolean`
 - **Default:** `false`
+- **Catalog Config:** `polaris.config.allow.external.metadata.file.location`
 
 ---
 
