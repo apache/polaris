@@ -60,6 +60,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Deprecations
 
 ### Fixes
+- Default table storage locations with object-storage prefixing enabled are now percent-encoded with UTF-8 instead of the JVM default charset. Previously the persisted location of a table under a non-ASCII namespace or table name depended on the platform default charset, so the same table could resolve to a different (or lossy) location on a non-UTF-8 JVM.
 - Async task execution (table cleanup, manifest and batch file cleanup) now retries when a handler returns false on transient errors (e.g. IO or delete failures). Previously `false` was swallowed with only a warning log and the task was never retried via the existing retry mechanism.
 - `TableCleanupTaskHandler` now clamps `TABLE_METADATA_CLEANUP_BATCH_SIZE` to at least 1. Previously a non-positive realm override caused an infinite loop (0) or `IllegalArgumentException` (<0) when splitting metadata files for cleanup.
 - `ManifestFileCleanupTaskHandler` now handles Iceberg v2 delete manifests in addition to data manifests. Previously, `DROP TABLE PURGE` on a v2 table that had been updated via merge-on-read DML left position-delete files and their manifests as orphans in object storage; the cleanup task failed silently because `ManifestFiles.read()` rejects delete manifests.

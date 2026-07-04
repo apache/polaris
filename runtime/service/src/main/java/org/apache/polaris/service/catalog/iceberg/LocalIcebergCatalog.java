@@ -34,7 +34,7 @@ import com.google.common.collect.ImmutableMap;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1191,11 +1191,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     locationBuilder.append(LocationUtils.computeHash(tableIdentifier.toString()));
 
     for (String ns : tableIdentifier.namespace().levels()) {
-      locationBuilder.append("/").append(URLEncoder.encode(ns, Charset.defaultCharset()));
+      locationBuilder.append("/").append(URLEncoder.encode(ns, StandardCharsets.UTF_8));
     }
     locationBuilder
         .append("/")
-        .append(URLEncoder.encode(defaultTableLikeName(tableIdentifier), Charset.defaultCharset()))
+        .append(URLEncoder.encode(defaultTableLikeName(tableIdentifier), StandardCharsets.UTF_8))
         .append("/");
     return locationBuilder.toString();
   }

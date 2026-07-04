@@ -19,10 +19,18 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
+import static org.apache.polaris.core.config.FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED;
+import static org.apache.polaris.core.config.FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED;
+import static org.apache.polaris.core.config.FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +39,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -55,6 +64,7 @@ class LocalIcebergCatalogTest {
 
   @Mock ResolverFactory resolverFactory;
   @Mock CallContext callContext;
+  @Mock RealmConfig realmConfig;
   @Mock PolarisResolutionManifestCatalogView resolvedEntityView;
   @Mock CatalogEntity catalogEntity;
   @Mock PolarisDiagnostics diagnostics;
@@ -73,9 +83,13 @@ class LocalIcebergCatalogTest {
 
   @BeforeEach
   void initMocks() {
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
+    when(catalogEntity.getName()).thenReturn("catalog");
     when(resolvedEntityView.getResolvedCatalogEntity()).thenReturn(catalogEntity);
-    when(resolverFactory.createResolver(any(), any())).thenReturn(resolver);
-    when(resolver.resolveAll()).thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
+    lenient().when(resolverFactory.createResolver(any(), any())).thenReturn(resolver);
+    lenient()
+        .when(resolver.resolveAll())
+        .thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
 
     rns1 = new ResolvedPolarisEntity(ns1, List.of(), List.of());
     rns2 = new ResolvedPolarisEntity(ns2, List.of(), List.of());
@@ -94,6 +108,29 @@ class LocalIcebergCatalogTest {
             null,
             null,
             null);
+  }
+
+  @Test
+  void testHashedTableLocationsEncodeNonAsciiIdentifiersAsUtf8() {
+    when(realmConfig.getConfig(DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED, catalogEntity))
+        .thenReturn(true);
+    when(realmConfig.getConfig(ALLOW_UNSTRUCTURED_TABLE_LOCATION, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(ALLOW_TABLE_LOCATION_OVERLAP, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(OPTIMIZED_SIBLING_CHECK, catalogEntity)).thenReturn(false);
+    when(realmConfig.getConfig(DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED, catalogEntity))
+        .thenReturn(false);
+    catalog.initialize("catalog", Map.of("warehouse", "s3://bucket/base"));
+
+    String namespace = "n\u00e9\u6f22";
+    String table = "t\u00e9\u6f22";
+    String location = catalog.defaultWarehouseLocation(TableIdentifier.of(namespace, table));
+
+    String expectedSuffix =
+        String.format(
+            "/%s/%s/",
+            URLEncoder.encode(namespace, StandardCharsets.UTF_8),
+            URLEncoder.encode(table, StandardCharsets.UTF_8));
+    assertThat(location).endsWith(expectedSuffix);
   }
 
   @Test
