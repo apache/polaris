@@ -73,8 +73,11 @@ class LineageStoreManagerTest {
         new DatasourceOperations(dataSource, new TestJdbcConfiguration());
 
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-    InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v5.sql");
+    InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
     datasourceOperations.executeScript(schemaStream);
+    InputStream lineageSchemaStream =
+        classLoader.getResourceAsStream("h2/schema/lineage/lineage-v1.sql");
+    datasourceOperations.executeScript(lineageSchemaStream);
 
     PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
     lineagePersistence =
@@ -83,7 +86,8 @@ class LineageStoreManagerTest {
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
             REALM_ID,
-            5);
+            4,
+            1);
   }
 
   @Test
@@ -339,7 +343,7 @@ class LineageStoreManagerTest {
   }
 
   @Test
-  void lineageUpsertsFailForSchemaBeforeV5() throws SQLException {
+  void lineageUpsertsFailWhenLineageSchemaIsNotBootstrapped() throws SQLException {
     DataSource v4DataSource =
         JdbcConnectionPool.create(
             "jdbc:h2:mem:test_lineage_v4_" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1", "sa", "");
@@ -356,10 +360,11 @@ class LineageStoreManagerTest {
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
             REALM_ID,
-            4);
+            4,
+            0);
 
-    // Schema v4 intentionally has no lineage tables. JDBC lineage writes must fail clearly instead
-    // of silently dropping data.
+    // Core schema bootstrap alone intentionally has no lineage tables. JDBC lineage writes must
+    // fail clearly instead of silently dropping data.
     assertThrows(
         IllegalStateException.class,
         () -> v4LineageStoreManager.upsertDatasets(List.of(sourceDataset())));

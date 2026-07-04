@@ -72,7 +72,8 @@ class LineageStoreManagerJdbcIT {
     runLineageCrudSmoke(
         dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()),
         new TestJdbcConfiguration(Optional.empty()),
-        "postgres/schema-v5.sql",
+        "postgres/schema-v4.sql",
+        "postgres/schema/lineage/lineage-v1.sql",
         POSTGRES_REALM_ID);
   }
 
@@ -81,7 +82,8 @@ class LineageStoreManagerJdbcIT {
     runLineageCrudSmoke(
         dataSource(COCKROACH.getJdbcUrl(), COCKROACH.getUsername(), COCKROACH.getPassword()),
         new TestJdbcConfiguration(Optional.of(DatabaseType.COCKROACHDB.getDisplayName())),
-        "cockroachdb/schema-v5.sql",
+        "cockroachdb/schema-v4.sql",
+        "cockroachdb/schema/lineage/lineage-v1.sql",
         COCKROACH_REALM_ID);
   }
 
@@ -89,6 +91,7 @@ class LineageStoreManagerJdbcIT {
       DataSource dataSource,
       RelationalJdbcConfiguration config,
       String schemaResource,
+      String lineageSchemaResource,
       String realmId)
       throws Exception {
     DatasourceOperations datasourceOperations = new DatasourceOperations(dataSource, config);
@@ -96,7 +99,14 @@ class LineageStoreManagerJdbcIT {
     try (InputStream schemaStream = classLoader.getResourceAsStream(schemaResource)) {
       datasourceOperations.executeScript(schemaStream);
     }
-    assertEquals(5, JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, false));
+    try (InputStream lineageSchemaStream = classLoader.getResourceAsStream(lineageSchemaResource)) {
+      datasourceOperations.executeScript(lineageSchemaStream);
+    }
+    assertEquals(4, JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, false));
+    assertEquals(
+        1,
+        JdbcBasePersistenceImpl.loadSchemaVersion(
+            datasourceOperations, JdbcSchemaComponent.LINEAGE, false));
 
     JdbcBasePersistenceImpl lineagePersistence =
         new JdbcBasePersistenceImpl(
@@ -104,7 +114,8 @@ class LineageStoreManagerJdbcIT {
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
             realmId,
-            5);
+            4,
+            1);
     LineageDataset source = new LineageDataset("polaris", "analytics", "orders");
     LineageDataset sourceUpdate =
         new LineageDataset("polaris-prod", "analytics", "orders", OptionalLong.of(42L));

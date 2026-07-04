@@ -95,7 +95,25 @@ public class JdbcBootstrapUtils {
       if (version.isPresent()) {
         return version.get();
       }
+      Integer componentVersion =
+          schemaOptions.schemaComponentVersions().get(JdbcSchemaComponent.METASTORE.versionKey());
+      if (componentVersion != null) {
+        return componentVersion;
+      }
     }
     return -1;
+  }
+
+  public static int getRequestedSchemaVersion(
+      BootstrapOptions bootstrapOptions, JdbcSchemaComponent component) {
+    if (component == JdbcSchemaComponent.METASTORE) {
+      return getRequestedSchemaVersion(bootstrapOptions);
+    }
+    SchemaOptions schemaOptions = bootstrapOptions.schemaOptions();
+    if (schemaOptions == null) {
+      return -1;
+    }
+    return Optional.ofNullable(schemaOptions.schemaComponentVersions().get(component.versionKey()))
+        .orElse(-1);
   }
 }

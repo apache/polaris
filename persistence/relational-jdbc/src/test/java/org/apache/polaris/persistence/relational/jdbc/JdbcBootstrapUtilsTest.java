@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
@@ -61,7 +62,7 @@ class JdbcBootstrapUtilsTest {
 
     // Act & Assert
     assertEquals(
-        5,
+        4,
         JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
             DatabaseType.POSTGRES, currentVersion, -1, hasRealms));
     assertEquals(
@@ -96,9 +97,9 @@ class JdbcBootstrapUtilsTest {
     "2, true, 2",
     "3, true, 3",
     "4, true, 4",
-    "2, false, 5",
-    "3, false, 5",
-    "4, false, 5"
+    "2, false, 4",
+    "3, false, 4",
+    "4, false, 4"
   })
   void getVersion_whenExistingDbAndAutoDetect(
       int currentVersion, boolean hasRealms, int expectedVersion) {
@@ -170,6 +171,17 @@ class JdbcBootstrapUtilsTest {
       when(mockBootstrapOptions.schemaOptions()).thenReturn(null);
       int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
       assertEquals(-1, result);
+    }
+
+    @Test
+    void whenComponentSchemaVersionIsPresent_shouldReturnIt() {
+      when(mockSchemaOptions.schemaComponentVersions()).thenReturn(Map.of("lineage", 1));
+
+      int result =
+          JdbcBootstrapUtils.getRequestedSchemaVersion(
+              mockBootstrapOptions, JdbcSchemaComponent.LINEAGE);
+
+      assertEquals(1, result);
     }
   }
 }

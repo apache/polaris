@@ -113,10 +113,11 @@ public class JdbcBasePersistenceImpl
   private final PrincipalSecretsGenerator secretsGenerator;
   private final String realmId;
   private final int schemaVersion;
+  private final int lineageSchemaVersion;
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
-  private static final int MIN_LINEAGE_SCHEMA_VERSION = 5;
+  private static final int MIN_LINEAGE_SCHEMA_VERSION = 1;
 
   public JdbcBasePersistenceImpl(
       PolarisDiagnostics diagnostics,
@@ -124,11 +125,22 @@ public class JdbcBasePersistenceImpl
       PrincipalSecretsGenerator secretsGenerator,
       String realmId,
       int schemaVersion) {
+    this(diagnostics, databaseOperations, secretsGenerator, realmId, schemaVersion, 0);
+  }
+
+  public JdbcBasePersistenceImpl(
+      PolarisDiagnostics diagnostics,
+      DatasourceOperations databaseOperations,
+      PrincipalSecretsGenerator secretsGenerator,
+      String realmId,
+      int schemaVersion,
+      int lineageSchemaVersion) {
     this.diagnostics = diagnostics;
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
+    this.lineageSchemaVersion = lineageSchemaVersion;
   }
 
   @Override
@@ -429,7 +441,7 @@ public class JdbcBasePersistenceImpl
                     ModelPolicyMappingRecord.ALL_COLUMNS,
                     ModelPolicyMappingRecord.TABLE_NAME,
                     params));
-            if (schemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
+            if (lineageSchemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
               datasourceOperations.execute(
                   connection,
                   QueryGenerator.generateDeleteQuery(
@@ -797,10 +809,22 @@ public class JdbcBasePersistenceImpl
 
   static int loadSchemaVersion(
       DatasourceOperations datasourceOperations, boolean fallbackOnDoesNotExist) {
-    PreparedQuery query = QueryGenerator.generateVersionQuery();
+    return loadSchemaVersion(
+        datasourceOperations, JdbcSchemaComponent.METASTORE, fallbackOnDoesNotExist);
+  }
+
+  static int loadSchemaVersion(
+      DatasourceOperations datasourceOperations,
+      JdbcSchemaComponent component,
+      boolean fallbackOnDoesNotExist) {
+    PreparedQuery query = QueryGenerator.generateVersionQuery(component);
     try {
       List<SchemaVersion> schemaVersion =
           datasourceOperations.executeSelect(query, new SchemaVersion());
+      if ((schemaVersion == null || schemaVersion.isEmpty())
+          && component != JdbcSchemaComponent.METASTORE) {
+        return SchemaVersion.MINIMUM.getValue();
+      }
       if (schemaVersion == null || schemaVersion.size() != 1) {
         throw new RuntimeException("Failed to retrieve schema version");
       }
@@ -809,7 +833,8 @@ public class JdbcBasePersistenceImpl
       if (fallbackOnDoesNotExist && datasourceOperations.isRelationDoesNotExist(e)) {
         return SchemaVersion.MINIMUM.getValue();
       }
-      LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
+      LOGGER.error(
+          "Failed to load {} schema version due to {}", component.versionKey(), e.getMessage(), e);
       throw new IllegalStateException("Failed to retrieve schema version", e);
     }
   }
@@ -1762,13 +1787,13 @@ public class JdbcBasePersistenceImpl
   }
 
   private void verifyLineageStoreManagerSupported() {
-    if (schemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
+    if (lineageSchemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
       return;
     }
     throw new IllegalStateException(
         String.format(
-            "Lineage store manager requires JDBC schema version %d or newer for realm '%s'; current schema version is %d. Upgrade the JDBC schema to v%d to persist lineage.",
-            MIN_LINEAGE_SCHEMA_VERSION, realmId, schemaVersion, MIN_LINEAGE_SCHEMA_VERSION));
+            "Lineage store manager requires JDBC lineage schema version %d or newer for realm '%s'; current lineage schema version is %d. Bootstrap the JDBC lineage schema to persist lineage.",
+            MIN_LINEAGE_SCHEMA_VERSION, realmId, lineageSchemaVersion));
   }
 
   private PreparedQuery generateLineageDatasetUpsert(ModelLineageDataset model) {

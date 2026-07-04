@@ -25,7 +25,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
-import java.sql.SQLException;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,6 +55,7 @@ import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
+import org.apache.polaris.extensions.lineage.LineageConfiguration;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,6 +88,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisDiagnostics diagnostics;
   @Inject DatasourceOperations datasourceOperations;
   @Inject RealmConfigurationSource realmConfigurationSource;
+  @Inject Instance<LineageConfiguration> lineageConfiguration;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -118,16 +119,23 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         k -> JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, fallbackOnDne));
   }
 
+  private int getOrLoadLineageSchemaVersion(boolean fallbackOnDne) {
+    return JdbcBasePersistenceImpl.loadSchemaVersion(
+        datasourceOperations, JdbcSchemaComponent.LINEAGE, fallbackOnDne);
+  }
+
   /** Creates a new stateless {@link JdbcBasePersistenceImpl} for the given realm. */
   private JdbcBasePersistenceImpl createSession(
       String realmId, @Nullable RootCredentialsSet rootCredentialsSet, boolean fallbackOnDne) {
     int schemaVersion = getOrLoadSchemaVersion(realmId, fallbackOnDne);
+    int lineageSchemaVersion = getOrLoadLineageSchemaVersion(fallbackOnDne);
     return new JdbcBasePersistenceImpl(
         diagnostics,
         datasourceOperations,
         secretsGenerator(realmId, rootCredentialsSet),
         realmId,
-        schemaVersion);
+        schemaVersion,
+        lineageSchemaVersion);
   }
 
   private JdbcBasePersistenceImpl createJdbcPersistence(RealmContext realmContext) {
@@ -165,37 +173,28 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
     for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
+      Map<JdbcSchemaComponent, Integer> effectiveSchemaVersions =
+          new JdbcSchemaManager(datasourceOperations)
+              .bootstrap(bootstrapOptions, lineagePersistenceEnabled());
+      int effectiveSchemaVersion = effectiveSchemaVersions.get(JdbcSchemaComponent.METASTORE);
+      schemaVersionCache.put(realm, effectiveSchemaVersion);
+
       if (!verifiedRealms.contains(realm)) {
-        int currentSchemaVersion =
-            JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, true);
-        int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
-        int effectiveSchemaVersion =
-            JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
-                datasourceOperations.getDatabaseType(),
-                currentSchemaVersion,
-                requestedSchemaVersion,
-                JdbcBasePersistenceImpl.entityTableExists(datasourceOperations));
         LOGGER.info(
             "Effective schema version: {} for bootstrapping realm: {}",
             effectiveSchemaVersion,
             realm);
-        try {
-          // Run the set-up script to create the tables.
-          datasourceOperations.executeScript(
-              datasourceOperations
-                  .getDatabaseType()
-                  .openInitScriptResource(effectiveSchemaVersion));
-        } catch (SQLException e) {
-          throw new RuntimeException(
-              String.format("Error executing sql script: %s", e.getMessage()), e);
-        }
-        // Cache the effective schema version for this realm
-        schemaVersionCache.put(realm, effectiveSchemaVersion);
 
         PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
         JdbcBasePersistenceImpl metaStore =
             createSession(realm, bootstrapOptions.rootCredentialsSet(), true);
         PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
+
+        if (isComponentOnlyBootstrap(bootstrapOptions)
+            && metaStoreManager.findRootPrincipal(polarisContext).isPresent()) {
+          verifiedRealms.add(realm);
+          continue;
+        }
 
         PrincipalSecretsResult secretsResult =
             createPolarisPrincipalForRealm(metaStoreManager, polarisContext);
@@ -205,6 +204,21 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
 
     return Map.copyOf(results);
+  }
+
+  private boolean lineagePersistenceEnabled() {
+    if (lineageConfiguration == null || lineageConfiguration.isUnsatisfied()) {
+      return false;
+    }
+    LineageConfiguration configuration = lineageConfiguration.get();
+    return configuration.persistence().enabled();
+  }
+
+  private static boolean isComponentOnlyBootstrap(BootstrapOptions bootstrapOptions) {
+    SchemaOptions schemaOptions = bootstrapOptions.schemaOptions();
+    return schemaOptions != null
+        && schemaOptions.schemaVersion().isEmpty()
+        && !schemaOptions.schemaComponentVersions().isEmpty();
   }
 
   @Override

@@ -53,9 +53,9 @@ public enum DatabaseType {
    */
   public int getLatestSchemaVersion() {
     return switch (this) {
-      case POSTGRES -> 5; // PostgreSQL has schemas v1, v2, v3, v4, v5
-      case COCKROACHDB -> 5; // CockroachDB schema version kept in sync with PostgreSQL
-      case H2 -> 5; // H2 uses same schemas as PostgreSQL
+      case POSTGRES -> 4; // PostgreSQL has schemas v1, v2, v3, v4
+      case COCKROACHDB -> 4; // CockroachDB schema version kept in sync with PostgreSQL
+      case H2 -> 4; // H2 uses same schemas as PostgreSQL
     };
   }
 
@@ -149,25 +149,32 @@ public enum DatabaseType {
    * caller.
    */
   public InputStream openInitScriptResource(int schemaVersion) {
+    return openInitScriptResource(JdbcSchemaComponent.METASTORE, schemaVersion);
+  }
+
+  /**
+   * Open an InputStream that contains data from an init script. This stream should be closed by the
+   * caller.
+   */
+  InputStream openInitScriptResource(JdbcSchemaComponent component, int schemaVersion) {
     // Validate schema version is within acceptable range for this database type
-    int latestVersion = getLatestSchemaVersion();
+    int latestVersion = component.latestVersion(this);
     if (schemaVersion <= 0 || schemaVersion > latestVersion) {
       throw new IllegalArgumentException(
           String.format(
-              "Invalid schema version %d for database type %s. Valid range: 1-%d",
-              schemaVersion, this, latestVersion));
+              "Invalid %s schema version %d for database type %s. Valid range: 1-%d",
+              component.versionKey(), schemaVersion, this, latestVersion));
     }
 
-    final String resourceName =
-        String.format("%s/schema-v%d.sql", this.getDisplayName(), schemaVersion);
+    final String resourceName = component.resourceName(this, schemaVersion);
 
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     InputStream stream = classLoader.getResourceAsStream(resourceName);
     if (stream == null) {
       throw new IllegalStateException(
           String.format(
-              "Schema resource not found: %s (database type: %s, version: %d)",
-              resourceName, this, schemaVersion));
+              "Schema resource not found: %s (database type: %s, component: %s, version: %d)",
+              resourceName, this, component.versionKey(), schemaVersion));
     }
     return stream;
   }
