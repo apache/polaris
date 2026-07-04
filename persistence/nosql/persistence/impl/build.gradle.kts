@@ -83,6 +83,7 @@ dependencies {
   testFixturesCompileOnly(project(":polaris-immutables"))
   testFixturesAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
+  testFixturesImplementation(project(":polaris-idgen-api"))
   testFixturesImplementation(libs.guava)
 
   testFixturesImplementation(libs.junit.pioneer)
