@@ -37,6 +37,7 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventType;
+import org.jspecify.annotations.Nullable;
 
 public abstract class PolarisPersistenceEventListener implements PolarisEventListener {
 
@@ -67,8 +68,9 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     processEvent(event.metadata().realmId(), polarisEvent);
   }
 
+  @Nullable
   private static String resolveCatalogName(PolarisEvent event) {
-    return event.attributes().get(EventAttributes.CATALOG_NAME).orElse(EventEntity.REALM_SCOPED);
+    return event.attributes().get(EventAttributes.CATALOG_NAME).orElse(null);
   }
 
   /**
@@ -98,7 +100,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
   }
 
   private static String resolveResourceIdentifier(
-      PolarisEvent event, ResourceType resourceType, String catalogName) {
+      PolarisEvent event, ResourceType resourceType, @Nullable String catalogName) {
     return switch (resourceType) {
       case TABLE -> resolveTableResourceIdentifier(event, catalogName);
       case VIEW -> resolveViewResourceIdentifier(event, catalogName);
@@ -108,7 +110,8 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     };
   }
 
-  private static String resolveTableResourceIdentifier(PolarisEvent event, String catalogName) {
+  private static String resolveTableResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
     EventAttributeMap attributes = event.attributes();
 
     Optional<String> identifierFromTableAttribute =
@@ -148,7 +151,8 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
 
-  private static String resolveViewResourceIdentifier(PolarisEvent event, String catalogName) {
+  private static String resolveViewResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
     EventAttributeMap attributes = event.attributes();
     return attributes
         .get(EventAttributes.VIEW_IDENTIFIER)
@@ -212,7 +216,8 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
                     .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
   }
 
-  private static String resolveNamespaceResourceIdentifier(PolarisEvent event, String catalogName) {
+  private static String resolveNamespaceResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
     EventAttributeMap attributes = event.attributes();
     return attributes
         .get(EventAttributes.NAMESPACE)
@@ -222,7 +227,8 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
 
-  private static String resolveCatalogResourceIdentifier(PolarisEvent event, String catalogName) {
+  private static String resolveCatalogResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
     return event
         .attributes()
         .get(EventAttributes.CATALOG_NAME)
@@ -233,11 +239,9 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     return event.type().name();
   }
 
-  private static String fallbackResourceIdentifier(PolarisEvent event, String catalogName) {
-    if (!EventEntity.REALM_SCOPED.equals(catalogName)) {
-      return catalogName;
-    }
-    return event.type().name();
+  private static String fallbackResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
+    return catalogName != null ? catalogName : event.type().name();
   }
 
   private static Map<String, String> buildAdditionalProperties(PolarisEvent event) {

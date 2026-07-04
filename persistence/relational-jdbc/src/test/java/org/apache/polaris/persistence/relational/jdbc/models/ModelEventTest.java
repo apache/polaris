@@ -30,6 +30,7 @@ import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.R
 import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.TIMESTAMP_MS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -82,6 +83,57 @@ public class ModelEventTest {
     assertEquals(TEST_RESOURCE_TYPE, result.getResourceType());
     assertEquals(TEST_RESOURCE_IDENTIFIER, result.getResourceIdentifier());
     assertEquals(EMPTY_JSON, result.getAdditionalProperties());
+  }
+
+  @Test
+  public void testFromResultSetCoalescesLegacyRealmScopedCatalogId() throws SQLException {
+    // Arrange
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.getString(CATALOG_ID)).thenReturn(ModelEvent.LEGACY_REALM_SCOPED_CATALOG_ID);
+    when(mockResultSet.getString(EVENT_ID)).thenReturn(TEST_EVENT_ID);
+    when(mockResultSet.getString(REQUEST_ID)).thenReturn(TEST_REQUEST_ID);
+    when(mockResultSet.getString(EVENT_TYPE)).thenReturn(TEST_EVENT_TYPE);
+    when(mockResultSet.getLong(TIMESTAMP_MS)).thenReturn(TEST_TIMESTAMP_MS);
+    when(mockResultSet.getString(PRINCIPAL_NAME)).thenReturn(TEST_USER);
+    when(mockResultSet.getString(RESOURCE_TYPE)).thenReturn(TEST_RESOURCE_TYPE_STRING);
+    when(mockResultSet.getString(RESOURCE_IDENTIFIER)).thenReturn(TEST_RESOURCE_IDENTIFIER);
+    when(mockResultSet.getString(ADDITIONAL_PROPERTIES)).thenReturn(EMPTY_JSON);
+
+    // Act
+    EventEntity result = ModelEvent.CONVERTER.fromResultSet(mockResultSet);
+
+    // Assert
+    assertNull(result.getCatalogId());
+    assertEquals(TEST_EVENT_ID, result.getId());
+  }
+
+  @Test
+  public void testRoundTripWithNullCatalogId() {
+    // Arrange
+    EventEntity polarisEvent =
+        new EventEntity(
+            null,
+            TEST_EVENT_ID,
+            TEST_REQUEST_ID,
+            TEST_EVENT_TYPE,
+            TEST_TIMESTAMP_MS,
+            TEST_USER,
+            TEST_RESOURCE_TYPE,
+            TEST_RESOURCE_IDENTIFIER);
+    polarisEvent.setAdditionalProperties(TEST_JSON);
+
+    // Act
+    ModelEvent modelEvent = ModelEvent.fromEvent(polarisEvent);
+    Map<String, Object> resultMap = modelEvent.toMap(DatabaseType.H2);
+    EventEntity result = ModelEvent.toEvent(modelEvent);
+
+    // Assert
+    assertNull(modelEvent.getCatalogId());
+    assertTrue(resultMap.containsKey(CATALOG_ID));
+    assertNull(resultMap.get(CATALOG_ID));
+    assertNull(result.getCatalogId());
+    assertEquals(TEST_EVENT_ID, result.getId());
+    assertEquals(TEST_JSON, result.getAdditionalProperties());
   }
 
   @Test

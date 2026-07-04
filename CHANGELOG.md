@@ -30,6 +30,18 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
+- Relational JDBC: a new schema version 5 makes the `events.catalog_id` column nullable. Events that
+  are not scoped to a catalog (principal, policy, rate-limiting, etc.) now persist `NULL` instead of
+  the placeholder string `__realm__` (which only ever existed in 1.6.0 release candidates). Fresh
+  bootstraps use schema v5 automatically. Existing deployments on schema v3/v4 keep working — the
+  server detects the older schema version and continues writing the legacy placeholder — but
+  operators are encouraged to upgrade manually, since Polaris has no automated schema migrations:
+  ```sql
+  ALTER TABLE polaris_schema.events ALTER COLUMN catalog_id DROP NOT NULL;
+  UPDATE polaris_schema.events SET catalog_id = NULL WHERE catalog_id = '__realm__';
+  UPDATE polaris_schema.version SET version_value = 5 WHERE version_key = 'version';
+  ```
+  See the Relational JDBC metastore documentation for details.
 
 ### Breaking changes
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms

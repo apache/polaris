@@ -43,6 +43,14 @@ public interface ModelEvent extends Converter<EventEntity> {
   String RESOURCE_IDENTIFIER = "resource_identifier";
   String ADDITIONAL_PROPERTIES = "additional_properties";
 
+  /**
+   * Legacy sentinel stored in {@code events.catalog_id} for events that are not catalog-scoped on
+   * schema versions &lt; 5, where the column is {@code NOT NULL}. Never exposed outside the JDBC
+   * layer: writes substitute it for a null catalog id on pre-v5 schemas, and {@link #fromResultSet}
+   * coalesces it back to null on read.
+   */
+  String LEGACY_REALM_SCOPED_CATALOG_ID = "__realm__";
+
   List<String> ALL_COLUMNS =
       List.of(
           CATALOG_ID,
@@ -62,7 +70,6 @@ public interface ModelEvent extends Converter<EventEntity> {
    */
   ModelEvent CONVERTER =
       ImmutableModelEvent.builder()
-          .catalogId("")
           .eventId("")
           .requestId("")
           .eventType("")
@@ -73,8 +80,8 @@ public interface ModelEvent extends Converter<EventEntity> {
           .additionalProperties("")
           .build();
 
-  // catalog id
-  String getCatalogId();
+  // catalog id, null for events that are not catalog-scoped
+  @Nullable String getCatalogId();
 
   // event id
   String getEventId();
@@ -102,9 +109,10 @@ public interface ModelEvent extends Converter<EventEntity> {
 
   @Override
   default EventEntity fromResultSet(ResultSet rs) throws SQLException {
+    String catalogId = rs.getString(CATALOG_ID);
     var modelEvent =
         ImmutableModelEvent.builder()
-            .catalogId(rs.getString(CATALOG_ID))
+            .catalogId(LEGACY_REALM_SCOPED_CATALOG_ID.equals(catalogId) ? null : catalogId)
             .eventId(rs.getString(EVENT_ID))
             .requestId(rs.getString(REQUEST_ID))
             .eventType(rs.getString(EVENT_TYPE))

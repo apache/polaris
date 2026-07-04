@@ -21,6 +21,7 @@
 -- Changes from v4:
 --  * Removed the `idempotency_records` table (the durable idempotency store it
 --    backed was never wired into any request path and has been removed)
+--  * `events.catalog_id` is nullable; events that are not catalog-scoped store NULL (issue #4674)
 -- Features:
 --  * Uses INT4 explicitly for all integer columns (required for CockroachDB JDBC driver)
 --  * Includes all tables: version, entities, grant_records, principal_authentication_data,
@@ -131,7 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (r
 
 CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
-    catalog_id TEXT NOT NULL,
+    catalog_id TEXT,
     event_id TEXT NOT NULL,
     request_id TEXT,
     event_type TEXT NOT NULL,

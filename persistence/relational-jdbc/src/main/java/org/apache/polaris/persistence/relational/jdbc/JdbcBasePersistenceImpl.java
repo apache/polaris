@@ -72,6 +72,7 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityVersionConverter;
+import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
@@ -286,7 +287,7 @@ public class JdbcBasePersistenceImpl
           QueryGenerator.generateInsertQuery(
               ModelEvent.ALL_COLUMNS,
               ModelEvent.TABLE_NAME,
-              ModelEvent.fromEvent(events.getFirst())
+              toModelEvent(events.getFirst())
                   .toMap(datasourceOperations.getDatabaseType())
                   .values()
                   .stream()
@@ -304,10 +305,7 @@ public class JdbcBasePersistenceImpl
             QueryGenerator.generateInsertQuery(
                 ModelEvent.ALL_COLUMNS,
                 ModelEvent.TABLE_NAME,
-                ModelEvent.fromEvent(event)
-                    .toMap(datasourceOperations.getDatabaseType())
-                    .values()
-                    .stream()
+                toModelEvent(event).toMap(datasourceOperations.getDatabaseType()).values().stream()
                     .toList(),
                 realmId);
 
@@ -329,6 +327,18 @@ public class JdbcBasePersistenceImpl
       throw new RuntimeException(
           String.format("Failed to write events due to %s", e.getMessage()), e);
     }
+  }
+
+  private ModelEvent toModelEvent(EventEntity event) {
+    ModelEvent modelEvent = ModelEvent.fromEvent(event);
+    if (schemaVersion < 5 && event.getCatalogId() == null) {
+      // Schema versions < 5 declare events.catalog_id NOT NULL; store the legacy sentinel there.
+      return ImmutableModelEvent.builder()
+          .from(modelEvent)
+          .catalogId(ModelEvent.LEGACY_REALM_SCOPED_CATALOG_ID)
+          .build();
+    }
+    return modelEvent;
   }
 
   @Override
