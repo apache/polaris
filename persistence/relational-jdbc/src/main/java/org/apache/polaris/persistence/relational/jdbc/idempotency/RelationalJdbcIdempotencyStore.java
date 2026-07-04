@@ -40,11 +40,13 @@ import org.jspecify.annotations.NonNull;
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
+  private final QueryGenerator queryGenerator;
 
   public RelationalJdbcIdempotencyStore(
       @NonNull DataSource dataSource, @NonNull RelationalJdbcConfiguration cfg)
       throws SQLException {
     this.datasourceOperations = new DatasourceOperations(dataSource, cfg);
+    this.queryGenerator = new QueryGenerator(datasourceOperations.getDatabaseType());
   }
 
   @Override
@@ -94,7 +96,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   public Optional<IdempotencyRecord> load(String realmId, String idempotencyKey) {
     try {
       QueryGenerator.PreparedQuery query =
-          QueryGenerator.generateSelectQuery(
+          queryGenerator.generateSelectQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(
@@ -150,7 +152,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     }
 
     QueryGenerator.PreparedQuery update =
-        QueryGenerator.generateUpdateQuery(
+        queryGenerator.generateUpdateQuery(
             ModelIdempotencyRecord.ALL_COLUMNS,
             ModelIdempotencyRecord.TABLE_NAME,
             Map.of(
@@ -213,7 +215,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     whereEquals.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
 
     QueryGenerator.PreparedQuery update =
-        QueryGenerator.generateUpdateQuery(
+        queryGenerator.generateUpdateQuery(
             ModelIdempotencyRecord.ALL_COLUMNS,
             ModelIdempotencyRecord.TABLE_NAME,
             setClause,
@@ -234,7 +236,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   public int purgeExpired(String realmId, Instant before) {
     try {
       QueryGenerator.PreparedQuery delete =
-          QueryGenerator.generateDeleteQuery(
+          queryGenerator.generateDeleteQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(ModelIdempotencyRecord.REALM_ID, realmId),

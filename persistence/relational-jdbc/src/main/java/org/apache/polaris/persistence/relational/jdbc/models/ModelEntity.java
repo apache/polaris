@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -32,6 +33,8 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class ModelEntity implements Converter<PolarisBaseEntity> {
   public static final String TABLE_NAME = "ENTITIES";
+
+  public static final Set<String> JSON_COLUMNS = Set.of("properties", "internal_properties");
 
   public static final String ID_COLUMN = "id";
 
@@ -256,13 +259,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     map.put("purge_timestamp", this.getPurgeTimestamp());
     map.put("to_purge_timestamp", this.getToPurgeTimestamp());
     map.put("last_update_timestamp", this.getLastUpdateTimestamp());
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put("properties", toJsonbPGobject(this.getProperties()));
-      map.put("internal_properties", toJsonbPGobject(this.getInternalProperties()));
-    } else {
-      map.put("properties", this.getProperties());
-      map.put("internal_properties", this.getInternalProperties());
-    }
+    map.put("properties", wrapJsonForDatabase(this.getProperties(), databaseType));
+    map.put("internal_properties", wrapJsonForDatabase(this.getInternalProperties(), databaseType));
     map.put("grant_records_version", this.getGrantRecordsVersion());
     if (this.getSchemaVersion() >= 2) {
       map.put("location_without_scheme", this.getLocationWithoutScheme());

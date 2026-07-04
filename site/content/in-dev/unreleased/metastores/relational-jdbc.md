@@ -68,7 +68,13 @@ quarkus.rds.credentials-provider.aws.port=6160
 
 This is the basic configuration. For more details, please refer to the [Quarkus plugin documentation](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-rds.html#_configuration_reference).
 
-The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgresSQL and H2 databases. At this time, official documentation is provided exclusively for usage with PostgreSQL.
+## 3. MySQL (custom source build)
+
+The relational JDBC backend can be built with MySQL 8.0+ support, but the MySQL JDBC driver is GPL-licensed and is not bundled in the official Polaris release artifacts (see [issue #2491](https://github.com/apache/polaris/issues/2491)). To use this path, download the official Polaris source release and build your own derivative from that source tree; see `persistence/relational-jdbc/MYSQL.md` in the unpacked source release for build and configuration details. The runner you build is a custom downstream derivative, not an official Polaris artifact.
+
+---
+
+The Relational JDBC metastore currently relies on a Quarkus-managed datasource. Official Polaris release artifacts support PostgreSQL and H2; MySQL is available only via a custom source build as described above. At this time, the most detailed documentation is provided for PostgreSQL.
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource).
 

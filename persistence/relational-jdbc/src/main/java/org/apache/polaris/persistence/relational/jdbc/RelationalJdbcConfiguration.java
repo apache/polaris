@@ -32,7 +32,7 @@ public interface RelationalJdbcConfiguration {
 
   /**
    * Explicitly configured database type. If not specified, the database type will be inferred from
-   * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
+   * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2", "mysql"
    */
   Optional<String> databaseType();
 }

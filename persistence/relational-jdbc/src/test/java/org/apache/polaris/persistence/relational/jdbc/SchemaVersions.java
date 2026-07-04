@@ -77,6 +77,7 @@ final class SchemaVersions {
     return switch (databaseType) {
       case H2 -> 0;
       case POSTGRES, COCKROACHDB -> 1;
+      case MYSQL -> 4; // MySQL ships schema-v4.sql only
     };
   }
 }
