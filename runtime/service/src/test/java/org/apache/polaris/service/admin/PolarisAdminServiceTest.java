@@ -41,6 +41,7 @@ import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
@@ -160,6 +161,23 @@ public class PolarisAdminServiceTest {
     assertThatThrownBy(
             () ->
                 adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
+        .isInstanceOf(AlreadyExistsException.class);
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testCreateCatalogCleansUpInlineBearerSecretWhenCatalogAlreadyExists() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:bearer", Map.of());
+    setupExternalCatalogCreate(
+        secretReference, AuthenticationParameters.AuthenticationTypeEnum.BEARER);
+    when(metaStoreManager.createCatalog(any(), any(), any()))
+        .thenReturn(new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
+
+    assertThatThrownBy(
+            () ->
+                adminService.createCatalog(new CreateCatalogRequest(createExternalBearerCatalog())))
         .isInstanceOf(AlreadyExistsException.class);
 
     verify(userSecretsManager).deleteSecret(secretReference);
@@ -783,6 +801,12 @@ public class PolarisAdminServiceTest {
   }
 
   private void setupExternalCatalogCreate(SecretReference secretReference) {
+    setupExternalCatalogCreate(
+        secretReference, AuthenticationParameters.AuthenticationTypeEnum.OAUTH);
+  }
+
+  private void setupExternalCatalogCreate(
+      SecretReference secretReference, AuthenticationParameters.AuthenticationTypeEnum authType) {
     when(realmConfig.getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS))
         .thenReturn(true);
     when(realmConfig.getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS))
@@ -790,7 +814,7 @@ public class PolarisAdminServiceTest {
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_CATALOG_FEDERATION)).thenReturn(true);
     when(realmConfig.getConfig(
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
-        .thenReturn(List.of(AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name()));
+        .thenReturn(List.of(authType.name()));
 
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
     when(idResult.getId()).thenReturn(2L);
@@ -801,15 +825,17 @@ public class PolarisAdminServiceTest {
     when(identityProvider.allocateServiceIdentity(any())).thenReturn(Optional.empty());
   }
 
+  private AwsStorageConfigInfo createAwsStorageConfig() {
+    return AwsStorageConfigInfo.builder()
+        .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+        .setExternalId("externalId")
+        .setUserArn("userArn")
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+        .build();
+  }
+
   private Catalog createExternalOauthCatalog() {
-    AwsStorageConfigInfo awsConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setExternalId("externalId")
-            .setUserArn("userArn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
-            .build();
     ConnectionConfigInfo connectionConfigInfo =
         IcebergRestConnectionConfigInfo.builder(
                 ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
@@ -828,7 +854,29 @@ public class PolarisAdminServiceTest {
         .setType(Catalog.TypeEnum.EXTERNAL)
         .setName("external-catalog")
         .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
-        .setStorageConfigInfo(awsConfigModel)
+        .setStorageConfigInfo(createAwsStorageConfig())
+        .setConnectionConfigInfo(connectionConfigInfo)
+        .build();
+  }
+
+  private Catalog createExternalBearerCatalog() {
+    ConnectionConfigInfo connectionConfigInfo =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/polaris/api/catalog")
+            .setRemoteCatalogName("remote-catalog")
+            .setAuthenticationParameters(
+                BearerAuthenticationParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.BEARER)
+                    .setBearerToken("bearer-token")
+                    .build())
+            .build();
+
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName("external-catalog")
+        .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+        .setStorageConfigInfo(createAwsStorageConfig())
         .setConnectionConfigInfo(connectionConfigInfo)
         .build();
   }
