@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence.transactional;
 
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -63,8 +64,6 @@ public class TreeMapMetaStore {
     /**
      * read a value in the slice, will return null if not found
      *
-     * <p>TODO: return a copy of each object to avoid mutating the records
-     *
      * @param key key for that value
      */
     public T read(String key) {
@@ -81,7 +80,7 @@ public class TreeMapMetaStore {
     public List<T> readRange(String prefix) {
       ensureReadTr();
       if (prefix.isEmpty()) {
-        return new ArrayList<>(this.slice.values());
+        return copyValues(this.slice.values());
       }
 
       // end of the key
@@ -90,7 +89,15 @@ public class TreeMapMetaStore {
               + (char) (prefix.charAt(prefix.length() - 1) + 1);
 
       // Get the sub-map with keys in the range [prefix, endKey)
-      return new ArrayList<>(slice.subMap(prefix, true, endKey, false).values());
+      return copyValues(slice.subMap(prefix, true, endKey, false).values());
+    }
+
+    private List<T> copyValues(Collection<T> values) {
+      List<T> copied = new ArrayList<>(values.size());
+      for (T value : values) {
+        copied.add(this.copyRecord.apply(value));
+      }
+      return copied;
     }
 
     /**
