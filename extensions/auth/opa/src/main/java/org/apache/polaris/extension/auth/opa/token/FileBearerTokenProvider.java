@@ -68,6 +68,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
   private final AsyncExec asyncExec;
   private final CompletableFuture<String> initialTokenFuture = new CompletableFuture<>();
   private final long initialTokenWaitMillis;
+  private final Duration refreshRetryInterval;
 
   private volatile String cachedToken;
   private volatile Instant lastRefresh;
@@ -81,6 +82,9 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
    * @param refreshInterval how often to check for token file changes (fallback for non-JWT tokens)
    * @param jwtExpirationRefresh whether to use JWT expiration for refresh timing
    * @param jwtExpirationBuffer buffer time before JWT expiration to refresh the token
+   * @param initialTokenWait how long getToken waits for the first successful token refresh
+   * @param refreshRetryInterval how long to wait before retrying a failed token refresh
+   * @param asyncExec asynchronous executor used to schedule refresh attempts
    * @param clock clock instance for time operations
    * @throws IllegalStateException if the initial token cannot be loaded from the file
    */
@@ -90,6 +94,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
       boolean jwtExpirationRefresh,
       Duration jwtExpirationBuffer,
       Duration initialTokenWait,
+      Duration refreshRetryInterval,
       AsyncExec asyncExec,
       Supplier<Instant> clock) {
     this.tokenFilePath = tokenFilePath;
@@ -97,6 +102,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     this.jwtExpirationRefresh = jwtExpirationRefresh;
     this.jwtExpirationBuffer = jwtExpirationBuffer;
     this.initialTokenWaitMillis = initialTokenWait.toMillis();
+    this.refreshRetryInterval = refreshRetryInterval;
     this.clock = clock;
     this.asyncExec = asyncExec;
 
@@ -155,7 +161,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
       }
     } else {
       // Token refresh did not succeed, retry soon
-      delay = Duration.ofSeconds(1); // TODO: make configurable
+      delay = refreshRetryInterval;
     }
     scheduleRefreshAttempt(delay);
   }

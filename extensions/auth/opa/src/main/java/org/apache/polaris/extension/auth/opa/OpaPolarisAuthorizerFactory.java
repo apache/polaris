@@ -170,13 +170,17 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
       Duration refreshInterval = fileConfig.refreshInterval().orElse(Duration.ofMinutes(5));
       boolean jwtExpirationRefresh = fileConfig.jwtExpirationRefresh().orElse(true);
       Duration jwtExpirationBuffer = fileConfig.jwtExpirationBuffer().orElse(Duration.ofMinutes(1));
+      Duration initialTokenWait = fileConfig.initialTokenWait().orElse(Duration.ofSeconds(5));
+      Duration refreshRetryInterval =
+          fileConfig.refreshRetryInterval().orElse(Duration.ofSeconds(1));
 
       return new FileBearerTokenProvider(
           fileConfig.path(),
           refreshInterval,
           jwtExpirationRefresh,
           jwtExpirationBuffer,
-          Duration.ofSeconds(5), // TODO: make configurable
+          initialTokenWait,
+          refreshRetryInterval,
           asyncExec,
           clock::instant);
     } else {
