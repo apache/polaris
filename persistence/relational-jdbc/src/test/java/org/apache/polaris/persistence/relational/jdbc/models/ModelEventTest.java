@@ -55,6 +55,7 @@ public class ModelEventTest {
   private static final String TEST_RESOURCE_IDENTIFIER = "test-table";
   private static final String EMPTY_JSON = "{}";
   private static final String TEST_JSON = "{\"key\":\"value\"}";
+  private static final int LATEST_SCHEMA_VERSION = DatabaseType.H2.getLatestSchemaVersion();
 
   @Test
   public void testFromResultSet() throws SQLException {
@@ -123,7 +124,7 @@ public class ModelEventTest {
     polarisEvent.setAdditionalProperties(TEST_JSON);
 
     // Act
-    ModelEvent modelEvent = ModelEvent.fromEvent(polarisEvent);
+    ModelEvent modelEvent = ModelEvent.fromEvent(polarisEvent, LATEST_SCHEMA_VERSION);
     Map<String, Object> resultMap = modelEvent.toMap(DatabaseType.H2);
     EventEntity result = ModelEvent.toEvent(modelEvent);
 
@@ -134,6 +135,27 @@ public class ModelEventTest {
     assertNull(result.getCatalogId());
     assertEquals(TEST_EVENT_ID, result.getId());
     assertEquals(TEST_JSON, result.getAdditionalProperties());
+  }
+
+  @Test
+  public void testFromEventStoresLegacySentinelForNullCatalogIdOnPreV5Schema() {
+    // Arrange
+    EventEntity polarisEvent =
+        new EventEntity(
+            null,
+            TEST_EVENT_ID,
+            TEST_REQUEST_ID,
+            TEST_EVENT_TYPE,
+            TEST_TIMESTAMP_MS,
+            TEST_USER,
+            TEST_RESOURCE_TYPE,
+            TEST_RESOURCE_IDENTIFIER);
+
+    // Act
+    ModelEvent modelEvent = ModelEvent.fromEvent(polarisEvent, 4);
+
+    // Assert
+    assertEquals(ModelEvent.LEGACY_REALM_SCOPED_CATALOG_ID, modelEvent.getCatalogId());
   }
 
   @Test
@@ -205,7 +227,7 @@ public class ModelEventTest {
   @Test
   public void testFromEventWithNullInput() {
     // Act
-    ModelEvent result = ModelEvent.fromEvent(null);
+    ModelEvent result = ModelEvent.fromEvent(null, LATEST_SCHEMA_VERSION);
 
     // Assert
     assertNull(result);
@@ -227,7 +249,7 @@ public class ModelEventTest {
     polarisEvent.setAdditionalProperties(TEST_JSON);
 
     // Act
-    ModelEvent result = ModelEvent.fromEvent(polarisEvent);
+    ModelEvent result = ModelEvent.fromEvent(polarisEvent, LATEST_SCHEMA_VERSION);
 
     // Assert
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());
