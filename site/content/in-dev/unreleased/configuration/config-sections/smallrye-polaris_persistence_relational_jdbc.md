@@ -29,3 +29,10 @@ build:
 | `polaris.persistence.relational.jdbc.max-duration-in-ms` |  | `long` |  |
 | `polaris.persistence.relational.jdbc.initial-delay-in-ms` |  | `long` |  |
 | `polaris.persistence.relational.jdbc.database-type` |  | `string` |  |
+| `polaris.persistence.relational.jdbc.jdbc-url` |  | `string` | Optional JDBC URL for a Polaris-managed datasource. When set, Polaris creates the JDBC pool directly instead of using the Quarkus datasource extension. |
+| `polaris.persistence.relational.jdbc.driver` |  | `string` | Optional JDBC driver class name for the Polaris-managed datasource, for example `org.postgresql.Driver`. |
+| `polaris.persistence.relational.jdbc.username` |  | `string` | Optional username for the Polaris-managed datasource. |
+| `polaris.persistence.relational.jdbc.password` |  | `string` | Optional password for the Polaris-managed datasource. |
+| `polaris.persistence.relational.jdbc.maximum-pool-size` |  | `int` | Optional maximum connection pool size for the Polaris-managed datasource. |
+| `polaris.persistence.relational.jdbc.minimum-idle` |  | `int` | Optional minimum idle connection count for the Polaris-managed datasource. |
+| `polaris.persistence.relational.jdbc.connection-timeout-in-ms` |  | `long` | Optional connection timeout in milliseconds for the Polaris-managed datasource. |

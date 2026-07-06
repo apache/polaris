@@ -22,20 +22,24 @@ import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpec
 
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
+import java.util.HashMap;
 import java.util.Map;
 import org.testcontainers.cockroachdb.CockroachContainer;
 
 public class CockroachRelationalJdbcLifeCycleManagement
     implements QuarkusTestResourceLifecycleManager, DevServicesContext.ContextAware {
   public static final String INIT_SCRIPT = "init-script";
+  public static final String POLARIS_MANAGED_DATASOURCE = "polaris-managed-datasource";
 
   private CockroachContainer cockroach;
   private String initScript;
+  private boolean polarisManagedDatasource;
   private DevServicesContext context;
 
   @Override
   public void init(Map<String, String> initArgs) {
     initScript = initArgs.get(INIT_SCRIPT);
+    polarisManagedDatasource = Boolean.parseBoolean(initArgs.get(POLARIS_MANAGED_DATASOURCE));
   }
 
   @Override
@@ -56,23 +60,27 @@ public class CockroachRelationalJdbcLifeCycleManagement
 
     // CockroachDB uses PostgreSQL JDBC driver and wire protocol
     // Explicitly configure database type as cockroachdb for proper identification
-    return Map.of(
-        "polaris.persistence.type",
-        "relational-jdbc",
-        "polaris.persistence.relational.jdbc.database-type",
-        "cockroachdb",
-        "polaris.persistence.relational.jdbc.max-retries",
-        "2",
-        "quarkus.datasource.db-kind",
-        "postgresql",
-        "quarkus.datasource.jdbc.url",
-        cockroach.getJdbcUrl(),
-        "quarkus.datasource.username",
-        cockroach.getUsername(),
-        "quarkus.datasource.password",
-        cockroach.getPassword(),
-        "quarkus.datasource.jdbc.initial-size",
-        "10");
+    Map<String, String> config = new HashMap<>();
+    config.put("polaris.persistence.type", "relational-jdbc");
+    config.put("polaris.persistence.relational.jdbc.database-type", "cockroachdb");
+    config.put("polaris.persistence.relational.jdbc.max-retries", "2");
+
+    if (polarisManagedDatasource) {
+      config.put("quarkus.datasource.active", "false");
+      config.put("polaris.persistence.relational.jdbc.jdbc-url", cockroach.getJdbcUrl());
+      config.put("polaris.persistence.relational.jdbc.driver", "org.postgresql.Driver");
+      config.put("polaris.persistence.relational.jdbc.username", cockroach.getUsername());
+      config.put("polaris.persistence.relational.jdbc.password", cockroach.getPassword());
+      config.put("polaris.persistence.relational.jdbc.maximum-pool-size", "10");
+    } else {
+      config.put("quarkus.datasource.db-kind", "postgresql");
+      config.put("quarkus.datasource.jdbc.url", cockroach.getJdbcUrl());
+      config.put("quarkus.datasource.username", cockroach.getUsername());
+      config.put("quarkus.datasource.password", cockroach.getPassword());
+      config.put("quarkus.datasource.jdbc.initial-size", "10");
+    }
+
+    return Map.copyOf(config);
   }
 
   @Override

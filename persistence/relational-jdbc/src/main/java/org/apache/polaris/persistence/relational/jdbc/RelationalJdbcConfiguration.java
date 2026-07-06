@@ -35,4 +35,39 @@ public interface RelationalJdbcConfiguration {
    * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
    */
   Optional<String> databaseType();
+
+  /** JDBC URL used when Polaris creates and owns the relational JDBC datasource. */
+  default Optional<String> jdbcUrl() {
+    return Optional.empty();
+  }
+
+  /** JDBC driver class name used when Polaris creates and owns the datasource. */
+  default Optional<String> driver() {
+    return Optional.empty();
+  }
+
+  /** Database username used when Polaris creates and owns the datasource. */
+  default Optional<String> username() {
+    return Optional.empty();
+  }
+
+  /** Database password used when Polaris creates and owns the datasource. */
+  default Optional<String> password() {
+    return Optional.empty();
+  }
+
+  /** Maximum number of connections in the Polaris-managed datasource pool. */
+  default Optional<Integer> maximumPoolSize() {
+    return Optional.empty();
+  }
+
+  /** Minimum number of idle connections in the Polaris-managed datasource pool. */
+  default Optional<Integer> minimumIdle() {
+    return Optional.empty();
+  }
+
+  /** Maximum time to wait for a connection from the Polaris-managed datasource pool. */
+  default Optional<Long> connectionTimeoutInMs() {
+    return Optional.empty();
+  }
 }

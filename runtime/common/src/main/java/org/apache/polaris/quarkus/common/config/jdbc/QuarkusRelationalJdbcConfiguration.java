@@ -19,7 +19,30 @@
 package org.apache.polaris.quarkus.common.config.jdbc;
 
 import io.smallrye.config.ConfigMapping;
+import java.util.Optional;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
 @ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
-public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}
+public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {
+
+  @Override
+  Optional<String> jdbcUrl();
+
+  @Override
+  Optional<String> driver();
+
+  @Override
+  Optional<String> username();
+
+  @Override
+  Optional<String> password();
+
+  @Override
+  Optional<Integer> maximumPoolSize();
+
+  @Override
+  Optional<Integer> minimumIdle();
+
+  @Override
+  Optional<Long> connectionTimeoutInMs();
+}

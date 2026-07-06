@@ -22,12 +22,18 @@ type: docs
 weight: 100
 ---
 
-This implementation leverages Quarkus for datasource management and supports configuration through
-environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
+The Relational JDBC metastore supports PostgreSQL, CockroachDB, and H2. H2 is intended for testing
+and development only.
 
-We have 2 options for configuring the persistence backend:
+Polaris can use either a Quarkus-managed datasource or a Polaris-managed JDBC connection pool. When
+`polaris.persistence.relational.jdbc.jdbc-url` is set, Polaris creates the JDBC pool directly;
+otherwise, Polaris uses the Quarkus datasource configuration. Both forms support configuration
+through environment variables or JVM `-D` flags at startup. For more information, refer to the
+[Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
 
-## 1. Relational JDBC metastore with username and password
+We have 3 options for configuring the persistence backend:
+
+## 1. Quarkus-managed Relational JDBC metastore with username and password
 
 Using environment variables:
 
@@ -43,12 +49,48 @@ Using properties file:
 
 ```properties
 polaris.persistence.type=relational-jdbc
-quarkus.datasource.jdbc.username=<your-username>
-quarkus.datasource.jdbc.password=<your-password>
-quarkus.datasource.jdbc.jdbc-url=<jdbc-url-of-postgres>
+quarkus.datasource.username=<your-username>
+quarkus.datasource.password=<your-password>
+quarkus.datasource.jdbc.url=<jdbc-url-of-postgres>
 ```
 
-## 2. AWS Aurora PostgreSQL metastore using IAM AWS authentication
+## 2. Polaris-managed Relational JDBC metastore with username and password
+
+Using environment variables:
+
+```properties
+POLARIS_PERSISTENCE_TYPE=relational-jdbc
+
+POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE=postgresql
+POLARIS_PERSISTENCE_RELATIONAL_JDBC_JDBC_URL=<jdbc-url-of-postgres>
+POLARIS_PERSISTENCE_RELATIONAL_JDBC_DRIVER=org.postgresql.Driver
+POLARIS_PERSISTENCE_RELATIONAL_JDBC_USERNAME=<your-username>
+POLARIS_PERSISTENCE_RELATIONAL_JDBC_PASSWORD=<your-password>
+```
+
+Using properties file:
+
+```properties
+polaris.persistence.type=relational-jdbc
+polaris.persistence.relational.jdbc.database-type=postgresql
+polaris.persistence.relational.jdbc.jdbc-url=<jdbc-url-of-postgres>
+polaris.persistence.relational.jdbc.driver=org.postgresql.Driver
+polaris.persistence.relational.jdbc.username=<your-username>
+polaris.persistence.relational.jdbc.password=<your-password>
+```
+
+For CockroachDB, use the PostgreSQL JDBC driver and set the database type explicitly:
+
+```properties
+polaris.persistence.type=relational-jdbc
+polaris.persistence.relational.jdbc.database-type=cockroachdb
+polaris.persistence.relational.jdbc.jdbc-url=jdbc:postgresql://cockroachdb:26257/polaris?sslmode=disable
+polaris.persistence.relational.jdbc.driver=org.postgresql.Driver
+polaris.persistence.relational.jdbc.username=<your-username>
+polaris.persistence.relational.jdbc.password=<your-password>
+```
+
+## 3. AWS Aurora PostgreSQL metastore using IAM AWS authentication
 
 ```properties
 polaris.persistence.type=relational-jdbc
@@ -68,11 +110,9 @@ quarkus.rds.credentials-provider.aws.port=6160
 
 This is the basic configuration. For more details, please refer to the [Quarkus plugin documentation](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-rds.html#_configuration_reference).
 
-The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgresSQL and H2 databases. At this time, official documentation is provided exclusively for usage with PostgreSQL.
-Please refer to the documentation here:
-[Configure data sources in Quarkus](https://quarkus.io/guides/datasource).
-
-Additionally, the retries can be configured via `polaris.persistence.relational.jdbc.*` properties; please refer to the [Configuring Polaris]({{% ref "../configuration" %}}) section.
+The retries and Polaris-managed datasource pool can be configured via
+`polaris.persistence.relational.jdbc.*` properties; please refer to the
+[Configuring Polaris]({{% ref "../configuration" %}}) section.
 
 ## Bootstrapping Polaris
 
@@ -99,5 +139,9 @@ java \
   -Dquarkus.datasource.jdbc.url=<jdbc-url-of-postgres> \
   -jar polaris-admin-tool.jar bootstrap -r <realm-name> -c <realm-name>,<client-id>,<client-secret>
 ```
+
+When using the Polaris-managed JDBC pool, pass the corresponding
+`polaris.persistence.relational.jdbc.*` settings to the admin tool instead of the Quarkus datasource
+settings.
 
 For more details on the bootstrap command and other administrative operations, see the [Admin Tool]({{% ref "../admin-tool" %}}) documentation.
