@@ -31,6 +31,9 @@ paths:
       summary: Create a semantic model in the given namespace
       operationId: createSemanticModel
       description: |
+        **Beta:** The semantic-model (OSI) API is under active development and may change in a
+        backward-incompatible way.
+
         Creates a semantic model in the specified namespace.
 
         A semantic model is an Open Semantic Interchange (OSI) document describing
@@ -83,6 +86,9 @@ paths:
       summary: List semantic models in the given namespace
       operationId: listSemanticModels
       description: |
+        **Beta:** The semantic-model (OSI) API is under active development and may change in a
+        backward-incompatible way.
+
         List semantic-model identifiers under a namespace.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
@@ -122,7 +128,11 @@ paths:
         - Semantic Model API
       summary: Load a semantic model
       operationId: loadSemanticModel
-      description: Load a semantic model from the catalog.
+      description: |
+        **Beta:** The semantic-model (OSI) API is under active development and may change in a
+        backward-incompatible way.
+
+        Load a semantic model from the catalog.
       responses:
         200:
           $ref: '#/components/responses/LoadSemanticModelResponse'
@@ -152,6 +162,9 @@ paths:
       summary: Update a semantic model
       operationId: updateSemanticModel
       description: |
+        **Beta:** The semantic-model (OSI) API is under active development and may change in a
+        backward-incompatible way.
+
         Replace a semantic model's document with a new one.
 
         Upon a successful update, the model's entity-version changes and the new value is returned.
@@ -205,7 +218,11 @@ paths:
         - Semantic Model API
       summary: Drop a semantic model from the catalog
       operationId: dropSemanticModel
-      description: Remove a semantic model from the catalog.
+      description: |
+        **Beta:** The semantic-model (OSI) API is under active development and may change in a
+        backward-incompatible way.
+
+        Remove a semantic model from the catalog.
       responses:
         204:
           description: Success, no content
