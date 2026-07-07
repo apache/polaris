@@ -879,9 +879,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
-      // Use the same manifest so the read fallback sees the same resolved table view. The manifest
-      // reuses its completed full resolution instead of resolving again.
-      resolveBasicTableLikeTargetOrThrow(read, tableIdentifier);
+      // Reuse the already-resolved table view for the read-delegation fallback.
       authorizeResolvedBasicTableLikeOperationOrThrow(
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
@@ -1165,12 +1163,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     EnumSet<PolarisAuthorizableOperation> authorizableOperations =
         getUpdateTableAuthorizableOperations(request, getResolvedCatalogEntity());
-
-    for (PolarisAuthorizableOperation operation : authorizableOperations) {
-      // Use operation-specific pre-authorization requests while sharing the same manifest. The
-      // manifest reuses its completed full resolution instead of resolving again.
-      resolveBasicTableLikeTargetOrThrow(operation, tableIdentifier);
-    }
 
     authorizeBasicTableLikeOperationsOrThrow(
         authorizableOperations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);

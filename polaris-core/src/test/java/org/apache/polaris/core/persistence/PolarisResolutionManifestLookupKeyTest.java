@@ -22,8 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -102,28 +100,6 @@ public class PolarisResolutionManifestLookupKeyTest {
                     false))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("never_registered_key_for_resolved_path");
-  }
-
-  @Test
-  void resolveAllReusesCompletedResolution() {
-    Resolver resolver = Mockito.mock(Resolver.class);
-    ResolverFactory resolverFactory = Mockito.mock(ResolverFactory.class);
-    RealmContext realmContext = Mockito.mock(RealmContext.class);
-    ResolverStatus status = new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
-    when(resolverFactory.createResolver(any(), anyString())).thenReturn(resolver);
-    when(resolver.resolveAll()).thenReturn(status);
-
-    PolarisResolutionManifest manifest =
-        new PolarisResolutionManifest(
-            new PolarisDefaultDiagServiceImpl(),
-            realmContext,
-            resolverFactory,
-            PolarisPrincipal.of("p", Map.of(), Set.of()),
-            "catalog");
-
-    assertThat(manifest.resolveAll()).isSameAs(status);
-    assertThat(manifest.resolveAll()).isSameAs(status);
-    verify(resolver, times(1)).resolveAll();
   }
 
   @Test

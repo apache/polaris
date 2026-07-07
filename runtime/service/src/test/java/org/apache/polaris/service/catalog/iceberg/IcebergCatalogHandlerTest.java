@@ -305,7 +305,7 @@ class IcebergCatalogHandlerTest {
   }
 
   @Test
-  void loadCredentialsFallbackPreResolvesWriteThenReadDelegation() {
+  void loadCredentialsFallbackResolvesOnceThenAuthorizesReadDelegation() {
     Catalog catalog = mockRegisterTableCatalog(false);
     BaseTable table = baseTable();
     when(catalog.loadTable(TABLE2)).thenReturn(table);
@@ -324,28 +324,33 @@ class IcebergCatalogHandlerTest {
         ArgumentCaptor.forClass(AuthorizationRequest.class);
     ArgumentCaptor<AuthorizationState> stateCaptor =
         ArgumentCaptor.forClass(AuthorizationState.class);
+    ArgumentCaptor<PolarisAuthorizableOperation> operationCaptor =
+        ArgumentCaptor.forClass(PolarisAuthorizableOperation.class);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
     handler.loadCredentials(TABLE2, Optional.empty());
 
+    verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
+    assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
+    assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
+        .isEqualTo(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION);
     verify(authorizer, org.mockito.Mockito.times(2))
-        .resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
-    assertThat(stateCaptor.getAllValues().get(0)).isNotSameAs(stateCaptor.getAllValues().get(1));
-    assertThat(stateCaptor.getAllValues())
-        .allSatisfy(
-            state -> assertThat(state.getResolutionManifest()).isSameAs(resolutionManifest));
-    assertThat(
-            requestCaptor.getAllValues().stream()
-                .map(request -> request.intents().getFirst().getOperation()))
+        .authorizeOrThrow(
+            any(),
+            any(),
+            operationCaptor.capture(),
+            nullable(PolarisResolvedPathWrapper.class),
+            nullable(PolarisResolvedPathWrapper.class));
+    assertThat(operationCaptor.getAllValues())
         .containsExactly(
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION,
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION);
   }
 
   @Test
-  void updateTablePreResolvesPlanningAndActualOperations() {
+  void updateTableResolvesOnceThenAuthorizesActualOperations() {
     UpdateTableRequest request =
         UpdateTableRequest.create(
             TABLE2, List.of(), List.of(new MetadataUpdate.SetProperties(Map.of("k", "v"))));
@@ -362,24 +367,27 @@ class IcebergCatalogHandlerTest {
         ArgumentCaptor.forClass(AuthorizationRequest.class);
     ArgumentCaptor<AuthorizationState> stateCaptor =
         ArgumentCaptor.forClass(AuthorizationState.class);
+    ArgumentCaptor<PolarisAuthorizableOperation> operationCaptor =
+        ArgumentCaptor.forClass(PolarisAuthorizableOperation.class);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
     handler.updateTable(TABLE2, request);
 
-    verify(authorizer, org.mockito.Mockito.times(2))
-        .resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
-    assertThat(stateCaptor.getAllValues().get(0)).isNotSameAs(stateCaptor.getAllValues().get(1));
-    assertThat(stateCaptor.getAllValues())
-        .allSatisfy(
-            state -> assertThat(state.getResolutionManifest()).isSameAs(resolutionManifest));
-    assertThat(
-            requestCaptor.getAllValues().stream()
-                .map(authzRequest -> authzRequest.intents().getFirst().getOperation()))
-        .containsExactly(
-            PolarisAuthorizableOperation.UPDATE_TABLE,
-            PolarisAuthorizableOperation.SET_TABLE_PROPERTIES);
+    verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
+    assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
+    assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
+        .isEqualTo(PolarisAuthorizableOperation.UPDATE_TABLE);
+    verify(authorizer)
+        .authorizeOrThrow(
+            any(),
+            any(),
+            operationCaptor.capture(),
+            nullable(PolarisResolvedPathWrapper.class),
+            nullable(PolarisResolvedPathWrapper.class));
+    assertThat(operationCaptor.getValue())
+        .isEqualTo(PolarisAuthorizableOperation.SET_TABLE_PROPERTIES);
   }
 
   /**

@@ -67,7 +67,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   // Set when resolveAll is called
   private ResolverStatus primaryResolverStatus = null;
-  private boolean fullResolutionComplete = false;
 
   private boolean isResolveAllSucceeded() {
     diagnostics.checkNotNull(
@@ -130,11 +129,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   }
 
   public ResolverStatus resolveAll() {
-    if (fullResolutionComplete) {
-      return primaryResolverStatus;
-    }
     primaryResolverStatus = primaryResolver.resolveAll();
-    fullResolutionComplete = true;
     // TODO: This could be a race condition where a Principal is dropped after initial authn
     // but before the resolution attempt; consider whether 403 forbidden is more appropriate.
     diagnostics.check(
@@ -153,9 +148,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    */
   public ResolverStatus resolveSelections(Set<Resolvable> selections) {
     diagnostics.checkNotNull(selections, "resolver_selections_is_null");
-    if (fullResolutionComplete) {
-      return primaryResolverStatus;
-    }
     primaryResolverStatus = primaryResolver.resolveSelections(selections);
     diagnostics.check(
         primaryResolverStatus.getStatus()
