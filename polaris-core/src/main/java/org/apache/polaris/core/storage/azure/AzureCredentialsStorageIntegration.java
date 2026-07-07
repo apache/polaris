@@ -297,6 +297,21 @@ public class AzureCredentialsStorageIntegration
             StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
       }
     }
+
+    // PyIceberg and other clients need bare adls.sas-token and adls.account-name
+    config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN_BARE.getPropertyName(), sasToken);
+    String accountName;
+    if (host.endsWith(AzureLocation.ADLS_ENDPOINT) || host.endsWith(AzureLocation.BLOB_ENDPOINT)) {
+      int dotIndex = host.indexOf('.');
+      if (dotIndex > 0) {
+        accountName = host.substring(0, dotIndex);
+      } else {
+        accountName = host;
+      }
+    } else {
+      accountName = host;
+    }
+    config.putCredential(StorageAccessProperty.AZURE_ACCOUNT_NAME.getPropertyName(), accountName);
   }
 
   private static String getBlobUserDelegationSas(
