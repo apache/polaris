@@ -23,7 +23,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Additional context information for the authorization request.
@@ -39,11 +38,10 @@ public interface Context {
   String requestId();
 
   /**
-   * The realm (tenant) identifier for this authorization request, if known.
+   * The realm identifier for this authorization request.
    *
-   * <p>This enables OPA policies to enforce tenant isolation when the same principal names or
-   * resource names exist across different realms (multi-realm deployments using a shared OPA
-   * policy).
+   * <p>This enables OPA policies to enforce isolation when the same principal names or resource
+   * names exist across different realms (multi-realm deployments using a shared OPA policy).
    */
-  @Nullable String realm();
+  String realm();
 }

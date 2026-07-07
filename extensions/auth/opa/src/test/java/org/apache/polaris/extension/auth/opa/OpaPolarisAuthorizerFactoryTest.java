@@ -19,15 +19,31 @@
 package org.apache.polaris.extension.auth.opa;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Map;
+import java.util.Set;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
 import org.apache.polaris.nosql.async.java.JavaPoolAsyncExec;
 import org.junit.jupiter.api.Test;
@@ -62,8 +78,9 @@ public class OpaPolarisAuthorizerFactoryTest {
             .build();
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      RealmContext realmContext = () -> "test-realm";
       OpaPolarisAuthorizerFactory factory =
-          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec);
+          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
 
       // Create authorizer
       RealmConfig realmConfig = mock(RealmConfig.class);
@@ -106,8 +123,9 @@ public class OpaPolarisAuthorizerFactoryTest {
             .build();
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      RealmContext realmContext = () -> "test-realm";
       OpaPolarisAuthorizerFactory factory =
-          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec);
+          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
 
       // Create authorizer
       RealmConfig realmConfig = mock(RealmConfig.class);
@@ -151,8 +169,9 @@ public class OpaPolarisAuthorizerFactoryTest {
             .build();
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      RealmContext realmContext = () -> "test-realm";
       OpaPolarisAuthorizerFactory factory =
-          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec);
+          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
 
       // Create authorizer
       RealmConfig realmConfig = mock(RealmConfig.class);
@@ -160,5 +179,137 @@ public class OpaPolarisAuthorizerFactoryTest {
 
       assertThat(authorizer).isNotNull();
     }
+  }
+
+  @Test
+  public void testFactoryPassesRealmToAuthorizerContext() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      OpaAuthorizationConfig opaConfig =
+          ImmutableOpaAuthorizationConfig.builder()
+              .policyUri(
+                  URI.create(
+                      "http://localhost:"
+                          + server.getAddress().getPort()
+                          + "/v1/data/polaris/allow"))
+              .auth(
+                  ImmutableAuthenticationConfig.builder()
+                      .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                      .build())
+              .http(
+                  ImmutableHttpConfig.builder()
+                      .timeout(Duration.ofSeconds(2))
+                      .verifySsl(true)
+                      .build())
+              .build();
+
+      try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+        RealmContext realmContext = () -> "factory-realm";
+        OpaPolarisAuthorizerFactory factory =
+            new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
+
+        factory.initialize();
+        OpaPolarisAuthorizer authorizer =
+            (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
+
+        PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+        assertThatNoException()
+            .isThrownBy(
+                () ->
+                    authorizer.authorizeOrThrow(
+                        principal,
+                        Set.of(),
+                        PolarisAuthorizableOperation.GET_CATALOG,
+                        (PolarisResolvedPathWrapper) null,
+                        (PolarisResolvedPathWrapper) null));
+
+        ObjectMapper mapper = JsonMapper.builder().build();
+        JsonNode root = mapper.readTree(capturedRequestBody[0]);
+        assertThat(root.path("input").path("context").get("realm").asText())
+            .isEqualTo("factory-realm");
+        factory.cleanup();
+      }
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  public void testFactoryUsesDistinctRealmValues() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      OpaAuthorizationConfig opaConfig =
+          ImmutableOpaAuthorizationConfig.builder()
+              .policyUri(
+                  URI.create(
+                      "http://localhost:"
+                          + server.getAddress().getPort()
+                          + "/v1/data/polaris/allow"))
+              .auth(
+                  ImmutableAuthenticationConfig.builder()
+                      .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                      .build())
+              .http(
+                  ImmutableHttpConfig.builder()
+                      .timeout(Duration.ofSeconds(2))
+                      .verifySsl(true)
+                      .build())
+              .build();
+
+      try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+        RealmContext realmContext = () -> "realm-b";
+        OpaPolarisAuthorizerFactory factory =
+            new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
+
+        factory.initialize();
+        OpaPolarisAuthorizer authorizer =
+            (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
+
+        PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+        assertThatNoException()
+            .isThrownBy(
+                () ->
+                    authorizer.authorizeOrThrow(
+                        principal,
+                        Set.of(),
+                        PolarisAuthorizableOperation.GET_CATALOG,
+                        (PolarisResolvedPathWrapper) null,
+                        (PolarisResolvedPathWrapper) null));
+
+        ObjectMapper mapper = JsonMapper.builder().build();
+        JsonNode root = mapper.readTree(capturedRequestBody[0]);
+        assertThat(root.path("input").path("context").get("realm").asText()).isEqualTo("realm-b");
+        factory.cleanup();
+      }
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  private HttpServer createServerWithRequestCapture(String[] capturedRequestBody)
+      throws IOException {
+    HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext(
+        "/v1/data/polaris/allow",
+        new HttpHandler() {
+          @Override
+          public void handle(HttpExchange exchange) throws IOException {
+            byte[] requestBytes = exchange.getRequestBody().readAllBytes();
+            capturedRequestBody[0] = new String(requestBytes, StandardCharsets.UTF_8);
+
+            String response = "{\"result\":{\"allow\":true}}";
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length());
+            try (OutputStream os = exchange.getResponseBody()) {
+              os.write(response.getBytes(StandardCharsets.UTF_8));
+            }
+          }
+        });
+    server.start();
+    return server;
   }
 }

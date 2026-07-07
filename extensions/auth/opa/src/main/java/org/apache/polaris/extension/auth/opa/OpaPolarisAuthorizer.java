@@ -88,7 +88,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final String realm;
 
   /**
-   * Public constructor that accepts a complete policy URI.
+   * Public constructor that accepts a complete policy URI and the current realm identifier.
    *
    * @param policyUri The required URI for the OPA endpoint. For example, {@code
    *     https://opa.example.com/v1/polaris/allow}.
@@ -97,31 +97,14 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param objectMapper Jackson ObjectMapper for JSON serialization (required). Shared across
    *     authorizer instances to avoid initialization overhead.
    * @param tokenProvider Token provider for authentication (optional)
-   */
-  public OpaPolarisAuthorizer(
-      @NonNull URI policyUri,
-      @NonNull CloseableHttpClient httpClient,
-      @NonNull ObjectMapper objectMapper,
-      @Nullable BearerTokenProvider tokenProvider) {
-    this(policyUri, httpClient, objectMapper, tokenProvider, null);
-  }
-
-  /**
-   * Public constructor that accepts a complete policy URI and the current realm identifier.
-   *
-   * @param policyUri The required URI for the OPA endpoint.
-   * @param httpClient Apache HttpClient (required, injected by CDI).
-   * @param objectMapper Jackson ObjectMapper for JSON serialization (required).
-   * @param tokenProvider Token provider for authentication (optional)
-   * @param realm The realm identifier (from RealmContext) for tenant isolation in OPA policies. May
-   *     be null if not available.
+   * @param realm The realm identifier (from RealmContext) for isolation in OPA policies.
    */
   public OpaPolarisAuthorizer(
       @NonNull URI policyUri,
       @NonNull CloseableHttpClient httpClient,
       @NonNull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider,
-      @Nullable String realm) {
+      @NonNull String realm) {
 
     this.policyUri = policyUri;
     this.tokenProvider = tokenProvider;
@@ -355,11 +338,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   private ImmutableContext buildContext() {
-    var builder = ImmutableContext.builder().requestId(UUID.randomUUID().toString());
-    if (realm != null) {
-      builder.realm(realm);
-    }
-    return builder.build();
+    return ImmutableContext.builder().requestId(UUID.randomUUID().toString()).realm(realm).build();
   }
 
   private ImmutableResource buildResource(

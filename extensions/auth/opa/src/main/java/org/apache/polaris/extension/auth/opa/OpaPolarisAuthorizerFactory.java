@@ -53,17 +53,20 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   private final Clock clock;
   private final ObjectMapper objectMapper;
   private final AsyncExec asyncExec;
+  private final RealmContext realmContext;
   private CloseableHttpClient httpClient;
   private BearerTokenProvider bearerTokenProvider;
 
-  @Inject private RealmContext realmContext;
-
   @Inject
   public OpaPolarisAuthorizerFactory(
-      OpaAuthorizationConfig opaConfig, Clock clock, AsyncExec asyncExec) {
+      OpaAuthorizationConfig opaConfig,
+      Clock clock,
+      AsyncExec asyncExec,
+      RealmContext realmContext) {
     this.opaConfig = opaConfig;
     this.clock = clock;
     this.asyncExec = asyncExec;
+    this.realmContext = realmContext;
     this.objectMapper = JsonMapper.builder().build();
   }
 
@@ -99,9 +102,12 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
                     new IllegalStateException(
                         "OPA policy URI must be configured via polaris.authorization.opa.policy-uri"));
 
-    String realmId = (realmContext != null) ? realmContext.getRealmIdentifier() : null;
     return new OpaPolarisAuthorizer(
-        policyUri, httpClient, objectMapper, bearerTokenProvider, realmId);
+        policyUri,
+        httpClient,
+        objectMapper,
+        bearerTokenProvider,
+        realmContext.getRealmIdentifier());
   }
 
   @PreDestroy

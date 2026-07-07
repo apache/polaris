@@ -71,7 +71,8 @@
           "required" : true
         },
         "realm" : {
-          "type" : "string"
+          "type" : "string",
+          "required" : true
         }
       }
     }

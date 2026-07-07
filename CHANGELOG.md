@@ -79,7 +79,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Deprecations
 
 ### Fixes
-- OPA authorizer now includes the realm identifier in the authorization context sent to OPA (`input.context.realm`). This ensures OPA policies can enforce tenant isolation across realms (previously the OPA input was identical for the same principal/role/resource names in different realms, unlike the Ranger authorizer).
+- OPA authorizer now includes the realm identifier in the authorization context sent to OPA (`input.context.realm`). This ensures OPA policies can enforce tenant isolation across realms, preventing potential collisions if identical principal or resource names exist in different realms.
 - Fixed a boundary condition in GCS downscoped credential generation (`GcpCredentialsStorageIntegration`). Locations without a trailing slash could previously grant access to sibling object prefixes via the generated CEL conditions for `resource.name` and list prefixes. Granted paths are now normalized to a directory prefix (with a trailing slash) before the CEL conditions are built, so sibling prefixes can no longer satisfy the `startsWith` checks.
 - Async task execution (table cleanup, manifest and batch file cleanup) now retries when a handler returns false on transient errors (e.g. IO or delete failures). Previously `false` was swallowed with only a warning log and the task was never retried via the existing retry mechanism.
 - Fixed `NullPointerException` during `dropEntity` when an entity referenced by a grant had been concurrently removed (or purged). `lookupEntities` can return null entries for dropped entities; these are now skipped safely.
