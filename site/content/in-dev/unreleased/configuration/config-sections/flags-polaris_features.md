@@ -307,6 +307,15 @@ If true, the policy-store endpoints are enabled
 
 ---
 
+##### `polaris.features."ENABLE_SEMANTIC_MODELS"`
+
+If true, the semantic-model (OSI) endpoints are enabled
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS"`
 
 When enabled, allows RBAC operations to create synthetic entities for entities in federated catalogs that don't exist in the local metastore.

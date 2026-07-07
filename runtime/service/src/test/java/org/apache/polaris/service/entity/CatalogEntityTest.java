@@ -21,8 +21,6 @@ package org.apache.polaris.service.entity;
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -55,9 +53,11 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 public class CatalogEntityTest {
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper MAPPER = JsonMapper.shared();
 
   private RealmConfig realmConfig;
   private ServiceIdentityProvider serviceIdentityProvider;
@@ -385,7 +385,7 @@ public class CatalogEntityTest {
   }
 
   @Test
-  public void testAwsConfigJsonPropertiesPresence() throws JsonProcessingException {
+  public void testAwsConfigJsonPropertiesPresence() {
     AwsStorageConfigInfo.Builder b =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -405,7 +405,7 @@ public class CatalogEntityTest {
 
   @ParameterizedTest
   @MethodSource
-  public void testStorageConfigRoundTrip(StorageConfigInfo config) throws JsonProcessingException {
+  public void testStorageConfigRoundTrip(StorageConfigInfo config) {
     String configStr = MAPPER.writeValueAsString(config);
     CatalogEntity catalogEntity =
         new CatalogEntity.Builder()
@@ -506,7 +506,7 @@ public class CatalogEntityTest {
   }
 
   @Test
-  public void testAzureConfigJsonPropertiesPresence() throws JsonProcessingException {
+  public void testAzureConfigJsonPropertiesPresence() {
     AzureStorageConfigInfo.Builder b =
         AzureStorageConfigInfo.builder().setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE);
     assertThat(MAPPER.writeValueAsString(b.build())).contains("storageType");

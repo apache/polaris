@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.persistence.nosql.api.index;
 
+import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.EOF;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.ESC;
@@ -30,7 +31,11 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.InstanceOfAssertFactories.INTEGER;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.util.function.IntFunction;
 import java.util.stream.Stream;
 import org.assertj.core.api.SoftAssertions;
@@ -249,6 +254,38 @@ public class TestIndexKey {
     ser.position(1234);
     deserialized = deserializeKey(ser.duplicate());
     soft.assertThat(deserialized).isEqualTo(key);
+  }
+
+  static Stream<Arguments> keySerializationJsonRoundTrip() {
+    var jsonMapper = JsonMapper.builder().build();
+    var smileMapper = SmileMapper.builder().build();
+    return Stream.of(
+        arguments(jsonMapper, smileMapper, key("A")),
+        arguments(jsonMapper, smileMapper, key("A\u0001B")),
+        arguments(jsonMapper, smileMapper, key("A\u0001B\u0002C")),
+        arguments(jsonMapper, smileMapper, key("abc")),
+        arguments(jsonMapper, smileMapper, key("abcdefghi")),
+        arguments(jsonMapper, smileMapper, key(STRING_100 + STRING_100)),
+        arguments(
+            jsonMapper,
+            smileMapper,
+            key(STRING_100 + STRING_100 + STRING_100 + STRING_100 + STRING_100)));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  public void keySerializationJsonRoundTrip(
+      ObjectMapper jsonMapper, ObjectMapper smileMapper, IndexKey indexKey) throws Exception {
+    var serializedJson = jsonMapper.writerFor(IndexKey.class).writeValueAsString(indexKey);
+    var expectedByteBuffer = indexKey.asByteBuffer();
+    var expectedBytes = new byte[expectedByteBuffer.remaining()];
+    expectedByteBuffer.get(expectedBytes);
+    soft.assertThat(serializedJson)
+        .isEqualTo(format("\"%s\"", Base64.getEncoder().encodeToString(expectedBytes)));
+    soft.assertThat(jsonMapper.readValue(serializedJson, IndexKey.class)).isEqualTo(indexKey);
+
+    var serializedSmile = smileMapper.writerFor(IndexKey.class).writeValueAsBytes(indexKey);
+    soft.assertThat(smileMapper.readValue(serializedSmile, IndexKey.class)).isEqualTo(indexKey);
   }
 
   @Test

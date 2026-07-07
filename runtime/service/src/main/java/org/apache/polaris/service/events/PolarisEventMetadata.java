@@ -39,6 +39,7 @@ public interface PolarisEventMetadata {
   }
 
   /** The unique ID of the event. */
+  @Value.Default
   default UUID eventId() {
     return UUID.randomUUID();
   }

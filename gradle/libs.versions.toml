@@ -18,13 +18,13 @@
 #
 
 [versions]
-checkstyle = "13.6.0"
+checkstyle = "13.7.0"
 hadoop = "3.5.0"
 iceberg = "1.11.0" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
 immutables = "2.12.2"
 jmh = "1.37"
 picocli = "4.7.7"
-quarkus = "3.37.0"
+quarkus = "3.37.1"
 ranger = "2.8.0"
 ranger-graalvm = "25.0.3"
 scala212 = "2.12.21"
@@ -41,10 +41,10 @@ swagger = "1.6.16"
 # If a dependency is removed, check whether the LICENSE and/or NOTICE files need to be adopted
 # (aka mention of the dependency removed).
 #
-agrona = { module = "org.agrona:agrona", version = "2.4.1" }
+agrona = { module = "org.agrona:agrona", version = "2.5.0" }
 antlr4-runtime-spark35 = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark 3.5 integration tests
 antlr4-runtime-spark40 = { module = "org.antlr:antlr4-runtime", version.strictly = "4.13.1" } # spark 4.0 integration tests
-apache-httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6.1" }
+apache-httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6.2" }
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.7" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.2" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
@@ -86,9 +86,9 @@ jspecify = { module = "org.jspecify:jspecify", version = "1.0.0" }
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
-junit-bom = { module = "org.junit:junit-bom", version = "6.1.0" }
+junit-bom = { module = "org.junit:junit-bom", version = "6.1.1" }
 junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version = "2.3.0" }
-keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.9" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.10" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.37" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.17.0" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
@@ -98,7 +98,7 @@ mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
-postgresql = { module = "org.postgresql:postgresql", version = "42.7.11" }
+postgresql = { module = "org.postgresql:postgresql", version = "42.7.13" }
 quarkus-amazon-services-bom = { module = "io.quarkus.platform:quarkus-amazon-services-bom", version.ref="quarkus" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
 ranger-audit-core = { module = "org.apache.ranger:ranger-audit-core", version.ref = "ranger" }
@@ -111,7 +111,7 @@ scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref =
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version = "2.0.18" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.19.0" }
-smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.17.2" }
+smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.18.0" }
 smallrye-jandex = { module = "io.smallrye:jandex", version = "3.6.0" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }

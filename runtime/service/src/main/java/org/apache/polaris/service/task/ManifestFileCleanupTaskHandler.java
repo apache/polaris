@@ -113,15 +113,15 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
         throw new RuntimeException(e);
       } catch (ExecutionException e) {
         LOGGER.error("Unable to delete data files from manifest {}", manifestFile.path(), e);
-        return false;
+        throw new RuntimeException(e);
       }
     } catch (IOException e) {
       // Catches from ManifestFiles.read() (resource creation), from inside the block
-      // (e.g. manifest iteration), or from close(). We return false on any IO here
-      // (so the task gets retried) because close() throws checked IOException and
-      // this method returns boolean (no throws declaration).
+      // (e.g. manifest iteration), or from close(). We throw (wrapping) so the original
+      // failure propagates and TaskExecutorImpl's retry path is used. (handleTask returns
+      // boolean and cannot declare a checked throws IOException.)
       LOGGER.error("Failed to process manifest reader for {}", manifestFile.path(), e);
-      return false;
+      throw new RuntimeException(e);
     }
   }
 
