@@ -7,7 +7,7 @@
       ],
       "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
       "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('path/to/data')"
+        "expression": "api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('path/to/data/') || resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data/')"
       }
     },
     {
@@ -16,7 +16,7 @@
       ],
       "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
       "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data')"
+        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data/')"
       }
     }
   ]

@@ -62,7 +62,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -91,7 +90,6 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.Index;
@@ -144,20 +142,12 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
   private final Persistence persistence;
   private final Privileges privileges;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final MemoizedIndexedAccess memoizedIndexedAccess;
-  private final PolarisDiagnostics diagnostics;
 
-  NoSqlMetaStore(
-      Persistence persistence,
-      Privileges privileges,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      PolarisDiagnostics diagnostics) {
+  NoSqlMetaStore(Persistence persistence, Privileges privileges) {
     this.persistence = persistence;
     this.privileges = privileges;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.memoizedIndexedAccess = newMemoizedIndexedAccess(persistence);
-    this.diagnostics = diagnostics;
   }
 
   <REF_OBJ extends ContainerObj, RESULT> RESULT performChange(
@@ -663,37 +653,75 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
               var locationIdentifier = identifierFromLocationString(checkLocation);
               var locationIndexKey = locationIdentifier.toIndexKey();
-              // TODO VALIDATE THE CHECKS HERE !
+
+              // Check for children and exact matches first using forward iteration (preserves
+              // existing test expectations on which conflicting location is reported).
+              // Also iterate fully in case early entries are filtered out.
               var iter = locationsIndex.iterator(locationIndexKey, null, false);
-              if (!iter.hasNext()) {
-                return Optional.empty();
+              while (iter.hasNext()) {
+                var elem = iter.next();
+                var elemKey = elem.key();
+                var elemIdentifier = indexKeyToIdentifier(elemKey);
+                if (!elemIdentifier.startsWith(locationIdentifier)) {
+                  break; // No more matches due to ordering
+                }
+
+                var conflicting =
+                    elem.value().entityIds().stream()
+                        .map(IndexKey::key)
+                        .map(byId::get)
+                        .filter(Objects::nonNull)
+                        .map(byName::get)
+                        .filter(Objects::nonNull)
+                        .map(objRef -> persistence.fetch(objRef, ContentObj.class))
+                        .filter(Objects::nonNull)
+                        .map(
+                            contentObj -> {
+                              var conflictingBaseLocation =
+                                  contentObj.properties().get(ENTITY_BASE_LOCATION);
+                              return conflictingBaseLocation != null
+                                  ? conflictingBaseLocation
+                                  : String.join("/", elemIdentifier.elements());
+                            })
+                        .findFirst();
+                if (conflicting.isPresent()) {
+                  return conflicting;
+                }
               }
 
-              var elem = iter.next();
-              var elemKey = elem.key();
-              var elemIdentifier = indexKeyToIdentifier(elemKey);
-              if (!elemIdentifier.startsWith(locationIdentifier)) {
-                return Optional.empty();
+              // Check for parent (prefix) overlaps. These have shorter keys and are missed by
+              // forward iteration starting at the full target key.
+              for (int i = 1; i <= locationIdentifier.length(); i++) {
+                var prefixElements = locationIdentifier.elements().subList(0, i);
+                var prefix = ContentIdentifier.identifier(prefixElements);
+                var prefixKey = prefix.toIndexKey();
+                var entry = locationsIndex.get(prefixKey);
+                if (entry != null) {
+                  var conflicting =
+                      entry.entityIds().stream()
+                          .map(IndexKey::key)
+                          .map(byId::get)
+                          .filter(Objects::nonNull)
+                          .map(byName::get)
+                          .filter(Objects::nonNull)
+                          .map(objRef -> persistence.fetch(objRef, ContentObj.class))
+                          .filter(Objects::nonNull)
+                          .map(
+                              contentObj -> {
+                                var conflictingBaseLocation =
+                                    contentObj.properties().get(ENTITY_BASE_LOCATION);
+                                return conflictingBaseLocation != null
+                                    ? conflictingBaseLocation
+                                    : String.join("/", prefix.elements());
+                              })
+                          .findFirst();
+                  if (conflicting.isPresent()) {
+                    return conflicting;
+                  }
+                }
               }
 
-              return elem.value().entityIds().stream()
-                  .map(IndexKey::key)
-                  .map(byId::get)
-                  .filter(Objects::nonNull)
-                  .map(byName::get)
-                  .filter(Objects::nonNull)
-                  .map(objRef -> persistence.fetch(objRef, ContentObj.class))
-                  .filter(Objects::nonNull)
-                  .map(
-                      contentObj -> {
-                        // Check if conflict is the parent namespace - TODO recurse??
-                        var conflictingBaseLocation =
-                            contentObj.properties().get(ENTITY_BASE_LOCATION);
-                        return conflictingBaseLocation != null
-                            ? conflictingBaseLocation
-                            : String.join("/", elemIdentifier.elements());
-                      })
-                  .findFirst();
+              return Optional.empty();
             });
   }
 

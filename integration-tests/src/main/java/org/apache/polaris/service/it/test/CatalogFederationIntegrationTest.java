@@ -483,7 +483,7 @@ public class CatalogFederationIntegrationTest {
     assertThatThrownBy(() -> spark.sql("SELECT * FROM ns3.test_table ORDER BY id").collectAsList())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining(
-            "Table 'ns3.test_table' in remote catalog has locations outside catalog's allowed locations:");
+            "Table 'ns3.test_table' has locations outside the catalog's current allowed locations:");
 
     // Case 3: TABLE_WRITE_DATA
     managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
@@ -501,6 +501,6 @@ public class CatalogFederationIntegrationTest {
             () -> spark.sql("INSERT INTO ns3.test_table VALUES (3, 'Charlie')").collectAsList())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining(
-            "Table 'ns3.test_table' in remote catalog has locations outside catalog's allowed locations:");
+            "Table 'ns3.test_table' has locations outside the catalog's current allowed locations:");
   }
 }

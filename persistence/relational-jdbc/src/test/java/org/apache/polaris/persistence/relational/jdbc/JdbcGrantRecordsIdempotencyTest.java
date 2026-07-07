@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -35,7 +34,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -76,7 +74,6 @@ class JdbcGrantRecordsIdempotencyTest {
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             RANDOM_SECRETS,
-            mock(PolarisStorageIntegrationProvider.class),
             REALM_CONTEXT.getRealmIdentifier(),
             schemaVersion);
     PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
@@ -119,7 +116,6 @@ class JdbcGrantRecordsIdempotencyTest {
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             RANDOM_SECRETS,
-            mock(PolarisStorageIntegrationProvider.class),
             REALM_CONTEXT.getRealmIdentifier(),
             schemaVersion);
     PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);

@@ -66,7 +66,7 @@ polaris catalogs create \
     analytics_rest
 ```
 
-Refer to the [CLI documentation](../command-line-interface.md#catalogs) for details on alternative authentication types such as BEARER or SIGV4.
+Refer to the [CLI documentation]({{% ref "../command-line-interface.md#catalogs" %}}) for details on alternative authentication types such as BEARER or SIGV4.
 
 Grant catalog roles to principal roles the same way you do for internal catalogs so compute engines
 receive tokens with access to the federated namespace.

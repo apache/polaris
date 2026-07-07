@@ -1073,6 +1073,14 @@ components:
           type: string
           description: The service name to be used by the SigV4 protocol for signing requests, the default signing name is "execute-api" is if not provided
           example: "glue"
+        sessionPolicy:
+          type: string
+          description: >-
+            An optional IAM session policy (JSON) attached to the STS AssumeRole request.
+            This policy intersects with the IAM role's permissions to further restrict
+            the vended credentials. When omitted, no session policy is applied and the
+            credentials inherit the full permissions of the assumed role.
+          example: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["glue:*","s3:GetObject","s3:ListBucket"],"Resource":"*"}]}'
       required:
         - roleArn
         - signingRegion

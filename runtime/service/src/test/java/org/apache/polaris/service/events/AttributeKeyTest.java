@@ -21,10 +21,9 @@ package org.apache.polaris.service.events;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 class AttributeKeyTest {
 
@@ -58,11 +57,10 @@ class AttributeKeyTest {
   }
 
   @Test
-  void testJsonSerializesToName() throws JsonProcessingException {
+  void testJsonSerializesToName() {
     AttributeKey<String> key = new AttributeKey<>(TEST_KEY, String.class);
-    ObjectMapper mapper = new ObjectMapper();
 
-    String json = mapper.writeValueAsString(key);
+    String json = JsonMapper.shared().writeValueAsString(key);
 
     assertThat(json).isEqualTo("\"" + TEST_KEY + "\"");
   }

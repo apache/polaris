@@ -101,10 +101,6 @@ for (sparkVersion in sparkVersions) {
       "polaris-spark-${sparkVersion}_${scalaVersion}",
       file("${polarisSparkDir}/v${sparkVersion}/spark"),
     )
-    polarisProject(
-      "polaris-spark-integration-${sparkVersion}_${scalaVersion}",
-      file("${polarisSparkDir}/v${sparkVersion}/integration"),
-    )
     if (first) {
       first = false
     }
@@ -128,8 +124,8 @@ plugins {
   // When updating the develocity plugin version, verify that the version that
   // https://develocity.apache.org/ runs is compatible with the plugin version
   // as on https://docs.gradle.com/develocity/current/miscellaneous/compatibility/
-  id("com.gradle.develocity") version "4.4.3"
-  id("com.gradle.common-custom-user-data-gradle-plugin") version "2.6.0"
+  id("com.gradle.develocity") version "4.5.0"
+  id("com.gradle.common-custom-user-data-gradle-plugin") version "2.7.0"
 }
 
 dependencyResolutionManagement {

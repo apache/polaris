@@ -20,7 +20,7 @@
 services:
 
   rustfs:
-    image: rustfs/rustfs:1.0.0-alpha.80
+    image: rustfs/rustfs:1.0.0-beta.8
     ports:
       - "9000:9000" # S3 API port
       - "9001:9001" # Console port
@@ -67,7 +67,7 @@ services:
       start_period: 10s
 
   setup_bucket:
-    image: amazon/aws-cli:2.35.11
+    image: amazon/aws-cli:2.35.15
     depends_on:
       rustfs:
         condition: service_healthy
@@ -85,7 +85,7 @@ services:
         echo Bucket setup complete.
 
   polaris-setup:
-    image: alpine/curl:8.20.0
+    image: alpine/curl:8.21.0
     depends_on:
       polaris:
         condition: service_healthy

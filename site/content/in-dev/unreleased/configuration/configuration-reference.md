@@ -138,6 +138,25 @@ All properties listed here are **runtime** properties and can be changed without
 
 {{% include-config-section "smallrye-polaris_event_listener_aws_cloudwatch" %}}
 
+### `opentelemetry` event listener
+
+Set `polaris.event-listener.types=opentelemetry` to emit Polaris events as OpenTelemetry log
+records.
+
+OpenTelemetry is disabled by default in Polaris because there is no collector endpoint that works
+for all deployments. To export these log records, enable the OpenTelemetry SDK, enable
+OpenTelemetry logs, and configure an OTLP collector endpoint:
+
+```properties
+polaris.event-listener.types=opentelemetry
+quarkus.otel.sdk.disabled=false
+quarkus.otel.logs.enabled=true
+quarkus.otel.exporter.otlp.endpoint=http://otlp-collector:4317
+```
+
+See the [Telemetry]({{% ref "../telemetry" %}}) documentation for additional OpenTelemetry
+configuration details.
+
 ## Operational
 
 ### `polaris.tasks`
@@ -181,4 +200,3 @@ All properties listed here are **runtime** properties and can be changed without
 ### `polaris.realm-context`
 
 {{% include-config-section "smallrye-polaris_realm_context" %}}
-

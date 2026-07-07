@@ -18,22 +18,19 @@
 #
 
 import io
-from unittest.mock import ANY, MagicMock, mock_open, patch
+from unittest.mock import patch, MagicMock
 
 from apache_polaris.cli.exceptions import CliError
 from cli_test_utils import CLITestBase
 
 
 class TestProfilesCommand(CLITestBase):
-    @patch("apache_polaris.cli.command.profiles.os.path.exists")
     @patch(
-        "apache_polaris.cli.command.profiles.open",
-        new_callable=mock_open,
-        read_data='{"dev": {}, "prod": {}}',
+        "apache_polaris.cli.command.profiles.load_profiles",
+        return_value={"dev": {}, "prod": {}},
     )
-    def test_profile_list(self, mock_file: MagicMock, mock_exists: MagicMock) -> None:
+    def test_profile_list(self, mock_load_profiles: MagicMock) -> None:
         mock_client = self.build_mock_client()
-        mock_exists.return_value = True
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             self.mock_execute(mock_client, ["profiles", "list"])
             output = mock_stdout.getvalue()
@@ -42,15 +39,21 @@ class TestProfilesCommand(CLITestBase):
             self.assertIn(" - dev", output)
             self.assertIn(" - prod", output)
 
-    @patch("apache_polaris.cli.command.profiles.os.path.exists")
     @patch(
-        "apache_polaris.cli.command.profiles.open",
-        new_callable=mock_open,
-        read_data='{"dev": {"client_id": "root", "client_secret": "s3cr3t", "host": "localhost", "port": 8181, "realm": "", "header": "Polaris-Realm"}}',
+        "apache_polaris.cli.command.profiles.load_profiles",
+        return_value={
+            "dev": {
+                "client_id": "root",
+                "client_secret": "s3cr3t",
+                "host": "localhost",
+                "port": 8181,
+                "realm": "",
+                "header": "Polaris-Realm",
+            }
+        },
     )
-    def test_profile_get(self, mock_file: MagicMock, mock_exists: MagicMock) -> None:
+    def test_profile_get(self, mock_load_profiles: MagicMock) -> None:
         mock_client = self.build_mock_client()
-        mock_exists.return_value = True
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             self.mock_execute(mock_client, ["profiles", "get", "dev"])
             output = mock_stdout.getvalue()
@@ -58,24 +61,22 @@ class TestProfilesCommand(CLITestBase):
             self.assertIn("Polaris profile dev:", output)
             self.assertIn("'client_id': 'root'", output)
             self.assertIn("'host': 'localhost'", output)
+            self.assertIn("********", output)
+            self.assertNotIn("s3cr3t", output)
 
-    @patch("apache_polaris.cli.command.profiles.os.path.exists")
+    @patch("apache_polaris.cli.command.profiles.save_profiles")
     @patch(
-        "apache_polaris.cli.command.profiles.open",
-        new_callable=mock_open,
-        read_data="{}",
+        "apache_polaris.cli.command.profiles.load_profiles",
+        return_value={},
     )
     @patch("builtins.input")
-    @patch("apache_polaris.cli.command.profiles.os.makedirs")
     def test_profile_create(
         self,
-        mock_makedirs: MagicMock,
         mock_input: MagicMock,
-        mock_file: MagicMock,
-        mock_exists: MagicMock,
+        mock_load_profiles: MagicMock,
+        mock_save_profiles: MagicMock,
     ) -> None:
         mock_client = self.build_mock_client()
-        mock_exists.return_value = False
         mock_input.side_effect = [
             "root",
             "s3cr3t",
@@ -88,55 +89,69 @@ class TestProfilesCommand(CLITestBase):
             self.mock_execute(mock_client, ["profiles", "create", "dev"])
             output = mock_stdout.getvalue()
             self.assertIn("Polaris profile dev created successfully.", output)
-        mock_file.assert_called_with(ANY, "w")
+        mock_input.assert_any_call("Polaris Client Secret: ")
+        mock_save_profiles.assert_called_once()
 
-    @patch("apache_polaris.cli.command.profiles.os.path.exists")
     @patch(
-        "apache_polaris.cli.command.profiles.open",
-        new_callable=mock_open,
-        read_data='{"dev": {}}',
+        "apache_polaris.cli.command.profiles.load_profiles",
+        return_value={"dev": {}},
     )
     def test_profile_create_existing_fails(
-        self, mock_file: MagicMock, mock_exists: MagicMock
+        self, mock_load_profiles: MagicMock
     ) -> None:
         mock_client = self.build_mock_client()
-        mock_exists.return_value = True
 
         with self.assertRaises(CliError):
             self.mock_execute(mock_client, ["profiles", "create", "dev"])
 
-    @patch("apache_polaris.cli.command.profiles.os.path.exists")
+    @patch("apache_polaris.cli.command.profiles.save_profiles")
     @patch(
-        "apache_polaris.cli.command.profiles.open",
-        new_callable=mock_open,
-        read_data='{"dev": {"client_id": "root", "client_secret": "s3cr3t", "host": "localhost", "port": 8181, "realm": "", "header": "Polaris-Realm"}}',
+        "apache_polaris.cli.command.profiles.load_profiles",
+        return_value={
+            "dev": {
+                "client_id": "root",
+                "client_secret": "s3cr3t",
+                "host": "localhost",
+                "port": 8181,
+                "realm": "",
+                "header": "Polaris-Realm",
+            }
+        },
     )
-    def test_profile_delete(self, mock_file: MagicMock, mock_exists: MagicMock) -> None:
+    def test_profile_delete(
+        self,
+        mock_load_profiles: MagicMock,
+        mock_save_profiles: MagicMock,
+    ) -> None:
         mock_client = self.build_mock_client()
-        mock_exists.return_value = True
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             self.mock_execute(mock_client, ["profiles", "delete", "dev"])
             output = mock_stdout.getvalue()
             self.assertIn("Polaris profile dev deleted successfully.", output)
-        mock_file.assert_called_with(ANY, "w")
+        mock_save_profiles.assert_called_once()
 
-    @patch("apache_polaris.cli.command.profiles.os.path.exists")
+    @patch("apache_polaris.cli.command.profiles.save_profiles")
     @patch(
-        "apache_polaris.cli.command.profiles.open",
-        new_callable=mock_open,
-        read_data='{"dev": {"client_id": "root", "client_secret": "s3cr3t", "host": "localhost", "port": 8181, "realm": "", "header": "Polaris-Realm"}}',
+        "apache_polaris.cli.command.profiles.load_profiles",
+        return_value={
+            "dev": {
+                "client_id": "root",
+                "client_secret": "s3cr3t",
+                "host": "localhost",
+                "port": 8181,
+                "realm": "",
+                "header": "Polaris-Realm",
+            }
+        },
     )
     @patch("builtins.input")
-    @patch("apache_polaris.cli.command.profiles.os.makedirs")
     def test_profile_update(
         self,
-        mock_makedirs: MagicMock,
         mock_input: MagicMock,
-        mock_file: MagicMock,
-        mock_exists: MagicMock,
+        mock_load_profiles: MagicMock,
+        mock_save_profiles: MagicMock,
     ) -> None:
         mock_client = self.build_mock_client()
-        mock_exists.return_value = True
         mock_input.side_effect = [
             "new-id",
             "new-secret",
@@ -149,19 +164,19 @@ class TestProfilesCommand(CLITestBase):
             self.mock_execute(mock_client, ["profiles", "update", "dev"])
             output = mock_stdout.getvalue()
             self.assertIn("Polaris profile dev updated successfully.", output)
-        mock_file.assert_called_with(ANY, "w")
+        mock_input.assert_any_call(
+            "Enter Polaris Client Secret (empty to reuse previous value): "
+        )
+        mock_save_profiles.assert_called_once()
 
-    @patch("apache_polaris.cli.command.profiles.os.path.exists")
     @patch(
-        "apache_polaris.cli.command.profiles.open",
-        new_callable=mock_open,
-        read_data="{}",
+        "apache_polaris.cli.command.profiles.load_profiles",
+        return_value={},
     )
     def test_profile_update_missing_fails(
-        self, mock_file: MagicMock, mock_exists: MagicMock
+        self, mock_load_profiles: MagicMock
     ) -> None:
         mock_client = self.build_mock_client()
-        mock_exists.return_value = True
 
         with self.assertRaises(CliError):
             self.mock_execute(mock_client, ["profiles", "update", "missing"])

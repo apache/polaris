@@ -44,7 +44,6 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     extends BasePolarisMetaStoreManagerTest {
@@ -101,7 +100,6 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             diagServices,
             datasourceOperations,
             RANDOM_SECRETS,
-            Mockito.mock(),
             realmContext.getRealmIdentifier(),
             schemaVersion());
     AtomicOperationMetaStoreManager metaStoreManager =
