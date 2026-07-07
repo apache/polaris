@@ -87,7 +87,11 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              "test-realm");
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
@@ -115,6 +119,10 @@ public class OpaPolarisAuthorizerTest {
       assertThat(input.has("action")).as("Input should have 'action' field").isTrue();
       assertThat(input.has("resource")).as("Input should have 'resource' field").isTrue();
       assertThat(input.has("context")).as("Input should have 'context' field").isTrue();
+
+      // Verify realm is included for tenant isolation
+      assertThat(input.get("context").has("realm")).as("context should contain realm").isTrue();
+      assertThat(input.get("context").get("realm").asText()).isEqualTo("test-realm");
     } finally {
       server.stop(0);
     }

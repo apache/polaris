@@ -85,6 +85,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final BearerTokenProvider tokenProvider;
   private final CloseableHttpClient httpClient;
   private final ObjectMapper objectMapper;
+  private final String realm;
 
   /**
    * Public constructor that accepts a complete policy URI.
@@ -102,11 +103,31 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @NonNull CloseableHttpClient httpClient,
       @NonNull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider) {
+    this(policyUri, httpClient, objectMapper, tokenProvider, null);
+  }
+
+  /**
+   * Public constructor that accepts a complete policy URI and the current realm identifier.
+   *
+   * @param policyUri The required URI for the OPA endpoint.
+   * @param httpClient Apache HttpClient (required, injected by CDI).
+   * @param objectMapper Jackson ObjectMapper for JSON serialization (required).
+   * @param tokenProvider Token provider for authentication (optional)
+   * @param realm The realm identifier (from RealmContext) for tenant isolation in OPA policies. May
+   *     be null if not available.
+   */
+  public OpaPolarisAuthorizer(
+      @NonNull URI policyUri,
+      @NonNull CloseableHttpClient httpClient,
+      @NonNull ObjectMapper objectMapper,
+      @Nullable BearerTokenProvider tokenProvider,
+      @Nullable String realm) {
 
     this.policyUri = policyUri;
     this.tokenProvider = tokenProvider;
     this.httpClient = httpClient;
     this.objectMapper = objectMapper;
+    this.realm = realm;
   }
 
   /**
@@ -334,7 +355,11 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   private ImmutableContext buildContext() {
-    return ImmutableContext.builder().requestId(UUID.randomUUID().toString()).build();
+    var builder = ImmutableContext.builder().requestId(UUID.randomUUID().toString());
+    if (realm != null) {
+      builder.realm(realm);
+    }
+    return builder.build();
   }
 
   private ImmutableResource buildResource(

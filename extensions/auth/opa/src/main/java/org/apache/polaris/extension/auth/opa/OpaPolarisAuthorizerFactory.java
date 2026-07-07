@@ -34,6 +34,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.StaticBearerTokenProvider;
@@ -54,6 +55,8 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   private final AsyncExec asyncExec;
   private CloseableHttpClient httpClient;
   private BearerTokenProvider bearerTokenProvider;
+
+  @Inject private RealmContext realmContext;
 
   @Inject
   public OpaPolarisAuthorizerFactory(
@@ -96,7 +99,9 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
                     new IllegalStateException(
                         "OPA policy URI must be configured via polaris.authorization.opa.policy-uri"));
 
-    return new OpaPolarisAuthorizer(policyUri, httpClient, objectMapper, bearerTokenProvider);
+    String realmId = (realmContext != null) ? realmContext.getRealmIdentifier() : null;
+    return new OpaPolarisAuthorizer(
+        policyUri, httpClient, objectMapper, bearerTokenProvider, realmId);
   }
 
   @PreDestroy
