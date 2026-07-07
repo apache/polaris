@@ -45,6 +45,7 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -59,6 +60,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.ContentScanTask;
 import org.apache.iceberg.DataOperations;
@@ -88,6 +90,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
@@ -2694,12 +2697,16 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     }
   }
 
+  private boolean metadataFileExists(String location) {
+    try {
+      return fileIO.newInputFile(location).exists();
+    } catch (NotFoundException e) {
+      return false;
+    }
+  }
+
   @Test
   public void testDeleteRemovedMetadataFilesIsSkippedUnderTransactionWorkspace() {
-    Assumptions.assumeTrue(
-        requiresNamespaceCreate(),
-        "Only applicable if namespaces must be created before adding children");
-
     catalog.createNamespace(NS);
 
     // Enable delete-after-commit and keep only one previous version so the original
@@ -2729,7 +2736,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     PolarisMetaStoreManager realManager = metaStoreManager;
     TransactionWorkspaceMetaStoreManager ws =
         new TransactionWorkspaceMetaStoreManager(diagServices, realManager);
-    catalog.setMetaStoreManager(ws, cleanup -> {});
+    List<MetadataFileCleanup> collectedCleanups = new ArrayList<>();
+    catalog.setMetaStoreManager(ws, collectedCleanups::add);
 
     try {
       // Now perform a commit "as if" inside commitTransaction for table1 (v2 -> v3).
@@ -2746,9 +2754,19 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
       // Critical assertion: without the fix, deleteRemovedMetadataFiles would run eagerly
       // and remove v1. With the fix it is deferred/collected by the workspace-aware consumer.
-      assertThat(fileIO.newInputFile(createMetadataLocation).exists())
+      assertThat(metadataFileExists(createMetadataLocation))
           .as("Old metadata file must NOT be deleted while TransactionWorkspace is active")
           .isTrue();
+
+      // Verify that the cleanup was collected (i.e. passed to the collector) and that
+      // replaying it deletes the old metadata file.
+      assertThat(collectedCleanups).hasSize(1);
+      MetadataFileCleanup cleanup = collectedCleanups.get(0);
+      CatalogUtil.deleteRemovedMetadataFiles(
+          cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
+      assertThat(metadataFileExists(createMetadataLocation))
+          .as("Replaying the collected cleanup should delete the old metadata file")
+          .isFalse();
 
       // Verify the new metadata was written.
       String newLocToCheck = newMeta1.metadataFileLocation();
@@ -2759,15 +2777,71 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         }
       } catch (Exception ignored) {
       }
-      assertThat(fileIO.newInputFile(newLocToCheck).exists())
+      assertThat(metadataFileExists(newLocToCheck))
           .as("New metadata file must have been written")
           .isTrue();
 
     } finally {
+      // Restore real manager before cleanup drops, because dropEntity is illegal under
+      // TransactionWorkspace.
       catalog.setMetaStoreManager(realManager);
-      // Clean up tables created for this test.
       catalog.dropTable(TABLE, false);
       catalog.dropTable(table2Id, false);
+    }
+  }
+
+  @Test
+  public void testDeleteRemovedMetadataFilesIsPerformedOnSuccessfulCommit() {
+    // Positive test: simulate the collector replay on successful commit (no workspace active).
+    // This validates that deletes are performed when using the pluggable cleanup.
+    catalog.createNamespace(NS);
+
+    Map<String, String> deleteAfterCommitProps =
+        ImmutableMap.of(
+            TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true",
+            TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1");
+
+    Table table = catalog.buildTable(TABLE, SCHEMA).withProperties(deleteAfterCommitProps).create();
+    String v1Location = ((BaseTable) table).operations().current().metadataFileLocation();
+
+    // First commit (v1 -> v2) with the default immediate-delete logic.
+    table.newFastAppend().appendFile(FILE_A).commit();
+
+    // Use a collector for the next commit (v2 -> v3) to test the replay logic.
+    List<MetadataFileCleanup> collected = new ArrayList<>();
+    catalog.setMetaStoreManager(metaStoreManager, collected::add);
+
+    try {
+      // This commit makes v1 eligible for deletion, but the delete is collected.
+      table.newFastAppend().appendFile(FILE_B).commit();
+
+      // At this point, the delete was collected, not performed yet.
+      assertThat(metadataFileExists(v1Location))
+          .as("Old metadata file still exists before replay")
+          .isTrue();
+
+      // Explicitly verify that the collector captured a cleanup targeting v1.
+      assertThat(collected)
+          .as("Collector should have captured cleanup for v1 metadata")
+          .anyMatch(
+              cleanup ->
+                  cleanup.baseMetadata().previousFiles().stream()
+                      .map(TableMetadata.MetadataLogEntry::file)
+                      .anyMatch(v1Location::equals));
+
+      // Replay the collected deletes (simulates success path after batch).
+      for (MetadataFileCleanup cleanup : collected) {
+        CatalogUtil.deleteRemovedMetadataFiles(
+            cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
+      }
+
+      // Now it should be deleted.
+      assertThat(metadataFileExists(v1Location))
+          .as("Old metadata file should be deleted after replaying collected cleanup")
+          .isFalse();
+    } finally {
+      catalog.setMetaStoreManager(metaStoreManager);
+      catalog.dropTable(TABLE, false);
     }
   }
 

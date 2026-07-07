@@ -408,7 +408,7 @@ public class CommitTransactionEventTest {
   }
 
   @Test
-  void testCommitTransactionCleansUpMetadataOnFailure(@TempDir Path tempDir) {
+  void testCommitTransactionCleansUpMetadataOnFailure(@TempDir Path tempDir) throws Exception {
     String location = tempDir.toAbsolutePath().toUri().toString();
     if (location.endsWith("/")) {
       location = location.substring(0, location.length() - 1);
@@ -474,11 +474,6 @@ public class CommitTransactionEventTest {
     assertThat(metadataFilesAfter).isEqualTo(metadataFilesBefore);
   }
 
-  private static Set<Path> metadataFiles(Path directory) {
-    try (Stream<Path> files = Files.walk(directory)) {
-      return files.filter(p -> p.toString().endsWith(".metadata.json")).collect(Collectors.toSet());
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
+  // Positive test added in AbstractLocalIcebergCatalogTest to avoid making this event-focused test
+  // class depend on full transaction setup that can be slow/heavy in some envs.
 }

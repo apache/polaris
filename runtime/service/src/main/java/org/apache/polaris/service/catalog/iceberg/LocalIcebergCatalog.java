@@ -198,7 +198,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private PolarisMetaStoreManager metaStoreManager;
 
   private Consumer<MetadataFileCleanup> deleteRemovedMetadataFiles =
-      c -> CatalogUtil.deleteRemovedMetadataFiles(c.io(), c.baseMetadata(), c.newMetadata());
+      LocalIcebergCatalog::defaultDeleteRemovedMetadataFiles;
+
+  private static void defaultDeleteRemovedMetadataFiles(MetadataFileCleanup cleanup) {
+    CatalogUtil.deleteRemovedMetadataFiles(
+        cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
+  }
 
   /**
    * @param callContext the current CallContext
@@ -298,9 +303,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   public void setMetaStoreManager(
       PolarisMetaStoreManager newMetaStoreManager, Consumer<MetadataFileCleanup> deleteLogic) {
     this.metaStoreManager = newMetaStoreManager;
-    if (deleteLogic != null) {
-      this.deleteRemovedMetadataFiles = deleteLogic;
-    }
+    this.deleteRemovedMetadataFiles =
+        deleteLogic != null ? deleteLogic : LocalIcebergCatalog::defaultDeleteRemovedMetadataFiles;
   }
 
   @Override
