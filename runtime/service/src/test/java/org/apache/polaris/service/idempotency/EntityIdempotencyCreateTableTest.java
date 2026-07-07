@@ -42,8 +42,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * End-to-end coverage of the entity-property (single-transaction) idempotency prototype for {@code
- * createTable}, driven through the REST adapter with idempotency enabled via configuration.
+ * End-to-end coverage of entity-property (single-transaction) idempotency for {@code createTable},
+ * driven through the REST adapter with idempotency enabled via configuration.
  *
  * <p>Unlike the decoupled-store model, the key here is embedded into the created table entity's
  * internal properties and committed atomically with the table, so a retry replays the original

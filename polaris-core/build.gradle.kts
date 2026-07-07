@@ -20,7 +20,6 @@
 plugins {
   id("polaris-client")
   id("org.kordamp.gradle.jandex")
-  alias(libs.plugins.jmh)
 }
 
 dependencies {
@@ -87,9 +86,6 @@ dependencies {
   testFixturesApi(libs.jakarta.ws.rs.api)
 
   compileOnly(libs.jspecify)
-
-  jmhImplementation(libs.jmh.core)
-  jmhAnnotationProcessor(libs.jmh.generator.annprocess)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

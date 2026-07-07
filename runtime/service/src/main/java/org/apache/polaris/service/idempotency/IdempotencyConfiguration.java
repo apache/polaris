@@ -23,7 +23,7 @@ import io.smallrye.config.WithDefault;
 import java.time.Duration;
 
 /**
- * Deploy-time configuration for the entity-property (single-transaction) idempotency prototype.
+ * Deploy-time configuration for entity-property (single-transaction) idempotency.
  *
  * <p>This model embeds the {@code Idempotency-Key} directly into the {@code internalProperties} of
  * the entity created by the originating operation, so the key and the operation commit atomically.

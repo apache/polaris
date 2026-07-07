@@ -199,8 +199,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private final FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
 
-  // Entity-property idempotency (prototype): when the request context carries a key, it is stamped
-  // into the new table entity's internal properties within the same transaction as the create.
+  // Entity-property idempotency: when the request context carries a key, it is stamped into the new
+  // table entity's internal properties within the same transaction as the create.
   private final @Nullable IdempotencyRequestContext idempotencyRequestContext;
 
   /**
