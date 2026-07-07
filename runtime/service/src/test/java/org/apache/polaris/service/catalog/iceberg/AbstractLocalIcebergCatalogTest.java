@@ -2775,8 +2775,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     updateCatalogProperties(
         Map.of(
             FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
-            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true",
-            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false"));
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
 
     catalog.createNamespace(NS);
     Table table = catalog.buildTable(TABLE, SCHEMA).create();

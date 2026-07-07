@@ -306,7 +306,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_METADATA_FILE_LOCATION")
           .catalogConfig("polaris.config.allow.external.metadata.file.location")
-          .legacyCatalogConfig("allow.external.metadata.file.location")
           .description(
               "If set to true, Polaris allows metadata files to be located outside the table's "
                   + "default metadata directory. This relaxes the normal check that metadata "
