@@ -46,6 +46,11 @@ public interface RelationalJdbcConfiguration {
     return Optional.empty();
   }
 
+  /** Directory containing JDBC driver jars for the Polaris-managed datasource. */
+  default Optional<String> driverDirectory() {
+    return Optional.empty();
+  }
+
   /** Database username used when Polaris creates and owns the datasource. */
   default Optional<String> username() {
     return Optional.empty();

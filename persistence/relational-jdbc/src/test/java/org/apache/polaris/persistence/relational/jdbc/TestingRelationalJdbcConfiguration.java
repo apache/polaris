@@ -25,6 +25,7 @@ final class TestingRelationalJdbcConfiguration implements RelationalJdbcConfigur
   private final String databaseType;
   private final String jdbcUrl;
   private final String driver;
+  private final String driverDirectory;
   private final String username;
   private final String password;
   private final Integer maximumPoolSize;
@@ -35,6 +36,7 @@ final class TestingRelationalJdbcConfiguration implements RelationalJdbcConfigur
     this.databaseType = builder.databaseType;
     this.jdbcUrl = builder.jdbcUrl;
     this.driver = builder.driver;
+    this.driverDirectory = builder.driverDirectory;
     this.username = builder.username;
     this.password = builder.password;
     this.maximumPoolSize = builder.maximumPoolSize;
@@ -77,6 +79,11 @@ final class TestingRelationalJdbcConfiguration implements RelationalJdbcConfigur
   }
 
   @Override
+  public Optional<String> driverDirectory() {
+    return Optional.ofNullable(driverDirectory);
+  }
+
+  @Override
   public Optional<String> username() {
     return Optional.ofNullable(username);
   }
@@ -105,6 +112,7 @@ final class TestingRelationalJdbcConfiguration implements RelationalJdbcConfigur
     private String databaseType;
     private String jdbcUrl;
     private String driver;
+    private String driverDirectory;
     private String username;
     private String password;
     private Integer maximumPoolSize;
@@ -125,6 +133,11 @@ final class TestingRelationalJdbcConfiguration implements RelationalJdbcConfigur
 
     Builder driver(String driver) {
       this.driver = driver;
+      return this;
+    }
+
+    Builder driverDirectory(String driverDirectory) {
+      this.driverDirectory = driverDirectory;
       return this;
     }
 

@@ -23,8 +23,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.File;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -102,7 +100,9 @@ class JdbcDataSourceFactoryTest {
   @Test
   void createUsesJdbcDriverLoadedFromRuntimeJar(@TempDir Path tempDir) throws Exception {
     String driverClassName = "runtime.jdbc.RuntimeLoadedJdbcDriver";
-    Path driverJar = createRuntimeDriverJar(tempDir, driverClassName);
+    Path driverDirectory = tempDir.resolve("jdbc-drivers");
+    Files.createDirectories(driverDirectory);
+    createRuntimeDriverJar(driverDirectory, driverClassName);
 
     assertThatThrownBy(
             () ->
@@ -110,40 +110,86 @@ class JdbcDataSourceFactoryTest {
                     driverClassName, false, JdbcDataSourceFactoryTest.class.getClassLoader()))
         .isInstanceOf(ClassNotFoundException.class);
 
-    ClassLoader previousContextClassLoader = Thread.currentThread().getContextClassLoader();
-    try (URLClassLoader runtimeClassLoader =
-        new URLClassLoader(new URL[] {driverJar.toUri().toURL()}, previousContextClassLoader)) {
-      Thread.currentThread().setContextClassLoader(runtimeClassLoader);
+    HikariDataSource dataSource =
+        createDataSource(
+            "jdbc:polaris-runtime-h2:mem:runtime_loaded_driver_poc;DB_CLOSE_DELAY=-1",
+            driverClassName,
+            driverDirectory);
+
+    try {
+      writeRealmMarker(dataSource, "runtime-loaded-driver");
+
+      assertThat(readRealmMarker(dataSource)).isEqualTo("runtime-loaded-driver");
+    } finally {
+      dataSource.close();
+    }
+  }
+
+  @Test
+  void createUsesJdbcDriverLoadedFromDefaultRuntimeDirectory(@TempDir Path tempDir)
+      throws Exception {
+    String driverClassName = "runtime.jdbc.DefaultRuntimeLoadedJdbcDriver";
+    Path serverDirectory = tempDir.resolve("server");
+    Path launcherJar = serverDirectory.resolve("quarkus-run.jar");
+    Path driverDirectory = serverDirectory.resolve("jdbc-drivers");
+    Files.createDirectories(driverDirectory);
+    Files.createFile(launcherJar);
+    createRuntimeDriverJar(driverDirectory, driverClassName);
+
+    String previousClassPath = System.getProperty("java.class.path");
+    try {
+      System.setProperty("java.class.path", launcherJar.toString());
       HikariDataSource dataSource =
           createDataSource(
-              "jdbc:polaris-runtime-h2:mem:runtime_loaded_driver_poc;DB_CLOSE_DELAY=-1",
-              driverClassName);
+              "jdbc:polaris-runtime-h2:mem:default_runtime_loaded_driver_poc;DB_CLOSE_DELAY=-1",
+              driverClassName,
+              null);
 
       try {
-        writeRealmMarker(dataSource, "runtime-loaded-driver");
+        writeRealmMarker(dataSource, "default-runtime-loaded-driver");
 
-        assertThat(readRealmMarker(dataSource)).isEqualTo("runtime-loaded-driver");
+        assertThat(readRealmMarker(dataSource)).isEqualTo("default-runtime-loaded-driver");
       } finally {
         dataSource.close();
       }
     } finally {
-      Thread.currentThread().setContextClassLoader(previousContextClassLoader);
+      System.setProperty("java.class.path", previousClassPath);
     }
   }
 
-  private static HikariDataSource createDataSource(String jdbcUrl) {
-    return createDataSource(jdbcUrl, "org.h2.Driver");
+  @Test
+  void createRejectsConfiguredDriverDirectoryWithoutJars(@TempDir Path tempDir) throws Exception {
+    Path driverDirectory = tempDir.resolve("jdbc-drivers");
+    Files.createDirectories(driverDirectory);
+    RelationalJdbcConfiguration configuration =
+        TestingRelationalJdbcConfiguration.builder()
+            .jdbcUrl("jdbc:h2:mem:missing_runtime_driver;DB_CLOSE_DELAY=-1")
+            .driver("missing.Driver")
+            .driverDirectory(driverDirectory.toString())
+            .build();
+
+    assertThatThrownBy(() -> JdbcDataSourceFactory.create(configuration))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("does not contain any .jar files");
   }
 
-  private static HikariDataSource createDataSource(String jdbcUrl, String driverClassName) {
-    RelationalJdbcConfiguration configuration =
+  private static HikariDataSource createDataSource(String jdbcUrl) {
+    return createDataSource(jdbcUrl, "org.h2.Driver", null);
+  }
+
+  private static HikariDataSource createDataSource(
+      String jdbcUrl, String driverClassName, Path driverDirectory) {
+    TestingRelationalJdbcConfiguration.Builder builder =
         TestingRelationalJdbcConfiguration.builder()
             .jdbcUrl(jdbcUrl)
             .driver(driverClassName)
             .username("sa")
             .password("")
-            .maximumPoolSize(1)
-            .build();
+            .maximumPoolSize(1);
+    if (driverDirectory != null) {
+      builder.driverDirectory(driverDirectory.toString());
+    }
+    RelationalJdbcConfiguration configuration = builder.build();
     return (HikariDataSource) JdbcDataSourceFactory.create(configuration).orElseThrow();
   }
 

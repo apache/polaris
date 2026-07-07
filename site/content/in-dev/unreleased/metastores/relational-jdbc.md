@@ -79,6 +79,14 @@ polaris.persistence.relational.jdbc.username=<your-username>
 polaris.persistence.relational.jdbc.password=<your-password>
 ```
 
+When using the binary distribution, place third-party JDBC driver jars under
+`server/jdbc-drivers`. Polaris loads jars from that directory before creating the managed
+datasource. If the jars live elsewhere, set
+`polaris.persistence.relational.jdbc.driver-directory=/path/to/jdbc-drivers` or
+`POLARIS_PERSISTENCE_RELATIONAL_JDBC_DRIVER_DIRECTORY=/path/to/jdbc-drivers`. The admin tool runs
+from `admin`, so bootstrap and purge commands need the same driver jar under `admin/jdbc-drivers` or
+the same explicit `driver-directory` setting.
+
 For CockroachDB, use the PostgreSQL JDBC driver and set the database type explicitly:
 
 ```properties

@@ -32,6 +32,9 @@ public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfig
   Optional<String> driver();
 
   @Override
+  Optional<String> driverDirectory();
+
+  @Override
   Optional<String> username();
 
   @Override
