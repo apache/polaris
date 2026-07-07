@@ -46,18 +46,23 @@
 {{- define "polaris.fullnameWithSuffix" -}}
 {{- $global := index . 0 }}
 {{- $suffix := index . 1 }}
+{{- $maxLength := 63 }}
+{{- if ge (len .) 3 }}
+{{- $maxLength = int (index . 2) }}
+{{- end }}
 {{- if not (hasPrefix "-" $suffix) }}
 {{- $suffix = printf "-%s" $suffix }}
 {{- end }}
-{{- $length := int (sub 63 (len $suffix)) }}
+{{- $length := int (sub $maxLength (len $suffix)) }}
+{{- if lt $length 0 }}{{- $length = 0 }}{{- end }}
 {{- if $global.Values.fullnameOverride }}
-{{- $global.Values.fullnameOverride | trunc $length }}{{ $suffix }}
+{{- $global.Values.fullnameOverride | trunc $length | trimSuffix "-" }}{{ $suffix }}
 {{- else }}
 {{- $name := default $global.Chart.Name $global.Values.nameOverride }}
 {{- if contains $name $global.Release.Name }}
-{{- $global.Release.Name | trunc $length }}{{ $suffix }}
+{{- $global.Release.Name | trunc $length | trimSuffix "-" }}{{ $suffix }}
 {{- else }}
-{{- printf "%s-%s" $global.Release.Name $name | trunc $length }}{{ $suffix }}
+{{- printf "%s-%s" $global.Release.Name $name | trunc $length | trimSuffix "-" }}{{ $suffix }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -87,6 +92,20 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "polaris.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "polaris.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+  Maintenance pods labels.
+*/}}
+{{- define "polaris.maintenanceLabels" -}}
+helm.sh/chart: {{ include "polaris.chart" . }}
+app.kubernetes.io/name: {{ include "polaris.name" . }}-maintenance
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: maintenance
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
@@ -199,6 +218,23 @@ Prints the config volume definition for deployments and jobs.
 {{- end -}}
 
 {{/*
+Prints the config volume definition for maintenance jobs.
+Excludes token-broker key material (RSA keypair, symmetric keys) projected by
+polaris.configVolumeAuthenticationOptions — the admin tool talks to the
+database directly and does not authenticate API callers.
+*/}}
+{{- define "polaris.maintenanceConfigVolume" -}}
+- name: config-volume
+  projected:
+    sources:
+      - configMap:
+          name: {{ include "polaris.fullname" . }}
+          items:
+            - key: application.properties
+              path: application.properties
+{{- end -}}
+
+{{/*
 Prints an environment variable for a secret key reference.
 */}}
 {{- define "polaris.secretToEnv" -}}
@@ -213,6 +249,16 @@ Prints an environment variable for a secret key reference.
       name: {{ $secret.name }}
       key: {{ $key }}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Prints database/persistence connection environment variables.
+*/}}
+{{- define "polaris.persistenceEnv" -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "username" "quarkus.datasource.username") -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "password" "quarkus.datasource.password") -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.relationalJdbc.secret "jdbcUrl" "quarkus.datasource.jdbc.url") -}}
+{{- include "polaris.secretToEnv" (list .Values.persistence.nosql.secret "connectionString" "quarkus.mongodb.connection-string") -}}
 {{- end -}}
 
 {{/*

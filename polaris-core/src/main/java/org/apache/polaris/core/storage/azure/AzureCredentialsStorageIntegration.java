@@ -188,9 +188,6 @@ public class AzureCredentialsStorageIntegration
     }
 
     Instant start = Instant.now();
-    OffsetDateTime expiry =
-        OffsetDateTime.ofInstant(
-            start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
     AccessToken accessToken =
         getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
@@ -224,7 +221,7 @@ public class AzureCredentialsStorageIntegration
           getBlobUserDelegationSas(
               startTime,
               sanitizedEndTime,
-              expiry,
+              sanitizedEndTime,
               storageDnsName,
               location.getContainer(),
               blobSasPermission,
@@ -244,7 +241,7 @@ public class AzureCredentialsStorageIntegration
           getAdlsUserDelegationSas(
               startTime,
               sanitizedEndTime,
-              expiry,
+              sanitizedEndTime,
               storageDnsName,
               location.getContainer(),
               pathSasPermission,

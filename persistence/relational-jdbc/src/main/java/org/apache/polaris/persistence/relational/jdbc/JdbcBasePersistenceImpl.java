@@ -68,7 +68,6 @@ import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
@@ -92,7 +91,6 @@ public class JdbcBasePersistenceImpl
   private final PolarisDiagnostics diagnostics;
   private final DatasourceOperations datasourceOperations;
   private final PrincipalSecretsGenerator secretsGenerator;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
   private final int schemaVersion;
 
@@ -103,13 +101,11 @@ public class JdbcBasePersistenceImpl
       PolarisDiagnostics diagnostics,
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
       String realmId,
       int schemaVersion) {
     this.diagnostics = diagnostics;
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
   }
@@ -1084,7 +1080,11 @@ public class JdbcBasePersistenceImpl
       throws SQLException {
     List<PolarisPolicyMappingRecord> existingRecords =
         loadPoliciesOnTargetByType(
-            callCtx, record.getTargetCatalogId(), record.getTargetId(), record.getPolicyTypeCode());
+            callCtx,
+            record.getTargetCatalogId(),
+            record.getTargetId(),
+            record.getPolicyTypeCode(),
+            connection);
     if (existingRecords.size() > 1) {
       throw new PolicyMappingAlreadyExistsException(existingRecords.getFirst());
     } else if (existingRecords.size() == 1) {
@@ -1229,6 +1229,44 @@ public class JdbcBasePersistenceImpl
     return fetchPolicyMappingRecords(
         QueryGenerator.generateSelectQuery(
             ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
+  }
+
+  /**
+   * Connection-aware version for use inside runWithinTransaction (for inheritable policy check).
+   */
+  private List<PolarisPolicyMappingRecord> fetchPolicyMappingRecords(
+      QueryGenerator.PreparedQuery query, @NonNull Connection connection) {
+    try {
+      var results =
+          datasourceOperations.executeSelect(connection, query, new ModelPolicyMappingRecord());
+      return results == null ? Collections.emptyList() : results;
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to retrieve policy mapping records %s", e.getMessage()), e);
+    }
+  }
+
+  /** Connection-aware overload for use inside transaction. */
+  @NonNull List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
+      @NonNull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode,
+      @NonNull Connection connection) {
+    Map<String, Object> params =
+        Map.of(
+            "target_catalog_id",
+            targetCatalogId,
+            "target_id",
+            targetId,
+            "policy_type_code",
+            policyTypeCode,
+            "realm_id",
+            realmId);
+    return fetchPolicyMappingRecords(
+        QueryGenerator.generateSelectQuery(
+            ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params),
+        connection);
   }
 
   @NonNull

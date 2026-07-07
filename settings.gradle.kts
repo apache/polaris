@@ -19,21 +19,28 @@
 
 import com.gradle.develocity.agent.gradle.scan.BuildScanPublishingConfiguration
 import java.util.Properties
+import org.gradle.api.configuration.BuildFeatures
 import org.gradle.api.specs.Spec
+import org.gradle.kotlin.dsl.support.serviceOf
+
+val isCI = providers.environmentVariable("CI").isPresent
 
 // Fail early and hard when Gradle's configuration cache is used in CI.
 // Using the configuration cache in CI can leak secrets to the persisted configuration cache and
 // from there anywhere.
-if (
-  gradle.startParameter.isConfigurationCacheRequested &&
-    providers.environmentVariable("CI").map(String::toBoolean).getOrElse(false)
-) {
-  throw GradleException(
-    "Gradle configuration cache must not be enabled in CI because it can persist build configuration state to disk."
-  )
+if (isCI) {
+  val configurationCacheRequested =
+    gradle.serviceOf<BuildFeatures>().configurationCache.requested.getOrElse(false)
+  if (configurationCacheRequested) {
+    throw GradleException(
+      "Gradle configuration cache must not be enabled in CI because it can persist build configuration state to disk."
+    )
+  }
 }
 
 includeBuild("build-logic") { name = "polaris-build-logic" }
+
+includeBuild("gradle/server-test-runner") { name = "polaris-server-test-runner" }
 
 if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
   throw GradleException(
@@ -51,7 +58,7 @@ if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
 rootProject.name = "polaris"
 
 val baseVersion =
-  providers.fileContents(layout.rootDirectory.file("version.txt")).asText.map { it.trim() }
+  providers.fileContents(layout.settingsDirectory.file("version.txt")).asText.map { it.trim() }
 
 gradle.beforeProject {
   version = baseVersion.get()
@@ -90,22 +97,16 @@ for (sparkVersion in sparkVersions) {
   val scalaVersions = scalaVersionsStr.split(",").map { it.trim() }
   var first = true
   for (scalaVersion in scalaVersions) {
-    val sparkArtifactId = "polaris-spark-${sparkVersion}_${scalaVersion}"
-    val sparkIntArtifactId = "polaris-spark-integration-${sparkVersion}_${scalaVersion}"
     polarisProject(
       "polaris-spark-${sparkVersion}_${scalaVersion}",
       file("${polarisSparkDir}/v${sparkVersion}/spark"),
     )
-    polarisProject(
-      "polaris-spark-integration-${sparkVersion}_${scalaVersion}",
-      file("${polarisSparkDir}/v${sparkVersion}/integration"),
-    )
     if (first) {
       first = false
     }
-    // Skip all duplicated spark client projects while using Intelij IDE.
+    // Skip all duplicated spark client projects while using IntelliJ IDE.
     // This is to avoid problems during dependency analysis and sync when
-    // using Intelij, like "Multiple projects in this build have project directory".
+    // using IntelliJ, like "Multiple projects in this build have project directory".
     if (ideaActive) {
       break
     }
@@ -123,8 +124,8 @@ plugins {
   // When updating the develocity plugin version, verify that the version that
   // https://develocity.apache.org/ runs is compatible with the plugin version
   // as on https://docs.gradle.com/develocity/current/miscellaneous/compatibility/
-  id("com.gradle.develocity") version "4.4.3"
-  id("com.gradle.common-custom-user-data-gradle-plugin") version "2.6.0"
+  id("com.gradle.develocity") version "4.5.0"
+  id("com.gradle.common-custom-user-data-gradle-plugin") version "2.7.0"
 }
 
 dependencyResolutionManagement {
@@ -150,7 +151,6 @@ dependencyResolutionManagement {
   }
 }
 
-val isCI = providers.environmentVariable("CI").isPresent
 val isBuildScanRequested = gradle.startParameter.isBuildScan
 
 develocity {

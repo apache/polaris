@@ -17,13 +17,33 @@
  * under the License.
  */
 
+import io.quarkus.gradle.tasks.QuarkusBuild
+import org.gradle.api.attributes.java.TargetJvmVersion
+import org.gradle.api.plugins.jvm.JvmTestSuite
+import org.gradle.language.base.plugins.LifecycleBasePlugin
+
 plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
+  id("polaris-server-test-runner")
+}
+
+val intTestJvmVersion = 21
+val sparkStartupAction = sourceSets.create("sparkStartupAction")
+val sparkStartupActionCompileOnly = configurations["sparkStartupActionCompileOnly"]
+val sparkStartupActionImplementation = configurations["sparkStartupActionImplementation"]
+val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
+val localPolarisServer = files(provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") })
+
+localPolarisServer.builtBy(quarkusBuild)
+
+configurations.named(sparkStartupAction.runtimeOnlyConfigurationName) {
+  extendsFrom(configurations.named(sparkStartupAction.implementationConfigurationName))
 }
 
 dependencies {
+  polarisServer(localPolarisServer)
 
   // must be enforced to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
@@ -33,6 +53,7 @@ dependencies {
   }
 
   implementation(project(":polaris-runtime-service"))
+  runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-federation-hive")) {
     // Brings shaded parquet 1.10 which conflicts with Iceberg's parquet 1.16 in test code.
     exclude("org.apache.parquet", "parquet-hadoop-bundle")
@@ -54,57 +75,185 @@ dependencies {
   // (the bundle fat-jar provided them); add it explicitly at the BOM-managed version.
   runtimeOnly("software.amazon.awssdk:s3-transfer-manager")
 
-  testImplementation(project(":polaris-tests"))
-  testImplementation(project(":polaris-rustfs-testcontainer"))
-  testImplementation(testFixtures(project(":polaris-runtime-service")))
-  testImplementation(project(":polaris-runtime-test-common"))
-
-  testImplementation(platform(libs.quarkus.bom))
-  testImplementation("io.quarkus:quarkus-junit")
-  testImplementation("io.quarkus:quarkus-rest-client")
-  testImplementation("io.quarkus:quarkus-rest-client-jackson")
-
-  testImplementation(platform(libs.awssdk.bom))
-  testImplementation("software.amazon.awssdk:glue")
-  testImplementation("software.amazon.awssdk:kms")
-  testImplementation("software.amazon.awssdk:dynamodb")
-
-  testImplementation(platform(libs.testcontainers.bom))
-  testImplementation("org.testcontainers:testcontainers")
-  testImplementation(libs.s3mock.testcontainers)
-
-  // Required for Spark integration tests
-  testImplementation(enforcedPlatform(libs.scala212.lang.library))
-  testImplementation(enforcedPlatform(libs.scala212.lang.reflect))
-  testImplementation(libs.javax.servlet.api)
-  testImplementation(libs.antlr4.runtime.spark35)
+  sparkStartupActionCompileOnly("org.apache.polaris.server-test-runner:polaris-server-test-runner")
+  sparkStartupActionImplementation(project(":polaris-rustfs-testcontainer"))
 }
 
-tasks.named<Test>("intTest").configure {
-  if (System.getenv("AWS_REGION") == null) {
-    environment("AWS_REGION", "us-west-2")
+@Suppress("UnstableApiUsage")
+fun JvmTestSuite.configureSparkIntegrationDependencies() {
+  dependencies {
+    implementation(project(":polaris-tests"))
+    implementation(testFixtures(project(":polaris-runtime-service")))
+    implementation(project(":polaris-runtime-test-common"))
+
+    implementation(platform(libs.awssdk.bom))
+    implementation("software.amazon.awssdk:glue")
+    implementation("software.amazon.awssdk:kms")
+    implementation("software.amazon.awssdk:dynamodb")
+    implementation("software.amazon.awssdk:url-connection-client")
+
+    // Required for Spark integration tests
+    implementation(enforcedPlatform(libs.scala212.lang.library))
+    implementation(enforcedPlatform(libs.scala212.lang.reflect))
+    implementation(libs.javax.servlet.api)
+    implementation(libs.antlr4.runtime.spark35)
   }
-  // Note: the test secrets are referenced in
-  // org.apache.polaris.service.it.ServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+}
+
+fun Test.configureSparkIntegrationTestTask(
+  suiteName: String,
+  skipCredentialSubscoping: Boolean,
+  storageAccessKey: String? = null,
+  storageSecretKey: String? = null,
+  withHiveRustfsStartupAction: Boolean = false,
+) {
+  environment("AWS_REGION", providers.environmentVariable("AWS_REGION").getOrElse("us-west-2"))
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
   // "getSubject is supported only if a security manager is allowed".
   systemProperty("java.security.manager", "allow")
-  // Same issue as above: allow a java security manager after Java 21
-  // (this setting is for the application under test, while the setting above is for test code).
-  systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")
-  val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
-  // delete files from previous runs
+
+  val logsDir = project.layout.buildDirectory.dir("logs/$suiteName")
+  val hiveRustfsProperties = project.layout.buildDirectory.file("$suiteName/hive-rustfs.properties")
+
   doFirst {
-    // delete log files written by Polaris
-    logsDir.deleteRecursively()
-    // delete quarkus.log file (captured Polaris stdout/stderr)
-    project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
+    val logsDirFile = logsDir.get().asFile
+    logsDirFile.deleteRecursively()
+    logsDirFile.mkdirs()
   }
-  // This property is not honored in a per-profile application.properties file,
-  // so we need to set it here.
-  systemProperty("quarkus.log.file.path", logsDir.resolve("polaris.log").absolutePath)
+
+  if (withHiveRustfsStartupAction) {
+    systemProperty(
+      "polaris.spark-tests.hive-rustfs.properties",
+      hiveRustfsProperties.get().asFile.absolutePath,
+    )
+  }
+
+  withPolarisServer(configurations.polarisServer) {
+    if (withHiveRustfsStartupAction) {
+      startupActionClasspath.from(sparkStartupAction.runtimeClasspath)
+      startupActionClass.set("org.apache.polaris.service.spark.it.SparkTestsStartupAction")
+      startupActionParameters.put(
+        "hiveRustfsProperties",
+        hiveRustfsProperties.get().asFile.absolutePath,
+      )
+    }
+
+    environment.put("AWS_REGION", providers.environmentVariable("AWS_REGION").orElse("us-west-2"))
+    environment.put(
+      "AWS_ACCESS_KEY_ID",
+      providers.environmentVariable("AWS_ACCESS_KEY_ID").orElse("ap1"),
+    )
+    environment.put(
+      "AWS_SECRET_ACCESS_KEY",
+      providers.environmentVariable("AWS_SECRET_ACCESS_KEY").orElse("s3cr3t"),
+    )
+    environment.put("AWS_EC2_METADATA_DISABLED", "true")
+    environment.put("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+
+    systemProperties.putAll(
+      mapOf(
+        "quarkus.profile" to "it",
+        "java.security.manager" to "allow",
+        "quarkus.log.file.enabled" to "true",
+        "quarkus.log.file.path" to logsDir.get().asFile.resolve("polaris.log").absolutePath,
+        "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"" to
+          "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",
+        "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"" to "true",
+        "polaris.features.\"DROP_WITH_PURGE_ENABLED\"" to "true",
+        "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"" to "true",
+        "polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"" to
+          skipCredentialSubscoping.toString(),
+        "polaris.features.\"ENABLE_CATALOG_FEDERATION\"" to "true",
+        "polaris.features.\"SUPPORTED_CATALOG_CONNECTION_TYPES\"" to "[\"ICEBERG_REST\",\"HIVE\"]",
+        "polaris.features.\"SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES\"" to
+          "[\"IMPLICIT\",\"OAUTH\"]",
+        "polaris.features.\"ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS\"" to "true",
+        "polaris.features.\"ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG\"" to "true",
+        "polaris.features.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"" to "true",
+        "polaris.features.\"ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING\"" to "true",
+      )
+    )
+    storageAccessKey?.let { systemProperties.put("polaris.storage.aws.access-key", it) }
+    storageSecretKey?.let { systemProperties.put("polaris.storage.aws.secret-key", it) }
+  }
   // For Spark integration tests
   addSparkJvmOptions()
+}
+
+@Suppress("UnstableApiUsage")
+testing {
+  suites {
+    register<JvmTestSuite>("sparkIntTest") {
+      useJUnitJupiter()
+      configureSparkIntegrationDependencies()
+
+      targets.configureEach {
+        testTask.configure {
+          configureSparkIntegrationTestTask(
+            suiteName = "sparkIntTest",
+            skipCredentialSubscoping = true,
+          )
+        }
+      }
+    }
+
+    register<JvmTestSuite>("catalogFederationIntTest") {
+      useJUnitJupiter()
+      configureSparkIntegrationDependencies()
+
+      targets.configureEach {
+        testTask.configure {
+          configureSparkIntegrationTestTask(
+            suiteName = "catalogFederationIntTest",
+            skipCredentialSubscoping = false,
+            storageAccessKey = "test-ak-123-catalog-federation",
+            storageSecretKey = "test-sk-123-catalog-federation",
+          )
+        }
+      }
+    }
+
+    register<JvmTestSuite>("hiveFederationIntTest") {
+      useJUnitJupiter()
+      configureSparkIntegrationDependencies()
+      dependencies { implementation(project(":polaris-rustfs-testcontainer")) }
+
+      targets.configureEach {
+        testTask.configure {
+          configureSparkIntegrationTestTask(
+            suiteName = "hiveFederationIntTest",
+            skipCredentialSubscoping = false,
+            storageAccessKey = "test-ak-123-hive-federation",
+            storageSecretKey = "test-sk-123-hive-federation",
+            withHiveRustfsStartupAction = true,
+          )
+        }
+      }
+    }
+  }
+}
+
+listOf(
+    "sparkIntTestCompileClasspath",
+    "sparkIntTestRuntimeClasspath",
+    "catalogFederationIntTestCompileClasspath",
+    "catalogFederationIntTestRuntimeClasspath",
+    "hiveFederationIntTestCompileClasspath",
+    "hiveFederationIntTestRuntimeClasspath",
+    "sparkStartupActionCompileClasspath",
+    "sparkStartupActionRuntimeClasspath",
+  )
+  .forEach {
+    configurations.named(it).configure {
+      attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, intTestJvmVersion)
+    }
+  }
+
+tasks.named<Test>("intTest") {
+  description = "Runs all Spark integration tests."
+  group = LifecycleBasePlugin.VERIFICATION_GROUP
+  dependsOn("sparkIntTest", "catalogFederationIntTest", "hiveFederationIntTest")
+  testClassesDirs = files()
+  classpath = files()
 }

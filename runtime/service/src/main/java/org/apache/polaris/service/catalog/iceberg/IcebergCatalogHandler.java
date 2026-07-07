@@ -38,6 +38,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,6 +67,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTCatalogProperties;
@@ -431,21 +433,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
     return createTableDirect(
         namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
-  }
-
-  /**
-   * Create a table.
-   *
-   * @param namespace the namespace to create the table in
-   * @param request the table creation request
-   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
-   */
-  public LoadTableResponse createTableDirectWithWriteDelegation(
-      Namespace namespace,
-      CreateTableRequest request,
-      Optional<String> refreshCredentialsEndpoint) {
-    return createTableDirect(
-        namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
   }
 
   public void authorizeCreateTableDirect(
@@ -1071,10 +1058,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       Set<String> tableLocations = StorageUtil.getLocationsUsedByTable(tableMetadata);
 
-      // For federated catalogs, validate that table locations are within allowed locations
-      if (isFederated) {
-        validateRemoteTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
-      }
+      // Validate that the table's locations are still within the catalog's current
+      // allowedLocations before vending credentials. This protects against cases where
+      // allowedLocations were tightened after the table was created.
+      validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
 
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider()
@@ -1108,13 +1095,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return responseBuilder;
   }
 
-  private void validateRemoteTableLocations(
+  private void validateTableLocations(
       TableIdentifier tableIdentifier,
       Set<String> tableLocations,
       PolarisResolvedPathWrapper resolvedStoragePath) {
 
     try {
-      // Delegate to common validation logic
+      // Delegate to common validation logic. This is called for both native and federated
+      // catalogs before vending credentials to ensure locations are still within the
+      // current catalog's allowedLocations (defense against policy changes after table creation).
       CatalogUtils.validateLocationsForTableLike(
           realmConfig(), tableIdentifier, tableLocations, resolvedStoragePath);
 
@@ -1122,15 +1111,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .atInfo()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .addKeyValue("tableLocations", tableLocations)
-          .log("Validated federated table locations");
+          .log("Validated table locations for credential vending");
     } catch (ForbiddenException e) {
       LOGGER
           .atError()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .addKeyValue("tableLocations", tableLocations)
-          .log("Federated table locations validation failed");
+          .log("Table locations validation failed for credential vending");
       throw new ForbiddenException(
-          "Table '%s' in remote catalog has locations outside catalog's allowed locations: %s",
+          "Table '%s' has locations outside the catalog's current allowed locations: %s",
           tableIdentifier, e.getMessage());
     }
   }
@@ -1299,6 +1288,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // See also the TODO in TransactionWorkspaceMetaStoreManager for a more general (but more
     // complex) alternative that would intercept at the MetaStoreManager layer.
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
+    Map<TableIdentifier, FileIO> tableFileIOs = new HashMap<>();
     changesByTable.forEach(
         (tableIdentifier, changes) -> {
           Table table = baseCatalog.loadTable(tableIdentifier);
@@ -1350,25 +1340,56 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           // Commit all accumulated changes for this table in a single atomic operation
           if (!currentMetadata.changes().isEmpty()) {
             tableOps.commit(baseMetadata, currentMetadata);
+            tableFileIOs.put(tableIdentifier, tableOps.io());
           }
 
           tableMetadataObjs.add(currentMetadata);
         });
 
-    // Commit the collected updates in a single atomic operation
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
     EntitiesResult result =
         metaStoreManager()
             .updateEntitiesPropertiesIfNotChanged(
                 callContext().getPolarisCallContext(), pendingUpdates);
     if (!result.isSuccess()) {
-      // TODO: Retries and server-side cleanup on failure, review possible exceptions
+      // TODO: Retries on failure
+
+      // Clean up metadata files written during doCommit() since the transaction failed.
+      // We derive locations from pendingUpdates (not tableOps.current()) because
+      // requestRefresh() triggers doRefresh() against the store where the entity
+      // hasn't been persisted yet.
+      List<FileToDelete> writtenMetadataFiles =
+          pendingUpdates.stream()
+              .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
+              .filter(entity -> entity != null && entity.getMetadataLocation() != null)
+              .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
+              .map(
+                  entity ->
+                      new FileToDelete(
+                          tableFileIOs.get(entity.getTableIdentifier()),
+                          entity.getMetadataLocation()))
+              .toList();
+      cleanupWrittenMetadataFiles(writtenMetadataFiles);
       throw new CommitFailedException(
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());
     }
 
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
+  }
+
+  private record FileToDelete(FileIO io, String location) {
+    void cleanup() {
+      try {
+        io.deleteFile(location);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to clean up metadata file {} after transaction failure", location, e);
+      }
+    }
+  }
+
+  private static void cleanupWrittenMetadataFiles(List<FileToDelete> writtenMetadataFiles) {
+    writtenMetadataFiles.forEach(FileToDelete::cleanup);
   }
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
@@ -1618,6 +1639,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 .addAll(VIEW_ENDPOINTS)
                 .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig()))
                 .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig()))
+                .addAll(PolarisEndpoints.getSupportedSemanticModelEndpoints(realmConfig()))
                 .build())
         .build();
   }
@@ -1634,6 +1656,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           "Unable to find storage configuration information for table {}", tableIdentifier);
       return null;
     }
+
+    // Re-validate before vending in case this is called from other paths in the future.
+    // Primary validation for loadCredentials and delegation happens at call sites.
+    validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
 
     return storageAccessConfigProvider()
         .getStorageAccessConfig(

@@ -25,7 +25,7 @@ description = "Apache Polaris - Bill of Materials (BOM)"
 
 dependencies {
   constraints {
-    api(rootProject)
+    api(project(":"))
     api(project(":polaris-api-catalog-service"))
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))
@@ -95,22 +95,18 @@ dependencies {
     api(project(":polaris-relational-jdbc"))
 
     api(project(":polaris-extensions-auth-opa"))
-    api(project(":polaris-extensions-auth-opa-tests"))
     api(project(":polaris-extensions-auth-ranger"))
-    api(project(":polaris-extensions-auth-ranger-tests"))
     api(project(":polaris-extensions-federation-bigquery"))
     api(project(":polaris-extensions-federation-hadoop"))
     api(project(":polaris-extensions-federation-hive"))
+    api(project(":polaris-extensions-semantic-models"))
     api(project(":polaris-hms-testcontainer"))
 
     api(project(":polaris-spark-3.5_2.12"))
-    api(project(":polaris-spark-integration-3.5_2.12"))
     val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
     if (!ideaActive) {
       api(project(":polaris-spark-3.5_2.13"))
-      api(project(":polaris-spark-integration-3.5_2.13"))
       api(project(":polaris-spark-4.0_2.13"))
-      api(project(":polaris-spark-integration-4.0_2.13"))
     }
 
     api(project(":polaris-admin"))

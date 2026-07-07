@@ -121,7 +121,7 @@ function update_helm_version {
   # It's not necessary to update $HELM_VALUES_SCHEMA_FILE or $HELM_REFERENCE_DOC_FILE here, because
   # these files will be generated from $HELM_VALUES_FILE during the release process, and they will
   # automatically reflect the updated version.
-  exec_process sed -E -i~ 's/^(  tag: )"latest".*$/\1"'"${new_version}"'"/' "$HELM_VALUES_FILE"
+  exec_process sed -E -i~ 's/^([[:space:]]+tag: )"latest".*$/\1"'"${new_version}"'"/' "$HELM_VALUES_FILE"
 }
 
 function find_next_rc_number {

@@ -30,32 +30,29 @@ import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.metrics.iceberg.MetricsRecordConverter;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Implementation of {@link PolarisMetricsReporter} that persists metrics using the {@link
- * PolarisMetaStoreManager} from the current {@link CallContext}.
+ * Implementation of {@link PolarisMetricsReporter} that persists metrics via the request-scoped
+ * {@link MetricsPersistence} backend.
  *
  * <p>This reporter is selected when {@code polaris.iceberg-metrics.reporting.type} is set to {@code
  * "persisting"}.
  *
- * <p>The reporter uses {@link PolarisMetaStoreManager} to persist metrics, following the same
- * abstraction pattern as other Polaris operations. If the underlying persistence does not support
- * metrics, they are silently discarded.
+ * <p>If the underlying persistence does not support metrics, they are silently discarded.
  *
  * <p>The reporter receives catalog and table IDs from the caller (already resolved during
  * authorization), avoiding redundant entity lookups. It uses {@link MetricsRecordConverter} to
  * convert Iceberg metrics reports to SPI records before persisting them.
  *
  * @see PolarisMetricsReporter
- * @see PolarisMetaStoreManager
+ * @see MetricsPersistence
  * @see MetricsRecordConverter
  */
 @RequestScoped
@@ -63,19 +60,16 @@ import org.slf4j.LoggerFactory;
 public class PersistingMetricsReporter implements PolarisMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PersistingMetricsReporter.class);
 
-  private final CallContext callContext;
-  private final PolarisMetaStoreManager metaStoreManager;
+  private final MetricsPersistence metricsPersistence;
   private final Instance<PolarisPrincipal> polarisPrincipal;
   private final Instance<RequestIdSupplier> requestIdSupplier;
 
   @Inject
   public PersistingMetricsReporter(
-      CallContext callContext,
-      PolarisMetaStoreManager metaStoreManager,
+      MetricsPersistence metricsPersistence,
       Instance<PolarisPrincipal> polarisPrincipal,
       Instance<RequestIdSupplier> requestIdSupplier) {
-    this.callContext = callContext;
-    this.metaStoreManager = metaStoreManager;
+    this.metricsPersistence = metricsPersistence;
     this.polarisPrincipal = polarisPrincipal;
     this.requestIdSupplier = requestIdSupplier;
   }
@@ -113,7 +107,7 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
               .otelTraceId(otelTraceId)
               .otelSpanId(otelSpanId)
               .build();
-      metaStoreManager.writeScanMetrics(callContext.getPolarisCallContext(), record);
+      metricsPersistence.writeScanReport(record);
       LOGGER.debug(
           "Persisted scan metrics for {}.{} (reportId={})", catalogName, table, record.reportId());
     } else if (metricsReport instanceof CommitReport commitReport) {
@@ -127,7 +121,7 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
               .otelTraceId(otelTraceId)
               .otelSpanId(otelSpanId)
               .build();
-      metaStoreManager.writeCommitMetrics(callContext.getPolarisCallContext(), record);
+      metricsPersistence.writeCommitReport(record);
       LOGGER.debug(
           "Persisted commit metrics for {}.{} (reportId={})",
           catalogName,

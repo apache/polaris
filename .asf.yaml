@@ -81,6 +81,7 @@ github:
     # Adding renovate-bot as a collaborator, so CI doesn't need to be manually approved.
     # The list of collaborators is limited to 10 elements.
     - renovate-bot
+    - flyingImer
 
 notifications:
   commits:      commits@polaris.apache.org

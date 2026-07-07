@@ -20,8 +20,10 @@ package org.apache.polaris.service.it.ext;
 
 import static org.apache.polaris.service.it.ext.PolarisServerManagerLoader.polarisServerManager;
 
+import java.util.Optional;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
+import org.apache.polaris.service.it.env.PlatformApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.Server;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -45,6 +47,7 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
       throws ParameterResolutionException {
     Class<?> type = parameterContext.getParameter().getType();
     return type.isAssignableFrom(PolarisApiEndpoints.class)
+        || type.isAssignableFrom(PlatformApiEndpoints.class)
         || type.isAssignableFrom(ClientPrincipal.class)
         || type.isAssignableFrom(ClientCredentials.class);
   }
@@ -57,6 +60,10 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     Class<?> type = parameterContext.getParameter().getType();
     if (type.isAssignableFrom(PolarisApiEndpoints.class)) {
       return env.endpoints();
+    } else if (type.isAssignableFrom(PlatformApiEndpoints.class)) {
+      return env.quarkusEndpoints()
+          .orElseThrow(
+              () -> new IllegalStateException("Quarkus management endpoint is not available"));
     } else if (type.isAssignableFrom(ClientPrincipal.class)) {
       return env.server.adminCredentials();
     } else if (type.isAssignableFrom(ClientCredentials.class)) {
@@ -88,15 +95,21 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
   private static class Env implements AutoCloseable {
     private final Server server;
     private final PolarisApiEndpoints endpoints;
+    private final Optional<PlatformApiEndpoints> platformEndpoints;
 
     private Env(Server server) {
       this.server = server;
       this.endpoints =
           new PolarisApiEndpoints(server.baseUri(), server.realmId(), server.headers());
+      this.platformEndpoints = server.managementUri().map(PlatformApiEndpoints::new);
     }
 
     PolarisApiEndpoints endpoints() {
       return endpoints;
+    }
+
+    Optional<PlatformApiEndpoints> quarkusEndpoints() {
+      return platformEndpoints;
     }
 
     @Override

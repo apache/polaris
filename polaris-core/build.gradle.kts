@@ -38,6 +38,12 @@ dependencies {
   runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jdk8")
   runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
+  implementation(platform(libs.jackson3.bom))
+  implementation("tools.jackson.core:jackson-core")
+  implementation("tools.jackson.core:jackson-databind")
+  implementation("tools.jackson.dataformat:jackson-dataformat-smile")
+  implementation("tools.jackson.dataformat:jackson-dataformat-yaml")
+
   implementation(libs.caffeine)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
@@ -70,6 +76,9 @@ dependencies {
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
   implementation(libs.google.cloud.iamcredentials)
+  // Signs short-lived attribution JWTs for GCS principal attribution via Workload Identity
+  // Federation (see GcpFederatedCredentialsExchanger).
+  implementation(libs.auth0.jwt)
 
   testCompileOnly(project(":polaris-immutables"))
   testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))

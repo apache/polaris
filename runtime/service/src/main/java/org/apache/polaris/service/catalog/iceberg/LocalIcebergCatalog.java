@@ -1035,8 +1035,39 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     boolean purge =
         realmConfig.getConfig(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP, catalogEntity);
 
+    Map<String, String> storageProperties = Map.of();
+    ViewMetadata lastMetadata = null;
+
+    if (purge) {
+      ViewOperations ops = newViewOps(identifier);
+      ViewMetadata currentMetadata = ops.current();
+      if (currentMetadata != null && currentMetadata.location() != null) {
+        lastMetadata = currentMetadata;
+
+        Map<String, String> clone = new HashMap<>();
+        clone.putAll(lastMetadata.properties());
+        clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
+
+        PolarisResolvedPathWrapper resolvedViewEntities =
+            resolvedEntityView.getResolvedPath(
+                ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_VIEW);
+        PolarisResolvedPathWrapper storageHierarchy =
+            resolvedViewEntities != null
+                ? resolvedViewEntities
+                : resolvedEntityView.getResolvedPath(
+                    ResolvedPathKey.ofNamespace(identifier.namespace()));
+        Optional<PolarisEntity> storageInfoEntity =
+            FileIOUtil.findStorageInfoFromHierarchy(storageHierarchy);
+
+        storageInfoEntity.map(PolarisEntity::getInternalPropertiesAsMap).ifPresent(clone::putAll);
+        clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
+
+        storageProperties = clone;
+      }
+    }
+
     DropEntityResult dropEntityResult =
-        dropTableLike(PolarisEntitySubType.ICEBERG_VIEW, identifier, Map.of(), purge);
+        dropTableLike(PolarisEntitySubType.ICEBERG_VIEW, identifier, storageProperties, purge);
     if (!dropEntityResult.isSuccess()) {
       switch (dropEntityResult.getReturnStatus()) {
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
@@ -1061,6 +1092,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               dropEntityResult.getExtraInformation());
       }
     }
+
+    if (purge && lastMetadata != null && dropEntityResult.getCleanupTaskId() != null) {
+      LOGGER.info(
+          "Scheduled cleanup task {} for view {}", dropEntityResult.getCleanupTaskId(), identifier);
+      taskExecutor.addTaskHandlerContext(dropEntityResult.getCleanupTaskId(), callContext);
+    }
+
     return true;
   }
 

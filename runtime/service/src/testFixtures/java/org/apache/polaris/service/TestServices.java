@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -169,6 +170,8 @@ public record TestServices(
     private StsClient stsClient;
     private boolean useEventDelegator = false;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
+    private UnaryOperator<PolarisMetaStoreManager> metaStoreManagerDecorator =
+        UnaryOperator.identity();
     private final PolarisEventMetadataFactory eventMetadataFactory =
         new PolarisEventMetadataFactory() {
           @Override
@@ -223,6 +226,11 @@ public record TestServices(
       return this;
     }
 
+    public Builder metaStoreManagerDecorator(UnaryOperator<PolarisMetaStoreManager> decorator) {
+      this.metaStoreManagerDecorator = decorator;
+      return this;
+    }
+
     public TestServices build() {
       RealmConfigurationSource configurationSource = (rc, name) -> config.get(name);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
@@ -261,11 +269,11 @@ public record TestServices(
           new PolarisCallContext(
               realmContext,
               metaStoreManagerFactory.getOrCreateSession(realmContext),
-              metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
               configurationSource);
 
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+          metaStoreManagerDecorator.apply(
+              metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext));
 
       CreatePrincipalResult createdPrincipal =
           metaStoreManager.createPrincipal(
@@ -514,7 +522,6 @@ public record TestServices(
     return new PolarisCallContext(
         realmContext,
         metaStoreManagerFactory.getOrCreateSession(realmContext),
-        metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
         configurationSource);
   }
 }

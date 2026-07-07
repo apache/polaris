@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -141,6 +142,41 @@ public class TestPrivilegeSetImpl {
                   .build()
                   .contains(other))
           .isTrue();
+    }
+  }
+
+  @Test
+  public void longArrayConversionPreservesByteArrayBitSetRepresentation() {
+    for (var bytes :
+        new byte[][] {
+          {},
+          {(byte) 0b1010_0101},
+          {(byte) 0x01, (byte) 0x80, (byte) 0x7F},
+          {
+            (byte) 0x01,
+            (byte) 0x23,
+            (byte) 0x45,
+            (byte) 0x67,
+            (byte) 0x89,
+            (byte) 0xAB,
+            (byte) 0xCD,
+            (byte) 0xEF
+          },
+          {
+            (byte) 0xFF,
+            (byte) 0x00,
+            (byte) 0x10,
+            (byte) 0x20,
+            (byte) 0x30,
+            (byte) 0x40,
+            (byte) 0x50,
+            (byte) 0x60,
+            (byte) 0x70,
+            (byte) 0x80
+          }
+        }) {
+      soft.assertThat(BitSet.valueOf(PrivilegeSetImpl.toLongArray(bytes)))
+          .isEqualTo(BitSet.valueOf(bytes));
     }
   }
 

@@ -24,15 +24,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -42,6 +48,8 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
@@ -50,6 +58,7 @@ import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 
 public class CommitTransactionEventTest {
   private static final String namespace = "ns";
@@ -272,5 +281,80 @@ public class CommitTransactionEventTest {
                 TableIdentifier.of(namespace, table2Name),
                 updateRequirements,
                 List.of(new MetadataUpdate.SetProperties(Map.of(propertyName, "value2"))))));
+  }
+
+  @Test
+  void testCommitTransactionCleansUpMetadataOnFailure(@TempDir Path tempDir) {
+    String location = tempDir.toAbsolutePath().toUri().toString();
+    if (location.endsWith("/")) {
+      location = location.substring(0, location.length() - 1);
+    }
+
+    // Create TestServices with a spy that will fail on updateEntitiesPropertiesIfNotChanged
+    // but only AFTER initial setup (table creation) succeeds.
+    AtomicBoolean shouldFail = new AtomicBoolean(false);
+    TestServices testServices =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .metaStoreManagerDecorator(
+                msm -> {
+                  org.apache.polaris.core.persistence.PolarisMetaStoreManager spy =
+                      Mockito.spy(msm);
+                  Mockito.doAnswer(
+                          invocation -> {
+                            if (shouldFail.get()) {
+                              return new EntitiesResult(
+                                  BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED,
+                                  "simulated CAS failure");
+                            }
+                            return invocation.callRealMethod();
+                          })
+                      .when(spy)
+                      .updateEntitiesPropertiesIfNotChanged(Mockito.any(), Mockito.any());
+                  return spy;
+                })
+            .build();
+
+    createCatalogAndNamespace(testServices, Map.of(), location);
+
+    String table1Name = "cleanup-table-1";
+    String table2Name = "cleanup-table-2";
+    createTable(testServices, table1Name, location);
+    createTable(testServices, table2Name, location);
+
+    // Capture exact set of metadata file paths before the failing transaction
+    Set<Path> metadataFilesBefore = metadataFiles(tempDir);
+
+    // Now enable the CAS failure and attempt a commitTransaction
+    shouldFail.set(true);
+    assertThatThrownBy(
+            () ->
+                testServices
+                    .restApi()
+                    .commitTransaction(
+                        catalog,
+                        generateCommitTransactionRequest(false, table1Name, table2Name),
+                        IDEMPOTENCY_KEY,
+                        testServices.realmContext(),
+                        testServices.securityContext()))
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("Transaction commit failed");
+
+    // After the failed transaction, no new metadata files should remain (they were cleaned up).
+    Set<Path> metadataFilesAfter = metadataFiles(tempDir);
+    assertThat(metadataFilesAfter).isEqualTo(metadataFilesBefore);
+  }
+
+  private static Set<Path> metadataFiles(Path directory) {
+    try (Stream<Path> files = Files.walk(directory)) {
+      return files.filter(p -> p.toString().endsWith(".metadata.json")).collect(Collectors.toSet());
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 }

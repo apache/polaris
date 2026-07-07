@@ -69,6 +69,8 @@ gradle/wrapper/gradle-wrapper-*.sha256
 /.gradle
 /build-logic/.gradle
 /build-logic/.kotlin
+/gradle/server-test-runner/.gradle
+/gradle/server-test-runner/.kotlin
 **/build/
 !src/**/build/
 

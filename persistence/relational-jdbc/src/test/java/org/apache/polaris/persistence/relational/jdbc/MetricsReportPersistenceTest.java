@@ -21,18 +21,14 @@ package org.apache.polaris.persistence.relational.jdbc;
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,21 +57,12 @@ class MetricsReportPersistenceTest {
     datasourceOperations.executeScript(schemaStream);
 
     PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
-    PolarisStorageIntegrationProvider storageProvider =
-        new PolarisStorageIntegrationProvider() {
-          @Override
-          public PolarisStorageIntegration getStorageIntegration(
-              List<PolarisEntity> resolvedEntityPath) {
-            return null;
-          }
-        };
 
     metricsPersistence =
         new JdbcBasePersistenceImpl(
             diagnostics,
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
-            storageProvider,
             "TEST_REALM",
             4);
   }

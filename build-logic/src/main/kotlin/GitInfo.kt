@@ -44,7 +44,7 @@ class GitInfo(val gitHead: String, val gitDescribe: String, private val rawLinkR
           "gitInfo-$isRelease",
           GitInfoService::class.java,
         ) {
-          parameters.isRelease.set(isRelease)
+          parameters.release.set(isRelease)
         }
       return service.get().gitInfo
     }
@@ -53,13 +53,13 @@ class GitInfo(val gitHead: String, val gitDescribe: String, private val rawLinkR
 
 abstract class GitInfoService : BuildService<GitInfoService.Parameters> {
   interface Parameters : BuildServiceParameters {
-    val isRelease: Property<Boolean>
+    val release: Property<Boolean>
   }
 
   @get:Inject abstract val execOperations: ExecOperations
 
   val gitInfo: GitInfo by lazy {
-    val isRelease = parameters.isRelease.get()
+    val isRelease = parameters.release.get()
     val gitHead = execGit("rev-parse", "HEAD")
     val gitDescribe =
       if (isRelease) {

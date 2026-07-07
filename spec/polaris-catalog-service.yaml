@@ -162,6 +162,16 @@ paths:
   /polaris/v1/{prefix}/applicable-policies:
     $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1applicable-policies'
 
+  ##############################
+  # Polaris Semantic Model API #
+  ##############################
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/semantic-models:
+    $ref: './polaris-catalog-apis/semantic-models-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1semantic-models'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/semantic-models/{semantic-model-name}:
+    $ref: './polaris-catalog-apis/semantic-models-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1semantic-models~1{semantic-model-name}'
+
 
 components:
   securitySchemes:

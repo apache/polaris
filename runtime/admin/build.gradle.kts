@@ -87,23 +87,30 @@ quarkus {
         .toMap()
     }
   )
+  buildForkOptions {
+    maxHeapSize = "2G"
+  }
 }
 
 // Configuration to expose distribution artifacts
-val distributionElements by configurations.creating {
-  isCanBeConsumed = true
-  isCanBeResolved = false
-}
+val distributionElements =
+  configurations.create("distributionElements") {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
 
-val licenseNoticeElements by configurations.creating {
-  isCanBeConsumed = true
-  isCanBeResolved = false
-}
+val licenseNoticeElements =
+  configurations.create("licenseNoticeElements") {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
 
 // Register the quarkus app directory as an artifact
 artifacts {
-  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
-  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
+  add(distributionElements.name, layout.buildDirectory.dir("quarkus-app")) {
+    builtBy("quarkusBuild")
+  }
+  add(licenseNoticeElements.name, layout.projectDirectory.dir("distribution"))
 }
 
 tasks.withType<Test>().configureEach {

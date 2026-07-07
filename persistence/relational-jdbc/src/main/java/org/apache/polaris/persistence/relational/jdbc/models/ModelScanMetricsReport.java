@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
@@ -30,6 +28,8 @@ import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Model class for scan_metrics_report table - stores scan metrics as first-class entities. */
 @PolarisImmutable
@@ -251,8 +251,6 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
 
   // === Static conversion methods (following ModelEntity pattern) ===
 
-  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   /**
    * Converts a ScanMetricsRecord (SPI) to ModelScanMetricsReport (JDBC).
    *
@@ -317,8 +315,8 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
       return "{}";
     }
     try {
-      return OBJECT_MAPPER.writeValueAsString(map);
-    } catch (JsonProcessingException e) {
+      return JsonMapper.shared().writeValueAsString(map);
+    } catch (JacksonException e) {
       return "{}";
     }
   }

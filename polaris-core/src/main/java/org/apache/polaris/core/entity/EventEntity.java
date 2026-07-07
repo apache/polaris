@@ -20,12 +20,11 @@
 package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 public class EventEntity {
   public static final String EMPTY_MAP_STRING = "{}";
@@ -47,7 +46,7 @@ public class EventEntity {
 
   // to serialize/deserialize properties
   // TODO: Look into using the CDI-managed `ObjectMapper` object
-  private static final ObjectMapper MAPPER = JsonMapper.builder().build();
+  private static final ObjectMapper MAPPER = JsonMapper.shared();
 
   /**
    * Identifier of the catalog this event was scoped to, or {@link #REALM_SCOPED} for events that
@@ -142,7 +141,7 @@ public class EventEntity {
     String properties = getAdditionalProperties();
     try {
       return MAPPER.readValue(properties, new TypeReference<>() {});
-    } catch (JsonProcessingException ex) {
+    } catch (Exception ex) {
       throw new IllegalStateException(
           String.format("Failed to deserialize json. properties %s", properties), ex);
     }
@@ -152,7 +151,7 @@ public class EventEntity {
   public void setAdditionalProperties(Map<String, String> properties) {
     try {
       this.additionalProperties = properties == null ? null : MAPPER.writeValueAsString(properties);
-    } catch (JsonProcessingException ex) {
+    } catch (Exception ex) {
       throw new IllegalStateException(
           String.format("Failed to serialize json. properties %s", properties), ex);
     }

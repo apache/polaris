@@ -307,6 +307,15 @@ If true, the policy-store endpoints are enabled
 
 ---
 
+##### `polaris.features."ENABLE_SEMANTIC_MODELS"`
+
+If true, the semantic-model (OSI) endpoints are enabled
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS"`
 
 When enabled, allows RBAC operations to create synthetic entities for entities in federated catalogs that don't exist in the local metastore.
@@ -332,6 +341,51 @@ The maximum weight for the entity cache. This is a heuristic value without any p
 
 - **Type:** `Long`
 - **Default:** `104857600`
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_ENABLED"`
+
+Enables GCS principal attribution via Workload Identity Federation. When true, credential vending chains a catalog-signed JWT through an STS token exchange and service-account impersonation so the Polaris principal appears in GCS Data Access audit logs (serviceAccountDelegationInfo.principalSubject). Requires GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE, GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER, and GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE to also be set; a missing required value is a fatal configuration error. Also requires a gcpServiceAccount on the catalog StorageConfiguration. Default: false (attribution disabled).
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE"`
+
+Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs (RS256). The corresponding public key must be published in the Workload Identity Pool provider's uploaded JWKS. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID"`
+
+Key ID (kid) written into the header of GCS attribution JWTs so the Workload Identity Pool provider can select the right public key from its JWKS during key rotation (when the JWKS holds both the old and new keys). Must match the kid of the JWKS entry for the configured signing key. Empty omits the header (only safe with a single-key JWKS).
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER"`
+
+Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer configured on the Workload Identity Pool OIDC provider. The provider verifies signatures against its uploaded JWKS, so no public discovery endpoint is required. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE"`
+
+Full resource name of the Workload Identity Pool provider used for GCS principal attribution, e.g. //iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>. Used as both the attribution JWT 'aud' claim and the STS token-exchange audience. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
 
 ---
 

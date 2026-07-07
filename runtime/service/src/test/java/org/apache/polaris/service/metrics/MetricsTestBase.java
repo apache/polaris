@@ -28,13 +28,12 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.service.it.env.ClientPrincipal;
+import org.apache.polaris.service.it.env.PlatformApiEndpoints;
+import org.apache.polaris.service.it.env.PlatformMetricsApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.ratelimiter.MockRateLimiter;
-import org.apache.polaris.service.test.TestEnvironment;
-import org.apache.polaris.service.test.TestEnvironmentExtension;
-import org.apache.polaris.service.test.TestMetricsUtil;
 import org.awaitility.Awaitility;
 import org.hawkular.agent.prometheus.types.MetricFamily;
 import org.hawkular.agent.prometheus.types.Summary;
@@ -47,7 +46,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@ExtendWith(TestEnvironmentExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class MetricsTestBase {
 
@@ -58,20 +56,22 @@ public abstract class MetricsTestBase {
   @Inject MeterRegistry registry;
   @Inject MetricsConfiguration metricsConfiguration;
 
-  private TestEnvironment testEnv;
-  private PolarisApiEndpoints endpoints;
+  private PlatformMetricsApi platformMetricsApi;
+  private PolarisApiEndpoints polarisEndpoints;
   private PolarisClient client;
   private ClientPrincipal principal;
   private String adminToken;
 
   @BeforeAll
   public void setUp(
-      TestEnvironment testEnv, PolarisApiEndpoints endpoints, ClientPrincipal principal) {
+      PolarisApiEndpoints polarisEndpoints,
+      PlatformApiEndpoints quarkusEndpoints,
+      ClientPrincipal principal) {
     MockRateLimiter.allowProceed = true;
-    this.testEnv = testEnv;
-    this.endpoints = endpoints;
+    this.polarisEndpoints = polarisEndpoints;
     this.principal = principal;
-    client = PolarisClient.polarisClient(this.endpoints);
+    client = PolarisClient.polarisClient(polarisEndpoints, quarkusEndpoints);
+    platformMetricsApi = client.platformMetricsApi();
     adminToken = client.obtainToken(principal.credentials());
   }
 
@@ -93,7 +93,7 @@ public abstract class MetricsTestBase {
         .atMost(Duration.ofMinutes(2))
         .untilAsserted(
             () -> {
-              value.set(TestMetricsUtil.fetchMetrics(testEnv.baseManagementUri()));
+              value.set(platformMetricsApi.fetchMetrics());
               assertThat(value.get()).containsKey(API_METRIC_NAME);
               assertThat(value.get()).containsKey(HTTP_METRIC_NAME);
             });
@@ -115,7 +115,7 @@ public abstract class MetricsTestBase {
                       Map.entry(
                           "realm_id",
                           metricsConfiguration.realmIdTag().enableInApiMetrics()
-                              ? endpoints.realmId()
+                              ? polarisEndpoints.realmId()
                               : ""),
                       Map.entry(
                           "principal",
@@ -144,7 +144,8 @@ public abstract class MetricsTestBase {
                       Map.entry("status", "200"),
                       Map.entry("uri", "/api/management/v1/principals/{principalName}"));
               if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
-                assertThat(metric.getLabels()).containsEntry("realm_id", endpoints.realmId());
+                assertThat(metric.getLabels())
+                    .containsEntry("realm_id", polarisEndpoints.realmId());
               } else {
                 assertThat(metric.getLabels()).doesNotContainKey("realm_id");
               }
@@ -170,7 +171,7 @@ public abstract class MetricsTestBase {
                       Map.entry(
                           "realm_id",
                           metricsConfiguration.realmIdTag().enableInApiMetrics()
-                              ? endpoints.realmId()
+                              ? polarisEndpoints.realmId()
                               : ""),
                       Map.entry(
                           "principal",
@@ -198,7 +199,8 @@ public abstract class MetricsTestBase {
                       Map.entry("status", "404"),
                       Map.entry("uri", "/api/management/v1/principals/{principalName}"));
               if (metricsConfiguration.realmIdTag().enableInHttpMetrics()) {
-                assertThat(metric.getLabels()).containsEntry("realm_id", endpoints.realmId());
+                assertThat(metric.getLabels())
+                    .containsEntry("realm_id", polarisEndpoints.realmId());
               } else {
                 assertThat(metric.getLabels()).doesNotContainKey("realm_id");
               }

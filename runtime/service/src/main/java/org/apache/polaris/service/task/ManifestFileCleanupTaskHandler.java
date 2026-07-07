@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -80,38 +81,47 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
       return true;
     }
 
-    ManifestReader<DataFile> dataFiles = ManifestFiles.read(manifestFile, fileIO, null);
-    List<CompletableFuture<Void>> dataFileDeletes =
-        StreamSupport.stream(
-                Spliterators.spliteratorUnknownSize(dataFiles.iterator(), Spliterator.IMMUTABLE),
-                false)
-            .map(file -> tryDelete(tableId, fileIO, manifestFile.path(), file.location(), null, 1))
-            .toList();
-    LOGGER.debug(
-        "Scheduled {} data files to be deleted from manifest {}",
-        dataFileDeletes.size(),
-        manifestFile.path());
-    try {
-      // wait for all data files to be deleted, then wait for the manifest itself to be deleted
-      CompletableFuture.allOf(dataFileDeletes.toArray(CompletableFuture[]::new))
-          .thenCompose(
-              (v) -> {
-                LOGGER
-                    .atInfo()
-                    .addKeyValue("manifestFile", manifestFile.path())
-                    .log("All data files in manifest deleted - deleting manifest");
-                return tryDelete(
-                    tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
-              })
-          .get();
-      return true;
-    } catch (InterruptedException e) {
-      LOGGER.error(
-          "Interrupted exception deleting data files from manifest {}", manifestFile.path(), e);
+    try (ManifestReader<DataFile> dataFiles = ManifestFiles.read(manifestFile, fileIO, null)) {
+      List<CompletableFuture<Void>> dataFileDeletes =
+          StreamSupport.stream(
+                  Spliterators.spliteratorUnknownSize(dataFiles.iterator(), Spliterator.IMMUTABLE),
+                  false)
+              .map(
+                  file -> tryDelete(tableId, fileIO, manifestFile.path(), file.location(), null, 1))
+              .toList();
+      LOGGER.debug(
+          "Scheduled {} data files to be deleted from manifest {}",
+          dataFileDeletes.size(),
+          manifestFile.path());
+      try {
+        // wait for all data files to be deleted, then wait for the manifest itself to be deleted
+        CompletableFuture.allOf(dataFileDeletes.toArray(CompletableFuture[]::new))
+            .thenCompose(
+                (v) -> {
+                  LOGGER
+                      .atInfo()
+                      .addKeyValue("manifestFile", manifestFile.path())
+                      .log("All data files in manifest deleted - deleting manifest");
+                  return tryDelete(
+                      tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
+                })
+            .get();
+        return true;
+      } catch (InterruptedException e) {
+        LOGGER.error(
+            "Interrupted exception deleting data files from manifest {}", manifestFile.path(), e);
+        throw new RuntimeException(e);
+      } catch (ExecutionException e) {
+        LOGGER.error("Unable to delete data files from manifest {}", manifestFile.path(), e);
+        throw new RuntimeException(e);
+      }
+    } catch (IOException e) {
+      // Catches from ManifestFiles.read() (resource creation), from inside the block
+      // (e.g. manifest iteration), or from close(). We throw (wrapping) so the original
+      // failure propagates and TaskExecutorImpl's retry path is used. (handleTask returns
+      // boolean and cannot declare a checked throws IOException.)
+      LOGGER.error("Failed to process manifest reader for {}", manifestFile.path(), e);
       throw new RuntimeException(e);
-    } catch (ExecutionException e) {
-      LOGGER.error("Unable to delete data files from manifest {}", manifestFile.path(), e);
-      return false;
     }
   }
 

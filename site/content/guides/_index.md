@@ -45,6 +45,12 @@ Each guide has detailed instructions.
 - [Spark](spark): An example that uses an in-memory metastore, automatically bootstrapped, with
   Apache Spark and a Jupyter notebook.
 
+- [Flink](flink): An example that uses RustFS for S3-compatible object storage and Apache Flink
+  as the stream processing engine, with Polaris as the Iceberg REST Catalog.
+
+- [Trino](trino): An example that uses RustFS for S3-compatible object storage and Trino
+  as the SQL query engine, with Polaris as the Iceberg REST Catalog.
+
 - [Telemetry](telemetry): An example that includes Prometheus and Jaeger to collect metrics and
   traces from Apache Polaris. This example automatically creates a `polaris_demo` catalog.
 

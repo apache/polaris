@@ -109,8 +109,9 @@ Usage: polaris-admin-tool.jar bootstrap [-hV] [-v=<schema version>]
 Bootstraps realms and root principal credentials.
   -h, --help                Show this help message and exit.
   -v, --schema-version=<schema version>
-                            The version of the schema to load in [1, 2, 3,
-                              LATEST].
+                            The version of the schema to load. The set of valid
+                              values depends on the backend type. If omitted the
+                              latest schema version will be used.
   -V, --version             Print version information and exit.
 Standard Input Options:
   -c, --credential=<realm,clientId,clientSecret>

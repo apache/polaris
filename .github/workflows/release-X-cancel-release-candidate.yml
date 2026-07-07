@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -225,7 +225,7 @@ jobs:
           # Vote Failure Email
 
           ## Subject
-          [RESULT][VOTE] Release Apache Polaris ${version_without_rc} (rc${rc_number})
+          [CANCEL][VOTE] Release Apache Polaris ${version_without_rc} (rc${rc_number})
 
           ## Body
           Hello everyone,

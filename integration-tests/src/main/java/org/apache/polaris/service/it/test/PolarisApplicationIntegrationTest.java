@@ -704,4 +704,18 @@ public class PolarisApplicationIntegrationTest {
       }
     }
   }
+
+  @Test
+  public void testRenameTableNonExistentSourceReportsSourceIdentifier() throws IOException {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      sessionCatalog.createNamespace(sessionContext, Namespace.of("ns1"));
+      TableIdentifier nonExistentSource = TableIdentifier.of("ns1", "no_such_table");
+      TableIdentifier destination = TableIdentifier.of("ns1", "another");
+      assertThatThrownBy(
+              () -> sessionCatalog.renameTable(sessionContext, nonExistentSource, destination))
+          .isInstanceOf(NoSuchTableException.class)
+          .hasMessageContaining(nonExistentSource.toString());
+    }
+  }
 }
