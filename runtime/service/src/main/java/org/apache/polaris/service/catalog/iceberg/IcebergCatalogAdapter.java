@@ -61,7 +61,6 @@ import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
@@ -83,7 +82,6 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
-  private final IdempotencyConfiguration idempotencyConfiguration;
   private final IdempotencyRequestContext idempotencyRequestContext;
 
   @Inject
@@ -92,13 +90,11 @@ public class IcebergCatalogAdapter
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
       IcebergCatalogHandlerFactory handlerFactory,
-      IdempotencyConfiguration idempotencyConfiguration,
       IdempotencyRequestContext idempotencyRequestContext) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
-    this.idempotencyConfiguration = idempotencyConfiguration;
     this.idempotencyRequestContext = idempotencyRequestContext;
   }
 
@@ -304,28 +300,22 @@ public class IcebergCatalogAdapter
                         ns, createTableRequest, delegationModes, refreshCredentialsEndpoint))
                 .build();
           } else {
-            // Entity-property idempotency: only honor the header when the feature is enabled. The
-            // key + expiry are forwarded so the handler can embed them into the new table entity
-            // (single-transaction model) and replay a prior success on retry.
+            // The Idempotency-Key header is captured into the request-scoped context by
+            // IdempotencyKeyFilter (when the feature is enabled). Forward it so the handler can
+            // embed it into the new table entity (single-transaction model) and replay a prior
+            // success on retry.
             Optional<UUID> effectiveKey =
-                idempotencyConfiguration.enabled()
-                    ? Optional.ofNullable(idempotencyKey)
-                    : Optional.empty();
-            try {
-              idempotencyRequestContext.setPendingKey(effectiveKey.orElse(null));
-              LoadTableResponse response =
-                  catalog.createTableDirect(
-                      ns,
-                      createTableRequest,
-                      delegationModes,
-                      refreshCredentialsEndpoint,
-                      effectiveKey);
-              return tryInsertETagHeader(
-                      Response.ok(response), response, namespace, createTableRequest.name())
-                  .build();
-            } finally {
-              idempotencyRequestContext.clearPending();
-            }
+                Optional.ofNullable(idempotencyRequestContext.pendingKey());
+            LoadTableResponse response =
+                catalog.createTableDirect(
+                    ns,
+                    createTableRequest,
+                    delegationModes,
+                    refreshCredentialsEndpoint,
+                    effectiveKey);
+            return tryInsertETagHeader(
+                    Response.ok(response), response, namespace, createTableRequest.name())
+                .build();
           }
         });
   }

@@ -134,7 +134,8 @@ public record TestServices(
     TaskExecutor taskExecutor,
     PolarisEventDispatcher polarisEventDispatcher,
     PolarisEventMetadataFactory eventMetadataFactory,
-    StorageAccessConfigProvider storageAccessConfigProvider) {
+    StorageAccessConfigProvider storageAccessConfigProvider,
+    IdempotencyRequestContext idempotencyRequestContext) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -396,7 +397,6 @@ public record TestServices(
               new DefaultCatalogPrefixParser(),
               reservedProperties,
               handlerFactory,
-              idempotencyConfiguration,
               idempotencyRequestContext);
 
       // Optionally wrap with event delegator
@@ -491,7 +491,8 @@ public record TestServices(
           taskExecutor,
           polarisEventDispatcher,
           eventMetadataFactory,
-          storageAccessConfigProvider);
+          storageAccessConfigProvider,
+          idempotencyRequestContext);
     }
   }
 

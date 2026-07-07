@@ -136,6 +136,15 @@ public class EntityIdempotencyCreateTableTest {
 
   private static Response createTable(
       TestServices services, CreateTableRequest request, UUID idempotencyKey) {
+    // Each call models a distinct HTTP request. In production every request gets a fresh
+    // @RequestScoped IdempotencyRequestContext, and IdempotencyKeyFilter captures the header into
+    // it. This direct-call harness bypasses the JAX-RS filter chain, so reset the shared context
+    // and populate it here to reproduce that per-request behavior.
+    IdempotencyRequestContext context = services.idempotencyRequestContext();
+    context.clearPending();
+    if (idempotencyKey != null) {
+      context.setPendingKey(idempotencyKey);
+    }
     return services
         .restApi()
         .createTable(

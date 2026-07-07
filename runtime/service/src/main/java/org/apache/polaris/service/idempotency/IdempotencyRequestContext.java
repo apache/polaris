@@ -64,7 +64,11 @@ public class IdempotencyRequestContext {
     return pendingExpiry;
   }
 
-  /** Clears pending state after the request finishes using the key. */
+  /**
+   * Resets the pending state. Not needed in production, where each request gets a fresh {@link
+   * RequestScoped} instance; provided so tests that drive multiple logical requests through a
+   * shared instance can simulate that per-request lifecycle.
+   */
   public void clearPending() {
     pendingKey = null;
     pendingExpiry = null;
