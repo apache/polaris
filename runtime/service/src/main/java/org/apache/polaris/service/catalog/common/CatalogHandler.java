@@ -84,8 +84,6 @@ public abstract class CatalogHandler {
 
   public abstract PolarisAuthorizer authorizer();
 
-  public abstract AuthorizationState authorizationState();
-
   protected PolarisResolutionManifest newResolutionManifest() {
     return resolutionManifestFactory().createResolutionManifest(polarisPrincipal(), catalogName());
   }
@@ -139,10 +137,10 @@ public abstract class CatalogHandler {
       }
     }
 
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(
@@ -182,10 +180,10 @@ public abstract class CatalogHandler {
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE, true /* optional */));
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(
@@ -227,10 +225,10 @@ public abstract class CatalogHandler {
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
             PolarisEntityType.TABLE_LIKE,
             true /* optional */));
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(
@@ -282,10 +280,10 @@ public abstract class CatalogHandler {
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
             PolarisEntityType.TABLE_LIKE,
             true /* optional */));
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(
@@ -368,10 +366,10 @@ public abstract class CatalogHandler {
       PolarisAuthorizableOperation op, TableIdentifier identifier) {
     ensureResolutionManifestForTable(identifier);
 
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(
@@ -443,10 +441,10 @@ public abstract class CatalogHandler {
                     PolarisCatalogHelpers.tableIdentifierToList(identifier),
                     PolarisEntityType.TABLE_LIKE)));
 
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 ids.stream()
@@ -503,10 +501,10 @@ public abstract class CatalogHandler {
             PolarisCatalogHelpers.tableIdentifierToList(dst),
             PolarisEntityType.TABLE_LIKE,
             true /* optional */));
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(

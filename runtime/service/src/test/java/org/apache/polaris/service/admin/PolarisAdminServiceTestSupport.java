@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.admin;
 
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
@@ -40,13 +39,10 @@ public final class PolarisAdminServiceTestSupport {
       PolarisPrincipal principal,
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties) {
-    // Mirror request-scoped service behavior: each test service gets a fresh mutable
-    // AuthorizationState so one admin call cannot retain resolution state for the next call.
     return new PolarisAdminService(
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
-        new AuthorizationState(),
         userSecretsManager,
         serviceIdentityProvider,
         principal,

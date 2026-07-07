@@ -23,7 +23,6 @@ import io.quarkus.test.junit.TestProfile;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -54,7 +53,6 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         .catalogName(CATALOG_NAME)
         .polarisPrincipal(authenticatedPrincipal)
         .callContext(callContext)
-        .authorizationState(new AuthorizationState())
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .authorizer(polarisAuthorizer)

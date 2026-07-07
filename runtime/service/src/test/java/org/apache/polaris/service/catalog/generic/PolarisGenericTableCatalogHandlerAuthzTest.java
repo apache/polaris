@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
@@ -62,7 +61,6 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .catalogName(catalogName)
         .polarisPrincipal(authenticatedPrincipal)
         .callContext(callContext)
-        .authorizationState(new AuthorizationState())
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .authorizer(polarisAuthorizer)

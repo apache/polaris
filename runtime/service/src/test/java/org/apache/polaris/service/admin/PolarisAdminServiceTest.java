@@ -117,7 +117,6 @@ public class PolarisAdminServiceTest {
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
-            new AuthorizationState(),
             userSecretsManager,
             identityProvider,
             authenticatedPrincipal,

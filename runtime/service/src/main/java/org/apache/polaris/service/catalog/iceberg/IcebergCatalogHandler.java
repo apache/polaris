@@ -91,6 +91,7 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
@@ -882,8 +883,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation write =
         PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 
-    // Resolve once for the shared table target before auth fallback. Today resolution does not
-    // vary by table operation, so either delegation op is sufficient for building the manifest.
     resolveBasicTableLikeTargetOrThrow(write, tableIdentifier);
 
     Set<PolarisStorageActions> actionsRequested =
@@ -893,6 +892,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
+      // Use the same manifest so the read fallback sees the same resolved table view. The manifest
+      // reuses its completed full resolution instead of resolving again.
+      resolveBasicTableLikeTargetOrThrow(read, tableIdentifier);
       authorizeResolvedBasicTableLikeOperationOrThrow(
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
@@ -937,10 +939,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // Resolve once for the shared table target before auth fallback. Today resolution depends on
       // the principal and target, not the register-table operation, so either delegation op is
       // sufficient for building the manifest.
-      authorizationState().setResolutionManifest(resolutionManifest);
+      AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
       authorizer()
           .resolveAuthorizationInputs(
-              authorizationState(),
+              authorizationState,
               new AuthorizationRequest(
                   polarisPrincipal(),
                   List.of(
@@ -1159,16 +1161,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   public LoadTableResponse updateTable(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
     ensureResolutionManifestForTable(tableIdentifier);
-    // Intentionally pre-resolve once using coarse UPDATE_TABLE so we can read catalog-scoped
-    // config from the shared manifest before authorizing the final per-update operation set.
-    // This is a temporary misuse of the current SPI shape: operation is part of the
-    // resolveAuthorizationInputs(...) request, but built-in authorizers do not currently vary
-    // resolution by operation. Once the SPI supports multiple resolution passes cleanly, this flow
-    // should stop relying on a representative operation for planning-time config lookup.
-    authorizationState().setResolutionManifest(resolutionManifest);
+    // Pre-resolve once so we can read catalog-scoped config from the shared manifest before
+    // deriving the final per-update operation set.
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(
@@ -1178,6 +1176,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     EnumSet<PolarisAuthorizableOperation> authorizableOperations =
         getUpdateTableAuthorizableOperations(request, getResolvedCatalogEntity());
+
+    for (PolarisAuthorizableOperation operation : authorizableOperations) {
+      // Use operation-specific pre-authorization requests while sharing the same manifest. The
+      // manifest reuses its completed full resolution instead of resolving again.
+      resolveBasicTableLikeTargetOrThrow(operation, tableIdentifier);
+    }
 
     authorizeBasicTableLikeOperationsOrThrow(
         authorizableOperations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);

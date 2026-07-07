@@ -62,8 +62,8 @@ public class PolarisAuthorizerImplTest {
   @Test
   void resolveAuthorizationInputsResolvesAll() {
     PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(mock(RealmConfig.class));
-    AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
     AuthorizationRequest request =
         new AuthorizationRequest(
@@ -72,8 +72,6 @@ public class PolarisAuthorizerImplTest {
                 new SingleTargetAuthorizationIntent(
                     PolarisAuthorizableOperation.GET_CATALOG,
                     PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")))));
-
-    authzState.setResolutionManifest(manifest);
 
     authorizer.resolveAuthorizationInputs(authzState, request);
 
@@ -85,13 +83,12 @@ public class PolarisAuthorizerImplTest {
     // Verify that new authorize SPI call without primary target uses root_container
     // for resolution and authorization
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
-    AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper rootWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisResolvedPathWrapper principalRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
 
-    authzState.setResolutionManifest(manifest);
     when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(rootWrapper);
     when(manifest.getResolvedTopLevelEntity("analytics-admin", PolarisEntityType.PRINCIPAL_ROLE))
         .thenReturn(principalRoleWrapper);
@@ -131,12 +128,11 @@ public class PolarisAuthorizerImplTest {
     // Verify that new authorize SPI call without primary target uses root_container
     // for resolution and authorization
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
-    AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper rootWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
 
-    authzState.setResolutionManifest(manifest);
     when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(rootWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
     doNothing()
@@ -170,12 +166,11 @@ public class PolarisAuthorizerImplTest {
     // Verify authorize call that includes Catalog name in the PolarisSecurable
     // successfully resolves the correct namespace
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
-    AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper namespaceWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
 
-    authzState.setResolutionManifest(manifest);
     when(manifest.getResolvedPath(
             ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true))
         .thenReturn(namespaceWrapper);
@@ -216,13 +211,12 @@ public class PolarisAuthorizerImplTest {
   @Test
   void authorizeSingleOperationMultiIntentRequestEvaluatesSequentially() {
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
-    AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper firstCatalogWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisResolvedPathWrapper secondCatalogWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
 
-    authzState.setResolutionManifest(manifest);
     when(manifest.getResolvedTopLevelEntity("catalog1", PolarisEntityType.CATALOG))
         .thenReturn(firstCatalogWrapper);
     when(manifest.getResolvedTopLevelEntity("catalog2", PolarisEntityType.CATALOG))
@@ -272,12 +266,11 @@ public class PolarisAuthorizerImplTest {
   @Test
   void authorizeUpdateTableMultiIntentRequestEvaluatesSequentially() {
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
-    AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper tableWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
 
-    authzState.setResolutionManifest(manifest);
     when(manifest.getResolvedPath(
             ResolvedPathKey.of(List.of("ns", "table"), PolarisEntityType.TABLE_LIKE), true))
         .thenReturn(tableWrapper);
@@ -338,12 +331,11 @@ public class PolarisAuthorizerImplTest {
   @Test
   void authorizeReturnsDenyDecision() {
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
-    AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
 
-    authzState.setResolutionManifest(manifest);
     when(manifest.getResolvedTopLevelEntity("catalog", PolarisEntityType.CATALOG))
         .thenReturn(catalogWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());

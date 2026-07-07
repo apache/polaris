@@ -66,7 +66,6 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -132,9 +131,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     IcebergCatalogHandler handler =
         icebergCatalogHandlerFactory.createHandler(catalogName, authenticatedPrincipal);
     ImmutableIcebergCatalogHandler.Builder builder =
-        ImmutableIcebergCatalogHandler.builder()
-            .from(handler)
-            .authorizationState(new AuthorizationState());
+        ImmutableIcebergCatalogHandler.builder().from(handler);
     if (factory != localCatalogFactory) {
       builder.localCatalogFactory(factory);
     }
@@ -178,7 +175,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 .from(
                     icebergCatalogHandlerFactory.createHandler(
                         CATALOG_NAME, authenticatedPrincipal))
-                .authorizationState(new AuthorizationState())
                 .build();
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
@@ -225,7 +221,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 .from(
                     icebergCatalogHandlerFactory.createHandler(
                         CATALOG_NAME, authenticatedPrincipal1))
-                .authorizationState(new AuthorizationState())
                 .polarisPrincipal(authenticatedPrincipal1)
                 .build();
 
@@ -1221,7 +1216,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     return ImmutableIcebergCatalogHandler.builder()
         .from(handler)
-        .authorizationState(new AuthorizationState())
         .callContext(mockCallContext)
         .build();
   }

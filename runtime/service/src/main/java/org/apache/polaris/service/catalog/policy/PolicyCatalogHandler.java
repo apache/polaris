@@ -29,6 +29,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
@@ -148,10 +149,10 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
             PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
             PolarisEntityType.POLICY,
             true /* optional */));
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(
@@ -201,10 +202,10 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
   private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest = newResolutionManifest();
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(
@@ -256,10 +257,10 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
     PolarisAuthorizableOperation requestedOp =
         determineRequestedPolicyMappingOperation(target, isAttach);
-    authorizationState().setResolutionManifest(resolutionManifest);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authorizationState(),
+            authorizationState,
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(

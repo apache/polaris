@@ -32,7 +32,6 @@ import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -85,7 +84,6 @@ public class PolarisServiceImplTest {
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
-            new AuthorizationState(),
             userSecretsManager,
             serviceIdentityProvider,
             principal,

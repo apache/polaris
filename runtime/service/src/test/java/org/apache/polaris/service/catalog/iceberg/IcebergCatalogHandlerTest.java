@@ -34,10 +34,12 @@ import static org.mockito.Mockito.when;
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
@@ -47,14 +49,17 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -102,6 +107,7 @@ class IcebergCatalogHandlerTest {
   private final StorageAccessConfigProvider storageAccessConfigProvider =
       mock(StorageAccessConfigProvider.class);
   private final PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
+  private final CatalogHandlerUtils catalogHandlerUtils = mock(CatalogHandlerUtils.class);
 
   @BeforeEach
   void setUp() {
@@ -142,7 +148,6 @@ class IcebergCatalogHandlerTest {
         .catalogName(CATALOG_NAME)
         .polarisPrincipal(PolarisPrincipal.of("test", Map.of(), Set.of()))
         .callContext(callContext)
-        .authorizationState(new AuthorizationState())
         .metaStoreManager(mock(PolarisMetaStoreManager.class))
         .resolutionManifestFactory(resolutionManifestFactory)
         .authorizer(authorizer)
@@ -153,7 +158,7 @@ class IcebergCatalogHandlerTest {
         .resolverFactory(mock(ResolverFactory.class))
         .localCatalogFactory(localCatalogFactory)
         .reservedProperties(mock(ReservedProperties.class))
-        .catalogHandlerUtils(mock(CatalogHandlerUtils.class))
+        .catalogHandlerUtils(catalogHandlerUtils)
         .storageAccessConfigProvider(storageAccessConfigProvider)
         .eventAttributeMap(mock(EventAttributeMap.class))
         .metricsReporter(mock(PolarisMetricsReporter.class))
@@ -297,6 +302,84 @@ class IcebergCatalogHandlerTest {
     verify(catalog).registerTable(TABLE2, TABLE_LOCATION, true);
     assertThat(response.credentials()).hasSize(1);
     assertVendedActions(PolarisStorageActions.READ, PolarisStorageActions.LIST);
+  }
+
+  @Test
+  void loadCredentialsFallbackPreResolvesWriteThenReadDelegation() {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    BaseTable table = baseTable();
+    when(catalog.loadTable(TABLE2)).thenReturn(table);
+    when(accessDelegationModeResolver.resolve(any(), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    doThrow(new ForbiddenException("write delegation denied"))
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(),
+            any(),
+            eq(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION),
+            nullable(PolarisResolvedPathWrapper.class),
+            nullable(PolarisResolvedPathWrapper.class));
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<AuthorizationRequest> requestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
+    ArgumentCaptor<AuthorizationState> stateCaptor =
+        ArgumentCaptor.forClass(AuthorizationState.class);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    handler.loadCredentials(TABLE2, Optional.empty());
+
+    verify(authorizer, org.mockito.Mockito.times(2))
+        .resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
+    assertThat(stateCaptor.getAllValues().get(0)).isNotSameAs(stateCaptor.getAllValues().get(1));
+    assertThat(stateCaptor.getAllValues())
+        .allSatisfy(
+            state -> assertThat(state.getResolutionManifest()).isSameAs(resolutionManifest));
+    assertThat(
+            requestCaptor.getAllValues().stream()
+                .map(request -> request.intents().getFirst().getOperation()))
+        .containsExactly(
+            PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION,
+            PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION);
+  }
+
+  @Test
+  void updateTablePreResolvesPlanningAndActualOperations() {
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE2, List.of(), List.of(new MetadataUpdate.SetProperties(Map.of("k", "v"))));
+    Catalog catalog = mock(Catalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES),
+            eq(catalogEntity)))
+        .thenReturn(true);
+    when(catalogHandlerUtils.updateTable(eq(catalog), eq(TABLE2), any(UpdateTableRequest.class)))
+        .thenReturn(mock(LoadTableResponse.class));
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<AuthorizationRequest> requestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
+    ArgumentCaptor<AuthorizationState> stateCaptor =
+        ArgumentCaptor.forClass(AuthorizationState.class);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    handler.updateTable(TABLE2, request);
+
+    verify(authorizer, org.mockito.Mockito.times(2))
+        .resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
+    assertThat(stateCaptor.getAllValues().get(0)).isNotSameAs(stateCaptor.getAllValues().get(1));
+    assertThat(stateCaptor.getAllValues())
+        .allSatisfy(
+            state -> assertThat(state.getResolutionManifest()).isSameAs(resolutionManifest));
+    assertThat(
+            requestCaptor.getAllValues().stream()
+                .map(authzRequest -> authzRequest.intents().getFirst().getOperation()))
+        .containsExactly(
+            PolarisAuthorizableOperation.UPDATE_TABLE,
+            PolarisAuthorizableOperation.SET_TABLE_PROPERTIES);
   }
 
   /**
