@@ -82,36 +82,27 @@ public class JdbcBootstrapUtils {
   }
 
   /**
-   * Extracts the requested schema version from the provided BootstrapOptions.
+   * Returns the requested schema version for a JDBC schema component.
    *
-   * @param bootstrapOptions: The bootstrap options containing schema information from which to
-   *     extract the version.
-   * @return The requested schema version, or -1 if not specified.
+   * <p>For the metastore component, the legacy top-level {@link SchemaOptions#schemaVersion()} is
+   * honored first, followed by the component-specific version entry. Other components only use
+   * component-specific version entries.
+   *
+   * @param bootstrapOptions bootstrap options containing schema version requests
+   * @param component schema component whose requested version should be read
+   * @return requested schema version, or {@code -1} when no version was requested
    */
-  public static int getRequestedSchemaVersion(BootstrapOptions bootstrapOptions) {
+  public static int getRequestedSchemaVersion(
+      BootstrapOptions bootstrapOptions, JdbcSchemaComponent component) {
     SchemaOptions schemaOptions = bootstrapOptions.schemaOptions();
-    if (schemaOptions != null) {
+    if (schemaOptions == null) {
+      return -1;
+    }
+    if (component == JdbcSchemaComponent.METASTORE) {
       Optional<Integer> version = schemaOptions.schemaVersion();
       if (version.isPresent()) {
         return version.get();
       }
-      Integer componentVersion =
-          schemaOptions.schemaComponentVersions().get(JdbcSchemaComponent.METASTORE.versionKey());
-      if (componentVersion != null) {
-        return componentVersion;
-      }
-    }
-    return -1;
-  }
-
-  public static int getRequestedSchemaVersion(
-      BootstrapOptions bootstrapOptions, JdbcSchemaComponent component) {
-    if (component == JdbcSchemaComponent.METASTORE) {
-      return getRequestedSchemaVersion(bootstrapOptions);
-    }
-    SchemaOptions schemaOptions = bootstrapOptions.schemaOptions();
-    if (schemaOptions == null) {
-      return -1;
     }
     return Optional.ofNullable(schemaOptions.schemaComponentVersions().get(component.versionKey()))
         .orElse(-1);

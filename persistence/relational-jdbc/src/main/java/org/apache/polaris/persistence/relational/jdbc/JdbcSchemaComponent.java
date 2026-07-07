@@ -23,17 +23,15 @@ import java.util.Optional;
 
 /** Separately bootstrapped JDBC schema components. */
 enum JdbcSchemaComponent {
-  METASTORE("version", "schema", 1),
-  LINEAGE("lineage", "schema/lineage/lineage", 1);
+  METASTORE("version", "schema"),
+  LINEAGE("lineage", "schema/lineage/lineage");
 
   private final String versionKey;
   private final String resourcePrefix;
-  private final int latestVersion;
 
-  JdbcSchemaComponent(String versionKey, String resourcePrefix, int latestVersion) {
+  JdbcSchemaComponent(String versionKey, String resourcePrefix) {
     this.versionKey = versionKey;
     this.resourcePrefix = resourcePrefix;
-    this.latestVersion = latestVersion;
   }
 
   String versionKey() {
@@ -54,7 +52,7 @@ enum JdbcSchemaComponent {
   int latestVersion(DatabaseType databaseType) {
     return switch (this) {
       case METASTORE -> databaseType.getLatestSchemaVersion();
-      case LINEAGE -> latestVersion;
+      case LINEAGE -> databaseType.getLatestLineageSchemaVersion();
     };
   }
 }

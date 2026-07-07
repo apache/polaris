@@ -39,11 +39,10 @@ final class JdbcSchemaManager {
     this.datasourceOperations = datasourceOperations;
   }
 
-  Map<JdbcSchemaComponent, Integer> bootstrap(
-      BootstrapOptions bootstrapOptions, boolean lineagePersistenceEnabled) {
+  Map<JdbcSchemaComponent, Integer> bootstrap(BootstrapOptions bootstrapOptions) {
     boolean entityTableExists = JdbcBasePersistenceImpl.entityTableExists(datasourceOperations);
     Map<JdbcSchemaComponent, Integer> desiredVersions =
-        desiredSchemaVersions(bootstrapOptions, lineagePersistenceEnabled, entityTableExists);
+        desiredSchemaVersions(bootstrapOptions, entityTableExists);
     SchemaExecutionPlan plan = createExecutionPlan(desiredVersions);
 
     for (SchemaScript script : plan.scripts()) {
@@ -104,13 +103,13 @@ final class JdbcSchemaManager {
   }
 
   private Map<JdbcSchemaComponent, Integer> desiredSchemaVersions(
-      BootstrapOptions bootstrapOptions,
-      boolean lineagePersistenceEnabled,
-      boolean entityTableExists) {
+      BootstrapOptions bootstrapOptions, boolean entityTableExists) {
     Map<JdbcSchemaComponent, Integer> desiredVersions = new LinkedHashMap<>();
     validateRequestedComponents(bootstrapOptions);
     int currentMetastoreVersion = loadComponentVersion(JdbcSchemaComponent.METASTORE);
-    int requestedMetastoreVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
+    int requestedMetastoreVersion =
+        JdbcBootstrapUtils.getRequestedSchemaVersion(
+            bootstrapOptions, JdbcSchemaComponent.METASTORE);
     desiredVersions.put(
         JdbcSchemaComponent.METASTORE,
         JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
@@ -118,7 +117,7 @@ final class JdbcSchemaManager {
             currentMetastoreVersion,
             requestedMetastoreVersion,
             entityTableExists));
-    if (lineagePersistenceEnabled
+    if (bootstrapOptions.lineagePersistenceEnabled()
         || isComponentRequested(bootstrapOptions, JdbcSchemaComponent.LINEAGE)) {
       int requestedLineageVersion =
           JdbcBootstrapUtils.getRequestedSchemaVersion(

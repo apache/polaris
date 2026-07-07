@@ -162,14 +162,18 @@ class JdbcBootstrapUtilsTest {
     void whenVersionIsInFileName_shouldParseAndReturnIt(int expectedVersion) {
       when(mockSchemaOptions.schemaVersion()).thenReturn(Optional.of(expectedVersion));
 
-      int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
+      int result =
+          JdbcBootstrapUtils.getRequestedSchemaVersion(
+              mockBootstrapOptions, JdbcSchemaComponent.METASTORE);
       assertEquals(expectedVersion, result);
     }
 
     @Test
     void whenSchemaOptionsIsNull_shouldReturnDefault() {
       when(mockBootstrapOptions.schemaOptions()).thenReturn(null);
-      int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
+      int result =
+          JdbcBootstrapUtils.getRequestedSchemaVersion(
+              mockBootstrapOptions, JdbcSchemaComponent.METASTORE);
       assertEquals(-1, result);
     }
 

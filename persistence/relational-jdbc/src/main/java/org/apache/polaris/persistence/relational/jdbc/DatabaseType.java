@@ -59,6 +59,18 @@ public enum DatabaseType {
     };
   }
 
+  /**
+   * Returns the latest lineage schema version available for this database type. Lineage schema
+   * components are versioned independently from the metastore schema.
+   */
+  public int getLatestLineageSchemaVersion() {
+    return switch (this) {
+      case POSTGRES -> 1;
+      case COCKROACHDB -> 1;
+      case H2 -> 1;
+    };
+  }
+
   public static DatabaseType fromDisplayName(String displayName) {
     return switch (displayName.toLowerCase(Locale.ROOT)) {
       case "h2" -> DatabaseType.H2;

@@ -55,7 +55,6 @@ import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.extensions.lineage.LineageConfiguration;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,7 +87,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisDiagnostics diagnostics;
   @Inject DatasourceOperations datasourceOperations;
   @Inject RealmConfigurationSource realmConfigurationSource;
-  @Inject Instance<LineageConfiguration> lineageConfiguration;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -116,7 +114,9 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private int getOrLoadSchemaVersion(String realmId, boolean fallbackOnDne) {
     return schemaVersionCache.computeIfAbsent(
         realmId,
-        k -> JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, fallbackOnDne));
+        k ->
+            JdbcBasePersistenceImpl.loadSchemaVersion(
+                datasourceOperations, JdbcSchemaComponent.METASTORE, fallbackOnDne));
   }
 
   private int getOrLoadLineageSchemaVersion(boolean fallbackOnDne) {
@@ -174,8 +174,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
       Map<JdbcSchemaComponent, Integer> effectiveSchemaVersions =
-          new JdbcSchemaManager(datasourceOperations)
-              .bootstrap(bootstrapOptions, lineagePersistenceEnabled());
+          new JdbcSchemaManager(datasourceOperations).bootstrap(bootstrapOptions);
       int effectiveSchemaVersion = effectiveSchemaVersions.get(JdbcSchemaComponent.METASTORE);
       schemaVersionCache.put(realm, effectiveSchemaVersion);
 
@@ -204,14 +203,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
 
     return Map.copyOf(results);
-  }
-
-  private boolean lineagePersistenceEnabled() {
-    if (lineageConfiguration == null || lineageConfiguration.isUnsatisfied()) {
-      return false;
-    }
-    LineageConfiguration configuration = lineageConfiguration.get();
-    return configuration.persistence().enabled();
   }
 
   private static boolean isComponentOnlyBootstrap(BootstrapOptions bootstrapOptions) {

@@ -56,11 +56,14 @@ class JdbcSchemaManagerTest {
 
   @Test
   void bootstrapCoreOnlyDoesNotCreateLineageComponent() {
-    Map<JdbcSchemaComponent, Integer> versions = schemaManager.bootstrap(bootstrapOptions(), false);
+    Map<JdbcSchemaComponent, Integer> versions = schemaManager.bootstrap(bootstrapOptions());
 
     assertThat(versions).containsEntry(JdbcSchemaComponent.METASTORE, 4);
     assertThat(versions).doesNotContainKey(JdbcSchemaComponent.LINEAGE);
-    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, false)).isEqualTo(4);
+    assertThat(
+            JdbcBasePersistenceImpl.loadSchemaVersion(
+                datasourceOperations, JdbcSchemaComponent.METASTORE, false))
+        .isEqualTo(4);
     assertThat(
             JdbcBasePersistenceImpl.loadSchemaVersion(
                 datasourceOperations, JdbcSchemaComponent.LINEAGE, true))
@@ -74,12 +77,16 @@ class JdbcSchemaManagerTest {
 
   @Test
   void bootstrapCanAddLineageV1ComponentAfterCoreV4Bootstrap() throws SQLException {
-    schemaManager.bootstrap(bootstrapOptions(), false);
+    schemaManager.bootstrap(bootstrapOptions());
 
-    Map<JdbcSchemaComponent, Integer> versions = schemaManager.bootstrap(bootstrapOptions(), true);
+    Map<JdbcSchemaComponent, Integer> versions =
+        schemaManager.bootstrap(bootstrapOptionsWithLineagePersistence());
 
     assertCoreV4AndLineageV1(versions);
-    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, false)).isEqualTo(4);
+    assertThat(
+            JdbcBasePersistenceImpl.loadSchemaVersion(
+                datasourceOperations, JdbcSchemaComponent.METASTORE, false))
+        .isEqualTo(4);
     assertThat(
             JdbcBasePersistenceImpl.loadSchemaVersion(
                 datasourceOperations, JdbcSchemaComponent.LINEAGE, false))
@@ -90,10 +97,13 @@ class JdbcSchemaManagerTest {
   @Test
   void bootstrapCanAddExplicitlyRequestedLineageV1WithCoreV4() throws SQLException {
     Map<JdbcSchemaComponent, Integer> versions =
-        schemaManager.bootstrap(bootstrapOptionsWithComponentVersion("lineage", 1), false);
+        schemaManager.bootstrap(bootstrapOptionsWithComponentVersion("lineage", 1));
 
     assertCoreV4AndLineageV1(versions);
-    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, false)).isEqualTo(4);
+    assertThat(
+            JdbcBasePersistenceImpl.loadSchemaVersion(
+                datasourceOperations, JdbcSchemaComponent.METASTORE, false))
+        .isEqualTo(4);
     assertThat(
             JdbcBasePersistenceImpl.loadSchemaVersion(
                 datasourceOperations, JdbcSchemaComponent.LINEAGE, false))
@@ -104,8 +114,7 @@ class JdbcSchemaManagerTest {
   @Test
   void bootstrapRejectsUnknownRequestedComponent() {
     assertThatThrownBy(
-            () ->
-                schemaManager.bootstrap(bootstrapOptionsWithComponentVersion("unknown", 1), false))
+            () -> schemaManager.bootstrap(bootstrapOptionsWithComponentVersion("unknown", 1)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unknown JDBC schema component: unknown");
   }
@@ -113,8 +122,7 @@ class JdbcSchemaManagerTest {
   @Test
   void bootstrapRejectsInvalidComponentVersionBeforeExecutingAnyScripts() {
     assertThatThrownBy(
-            () ->
-                schemaManager.bootstrap(bootstrapOptionsWithComponentVersion("lineage", 2), false))
+            () -> schemaManager.bootstrap(bootstrapOptionsWithComponentVersion("lineage", 2)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid lineage schema version 2");
 
@@ -124,10 +132,10 @@ class JdbcSchemaManagerTest {
 
   @Test
   void bootstrapRejectsUnsupportedComponentVersionChange() throws SQLException {
-    schemaManager.bootstrap(bootstrapOptions(), true);
+    schemaManager.bootstrap(bootstrapOptionsWithLineagePersistence());
     updateVersion(JdbcSchemaComponent.LINEAGE, 2);
 
-    assertThatThrownBy(() -> schemaManager.bootstrap(bootstrapOptions(), true))
+    assertThatThrownBy(() -> schemaManager.bootstrap(bootstrapOptionsWithLineagePersistence()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Cannot upgrade JDBC schema component lineage from version 2");
   }
@@ -137,6 +145,13 @@ class JdbcSchemaManagerTest {
         .realms(List.of("TEST_REALM"))
         .rootCredentialsSet(RootCredentialsSet.EMPTY)
         .schemaOptions(ImmutableSchemaOptions.builder().build())
+        .build();
+  }
+
+  private static BootstrapOptions bootstrapOptionsWithLineagePersistence() {
+    return ImmutableBootstrapOptions.builder()
+        .from(bootstrapOptions())
+        .lineagePersistenceEnabled(true)
         .build();
   }
 

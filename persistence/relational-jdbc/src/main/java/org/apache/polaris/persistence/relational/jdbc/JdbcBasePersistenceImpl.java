@@ -808,12 +808,6 @@ public class JdbcBasePersistenceImpl
   }
 
   static int loadSchemaVersion(
-      DatasourceOperations datasourceOperations, boolean fallbackOnDoesNotExist) {
-    return loadSchemaVersion(
-        datasourceOperations, JdbcSchemaComponent.METASTORE, fallbackOnDoesNotExist);
-  }
-
-  static int loadSchemaVersion(
       DatasourceOperations datasourceOperations,
       JdbcSchemaComponent component,
       boolean fallbackOnDoesNotExist) {

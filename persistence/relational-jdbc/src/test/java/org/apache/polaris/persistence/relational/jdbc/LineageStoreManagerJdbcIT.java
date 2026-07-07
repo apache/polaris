@@ -102,7 +102,10 @@ class LineageStoreManagerJdbcIT {
     try (InputStream lineageSchemaStream = classLoader.getResourceAsStream(lineageSchemaResource)) {
       datasourceOperations.executeScript(lineageSchemaStream);
     }
-    assertEquals(4, JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, false));
+    assertEquals(
+        4,
+        JdbcBasePersistenceImpl.loadSchemaVersion(
+            datasourceOperations, JdbcSchemaComponent.METASTORE, false));
     assertEquals(
         1,
         JdbcBasePersistenceImpl.loadSchemaVersion(
