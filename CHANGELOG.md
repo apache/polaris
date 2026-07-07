@@ -51,6 +51,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
 
 ### Changes
+- The admin tool's `bootstrap` command is now idempotent: bootstrapping a realm that is already
+  bootstrapped is reported as "Realm '<realm>' is already bootstrapped; skipping." and no longer
+  fails the command, making automated bootstrap jobs safe to re-run. Correspondingly,
+  `PolarisMetaStoreManager.bootstrapPolarisService` now returns a result with
+  `ReturnStatus.ENTITY_ALREADY_EXISTS` instead of throwing `IllegalArgumentException` when the
+  root principal already exists. Existing credentials are never returned or altered.
 - Added REPL support to Polaris CLI.
 - The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
 - Added version option to Polaris CLI.

@@ -168,6 +168,14 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
                     result.getValue().getPrincipalSecrets().getMainSecret());
             spec.commandLine().getOut().println(msg);
           }
+        } else if (result.getValue().alreadyExists()) {
+          // Re-running bootstrap on an existing realm is a no-op, not an error; this
+          // keeps automated bootstrap jobs idempotent. Existing credentials are never
+          // returned or altered.
+          String realm = result.getKey();
+          spec.commandLine()
+              .getOut()
+              .printf("Realm '%s' is already bootstrapped; skipping.%n", realm);
         } else {
           String realm = result.getKey();
           spec.commandLine()
