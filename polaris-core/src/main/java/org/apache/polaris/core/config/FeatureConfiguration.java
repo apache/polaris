@@ -339,6 +339,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
    * @deprecated Use {@link #ALLOW_EXTERNAL_METADATA_FILE_LOCATION} instead. This legacy flag is
    *     retained as a compatibility alias for external metadata file locations.
    */
+  @SuppressWarnings("DeprecatedIsStillUsed")
   @Deprecated
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
