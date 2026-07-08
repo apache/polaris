@@ -21,15 +21,12 @@ package org.apache.polaris.extensions.lineage;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 public class DefaultPolarisLineageHandlerTest {
-  @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
 
   private DefaultPolarisLineageHandler handler;
@@ -37,7 +34,7 @@ public class DefaultPolarisLineageHandlerTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    handler = new DefaultPolarisLineageHandler(realmConfig, configuration);
+    handler = new DefaultPolarisLineageHandler(configuration);
   }
 
   @Test
@@ -50,19 +47,8 @@ public class DefaultPolarisLineageHandlerTest {
   }
 
   @Test
-  void throwsWhenRealmFeatureDisabled() {
-    when(configuration.enabled()).thenReturn(true);
-    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(false);
-
-    assertThatThrownBy(() -> handler.query(queryRequest()))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(FeatureConfiguration.ENABLE_LINEAGE.key());
-  }
-
-  @Test
   void throwsNotImplementedWhenLineageEnabled() {
     when(configuration.enabled()).thenReturn(true);
-    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
 
     assertThatThrownBy(() -> handler.query(queryRequest()))
         .isInstanceOf(UnsupportedOperationException.class)
