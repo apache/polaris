@@ -19,8 +19,10 @@
 package org.apache.polaris.service.task;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
@@ -54,8 +56,11 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
     TableIdentifier tableId = cleanupTask.tableId();
     List<String> batchFiles = cleanupTask.batchFiles();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId)) {
-      List<String> validFiles =
-          batchFiles.stream().filter(file -> TaskUtils.exists(file, authorizedFileIO)).toList();
+      Map<Boolean, List<String>> partitionedFiles =
+          batchFiles.stream()
+              .collect(Collectors.partitioningBy(file -> TaskUtils.exists(file, authorizedFileIO)));
+      List<String> validFiles = partitionedFiles.get(true);
+      List<String> missingFiles = partitionedFiles.get(false);
       if (validFiles.isEmpty()) {
         LOGGER
             .atWarn()
@@ -64,9 +69,7 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
             .log("File batch cleanup task scheduled, but none of the files in batch exists");
         return true;
       }
-      if (validFiles.size() < batchFiles.size()) {
-        List<String> missingFiles =
-            batchFiles.stream().filter(file -> !TaskUtils.exists(file, authorizedFileIO)).toList();
+      if (!missingFiles.isEmpty()) {
         LOGGER
             .atWarn()
             .addKeyValue("batchFiles", batchFiles.toString())
