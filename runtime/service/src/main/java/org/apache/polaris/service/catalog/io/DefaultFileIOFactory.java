@@ -27,6 +27,7 @@ import java.util.Map;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -40,8 +41,16 @@ import org.jspecify.annotations.NonNull;
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
+  private final S3AccessConfig s3AccessConfig;
+
+  public DefaultFileIOFactory() {
+    this(null);
+  }
+
   @Inject
-  public DefaultFileIOFactory() {}
+  public DefaultFileIOFactory(S3AccessConfig s3AccessConfig) {
+    this.s3AccessConfig = s3AccessConfig;
+  }
 
   @Override
   public FileIO loadFileIO(
@@ -50,17 +59,60 @@ public class DefaultFileIOFactory implements FileIOFactory {
       @NonNull Map<String, String> properties) {
 
     // Get subcoped creds
-    properties = new HashMap<>(properties);
+    Map<String, String> props = new HashMap<>(properties);
 
     // Update the FileIO with the subscoped credentials
     // Update with properties in case there are table-level overrides the credentials should
     // always override table-level properties, since storage configuration will be found at
     // whatever entity defines it
-    properties.putAll(storageAccessConfig.credentials());
-    properties.putAll(storageAccessConfig.extraProperties());
-    properties.putAll(storageAccessConfig.internalProperties());
+    props.putAll(storageAccessConfig.credentials());
+    props.putAll(storageAccessConfig.extraProperties());
+    props.putAll(storageAccessConfig.internalProperties());
 
-    return loadFileIOInternal(ioImplClassName, properties);
+    // Apply polaris.storage.* HTTP client settings to Iceberg S3FileIO (and other AWS FileIOs).
+    // Previously only applied to the STS client pool.
+    if (s3AccessConfig != null) {
+      s3AccessConfig
+          .maxHttpConnections()
+          .ifPresent(v -> props.put("http-client.apache.max-connections", String.valueOf(v)));
+      s3AccessConfig
+          .readTimeout()
+          .ifPresent(
+              d -> props.put("http-client.apache.socket-timeout-ms", String.valueOf(d.toMillis())));
+      s3AccessConfig
+          .connectTimeout()
+          .ifPresent(
+              d ->
+                  props.put(
+                      "http-client.apache.connection-timeout-ms", String.valueOf(d.toMillis())));
+      s3AccessConfig
+          .connectionAcquisitionTimeout()
+          .ifPresent(
+              d ->
+                  props.put(
+                      "http-client.apache.connection-acquisition-timeout-ms",
+                      String.valueOf(d.toMillis())));
+      s3AccessConfig
+          .connectionMaxIdleTime()
+          .ifPresent(
+              d ->
+                  props.put(
+                      "http-client.apache.connection-max-idle-time-ms",
+                      String.valueOf(d.toMillis())));
+      s3AccessConfig
+          .connectionTimeToLive()
+          .ifPresent(
+              d ->
+                  props.put(
+                      "http-client.apache.connection-time-to-live-ms",
+                      String.valueOf(d.toMillis())));
+      s3AccessConfig
+          .expectContinueEnabled()
+          .ifPresent(
+              v -> props.put("http-client.apache.expect-continue-enabled", String.valueOf(v)));
+    }
+
+    return loadFileIOInternal(ioImplClassName, props);
   }
 
   @VisibleForTesting

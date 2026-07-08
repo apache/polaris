@@ -27,8 +27,8 @@ import java.util.OptionalInt;
  * Configuration interface containing parameters for clients accessing S3 services from Polaris
  * servers.
  *
- * <p>Currently, this configuration does not apply to all of Polaris code, but only to select
- * services.
+ * <p>Applies to the STS client pool and to Iceberg S3 clients created for table operations via
+ * {@code S3FileIO}.
  */
 public interface S3AccessConfig {
   /** Default value for {@link #clientsCacheMaxSize()}. */
