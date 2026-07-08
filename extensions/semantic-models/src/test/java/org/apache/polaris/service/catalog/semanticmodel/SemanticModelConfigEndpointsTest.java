@@ -23,22 +23,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.Test;
 
 public class SemanticModelConfigEndpointsTest {
-  @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  public void endpointsReflectSemanticModelFeatureFlag(boolean enableSemanticModels) {
-    SemanticModelConfigEndpoints endpoints =
-        new SemanticModelConfigEndpoints(realmConfig(enableSemanticModels));
+  @Test
+  public void endpointsIncludeSemanticModelsWhenFeatureEnabled() {
+    SemanticModelConfigEndpoints endpoints = new SemanticModelConfigEndpoints(realmConfig(true));
 
-    if (enableSemanticModels) {
-      assertThat(endpoints.endpoints())
-          .containsExactlyInAnyOrderElementsOf(SemanticModelEndpoints.SEMANTIC_MODEL_ENDPOINTS);
-    } else {
-      assertThat(endpoints.endpoints()).isEmpty();
-    }
+    assertThat(endpoints.endpoints())
+        .containsExactlyInAnyOrderElementsOf(SemanticModelEndpoints.SEMANTIC_MODEL_ENDPOINTS);
+  }
+
+  @Test
+  public void endpointsEmptyWhenFeatureDisabled() {
+    SemanticModelConfigEndpoints endpoints = new SemanticModelConfigEndpoints(realmConfig(false));
+
+    assertThat(endpoints.endpoints()).isEmpty();
   }
 
   private static RealmConfig realmConfig(boolean enableSemanticModels) {

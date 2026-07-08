@@ -80,17 +80,17 @@ import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
 import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServiceDelegator;
-import org.apache.polaris.service.catalog.generic.GenericTableConfigEndpoints;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandlerFactory;
+import org.apache.polaris.service.catalog.generic.GenericTableConfigEndpoints;
 import org.apache.polaris.service.catalog.generic.ImmutableGenericTableCatalogHandler;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandlerFactory;
-import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigEndpoints;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestCatalogEventServiceDelegator;
+import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigEndpoints;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigurationEventServiceDelegator;
 import org.apache.polaris.service.catalog.iceberg.IcebergViewConfigEndpoints;
 import org.apache.polaris.service.catalog.iceberg.ImmutableIcebergCatalogHandler;
@@ -394,7 +394,8 @@ public record TestServices(
                 new IcebergViewConfigEndpoints();
             CatalogConfigEndpointContributor genericTableEndpoints =
                 new GenericTableConfigEndpoints(realmConfig);
-            CatalogConfigEndpointContributor policyEndpoints = new PolicyConfigEndpoints(realmConfig);
+            CatalogConfigEndpointContributor policyEndpoints =
+                new PolicyConfigEndpoints(realmConfig);
             Mockito.when(configEndpointContributors.handlesStream())
                 .thenAnswer(
                     invocation ->
@@ -407,9 +408,7 @@ public record TestServices(
                             endpointContributorHandle(
                                 IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
             return new CatalogConfigHandler(
-                new DefaultCatalogPrefixParser(),
-                resolverFactory,
-                configEndpointContributors);
+                new DefaultCatalogPrefixParser(), resolverFactory, configEndpointContributors);
           };
 
       Supplier<IcebergCatalogAdapter> catalogAdapterSupplier =
