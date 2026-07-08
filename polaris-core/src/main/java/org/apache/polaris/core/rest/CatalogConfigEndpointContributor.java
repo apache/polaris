@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.spi;
+package org.apache.polaris.core.rest;
 
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;

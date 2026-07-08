@@ -40,7 +40,6 @@ dependencies {
   implementation(project(":polaris-core"))
   // CatalogAdapter and other shared catalog service abstractions.
   implementation(project(":polaris-runtime-service"))
-  implementation(project(":polaris-runtime-service-spi"))
 
   // Dependencies required by the generated OSI semantic-model REST API code (mirrors the set used
   // by the polaris-api-catalog-service generated code).
