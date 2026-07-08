@@ -30,6 +30,7 @@ org.apache.polaris.persistence.nosql.coretypes.catalog.FileObj$FileObjType
 org.apache.polaris.persistence.nosql.coretypes.content.IcebergTableObj$IcebergTableObjType
 org.apache.polaris.persistence.nosql.coretypes.content.IcebergViewObj$IcebergViewObjType
 org.apache.polaris.persistence.nosql.coretypes.content.GenericTableObj$GenericTableObjType
+org.apache.polaris.persistence.nosql.coretypes.content.DirectoryObj$DirectoryObjType
 org.apache.polaris.persistence.nosql.coretypes.content.LocalNamespaceObj$LocalNamespaceObjType
 org.apache.polaris.persistence.nosql.coretypes.content.PolicyObj$CatalogPolicyObjType
 

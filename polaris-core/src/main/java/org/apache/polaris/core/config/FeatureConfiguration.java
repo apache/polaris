@@ -469,6 +469,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_DIRECTORIES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_DIRECTORIES")
+          .description("If true, the directories endpoints are enabled")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Long> ENTITY_CACHE_WEIGHER_TARGET =
       PolarisConfiguration.<Long>builder()
           .key("ENTITY_CACHE_WEIGHER_TARGET")

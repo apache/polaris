@@ -19,6 +19,7 @@
 
 package org.apache.polaris.persistence.nosql.coretypes.mapping;
 
+import static org.apache.polaris.core.entity.PolarisEntitySubType.DIRECTORY;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.GENERIC_TABLE;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_VIEW;
@@ -32,8 +33,10 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.entity.table.DirectoryEntity;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
+import org.apache.polaris.persistence.nosql.coretypes.content.DirectoryObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.GenericTableObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.IcebergTableObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.IcebergViewObj;
@@ -48,7 +51,8 @@ final class TableLikeMapping<O extends TableLikeObj, B extends TableLikeObj.Buil
         Map.of(
             ICEBERG_TABLE, IcebergTableObj.TYPE,
             ICEBERG_VIEW, IcebergViewObj.TYPE,
-            GENERIC_TABLE, GenericTableObj.TYPE),
+            GENERIC_TABLE, GenericTableObj.TYPE,
+            DIRECTORY, DirectoryObj.TYPE),
         CatalogStateObj.TYPE,
         CATALOG_STATE_REF_NAME_PATTERN,
         PolarisEntityType.TABLE_LIKE);
@@ -61,6 +65,7 @@ final class TableLikeMapping<O extends TableLikeObj, B extends TableLikeObj.Buil
           case ICEBERG_TABLE -> IcebergTableObj.builder();
           case ICEBERG_VIEW -> IcebergViewObj.builder();
           case GENERIC_TABLE -> GenericTableObj.builder();
+          case DIRECTORY -> DirectoryObj.builder();
           default -> throw new IllegalArgumentException("Unknown or invalid subtype");
         });
   }
@@ -81,6 +86,19 @@ final class TableLikeMapping<O extends TableLikeObj, B extends TableLikeObj.Buil
           genericTableObjBuilder
               .format(Optional.ofNullable(internalProperties.remove(GenericTableEntity.FORMAT_KEY)))
               .doc(Optional.ofNullable(internalProperties.remove(GenericTableEntity.DOC_KEY)));
+      case DirectoryObj.Builder directoryObjBuilder ->
+          directoryObjBuilder
+              .baseLocation(
+                  Optional.ofNullable(internalProperties.remove(DirectoryEntity.BASE_LOCATION_KEY)))
+              .filterInclude(
+                  Optional.ofNullable(
+                      internalProperties.remove(DirectoryEntity.FILTER_INCLUDE_KEY)))
+              .filterExclude(
+                  Optional.ofNullable(
+                      internalProperties.remove(DirectoryEntity.FILTER_EXCLUDE_KEY)))
+              .scanSchedule(
+                  Optional.ofNullable(
+                      internalProperties.remove(DirectoryEntity.SCAN_SCHEDULE_KEY)));
       default -> throw new IllegalArgumentException("Unknown or invalid subtype");
     }
 
@@ -104,6 +122,20 @@ final class TableLikeMapping<O extends TableLikeObj, B extends TableLikeObj.Buil
             .format()
             .ifPresent(v -> internalProperties.put(GenericTableEntity.FORMAT_KEY, v));
         genericTableObj.doc().ifPresent(v -> internalProperties.put(GenericTableEntity.DOC_KEY, v));
+      }
+      case DirectoryObj directoryObj -> {
+        directoryObj
+            .baseLocation()
+            .ifPresent(v -> internalProperties.put(DirectoryEntity.BASE_LOCATION_KEY, v));
+        directoryObj
+            .filterInclude()
+            .ifPresent(v -> internalProperties.put(DirectoryEntity.FILTER_INCLUDE_KEY, v));
+        directoryObj
+            .filterExclude()
+            .ifPresent(v -> internalProperties.put(DirectoryEntity.FILTER_EXCLUDE_KEY, v));
+        directoryObj
+            .scanSchedule()
+            .ifPresent(v -> internalProperties.put(DirectoryEntity.SCAN_SCHEDULE_KEY, v));
       }
       default ->
           throw new IllegalStateException(

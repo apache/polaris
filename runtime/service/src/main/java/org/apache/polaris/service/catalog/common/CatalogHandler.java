@@ -408,6 +408,7 @@ public abstract class CatalogHandler {
       case ICEBERG_TABLE:
       case PolarisEntitySubType.ICEBERG_VIEW:
       case PolarisEntitySubType.GENERIC_TABLE:
+      case PolarisEntitySubType.DIRECTORY:
         throw new AlreadyExistsException(
             "Cannot rename %s to %s. %s already exists",
             src, dst, entityNameForSubType(dstLeafSubType));

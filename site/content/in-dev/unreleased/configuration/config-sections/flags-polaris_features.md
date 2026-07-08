@@ -326,6 +326,15 @@ When enabled, allows RBAC operations to create synthetic entities for entities i
 
 ---
 
+##### `polaris.features."ENABLE_VOLUMES"`
+
+If true, the volumes endpoints are enabled
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
 ##### `polaris.features."ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING"`
 
 If set to true, require that principals must rotate their credentials before being used for anything else.
