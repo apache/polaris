@@ -35,7 +35,7 @@ public class AzureCredentialsStorageIntegrationTest {
     Instant expiresAt = Instant.ofEpochMilli(Long.MAX_VALUE);
 
     StorageAccessConfig noSuffixResult =
-        toAccessConfig("sasToken", "some_account", expiresAt, Optional.empty());
+        toAccessConfig("sasToken", "some_account", "some_account", expiresAt, Optional.empty());
     Assertions.assertThat(noSuffixResult.credentials()).hasSize(5);
     Assertions.assertThat(noSuffixResult.credentials()).containsKey("adls.sas-token.some_account");
     Assertions.assertThat(noSuffixResult.credentials())
@@ -54,6 +54,7 @@ public class AzureCredentialsStorageIntegrationTest {
         toAccessConfig(
             "sasToken",
             "some_account." + AzureLocation.ADLS_ENDPOINT,
+            "some_account",
             expiresAt,
             Optional.of("endpoint/credentials"));
     Assertions.assertThat(adlsSuffixResult.credentials()).hasSize(6);
@@ -75,7 +76,11 @@ public class AzureCredentialsStorageIntegrationTest {
 
     StorageAccessConfig blobSuffixResult =
         toAccessConfig(
-            "sasToken", "some_account." + AzureLocation.BLOB_ENDPOINT, expiresAt, Optional.empty());
+            "sasToken",
+            "some_account." + AzureLocation.BLOB_ENDPOINT,
+            "some_account",
+            expiresAt,
+            Optional.empty());
     Assertions.assertThat(blobSuffixResult.credentials()).hasSize(6);
     Assertions.assertThat(blobSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account");

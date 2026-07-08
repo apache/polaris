@@ -74,7 +74,7 @@ public enum StorageAccessProperty {
   AZURE_SAS_TOKEN_BARE(
       String.class,
       "adls.sas-token",
-      "an azure shared access signature token without host suffix",
+      "an azure shared access signature token (bare property name, without the <account-host> suffix)",
       true),
   AZURE_ACCOUNT_NAME(String.class, "adls.account-name", "the azure storage account name", true),
   AZURE_REFRESH_CREDENTIALS_ENDPOINT(
