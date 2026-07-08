@@ -310,8 +310,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               "If set to true, Polaris allows metadata files to be located outside the table's "
                   + "default metadata directory. This relaxes the normal check that metadata "
                   + "stays under the table location and should only be used when metadata is "
-                  + "intentionally stored in separately controlled locations. Use this instead "
-                  + "of deprecated ALLOW_EXTERNAL_TABLE_LOCATION.")
+                  + "intentionally stored in separately controlled locations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
