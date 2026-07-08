@@ -195,7 +195,7 @@ jobs:
           echo "rc_commit=${rc_commit}" >> $GITHUB_ENV
 
           exec_process git tag -a "${final_release_tag}" "${rc_commit}" -m "Apache Polaris ${version_without_rc} Release"
-          exec_process git push apache "${final_release_tag}"
+          exec_process git push origin "${final_release_tag}"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Git Release Tag
