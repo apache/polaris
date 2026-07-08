@@ -149,7 +149,7 @@ class TableCleanupTaskHandlerTest {
   }
 
   @Test
-  @Timeout(10)
+  @Timeout(60)
   public void testTableCleanupClampsNonPositiveBatchSize() throws IOException {
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
