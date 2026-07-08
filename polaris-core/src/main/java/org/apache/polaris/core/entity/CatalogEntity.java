@@ -20,7 +20,6 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import java.util.Collection;
 import java.util.HashMap;
@@ -257,8 +256,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
    * @throws BadRequestException if {@code allowedLocations} is null/empty, or if {@code
    *     defaultBaseLocation} is not within any entry of {@code allowedLocations}
    */
-  @VisibleForTesting
-  public static void validateBaseLocationAgainstAllowedList(
+  private static void validateBaseLocationAgainstAllowedList(
       List<String> allowedLocations, String defaultBaseLocation) {
     if (allowedLocations == null || allowedLocations.isEmpty()) {
       throw new BadRequestException(
