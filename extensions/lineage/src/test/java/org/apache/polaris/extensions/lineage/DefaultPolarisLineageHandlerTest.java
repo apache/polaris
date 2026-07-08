@@ -39,7 +39,6 @@ import org.mockito.MockitoAnnotations;
 public class DefaultPolarisLineageHandlerTest {
   @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
-  @Mock private LineageConfiguration.PersistenceConfiguration persistenceConfiguration;
   @Mock private LineageStoreManager storeManager;
 
   private DefaultPolarisLineageHandler service;
@@ -47,7 +46,6 @@ public class DefaultPolarisLineageHandlerTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    when(configuration.persistence()).thenReturn(persistenceConfiguration);
     service = new DefaultPolarisLineageHandler(realmConfig, configuration, storeManager);
   }
 
@@ -65,7 +63,6 @@ public class DefaultPolarisLineageHandlerTest {
   @Test
   void throwsWhenRealmFeatureDisabled() {
     when(configuration.enabled()).thenReturn(true);
-    when(persistenceConfiguration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(false);
 
     assertThatThrownBy(() -> service.query(queryRequest()))
@@ -76,21 +73,8 @@ public class DefaultPolarisLineageHandlerTest {
   }
 
   @Test
-  void throwsWhenPersistenceDisabled() {
-    when(configuration.enabled()).thenReturn(true);
-    when(persistenceConfiguration.enabled()).thenReturn(false);
-
-    assertThatThrownBy(() -> service.query(queryRequest()))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("polaris.lineage.persistence.enabled");
-
-    verifyNoInteractions(storeManager);
-  }
-
-  @Test
   void delegatesQueryWhenLineageEnabled() {
     when(configuration.enabled()).thenReturn(true);
-    when(persistenceConfiguration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
     LineageQueryRequest request = queryRequest();
     LineageGraph graph =
@@ -107,7 +91,6 @@ public class DefaultPolarisLineageHandlerTest {
   @Test
   void delegatesIngestWhenLineageEnabled() {
     when(configuration.enabled()).thenReturn(true);
-    when(persistenceConfiguration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
     LineageIngestRequest request = ingestRequest();
 

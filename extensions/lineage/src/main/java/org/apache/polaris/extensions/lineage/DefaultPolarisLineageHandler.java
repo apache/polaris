@@ -61,12 +61,6 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
           "Lineage is disabled: set polaris.lineage.enabled=true to enable it.");
     }
 
-    if (!configuration.persistence().enabled()) {
-      throw new UnsupportedOperationException(
-          "Lineage store manager is disabled: set polaris.lineage.persistence.enabled=true to enable"
-              + " it.");
-    }
-
     if (!realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
       throw new UnsupportedOperationException(
           "Lineage realm feature is disabled: enable "
