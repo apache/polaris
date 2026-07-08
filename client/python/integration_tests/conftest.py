@@ -231,7 +231,7 @@ def test_catalog(
     test_catalog_client: IcebergCatalogAPI,
 ) -> Catalog:
     storage_conf = FileStorageConfigInfo(
-        storage_type="FILE", allowed_locations=["file:///tmp"]
+        storage_type="FILE", allowed_locations=["file:///tmp/polaris"]
     )
     catalog_name = "polaris_test_catalog"
     catalog = Catalog(

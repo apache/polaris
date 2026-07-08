@@ -309,7 +309,7 @@ If true, the policy-store endpoints are enabled
 
 ##### `polaris.features."ENABLE_SEMANTIC_MODELS"`
 
-If true, the semantic-model (OSI) endpoints are enabled
+If true, the semantic-model (Apache Ossie) endpoints are enabled. This is a beta feature: the API is under active development and may change in a backward-incompatible way. It is disabled by default; enable it with caution and report any issues encountered.
 
 - **Type:** `Boolean`
 - **Default:** `false`

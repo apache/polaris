@@ -197,7 +197,7 @@ public class FileIOFactoryTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(CATALOG_NAME)
-            .setProperties(new CatalogProperties(scheme + "://tmp/path/to/data"))
+            .setProperties(new CatalogProperties(storageLocation))
             .setStorageConfigInfo(awsStorageConfigInfo)
             .build();
     services

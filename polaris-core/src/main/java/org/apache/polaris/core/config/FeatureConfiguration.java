@@ -508,8 +508,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ENABLE_SEMANTIC_MODELS =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_SEMANTIC_MODELS")
-          .description("If true, the semantic-model (OSI) endpoints are enabled")
-          .defaultValue(false) // keep it to false until the implementation is done
+          .description(
+              "If true, the semantic-model (Apache Ossie) endpoints are enabled. This is a beta feature: "
+                  + "the API is under active development and may change in a backward-incompatible "
+                  + "way. It is disabled by default; enable it with caution and report any issues "
+                  + "encountered.")
+          .defaultValue(false) // beta feature, keep it off by default
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =

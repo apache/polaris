@@ -307,12 +307,17 @@ def test_update_catalog():
         check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
                      checker=lambda s: 's3://fake-location' in s and '"foo": "bar"' in s)
 
-        # Update by changing default-base-location
+        # Update by changing default-base-location. The new base must be within an
+        # allowed location, so we extend allowed-locations to include it in the same
+        # update (otherwise the server rejects the change with a BadRequestException
+        # to prevent leaving the catalog in an inconsistent state).
         check_output(root_cli(
             'catalogs',
             'update',
             f'test_cli_catalog_{SALT}',
             '--default-base-location',
+            f's3://new-location-{SALT}',
+            '--allowed-location',
             f's3://new-location-{SALT}'
         ), checker=lambda s: s == '')
 

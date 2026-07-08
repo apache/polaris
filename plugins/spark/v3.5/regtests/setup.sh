@@ -149,7 +149,8 @@ if grep 'POLARIS_TESTCONF_V5' ${SPARK_CONF} 2>/dev/null; then
 else
   echo 'Setting spark conf...'
   # Instead of clobbering existing spark conf, just comment it all out in case it was customized carefully.
-  sed -i 's/^/# /' ${SPARK_CONF}
+  # Use an explicit backup suffix so the in-place edit works on both GNU and BSD/macOS sed, then remove the backup.
+  sed -i.bak 's/^/# /' ${SPARK_CONF} && rm -f ${SPARK_CONF}.bak
 
 # If POLARIS_CLIENT_JAR is provided, set the spark conf to use the jars configuration.
 # Otherwise use the packages setting

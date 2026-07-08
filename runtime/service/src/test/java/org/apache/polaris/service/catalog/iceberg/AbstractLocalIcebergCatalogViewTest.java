@@ -23,9 +23,7 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,7 +74,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 public abstract class AbstractLocalIcebergCatalogViewTest
@@ -131,14 +128,6 @@ public abstract class AbstractLocalIcebergCatalogViewTest
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
-  @BeforeEach
-  public void setUpTempDir(@TempDir Path tempDir) throws Exception {
-    // see https://github.com/quarkusio/quarkus/issues/13261
-    Field field = ViewCatalogTests.class.getDeclaredField("tempDir");
-    field.setAccessible(true);
-    field.set(this, tempDir);
-  }
-
   protected void bootstrapRealm(String realmName) {}
 
   protected PolarisAdminService newAdminService() {
@@ -190,7 +179,7 @@ public abstract class AbstractLocalIcebergCatalogViewTest
                         realmConfig,
                         new FileStorageConfigInfo(
                             StorageConfigInfo.StorageTypeEnum.FILE,
-                            List.of("file://", "/", "*"),
+                            List.of("file://tmp", "*"),
                             null),
                         "file://tmp")
                     .build()

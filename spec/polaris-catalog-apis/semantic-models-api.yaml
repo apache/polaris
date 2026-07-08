@@ -31,9 +31,12 @@ paths:
       summary: Create a semantic model in the given namespace
       operationId: createSemanticModel
       description: |
+        **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
+        backward-incompatible way.
+
         Creates a semantic model in the specified namespace.
 
-        A semantic model is an Open Semantic Interchange (OSI) document describing
+        A semantic model is an Apache Ossie document describing
         datasets, fields, relationships, metrics, and AI context for a logical analytics surface above
         physical tables and views.
 
@@ -83,6 +86,9 @@ paths:
       summary: List semantic models in the given namespace
       operationId: listSemanticModels
       description: |
+        **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
+        backward-incompatible way.
+
         List semantic-model identifiers under a namespace.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
@@ -122,7 +128,11 @@ paths:
         - Semantic Model API
       summary: Load a semantic model
       operationId: loadSemanticModel
-      description: Load a semantic model from the catalog.
+      description: |
+        **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
+        backward-incompatible way.
+
+        Load a semantic model from the catalog.
       responses:
         200:
           $ref: '#/components/responses/LoadSemanticModelResponse'
@@ -152,6 +162,9 @@ paths:
       summary: Update a semantic model
       operationId: updateSemanticModel
       description: |
+        **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
+        backward-incompatible way.
+
         Replace a semantic model's document with a new one.
 
         Upon a successful update, the model's entity-version changes and the new value is returned.
@@ -205,7 +218,11 @@ paths:
         - Semantic Model API
       summary: Drop a semantic model from the catalog
       operationId: dropSemanticModel
-      description: Remove a semantic model from the catalog.
+      description: |
+        **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
+        backward-incompatible way.
+
+        Remove a semantic model from the catalog.
       responses:
         204:
           description: Success, no content
@@ -259,18 +276,18 @@ components:
 
     SemanticModelDocument:
       type: object
-      description: An Open Semantic Interchange (OSI) document body.
+      description: An Apache Ossie document body.
       required:
         - version
         - semantic_model
       properties:
         version:
           type: string
-          description: The OSI spec version.
+          description: The Apache Ossie spec version.
           example: "0.1.1"
         semantic_model:
           type: string
-          description: The OSI semantic model serialized as a JSON string.
+          description: The Apache Ossie semantic model serialized as a JSON string.
       example:
         version: "0.1.1"
         semantic_model: '{"name":"tpcds_retail_model","description":"retail analytics","datasets":[{"name":"store_sales","source":"public.store_sales","primary_key":["ss_item_sk","ss_ticket_number"]}],"metrics":[{"name":"total_sales","expression":{"dialects":[{"dialect":"ANSI_SQL","expression":"SUM(ss_ext_sales_price)"}]}}]}'
@@ -349,7 +366,7 @@ components:
       description: |
         Response when a semantic model is successfully updated.
 
-        The updated OSI document is returned in the `document` field.
+        The updated Apache Ossie document is returned in the `document` field.
       content:
         application/json:
           schema:
