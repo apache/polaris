@@ -295,4 +295,36 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         .hasMessageContaining("Unable to create entity at location")
         .hasMessageContaining("conflicts with existing table or namespace");
   }
+
+  @Test
+  public void testParentPrefixOverlapWithTrailingSlashMismatch() {
+    Namespace ns = Namespace.of("ns-for-trailing-slash-overlap");
+    catalog().createNamespace(ns);
+
+    // Create a parent table with an explicit location that has no trailing slash. This is the
+    // storage form that triggered the OPTIMIZED_SIBLING_CHECK false negative: the stored
+    // location_without_scheme lacks a trailing slash while the overlap query's ancestor equality
+    // terms are always slash-terminated.
+    TableIdentifier parentTable = TableIdentifier.of(ns, "trailing-parent");
+    String parentLoc = STORAGE_LOCATION + "/trailing-overlap/parent";
+    catalog().buildTable(parentTable, SCHEMA).withLocation(parentLoc).create();
+
+    // Creating a child table under the slash-less parent location must be rejected.
+    TableIdentifier childTable = TableIdentifier.of(ns, "trailing-child");
+    String childLoc = STORAGE_LOCATION + "/trailing-overlap/parent/child";
+    assertThatThrownBy(
+            () -> catalog().buildTable(childTable, SCHEMA).withLocation(childLoc).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Unable to create entity at location")
+        .hasMessageContaining("conflicts with existing table or namespace");
+
+    // The same must hold when the slash-terminated form of the same prefix is used.
+    TableIdentifier siblingTable = TableIdentifier.of(ns, "trailing-sibling");
+    String siblingLoc = STORAGE_LOCATION + "/trailing-overlap/parent/";
+    assertThatThrownBy(
+            () -> catalog().buildTable(siblingTable, SCHEMA).withLocation(siblingLoc).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Unable to create entity at location")
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
 }
