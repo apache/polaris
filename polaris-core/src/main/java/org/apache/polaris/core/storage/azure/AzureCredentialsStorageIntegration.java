@@ -163,7 +163,6 @@ public class AzureCredentialsStorageIntegration
     validateAccountAndContainer(location, locations, writeLocations);
 
     String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
-    String accountName = location.getStorageAccount();
     String filePath = location.getFilePath();
 
     BlobSasPermission blobSasPermission = new BlobSasPermission();
@@ -253,19 +252,21 @@ public class AzureCredentialsStorageIntegration
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
 
-    return toAccessConfig(
-        sasToken, storageDnsName, accountName, sanitizedEndTime.toInstant(), refreshEndpoint);
+    return toAccessConfig(sasToken, storageDnsName, sanitizedEndTime.toInstant(), refreshEndpoint);
   }
 
   @VisibleForTesting
   static StorageAccessConfig toAccessConfig(
       String sasToken,
       String storageDnsName,
-      String accountName,
       Instant expiresAt,
       Optional<String> refreshCredentialsEndpoint) {
+    // For tests we build a fake location from the provided host part so we can pass the whole
+    // AzureLocation to handle (addresses review suggestion).
+    String fakeUri = "abfss://container@" + storageDnsName + "/path";
+    AzureLocation location = new AzureLocation(fakeUri);
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
-    handleAzureCredential(accessConfig, sasToken, storageDnsName, accountName, expiresAt);
+    handleAzureCredential(accessConfig, sasToken, location, expiresAt);
     accessConfig.put(
         StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
     refreshCredentialsEndpoint.ifPresent(
@@ -278,9 +279,11 @@ public class AzureCredentialsStorageIntegration
   private static void handleAzureCredential(
       StorageAccessConfig.Builder config,
       String sasToken,
-      String storageDnsName,
-      String accountName,
+      AzureLocation location,
       Instant expiresAt) {
+    String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
+    String accountName = location.getStorageAccount();
+
     config.putCredential(
         StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + storageDnsName, sasToken);
     config.putCredential(
@@ -289,13 +292,13 @@ public class AzureCredentialsStorageIntegration
         String.valueOf(expiresAt.toEpochMilli()));
 
     // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint.
-    // We use the clean accountName (sourced from AzureLocation) for the stripped variant.
-    if (storageDnsName.endsWith(AzureLocation.ADLS_ENDPOINT)) {
+    // Use accountName (from location) for the stripped variant.
+    if (location.isAdls()) {
       config.putCredential(
           StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + accountName, sasToken);
     }
 
-    if (storageDnsName.endsWith(AzureLocation.BLOB_ENDPOINT)) {
+    if (location.isBlob()) {
       config.putCredential(
           StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + accountName, sasToken);
     }
