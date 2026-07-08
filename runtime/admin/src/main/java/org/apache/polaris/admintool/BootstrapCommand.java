@@ -154,6 +154,7 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
 
       // Log any errors:
       boolean success = true;
+      int alreadyBootstrappedCount = 0;
       for (Map.Entry<String, PrincipalSecretsResult> result : results.entrySet()) {
         if (result.getValue().isSuccess()) {
           String realm = result.getKey();
@@ -172,6 +173,7 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
           // Re-running bootstrap on an existing realm is a no-op, not an error; this
           // keeps automated bootstrap jobs idempotent. Existing credentials are never
           // returned or altered.
+          alreadyBootstrappedCount++;
           String realm = result.getKey();
           spec.commandLine()
               .getOut()
@@ -188,7 +190,15 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
       }
 
       if (success) {
-        spec.commandLine().getOut().println("Bootstrap completed successfully.");
+        if (alreadyBootstrappedCount > 0) {
+          spec.commandLine()
+              .getOut()
+              .printf(
+                  "Bootstrap completed (%d realm(s) already bootstrapped).%n",
+                  alreadyBootstrappedCount);
+        } else {
+          spec.commandLine().getOut().println("Bootstrap completed successfully.");
+        }
         return 0;
       } else {
         spec.commandLine().getErr().println("Bootstrap encountered errors during operation.");

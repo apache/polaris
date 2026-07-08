@@ -91,8 +91,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
     // the test driver bootstrapped the service already; bootstrap a second time
     BaseResult secondBootstrap =
         metaStoreManager.bootstrapPolarisService(polarisTestMetaStoreManager.polarisCallContext);
-    Assertions.assertThat(secondBootstrap.isSuccess()).isFalse();
-    Assertions.assertThat(secondBootstrap.alreadyExists()).isTrue();
+    Assertions.assertThat(secondBootstrap.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
     // the existing realm must be left fully intact
     polarisTestMetaStoreManager.validateBootstrap();
   }
