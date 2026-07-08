@@ -66,11 +66,7 @@ class Bootstrapper {
     for (String realmId : realmIds) {
       Task t =
           new Task(
-              realmContextHolder,
-              realmId,
-              rootCredentialsSet,
-              factory,
-              lineagePersistenceEnabled);
+              realmContextHolder, realmId, rootCredentialsSet, factory, lineagePersistenceEnabled);
       try {
         // Submit an async task per realm to ensure it runs in a fresh RequestContext.
         // Note: simultaneous bootstrap of multiple realms is an edge case - no need
