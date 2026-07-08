@@ -36,14 +36,13 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.rest.GenericTableEndpoints;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.policy.PolicyEndpoints;
-import org.apache.polaris.service.catalog.semantic.SemanticModelEndpoints;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class GetConfigTest {
   @ParameterizedTest
-  @CsvSource({"true,true", "true,false", "false,true", "false,false"})
-  public void testGetConfig(boolean enableGenericTable, boolean enableSemanticModels) {
+  @ValueSource(booleans = {true, false})
+  public void testGetConfig(boolean enableGenericTable) {
     TestServices services =
         TestServices.builder()
             .config(
@@ -53,9 +52,7 @@ public class GetConfigTest {
                     "SUPPORTED_CATALOG_STORAGE_TYPES",
                     List.of("FILE", "S3"),
                     "ENABLE_GENERIC_TABLES",
-                    enableGenericTable,
-                    "ENABLE_SEMANTIC_MODELS",
-                    enableSemanticModels))
+                    enableGenericTable))
             .build();
 
     FileStorageConfigInfo fileStorage =
@@ -88,22 +85,13 @@ public class GetConfigTest {
 
     assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
     assertThat(configResponse.endpoints()).contains(PolicyEndpoints.V1_CREATE_POLICY);
-    assertEndpointOrder(configResponse, enableGenericTable, enableSemanticModels);
+    assertEndpointOrder(configResponse, enableGenericTable);
     assertGenericTableEndpoints(configResponse, enableGenericTable);
-    assertSemanticModelEndpoints(configResponse, enableSemanticModels);
   }
 
   private static void assertEndpointOrder(
-      ConfigResponse configResponse, boolean enableGenericTable, boolean enableSemanticModels) {
-    if (enableGenericTable && enableSemanticModels) {
-      assertThat(configResponse.endpoints())
-          .containsSubsequence(
-              Endpoint.V1_LIST_NAMESPACES,
-              Endpoint.V1_REGISTER_VIEW,
-              GenericTableEndpoints.V1_CREATE_GENERIC_TABLE,
-              PolicyEndpoints.V1_CREATE_POLICY,
-              SemanticModelEndpoints.V1_CREATE_SEMANTIC_MODEL);
-    } else if (enableGenericTable) {
+      ConfigResponse configResponse, boolean enableGenericTable) {
+    if (enableGenericTable) {
       assertThat(configResponse.endpoints())
           .containsSubsequence(
               Endpoint.V1_LIST_NAMESPACES,
@@ -137,33 +125,6 @@ public class GetConfigTest {
           .doesNotContain(GenericTableEndpoints.V1_LIST_GENERIC_TABLES);
       assertThat(configResponse.endpoints())
           .doesNotContain(GenericTableEndpoints.V1_LOAD_GENERIC_TABLE);
-    }
-  }
-
-  private static void assertSemanticModelEndpoints(
-      ConfigResponse configResponse, boolean enableSemanticModels) {
-    if (enableSemanticModels) {
-      assertThat(configResponse.endpoints())
-          .contains(SemanticModelEndpoints.V1_CREATE_SEMANTIC_MODEL);
-      assertThat(configResponse.endpoints())
-          .contains(SemanticModelEndpoints.V1_DROP_SEMANTIC_MODEL);
-      assertThat(configResponse.endpoints())
-          .contains(SemanticModelEndpoints.V1_LIST_SEMANTIC_MODELS);
-      assertThat(configResponse.endpoints())
-          .contains(SemanticModelEndpoints.V1_LOAD_SEMANTIC_MODEL);
-      assertThat(configResponse.endpoints())
-          .contains(SemanticModelEndpoints.V1_UPDATE_SEMANTIC_MODEL);
-    } else {
-      assertThat(configResponse.endpoints())
-          .doesNotContain(SemanticModelEndpoints.V1_CREATE_SEMANTIC_MODEL);
-      assertThat(configResponse.endpoints())
-          .doesNotContain(SemanticModelEndpoints.V1_DROP_SEMANTIC_MODEL);
-      assertThat(configResponse.endpoints())
-          .doesNotContain(SemanticModelEndpoints.V1_LIST_SEMANTIC_MODELS);
-      assertThat(configResponse.endpoints())
-          .doesNotContain(SemanticModelEndpoints.V1_LOAD_SEMANTIC_MODEL);
-      assertThat(configResponse.endpoints())
-          .doesNotContain(SemanticModelEndpoints.V1_UPDATE_SEMANTIC_MODEL);
     }
   }
 }

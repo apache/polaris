@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.semantic;
+package org.apache.polaris.service.catalog.semanticmodel;
 
 import com.google.common.collect.ImmutableSet;
 import jakarta.annotation.Priority;
