@@ -278,31 +278,26 @@ public class AzureCredentialsStorageIntegration
   private static void handleAzureCredential(
       StorageAccessConfig.Builder config,
       String sasToken,
-      String host,
+      String storageDnsName,
       String accountName,
       Instant expiresAt) {
-    config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + host, sasToken);
     config.putCredential(
-        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX.getPropertyName() + host,
+        StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + storageDnsName, sasToken);
+    config.putCredential(
+        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX.getPropertyName()
+            + storageDnsName,
         String.valueOf(expiresAt.toEpochMilli()));
 
-    // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint
-    if (host.endsWith(AzureLocation.ADLS_ENDPOINT)) {
-      int suffixIndex = host.lastIndexOf(AzureLocation.ADLS_ENDPOINT) - 1;
-      if (suffixIndex > 0) {
-        String withSuffixStripped = host.substring(0, suffixIndex);
-        config.putCredential(
-            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
-      }
+    // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint.
+    // We use the clean accountName (sourced from AzureLocation) for the stripped variant.
+    if (storageDnsName.endsWith(AzureLocation.ADLS_ENDPOINT)) {
+      config.putCredential(
+          StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + accountName, sasToken);
     }
 
-    if (host.endsWith(AzureLocation.BLOB_ENDPOINT)) {
-      int suffixIndex = host.lastIndexOf(AzureLocation.BLOB_ENDPOINT) - 1;
-      if (suffixIndex > 0) {
-        String withSuffixStripped = host.substring(0, suffixIndex);
-        config.putCredential(
-            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
-      }
+    if (storageDnsName.endsWith(AzureLocation.BLOB_ENDPOINT)) {
+      config.putCredential(
+          StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + accountName, sasToken);
     }
 
     // PyIceberg and other clients need bare adls.sas-token and adls.account-name for compatibility

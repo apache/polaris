@@ -34,12 +34,23 @@ public class AzureCredentialsStorageIntegrationTest {
   public void testAzureCredentialFormatting() {
     Instant expiresAt = Instant.ofEpochMilli(Long.MAX_VALUE);
 
+    // Use a suffixed storageDnsName + clean accountName so the bare credential asserts
+    // clearly exercise the accountName parameter (addresses review feedback).
     StorageAccessConfig noSuffixResult =
-        toAccessConfig("sasToken", "some_account", "some_account", expiresAt, Optional.empty());
-    Assertions.assertThat(noSuffixResult.credentials()).hasSize(5);
-    Assertions.assertThat(noSuffixResult.credentials()).containsKey("adls.sas-token.some_account");
+        toAccessConfig(
+            "sasToken",
+            "some_account." + AzureLocation.ADLS_ENDPOINT,
+            "some_account",
+            expiresAt,
+            Optional.empty());
     Assertions.assertThat(noSuffixResult.credentials())
-        .containsKey("adls.sas-token-expires-at-ms.some_account");
+        .withFailMessage("Actual keys: " + noSuffixResult.credentials().keySet())
+        .hasSize(6);
+    Assertions.assertThat(noSuffixResult.credentials())
+        .containsKey("adls.sas-token.some_account." + AzureLocation.ADLS_ENDPOINT);
+    Assertions.assertThat(noSuffixResult.credentials())
+        .containsKey("adls.sas-token-expires-at-ms.some_account." + AzureLocation.ADLS_ENDPOINT);
+    Assertions.assertThat(noSuffixResult.credentials()).containsKey("adls.sas-token.some_account");
     Assertions.assertThat(noSuffixResult.credentials())
         .containsKey(StorageAccessProperty.AZURE_SAS_TOKEN_BARE.getPropertyName());
     Assertions.assertThat(noSuffixResult.credentials())

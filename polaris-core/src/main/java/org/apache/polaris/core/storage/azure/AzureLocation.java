@@ -88,6 +88,16 @@ public class AzureLocation extends StorageLocation {
     return endpoint;
   }
 
+  /** Returns true if this location uses the ADLS (DFS) endpoint. */
+  public boolean isAdls() {
+    return ADLS_ENDPOINT.equalsIgnoreCase(endpoint);
+  }
+
+  /** Returns true if this location uses the Blob endpoint. */
+  public boolean isBlob() {
+    return BLOB_ENDPOINT.equalsIgnoreCase(endpoint);
+  }
+
   /** Get the file path */
   public String getFilePath() {
     return filePath;
