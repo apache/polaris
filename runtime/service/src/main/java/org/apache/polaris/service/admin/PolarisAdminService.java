@@ -801,7 +801,9 @@ public class PolarisAdminService {
                     .atWarn()
                     .setCause(e)
                     .addKeyValue("secretReference", secretReference.urn())
-                    .log("Failed to clean up secret after catalog creation failure");
+                    .log(
+                        "Failed to clean up secret {} after catalog creation failure",
+                        secretReference.urn());
               }
             });
   }
