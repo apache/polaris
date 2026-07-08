@@ -36,6 +36,11 @@ import org.jspecify.annotations.NonNull;
  *
  * <p>This class acts as a translation layer between Polaris properties and the properties required
  * by Iceberg's {@link FileIO}.
+ *
+ * <p>When constructed with {@link S3AccessConfig} (CDI {@code @Identifier("default")} and other
+ * production factories such as {@code wasb}), {@code polaris.storage.*} HTTP client settings are
+ * applied to Iceberg AWS FileIOs. The no-arg constructor is for tests and fixtures that do not need
+ * those settings.
  */
 @RequestScoped
 @Identifier("default")
@@ -43,6 +48,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
 
   private final S3AccessConfig s3AccessConfig;
 
+  /** For tests and fixtures that do not need {@code polaris.storage.*} HTTP client settings. */
   public DefaultFileIOFactory() {
     this(null);
   }
@@ -70,7 +76,8 @@ public class DefaultFileIOFactory implements FileIOFactory {
     props.putAll(storageAccessConfig.internalProperties());
 
     // Apply polaris.storage.* HTTP client settings to Iceberg S3FileIO (and other AWS FileIOs).
-    // Previously only applied to the STS client pool.
+    // Previously only applied to the STS client pool. Skipped when constructed without config
+    // (tests / fixtures); production CDI paths always inject S3AccessConfig.
     if (s3AccessConfig != null) {
       s3AccessConfig
           .maxHttpConnections()
