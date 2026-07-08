@@ -25,13 +25,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.UUID;
 
 /**
@@ -99,18 +100,27 @@ public final class EntityIdempotency {
     long nowMillis = now.toEpochMilli();
     String keyString = key.toString();
 
-    // Min-heap ordered by expiry: the head is always the earliest-expiring key, so a full window
-    // can be trimmed with poll() (O(log n)) without re-sorting the whole list on each eviction.
-    PriorityQueue<KeyEntry> window = new PriorityQueue<>(BY_EXPIRY);
+    // The window is stored (and therefore decoded) sorted by expiry, so it stays sorted with a
+    // binary-search insertion instead of a re-sort on every write. Filtering out expired entries
+    // and any prior copy of this key preserves that order.
+    List<KeyEntry> window = new ArrayList<>();
     for (KeyEntry entry : decode(internalProperties.get(IDEMPOTENCY_KEYS_PROPERTY))) {
       if (entry.expiryMillis > nowMillis && !entry.key.equals(keyString)) {
         window.add(entry);
       }
     }
-    while (window.size() >= MAX_WINDOW_SIZE) {
-      window.poll();
+
+    KeyEntry newEntry = new KeyEntry(keyString, expiry.toEpochMilli());
+    int insertionPoint = Collections.binarySearch(window, newEntry, BY_EXPIRY);
+    if (insertionPoint < 0) {
+      insertionPoint = -(insertionPoint + 1);
     }
-    window.add(new KeyEntry(keyString, expiry.toEpochMilli()));
+    window.add(insertionPoint, newEntry);
+
+    // Bounded window: when full, drop the earliest-expiring entry (front of the sorted list).
+    while (window.size() > MAX_WINDOW_SIZE) {
+      window.remove(0);
+    }
 
     Map<String, String> updated = new HashMap<>(internalProperties);
     updated.put(IDEMPOTENCY_KEYS_PROPERTY, encode(window));
