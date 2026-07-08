@@ -110,17 +110,19 @@ public final class EntityIdempotency {
       }
     }
 
+    // Bounded window: drop the earliest-expiring entries (front of the sorted list) to make room
+    // *before* inserting, so the key just recorded is always retained even when every entry shares
+    // the same expiry (e.g. a burst of writes at one instant) and expiry order can't rank recency.
+    while (window.size() >= MAX_WINDOW_SIZE) {
+      window.remove(0);
+    }
+
     KeyEntry newEntry = new KeyEntry(keyString, expiry.toEpochMilli());
     int insertionPoint = Collections.binarySearch(window, newEntry, BY_EXPIRY);
     if (insertionPoint < 0) {
       insertionPoint = -(insertionPoint + 1);
     }
     window.add(insertionPoint, newEntry);
-
-    // Bounded window: when full, drop the earliest-expiring entry (front of the sorted list).
-    while (window.size() > MAX_WINDOW_SIZE) {
-      window.remove(0);
-    }
 
     Map<String, String> updated = new HashMap<>(internalProperties);
     updated.put(IDEMPOTENCY_KEYS_PROPERTY, encode(window));
