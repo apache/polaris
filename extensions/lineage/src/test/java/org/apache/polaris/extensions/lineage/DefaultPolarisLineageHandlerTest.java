@@ -28,8 +28,6 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -37,7 +35,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 public class DefaultPolarisLineageHandlerTest {
-  @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
   @Mock private LineageStoreManager storeManager;
 
@@ -46,7 +43,7 @@ public class DefaultPolarisLineageHandlerTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    service = new DefaultPolarisLineageHandler(realmConfig, configuration, storeManager);
+    service = new DefaultPolarisLineageHandler(configuration, storeManager);
   }
 
   @Test
@@ -61,21 +58,8 @@ public class DefaultPolarisLineageHandlerTest {
   }
 
   @Test
-  void throwsWhenRealmFeatureDisabled() {
-    when(configuration.enabled()).thenReturn(true);
-    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(false);
-
-    assertThatThrownBy(() -> service.query(queryRequest()))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(FeatureConfiguration.ENABLE_LINEAGE.key());
-
-    verifyNoInteractions(storeManager);
-  }
-
-  @Test
   void delegatesQueryWhenLineageEnabled() {
     when(configuration.enabled()).thenReturn(true);
-    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
     LineageQueryRequest request = queryRequest();
     LineageGraph graph =
         new LineageGraph(
@@ -91,7 +75,6 @@ public class DefaultPolarisLineageHandlerTest {
   @Test
   void delegatesIngestWhenLineageEnabled() {
     when(configuration.enabled()).thenReturn(true);
-    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
     LineageIngestRequest request = ingestRequest();
 
     service.ingest(request);
