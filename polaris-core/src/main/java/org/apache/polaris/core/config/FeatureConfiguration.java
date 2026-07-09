@@ -432,8 +432,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("STORAGE_CREDENTIAL_DURATION_SECONDS")
           .description(
               "The duration of time that vended storage credentials are valid for. Support for"
-                  + " longer (or shorter) durations is dependent on the storage provider. GCS"
-                  + " current does not respect this value.")
+                  + " longer (or shorter) durations is dependent on the storage provider. For GCS,"
+                  + " this is clamped to 12 hours (43200s); durations beyond 1 hour (3600s) also"
+                  + " require the target service account to be covered by a GCP org policy with"
+                  + " the constraints/iam.allowServiceAccountCredentialLifetimeExtension list"
+                  + " constraint, otherwise GCP will reject the request.")
           .defaultValue(60 * 60) // 1 hour
           .buildFeatureConfiguration();
 

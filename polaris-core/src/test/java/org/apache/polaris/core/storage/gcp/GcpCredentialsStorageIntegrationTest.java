@@ -77,6 +77,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -509,6 +510,88 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         && request
                             .getScope(0)
                             .equals(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE)));
+  }
+
+  @Test
+  public void testImpersonationHonorsConfiguredDuration() throws IOException {
+    assertThat(captureImpersonationLifetimeSeconds(configWith(Map.of(
+            "STORAGE_CREDENTIAL_DURATION_SECONDS", "7200"))))
+        .isEqualTo(7200);
+  }
+
+  @Test
+  public void testImpersonationClampsDurationAboveGcpMax() throws IOException {
+    assertThat(captureImpersonationLifetimeSeconds(configWith(Map.of(
+            "STORAGE_CREDENTIAL_DURATION_SECONDS", "100000"))))
+        .isEqualTo(12 * 60 * 60);
+  }
+
+  @Test
+  public void testImpersonationClampsDurationBelowGcpMin() throws IOException {
+    assertThat(captureImpersonationLifetimeSeconds(configWith(Map.of(
+            "STORAGE_CREDENTIAL_DURATION_SECONDS", "10"))))
+        .isEqualTo(60);
+  }
+
+  @Test
+  public void testClampImpersonationLifetime() {
+    assertThat(GcpCredentialsStorageIntegration.clampImpersonationLifetime(7200)).isEqualTo(7200);
+    assertThat(GcpCredentialsStorageIntegration.clampImpersonationLifetime(100000))
+        .isEqualTo(12 * 60 * 60);
+    assertThat(GcpCredentialsStorageIntegration.clampImpersonationLifetime(10)).isEqualTo(60);
+  }
+
+  private long captureImpersonationLifetimeSeconds(RealmConfig realmConfig) throws IOException {
+    String serviceAccount = "test-sa@project.iam.gserviceaccount.com";
+    GcpStorageConfigurationInfo config =
+        GcpStorageConfigurationInfo.builder()
+            .addAllAllowedLocations(List.of("gs://bucket/path"))
+            .gcpServiceAccount(serviceAccount)
+            .build();
+
+    IamCredentialsClient mockIamClient = Mockito.mock(IamCredentialsClient.class);
+    GenerateAccessTokenResponse mockResponse =
+        GenerateAccessTokenResponse.newBuilder()
+            .setAccessToken("impersonated-token")
+            .setExpireTime(
+                Timestamp.newBuilder().setSeconds(System.currentTimeMillis() / 1000 + 3600).build())
+            .build();
+    Mockito.when(mockIamClient.generateAccessToken(Mockito.any(GenerateAccessTokenRequest.class)))
+        .thenReturn(mockResponse);
+
+    GoogleCredentials mockCreds = Mockito.mock(GoogleCredentials.class);
+    Mockito.when(mockCreds.createScoped(Mockito.any(String.class))).thenReturn(mockCreds);
+
+    GcpCredentialOps testOps =
+        new GcpCredentialOps() {
+          @Override
+          public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
+            return mockIamClient;
+          }
+
+          @Override
+          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+            return new AccessToken("downscoped-token", new Date());
+          }
+        };
+    GcpCredentialsStorageIntegration integration =
+        new GcpCredentialsStorageIntegration(
+            mockCreds,
+            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
+            config,
+            realmConfig,
+            testOps);
+
+    integration.getStorageAccessConfig(
+        toGrants(
+            Set.of("gs://bucket/path"), Set.of("gs://bucket/path"), Set.of("gs://bucket/path")),
+        Optional.empty(),
+        org.apache.polaris.core.storage.CredentialVendingContext.empty());
+
+    ArgumentCaptor<GenerateAccessTokenRequest> captor =
+        ArgumentCaptor.forClass(GenerateAccessTokenRequest.class);
+    Mockito.verify(mockIamClient).generateAccessToken(captor.capture());
+    return captor.getValue().getLifetime().getSeconds();
   }
 
   @Test

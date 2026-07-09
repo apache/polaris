@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 import static org.apache.polaris.core.storage.StorageLocation.ensureTrailingSlash;
 
 import com.google.auth.http.HttpTransportFactory;
@@ -75,6 +76,12 @@ public class GcpCredentialsStorageIntegration
   public static final String SERVICE_ACCOUNT_PREFIX = "projects/-/serviceAccounts/";
   public static final String IMPERSONATION_SCOPE =
       "https://www.googleapis.com/auth/devstorage.read_write";
+  // GCP's IAM Service Account Credentials API caps generateAccessToken lifetime at 1 hour by
+  // default; extending up to this 12-hour ceiling requires the target service account to be
+  // covered by an org policy with the constraints/iam.allowServiceAccountCredentialLifetimeExtension
+  // list constraint, otherwise GCP rejects the request.
+  private static final int MAX_IMPERSONATION_LIFETIME_SECONDS = 12 * 60 * 60;
+  private static final int MIN_IMPERSONATION_LIFETIME_SECONDS = 60;
 
   private static final ObjectMapper OBJECT_MAPPER = JsonMapper.shared();
 
@@ -300,6 +307,9 @@ public class GcpCredentialsStorageIntegration
     Set<String> readLocations = key.allowedReadLocations();
     Set<String> listLocations = key.allowedListLocations();
     Set<String> writeLocations = key.allowedWriteLocations();
+    int impersonationLifetimeSeconds =
+        clampImpersonationLifetime(
+            key.realmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS));
 
     try {
       sourceCredentials.refresh();
@@ -308,7 +318,8 @@ public class GcpCredentialsStorageIntegration
     }
 
     GoogleCredentials credentialsToDownscope =
-        resolveSourceCredentials(key, gcpStorageConfig, sourceCredentials, credentialOps);
+        resolveSourceCredentials(
+            key, gcpStorageConfig, sourceCredentials, credentialOps, impersonationLifetimeSeconds);
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(readLocations, listLocations, writeLocations);
@@ -362,7 +373,8 @@ public class GcpCredentialsStorageIntegration
       GcpStorageCredentialCacheKey key,
       GcpStorageConfigurationInfo storageConfig,
       GoogleCredentials sourceCredentials,
-      GcpCredentialOps credentialOps) {
+      GcpCredentialOps credentialOps,
+      int impersonationLifetimeSeconds) {
     Optional<GcpAttributionParams> attributionParams = key.attributionParams();
     if (attributionParams.isPresent()) {
       GcpAttributionParams params = attributionParams.get();
@@ -377,9 +389,13 @@ public class GcpCredentialsStorageIntegration
               key.transportFactory());
       GoogleCredentials federated = exchanger.federatedCredentials(subject, key.realmId());
       return createImpersonatedCredentials(
-          federated, storageConfig.getGcpServiceAccount(), credentialOps);
+          federated,
+          storageConfig.getGcpServiceAccount(),
+          credentialOps,
+          impersonationLifetimeSeconds);
     }
-    return getBaseCredentials(storageConfig, sourceCredentials, credentialOps);
+    return getBaseCredentials(
+        storageConfig, sourceCredentials, credentialOps, impersonationLifetimeSeconds);
   }
 
   /**
@@ -389,16 +405,30 @@ public class GcpCredentialsStorageIntegration
   private static GoogleCredentials getBaseCredentials(
       GcpStorageConfigurationInfo storageConfig,
       GoogleCredentials sourceCredentials,
-      GcpCredentialOps credentialOps) {
+      GcpCredentialOps credentialOps,
+      int impersonationLifetimeSeconds) {
     if (storageConfig.getGcpServiceAccount() != null) {
       return createImpersonatedCredentials(
-          sourceCredentials, storageConfig.getGcpServiceAccount(), credentialOps);
+          sourceCredentials,
+          storageConfig.getGcpServiceAccount(),
+          credentialOps,
+          impersonationLifetimeSeconds);
     }
     return sourceCredentials;
   }
 
+  @VisibleForTesting
+  static int clampImpersonationLifetime(int requestedSeconds) {
+    return Math.max(
+        MIN_IMPERSONATION_LIFETIME_SECONDS,
+        Math.min(MAX_IMPERSONATION_LIFETIME_SECONDS, requestedSeconds));
+  }
+
   private static GoogleCredentials createImpersonatedCredentials(
-      GoogleCredentials source, String targetServiceAccount, GcpCredentialOps credentialOps) {
+      GoogleCredentials source,
+      String targetServiceAccount,
+      GcpCredentialOps credentialOps,
+      int impersonationLifetimeSeconds) {
     try (IamCredentialsClient iamCredentialsClient =
         credentialOps.createIamCredentialsClient(source)) {
       GenerateAccessTokenRequest request =
@@ -409,7 +439,7 @@ public class GcpCredentialsStorageIntegration
               // but devstorage.read_write is sufficient for GCS specific operations.
               // See https://docs.cloud.google.com/storage/docs/oauth-scopes
               .addScope(IMPERSONATION_SCOPE)
-              .setLifetime(Duration.newBuilder().setSeconds(3600).build())
+              .setLifetime(Duration.newBuilder().setSeconds(impersonationLifetimeSeconds).build())
               .build();
 
       GenerateAccessTokenResponse response = iamCredentialsClient.generateAccessToken(request);
