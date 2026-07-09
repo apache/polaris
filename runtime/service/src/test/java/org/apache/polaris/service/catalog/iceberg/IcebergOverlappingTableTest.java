@@ -323,6 +323,68 @@ public class IcebergOverlappingTableTest {
         .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
   }
 
+  @ParameterizedTest
+  @MethodSource("testTableLocationRestrictions")
+  @DisplayName("Test restrictions on generic table locations")
+  void testGenericTableLocationRestrictions(
+      Map<String, Object> serverConfig,
+      Map<String, String> catalogConfig,
+      int expectedStatusForOverlaps,
+      @TempDir Path tempDir) {
+    TestServices services = TestServices.builder().config(serverConfig).build();
+
+    String baseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (baseLocation.endsWith("/")) {
+      baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
+    }
+    createCatalogAndNamespace(services, catalogConfig, baseLocation);
+
+    // Create an Iceberg table and a generic table at distinct locations
+    assertThat(
+            createTable(
+                services, String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+    assertThat(
+            createGenericTable(
+                services, String.format("%s/%s/%s/generic_1", baseLocation, catalog, namespace)))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+
+    // Generic table at unrelated location succeeds
+    assertThat(
+            createGenericTable(
+                services, String.format("%s/%s/%s/generic_2", baseLocation, catalog, namespace)))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+
+    // Generic table overlapping an Iceberg table location
+    assertThat(
+            createGenericTable(
+                services, String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
+        .isEqualTo(expectedStatusForOverlaps);
+
+    // Generic table overlapping another generic table location
+    assertThat(
+            createGenericTable(
+                services, String.format("%s/%s/%s/generic_1", baseLocation, catalog, namespace)))
+        .isEqualTo(expectedStatusForOverlaps);
+
+    // Generic table at parent of existing location
+    assertThat(
+            createGenericTable(
+                services, String.format("%s/%s/%s", baseLocation, catalog, namespace)))
+        .isEqualTo(expectedStatusForOverlaps);
+
+    // Generic table at child of existing location
+    assertThat(
+            createGenericTable(
+                services,
+                String.format("%s/%s/%s/generic_1/child", baseLocation, catalog, namespace)))
+        .isEqualTo(expectedStatusForOverlaps);
+
+    // Generic table outside the catalog
+    assertThat(createGenericTable(services, String.format("%s", baseLocation)))
+        .isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+  }
+
   static Stream<Arguments> testStandardTableLocations() {
     Map<String, Object> noPrefixCatalog =
         Map.of(

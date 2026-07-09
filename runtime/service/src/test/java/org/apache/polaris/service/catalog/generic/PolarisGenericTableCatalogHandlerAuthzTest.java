@@ -103,7 +103,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .action(
             () ->
                 newWrapper(Set.of(PRINCIPAL_ROLE1))
-                    .createGenericTable(newtable, "format", "file:///temp/", "doc", Map.of()))
+                    .createGenericTable(newtable, "format", null, "doc", Map.of()))
         .cleanupAction(() -> newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
@@ -138,8 +138,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .cleanupAction(
             () ->
                 newWrapper(Set.of(PRINCIPAL_ROLE2))
-                    .createGenericTable(
-                        TABLE_NS1_1_GENERIC, "format", "file:///temp/", "doc", Map.of()))
+                    .createGenericTable(TABLE_NS1_1_GENERIC, "format", null, "doc", Map.of()))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -190,8 +189,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .cleanupAction(
             () ->
                 newWrapper(Set.of(PRINCIPAL_ROLE2))
-                    .createGenericTable(
-                        TABLE_NS1_1_GENERIC, "format", "file:///temp/", "doc", Map.of()))
+                    .createGenericTable(TABLE_NS1_1_GENERIC, "format", null, "doc", Map.of()))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
