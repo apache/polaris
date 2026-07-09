@@ -19,13 +19,71 @@
 package org.apache.polaris.admintool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Map;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import picocli.CommandLine;
 
+@ExtendWith(MockitoExtension.class)
 class BootstrapCommandTest {
+
+  @Mock private MetaStoreManagerFactory factory;
+
+  @Test
+  void testIgnoreExistingSucceedsOnAlreadyBootstrappedRealm() {
+    when(factory.bootstrapRealms(any(BootstrapOptions.class)))
+        .thenReturn(
+            Map.of(
+                "realm1",
+                new PrincipalSecretsResult(
+                    BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, "realm already bootstrapped")));
+
+    BootstrapCommand cmd = new BootstrapCommand();
+    cmd.metaStoreManagerFactory = factory;
+    CommandLine cli = new CommandLine(cmd);
+    StringWriter out = new StringWriter();
+    StringWriter err = new StringWriter();
+    cli.setOut(new PrintWriter(out, true));
+    cli.setErr(new PrintWriter(err, true));
+
+    int exitCode = cli.execute("-r", "realm1", "-c", "realm1,root,s3cr3t", "--ignore-existing");
+
+    assertThat(exitCode).isEqualTo(0);
+    assertThat(err.toString()).contains("realm1").contains("already bootstrapped");
+    assertThat(out.toString()).contains("Bootstrap completed successfully.");
+  }
+
+  @Test
+  void testAlreadyBootstrappedWithoutFlagFails() {
+    when(factory.bootstrapRealms(any(BootstrapOptions.class)))
+        .thenReturn(
+            Map.of(
+                "realm1",
+                new PrincipalSecretsResult(
+                    BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, "realm already bootstrapped")));
+
+    BootstrapCommand cmd = new BootstrapCommand();
+    cmd.metaStoreManagerFactory = factory;
+    CommandLine cli = new CommandLine(cmd);
+    StringWriter err = new StringWriter();
+    cli.setErr(new PrintWriter(err, true));
+
+    int exitCode = cli.execute("-r", "realm1", "-c", "realm1,root,s3cr3t");
+
+    assertThat(exitCode).isEqualTo(BaseCommand.EXIT_CODE_BOOTSTRAP_ERROR);
+    assertThat(err.toString()).contains("Bootstrap encountered errors during operation.");
+  }
 
   @Test
   void testBootstrapInvalidCredentials() {

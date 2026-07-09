@@ -57,6 +57,8 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
 
   testImplementation(project(":polaris-runtime-test-common"))
+  testImplementation(libs.mockito.core)
+  testImplementation(libs.mockito.junit.jupiter)
   testFixturesApi(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-runtime-test-common"))
 
