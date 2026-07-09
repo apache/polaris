@@ -48,4 +48,29 @@ public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase
         .contains("Realm 'realm1' successfully bootstrapped.")
         .contains("Bootstrap completed successfully.");
   }
+
+  @Test
+  public void testIgnoreExistingSucceedsOnAlreadyBootstrappedRealm(
+      QuarkusMainLauncher launcher) {
+    launcher.launch("bootstrap", "-r", "realm-dup", "-c", "realm-dup,root,s3cr3t");
+
+    LaunchResult result =
+        launcher.launch(
+            "bootstrap", "-r", "realm-dup", "-c", "realm-dup,root,s3cr3t", "--ignore-existing");
+
+    assertThat(result.exitCode()).isEqualTo(0);
+    assertThat(result.getErrorOutput()).contains("Realm 'realm-dup' is already bootstrapped");
+    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
+  }
+
+  @Test
+  public void testAlreadyBootstrappedWithoutFlagFails(QuarkusMainLauncher launcher) {
+    launcher.launch("bootstrap", "-r", "realm-dup2", "-c", "realm-dup2,root,s3cr3t");
+
+    LaunchResult result =
+        launcher.launch("bootstrap", "-r", "realm-dup2", "-c", "realm-dup2,root,s3cr3t");
+
+    assertThat(result.exitCode()).isNotEqualTo(0);
+    assertThat(result.getErrorOutput()).contains("Bootstrap encountered errors during operation.");
+  }
 }

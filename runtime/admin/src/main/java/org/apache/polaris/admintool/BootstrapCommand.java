@@ -46,6 +46,12 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
     // This @Mixin provides independent, optional schema flags.
     @CommandLine.Mixin SchemaInputOptions schemaInputOptions = new SchemaInputOptions();
 
+    @CommandLine.Option(
+        names = {"--ignore-existing"},
+        description =
+            "If a realm is already bootstrapped, emit a warning and continue instead of failing.")
+    boolean ignoreExisting;
+
     // This static inner class encapsulates the mutually exclusive choices.
     static class RootCredentialsOptions {
 
@@ -169,6 +175,11 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
                     result.getValue().getPrincipalSecrets().getMainSecret());
             spec.commandLine().getOut().println(msg);
           }
+        } else if (result.getValue().alreadyExists() && inputOptions.ignoreExisting) {
+          String realm = result.getKey();
+          spec.commandLine()
+              .getErr()
+              .printf("Realm '%s' is already bootstrapped, skipping.%n", realm);
         } else {
           String realm = result.getKey();
           spec.commandLine()
