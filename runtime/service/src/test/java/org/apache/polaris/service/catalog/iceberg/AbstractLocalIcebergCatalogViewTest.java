@@ -18,12 +18,15 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.awaitility.Awaitility.await;
+
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -245,11 +248,21 @@ public abstract class AbstractLocalIcebergCatalogViewTest
             .withQuery("a", "b")
             .create();
 
+    // Clear after setup; refresh events are delivered asynchronously via Vert.x.
+    testPolarisEventListener.clear();
+
     String key = "foo";
     String valOld = "bar1";
     String valNew = "bar2";
     view.updateProperties().set(key, valOld).commit();
     view.updateProperties().set(key, valNew).commit();
+
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .until(
+            () ->
+                testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_VIEW)
+                    && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_VIEW));
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);
