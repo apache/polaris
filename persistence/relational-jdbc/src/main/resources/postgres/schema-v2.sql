@@ -20,8 +20,6 @@
 --  * Added a `location` column to entities
 --  * Added an index `idx_locations` over (realm_id, parent_id, location) in entities
 
-CREATE SCHEMA IF NOT EXISTS ${schema};
-SET search_path TO ${schema};
 
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,

@@ -145,9 +145,7 @@ public class DatasourceOperations {
             try (Statement statement = connection.createStatement()) {
               StringBuilder sqlBuffer = new StringBuilder();
               for (String line : scriptLines) {
-                // Bind the configured schema name; schemaName is validated as a SQL identifier in
-                // resolveSchemaName, so this substitution cannot introduce injection.
-                line = line.trim().replace("${schema}", schemaName);
+                line = line.trim();
                 if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
                   sqlBuffer.append(line).append("\n");
                   if (line.endsWith(";")) { // Execute statement when semicolon is found

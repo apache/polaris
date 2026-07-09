@@ -21,8 +21,6 @@
 --  * Added `events` table
 --  * Added `idempotency_records` table for REST idempotency
 
-CREATE SCHEMA IF NOT EXISTS ${schema};
-SET SCHEMA ${schema};
 
 CREATE TABLE IF NOT EXISTS version (
     version_key VARCHAR PRIMARY KEY,

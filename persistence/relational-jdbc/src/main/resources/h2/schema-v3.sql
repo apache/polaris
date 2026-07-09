@@ -20,8 +20,6 @@
 -- Changes from v2:
 --  * Added `events` table
 
-CREATE SCHEMA IF NOT EXISTS ${schema};
-SET SCHEMA ${schema};
 
 CREATE TABLE IF NOT EXISTS version (
     version_key VARCHAR PRIMARY KEY,

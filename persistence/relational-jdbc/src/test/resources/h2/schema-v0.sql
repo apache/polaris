@@ -19,8 +19,6 @@
 
 
 -- TO SIMULATE the schema in Polaris 1.0.x, which doesn't have the version table, Polaris interpret its schema version as 0, even the schema file named "schema-v1.sql".
-CREATE SCHEMA IF NOT EXISTS ${schema};
-SET SCHEMA ${schema};
 
 CREATE TABLE IF NOT EXISTS entities (
    realm_id TEXT NOT NULL,
