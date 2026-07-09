@@ -414,9 +414,9 @@ record RbacOperationSemantics(
     register(LIST_POLICY, POLICY_LIST);
 
     // Semantic-model operations.
-    // Interim (Phase 3): gated behind the coarse CATALOG_MANAGE_CONTENT privilege, matching the
-    // design's "coarser-grained access reuses existing higher-level privileges" posture. The
-    // dedicated SEMANTIC_MODEL_* privilege matrix and read-time enforcement modes land in Phase 2.
+    // Interim: gated behind the coarse CATALOG_MANAGE_CONTENT privilege, matching the
+    // design's "coarser-grained access reuses existing higher-level privileges" posture.
+    // TODO: The dedicated SEMANTIC_MODEL_* privilege matrix will be implemented in a followup.
     register(CREATE_SEMANTIC_MODEL, CATALOG_MANAGE_CONTENT);
     register(LOAD_SEMANTIC_MODEL, CATALOG_MANAGE_CONTENT);
     register(UPDATE_SEMANTIC_MODEL, CATALOG_MANAGE_CONTENT);
