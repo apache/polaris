@@ -17,17 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.6.0/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+Title: Quickstart
+type: docs
+weight: 99
 ---
+
+Use the **[Quickstart guide](/guides/quickstart/)** for running Polaris locally with Docker Compose: prerequisites, the one-liner command, default catalog and principal, service URLs, and suggested next steps.
+
+This setup is not intended for production use.
