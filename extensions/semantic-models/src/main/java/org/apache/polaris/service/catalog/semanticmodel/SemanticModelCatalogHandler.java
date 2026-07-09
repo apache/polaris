@@ -22,7 +22,6 @@ import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -98,10 +97,6 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_SEMANTIC_MODEL;
     authorizeBasicSemanticModelOperationOrThrow(op, identifier);
     semanticModelCatalog.dropSemanticModel(identifier);
-  }
-
-  private boolean shouldDecodeToken() {
-    return realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED);
   }
 
   private void authorizeBasicSemanticModelOperationOrThrow(

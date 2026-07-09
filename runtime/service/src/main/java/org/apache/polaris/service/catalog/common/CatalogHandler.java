@@ -40,9 +40,11 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.RenameAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -94,6 +96,18 @@ public abstract class CatalogHandler {
 
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
   protected abstract void initializeCatalog();
+
+  /**
+   * Whether opaque list page-tokens should be decoded, honoring the {@code LIST_PAGINATION_ENABLED}
+   * setting (with a per-catalog override when a catalog has been resolved). Shared by catalog
+   * handlers that page list results.
+   */
+  protected boolean shouldDecodeToken() {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    return catalogEntity == null
+        ? realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED)
+        : realmConfig().getConfig(FeatureConfiguration.LIST_PAGINATION_ENABLED, catalogEntity);
+  }
 
   protected void authorizeBasicNamespaceOperationOrThrow(
       PolarisAuthorizableOperation op, Namespace namespace) {
