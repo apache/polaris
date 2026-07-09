@@ -103,8 +103,6 @@ class JdbcGrantRecordsIdempotencyTest {
 
     DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
     when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
-    when(datasourceOperations.getQueryGenerator())
-        .thenReturn(new QueryGenerator(QueryGenerator.DEFAULT_SCHEMA_NAME));
     doThrow(nonUniqueViolation)
         .when(datasourceOperations)
         .executeUpdate(any(QueryGenerator.PreparedQuery.class));

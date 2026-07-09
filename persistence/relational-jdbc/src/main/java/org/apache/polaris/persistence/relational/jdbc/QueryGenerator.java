@@ -38,23 +38,11 @@ import org.jspecify.annotations.Nullable;
 /**
  * Utility class to generate parameterized SQL queries (SELECT, INSERT, UPDATE, DELETE). Ensures
  * consistent SQL generation and protects against injection by managing parameters separately.
+ *
+ * <p>Generated queries reference tables by their unqualified names; the schema holding the Polaris
+ * tables is selected per connection by {@link DatasourceOperations}.
  */
 public class QueryGenerator {
-
-  /** Default schema (namespace) used for Polaris tables when none is configured. */
-  public static final String DEFAULT_SCHEMA_NAME = "POLARIS_SCHEMA";
-
-  /** The database schema (namespace) that qualifies every generated table reference. */
-  private final String schemaName;
-
-  /**
-   * @param schemaName The database schema (namespace) that holds the Polaris tables. The value is
-   *     interpolated directly into the generated SQL, so callers are responsible for validating it
-   *     as a plain SQL identifier before construction.
-   */
-  public QueryGenerator(@NonNull String schemaName) {
-    this.schemaName = schemaName;
-  }
 
   /** A container for the SQL string and the ordered parameter values. */
   public record PreparedQuery(String sql, List<Object> parameters) {}
@@ -74,7 +62,7 @@ public class QueryGenerator {
    * @return A parameterized SELECT query.
    * @throws IllegalArgumentException if any whereClause column isn't in projections.
    */
-  public PreparedQuery generateSelectQuery(
+  public static PreparedQuery generateSelectQuery(
       @NonNull List<String> projections,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
@@ -90,7 +78,7 @@ public class QueryGenerator {
    * @return A parameterized SELECT query.
    * @throws IllegalArgumentException if any whereClause column isn't in projections.
    */
-  public PreparedQuery generateSelectQuery(
+  public static PreparedQuery generateSelectQuery(
       @NonNull List<String> projections,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereEquals,
@@ -109,7 +97,7 @@ public class QueryGenerator {
    * @param realmId The associated realm.
    * @return A DELETE query removing all grants for this entity.
    */
-  public PreparedQuery generateDeleteQueryForEntityGrantRecords(
+  public static PreparedQuery generateDeleteQueryForEntityGrantRecords(
       @NonNull PolarisEntityCore entity, @NonNull String realmId) {
     String where =
         """
@@ -120,8 +108,7 @@ public class QueryGenerator {
     List<Object> params =
         Arrays.asList(
             entity.getId(), entity.getCatalogId(), entity.getId(), entity.getCatalogId(), realmId);
-    return new PreparedQuery(
-        "DELETE FROM " + getFullyQualifiedTableName(ModelGrantRecord.TABLE_NAME) + where, params);
+    return new PreparedQuery("DELETE FROM " + ModelGrantRecord.TABLE_NAME + where, params);
   }
 
   /**
@@ -133,7 +120,7 @@ public class QueryGenerator {
    * @return SELECT query to retrieve matching entities.
    * @throws IllegalArgumentException if entityIds is empty.
    */
-  public PreparedQuery generateSelectQueryWithEntityIds(
+  public static PreparedQuery generateSelectQueryWithEntityIds(
       @NonNull String realmId, int schemaVersion, @NonNull List<PolarisEntityId> entityIds) {
     if (entityIds.isEmpty()) {
       throw new IllegalArgumentException("Empty entity ids");
@@ -162,7 +149,7 @@ public class QueryGenerator {
    * @param realmId Realm value to append.
    * @return INSERT query with value bindings.
    */
-  public PreparedQuery generateInsertQuery(
+  public static PreparedQuery generateInsertQuery(
       @NonNull List<String> allColumns,
       @NonNull String tableName,
       List<Object> values,
@@ -173,14 +160,7 @@ public class QueryGenerator {
     finalValues.add(realmId);
     String columns = String.join(", ", finalColumns);
     String placeholders = finalColumns.stream().map(c -> "?").collect(Collectors.joining(", "));
-    String sql =
-        "INSERT INTO "
-            + getFullyQualifiedTableName(tableName)
-            + " ("
-            + columns
-            + ") VALUES ("
-            + placeholders
-            + ")";
+    String sql = "INSERT INTO " + tableName + " (" + columns + ") VALUES (" + placeholders + ")";
     return new PreparedQuery(sql, finalValues);
   }
 
@@ -193,7 +173,7 @@ public class QueryGenerator {
    * @param whereClause Conditions for filtering rows to update.
    * @return UPDATE query with parameter values.
    */
-  public PreparedQuery generateUpdateQuery(
+  public static PreparedQuery generateUpdateQuery(
       @NonNull List<String> allColumns,
       @NonNull String tableName,
       @NonNull List<Object> values,
@@ -201,8 +181,7 @@ public class QueryGenerator {
     List<Object> bindingParams = new ArrayList<>(values);
     QueryFragment where = generateWhereClause(new HashSet<>(allColumns), whereClause, Map.of());
     String setClause = allColumns.stream().map(c -> c + " = ?").collect(Collectors.joining(", "));
-    String sql =
-        "UPDATE " + getFullyQualifiedTableName(tableName) + " SET " + setClause + where.sql();
+    String sql = "UPDATE " + tableName + " SET " + setClause + where.sql();
     bindingParams.addAll(where.parameters());
     return new PreparedQuery(sql, bindingParams);
   }
@@ -224,7 +203,7 @@ public class QueryGenerator {
    * @param whereIsNotNull Columns that must be NOT NULL.
    * @return UPDATE query with parameter bindings.
    */
-  public PreparedQuery generateUpdateQuery(
+  public static PreparedQuery generateUpdateQuery(
       @NonNull List<String> tableColumns,
       @NonNull String tableName,
       @NonNull Map<String, Object> setClause,
@@ -252,12 +231,7 @@ public class QueryGenerator {
     }
     params.addAll(where.parameters());
 
-    String sql =
-        "UPDATE "
-            + getFullyQualifiedTableName(tableName)
-            + " SET "
-            + String.join(", ", setParts)
-            + where.sql();
+    String sql = "UPDATE " + tableName + " SET " + String.join(", ", setParts) + where.sql();
     return new PreparedQuery(sql, params);
   }
 
@@ -269,20 +243,19 @@ public class QueryGenerator {
    * @param whereClause Column-value filters.
    * @return DELETE query with parameter bindings.
    */
-  public PreparedQuery generateDeleteQuery(
+  public static PreparedQuery generateDeleteQuery(
       @NonNull List<String> tableColumns,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
     QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
-    return new PreparedQuery(
-        "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
+    return new PreparedQuery("DELETE FROM " + tableName + where.sql(), where.parameters());
   }
 
   /**
    * Builds a DELETE query that supports richer WHERE predicates (equality, greater-than, less-than,
    * IS NULL, IS NOT NULL).
    */
-  public PreparedQuery generateDeleteQuery(
+  public static PreparedQuery generateDeleteQuery(
       @NonNull List<String> tableColumns,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereEquals,
@@ -294,21 +267,15 @@ public class QueryGenerator {
     QueryFragment where =
         generateWhereClauseExtended(
             columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
-    return new PreparedQuery(
-        "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
+    return new PreparedQuery("DELETE FROM " + tableName + where.sql(), where.parameters());
   }
 
-  private PreparedQuery generateSelectQuery(
+  private static PreparedQuery generateSelectQuery(
       @NonNull List<String> columnNames,
       @NonNull String tableName,
       @NonNull String filter,
       @Nullable String orderByColumn) {
-    String sql =
-        "SELECT "
-            + String.join(", ", columnNames)
-            + " FROM "
-            + getFullyQualifiedTableName(tableName)
-            + filter;
+    String sql = "SELECT " + String.join(", ", columnNames) + " FROM " + tableName + filter;
     if (orderByColumn != null) {
       sql += " ORDER BY " + orderByColumn + " ASC";
     }
@@ -372,17 +339,14 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  PreparedQuery generateVersionQuery() {
-    return new PreparedQuery(
-        "SELECT version_value FROM " + getFullyQualifiedTableName("VERSION"), List.of());
+  static PreparedQuery generateVersionQuery() {
+    return new PreparedQuery("SELECT version_value FROM VERSION", List.of());
   }
 
   @VisibleForTesting
-  PreparedQuery generateEntityTableExistQuery() {
+  static PreparedQuery generateEntityTableExistQuery() {
     return new PreparedQuery(
-        String.format(
-            "SELECT * FROM %s LIMIT 1", getFullyQualifiedTableName(ModelEntity.TABLE_NAME)),
-        List.of());
+        String.format("SELECT * FROM %s LIMIT 1", ModelEntity.TABLE_NAME), List.of());
   }
 
   /**
@@ -398,7 +362,7 @@ public class QueryGenerator {
    * @return The list of possibly overlapping entities that meet the criteria
    */
   @VisibleForTesting
-  public PreparedQuery generateOverlapQuery(
+  public static PreparedQuery generateOverlapQuery(
       String realmId, int schemaVersion, long catalogId, String baseLocation) {
     StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
     String locationWithoutScheme = baseStorageLocation.withoutScheme();
@@ -436,9 +400,5 @@ public class QueryGenerator {
             where.sql(),
             null);
     return new PreparedQuery(query.sql(), where.parameters());
-  }
-
-  String getFullyQualifiedTableName(String tableName) {
-    return schemaName + "." + tableName;
   }
 }

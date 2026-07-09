@@ -68,8 +68,8 @@ public class DatasourceOperations {
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
 
-  // A schema name is interpolated directly into SQL (it cannot be a bind parameter), so it must be
-  // a plain SQL identifier: a leading letter or underscore followed by letters, digits, or
+  // The schema name is interpolated directly into SQL (it cannot be a bind parameter), so it must
+  // be a plain SQL identifier: a leading letter or underscore followed by letters, digits, or
   // underscores. This guards against SQL injection through the configured value.
   private static final Pattern VALID_SCHEMA_NAME = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
 
@@ -77,7 +77,6 @@ public class DatasourceOperations {
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
   private final DatabaseType databaseType;
   private final String schemaName;
-  private final QueryGenerator queryGenerator;
 
   private static final Random random = new Random();
 
@@ -86,7 +85,6 @@ public class DatasourceOperations {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
     this.schemaName = resolveSchemaName(relationalJdbcConfiguration);
-    this.queryGenerator = new QueryGenerator(schemaName);
     try (Connection connection = this.datasource.getConnection()) {
       // Get explicitly configured database type, if any
       DatabaseType configuredType =
@@ -98,7 +96,7 @@ public class DatasourceOperations {
       // Infer database type from connection, falling back to configured type
       this.databaseType = DatabaseType.inferFromConnection(connection, configuredType);
 
-      LOGGER.info("Detected database type: {}", databaseType);
+      LOGGER.info("Detected database type: {}, using schema: {}", databaseType, schemaName);
     } catch (SQLException e) {
       throw new RuntimeException("Failed to initialize DatasourceOperations", e);
     }
@@ -110,7 +108,7 @@ public class DatasourceOperations {
             .schemaName()
             .map(String::trim)
             .filter(name -> !name.isEmpty())
-            .orElse(QueryGenerator.DEFAULT_SCHEMA_NAME);
+            .orElse(RelationalJdbcConfiguration.DEFAULT_SCHEMA_NAME);
     if (!VALID_SCHEMA_NAME.matcher(schemaName).matches()) {
       throw new IllegalArgumentException(
           String.format(
@@ -130,11 +128,6 @@ public class DatasourceOperations {
     return schemaName;
   }
 
-  /** The {@link QueryGenerator} bound to the configured schema for this datasource. */
-  public QueryGenerator getQueryGenerator() {
-    return queryGenerator;
-  }
-
   /**
    * Execute SQL script and close the associated input stream
    *
@@ -142,6 +135,7 @@ public class DatasourceOperations {
    * @throws SQLException : Exception while executing the script.
    */
   public void executeScript(InputStream scriptInputStream) throws SQLException {
+    ensureSchemaExists();
     try (BufferedReader scriptReader =
         new BufferedReader(
             new InputStreamReader(Objects.requireNonNull(scriptInputStream), UTF_8))) {
@@ -500,8 +494,45 @@ public class DatasourceOperations {
             && databaseType == DatabaseType.H2);
   }
 
+  /**
+   * Borrows a connection from the datasource and selects the configured schema as the session
+   * schema, so that the unqualified table names in generated SQL resolve against it. Pooled
+   * connections may be reused across borrowers, so the schema is (re-)selected on every borrow.
+   */
   private Connection borrowConnection() throws SQLException {
-    return datasource.getConnection();
+    Connection connection = datasource.getConnection();
+    try (Statement statement = connection.createStatement()) {
+      // schemaName is validated as a plain SQL identifier in resolveSchemaName; identifiers cannot
+      // be bind parameters.
+      statement.execute(selectSessionSchemaStatement());
+      return connection;
+    } catch (SQLException | RuntimeException e) {
+      try {
+        connection.close();
+      } catch (SQLException closeException) {
+        e.addSuppressed(closeException);
+      }
+      throw e;
+    }
+  }
+
+  private String selectSessionSchemaStatement() {
+    return switch (databaseType) {
+      case H2 -> "SET SCHEMA " + schemaName;
+      case POSTGRES, COCKROACHDB -> "SET search_path TO " + schemaName;
+    };
+  }
+
+  /**
+   * Creates the configured schema if it does not exist yet. Uses a raw connection instead of {@link
+   * #borrowConnection()}: on some databases (H2) selecting a non-existent session schema fails, so
+   * the schema must exist before connections can be borrowed.
+   */
+  private void ensureSchemaExists() throws SQLException {
+    try (Connection connection = datasource.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE SCHEMA IF NOT EXISTS " + schemaName);
+    }
   }
 
   private static void logQuery(QueryGenerator.PreparedQuery query) {

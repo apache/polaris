@@ -40,13 +40,11 @@ import org.jspecify.annotations.NonNull;
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
-  private final QueryGenerator queryGenerator;
 
   public RelationalJdbcIdempotencyStore(
       @NonNull DataSource dataSource, @NonNull RelationalJdbcConfiguration cfg)
       throws SQLException {
     this.datasourceOperations = new DatasourceOperations(dataSource, cfg);
-    this.queryGenerator = datasourceOperations.getQueryGenerator();
   }
 
   @Override
@@ -77,7 +75,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
       List<Object> values = insertMap.values().stream().toList();
       QueryGenerator.PreparedQuery insert =
-          queryGenerator.generateInsertQuery(
+          QueryGenerator.generateInsertQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
               ModelIdempotencyRecord.TABLE_NAME,
               values,
@@ -96,7 +94,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   public Optional<IdempotencyRecord> load(String realmId, String idempotencyKey) {
     try {
       QueryGenerator.PreparedQuery query =
-          queryGenerator.generateSelectQuery(
+          QueryGenerator.generateSelectQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(
@@ -152,7 +150,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     }
 
     QueryGenerator.PreparedQuery update =
-        queryGenerator.generateUpdateQuery(
+        QueryGenerator.generateUpdateQuery(
             ModelIdempotencyRecord.ALL_COLUMNS,
             ModelIdempotencyRecord.TABLE_NAME,
             Map.of(
@@ -215,7 +213,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     whereEquals.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
 
     QueryGenerator.PreparedQuery update =
-        queryGenerator.generateUpdateQuery(
+        QueryGenerator.generateUpdateQuery(
             ModelIdempotencyRecord.ALL_COLUMNS,
             ModelIdempotencyRecord.TABLE_NAME,
             setClause,
@@ -236,7 +234,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   public int purgeExpired(String realmId, Instant before) {
     try {
       QueryGenerator.PreparedQuery delete =
-          queryGenerator.generateDeleteQuery(
+          QueryGenerator.generateDeleteQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(ModelIdempotencyRecord.REALM_ID, realmId),

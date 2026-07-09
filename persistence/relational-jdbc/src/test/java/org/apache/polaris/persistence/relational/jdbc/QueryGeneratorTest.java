@@ -41,20 +41,16 @@ public class QueryGeneratorTest {
 
   private static final String REALM_ID = "testRealm";
 
-  private final QueryGenerator queryGenerator =
-      new QueryGenerator(QueryGenerator.DEFAULT_SCHEMA_NAME);
-
   @Test
   void testGenerateSelectQuery_withMaQueryGeneratorpWhereClause() {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("name", "testEntity");
     whereClause.put("entity_version", 1);
     String expectedQuery =
-        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = ? AND name = ?";
+        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM ENTITIES WHERE entity_version = ? AND name = ?";
     assertEquals(
         expectedQuery,
-        queryGenerator
-            .generateSelectQuery(
+        QueryGenerator.generateSelectQuery(
                 ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause)
             .sql());
   }
@@ -65,23 +61,23 @@ public class QueryGeneratorTest {
     when(entity.getId()).thenReturn(1L);
     when(entity.getCatalogId()).thenReturn(123L);
     String expectedQuery =
-        "DELETE FROM POLARIS_SCHEMA.GRANT_RECORDS WHERE (\n"
+        "DELETE FROM GRANT_RECORDS WHERE (\n"
             + "    (grantee_id = ? AND grantee_catalog_id = ?) OR\n"
             + "    (securable_id = ? AND securable_catalog_id = ?)\n"
             + ") AND realm_id = ?";
     assertEquals(
         expectedQuery,
-        queryGenerator.generateDeleteQueryForEntityGrantRecords(entity, REALM_ID).sql());
+        QueryGenerator.generateDeleteQueryForEntityGrantRecords(entity, REALM_ID).sql());
   }
 
   @Test
   void testGenerateSelectQueryWithEntityIds_singleId() {
     List<PolarisEntityId> entityIds = Collections.singletonList(new PolarisEntityId(123L, 1L));
     String expectedQuery =
-        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM POLARIS_SCHEMA.ENTITIES WHERE (catalog_id, id) IN ((?, ?)) AND realm_id = ?";
+        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM ENTITIES WHERE (catalog_id, id) IN ((?, ?)) AND realm_id = ?";
     assertEquals(
         expectedQuery,
-        queryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
+        QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
   }
 
   @Test
@@ -89,10 +85,10 @@ public class QueryGeneratorTest {
     List<PolarisEntityId> entityIds =
         Arrays.asList(new PolarisEntityId(123L, 1L), new PolarisEntityId(456L, 2L));
     String expectedQuery =
-        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM POLARIS_SCHEMA.ENTITIES WHERE (catalog_id, id) IN ((?, ?), (?, ?)) AND realm_id = ?";
+        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM ENTITIES WHERE (catalog_id, id) IN ((?, ?), (?, ?)) AND realm_id = ?";
     assertEquals(
         expectedQuery,
-        queryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
+        QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
   }
 
   @Test
@@ -100,18 +96,17 @@ public class QueryGeneratorTest {
     List<PolarisEntityId> entityIds = Collections.emptyList();
     assertThrows(
         IllegalArgumentException.class,
-        () -> queryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
+        () -> QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
   }
 
   @Test
   void testGenerateInsertQuery_nonNullFields() {
     ModelEntity entity = ModelEntity.builder().name("test").entityVersion(1).build();
     String expectedQuery =
-        "INSERT INTO POLARIS_SCHEMA.ENTITIES (id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme, realm_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "INSERT INTO ENTITIES (id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme, realm_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     assertEquals(
         expectedQuery,
-        queryGenerator
-            .generateInsertQuery(
+        QueryGenerator.generateInsertQuery(
                 ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
                 entity.toMap(DatabaseType.H2).values().stream().toList(),
@@ -125,11 +120,10 @@ public class QueryGeneratorTest {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("id", 123L);
     String expectedQuery =
-        "UPDATE POLARIS_SCHEMA.ENTITIES SET id = ?, catalog_id = ?, parent_id = ?, type_code = ?, name = ?, entity_version = ?, sub_type_code = ?, create_timestamp = ?, drop_timestamp = ?, purge_timestamp = ?, to_purge_timestamp = ?, last_update_timestamp = ?, properties = ?, internal_properties = ?, grant_records_version = ?, location_without_scheme = ? WHERE id = ?";
+        "UPDATE ENTITIES SET id = ?, catalog_id = ?, parent_id = ?, type_code = ?, name = ?, entity_version = ?, sub_type_code = ?, create_timestamp = ?, drop_timestamp = ?, purge_timestamp = ?, to_purge_timestamp = ?, last_update_timestamp = ?, properties = ?, internal_properties = ?, grant_records_version = ?, location_without_scheme = ? WHERE id = ?";
     assertEquals(
         expectedQuery,
-        queryGenerator
-            .generateUpdateQuery(
+        QueryGenerator.generateUpdateQuery(
                 ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
                 entity.toMap(DatabaseType.H2).values().stream().toList(),
@@ -143,11 +137,10 @@ public class QueryGeneratorTest {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("id", 123L);
     String expectedQuery =
-        "UPDATE POLARIS_SCHEMA.ENTITIES SET id = ?, catalog_id = ?, parent_id = ?, type_code = ?, name = ?, entity_version = ?, sub_type_code = ?, create_timestamp = ?, drop_timestamp = ?, purge_timestamp = ?, to_purge_timestamp = ?, last_update_timestamp = ?, properties = ?, internal_properties = ?, grant_records_version = ?, location_without_scheme = ? WHERE id = ?";
+        "UPDATE ENTITIES SET id = ?, catalog_id = ?, parent_id = ?, type_code = ?, name = ?, entity_version = ?, sub_type_code = ?, create_timestamp = ?, drop_timestamp = ?, purge_timestamp = ?, to_purge_timestamp = ?, last_update_timestamp = ?, properties = ?, internal_properties = ?, grant_records_version = ?, location_without_scheme = ? WHERE id = ?";
     assertEquals(
         expectedQuery,
-        queryGenerator
-            .generateUpdateQuery(
+        QueryGenerator.generateUpdateQuery(
                 ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
                 entity.toMap(DatabaseType.H2).values().stream().toList(),
@@ -159,22 +152,20 @@ public class QueryGeneratorTest {
   void testGenerateDeleteQuery_withMapWhereClause() {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("name", "oldName");
-    String expectedQuery = "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE name = ?";
+    String expectedQuery = "DELETE FROM ENTITIES WHERE name = ?";
     assertEquals(
         expectedQuery,
-        queryGenerator
-            .generateDeleteQuery(
+        QueryGenerator.generateDeleteQuery(
                 ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause)
             .sql());
   }
 
   @Test
   void testGenerateDeleteQuery_withStringWhereClause() {
-    String expectedQuery = "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE name = ?";
+    String expectedQuery = "DELETE FROM ENTITIES WHERE name = ?";
     assertEquals(
         expectedQuery,
-        queryGenerator
-            .generateDeleteQuery(
+        QueryGenerator.generateDeleteQuery(
                 ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, Map.of("name", "oldName"))
             .sql());
   }
@@ -186,11 +177,11 @@ public class QueryGeneratorTest {
     Map<String, Object> objMap = entityToDelete.toMap(DatabaseType.H2);
     objMap.put("realm_id", REALM_ID);
     String expectedQuery =
-        "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE id = ? AND catalog_id = ? AND parent_id = ? AND type_code = ? AND name = ? AND entity_version = ? AND sub_type_code = ? AND create_timestamp = ? AND drop_timestamp = ? AND purge_timestamp = ? AND to_purge_timestamp = ? AND last_update_timestamp = ? AND properties = ? AND internal_properties = ? AND grant_records_version = ? AND location_without_scheme = ? AND realm_id = ?";
+        "DELETE FROM ENTITIES WHERE id = ? AND catalog_id = ? AND parent_id = ? AND type_code = ? AND name = ? AND entity_version = ? AND sub_type_code = ? AND create_timestamp = ? AND drop_timestamp = ? AND purge_timestamp = ? AND to_purge_timestamp = ? AND last_update_timestamp = ? AND properties = ? AND internal_properties = ? AND grant_records_version = ? AND location_without_scheme = ? AND realm_id = ?";
     assertEquals(
         expectedQuery,
-        queryGenerator
-            .generateDeleteQuery(ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, objMap)
+        QueryGenerator.generateDeleteQuery(
+                ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, objMap)
             .sql());
   }
 
@@ -270,7 +261,7 @@ public class QueryGeneratorTest {
     whereLess.put("http_status", 500);
 
     QueryGenerator.PreparedQuery q =
-        queryGenerator.generateUpdateQuery(
+        QueryGenerator.generateUpdateQuery(
             List.of("error_subtype", "http_status", "realm_id", "idempotency_key", "executor_id"),
             "idempotency_records",
             setClause,
@@ -281,7 +272,7 @@ public class QueryGeneratorTest {
             Set.of());
 
     assertEquals(
-        "UPDATE POLARIS_SCHEMA.idempotency_records SET error_subtype = ?, http_status = ?"
+        "UPDATE idempotency_records SET error_subtype = ?, http_status = ?"
             + " WHERE realm_id = ? AND idempotency_key = ? AND http_status < ? AND executor_id IS NULL",
         q.sql());
     Assertions.assertThat(q.parameters()).containsExactly(null, 200, "r1", "k1", 500);
@@ -292,7 +283,7 @@ public class QueryGeneratorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            queryGenerator.generateUpdateQuery(
+            QueryGenerator.generateUpdateQuery(
                 List.of("a"),
                 "t",
                 Map.of(),
@@ -306,7 +297,7 @@ public class QueryGeneratorTest {
   @Test
   void testGenerateDeleteQueryExtended_includesNullPredicatesAndLessThan() {
     QueryGenerator.PreparedQuery q =
-        queryGenerator.generateDeleteQuery(
+        QueryGenerator.generateDeleteQuery(
             List.of("realm_id", "expires_at", "finalized_at"),
             "idempotency_records",
             Map.of("realm_id", "r1"),
@@ -316,7 +307,7 @@ public class QueryGeneratorTest {
             Set.of());
 
     assertEquals(
-        "DELETE FROM POLARIS_SCHEMA.idempotency_records WHERE realm_id = ? AND expires_at < ? AND finalized_at IS NULL",
+        "DELETE FROM idempotency_records WHERE realm_id = ? AND expires_at < ? AND finalized_at IS NULL",
         q.sql());
     Assertions.assertThat(q.parameters()).containsExactly("r1", 123);
   }
@@ -324,7 +315,7 @@ public class QueryGeneratorTest {
   @Test
   void testGenerateDeleteQueryExtended_allowsRealmIdEvenIfNotInTableColumns() {
     QueryGenerator.PreparedQuery q =
-        queryGenerator.generateDeleteQuery(
+        QueryGenerator.generateDeleteQuery(
             List.of("id"),
             "some_table",
             Map.of("realm_id", "r1"),
@@ -333,7 +324,7 @@ public class QueryGeneratorTest {
             Set.of(),
             Set.of());
 
-    assertEquals("DELETE FROM POLARIS_SCHEMA.some_table WHERE realm_id = ?", q.sql());
+    assertEquals("DELETE FROM some_table WHERE realm_id = ?", q.sql());
     Assertions.assertThat(q.parameters()).containsExactly("r1");
   }
 
@@ -345,7 +336,7 @@ public class QueryGeneratorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            queryGenerator.generateUpdateQuery(
+            QueryGenerator.generateUpdateQuery(
                 List.of("a"),
                 "t",
                 setClause,
@@ -362,13 +353,12 @@ public class QueryGeneratorTest {
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
             + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
             + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
-            + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
+            + " ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
             + " location_without_scheme = ? OR location_without_scheme LIKE ?)",
-        queryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/").sql());
+        QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/").sql());
     Assertions.assertThatCollection(
-            queryGenerator
-                .generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/")
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/")
                 .parameters())
         .containsExactly(
             "realmId",
@@ -384,11 +374,11 @@ public class QueryGeneratorTest {
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
             + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
             + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
-            + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ? OR location_without_scheme = ?"
+            + " ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ? OR location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
-        queryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").sql());
+        QueryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").sql());
     Assertions.assertThatCollection(
-            queryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").parameters())
         .containsExactly(
             "realmId", -123L, "/", "//", "///", "///tmp/", "///tmp/location/", "///tmp/location/%");
 
@@ -396,29 +386,13 @@ public class QueryGeneratorTest {
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
             + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
             + " properties, internal_properties, grant_records_version, location_without_scheme"
-            + " FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
+            + " FROM ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
-        queryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/").sql());
+        QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/").sql());
     Assertions.assertThatCollection(
-            queryGenerator
-                .generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/")
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/")
                 .parameters())
         .containsExactly(
             "realmId", -123L, "/", "//", "//バケツ/", "//バケツ/\"loc.ation\"/", "//バケツ/\"loc.ation\"/%");
-  }
-
-  @Test
-  void testConfiguredSchemaNameQualifiesTables() {
-    QueryGenerator customSchema = new QueryGenerator("custom_schema");
-    assertEquals("custom_schema.ENTITIES", customSchema.getFullyQualifiedTableName("ENTITIES"));
-    assertEquals(
-        "SELECT version_value FROM custom_schema.VERSION",
-        customSchema.generateVersionQuery().sql());
-    Assertions.assertThat(
-            customSchema
-                .generateSelectQuery(
-                    ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, Map.of("name", "x"))
-                .sql())
-        .contains("FROM custom_schema.ENTITIES");
   }
 }

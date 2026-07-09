@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -34,6 +35,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +60,8 @@ public class DatasourceOperationsTest {
 
   @Mock private PreparedStatement mockPreparedStatement;
 
+  @Mock private Statement mockStatement;
+
   @Mock private RelationalJdbcConfiguration relationalJdbcConfiguration;
 
   @Mock private DatabaseMetaData mockDatabaseMetaData;
@@ -71,6 +75,9 @@ public class DatasourceOperationsTest {
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.getMetaData()).thenReturn(mockDatabaseMetaData);
     when(mockDatabaseMetaData.getDatabaseProductName()).thenReturn("h2");
+    // Every borrowed connection selects the session schema via a plain Statement. Lenient because
+    // some tests (e.g. the withRetries matrix) never borrow a connection.
+    lenient().when(mockConnection.createStatement()).thenReturn(mockStatement);
     datasourceOperations = new DatasourceOperations(mockDataSource, relationalJdbcConfiguration);
   }
 
@@ -104,7 +111,7 @@ public class DatasourceOperationsTest {
     // `executeBatch` is being called
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     String sql =
-        "INSERT INTO POLARIS_SCHEMA.EVENTS (catalog_id, event_id, request_id, event_type, timestamp_ms, principal_name, resource_type, resource_identifier, additional_properties, realm_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
+        "INSERT INTO EVENTS (catalog_id, event_id, request_id, event_type, timestamp_ms, principal_name, resource_type, resource_identifier, additional_properties, realm_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
     List<List<Object>> queryParams = new ArrayList<>();
     for (int i = 0; i < 1000; i++) {
       ModelEvent modelEvent =
@@ -182,6 +189,7 @@ public class DatasourceOperationsTest {
     // reset to ignore constructor interaction
     reset(mockConnection);
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.createStatement()).thenReturn(mockStatement);
     DatasourceOperations.TransactionCallback callback = connection -> true;
     when(mockConnection.getAutoCommit()).thenReturn(true);
     datasourceOperations.runWithinTransaction(callback);
@@ -328,17 +336,38 @@ public class DatasourceOperationsTest {
   @Test
   void testDefaultsToPolarisSchemaWhenUnset() {
     // relationalJdbcConfiguration.schemaName() is unstubbed and defaults to empty.
-    assertEquals(QueryGenerator.DEFAULT_SCHEMA_NAME, datasourceOperations.getSchemaName());
+    assertEquals(
+        RelationalJdbcConfiguration.DEFAULT_SCHEMA_NAME, datasourceOperations.getSchemaName());
   }
 
   @Test
-  void testConfiguredSchemaNameIsUsed() throws SQLException {
+  void testBorrowedConnectionSelectsSessionSchema() throws Exception {
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate()).thenReturn(1);
+
+    datasourceOperations.executeUpdate(query);
+
+    // Mocked database metadata reports H2, so the borrow must select the schema via SET SCHEMA.
+    verify(mockStatement).execute("SET SCHEMA " + RelationalJdbcConfiguration.DEFAULT_SCHEMA_NAME);
+  }
+
+  @Test
+  void testConfiguredSchemaNameIsUsed() throws Exception {
     RelationalJdbcConfiguration cfg = mock(RelationalJdbcConfiguration.class);
     when(cfg.schemaName()).thenReturn(Optional.of("custom_schema"));
     DatasourceOperations ops = new DatasourceOperations(mockDataSource, cfg);
     assertEquals("custom_schema", ops.getSchemaName());
-    assertEquals(
-        "custom_schema.ENTITIES", ops.getQueryGenerator().getFullyQualifiedTableName("ENTITIES"));
+
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate()).thenReturn(1);
+
+    ops.executeUpdate(query);
+
+    verify(mockStatement).execute("SET SCHEMA custom_schema");
   }
 
   @Test
