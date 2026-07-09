@@ -74,7 +74,7 @@ Please refer to the documentation here:
 
 Additionally, the retries can be configured via `polaris.persistence.relational.jdbc.*` properties; please refer to the [Configuring Polaris]({{% ref "../configuration" %}}) section.
 
-By default, Polaris stores its tables in a schema named `POLARIS_SCHEMA`. Set `polaris.persistence.relational.jdbc.schema-name` to use a different schema (for example, to run multiple Polaris deployments in the same database or to comply with a schema-naming policy). The value must be a valid SQL identifier: it must start with a letter or underscore and contain only letters, digits, and underscores. Bootstrapping creates the configured schema if it does not already exist.
+By default, Polaris stores its tables in a schema named `POLARIS_SCHEMA`. Set `polaris.persistence.relational.jdbc.schema-name` to use a different schema (for example, to run multiple Polaris deployments in the same database or to comply with a schema-naming policy). The value must be a valid SQL identifier: it must start with a letter or underscore and contain only letters, digits, and underscores. The name is used unquoted, so the database applies its usual identifier case folding (for example, PostgreSQL folds it to lowercase). Polaris selects the configured schema as the session schema (search path) on every database connection it uses, so the database user must have `USAGE` privileges on the schema; bootstrapping creates the schema if it does not already exist, which requires `CREATE` privileges on the database.
 
 ## Bootstrapping Polaris
 
