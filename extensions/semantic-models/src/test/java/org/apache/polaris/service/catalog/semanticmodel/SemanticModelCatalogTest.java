@@ -156,6 +156,22 @@ class SemanticModelCatalogTest {
   }
 
   @Test
+  void createRejectsEmptyDocument() {
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc("")))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("must not be empty");
+  }
+
+  @Test
+  void createRejectsDatasetWithoutSource() {
+    String noSource = "[{\"name\":\"m\",\"datasets\":[{\"name\":\"d\"}]}]";
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(noSource)))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("/semantic_model/0/datasets/0/source")
+        .hasMessageContaining("must define a string 'source'");
+  }
+
+  @Test
   void createRejectsUnresolvedSource() {
     // No stub for the source table -> passthrough resolution returns null.
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(VALID_MODEL_JSON)))

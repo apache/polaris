@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.semanticmodel;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
@@ -102,8 +103,9 @@ public class SemanticModelCatalog {
       throw new AlreadyExistsException("Semantic model already exists: %s", identifier.getName());
     }
 
-    // Parse the document and resolve its source tables before persisting.
-    validateDocumentAndSources(document);
+    // Validate the document schema, then resolve its source tables before persisting.
+    JsonNode semanticModel = validateDocument(document);
+    resolveAndValidateSources(semanticModel);
 
     SemanticModelEntity entity =
         new SemanticModelEntity.Builder(namespace, identifier.getName())
@@ -190,7 +192,8 @@ public class SemanticModelCatalog {
               expectedVersion, currentVersion));
     }
 
-    validateDocumentAndSources(document);
+    JsonNode semanticModel = validateDocument(document);
+    resolveAndValidateSources(semanticModel);
 
     SemanticModelEntity newEntity =
         new SemanticModelEntity.Builder(current)
@@ -240,8 +243,6 @@ public class SemanticModelCatalog {
     }
   }
 
-  // ---- helpers ----
-
   private PolarisResolvedPathWrapper resolveModelPathOrThrow(SemanticModelIdentifier identifier) {
     Namespace namespace = toNamespace(identifier);
     PolarisResolvedPathWrapper resolved =
@@ -260,46 +261,51 @@ public class SemanticModelCatalog {
   }
 
   /**
-   * Parses the OSI document body and resolves every {@code dataset.source} to a {@code TABLE_LIKE}
-   * entity. Shared by create and update. Schema/size validation is a separate concern handled by a
-   * {@link SemanticDocumentValidator} implementation (not yet wired in this phase).
+   * Validates the OSI document against the Ossie JSON schema and returns the parsed {@code
+   * semantic_model} body. Currently only checks that the required body is present and well-formed
+   * JSON; full schema validation is deferred to a {@link SemanticDocumentValidator} implementation.
+   *
+   * @return the parsed {@code semantic_model} node
+   * @throws BadRequestException if the body is missing/blank or not valid JSON
    */
-  private void validateDocumentAndSources(SemanticModelDocument document) {
+  private JsonNode validateDocument(SemanticModelDocument document) {
     String body = document.getSemanticModel();
     if (body == null || body.isBlank()) {
-      return;
+      throw new BadRequestException("Semantic model document must not be empty");
     }
-    JsonNode semanticModel;
     try {
-      semanticModel = MAPPER.readTree(body);
-    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+      // TODO: delegate full Ossie JSON-schema validation to SemanticDocumentValidator.
+      return MAPPER.readTree(body);
+    } catch (JsonProcessingException e) {
       throw new BadRequestException(
           "Field 'semantic_model' is not valid JSON: %s", e.getOriginalMessage());
     }
-    resolveSourcesOrThrow(semanticModel);
-    // TODO call the SemanticDocumentValidator when it's ready
   }
 
   /**
-   * Resolves every {@code dataset.source} in the OSI document to a {@code TABLE_LIKE} entity in the
-   * current catalog. Fails with 400 and a JSON-Pointer to the offending dataset if any source does
-   * not resolve. Column-level checks are deferred (F5).
+   * Resolves and validates every {@code dataset.source} in the parsed OSI document against the
+   * current catalog. Every dataset must define a string {@code source}; a missing or non-string
+   * source, or one that does not resolve to a {@code TABLE_LIKE} entity, fails with 400 and a
+   * JSON-Pointer to the offending dataset. Column-level checks are deferred (F5).
    */
-  private void resolveSourcesOrThrow(JsonNode semanticModel) {
+  private void resolveAndValidateSources(JsonNode semanticModel) {
     if (!semanticModel.isArray()) {
       return;
     }
-    for (int m = 0; m < semanticModel.size(); m++) {
-      JsonNode datasets = semanticModel.get(m).get("datasets");
+
+    for (int modelIdx = 0; modelIdx < semanticModel.size(); modelIdx++) {
+      JsonNode datasets = semanticModel.get(modelIdx).get("datasets");
       if (datasets == null || !datasets.isArray()) {
         continue;
       }
-      for (int d = 0; d < datasets.size(); d++) {
-        JsonNode source = datasets.get(d).get("source");
-        if (source != null && source.isTextual()) {
-          String pointer = String.format("/semantic_model/%d/datasets/%d/source", m, d);
-          resolveSourceOrThrow(source.asText(), pointer);
+      for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
+        String pointer = String.format("/semantic_model/%d/datasets/%d/source", modelIdx, datasetIdx);
+        JsonNode source = datasets.get(datasetIdx).get("source");
+        if (source == null || !source.isTextual()) {
+          throw new BadRequestException(
+              "Semantic model dataset at %s must define a string 'source'", pointer);
         }
+        resolveSourceOrThrow(source.asText(), pointer);
       }
     }
   }
