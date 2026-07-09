@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
@@ -298,16 +299,23 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
 
   @Test
   public void testParentPrefixOverlapWithTrailingSlashMismatch() {
+    // Profiles disable ADD_TRAILING_SLASH_TO_LOCATION so the parent is stored without a trailing
+    // slash. That is the OPTIMIZED_SIBLING_CHECK false-negative for JDBC: ancestor equality terms
+    // used to be slash-terminated only, so location_without_scheme without '/' was missed.
     Namespace ns = Namespace.of("ns-for-trailing-slash-overlap");
     catalog().createNamespace(ns);
 
-    // Create a parent table with an explicit location that has no trailing slash. This is the
-    // storage form that triggered the OPTIMIZED_SIBLING_CHECK false negative: the stored
-    // location_without_scheme lacks a trailing slash while the overlap query's ancestor equality
-    // terms are always slash-terminated.
     TableIdentifier parentTable = TableIdentifier.of(ns, "trailing-parent");
     String parentLoc = STORAGE_LOCATION + "/trailing-overlap/parent";
+    assertThat(parentLoc).doesNotEndWith("/");
     catalog().buildTable(parentTable, SCHEMA).withLocation(parentLoc).create();
+
+    // Guardrail: if trailing-slash normalization were still on, this test would not exercise the
+    // slash-less location_without_scheme path that QueryGenerator must handle.
+    assertThat(catalog().loadTable(parentTable).location())
+        .as("parent must remain slash-less so overlap uses non-slash-terminated stored location")
+        .isEqualTo(parentLoc)
+        .doesNotEndWith("/");
 
     // Creating a child table under the slash-less parent location must be rejected.
     TableIdentifier childTable = TableIdentifier.of(ns, "trailing-child");
