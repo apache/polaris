@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-class DropEntityExceptionMapperTest {
+class DropEntityFailureMapperTest {
 
   private static final String ENTITY_LABEL = "Principal 'alice'";
   private static final String UNDROPPABLE_MESSAGE = "Root principal cannot be dropped";
@@ -38,10 +38,21 @@ class DropEntityExceptionMapperTest {
   void throwIfFailed_success_doesNotThrow() {
     assertThatCode(
             () ->
-                DropEntityExceptionMapper.throwIfFailed(
+                DropEntityFailureMapper.throwIfFailed(
+                    new DropEntityResult(), () -> ENTITY_LABEL, UNDROPPABLE_MESSAGE))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void throwIfFailed_success_doesNotEvaluateLabel() {
+    assertThatCode(
+            () ->
+                DropEntityFailureMapper.throwIfFailed(
                     new DropEntityResult(),
-                    new DropEntityExceptionMapper.DropFailureContext(
-                        ENTITY_LABEL, UNDROPPABLE_MESSAGE)))
+                    () -> {
+                      throw new AssertionError("Label should not be evaluated on success");
+                    },
+                    UNDROPPABLE_MESSAGE))
         .doesNotThrowAnyException();
   }
 
@@ -49,10 +60,10 @@ class DropEntityExceptionMapperTest {
   void throwIfFailed_entityUndroppable_usesProtectedEntityMessage() {
     assertThatThrownBy(
             () ->
-                DropEntityExceptionMapper.throwIfFailed(
+                DropEntityFailureMapper.throwIfFailed(
                     new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, null),
-                    new DropEntityExceptionMapper.DropFailureContext(
-                        ENTITY_LABEL, UNDROPPABLE_MESSAGE)))
+                    () -> ENTITY_LABEL,
+                    UNDROPPABLE_MESSAGE))
         .isInstanceOf(BadRequestException.class)
         .hasMessage(UNDROPPABLE_MESSAGE);
   }
@@ -61,11 +72,11 @@ class DropEntityExceptionMapperTest {
   void throwIfFailed_concurrentModification_usesEntityLabelNotProtectedMessage() {
     assertThatThrownBy(
             () ->
-                DropEntityExceptionMapper.throwIfFailed(
+                DropEntityFailureMapper.throwIfFailed(
                     new DropEntityResult(
                         BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null),
-                    new DropEntityExceptionMapper.DropFailureContext(
-                        ENTITY_LABEL, UNDROPPABLE_MESSAGE)))
+                    () -> ENTITY_LABEL,
+                    UNDROPPABLE_MESSAGE))
         .isInstanceOf(BadRequestException.class)
         .hasMessage(
             "Principal 'alice' cannot be dropped, concurrent modification detected. Please try again")
@@ -76,10 +87,10 @@ class DropEntityExceptionMapperTest {
   void throwIfFailed_entityNotFound_throwsNotFoundException() {
     assertThatThrownBy(
             () ->
-                DropEntityExceptionMapper.throwIfFailed(
+                DropEntityFailureMapper.throwIfFailed(
                     new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null),
-                    new DropEntityExceptionMapper.DropFailureContext(
-                        ENTITY_LABEL, UNDROPPABLE_MESSAGE)))
+                    () -> ENTITY_LABEL,
+                    UNDROPPABLE_MESSAGE))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Principal 'alice' not found");
   }
@@ -91,9 +102,8 @@ class DropEntityExceptionMapperTest {
   void throwIfFailed_notEmpty_reportsNotEmpty(BaseResult.ReturnStatus status) {
     assertThatThrownBy(
             () ->
-                DropEntityExceptionMapper.throwIfFailed(
-                    new DropEntityResult(status, null),
-                    new DropEntityExceptionMapper.DropFailureContext("Catalog 'my-catalog'", null)))
+                DropEntityFailureMapper.throwIfFailed(
+                    new DropEntityResult(status, null), () -> "Catalog 'my-catalog'", null))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Catalog 'my-catalog' cannot be dropped, it is not empty");
   }
@@ -102,11 +112,11 @@ class DropEntityExceptionMapperTest {
   void throwIfFailed_unknownStatus_reportsGenericMessage() {
     assertThatThrownBy(
             () ->
-                DropEntityExceptionMapper.throwIfFailed(
+                DropEntityFailureMapper.throwIfFailed(
                     new DropEntityResult(
                         BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null),
-                    new DropEntityExceptionMapper.DropFailureContext(
-                        ENTITY_LABEL, UNDROPPABLE_MESSAGE)))
+                    () -> ENTITY_LABEL,
+                    UNDROPPABLE_MESSAGE))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Principal 'alice' cannot be dropped: CATALOG_PATH_CANNOT_BE_RESOLVED");
   }

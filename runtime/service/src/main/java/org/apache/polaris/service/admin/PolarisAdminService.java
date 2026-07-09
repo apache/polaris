@@ -930,10 +930,8 @@ public class PolarisAdminService {
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), cleanup);
 
-    DropEntityExceptionMapper.throwIfFailed(
-        dropEntityResult,
-        new DropEntityExceptionMapper.DropFailureContext(
-            String.format("Catalog '%s'", entity.getName()), null));
+    DropEntityFailureMapper.throwIfFailed(
+        dropEntityResult, () -> String.format("Catalog '%s'", entity.getName()), null);
   }
 
   public @NonNull CatalogEntity getCatalog(String name) {
@@ -1117,10 +1115,10 @@ public class PolarisAdminService {
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), false);
 
-    DropEntityExceptionMapper.throwIfFailed(
+    DropEntityFailureMapper.throwIfFailed(
         dropEntityResult,
-        new DropEntityExceptionMapper.DropFailureContext(
-            String.format("Principal '%s'", entity.getName()), "Root principal cannot be dropped"));
+        () -> String.format("Principal '%s'", entity.getName()),
+        "Root principal cannot be dropped");
   }
 
   public @NonNull PrincipalEntity getPrincipal(String name) {
@@ -1364,11 +1362,10 @@ public class PolarisAdminService {
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), true); // cleanup grants
 
-    DropEntityExceptionMapper.throwIfFailed(
+    DropEntityFailureMapper.throwIfFailed(
         dropEntityResult,
-        new DropEntityExceptionMapper.DropFailureContext(
-            String.format("Principal role '%s'", entity.getName()),
-            "Polaris service admin principal role cannot be dropped"));
+        () -> String.format("Principal role '%s'", entity.getName()),
+        "Polaris service admin principal role cannot be dropped");
   }
 
   public @NonNull PrincipalRoleEntity getPrincipalRole(String name) {
@@ -1479,11 +1476,10 @@ public class PolarisAdminService {
             Map.of(),
             true); // cleanup grants
 
-    DropEntityExceptionMapper.throwIfFailed(
+    DropEntityFailureMapper.throwIfFailed(
         dropEntityResult,
-        new DropEntityExceptionMapper.DropFailureContext(
-            String.format("Catalog role '%s' in catalog '%s'", name, catalogName),
-            "Catalog admin role cannot be dropped"));
+        () -> String.format("Catalog role '%s' in catalog '%s'", name, catalogName),
+        "Catalog admin role cannot be dropped");
   }
 
   public @NonNull CatalogRoleEntity getCatalogRole(String catalogName, String name) {

@@ -18,43 +18,37 @@
  */
 package org.apache.polaris.service.admin;
 
+import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.jspecify.annotations.Nullable;
 
 /** Maps {@link DropEntityResult} failures from admin delete operations to REST exceptions. */
-final class DropEntityExceptionMapper {
+final class DropEntityFailureMapper {
 
-  private DropEntityExceptionMapper() {}
+  private DropEntityFailureMapper() {}
 
-  static void throwIfFailed(DropEntityResult result, DropFailureContext context) {
+  static void throwIfFailed(
+      DropEntityResult result, Supplier<String> entityLabel, @Nullable String undroppableMessage) {
     if (result.isSuccess()) {
       return;
     }
 
+    String label = entityLabel.get();
     switch (result.getReturnStatus()) {
-      case ENTITY_UNDROPPABLE -> throwUndroppable(context);
+      case ENTITY_UNDROPPABLE ->
+          throw new BadRequestException(
+              "%s", undroppableMessage != null ? undroppableMessage : label + " cannot be dropped");
       case TARGET_ENTITY_CONCURRENTLY_MODIFIED ->
           throw new BadRequestException(
-              "%s cannot be dropped, concurrent modification detected. Please try again",
-              context.entityLabel());
-      case ENTITY_NOT_FOUND -> throw new NotFoundException("%s not found", context.entityLabel());
+              "%s cannot be dropped, concurrent modification detected. Please try again", label);
+      case ENTITY_NOT_FOUND -> throw new NotFoundException("%s not found", label);
       case CATALOG_NOT_EMPTY, NAMESPACE_NOT_EMPTY ->
-          throw new BadRequestException(
-              "%s cannot be dropped, it is not empty", context.entityLabel());
+          throw new BadRequestException("%s cannot be dropped, it is not empty", label);
       default ->
           throw new BadRequestException(
-              "%s cannot be dropped: %s", context.entityLabel(), result.getReturnStatus());
+              "%s cannot be dropped: %s", label, result.getReturnStatus());
     }
   }
-
-  private static void throwUndroppable(DropFailureContext context) {
-    if (context.undroppableMessage() != null) {
-      throw new BadRequestException("%s", context.undroppableMessage());
-    }
-    throw new BadRequestException("%s cannot be dropped", context.entityLabel());
-  }
-
-  record DropFailureContext(String entityLabel, @Nullable String undroppableMessage) {}
 }
