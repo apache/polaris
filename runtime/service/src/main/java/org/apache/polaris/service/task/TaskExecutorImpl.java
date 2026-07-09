@@ -237,6 +237,9 @@ public class TaskExecutorImpl implements TaskExecutor {
                 + taskEntityId);
       }
       TaskHandler handler = handlerOpt.get();
+      // Normal return from handleTask means the task work completed successfully. Set success
+      // before dropEntityIfExists so a later cleanup failure still reports TASK_SUCCESS=true
+      // (the exception is rethrown for retry/logging, but the attempt is not a handler failure).
       handler.handleTask(task, ctx);
       success = true;
       LOGGER
@@ -247,15 +250,18 @@ public class TaskExecutorImpl implements TaskExecutor {
       metaStoreManager.dropEntityIfExists(
           ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
     } catch (TaskHandlerNotFoundException e) {
-      success = false;
+      // success stays false (never set true). Re-throw without the generic failure log below.
       throw e;
     } catch (Exception e) {
-      LOGGER
-          .atWarn()
-          .addKeyValue("taskEntityId", taskEntityId)
-          .addKeyValue("taskEntityName", taskEntity != null ? taskEntity.getName() : "")
-          .log("Unable to execute async task");
-      success = false;
+      // Do not force success=false: handleTask may already have completed (success=true) and the
+      // failure may be from post-completion cleanup (e.g. dropEntityIfExists).
+      if (!success) {
+        LOGGER
+            .atWarn()
+            .addKeyValue("taskEntityId", taskEntityId)
+            .addKeyValue("taskEntityName", taskEntity != null ? taskEntity.getName() : "")
+            .log("Unable to execute async task");
+      }
       throw e;
     } finally {
       if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_ATTEMPT_TASK)) {
