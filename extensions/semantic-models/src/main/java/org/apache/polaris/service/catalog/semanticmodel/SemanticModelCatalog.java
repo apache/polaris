@@ -66,6 +66,12 @@ public class SemanticModelCatalog {
   private static final Logger LOGGER = LoggerFactory.getLogger(SemanticModelCatalog.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
+  /**
+   * Separator between the namespace path and the name in an OSI {@code dataset.source}, per the IRC
+   * catalog object-identifier scheme (e.g. {@code sales.store_sales}).
+   */
+  private static final char SOURCE_SEPARATOR = '.';
+
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
@@ -299,7 +305,8 @@ public class SemanticModelCatalog {
         continue;
       }
       for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
-        String pointer = String.format("/semantic_model/%d/datasets/%d/source", modelIdx, datasetIdx);
+        String pointer =
+            String.format("/semantic_model/%d/datasets/%d/source", modelIdx, datasetIdx);
         JsonNode source = datasets.get(datasetIdx).get("source");
         if (source == null || !source.isTextual()) {
           throw new BadRequestException(
@@ -325,7 +332,7 @@ public class SemanticModelCatalog {
   }
 
   private TableIdentifier parseSource(String source, String pointer) {
-    List<String> parts = Splitter.on('.').splitToList(source);
+    List<String> parts = Splitter.on(SOURCE_SEPARATOR).splitToList(source);
     if (parts.size() < 2 || parts.stream().anyMatch(String::isEmpty)) {
       throw new BadRequestException(
           "Semantic model source '%s' at %s must be a namespace-qualified identifier "
