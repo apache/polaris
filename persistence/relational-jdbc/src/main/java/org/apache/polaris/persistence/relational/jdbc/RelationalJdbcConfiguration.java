@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
+import jakarta.validation.constraints.Pattern;
 import java.util.Optional;
 
 public interface RelationalJdbcConfiguration {
@@ -50,5 +51,11 @@ public interface RelationalJdbcConfiguration {
    * usual identifier case folding (for example PostgreSQL folds it to lowercase, H2 to uppercase),
    * matching how the default schema has always been handled.
    */
-  Optional<String> schemaName();
+  Optional<
+          @Pattern(
+              regexp = "[A-Za-z_][A-Za-z0-9_]*",
+              message =
+                  "must start with a letter or underscore and contain only letters, digits, and underscores")
+          String>
+      schemaName();
 }

@@ -33,6 +33,7 @@ dependencies {
   compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
+  compileOnly(libs.jakarta.validation.api)
   compileOnly(platform(libs.opentelemetry.instrumentation.bom.alpha))
   compileOnly("io.opentelemetry:opentelemetry-api")
 
