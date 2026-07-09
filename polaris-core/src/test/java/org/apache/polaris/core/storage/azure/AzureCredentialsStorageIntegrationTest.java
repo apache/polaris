@@ -36,7 +36,7 @@ public class AzureCredentialsStorageIntegrationTest {
     AzureLocation adlsLocation =
         new AzureLocation("abfss://container@myaccount." + AzureLocation.ADLS_ENDPOINT + "/path");
     AzureLocation blobLocation =
-        new AzureLocation("abfss://container@myaccount." + AzureLocation.BLOB_ENDPOINT + "/path");
+        new AzureLocation("wasbs://container@myaccount." + AzureLocation.BLOB_ENDPOINT + "/path");
 
     // ADLS location without refresh credentials endpoint.
     StorageAccessConfig adlsNoRefreshResult =
