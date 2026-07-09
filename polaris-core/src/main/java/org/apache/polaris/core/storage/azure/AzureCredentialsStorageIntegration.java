@@ -162,7 +162,7 @@ public class AzureCredentialsStorageIntegration
     AzureLocation location = new AzureLocation(loc);
     validateAccountAndContainer(location, locations, writeLocations);
 
-    String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
+    String storageDnsName = location.getStorageDnsName();
     String filePath = location.getFilePath();
 
     BlobSasPermission blobSasPermission = new BlobSasPermission();
@@ -252,19 +252,15 @@ public class AzureCredentialsStorageIntegration
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
 
-    return toAccessConfig(sasToken, storageDnsName, sanitizedEndTime.toInstant(), refreshEndpoint);
+    return toAccessConfig(sasToken, location, sanitizedEndTime.toInstant(), refreshEndpoint);
   }
 
   @VisibleForTesting
   static StorageAccessConfig toAccessConfig(
       String sasToken,
-      String storageDnsName,
+      AzureLocation location,
       Instant expiresAt,
       Optional<String> refreshCredentialsEndpoint) {
-    // For tests we build a fake location from the provided host part so we can pass the whole
-    // AzureLocation to handle (addresses review suggestion).
-    String fakeUri = "abfss://container@" + storageDnsName + "/path";
-    AzureLocation location = new AzureLocation(fakeUri);
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
     handleAzureCredential(accessConfig, sasToken, location, expiresAt);
     accessConfig.put(
@@ -281,7 +277,7 @@ public class AzureCredentialsStorageIntegration
       String sasToken,
       AzureLocation location,
       Instant expiresAt) {
-    String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
+    String storageDnsName = location.getStorageDnsName();
     String accountName = location.getStorageAccount();
 
     config.putCredential(

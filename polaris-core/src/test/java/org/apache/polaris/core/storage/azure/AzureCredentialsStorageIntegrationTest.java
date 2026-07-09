@@ -33,13 +33,13 @@ public class AzureCredentialsStorageIntegrationTest {
   @Test
   public void testAzureCredentialFormatting() {
     Instant expiresAt = Instant.ofEpochMilli(Long.MAX_VALUE);
+    AzureLocation adlsLocation =
+        new AzureLocation("abfss://container@myaccount." + AzureLocation.ADLS_ENDPOINT + "/path");
+    AzureLocation blobLocation =
+        new AzureLocation("abfss://container@myaccount." + AzureLocation.BLOB_ENDPOINT + "/path");
 
-    // Use distinct values for storageDnsName and accountName so that asserts on bare
-    // AZURE_ACCOUNT_NAME and stripped keys clearly come from the accountName parameter
-    // (not the storageDnsName). Addresses review feedback on test conclusiveness.
     StorageAccessConfig noSuffixResult =
-        toAccessConfig(
-            "sasToken", "myaccount." + AzureLocation.ADLS_ENDPOINT, expiresAt, Optional.empty());
+        toAccessConfig("sasToken", adlsLocation, expiresAt, Optional.empty());
     Assertions.assertThat(noSuffixResult.credentials()).hasSize(6);
     Assertions.assertThat(noSuffixResult.credentials())
         .containsKey("adls.sas-token.myaccount." + AzureLocation.ADLS_ENDPOINT);
@@ -57,11 +57,7 @@ public class AzureCredentialsStorageIntegrationTest {
             StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName());
 
     StorageAccessConfig adlsSuffixResult =
-        toAccessConfig(
-            "sasToken",
-            "myaccount." + AzureLocation.ADLS_ENDPOINT,
-            expiresAt,
-            Optional.of("endpoint/credentials"));
+        toAccessConfig("sasToken", adlsLocation, expiresAt, Optional.of("endpoint/credentials"));
     Assertions.assertThat(adlsSuffixResult.credentials()).hasSize(6);
     Assertions.assertThat(adlsSuffixResult.credentials()).containsKey("adls.sas-token.myaccount");
     Assertions.assertThat(adlsSuffixResult.credentials())
@@ -79,8 +75,7 @@ public class AzureCredentialsStorageIntegrationTest {
             "endpoint/credentials");
 
     StorageAccessConfig blobSuffixResult =
-        toAccessConfig(
-            "sasToken", "myaccount." + AzureLocation.BLOB_ENDPOINT, expiresAt, Optional.empty());
+        toAccessConfig("sasToken", blobLocation, expiresAt, Optional.empty());
     Assertions.assertThat(blobSuffixResult.credentials()).hasSize(6);
     Assertions.assertThat(blobSuffixResult.credentials()).containsKey("adls.sas-token.myaccount");
     Assertions.assertThat(blobSuffixResult.credentials())
