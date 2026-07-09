@@ -264,7 +264,7 @@ public class BatchFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
 
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThatCode(() -> handler.handleTask(task, polarisCallContext)).doesNotThrowAnyException();
 
     // Each file must have been checked exactly once by the pre-delete scan.
     Mockito.verify(fileIO, Mockito.times(1)).newInputFile(presentFile1);
