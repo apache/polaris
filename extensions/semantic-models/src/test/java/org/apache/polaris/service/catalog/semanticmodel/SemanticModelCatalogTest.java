@@ -33,6 +33,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -43,13 +44,16 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.semantic.SemanticModelEntity;
 import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
@@ -79,6 +83,8 @@ class SemanticModelCatalogTest {
 
   private PolarisResolutionManifestCatalogView view;
   private PolarisMetaStoreManager metaStoreManager;
+  private ResolutionManifestFactory resolutionManifestFactory;
+  private PolarisResolutionManifest sourceManifest;
   private SemanticModelCatalog catalog;
 
   private PolarisEntity catalogEntity;
@@ -88,6 +94,9 @@ class SemanticModelCatalogTest {
   void setUp() {
     view = mock(PolarisResolutionManifestCatalogView.class);
     metaStoreManager = mock(PolarisMetaStoreManager.class);
+    resolutionManifestFactory = mock(ResolutionManifestFactory.class);
+    sourceManifest = mock(PolarisResolutionManifest.class);
+    PolarisPrincipal principal = mock(PolarisPrincipal.class);
     CallContext callContext = mock(CallContext.class);
     PolarisCallContext polarisCallContext = mock(PolarisCallContext.class);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
@@ -97,8 +106,13 @@ class SemanticModelCatalogTest {
     when(view.getResolvedCatalogEntity()).thenReturn(new CatalogEntity(catalogEntity));
     when(view.getResolvedPath(ResolvedPathKey.ofNamespace(NS)))
         .thenReturn(path(catalogEntity, namespaceEntity));
+    // Source tables are resolved through a fresh single-use manifest, not the request view.
+    when(resolutionManifestFactory.createResolutionManifest(any(), any()))
+        .thenReturn(sourceManifest);
 
-    catalog = new SemanticModelCatalog(metaStoreManager, callContext, view);
+    catalog =
+        new SemanticModelCatalog(
+            metaStoreManager, callContext, view, resolutionManifestFactory, principal);
   }
 
   private SemanticModelDocument doc(String semanticModelJson) {
@@ -118,7 +132,7 @@ class SemanticModelCatalogTest {
             .setParentId(2L)
             .setName("store_sales")
             .build();
-    when(view.getPassthroughResolvedPath(
+    when(sourceManifest.getPassthroughResolvedPath(
             eq(ResolvedPathKey.ofTableLike(TableIdentifier.of(NS, "store_sales"))),
             eq(PolarisEntitySubType.ANY_SUBTYPE)))
         .thenReturn(path(catalogEntity, namespaceEntity, table));
@@ -182,7 +196,11 @@ class SemanticModelCatalogTest {
 
   @Test
   void createRejectsExistingModel() {
-    stubExistingModel(1);
+    stubResolvableSource();
+    when(metaStoreManager.generateNewEntityId(any())).thenReturn(new GenerateEntityIdResult(10L));
+    // Duplicates are surfaced by the persistence layer, not a pre-check.
+    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
+        .thenReturn(new EntityResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(VALID_MODEL_JSON)))
         .isInstanceOf(AlreadyExistsException.class);
   }

@@ -54,7 +54,12 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
   @Override
   protected void initializeCatalog() {
     this.semanticModelCatalog =
-        new SemanticModelCatalog(metaStoreManager(), callContext(), this.resolutionManifest);
+        new SemanticModelCatalog(
+            metaStoreManager(),
+            callContext(),
+            this.resolutionManifest,
+            resolutionManifestFactory(),
+            polarisPrincipal());
   }
 
   public LoadSemanticModelResponse createSemanticModel(

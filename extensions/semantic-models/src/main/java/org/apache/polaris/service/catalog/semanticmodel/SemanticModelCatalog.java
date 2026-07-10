@@ -31,6 +31,8 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -42,8 +44,11 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.semantic.SemanticModelEntity;
 import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
 import org.apache.polaris.core.semantic.exceptions.SemanticModelVersionMismatchException;
@@ -77,16 +82,22 @@ public class SemanticModelCatalog {
   private final CatalogEntity catalogEntity;
   private final long catalogId;
   private final PolarisMetaStoreManager metaStoreManager;
+  private final ResolutionManifestFactory resolutionManifestFactory;
+  private final PolarisPrincipal principal;
 
   public SemanticModelCatalog(
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
-      PolarisResolutionManifestCatalogView resolvedEntityView) {
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      ResolutionManifestFactory resolutionManifestFactory,
+      PolarisPrincipal principal) {
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.catalogId = catalogEntity.getId();
     this.metaStoreManager = metaStoreManager;
+    this.resolutionManifestFactory = resolutionManifestFactory;
+    this.principal = principal;
   }
 
   public LoadSemanticModelResponse createSemanticModel(
@@ -101,15 +112,10 @@ public class SemanticModelCatalog {
     }
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
-    PolarisResolvedPathWrapper existing =
-        resolvedEntityView.getPassthroughResolvedPath(
-            ResolvedPathKey.ofSemanticModel(namespace, identifier.getName()),
-            PolarisEntitySubType.NULL_SUBTYPE);
-    if (existing != null && existing.getRawLeafEntity() != null) {
-      throw new AlreadyExistsException("Semantic model already exists: %s", identifier.getName());
-    }
-
-    // Validate the document schema, then resolve its source tables before persisting.
+    // Validate the document schema, then resolve its source tables before persisting. Duplicate
+    // names are caught by createEntityIfNotExists below (ENTITY_ALREADY_EXISTS), so there is no
+    // separate existence pre-check: the semantic-model path is not registered on this request's
+    // resolution manifest, and probing it there would fail.
     JsonNode semanticModel = validateDocument(document);
     resolveAndValidateSources(semanticModel);
 
@@ -319,8 +325,18 @@ public class SemanticModelCatalog {
 
   private void resolveSourceOrThrow(String source, String pointer) {
     TableIdentifier tableIdentifier = parseSource(source, pointer);
+    // Sources are parsed from the opaque document, so they cannot be pre-registered on this
+    // request's resolution manifest. Resolve each one with a fresh single-use manifest that
+    // registers the table path as an optional passthrough.
+    PolarisResolutionManifest manifest =
+        resolutionManifestFactory.createResolutionManifest(principal, catalogEntity.getName());
+    manifest.addPassthroughPath(
+        new ResolverPath(
+            PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+            PolarisEntityType.TABLE_LIKE,
+            true /* optional */));
     PolarisResolvedPathWrapper resolved =
-        resolvedEntityView.getPassthroughResolvedPath(
+        manifest.getPassthroughResolvedPath(
             ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
     if (resolved == null
         || resolved.getRawLeafEntity() == null
