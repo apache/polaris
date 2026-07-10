@@ -61,7 +61,6 @@ import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -82,20 +81,17 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
-  private final IdempotencyRequestContext idempotencyRequestContext;
 
   @Inject
   public IcebergCatalogAdapter(
       CallContext callContext,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      IcebergCatalogHandlerFactory handlerFactory,
-      IdempotencyRequestContext idempotencyRequestContext) {
+      IcebergCatalogHandlerFactory handlerFactory) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
-    this.idempotencyRequestContext = idempotencyRequestContext;
   }
 
   /**
@@ -300,19 +296,9 @@ public class IcebergCatalogAdapter
                         ns, createTableRequest, delegationModes, refreshCredentialsEndpoint))
                 .build();
           } else {
-            // The Idempotency-Key header is captured into the request-scoped context by
-            // IdempotencyKeyFilter (when the feature is enabled). Forward it so the handler can
-            // embed it into the new table entity (single-transaction model) and replay a prior
-            // success on retry.
-            Optional<UUID> effectiveKey =
-                Optional.ofNullable(idempotencyRequestContext.pendingKey());
             LoadTableResponse response =
                 catalog.createTableDirect(
-                    ns,
-                    createTableRequest,
-                    delegationModes,
-                    refreshCredentialsEndpoint,
-                    effectiveKey);
+                    ns, createTableRequest, delegationModes, refreshCredentialsEndpoint);
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();

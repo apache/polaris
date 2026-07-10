@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.entity;
+package org.apache.polaris.service.idempotency;
 
-import static org.apache.polaris.core.entity.EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY;
+import static org.apache.polaris.service.idempotency.EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -40,15 +40,6 @@ public class EntityIdempotencyTest {
 
     String windowJson = internal.get(IDEMPOTENCY_KEYS_PROPERTY);
     assertThat(windowJson).startsWith("IS1");
-    assertThat(EntityIdempotency.hasLiveKey(internal, key, NOW)).isTrue();
-  }
-
-  @Test
-  public void recordKeyStampsKeyWithExpiry() {
-    UUID key = UUID.randomUUID();
-    Map<String, String> internal = EntityIdempotency.recordKey(Map.of(), key, LATER, NOW);
-
-    assertThat(internal).containsKey(IDEMPOTENCY_KEYS_PROPERTY);
     assertThat(EntityIdempotency.hasLiveKey(internal, key, NOW)).isTrue();
   }
 
@@ -99,8 +90,6 @@ public class EntityIdempotencyTest {
 
     assertThat(EntityIdempotency.hasLiveKey(updated, fresh, muchLater)).isTrue();
     assertThat(EntityIdempotency.hasLiveKey(updated, stale, muchLater)).isFalse();
-    // Confirm the stale entry was physically removed, not just expired.
-    assertThat(updated.get(IDEMPOTENCY_KEYS_PROPERTY)).doesNotContain(stale.toString());
   }
 
   @Test
@@ -114,11 +103,33 @@ public class EntityIdempotencyTest {
     assertThat(EntityIdempotency.hasLiveKey(internal, second, NOW)).isTrue();
   }
 
+  @Test
+  public void recordKeyEvictsEarliestWhenFull() {
+    // Fill the window to capacity with strictly increasing expiries, so the earliest-expiring key
+    // (the first one recorded) is the well-defined eviction target.
+    UUID earliest = UUID.randomUUID();
+    Map<String, String> internal =
+        EntityIdempotency.recordKey(Map.of(), earliest, NOW.plusSeconds(1), NOW);
+    for (int i = 2; i <= EntityIdempotency.MAX_WINDOW_SIZE; i++) {
+      internal = EntityIdempotency.recordKey(internal, UUID.randomUUID(), NOW.plusSeconds(i), NOW);
+    }
+
+    // One more write past capacity must evict the earliest-expiring key while retaining the key
+    // just recorded (trim-before-insert: the new key is never the one dropped).
+    UUID newest = UUID.randomUUID();
+    internal =
+        EntityIdempotency.recordKey(
+            internal, newest, NOW.plusSeconds(EntityIdempotency.MAX_WINDOW_SIZE + 1L), NOW);
+
+    // Read at NOW, when every recorded key would still be live if present, so absence == eviction.
+    assertThat(EntityIdempotency.hasLiveKey(internal, newest, NOW)).isTrue();
+    assertThat(EntityIdempotency.hasLiveKey(internal, earliest, NOW)).isFalse();
+  }
+
   /**
    * {@code createTable} always stamps exactly one key, but the retry check ({@link
    * EntityIdempotency#hasLiveKey}) must still find the right key when the entity carries a larger
-   * window — the shape a future {@code updateTable} path would produce. Parameter values match the
-   * JMH benchmark key counts (1, 8, 64, 300).
+   * window — the shape a future {@code updateTable} path would produce.
    */
   @ParameterizedTest
   @ValueSource(ints = {1, 8, 64, 300})

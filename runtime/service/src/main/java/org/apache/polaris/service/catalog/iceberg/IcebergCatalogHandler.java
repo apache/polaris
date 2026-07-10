@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
@@ -99,7 +100,6 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.EntityIdempotency;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -132,7 +132,8 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.apache.polaris.service.idempotency.EntityIdempotency;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.jspecify.annotations.NonNull;
@@ -218,7 +219,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
 
-  protected abstract IdempotencyConfiguration idempotencyConfiguration();
+  protected abstract IdempotencyRequestContext idempotencyRequestContext();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -450,28 +451,19 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
   }
 
-  public LoadTableResponse createTableDirect(
-      Namespace namespace,
-      CreateTableRequest request,
-      EnumSet<AccessDelegationMode> delegationModes,
-      Optional<String> refreshCredentialsEndpoint) {
-    return createTableDirect(
-        namespace, request, delegationModes, refreshCredentialsEndpoint, Optional.empty());
-  }
-
   /**
-   * {@code createTableDirect} with entity-property idempotency support. When {@code idempotencyKey}
-   * is present, the key is embedded into the new table entity's internal properties within the same
-   * transaction as the create (expiry comes from {@code IdempotencyRequestContext}). A subsequent
-   * retry that arrives while the key is still live replays the original success (rebuilding the
-   * load response from current catalog state) instead of returning a 409 conflict.
+   * {@code createTableDirect} with entity-property idempotency support. When idempotency is active
+   * for the request ({@link IdempotencyRequestContext#isActive()}), the key is embedded into the
+   * new table entity's internal properties within the same transaction as the create (expiry comes
+   * from {@code IdempotencyRequestContext}). A subsequent retry that arrives while the key is still
+   * live replays the original success (rebuilding the load response from current catalog state)
+   * instead of returning a 409 conflict.
    */
   public LoadTableResponse createTableDirect(
       Namespace namespace,
       CreateTableRequest request,
       EnumSet<AccessDelegationMode> delegationModes,
-      Optional<String> refreshCredentialsEndpoint,
-      Optional<UUID> idempotencyKey) {
+      Optional<String> refreshCredentialsEndpoint) {
 
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
@@ -481,12 +473,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // Idempotency replay: on a retry the table already exists and carries the key in its internal
     // properties (committed atomically with the original create). Rebuild the load response from
     // current catalog state rather than failing with AlreadyExists.
-    if (idempotencyActive(idempotencyKey)) {
+    if (idempotencyRequestContext().isActive()) {
+      UUID idempotencyKey = requireNonNull(idempotencyRequestContext().pendingKey());
       IcebergTableLikeEntity existing =
           passthroughResolveTableEntityForIdempotency(tableIdentifier);
       if (existing != null
           && EntityIdempotency.hasLiveKey(
-              existing.getInternalPropertiesAsMap(), idempotencyKey.get(), clock().instant())) {
+              existing.getInternalPropertiesAsMap(), idempotencyKey, clock().instant())) {
         Table table = baseCatalog.loadTable(tableIdentifier);
         if (table instanceof BaseTable baseTable) {
           return buildLoadTableResponseWithDelegationCredentials(
@@ -527,12 +520,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     } catch (AlreadyExistsException e) {
       // Concurrent same-key create: the race winner committed the key atomically with the table, so
       // a single fresh lookup (no polling/backoff) is enough to replay instead of returning 409.
-      if (idempotencyActive(idempotencyKey)) {
+      if (idempotencyRequestContext().isActive()) {
+        UUID idempotencyKey = requireNonNull(idempotencyRequestContext().pendingKey());
         IcebergTableLikeEntity winner =
             passthroughResolveTableEntityForIdempotency(tableIdentifier);
         if (winner != null
             && EntityIdempotency.hasLiveKey(
-                winner.getInternalPropertiesAsMap(), idempotencyKey.get(), clock().instant())) {
+                winner.getInternalPropertiesAsMap(), idempotencyKey, clock().instant())) {
           Table existingTable = baseCatalog.loadTable(tableIdentifier);
           if (existingTable instanceof BaseTable baseTable) {
             return buildLoadTableResponseWithDelegationCredentials(
@@ -794,10 +788,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return IcebergTableLikeEntity.of(rawLeafEntity);
     }
     return null; // could be an external catalog
-  }
-
-  private boolean idempotencyActive(Optional<UUID> idempotencyKey) {
-    return idempotencyKey.isPresent() && idempotencyConfiguration().enabled();
   }
 
   /**

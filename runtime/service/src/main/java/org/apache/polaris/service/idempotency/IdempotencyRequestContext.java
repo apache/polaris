@@ -56,6 +56,15 @@ public class IdempotencyRequestContext {
     this.pendingExpiry = Instant.now().plus(idempotencyConfiguration.ttl());
   }
 
+  /**
+   * Whether entity-property idempotency applies to the current request: the feature is enabled and
+   * a well-formed {@code Idempotency-Key} was supplied (and thus captured by {@code
+   * IdempotencyKeyFilter}). When {@code true}, {@link #pendingKey()} is non-null.
+   */
+  public boolean isActive() {
+    return pendingKey != null && idempotencyConfiguration.enabled();
+  }
+
   public @Nullable UUID pendingKey() {
     return pendingKey;
   }

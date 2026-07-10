@@ -385,18 +385,14 @@ public record TestServices(
                   .clock(clock)
                   .accessDelegationModeResolver(
                       new DefaultAccessDelegationModeResolver(realmConfig))
-                  .idempotencyConfiguration(idempotencyConfiguration)
+                  .idempotencyRequestContext(idempotencyRequestContext)
                   .build();
             }
           };
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
-              callContext,
-              new DefaultCatalogPrefixParser(),
-              reservedProperties,
-              handlerFactory,
-              idempotencyRequestContext);
+              callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;
