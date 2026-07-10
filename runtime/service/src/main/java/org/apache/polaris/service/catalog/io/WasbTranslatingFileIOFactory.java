@@ -36,8 +36,6 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
 
   @Inject
   public WasbTranslatingFileIOFactory(S3AccessConfig s3AccessConfig) {
-    // Pass storage HTTP client settings through so S3FileIO used under wasb gets the same
-    // polaris.storage.* tuning as the CDI "default" FileIOFactory path.
     defaultFileIOFactory = new DefaultFileIOFactory(s3AccessConfig);
   }
 
