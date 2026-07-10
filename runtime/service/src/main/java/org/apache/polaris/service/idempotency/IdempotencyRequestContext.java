@@ -22,38 +22,55 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Request-scoped holder for a pending entity-property idempotency key. The REST adapter sets the
  * key before invoking the handler; {@code LocalIcebergCatalog} reads it when committing a create so
  * the key is stamped atomically with the new entity.
+ *
+ * <p>Although request-scoped, the same instance can be touched from more than one thread over a
+ * request's lifetime (e.g. the {@code IdempotencyKeyFilter} vs. the REST service code), so the
+ * pending key is held in an {@link AtomicReference} — mirroring {@code RealmContextHolder}.
  */
 @RequestScoped
 public class IdempotencyRequestContext {
 
-  private final IdempotencyConfiguration idempotencyConfiguration;
-  private @Nullable UUID pendingKey;
-  private @Nullable Instant pendingExpiry;
+  /**
+   * Shared no-op context for code paths that build a catalog without request-scoped idempotency
+   * (e.g. non-CDI construction and tests). {@link #isActive()} is always {@code false}, so callers
+   * can hold a non-null context instead of null-checking.
+   */
+  public static final IdempotencyRequestContext DISABLED = new IdempotencyRequestContext();
+
+  private final @Nullable IdempotencyConfiguration idempotencyConfiguration;
+
+  // Key and expiry are always set/cleared together, so a single reference keeps reads consistent.
+  private final AtomicReference<PendingKey> pending = new AtomicReference<>();
 
   @Inject
   public IdempotencyRequestContext(IdempotencyConfiguration idempotencyConfiguration) {
     this.idempotencyConfiguration = idempotencyConfiguration;
   }
 
+  private IdempotencyRequestContext() {
+    this.idempotencyConfiguration = null;
+  }
+
   /**
    * Records {@code key} for the current request, computing expiry from {@link
-   * IdempotencyConfiguration#ttl()}. No-op when {@code key} is {@code null}.
+   * IdempotencyConfiguration#ttl()}. No-op when {@code key} is {@code null} or on the {@link
+   * #DISABLED} context.
    */
   public void setPendingKey(@Nullable UUID key) {
-    if (pendingKey != null || pendingExpiry != null) {
-      throw new IllegalStateException("Idempotency request context already set");
-    }
-    if (key == null) {
+    if (key == null || idempotencyConfiguration == null) {
       return;
     }
-    this.pendingKey = key;
-    this.pendingExpiry = Instant.now().plus(idempotencyConfiguration.ttl());
+    PendingKey value = new PendingKey(key, Instant.now().plus(idempotencyConfiguration.ttl()));
+    if (!pending.compareAndSet(null, value)) {
+      throw new IllegalStateException("Idempotency request context already set");
+    }
   }
 
   /**
@@ -62,15 +79,19 @@ public class IdempotencyRequestContext {
    * IdempotencyKeyFilter}). When {@code true}, {@link #pendingKey()} is non-null.
    */
   public boolean isActive() {
-    return pendingKey != null && idempotencyConfiguration.enabled();
+    return pending.get() != null
+        && idempotencyConfiguration != null
+        && idempotencyConfiguration.enabled();
   }
 
   public @Nullable UUID pendingKey() {
-    return pendingKey;
+    PendingKey current = pending.get();
+    return current == null ? null : current.key();
   }
 
   public @Nullable Instant pendingExpiry() {
-    return pendingExpiry;
+    PendingKey current = pending.get();
+    return current == null ? null : current.expiry();
   }
 
   /**
@@ -79,7 +100,8 @@ public class IdempotencyRequestContext {
    * shared instance can simulate that per-request lifecycle.
    */
   public void clearPending() {
-    pendingKey = null;
-    pendingExpiry = null;
+    pending.set(null);
   }
+
+  private record PendingKey(UUID key, Instant expiry) {}
 }

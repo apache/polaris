@@ -108,21 +108,25 @@ public class EntityIdempotencyTest {
     // Fill the window to capacity with strictly increasing expiries, so the earliest-expiring key
     // (the first one recorded) is the well-defined eviction target.
     UUID earliest = UUID.randomUUID();
+    UUID secondEarliest = UUID.randomUUID();
     Map<String, String> internal =
         EntityIdempotency.recordKey(Map.of(), earliest, NOW.plusSeconds(1), NOW);
-    for (int i = 2; i <= EntityIdempotency.MAX_WINDOW_SIZE; i++) {
+    internal = EntityIdempotency.recordKey(internal, secondEarliest, NOW.plusSeconds(2), NOW);
+    for (int i = 3; i <= EntityIdempotency.MAX_WINDOW_SIZE; i++) {
       internal = EntityIdempotency.recordKey(internal, UUID.randomUUID(), NOW.plusSeconds(i), NOW);
     }
 
-    // One more write past capacity must evict the earliest-expiring key while retaining the key
-    // just recorded (trim-before-insert: the new key is never the one dropped).
+    // One more write past capacity must evict only the earliest-expiring key while retaining the
+    // key just recorded (trim-before-insert: the new key is never the one dropped).
     UUID newest = UUID.randomUUID();
     internal =
         EntityIdempotency.recordKey(
             internal, newest, NOW.plusSeconds(EntityIdempotency.MAX_WINDOW_SIZE + 1L), NOW);
 
     // Read at NOW, when every recorded key would still be live if present, so absence == eviction.
+    // Only the single earliest key is dropped: the new key and the next-earliest survive.
     assertThat(EntityIdempotency.hasLiveKey(internal, newest, NOW)).isTrue();
+    assertThat(EntityIdempotency.hasLiveKey(internal, secondEarliest, NOW)).isTrue();
     assertThat(EntityIdempotency.hasLiveKey(internal, earliest, NOW)).isFalse();
   }
 
