@@ -395,7 +395,9 @@ public class QueryGenerator {
    *
    * <p>Equality terms are generated for each prefix of the location in both slash-terminated and
    * non-slash-terminated forms so that ancestors stored with or without a trailing slash are both
-   * matched.
+   * matched. Prefix terms that consist only of {@code /} characters (other than {@code ///}, the
+   * root of {@code file:} URIs) are skipped, as they are artifacts of scheme stripping, not
+   * meaningful storage locations.
    *
    * @param realmId A realm to search within
    * @param schemaVersion The schema version of entities table to query
@@ -432,6 +434,11 @@ public class QueryGenerator {
     prefixTerms.add(normalizedLocation + "/");
 
     for (String prefix : prefixTerms) {
+      // Skip "/" and "//" produced from empty path segments around the scheme separator; those
+      // are not meaningful storage locations. "///" (the root of file: URIs) is kept.
+      if (prefix.length() < 3 && isSlashOnly(prefix)) {
+        continue;
+      }
       conditions.add("location_without_scheme = ?");
       parameters.add(prefix);
     }
@@ -441,7 +448,6 @@ public class QueryGenerator {
     // //bucket/ns/tA_backup).
     conditions.add("location_without_scheme LIKE ?");
     parameters.add(StorageLocation.ensureTrailingSlash(locationWithoutScheme) + "%");
-
     String locationClause = String.join(" OR ", conditions);
     String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";
 
@@ -459,6 +465,20 @@ public class QueryGenerator {
             where.sql(),
             null);
     return new PreparedQuery(query.sql(), where.parameters());
+  }
+
+  /** True when {@code value} is non-empty and contains only {@code /} characters. */
+  @VisibleForTesting
+  static boolean isSlashOnly(String value) {
+    if (value == null || value.isEmpty()) {
+      return false;
+    }
+    for (int i = 0; i < value.length(); i++) {
+      if (value.charAt(i) != '/') {
+        return false;
+      }
+    }
+    return true;
   }
 
   static String getFullyQualifiedTableName(String tableName) {
