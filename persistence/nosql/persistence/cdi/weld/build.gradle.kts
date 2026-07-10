@@ -32,9 +32,9 @@ dependencies {
   runtimeOnly(project(":polaris-persistence-nosql-realms-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-realms-store-nosql"))
 
-  compileOnly(platform(libs.jackson.bom))
+  compileOnly(platform(libs.jackson3.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  compileOnly("com.fasterxml.jackson.core:jackson-databind")
+  compileOnly("tools.jackson.core:jackson-databind")
 
   compileOnly(libs.smallrye.config.core)
   compileOnly(platform(libs.quarkus.bom))
@@ -54,8 +54,8 @@ dependencies {
 
   testFixturesApi(project(":polaris-persistence-nosql-api"))
   testFixturesApi(project(":polaris-persistence-nosql-realms-api"))
-  testFixturesApi(platform(libs.jackson.bom))
-  testFixturesApi("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
+  testFixturesApi(platform(libs.jackson3.bom))
+  testFixturesApi("tools.jackson.dataformat:jackson-dataformat-smile")
   testFixturesApi(project(":polaris-persistence-nosql-inmemory"))
   testFixturesApi(testFixtures(project(":polaris-persistence-nosql-inmemory")))
   testFixturesImplementation(project(":polaris-persistence-nosql-cdi-common"))

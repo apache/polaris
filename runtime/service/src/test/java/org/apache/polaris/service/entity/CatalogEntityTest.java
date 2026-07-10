@@ -20,10 +20,13 @@ package org.apache.polaris.service.entity;
 
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -50,6 +53,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
@@ -168,7 +172,7 @@ public class CatalogEntityTest {
                     storageLocation + "5/",
                     storageLocation + "6/"))
             .build();
-    CatalogProperties prop = new CatalogProperties(storageLocation);
+    CatalogProperties prop = new CatalogProperties(storageLocation + "1/");
     Catalog awsCatalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -252,6 +256,75 @@ public class CatalogEntityTest {
             .build();
     Assertions.assertThatNoException()
         .isThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, gcpCatalog));
+  }
+
+  @Test
+  public void testEmptyAllowedLocationsAutoPopulatedAtCreate() {
+    // Convenience for the simple-create case: if the caller supplies a default-base-location
+    // but no allowed-locations, the Builder defaults allowed-locations to [defaultBaseLocation].
+    String basedLocation = "s3://my-bucket/data/";
+    AwsStorageConfigInfo awsStorageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            // No setAllowedLocations() - user supplied only the base.
+            .build();
+    Catalog awsCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("name")
+            .setProperties(new CatalogProperties(basedLocation))
+            .setStorageConfigInfo(awsStorageConfigModel)
+            .build();
+    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, awsCatalog);
+    Assertions.assertThat(entity.getStorageConfigurationInfo().getAllowedLocations())
+        .containsExactly(basedLocation);
+  }
+
+  @Test
+  public void testExplicitAllowedLocationsWithBaseInside_storedAsIs() {
+    // User supplied explicit allowed-locations containing the default-base-location: store the
+    // list as-is. No silent additions to the user-supplied perimeter.
+    String basedLocation = "s3://my-bucket/data/";
+    AwsStorageConfigInfo awsStorageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-bucket/"))
+            .build();
+    Catalog awsCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("name")
+            .setProperties(new CatalogProperties(basedLocation))
+            .setStorageConfigInfo(awsStorageConfigModel)
+            .build();
+    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, awsCatalog);
+    Assertions.assertThat(entity.getStorageConfigurationInfo().getAllowedLocations())
+        .containsExactly("s3://my-bucket/");
+  }
+
+  @Test
+  public void testExplicitAllowedLocationsWithBaseOutside_rejected() {
+    // User-supplied explicit allowed-locations not containing the default-base-location: reject
+    // with a clear error rather than silently widening the allowed perimeter to include the base.
+    AwsStorageConfigInfo awsStorageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://other-bucket/"))
+            .build();
+    Catalog awsCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("name")
+            .setProperties(new CatalogProperties("s3://my-bucket/data/"))
+            .setStorageConfigInfo(awsStorageConfigModel)
+            .build();
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("s3://my-bucket/data/")
+        .hasMessageContaining("s3://other-bucket/");
   }
 
   @ParameterizedTest
@@ -514,5 +587,85 @@ public class CatalogEntityTest {
 
     b.setHierarchical(true);
     assertThat(MAPPER.writeValueAsString(b.build())).contains("hierarchical");
+  }
+
+  @ParameterizedTest(name = "[{index}] base={1} within allowed={0}")
+  @CsvSource({"s3://bucket/, s3://bucket/path/to/data", "s3://bucket/, s3://bucket/"})
+  public void testBaseWithinAllowed_accepted(String allowed, String base) {
+    assertThatCode(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation(base)
+                    .setStorageConfigurationInfo(
+                        realmConfig,
+                        AwsStorageConfigInfo.builder()
+                            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+                            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                            .setAllowedLocations(List.of(allowed))
+                            .build(),
+                        base)
+                    .build())
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testAcceptedUnderAnyOfMultipleAllowedLocations() {
+    assertThatCode(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://bucket-b/warehouse/data")
+                    .setStorageConfigurationInfo(
+                        realmConfig,
+                        AwsStorageConfigInfo.builder()
+                            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+                            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                            .setAllowedLocations(
+                                List.of("s3://bucket-a/", "s3://bucket-b/warehouse/"))
+                            .build(),
+                        "s3://bucket-b/warehouse/data")
+                    .build())
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testBaseOutsideAllowed_rejected() {
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("s3://other-bucket/data")
+                    .setStorageConfigurationInfo(
+                        realmConfig,
+                        AwsStorageConfigInfo.builder()
+                            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+                            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                            .setAllowedLocations(List.of("s3://bucket/"))
+                            .build(),
+                        "s3://other-bucket/data")
+                    .build())
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("s3://other-bucket/data")
+        .hasMessageContaining("s3://bucket/");
+  }
+
+  @Test
+  public void testDifferentSchemeRejected() {
+    assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("test-catalog")
+                    .setDefaultBaseLocation("gs://bucket/data")
+                    .setStorageConfigurationInfo(
+                        realmConfig,
+                        AwsStorageConfigInfo.builder()
+                            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+                            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+                            .setAllowedLocations(List.of("s3://bucket/"))
+                            .build(),
+                        "gs://bucket/data")
+                    .build())
+        .isInstanceOf(BadRequestException.class);
   }
 }

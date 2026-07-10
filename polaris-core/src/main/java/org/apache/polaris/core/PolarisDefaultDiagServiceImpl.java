@@ -35,7 +35,8 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
    */
   @Override
   public RuntimeException fail(String signature, String extraInfoFormat, Object... extraInfoArgs) {
-    Preconditions.checkState(false, "%s: %s, %s", signature, extraInfoFormat, extraInfoArgs);
+    Preconditions.checkState(
+        false, "%s: %s, %s", signature, extraInfoFormat, Arrays.toString(extraInfoArgs));
     throw new RuntimeException(signature);
   }
 
@@ -53,7 +54,12 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
   public RuntimeException fail(
       String signature, Throwable cause, String extraInfoFormat, Object... extraInfoArgs) {
     Preconditions.checkState(
-        false, "%s: %s, %s (cause: %s)", signature, extraInfoFormat, extraInfoArgs, cause);
+        false,
+        "%s: %s, %s (cause: %s)",
+        signature,
+        extraInfoFormat,
+        Arrays.toString(extraInfoArgs),
+        cause);
     throw new RuntimeException(cause.getMessage());
   }
 

@@ -575,8 +575,7 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null);
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(resolutionManifest);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
 
     authorizer.resolveAuthorizationInputs(authzState, requestWithCatalogTarget(principal));
@@ -594,8 +593,7 @@ public class OpaPolarisAuthorizerTest {
     ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
     mockResponse.setEntity(mockEntity);
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(resolutionManifest);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
 
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
@@ -643,8 +641,7 @@ public class OpaPolarisAuthorizerTest {
     ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
     mockResponse.setEntity(mockEntity);
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(resolutionManifest);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
 
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
@@ -691,8 +688,7 @@ public class OpaPolarisAuthorizerTest {
     ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
     mockResponse.setEntity(mockEntity);
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(resolutionManifest);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
 
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
@@ -861,8 +857,7 @@ public class OpaPolarisAuthorizerTest {
     mockResponse.setEntity(mockEntity);
 
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(resolutionManifest);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
 
     AuthorizationRequest request =
         new AuthorizationRequest(
@@ -941,8 +936,7 @@ public class OpaPolarisAuthorizerTest {
     mockResponse.setEntity(mockEntity);
 
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(resolutionManifest);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
 
     OpaPolarisAuthorizer authorizer =
@@ -1023,8 +1017,7 @@ public class OpaPolarisAuthorizerTest {
     mockResponse.setEntity(mockEntity);
 
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(resolutionManifest);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
     PolarisSecurable tableTarget =
         PolarisSecurable.of(

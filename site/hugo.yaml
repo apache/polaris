@@ -66,6 +66,7 @@ params:
   active_releases:
     # Mention all active releases here, in semver descending order.
     # Remove any version that should be moved to the "EOL" category.
+    - "1.6.0"
     - "1.5.0"
     - "1.4.1"
     - "1.4.0"

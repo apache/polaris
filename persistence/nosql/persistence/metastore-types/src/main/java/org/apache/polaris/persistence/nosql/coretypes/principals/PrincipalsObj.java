@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.coretypes.principals;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
@@ -28,6 +26,8 @@ import org.apache.polaris.persistence.nosql.api.obj.AbstractObjType;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Maintains the mapping of all principals by name to {@link PrincipalObj}s. The current version of

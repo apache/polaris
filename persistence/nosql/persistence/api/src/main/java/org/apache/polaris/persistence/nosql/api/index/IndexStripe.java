@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.api.index;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.immutables.value.Value;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Describes a spilled-out index stripe, <em>do not use/interpret this type</em>.

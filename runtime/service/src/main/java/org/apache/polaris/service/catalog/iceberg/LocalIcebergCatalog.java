@@ -48,6 +48,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -203,6 +204,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   // table entity's internal properties within the same transaction as the create.
   private final @Nullable IdempotencyRequestContext idempotencyRequestContext;
 
+  private Consumer<MetadataFileCleanup> deleteRemovedMetadataFiles =
+      LocalIcebergCatalog::defaultDeleteRemovedMetadataFiles;
+
+  private static void defaultDeleteRemovedMetadataFiles(MetadataFileCleanup cleanup) {
+    CatalogUtil.deleteRemovedMetadataFiles(
+        cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
+  }
+
   /**
    * @param callContext the current CallContext
    * @param resolvedEntityView accessor to resolved entity paths that have been pre-vetted to ensure
@@ -319,7 +328,19 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   public void setMetaStoreManager(PolarisMetaStoreManager newMetaStoreManager) {
+    setMetaStoreManager(newMetaStoreManager, null);
+  }
+
+  /**
+   * Sets the meta store manager and optionally a custom logic for deleting removed metadata files.
+   * This allows the caller (e.g. during commitTransaction) to provide a collector instead of
+   * immediate deletion, avoiding premature deletes that could lead to corruption on rollback.
+   */
+  public void setMetaStoreManager(
+      PolarisMetaStoreManager newMetaStoreManager, Consumer<MetadataFileCleanup> deleteLogic) {
     this.metaStoreManager = newMetaStoreManager;
+    this.deleteRemovedMetadataFiles =
+        deleteLogic != null ? deleteLogic : LocalIcebergCatalog::defaultDeleteRemovedMetadataFiles;
   }
 
   @Override
@@ -1669,7 +1690,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
       long start = System.currentTimeMillis();
       doCommit(base, metadata);
-      CatalogUtil.deleteRemovedMetadataFiles(io(), base, metadata);
+      deleteRemovedMetadataFiles.accept(new MetadataFileCleanup(io(), base, metadata));
       requestRefresh();
 
       LOGGER.info(
@@ -2461,9 +2482,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   private void validateMetadataFileInTableDir(
       TableIdentifier identifier, String tableLocation, String metadataLocation) {
-    boolean allowEscape = realmConfig.getConfig(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+    boolean allowEscape =
+        realmConfig.getConfig(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION, catalogEntity);
     if (!allowEscape
-        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+        && !realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION, catalogEntity)) {
       LOGGER.debug(
           "Validating base location {} for table {} in metadata file {}",
           tableLocation,

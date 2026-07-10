@@ -102,7 +102,7 @@ public class ProductionReadinessChecks {
       LOGGER
           .makeLoggingEventBuilder(hasSevere ? Level.ERROR : Level.WARN)
           .log(
-              "Refer to https://polaris.apache.org/in-dev/unreleased/configuring-polaris-for-production for more information.");
+              "Refer to https://polaris.apache.org/in-dev/unreleased/configuration/configuring-polaris-for-production/ for more information.");
 
       if (hasSevere) {
         if (!config.ignoreSevereIssues()) {

@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -80,6 +81,19 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void validateBootstrap() {
     // allocate test driver
+    polarisTestMetaStoreManager.validateBootstrap();
+  }
+
+  /** re-bootstrapping an already-bootstrapped service must be a graceful no-op */
+  @Test
+  protected void testBootstrapAgainIsNoOp() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    // the test driver bootstrapped the service already; bootstrap a second time
+    BaseResult secondBootstrap =
+        metaStoreManager.bootstrapPolarisService(polarisTestMetaStoreManager.polarisCallContext);
+    Assertions.assertThat(secondBootstrap.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
+    // the existing realm must be left fully intact
     polarisTestMetaStoreManager.validateBootstrap();
   }
 

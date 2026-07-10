@@ -305,6 +305,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_METADATA_FILE_LOCATION")
+          .catalogConfig("polaris.config.allow.external.metadata.file.location")
           .description(
               "If set to true, Polaris allows metadata files to be located outside the table's "
                   + "default metadata directory. This relaxes the normal check that metadata "
@@ -508,8 +509,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ENABLE_SEMANTIC_MODELS =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_SEMANTIC_MODELS")
-          .description("If true, the semantic-model (OSI) endpoints are enabled")
-          .defaultValue(false) // keep it to false until the implementation is done
+          .description(
+              "If true, the semantic-model (Apache Ossie) endpoints are enabled. This is a beta feature: "
+                  + "the API is under active development and may change in a backward-incompatible "
+                  + "way. It is disabled by default; enable it with caution and report any issues "
+                  + "encountered.")
+          .defaultValue(false) // beta feature, keep it off by default
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
@@ -613,7 +618,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "When enabled, Iceberg tables and views created without a location specified will have a prefix "
                   + "applied to the location within the catalog's base location, rather than a location directly "
-                  + "inside the parent namespace. Note that this requires ALLOW_EXTERNAL_TABLE_LOCATION to be "
+                  + "inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be "
                   + "enabled, but with OPTIMIZED_SIBLING_CHECK enabled "
                   + "it is still possible to enforce the uniqueness of table locations within a catalog.")
           .defaultValue(false)

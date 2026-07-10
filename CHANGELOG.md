@@ -36,6 +36,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Breaking changes
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
+- Admin grant APIs now reject table-like privilege targets with an empty namespace. A table-like target without a namespace is considered invalid input.
 - The REST layer now enforces stricter validation for entity names (including namespaces, tables, views, and generic tables). Requests containing invalid names will be rejected with an HTTP 400 error. Existing clients should verify and rename entities before upgrading if their names fall into the following forbidden categories:
     - Empty strings
     - Names consisting solely of `.` or `..`
@@ -61,6 +62,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added opt-in idempotency for `createTable` in the Iceberg REST catalog. When enabled via `polaris.idempotency.enabled=true` (default `false`), a client-supplied `Idempotency-Key` header is embedded into the new table entity and committed in the same transaction; a retry carrying the same key within the TTL window (`polaris.idempotency.ttl`, default `PT5M`) replays the original success instead of failing with `AlreadyExists`.
 
 ### Changes
+- The admin tool's `bootstrap` command is now idempotent: bootstrapping a realm that is already
+  bootstrapped is reported as "Realm '<realm>' is already bootstrapped; skipping." and no longer
+  fails the command, making automated bootstrap jobs safe to re-run. Correspondingly,
+  `PolarisMetaStoreManager.bootstrapPolarisService` now returns a result with
+  `ReturnStatus.ENTITY_ALREADY_EXISTS` instead of throwing `IllegalArgumentException` when the
+  root principal already exists. Existing credentials are never returned or altered.
 - Added REPL support to Polaris CLI.
 - The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
 - Added version option to Polaris CLI.
@@ -78,7 +85,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - JWT verification now validates the issuer claim (`"polaris"`) in addition to the active claim. Tokens signed with the same key but carrying a different issuer are now rejected.
 - Inheritable policy mapping inserts in the JDBC backend now use the active transaction connection, so they roll back correctly with the surrounding transaction.
 - Generic table drop now accepts table-scoped `TABLE_DROP` privilege.
+- `TableCleanupTaskHandler` now clamps `TABLE_METADATA_CLEANUP_BATCH_SIZE` to at least 1. Previously a non-positive realm override caused an infinite loop (0) or `IllegalArgumentException` (<0) when splitting metadata files for cleanup.
 - Azure SAS tokens are now signed for the configured duration instead of a hardcoded 1 hour, so long jobs no longer fail with expired credentials.
+- `ManifestFileCleanupTaskHandler` now handles Iceberg v2 delete manifests in addition to data manifests. Previously, `DROP TABLE PURGE` on a v2 table that had been updated via merge-on-read DML left position-delete files and their manifests as orphans in object storage; the cleanup task failed silently because `ManifestFiles.read()` rejects delete manifests.
 
 ## [1.5.0]
 

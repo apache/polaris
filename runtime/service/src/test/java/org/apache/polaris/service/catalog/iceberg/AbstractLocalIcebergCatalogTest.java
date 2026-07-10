@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -45,6 +46,8 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -59,6 +62,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.ContentScanTask;
 import org.apache.iceberg.DataOperations;
@@ -88,6 +92,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
@@ -102,6 +107,7 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -118,6 +124,7 @@ import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -125,6 +132,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -135,11 +143,13 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
@@ -243,7 +253,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   @Inject FileIOFactory fileIOFactory;
   @Inject TaskFileIOSupplier taskFileIOSupplier;
   @Inject PolarisPrincipal authenticatedRoot;
-  @Inject PolarisAdminService adminService;
+  @Inject UserSecretsManager userSecretsManager;
+  @Inject PolarisAuthorizer authorizer;
+  @Inject ReservedProperties reservedProperties;
   @Inject ResolverFactory resolverFactory;
   @Inject PolarisEventDispatcher polarisEventDispatcher;
 
@@ -263,6 +275,18 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   protected void bootstrapRealm(String realmName) {}
+
+  protected PolarisAdminService newAdminService() {
+    return PolarisAdminServiceTestSupport.newAdminService(
+        callContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        authenticatedRoot,
+        authorizer,
+        reservedProperties);
+  }
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -287,23 +311,27 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             .setAllowedLocations(List.of(STORAGE_LOCATION, "s3://externally-owned-bucket"))
             .build();
     catalogEntity =
-        adminService.createCatalog(
-            new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setName(CATALOG_NAME)
-                    .setDefaultBaseLocation(STORAGE_LOCATION)
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                    .addProperty(
-                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-                        "true")
-                    .addProperty(
-                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .addProperty(
-                        FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, STORAGE_LOCATION)
-                    .build()
-                    .asCatalog(serviceIdentityProvider)));
+        newAdminService()
+            .createCatalog(
+                new CreateCatalogRequest(
+                    new CatalogEntity.Builder()
+                        .setName(CATALOG_NAME)
+                        .setDefaultBaseLocation(STORAGE_LOCATION)
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(),
+                            "true")
+                        .addProperty(
+                            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                            "true")
+                        .addProperty(
+                            FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                        .addProperty(
+                            FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(),
+                            "true")
+                        .setStorageConfigurationInfo(
+                            realmConfig, storageConfigModel, STORAGE_LOCATION)
+                        .build()
+                        .asCatalog(serviceIdentityProvider)));
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -1199,15 +1227,10 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     final String anotherTableLocation =
         String.format("s3://my-bucket/path/to/data/another_table_%s/", tableSuffix);
 
-    metaStoreManager.updateEntityPropertiesIfNotChanged(
-        polarisContext,
-        List.of(PolarisEntity.toCore(catalogEntity)),
-        new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
-            .addProperty(
-                FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
-            .addProperty(
-                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-            .build());
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
     LocalIcebergCatalog catalog = catalog();
     TableMetadata tableMetadata =
         TableMetadata.buildFromEmpty()
@@ -1259,15 +1282,10 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     final String anotherTableLocation =
         String.format("s3://my-bucket/path/to/data/another_table_%s", tableSuffix);
 
-    metaStoreManager.updateEntityPropertiesIfNotChanged(
-        polarisContext,
-        List.of(PolarisEntity.toCore(catalogEntity)),
-        new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
-            .addProperty(
-                FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
-            .addProperty(
-                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-            .build());
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
     LocalIcebergCatalog catalog = catalog();
     TableMetadata tableMetadata =
         TableMetadata.buildFromEmpty()
@@ -1316,15 +1334,10 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     final String anotherTableLocation =
         String.format("s3://my-bucket/path/to/data/another_table_%s/", tableSuffix);
 
-    metaStoreManager.updateEntityPropertiesIfNotChanged(
-        polarisContext,
-        List.of(PolarisEntity.toCore(catalogEntity)),
-        new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
-            .addProperty(
-                FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
-            .addProperty(
-                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-            .build());
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
     LocalIcebergCatalog catalog = catalog();
 
     fileIO.addFile(
@@ -1386,13 +1399,14 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     final String metadataLocation = "file:///etc/metadata.json/../passwd";
     String catalogWithoutStorage = "catalogWithoutStorage";
     PolarisEntity catalogEntity =
-        adminService.createCatalog(
-            new CreateCatalogRequest(
-                new CatalogEntity.Builder()
-                    .setDefaultBaseLocation("file://")
-                    .setName(catalogWithoutStorage)
-                    .build()
-                    .asCatalog(serviceIdentityProvider)));
+        newAdminService()
+            .createCatalog(
+                new CreateCatalogRequest(
+                    new CatalogEntity.Builder()
+                        .setDefaultBaseLocation("file://")
+                        .setName(catalogWithoutStorage)
+                        .build()
+                        .asCatalog(serviceIdentityProvider)));
 
     LocalIcebergCatalog catalog = newIcebergCatalog(catalogWithoutStorage);
     catalog.initialize(
@@ -1436,13 +1450,14 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         supportsNotifications(), "Only applicable if notifications are supported");
 
     String catalogName = "catalogForMaliciousDomain";
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setDefaultBaseLocation("http://maliciousdomain.com")
-                .setName(catalogName)
-                .build()
-                .asCatalog(serviceIdentityProvider)));
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setDefaultBaseLocation("http://maliciousdomain.com")
+                    .setName(catalogName)
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
 
     LocalIcebergCatalog catalog = newIcebergCatalog(catalogName);
     catalog.initialize(
@@ -1986,20 +2001,23 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .build();
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setName(noPurgeCatalogName)
-                .setDefaultBaseLocation(storageLocation)
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
-                .setStorageConfigurationInfo(
-                    realmConfig, noPurgeStorageConfigModel, storageLocation)
-                .build()
-                .asCatalog(serviceIdentityProvider)));
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(noPurgeCatalogName)
+                    .setDefaultBaseLocation(storageLocation)
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
+                    .setStorageConfigurationInfo(
+                        realmConfig, noPurgeStorageConfigModel, storageLocation)
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
     LocalIcebergCatalog noPurgeCatalog =
         newIcebergCatalog(noPurgeCatalogName, metaStoreManager, fileIOFactory);
     noPurgeCatalog.initialize(
@@ -2606,14 +2624,15 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   public void createCatalogWithReservedProperty() {
     Assertions.assertThatCode(
             () -> {
-              adminService.createCatalog(
-                  new CreateCatalogRequest(
-                      new CatalogEntity.Builder()
-                          .setDefaultBaseLocation("file://")
-                          .setName("createCatalogWithReservedProperty")
-                          .setProperties(ImmutableMap.of("polaris.reserved", "true"))
-                          .build()
-                          .asCatalog(serviceIdentityProvider)));
+              newAdminService()
+                  .createCatalog(
+                      new CreateCatalogRequest(
+                          new CatalogEntity.Builder()
+                              .setDefaultBaseLocation("file://")
+                              .setName("createCatalogWithReservedProperty")
+                              .setProperties(ImmutableMap.of("polaris.reserved", "true"))
+                              .build()
+                              .asCatalog(serviceIdentityProvider)));
             })
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
@@ -2621,26 +2640,28 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
   @Test
   public void updateCatalogWithReservedProperty() {
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setDefaultBaseLocation("file://")
-                .setName("updateCatalogWithReservedProperty")
-                .setProperties(ImmutableMap.of("a", "b"))
-                .build()
-                .asCatalog(serviceIdentityProvider)));
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setDefaultBaseLocation("file://")
+                    .setName("updateCatalogWithReservedProperty")
+                    .setProperties(ImmutableMap.of("a", "b"))
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
     Assertions.assertThatCode(
             () -> {
-              adminService.updateCatalog(
-                  "updateCatalogWithReservedProperty",
-                  UpdateCatalogRequest.builder()
-                      .setCurrentEntityVersion(1)
-                      .setProperties(ImmutableMap.of("polaris.reserved", "true"))
-                      .build());
+              newAdminService()
+                  .updateCatalog(
+                      "updateCatalogWithReservedProperty",
+                      UpdateCatalogRequest.builder()
+                          .setCurrentEntityVersion(1)
+                          .setProperties(ImmutableMap.of("polaris.reserved", "true"))
+                          .build());
             })
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
-    adminService.deleteCatalog("updateCatalogWithReservedProperty");
+    newAdminService().deleteCatalog("updateCatalogWithReservedProperty");
   }
 
   @ParameterizedTest
@@ -2690,6 +2711,154 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           Mockito.times(expectedReads));
     } finally {
       catalog.dropTable(TABLE, true);
+    }
+  }
+
+  private boolean metadataFileExists(String location) {
+    try {
+      return fileIO.newInputFile(location).exists();
+    } catch (NotFoundException e) {
+      return false;
+    }
+  }
+
+  @Test
+  public void testDeleteRemovedMetadataFilesIsSkippedUnderTransactionWorkspace() {
+    catalog.createNamespace(NS);
+
+    // Enable delete-after-commit and keep only one previous version so the original
+    // metadata file becomes a deletion candidate on the next commit.
+    Map<String, String> deleteAfterCommitProps =
+        ImmutableMap.of(
+            TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true",
+            TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1");
+
+    Table table1 =
+        catalog.buildTable(TABLE, SCHEMA).withProperties(deleteAfterCommitProps).create();
+    TableIdentifier table2Id = TableIdentifier.of(NS, "table-for-txn-sibling");
+    catalog.buildTable(table2Id, SCHEMA).withProperties(deleteAfterCommitProps).create();
+
+    // Capture the create metadata (v1) location; with previous-versions-max=1 this becomes
+    // eligible for deletion after the next commit.
+    String createMetadataLocation =
+        ((BaseTable) table1).operations().current().metadataFileLocation();
+
+    // Perform an initial append on table1 (v1 -> v2).
+    table1.newFastAppend().appendFile(FILE_A).commit();
+    BaseTable baseTable1 = (BaseTable) catalog.loadTable(TABLE);
+    TableOperations ops1 = baseTable1.operations();
+    TableMetadata preCommitMeta1 = ops1.current();
+
+    // Simulate exactly what commitTransaction does: swap in the workspace manager.
+    PolarisMetaStoreManager realManager = metaStoreManager;
+    TransactionWorkspaceMetaStoreManager ws =
+        new TransactionWorkspaceMetaStoreManager(diagServices, realManager);
+    List<MetadataFileCleanup> collectedCleanups = new ArrayList<>();
+    catalog.setMetaStoreManager(ws, collectedCleanups::add);
+
+    try {
+      // Now perform a commit "as if" inside commitTransaction for table1 (v2 -> v3).
+      // This should write new metadata but must NOT delete the create metadata (v1).
+      Schema newSchema =
+          new Schema(
+              Types.NestedField.optional(100, "txn_col", Types.LongType.get()),
+              Types.NestedField.required(1, "id", Types.LongType.get()),
+              Types.NestedField.optional(2, "data", Types.StringType.get()));
+      TableMetadata newMeta1 =
+          TableMetadata.buildFrom(preCommitMeta1).setCurrentSchema(newSchema, 100).build();
+
+      ops1.commit(preCommitMeta1, newMeta1);
+
+      // Critical assertion: without the fix, deleteRemovedMetadataFiles would run eagerly
+      // and remove v1. With the fix it is deferred/collected by the workspace-aware consumer.
+      assertThat(metadataFileExists(createMetadataLocation))
+          .as("Old metadata file must NOT be deleted while TransactionWorkspace is active")
+          .isTrue();
+
+      // Verify that the cleanup was collected (i.e. passed to the collector) and that
+      // replaying it deletes the old metadata file.
+      assertThat(collectedCleanups).hasSize(1);
+      MetadataFileCleanup cleanup = collectedCleanups.get(0);
+      CatalogUtil.deleteRemovedMetadataFiles(
+          cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
+      assertThat(metadataFileExists(createMetadataLocation))
+          .as("Replaying the collected cleanup should delete the old metadata file")
+          .isFalse();
+
+      // Verify the new metadata was written.
+      String newLocToCheck = newMeta1.metadataFileLocation();
+      try {
+        TableMetadata post = ops1.current();
+        if (post != null && post.metadataFileLocation() != null) {
+          newLocToCheck = post.metadataFileLocation();
+        }
+      } catch (Exception ignored) {
+      }
+      assertThat(metadataFileExists(newLocToCheck))
+          .as("New metadata file must have been written")
+          .isTrue();
+
+    } finally {
+      // Restore real manager before cleanup drops, because dropEntity is illegal under
+      // TransactionWorkspace.
+      catalog.setMetaStoreManager(realManager);
+      catalog.dropTable(TABLE, false);
+      catalog.dropTable(table2Id, false);
+    }
+  }
+
+  @Test
+  public void testDeleteRemovedMetadataFilesIsPerformedOnSuccessfulCommit() {
+    // Positive test: simulate the collector replay on successful commit (no workspace active).
+    // This validates that deletes are performed when using the pluggable cleanup.
+    catalog.createNamespace(NS);
+
+    Map<String, String> deleteAfterCommitProps =
+        ImmutableMap.of(
+            TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true",
+            TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1");
+
+    Table table = catalog.buildTable(TABLE, SCHEMA).withProperties(deleteAfterCommitProps).create();
+    String v1Location = ((BaseTable) table).operations().current().metadataFileLocation();
+
+    // First commit (v1 -> v2) with the default immediate-delete logic.
+    table.newFastAppend().appendFile(FILE_A).commit();
+
+    // Use a collector for the next commit (v2 -> v3) to test the replay logic.
+    List<MetadataFileCleanup> collected = new ArrayList<>();
+    catalog.setMetaStoreManager(metaStoreManager, collected::add);
+
+    try {
+      // This commit makes v1 eligible for deletion, but the delete is collected.
+      table.newFastAppend().appendFile(FILE_B).commit();
+
+      // At this point, the delete was collected, not performed yet.
+      assertThat(metadataFileExists(v1Location))
+          .as("Old metadata file still exists before replay")
+          .isTrue();
+
+      // Explicitly verify that the collector captured a cleanup targeting v1.
+      assertThat(collected)
+          .as("Collector should have captured cleanup for v1 metadata")
+          .anyMatch(
+              cleanup ->
+                  cleanup.baseMetadata().previousFiles().stream()
+                      .map(TableMetadata.MetadataLogEntry::file)
+                      .anyMatch(v1Location::equals));
+
+      // Replay the collected deletes (simulates success path after batch).
+      for (MetadataFileCleanup cleanup : collected) {
+        CatalogUtil.deleteRemovedMetadataFiles(
+            cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
+      }
+
+      // Now it should be deleted.
+      assertThat(metadataFileExists(v1Location))
+          .as("Old metadata file should be deleted after replaying collected cleanup")
+          .isFalse();
+    } finally {
+      catalog.setMetaStoreManager(metaStoreManager);
+      catalog.dropTable(TABLE, false);
     }
   }
 
@@ -2823,7 +2992,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     updateCatalogProperties(
         Map.of(
             FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
-            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true",
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "true"));
 
     catalog.createNamespace(NS);
     Table table = catalog.buildTable(TABLE, SCHEMA).create();
@@ -2846,6 +3016,26 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(inMemoryFilesUnderPrefix(metadataPrefix)).contains(metadataFileLocation);
     Assertions.assertThat(updatedTable.properties())
         .containsEntry(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory);
+
+    // Out-of-table metadata location — allowed because catalog-level
+    // ALLOW_EXTERNAL_METADATA_FILE_LOCATION is true
+    String externalMetadataDir =
+        "%s/table-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    String externalPrefix = externalMetadataDir + "/";
+    updatedTable
+        .updateProperties()
+        .set(TableProperties.WRITE_METADATA_LOCATION, externalMetadataDir)
+        .commit();
+
+    Table reloaded = catalog.loadTable(TABLE);
+    String externalMetadataFile =
+        ((BaseTable) reloaded).operations().current().metadataFileLocation();
+
+    Assertions.assertThat(externalMetadataFile).startsWith(externalPrefix);
+    Assertions.assertThat(fileIO.fileExists(externalMetadataFile)).isTrue();
+    Assertions.assertThat(reloaded.properties())
+        .containsEntry(TableProperties.WRITE_METADATA_LOCATION, externalMetadataDir);
   }
 
   private void validatePropertiesUpdated(
@@ -2876,6 +3066,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     Assertions.assertThat(result).returns(true, EntityResult::isSuccess);
     catalogEntity = PolarisEntity.of(result.getEntity());
+    this.catalog = initCatalog("my-catalog", ImmutableMap.of());
   }
 
   @SuppressWarnings("unchecked")
@@ -2898,11 +3089,24 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     catalog.createNamespace(TestData.NAMESPACE);
     Table table = catalog.buildTable(TestData.TABLE, TestData.SCHEMA).create();
 
+    // Clear after setup so we only observe refresh events from the property commits below.
+    // Events are published asynchronously via the Vert.x event bus + listener executor
+    // (see PolarisServiceBusEventDispatcher / PolarisEventListeners), so the test must wait
+    // for delivery rather than asserting immediately after commit.
+    testPolarisEventListener.clear();
+
     String key = "foo";
     String valOld = "bar1";
     String valNew = "bar2";
     table.updateProperties().set(key, valOld).commit();
     table.updateProperties().set(key, valNew).commit();
+
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .until(
+            () ->
+                testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_TABLE)
+                    && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_TABLE));
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_TABLE);

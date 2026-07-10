@@ -217,7 +217,7 @@ public class RestCatalogRustFSSpecialIT {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(pathStyleAccess)
             .setStsUnavailable(!stsEnabled)
-            .setAllowedLocations(List.of(storageBase.toString()));
+            .setAllowedLocations(List.of(storageBase.toASCIIString() + "/" + catalogName));
 
     endpoint.ifPresent(storageConfig::setEndpoint);
     stsEndpoint.ifPresent(storageConfig::setStsEndpoint);

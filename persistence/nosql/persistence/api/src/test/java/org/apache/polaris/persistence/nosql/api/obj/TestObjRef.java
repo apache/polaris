@@ -22,9 +22,6 @@ import static java.lang.String.format;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.stream.Stream;
@@ -37,6 +34,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.dataformat.smile.SmileMapper;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestObjRef {
@@ -47,12 +47,12 @@ public class TestObjRef {
 
   @BeforeEach
   protected void setUp() {
-    mapper = JsonMapper.builder().build();
+    mapper = JsonMapper.shared();
     smile = SmileMapper.builder().build();
   }
 
   @Test
-  public void nullObjRef() throws Exception {
+  public void nullObjRef() {
     soft.assertThat(mapper.writerFor(ObjRef.class).writeValueAsString(null)).isEqualTo("null");
   }
 
@@ -126,7 +126,7 @@ public class TestObjRef {
         "a234567890123456789012345678901,9223372036854775807",
         "a234567890123456789012345678901,-9223372036854775808",
       })
-  public void serDe(String typeId, long id) throws Exception {
+  public void serDe(String typeId, long id) {
     var type = new AbstractObjType<>(typeId, typeId, Obj.class) {};
     var objId = objRef(type, id, 1);
 
