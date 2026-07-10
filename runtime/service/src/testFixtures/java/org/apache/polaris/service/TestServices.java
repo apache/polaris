@@ -227,12 +227,7 @@ public record TestServices(
     }
 
     public Builder config(Map<String, Object> config) {
-      // Pin the location-related feature flags to their pre-UUID behavior unless the caller
-      // overrides them, so existing tests that pass caller-specified locations or assert
-      // structured default locations keep working under the new production defaults.
-      Map<String, Object> merged = new HashMap<>(LOCATION_TEST_DEFAULTS);
-      merged.putAll(config);
-      this.config = merged;
+      this.config.putAll(config);
       return this;
     }
 

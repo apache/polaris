@@ -579,8 +579,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION,
             getResolvedCatalogEntity())) {
       throw new BadRequestException(
-          "Specifying a table or view location (%s) is not allowed; set %s to true to allow it.",
-          specifiedBy, FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.catalogConfig());
+          "Specifying a table or view location using %s is not allowed.", specifiedBy);
     }
   }
 
@@ -591,7 +590,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   private static String clientSpecifiedLocationSource(
       String requestLocation, Map<String, String> requestProperties) {
     if (requestLocation != null) {
-      return "location";
+      return "the location field";
     }
     return firstClientLocationProperty(requestProperties);
   }
@@ -603,7 +602,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   private static String clientSpecifiedLocationSource(UpdateTableRequest request) {
     for (MetadataUpdate update : request.updates()) {
       if (update instanceof MetadataUpdate.SetLocation) {
-        return "location";
+        return "the location field";
       }
       if (update instanceof MetadataUpdate.SetProperties setProperties) {
         String key = firstClientLocationProperty(setProperties.updated());

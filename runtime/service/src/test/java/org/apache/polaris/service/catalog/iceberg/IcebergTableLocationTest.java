@@ -191,7 +191,7 @@ public class IcebergTableLocationTest {
   }
 
   @Test
-  @DisplayName("Default table location has a unique suffix when the feature is enabled")
+  @DisplayName("Recreated tables get different random location suffixes")
   void testDefaultLocationHasUniqueSuffix(@TempDir Path tempDir) {
     TestServices services =
         TestServices.builder()
@@ -202,35 +202,23 @@ public class IcebergTableLocationTest {
     createCatalogAndNamespace(services, Map.of(), baseLocation);
 
     String tableName = getTableName();
-    String location = createTableWithName(services, tableName);
-
     String expectedPrefix =
         String.format("%s/%s/%s/%s-", baseLocation, CATALOG, NAMESPACE, tableName);
-    assertThat(location).startsWith(expectedPrefix);
-    String suffix = location.substring(expectedPrefix.length());
-    // The suffix is a unique, unpredictable generated identifier.
-    assertThat(UUID.fromString(suffix)).isNotNull();
-  }
+    String firstLocation = createTableWithName(services, tableName);
+    assertThat(firstLocation).startsWith(expectedPrefix);
+    String firstSuffix = firstLocation.substring(expectedPrefix.length());
+    assertThat(firstSuffix).matches("[0-9a-f]{32}");
 
-  @Test
-  @DisplayName("Sibling tables with adjacent names get non-overlapping unique locations")
-  void testSiblingTablesDoNotOverlap(@TempDir Path tempDir) {
-    TestServices services =
-        TestServices.builder()
-            .config(serverConfig(DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.key(), "true"))
-            .build();
-    String baseLocation =
-        LocationUtil.stripTrailingSlash(tempDir.toAbsolutePath().toUri().toString());
-    createCatalogAndNamespace(services, Map.of(), baseLocation);
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of(NAMESPACE), tableName);
+    services
+        .catalogAdapter()
+        .newHandler(services.securityContext(), CATALOG)
+        .dropTableWithoutPurge(tableIdentifier);
 
-    // "t1" and "t1a" are adjacent by name and would collide under prefix matching without a unique
-    // suffix.
-    String loc1 = LocationUtil.stripTrailingSlash(createTableWithName(services, "t1"));
-    String loc2 = LocationUtil.stripTrailingSlash(createTableWithName(services, "t1a"));
-
-    assertThat(loc1).isNotEqualTo(loc2);
-    assertThat(loc1 + "/").doesNotStartWith(loc2 + "/");
-    assertThat(loc2 + "/").doesNotStartWith(loc1 + "/");
+    String secondLocation = createTableWithName(services, tableName);
+    assertThat(secondLocation).startsWith(expectedPrefix);
+    String secondSuffix = secondLocation.substring(expectedPrefix.length());
+    assertThat(secondSuffix).matches("[0-9a-f]{32}").isNotEqualTo(firstSuffix);
   }
 
   @Test
@@ -248,7 +236,7 @@ public class IcebergTableLocationTest {
         String.format("%s/%s/%s/caller-location", baseLocation, CATALOG, NAMESPACE);
     assertThatThrownBy(() -> createTableWithLocation(services, someLocation))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining(ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.catalogConfig());
+        .hasMessageContaining("the location field");
   }
 
   @Test
@@ -330,7 +318,7 @@ public class IcebergTableLocationTest {
                     .newHandler(services.securityContext(), CATALOG)
                     .updateTable(tableId, setLocation))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining(ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.catalogConfig());
+        .hasMessageContaining("the location field");
   }
 
   @Test
