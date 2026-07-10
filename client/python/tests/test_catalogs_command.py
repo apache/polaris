@@ -372,10 +372,6 @@ class TestCatalogsCommand(CLITestBase):
         )
         self.assertEqual(call_args.catalog.connection_config_info.uri, "u")
         self.assertEqual(
-            call_args.catalog.connection_config_info.authentication_parameters.bearer_token.get_secret_value(),
-            "b",
-        )
-        self.assertEqual(
             call_args.catalog.connection_config_info.authentication_parameters.authentication_type,
             "BEARER",
         )

@@ -182,6 +182,8 @@ class CatalogsCommand(Command):
                             f"Missing required argument for authentication type 'BEARER':"
                             f" {Argument.to_flag_name(Arguments.CATALOG_BEARER_TOKEN)}"
                         )
+                elif self.catalog_authentication_type == AuthenticationType.GCP.value:
+                    pass
                 elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
                     if not self.catalog_role_arn or not self.catalog_signing_region:
                         raise CliError(
