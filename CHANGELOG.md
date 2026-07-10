@@ -72,6 +72,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
 - Added version option to Polaris CLI.
 - The token broker now builds the JWT `Algorithm` and `JWTVerifier` once per realm in the `TokenBrokerFactory` and reuses them across requests, instead of rebuilding them on every `verify()`/`sign()` call on the request-scoped broker. For deployments using file-based symmetric secrets, the secret is now read once per realm (at first use) rather than on every JWT operation; rotating the on-disk secret requires a restart.
+- Authorization failure messages (HTTP 403 / `ForbiddenException` from `PolarisAuthorizerImpl`) now log the specific missing privilege(s) and the entity each was checked against server-side (at `INFO` level), e.g. `missing TABLE_CREATE on NAMESPACE 'ns1'`. The client-facing 403 response remains a generic message to avoid leaking authorization metadata to untrusted clients. Operators can correlate client errors to server logs using the existing `X-Request-ID` header (present in default log MDC as `requestId`).
 
 ### Deprecations
 
