@@ -19,27 +19,36 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-class JdbcGrantRecordsIdempotencyTest {
+class JdbcBasePersistenceImplTest {
 
   private static final RealmContext REALM_CONTEXT = () -> "REALM";
 
@@ -128,6 +137,84 @@ class JdbcGrantRecordsIdempotencyTest {
         .isThrownBy(() -> basePersistence.writeToGrantRecords(callCtx, grant))
         .withMessageContaining("Failed to write to grant records")
         .withCause(nonUniqueViolation);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void lookupEntityVersionsPreservesOrderAndNullsForMissing(int schemaVersion)
+      throws SQLException, IOException {
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:lookup_versions_v"
+                + schemaVersion
+                + "_"
+                + System.nanoTime()
+                + ";DB_CLOSE_DELAY=-1",
+            "sa",
+            "");
+    DatasourceOperations real = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    try (InputStream script = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+      real.executeScript(script);
+    }
+    // Spy so we can assert on the SQL actually issued, without blocking the real call.
+    DatasourceOperations spy = Mockito.spy(real);
+    doCallRealMethod().when(spy).executeSelect(any(), any());
+
+    JdbcBasePersistenceImpl impl =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            spy,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier(),
+            schemaVersion);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, impl);
+
+    PolarisBaseEntity e1 =
+        new PolarisBaseEntity.Builder()
+            .id(101L)
+            .catalogId(0L)
+            .parentId(0L)
+            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .name("e1")
+            .entityVersion(1)
+            .grantRecordsVersion(2)
+            .createTimestamp(System.currentTimeMillis())
+            .build();
+    PolarisBaseEntity e2 =
+        new PolarisBaseEntity.Builder()
+            .id(102L)
+            .catalogId(0L)
+            .parentId(0L)
+            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .name("e2")
+            .entityVersion(3)
+            .grantRecordsVersion(4)
+            .createTimestamp(System.currentTimeMillis())
+            .build();
+    impl.writeEntity(callCtx, e1, false, null);
+    impl.writeEntity(callCtx, e2, false, null);
+
+    PolarisEntityId id1 = new PolarisEntityId(0L, 101L);
+    PolarisEntityId missing = new PolarisEntityId(0L, 999L);
+    PolarisEntityId id2 = new PolarisEntityId(0L, 102L);
+    List<PolarisChangeTrackingVersions> result =
+        impl.lookupEntityVersions(callCtx, List.of(id2, missing, id1));
+
+    // Behavioural: order preserved, null for missing.
+    assertThat(result).hasSize(3);
+    assertThat(result.get(0).entityVersion()).isEqualTo(e2.getEntityVersion());
+    assertThat(result.get(0).grantRecordsVersion()).isEqualTo(e2.getGrantRecordsVersion());
+    assertThat(result.get(1)).isNull();
+    assertThat(result.get(2).entityVersion()).isEqualTo(e1.getEntityVersion());
+    assertThat(result.get(2).grantRecordsVersion()).isEqualTo(e1.getGrantRecordsVersion());
+
+    // Perf: the SQL that actually executed must not fetch the large JSON property columns.
+    ArgumentCaptor<QueryGenerator.PreparedQuery> captor =
+        ArgumentCaptor.forClass(QueryGenerator.PreparedQuery.class);
+    verify(spy).executeSelect(captor.capture(), any());
+    assertThat(captor.getValue().sql()).doesNotContain("properties");
   }
 
   private static final class TestJdbcConfiguration implements RelationalJdbcConfiguration {

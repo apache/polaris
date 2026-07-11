@@ -120,6 +120,24 @@ public class QueryGenerator {
    */
   public static PreparedQuery generateSelectQueryWithEntityIds(
       @NonNull String realmId, int schemaVersion, @NonNull List<PolarisEntityId> entityIds) {
+    return generateSelectQueryWithEntityIds(
+        realmId, ModelEntity.getAllColumnNames(schemaVersion), entityIds);
+  }
+
+  /**
+   * Like {@link #generateSelectQueryWithEntityIds(String, int, List)} but selects only {@link
+   * ModelEntity#VERSION_COLUMNS}. Used by {@code lookupEntityVersions} to avoid fetching large JSON
+   * property blobs on the cache-validation hot path.
+   */
+  public static PreparedQuery generateSelectQueryWithEntityIdsVersionOnly(
+      @NonNull String realmId, @NonNull List<PolarisEntityId> entityIds) {
+    return generateSelectQueryWithEntityIds(realmId, ModelEntity.VERSION_COLUMNS, entityIds);
+  }
+
+  private static PreparedQuery generateSelectQueryWithEntityIds(
+      @NonNull String realmId,
+      @NonNull List<String> columns,
+      @NonNull List<PolarisEntityId> entityIds) {
     if (entityIds.isEmpty()) {
       throw new IllegalArgumentException("Empty entity ids");
     }
@@ -132,10 +150,7 @@ public class QueryGenerator {
     params.add(realmId);
     String where = " WHERE (catalog_id, id) IN (" + placeholders + ") AND realm_id = ?";
     return new PreparedQuery(
-        generateSelectQuery(
-                ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, where, null)
-            .sql(),
-        params);
+        generateSelectQuery(columns, ModelEntity.TABLE_NAME, where, null).sql(), params);
   }
 
   /**

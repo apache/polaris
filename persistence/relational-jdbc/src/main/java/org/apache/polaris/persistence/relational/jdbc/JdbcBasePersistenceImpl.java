@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -70,6 +69,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
+import org.apache.polaris.persistence.relational.jdbc.models.EntityVersionConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
@@ -494,23 +494,23 @@ public class JdbcBasePersistenceImpl
   @Override
   public List<PolarisChangeTrackingVersions> lookupEntityVersions(
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
-    Map<PolarisEntityId, ModelEntity> idToEntityMap =
-        lookupEntities(callCtx, entityIds).stream()
-            .filter(Objects::nonNull)
-            .collect(
-                Collectors.toMap(
-                    entry -> new PolarisEntityId(entry.getCatalogId(), entry.getId()),
-                    entry -> ModelEntity.fromEntity(entry, schemaVersion)));
-    return entityIds.stream()
-        .map(
-            entityId -> {
-              ModelEntity entity = idToEntityMap.getOrDefault(entityId, null);
-              return entity == null
-                  ? null
-                  : new PolarisChangeTrackingVersions(
-                      entity.getEntityVersion(), entity.getGrantRecordsVersion());
-            })
-        .collect(Collectors.toList());
+    if (entityIds == null || entityIds.isEmpty()) {
+      return new ArrayList<>();
+    }
+    PreparedQuery query =
+        QueryGenerator.generateSelectQueryWithEntityIdsVersionOnly(realmId, entityIds);
+    Map<PolarisEntityId, PolarisChangeTrackingVersions> idToVersions;
+    try {
+      idToVersions =
+          datasourceOperations.executeSelect(query, new EntityVersionConverter()).stream()
+              .collect(
+                  Collectors.toMap(
+                      EntityVersionConverter.EntityVersionRow::entityId,
+                      EntityVersionConverter.EntityVersionRow::versions));
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to retrieve entity versions: " + e.getMessage(), e);
+    }
+    return entityIds.stream().map(idToVersions::get).collect(Collectors.toList());
   }
 
   private PreparedQuery buildEntityQuery(
