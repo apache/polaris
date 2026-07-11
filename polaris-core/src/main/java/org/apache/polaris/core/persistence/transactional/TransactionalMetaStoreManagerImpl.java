@@ -1172,6 +1172,44 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         callCtx, () -> this.updateEntitiesPropertiesIfNotChanged(callCtx, ms, entities));
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull EntitiesResult commitTransactionBatch(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<EntityWithPath> creates,
+      @NonNull List<EntityWithPath> updates) {
+    getDiagnostics().checkNotNull(creates, "unexpected_null_creates");
+    getDiagnostics().checkNotNull(updates, "unexpected_null_updates");
+    EntitiesResult empty = emptyBatchShortCircuit(creates, updates);
+    if (empty != null) {
+      return empty;
+    }
+    if (creates.isEmpty()) {
+      return updateEntitiesPropertiesIfNotChanged(callCtx, updates);
+    }
+
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // Merge creates + CAS-updates and write within a single runInTransaction block so both
+    // are covered by the same underlying transaction.
+    return ms.runInTransaction(
+        callCtx,
+        () -> {
+          EntitiesResult result =
+              commitTransactionBatchViaWriteEntities(
+                  callCtx,
+                  ms,
+                  creates,
+                  updates,
+                  (entities, originals) ->
+                      ms.writeEntitiesInCurrentTxn(callCtx, entities, originals));
+          if (!result.isSuccess()) {
+            ms.rollback();
+          }
+          return result;
+        });
+  }
+
   /**
    * See {@link PolarisMetaStoreManager#renameEntity(PolarisCallContext, List, PolarisBaseEntity,
    * List, PolarisEntity)}

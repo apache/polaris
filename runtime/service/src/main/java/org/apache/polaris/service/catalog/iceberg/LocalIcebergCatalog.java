@@ -1276,6 +1276,37 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
+   * Validates location overlap for an existing table whose locations changed. Unlike {@link
+   * #validateStagedTableCreate}, this uses the parent (namespace) path for resolution since the
+   * table already exists and its resolved path includes the table entity itself.
+   */
+  void validateTableLocationUpdate(TableIdentifier tableIdentifier, TableMetadata tableMetadata) {
+    PolarisResolvedPathWrapper resolvedTableEntities =
+        resolvedEntityView.getPassthroughResolvedPath(
+            ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ICEBERG_TABLE);
+    PolarisResolvedPathWrapper resolvedStorageEntity =
+        resolvedTableEntities != null
+            ? resolvedTableEntities
+            : resolvedEntityView.getResolvedPath(
+                ResolvedPathKey.ofNamespace(tableIdentifier.namespace()));
+    if (resolvedStorageEntity == null) {
+      throw noSuchNamespaceException(tableIdentifier.namespace());
+    }
+    Set<String> dataLocations =
+        StorageUtil.getLocationsUsedByTable(tableMetadata.location(), tableMetadata.properties());
+    // Use parent path (namespace) for overlap check — the table itself is not a sibling
+    List<PolarisEntity> resolvedNamespace =
+        resolvedTableEntities != null
+            ? resolvedTableEntities.getRawParentPath()
+            : resolvedStorageEntity.getRawFullPath();
+    PolarisEntity storageLeafEntity = resolvedStorageEntity.getRawLeafEntity();
+    dataLocations.forEach(
+        location ->
+            validateNoLocationOverlap(
+                catalogEntity, tableIdentifier, resolvedNamespace, location, storageLeafEntity));
+  }
+
+  /**
    * Validates that the specified {@code location} is valid for whatever storage config is found for
    * this TableLike's parent hierarchy.
    */

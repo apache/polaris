@@ -19,9 +19,12 @@
 package org.apache.polaris.core.storage;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.jspecify.annotations.NonNull;
@@ -81,6 +84,51 @@ public class StorageUtil {
   /** Given a ViewMetadata, extracts the locations where the view's [meta]data might be found. */
   public static @NonNull Set<String> getLocationsUsedByTable(ViewMetadata viewMetadata) {
     return Set.of(viewMetadata.location());
+  }
+
+  /**
+   * Returns true if the set of locations used by {@code current} differs from the set used by
+   * {@code base}. Covers the table location as well as write.data.path and write.metadata.path
+   * property overrides.
+   */
+  public static boolean locationsChanged(TableMetadata base, TableMetadata current) {
+    return !getLocationsUsedByTable(base).equals(getLocationsUsedByTable(current));
+  }
+
+  /**
+   * Checks that no two distinct tables in {@code batch} use overlapping locations (pairwise
+   * containment check across all data locations returned by {@link #getLocationsUsedByTable}).
+   * Same-identifier pairs are skipped so a table's own write.data.path and write.metadata.path
+   * don't count as self-overlap.
+   *
+   * @throws BadRequestException if any two distinct tables have overlapping locations
+   */
+  public static void validateNoOverlapWithinBatch(
+      List<Map.Entry<TableIdentifier, TableMetadata>> batch) {
+    List<Map.Entry<TableIdentifier, StorageLocation>> entries =
+        batch.stream()
+            .flatMap(
+                e ->
+                    getLocationsUsedByTable(e.getValue()).stream()
+                        .map(loc -> Map.entry(e.getKey(), StorageLocation.of(loc))))
+            .toList();
+    for (int i = 0; i < entries.size(); i++) {
+      for (int j = i + 1; j < entries.size(); j++) {
+        TableIdentifier idA = entries.get(i).getKey();
+        TableIdentifier idB = entries.get(j).getKey();
+        if (idA.equals(idB)) {
+          continue;
+        }
+        StorageLocation a = entries.get(i).getValue();
+        StorageLocation b = entries.get(j).getValue();
+        if (a.isChildOf(b) || b.isChildOf(a)) {
+          throw new BadRequestException(
+              "Transaction contains changes whose locations overlap: '%s' for table '%s' and"
+                  + " '%s' for table '%s'",
+              a, idA, b, idB);
+        }
+      }
+    }
   }
 
   /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
