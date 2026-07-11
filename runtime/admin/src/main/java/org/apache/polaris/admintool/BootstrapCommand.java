@@ -25,7 +25,6 @@ import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
 import org.apache.polaris.core.persistence.bootstrap.ImmutableBootstrapOptions;
 import org.apache.polaris.core.persistence.bootstrap.ImmutableSchemaOptions;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import picocli.CommandLine;
 
@@ -42,9 +41,6 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
     // This ArgGroup enforces the mandatory, exclusive choice.
     @CommandLine.ArgGroup(multiplicity = "1")
     RootCredentialsOptions rootCredentialsOptions;
-
-    // This @Mixin provides independent, optional schema flags.
-    @CommandLine.Mixin SchemaInputOptions schemaInputOptions = new SchemaInputOptions();
 
     // This static inner class encapsulates the mutually exclusive choices.
     static class RootCredentialsOptions {
@@ -86,15 +82,6 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
           description = "A file containing root principal credentials to bootstrap.")
       Path file;
     }
-
-    static class SchemaInputOptions {
-      @CommandLine.Option(
-          names = {"-v", "--schema-version"},
-          paramLabel = "<schema version>",
-          description =
-              "The version of the schema to load. The set of valid values depends on the backend type. If omitted the latest schema version will be used.")
-      Integer schemaVersion;
-    }
   }
 
   @Override
@@ -129,24 +116,11 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
         }
       }
 
-      final SchemaOptions schemaOptions;
-      if (inputOptions.schemaInputOptions != null) {
-        ImmutableSchemaOptions.Builder builder = ImmutableSchemaOptions.builder();
-
-        if (inputOptions.schemaInputOptions.schemaVersion != null) {
-          builder.schemaVersion(inputOptions.schemaInputOptions.schemaVersion);
-        }
-
-        schemaOptions = builder.build();
-      } else {
-        schemaOptions = ImmutableSchemaOptions.builder().build();
-      }
-
       BootstrapOptions bootstrapOptions =
           ImmutableBootstrapOptions.builder()
               .realms(realms)
               .rootCredentialsSet(rootCredentialsSet)
-              .schemaOptions(schemaOptions)
+              .schemaOptions(ImmutableSchemaOptions.builder().build())
               .build();
 
       // Execute the bootstrap
