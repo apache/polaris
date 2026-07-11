@@ -38,6 +38,8 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -52,6 +54,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 
@@ -143,6 +146,62 @@ class TableCleanupTaskHandlerTest {
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
+  }
+
+  @Test
+  @Timeout(60)
+  public void testTableCleanupClampsNonPositiveBatchSize() throws IOException {
+    FileIO fileIO = new InMemoryFileIO();
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    TableCleanupTaskHandler handler = newTableCleanupTaskHandler(fileIO);
+    long snapshotId = 100L;
+    ManifestFile manifestFile =
+        TaskTestUtils.manifestFile(
+            fileIO, "manifest1.avro", snapshotId, "dataFile1.parquet", "dataFile2.parquet");
+    TestSnapshot snapshot =
+        TaskTestUtils.newSnapshot(fileIO, "manifestList.avro", 1, snapshotId, 99L, manifestFile);
+    String metadataFile = "v1-49494949.metadata.json";
+    StatisticsFile statisticsFile =
+        TaskTestUtils.writeStatsFile(
+            snapshot.snapshotId(),
+            snapshot.sequenceNumber(),
+            "/metadata/" + UUID.randomUUID() + ".stats",
+            fileIO);
+    TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile), snapshot);
+
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .setName("cleanup_" + tableIdentifier)
+            .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
+            .withData(
+                new IcebergTableLikeEntity.Builder(
+                        PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, metadataFile)
+                    .setName("table1")
+                    .setCatalogId(1)
+                    .setCreateTimestamp(100)
+                    .build())
+            .build();
+    task = addTaskLocation(task);
+    Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
+
+    RealmConfig realmConfig = Mockito.mock(RealmConfig.class);
+    CallContext mockCallContext = Mockito.mock(CallContext.class);
+    Mockito.when(mockCallContext.getRealmConfig()).thenReturn(realmConfig);
+    Mockito.when(mockCallContext.getRealmContext()).thenReturn(realmContext);
+    Mockito.when(mockCallContext.getPolarisCallContext())
+        .thenReturn(callContext.getPolarisCallContext());
+    Mockito.when(realmConfig.getConfig(FeatureConfiguration.TABLE_METADATA_CLEANUP_BATCH_SIZE))
+        .thenReturn(0);
+
+    handler.handleTask(task, mockCallContext);
+
+    // batchSize=0 is clamped to 1, so the two metadata files (manifest list + stats file)
+    // are split into two BATCH_FILE_CLEANUP tasks, plus one MANIFEST_FILE_CLEANUP task.
+    assertThat(
+            metaStoreManager
+                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
+                .getEntities())
+        .hasSize(3);
   }
 
   @Test

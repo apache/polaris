@@ -123,6 +123,7 @@ public class OpaPolarisAuthorizerFactoryTest {
               true,
               Duration.ofMinutes(1),
               Duration.ofSeconds(10),
+              Duration.ofSeconds(1),
               asyncExec,
               Clock.systemUTC()::instant)) {
 

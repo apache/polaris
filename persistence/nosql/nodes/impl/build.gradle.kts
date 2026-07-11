@@ -34,7 +34,7 @@ dependencies {
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
-  compileOnly(platform(libs.jackson.bom))
+  compileOnly(platform(libs.jackson3.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
   compileOnly(project(":polaris-immutables"))
@@ -52,7 +52,7 @@ dependencies {
 
   testFixturesRuntimeOnly(libs.smallrye.jandex)
 
-  testFixturesApi(platform(libs.jackson.bom))
+  testFixturesApi(platform(libs.jackson3.bom))
   testFixturesApi("com.fasterxml.jackson.core:jackson-annotations")
 
   testImplementation(project(":polaris-idgen-mocks"))

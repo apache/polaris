@@ -18,18 +18,11 @@
  */
 package org.apache.polaris.core.persistence.bootstrap;
 
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
-
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.HashMap;
@@ -38,6 +31,11 @@ import java.util.Map;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.dataformat.yaml.YAMLMapper;
 
 /**
  * A utility to parse and provide credentials for Polaris realms and principals during a bootstrap
@@ -150,8 +148,9 @@ public interface RootCredentialsSet {
     }
   }
 
-  private static RootCredentialsSet fromInputStream(InputStream in) throws IOException {
-    ObjectMapper mapper = YAMLMapper.builder().configure(FAIL_ON_UNKNOWN_PROPERTIES, false).build();
+  private static RootCredentialsSet fromInputStream(InputStream in) {
+    ObjectMapper mapper =
+        YAMLMapper.builder().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
     try (var parser = mapper.createParser(in)) {
       var values = mapper.readValues(parser, RootCredentialsSet.class);
       var builder = ImmutableRootCredentialsSet.builder();

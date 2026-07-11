@@ -174,6 +174,14 @@ public interface OpaAuthorizationConfig {
        */
       Optional<Duration> jwtExpirationBuffer();
 
+      /**
+       * How long to wait for the first token load before failing a request. Defaults to 5 seconds.
+       */
+      Optional<Duration> initialTokenWait();
+
+      /** How long to wait before retrying after a failed token refresh. Defaults to 1 second. */
+      Optional<Duration> refreshRetryInterval();
+
       default void validate() {
         checkArgument(
             refreshInterval().isEmpty() || refreshInterval().get().isPositive(),
@@ -181,6 +189,12 @@ public interface OpaAuthorizationConfig {
         checkArgument(
             jwtExpirationBuffer().isEmpty() || jwtExpirationBuffer().get().isPositive(),
             "jwtExpirationBuffer must be positive");
+        checkArgument(
+            initialTokenWait().isEmpty() || initialTokenWait().get().isPositive(),
+            "initialTokenWait must be positive");
+        checkArgument(
+            refreshRetryInterval().isEmpty() || refreshRetryInterval().get().isPositive(),
+            "refreshRetryInterval must be positive");
       }
     }
   }

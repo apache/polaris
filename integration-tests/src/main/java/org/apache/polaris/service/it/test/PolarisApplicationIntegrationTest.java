@@ -180,7 +180,7 @@ public class PolarisApplicationIntegrationTest {
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setExternalId("externalId")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
             .build(),
         "s3://my-bucket/path/to/data");
   }

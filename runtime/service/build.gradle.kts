@@ -110,6 +110,12 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
+
+  implementation(platform(libs.jackson3.bom))
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("tools.jackson.core:jackson-core")
+  implementation("tools.jackson.core:jackson-databind")
 
   implementation(libs.jakarta.servlet.api)
 

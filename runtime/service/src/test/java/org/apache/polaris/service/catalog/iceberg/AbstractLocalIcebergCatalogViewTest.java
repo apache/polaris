@@ -18,14 +18,15 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.awaitility.Awaitility.await;
+
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,6 +55,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -75,7 +77,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 public abstract class AbstractLocalIcebergCatalogViewTest
@@ -117,6 +118,9 @@ public abstract class AbstractLocalIcebergCatalogViewTest
 
   private String realmName;
   private PolarisCallContext polarisContext;
+  private PolarisPrincipal authenticatedRoot;
+  private PolarisAuthorizer authorizer;
+  private ReservedProperties reservedProperties;
 
   private TestPolarisEventListener testPolarisEventListener;
 
@@ -127,15 +131,19 @@ public abstract class AbstractLocalIcebergCatalogViewTest
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
-  @BeforeEach
-  public void setUpTempDir(@TempDir Path tempDir) throws Exception {
-    // see https://github.com/quarkusio/quarkus/issues/13261
-    Field field = ViewCatalogTests.class.getDeclaredField("tempDir");
-    field.setAccessible(true);
-    field.set(this, tempDir);
-  }
-
   protected void bootstrapRealm(String realmName) {}
+
+  protected PolarisAdminService newAdminService() {
+    return PolarisAdminServiceTestSupport.newAdminService(
+        polarisContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        authenticatedRoot,
+        authorizer,
+        reservedProperties);
+  }
 
   @BeforeEach
   public void before(TestInfo testInfo) {
@@ -152,38 +160,33 @@ public abstract class AbstractLocalIcebergCatalogViewTest
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
-    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
-    ReservedProperties reservedProperties = ReservedProperties.NONE;
+    authorizer = new PolarisAuthorizerImpl(realmConfig);
+    reservedProperties = ReservedProperties.NONE;
 
-    PolarisAdminService adminService =
-        new PolarisAdminService(
-            polarisContext,
-            resolutionManifestFactory,
-            metaStoreManager,
-            userSecretsManager,
-            serviceIdentityProvider,
-            authenticatedRoot,
-            authorizer,
-            reservedProperties);
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                .setDefaultBaseLocation("file://tmp")
-                .setStorageConfigurationInfo(
-                    realmConfig,
-                    new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*"), null),
-                    "file://tmp")
-                .build()
-                .asCatalog(serviceIdentityProvider)));
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(CATALOG_NAME)
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                    .setDefaultBaseLocation("file://tmp")
+                    .setStorageConfigurationInfo(
+                        realmConfig,
+                        new FileStorageConfigInfo(
+                            StorageConfigInfo.StorageTypeEnum.FILE,
+                            List.of("file://tmp", "*"),
+                            null),
+                        "file://tmp")
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -245,11 +248,21 @@ public abstract class AbstractLocalIcebergCatalogViewTest
             .withQuery("a", "b")
             .create();
 
+    // Clear after setup; refresh events are delivered asynchronously via Vert.x.
+    testPolarisEventListener.clear();
+
     String key = "foo";
     String valOld = "bar1";
     String valNew = "bar2";
     view.updateProperties().set(key, valOld).commit();
     view.updateProperties().set(key, valNew).commit();
+
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .until(
+            () ->
+                testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_VIEW)
+                    && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_VIEW));
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);

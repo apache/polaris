@@ -18,13 +18,17 @@
  */
 package org.apache.polaris.service.metrics;
 
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.config.MeterFilter;
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import io.micrometer.core.instrument.internal.OnlyOnceLoggingDenyMeterFilter;
 import io.quarkus.micrometer.runtime.binder.HttpBinderConfiguration;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.time.Duration;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class MeterFilterProducer {
@@ -57,5 +61,30 @@ public class MeterFilterProducer {
         RealmIdTagContributor.TAG_REALM,
         metricsConfiguration.realmIdTag().httpMetricsMaxCardinality(),
         denyFilter);
+  }
+
+  @Produces
+  @Singleton
+  public MeterFilter httpServerRequestsHistogramFilter() {
+    List<Duration> slos =
+        metricsConfiguration.httpServerRequests().histogramSlos().orElse(List.of());
+    if (slos.isEmpty()) {
+      return new MeterFilter() {};
+    }
+    double[] sloNanos = slos.stream().mapToDouble(d -> (double) d.toNanos()).toArray();
+    String httpServerRequestsName = binderConfiguration.getHttpServerRequestsName();
+    return new MeterFilter() {
+      @Override
+      public DistributionStatisticConfig configure(
+          Meter.Id id, DistributionStatisticConfig config) {
+        if (httpServerRequestsName.equals(id.getName()) && id.getType() == Meter.Type.TIMER) {
+          return DistributionStatisticConfig.builder()
+              .serviceLevelObjectives(sloNanos)
+              .build()
+              .merge(config);
+        }
+        return config;
+      }
+    };
   }
 }

@@ -17,10 +17,17 @@
  * under the License.
  */
 
+import com.diffplug.spotless.LineEnding
+
 plugins { id("com.diffplug.spotless") }
 
 // skip spotless check for duplicated projects
 spotless {
+  // Don't use the default (`GIT_ATTRIBUTES_FAST_ALLSAME`) here, because that reads external state
+  // like files, properties, Git attributes. Neither of these is configuration-cache-friendly,
+  // leading to config-cache-rebuilds.
+  lineEndings = LineEnding.UNIX
+
   if (project.path == ":") {
     // Root project
     kotlinGradle {

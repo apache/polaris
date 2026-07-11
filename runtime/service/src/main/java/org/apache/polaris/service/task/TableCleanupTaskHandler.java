@@ -246,7 +246,16 @@ public class TableCleanupTaskHandler implements TaskHandler {
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext) {
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
-    int batchSize = callContext.getRealmConfig().getConfig(TABLE_METADATA_CLEANUP_BATCH_SIZE);
+    int configuredBatchSize =
+        callContext.getRealmConfig().getConfig(TABLE_METADATA_CLEANUP_BATCH_SIZE);
+    int batchSize = Math.max(1, configuredBatchSize);
+    if (batchSize != configuredBatchSize) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("configuredBatchSize", configuredBatchSize)
+          .addKeyValue("effectiveBatchSize", batchSize)
+          .log("Invalid TABLE_METADATA_CLEANUP_BATCH_SIZE; clamping to minimum value");
+    }
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {

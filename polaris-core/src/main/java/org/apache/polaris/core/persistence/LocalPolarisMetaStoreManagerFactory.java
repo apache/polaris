@@ -195,11 +195,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     Optional<PrincipalEntity> preliminaryRootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext);
     if (preliminaryRootPrincipal.isPresent()) {
-      String overrideMessage =
-          "It appears this metastore manager has already been bootstrapped. "
-              + "To continue bootstrapping, please first purge the metastore with the `purge` command.";
-      LOGGER.error("\n\n {} \n\n", overrideMessage);
-      throw new IllegalArgumentException(overrideMessage);
+      LOGGER.info(
+          "Realm {} is already bootstrapped (root principal exists); nothing to do.",
+          realmContext.getRealmIdentifier());
+      return new PrincipalSecretsResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, "realm is already bootstrapped");
     }
 
     metaStoreManager.bootstrapPolarisService(polarisContext);

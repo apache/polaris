@@ -60,6 +60,7 @@ public class FileBearerTokenProviderTest {
             true,
             Duration.ofMinutes(1),
             Duration.ofMillis(1),
+            Duration.ofSeconds(1),
             asyncExec,
             monotonicClock::currentInstant)) {
 
@@ -122,6 +123,7 @@ public class FileBearerTokenProviderTest {
             true,
             Duration.ofMinutes(1),
             Duration.ofMillis(1),
+            Duration.ofSeconds(1),
             asyncExec,
             monotonicClock::currentInstant)) {
 
@@ -131,6 +133,31 @@ public class FileBearerTokenProviderTest {
       // Test token retrieval (should trim whitespace)
       String actualToken = provider.getToken();
       assertThat(actualToken).isEqualTo(expectedToken);
+    }
+  }
+
+  @Test
+  public void testRefreshRetryInterval() throws IOException {
+    Path tokenFile = tempDir.resolve("token.txt");
+    Files.writeString(tokenFile, "");
+
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
+
+    try (FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(
+            tokenFile,
+            Duration.ofMinutes(5),
+            true,
+            Duration.ofMinutes(1),
+            Duration.ofMillis(1),
+            Duration.ofSeconds(42),
+            asyncExec,
+            monotonicClock::currentInstant)) {
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
+
+      assertThat(asyncExec.readyCount(monotonicClock.currentInstant().plusSeconds(41))).isZero();
+      assertThat(asyncExec.readyCount(monotonicClock.currentInstant().plusSeconds(42))).isOne();
     }
   }
 
@@ -153,6 +180,7 @@ public class FileBearerTokenProviderTest {
             false,
             Duration.ofMinutes(1),
             Duration.ofMillis(1),
+            Duration.ofSeconds(1),
             asyncExec,
             monotonicClock::currentInstant)) {
 
@@ -195,6 +223,7 @@ public class FileBearerTokenProviderTest {
                         true,
                         Duration.ofMinutes(1),
                         Duration.ofMillis(1),
+                        Duration.ofSeconds(1),
                         asyncExec,
                         monotonicClock::currentInstant)
                     .close())
@@ -225,6 +254,7 @@ public class FileBearerTokenProviderTest {
             true,
             Duration.ofSeconds(3),
             Duration.ofMillis(1),
+            Duration.ofSeconds(1),
             asyncExec,
             monotonicClock::currentInstant)) {
       // run outstanding token-refresh task
@@ -269,6 +299,7 @@ public class FileBearerTokenProviderTest {
             false,
             Duration.ofSeconds(1),
             Duration.ofMillis(1),
+            Duration.ofSeconds(1),
             asyncExec,
             monotonicClock::currentInstant)) {
       // run outstanding token-refresh task
@@ -315,6 +346,7 @@ public class FileBearerTokenProviderTest {
             true,
             Duration.ofSeconds(1),
             Duration.ofMillis(1),
+            Duration.ofSeconds(1),
             asyncExec,
             monotonicClock::currentInstant)) {
       // run outstanding token-refresh task
@@ -359,6 +391,7 @@ public class FileBearerTokenProviderTest {
             true,
             Duration.ofSeconds(60),
             Duration.ofMillis(1),
+            Duration.ofSeconds(1),
             asyncExec,
             monotonicClock::currentInstant)) {
       // run outstanding token-refresh task
@@ -388,6 +421,7 @@ public class FileBearerTokenProviderTest {
             true,
             Duration.ofSeconds(1),
             Duration.ofMillis(1),
+            Duration.ofSeconds(1),
             asyncExec,
             monotonicClock::currentInstant)) {
       // run outstanding token-refresh task

@@ -26,7 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.StreamSupport;
-import org.apache.iceberg.DataFile;
+import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.ManifestReader;
@@ -81,27 +81,29 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
       return true;
     }
 
-    try (ManifestReader<DataFile> dataFiles = ManifestFiles.read(manifestFile, fileIO, null)) {
-      List<CompletableFuture<Void>> dataFileDeletes =
+    try (ManifestReader<? extends ContentFile<?>> reader =
+        openManifestReader(manifestFile, fileIO)) {
+      List<CompletableFuture<Void>> contentFileDeletes =
           StreamSupport.stream(
-                  Spliterators.spliteratorUnknownSize(dataFiles.iterator(), Spliterator.IMMUTABLE),
+                  Spliterators.spliteratorUnknownSize(reader.iterator(), Spliterator.IMMUTABLE),
                   false)
               .map(
                   file -> tryDelete(tableId, fileIO, manifestFile.path(), file.location(), null, 1))
               .toList();
       LOGGER.debug(
-          "Scheduled {} data files to be deleted from manifest {}",
-          dataFileDeletes.size(),
-          manifestFile.path());
+          "Scheduled {} content files to be deleted from manifest {} (content={})",
+          contentFileDeletes.size(),
+          manifestFile.path(),
+          manifestFile.content());
       try {
-        // wait for all data files to be deleted, then wait for the manifest itself to be deleted
-        CompletableFuture.allOf(dataFileDeletes.toArray(CompletableFuture[]::new))
+        // wait for all content files to be deleted, then wait for the manifest itself to be deleted
+        CompletableFuture.allOf(contentFileDeletes.toArray(CompletableFuture[]::new))
             .thenCompose(
                 (v) -> {
                   LOGGER
                       .atInfo()
                       .addKeyValue("manifestFile", manifestFile.path())
-                      .log("All data files in manifest deleted - deleting manifest");
+                      .log("All content files in manifest deleted - deleting manifest");
                   return tryDelete(
                       tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
                 })
@@ -109,20 +111,32 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
         return true;
       } catch (InterruptedException e) {
         LOGGER.error(
-            "Interrupted exception deleting data files from manifest {}", manifestFile.path(), e);
+            "Interrupted exception deleting content files from manifest {}",
+            manifestFile.path(),
+            e);
         throw new RuntimeException(e);
       } catch (ExecutionException e) {
-        LOGGER.error("Unable to delete data files from manifest {}", manifestFile.path(), e);
-        return false;
+        LOGGER.error("Unable to delete content files from manifest {}", manifestFile.path(), e);
+        throw new RuntimeException(e);
       }
     } catch (IOException e) {
       // Catches from ManifestFiles.read() (resource creation), from inside the block
-      // (e.g. manifest iteration), or from close(). We return false on any IO here
-      // (so the task gets retried) because close() throws checked IOException and
-      // this method returns boolean (no throws declaration).
+      // (e.g. manifest iteration), or from close(). We throw (wrapping) so the original
+      // failure propagates and TaskExecutorImpl's retry path is used. (handleTask returns
+      // boolean and cannot declare a checked throws IOException.)
       LOGGER.error("Failed to process manifest reader for {}", manifestFile.path(), e);
-      return false;
+      throw new RuntimeException(e);
     }
+  }
+
+  // Iceberg requires distinct readers for data manifests (DataFile) and delete manifests
+  // (DeleteFile); using the wrong one throws IllegalArgumentException at read time.
+  private static ManifestReader<? extends ContentFile<?>> openManifestReader(
+      ManifestFile manifestFile, FileIO fileIO) {
+    return switch (manifestFile.content()) {
+      case DATA -> ManifestFiles.read(manifestFile, fileIO, null);
+      case DELETES -> ManifestFiles.readDeleteManifest(manifestFile, fileIO, null);
+    };
   }
 
   /** Serialized Task data sent from the {@link TableCleanupTaskHandler} */

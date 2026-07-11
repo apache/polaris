@@ -192,6 +192,7 @@ class Arguments:
     HOST = "host"
     PORT = "port"
     BASE_URL = "base_url"
+    CATALOG_URL = "catalog_url"
     PARENT = "parent"
     LOCATION = "location"
     REGION = "region"

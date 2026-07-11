@@ -19,35 +19,25 @@
 package org.apache.polaris.core.auth;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Request-scoped authorization state shared across authorization phases.
+ * Authorization state shared across authorization phases for one resolved view.
  *
- * <p>Used to carry authorization-specific data, such as a {@link PolarisResolutionManifest} created
- * by the caller and populated by the authorizer.
+ * <p>Used to carry authorization-specific data for the current resolution flow, such as a {@link
+ * PolarisResolutionManifest} created by the caller and populated by the authorizer.
  */
 public class AuthorizationState {
-  private final AtomicReference<PolarisResolutionManifest> resolutionManifest =
-      new AtomicReference<>();
+  private final PolarisResolutionManifest resolutionManifest;
 
-  /** Returns the request-scoped resolution manifest used for authorization. */
-  @NonNull
-  public PolarisResolutionManifest getResolutionManifest() {
-    PolarisResolutionManifest manifest = resolutionManifest.get();
-    if (manifest == null) {
-      throw new IllegalStateException("AuthorizationState resolution manifest is not set");
-    }
-    return manifest;
+  public AuthorizationState(@NonNull PolarisResolutionManifest resolutionManifest) {
+    this.resolutionManifest = Objects.requireNonNull(resolutionManifest, "resolutionManifest");
   }
 
-  /** Sets the request-scoped resolution manifest used for authorization. */
-  public void setResolutionManifest(@NonNull PolarisResolutionManifest resolutionManifest) {
-    Objects.requireNonNull(resolutionManifest, "resolutionManifest");
-    if (!this.resolutionManifest.compareAndSet(null, resolutionManifest)) {
-      throw new IllegalStateException("AuthorizationState resolution manifest already set");
-    }
+  /** Returns the resolution manifest used for the current authorization flow. */
+  @NonNull
+  public PolarisResolutionManifest getResolutionManifest() {
+    return resolutionManifest;
   }
 }

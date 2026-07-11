@@ -18,25 +18,16 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import java.io.IOException;
 import org.apache.polaris.persistence.nosql.authz.api.Acl;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
 
-class AclSerializer extends JsonSerializer<Acl> {
+class AclSerializer extends ValueSerializer<Acl> {
   @Override
-  public void serialize(Acl value, JsonGenerator gen, SerializerProvider serializers)
-      throws IOException {
+  public void serialize(Acl value, JsonGenerator gen, SerializationContext serializationContext) {
     gen.writeStartObject();
-    value.forEach(
-        (role, entry) -> {
-          try {
-            gen.writeObjectField(role, entry);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        });
+    value.forEach(gen::writePOJOProperty);
     gen.writeEndObject();
   }
 }
