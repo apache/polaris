@@ -1226,6 +1226,37 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
+
+    // Idempotency replay: on a retry the update already committed and stamped the key onto the
+    // table entity's internal properties (atomically with the metadata change). Re-applying would
+    // fail the request's requirements against the already-advanced table, so replay the success by
+    // returning current catalog state instead.
+    if (idempotencyRequestContext().isActive()) {
+      UUID idempotencyKey = requireNonNull(idempotencyRequestContext().pendingKey());
+      IcebergTableLikeEntity existing =
+          passthroughResolveTableEntityForIdempotency(tableIdentifier);
+      if (existing != null
+          && EntityIdempotency.hasLiveKey(
+              existing.getInternalPropertiesAsMap(), idempotencyKey, clock().instant())) {
+        return catalogHandlerUtils().loadTable(baseCatalog, tableIdentifier);
+      }
+      try {
+        return catalogHandlerUtils()
+            .updateTable(baseCatalog, tableIdentifier, applyUpdateFilters(request));
+      } catch (CommitFailedException e) {
+        // Concurrent same-key update: the race winner committed the key atomically with its
+        // metadata change, so a single fresh lookup is enough to replay instead of surfacing 409.
+        IcebergTableLikeEntity winner =
+            passthroughResolveTableEntityForIdempotency(tableIdentifier);
+        if (winner != null
+            && EntityIdempotency.hasLiveKey(
+                winner.getInternalPropertiesAsMap(), idempotencyKey, clock().instant())) {
+          return catalogHandlerUtils().loadTable(baseCatalog, tableIdentifier);
+        }
+        throw e;
+      }
+    }
+
     return catalogHandlerUtils()
         .updateTable(baseCatalog, tableIdentifier, applyUpdateFilters(request));
   }

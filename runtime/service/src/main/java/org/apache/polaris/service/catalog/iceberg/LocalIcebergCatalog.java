@@ -1893,9 +1893,27 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 .build();
       } else {
         existingLocation = entity.getMetadataLocation();
+        Map<String, String> internalProperties = storedProperties;
+        // setInternalProperties replaces the whole map, and the idempotency window lives only in
+        // internal properties (not table metadata), so carry it forward to keep prior keys live
+        // across updates even when a given update carries no key of its own.
+        String priorWindow =
+            entity.getInternalPropertiesAsMap().get(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY);
+        if (priorWindow != null) {
+          internalProperties.put(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY, priorWindow);
+        }
+        if (idempotencyRequestContext.isActive()) {
+          // Stamp this update's key atomically with the metadata change, purging expired keys.
+          internalProperties =
+              EntityIdempotency.recordKey(
+                  internalProperties,
+                  idempotencyRequestContext.pendingKey(),
+                  idempotencyRequestContext.pendingExpiry(),
+                  Instant.now());
+        }
         entity =
             new IcebergTableLikeEntity.Builder(entity)
-                .setInternalProperties(storedProperties)
+                .setInternalProperties(internalProperties)
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation)
                 .build();
