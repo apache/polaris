@@ -75,12 +75,8 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     if (!tokenBroker.supportsRequestedTokenType(requestedTokenType)) {
       return OAuthUtils.getResponseFromError(OAuthError.invalid_request);
     }
-    if (authHeader == null && clientSecret == null) {
-      return OAuthUtils.getResponseFromError(OAuthError.invalid_client);
-    }
-    // token exchange with client id and client secret in the authorization header means the client
-    // has previously attempted to refresh an access token, but refreshing was not supported by the
-    // token broker. Accept the client id and secret and treat it as a new token request
+    // Parse HTTP Basic credentials first. A non-Basic Authorization header alone is not a
+    // client credential and must not unlock the token-exchange path.
     if (authHeader != null && clientSecret == null && authHeader.startsWith("Basic ")) {
       String credentials =
           new String(Base64.getDecoder().decode(authHeader.substring(6).getBytes(UTF_8)), UTF_8);
@@ -99,15 +95,20 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     }
     TokenResponse tokenResponse;
     if (clientSecret != null) {
+      // Client presents a secret (body or Basic). Issue/refresh via client authentication.
+      // Note: when grant_type is token-exchange and a secret is present, historical behavior
+      // treats this as a fresh client_credentials-style mint (full configured TTL).
       tokenResponse =
           tokenBroker.generateFromClientSecrets(
               clientId, clientSecret, grantType, scope, requestedTokenType);
-    } else if (subjectToken != null) {
+    } else if (subjectToken != null && !subjectToken.isBlank()) {
+      // Token exchange without client secret: mint a new access token that cannot outlive the
+      // subject token (enforced by JWTBroker). Dummy Authorization headers are not required.
       tokenResponse =
           tokenBroker.generateFromToken(
               subjectTokenType, subjectToken, grantType, scope, requestedTokenType);
     } else {
-      return OAuthUtils.getResponseFromError(OAuthError.invalid_request);
+      return OAuthUtils.getResponseFromError(OAuthError.invalid_client);
     }
     if (tokenResponse == null) {
       return OAuthUtils.getResponseFromError(OAuthError.unsupported_grant_type);

@@ -214,6 +214,59 @@ class DefaultOAuth2ApiServiceTest {
         .returns("token", OAuthTokenResponse::token);
   }
 
+  @Test
+  public void testTokenExchangeWithSubjectTokenOnly() {
+    RealmContext realmContext = () -> "realm";
+    TokenBroker tokenBroker = Mockito.mock();
+    when(tokenBroker.supportsGrantType(TOKEN_EXCHANGE)).thenReturn(true);
+    when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
+    when(tokenBroker.generateFromToken(
+            TokenType.ACCESS_TOKEN, "subject-jwt", TOKEN_EXCHANGE, "scope", TokenType.ACCESS_TOKEN))
+        .thenReturn(TokenResponse.of("exchanged", TokenType.ACCESS_TOKEN.getValue(), 120));
+    Response response =
+        new InvocationBuilder()
+            .scope("scope")
+            .grantType(TOKEN_EXCHANGE)
+            .requestedTokenType(TokenType.ACCESS_TOKEN)
+            .subjectToken("subject-jwt")
+            .subjectTokenType(TokenType.ACCESS_TOKEN)
+            .realmContext(realmContext)
+            .invoke(new DefaultOAuth2ApiService(tokenBroker));
+    Assertions.assertThat(response.getEntity())
+        .isInstanceOf(OAuthTokenResponse.class)
+        .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenResponse.class))
+        .returns("exchanged", OAuthTokenResponse::token)
+        .returns(120, OAuthTokenResponse::expiresInSeconds);
+  }
+
+  @Test
+  public void testDummyAuthHeaderAloneDoesNotAuthenticate() {
+    // A non-Basic Authorization value must not unlock exchange without a subject_token and must
+    // not be treated as client credentials.
+    RealmContext realmContext = () -> "realm";
+    TokenBroker tokenBroker = Mockito.mock();
+    when(tokenBroker.supportsGrantType(TOKEN_EXCHANGE)).thenReturn(true);
+    when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
+    Response response =
+        new InvocationBuilder()
+            .authHeader("Bearer not-a-credential")
+            .scope("scope")
+            .grantType(TOKEN_EXCHANGE)
+            .requestedTokenType(TokenType.ACCESS_TOKEN)
+            .realmContext(realmContext)
+            .invoke(new DefaultOAuth2ApiService(tokenBroker));
+    Assertions.assertThat(response.getEntity())
+        .isInstanceOf(OAuthTokenErrorResponse.class)
+        .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenErrorResponse.class))
+        .returns(OAuthError.invalid_client.name(), OAuthTokenErrorResponse::getError);
+    Mockito.verify(tokenBroker, Mockito.never())
+        .generateFromToken(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    Mockito.verify(tokenBroker, Mockito.never())
+        .generateFromClientSecrets(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+  }
+
   private static final class InvocationBuilder {
     private String authHeader;
     private String grantType;
@@ -221,6 +274,8 @@ class DefaultOAuth2ApiServiceTest {
     private String clientId;
     private String clientSecret;
     private TokenType requestedTokenType;
+    private String subjectToken;
+    private TokenType subjectTokenType;
     private RealmContext realmContext;
 
     public InvocationBuilder authHeader(String authHeader) {
@@ -253,6 +308,16 @@ class DefaultOAuth2ApiServiceTest {
       return this;
     }
 
+    public InvocationBuilder subjectToken(String subjectToken) {
+      this.subjectToken = subjectToken;
+      return this;
+    }
+
+    public InvocationBuilder subjectTokenType(TokenType subjectTokenType) {
+      this.subjectTokenType = subjectTokenType;
+      return this;
+    }
+
     public InvocationBuilder realmContext(RealmContext realmContext) {
       this.realmContext = realmContext;
       return this;
@@ -266,8 +331,8 @@ class DefaultOAuth2ApiServiceTest {
           clientId,
           clientSecret,
           requestedTokenType,
-          null, // subjectToken
-          null, // subjectTokenType
+          subjectToken,
+          subjectTokenType,
           null, // actorToken
           null, // actorTokenType
           realmContext,

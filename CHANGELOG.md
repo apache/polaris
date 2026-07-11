@@ -64,6 +64,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `TableCleanupTaskHandler` now clamps `TABLE_METADATA_CLEANUP_BATCH_SIZE` to at least 1. Previously a non-positive realm override caused an infinite loop (0) or `IllegalArgumentException` (<0) when splitting metadata files for cleanup.
 - `ManifestFileCleanupTaskHandler` now handles Iceberg v2 delete manifests in addition to data manifests. Previously, `DROP TABLE PURGE` on a v2 table that had been updated via merge-on-read DML left position-delete files and their manifests as orphans in object storage; the cleanup task failed silently because `ManifestFiles.read()` rejects delete manifests.
 - OPA authorizer now includes the realm identifier in the authorization context sent to OPA (`input.context.realm`). This ensures OPA policies can enforce tenant isolation across realms, preventing potential collisions if identical principal or resource names exist in different realms.
+- Internal JWT token exchange no longer issues an access token that outlives the subject token. Previously each exchange reset expiry to a full `maxTokenGeneration` window, so a stolen access token could be refreshed indefinitely. Exchanged tokens are now capped to the remaining subject lifetime (and still to `maxTokenGeneration`).
 
 ## [1.6.0]
 

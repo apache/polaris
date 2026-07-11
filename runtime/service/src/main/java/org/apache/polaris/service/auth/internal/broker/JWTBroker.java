@@ -22,6 +22,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.google.common.annotations.VisibleForTesting;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -77,18 +78,19 @@ public class JWTBroker implements TokenBroker {
 
   @Override
   public PolarisCredential verify(String token) {
-    return verifyInternal(token);
+    return verifyInternal(token).token();
   }
 
-  private InternalPolarisToken verifyInternal(String token) {
+  private VerifiedSubjectToken verifyInternal(String token) {
     try {
       DecodedJWT decodedJWT = verifier.verify(token);
-      return InternalPolarisToken.of(
-          decodedJWT.getSubject(),
-          decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
-          decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString(),
-          decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString());
-
+      InternalPolarisToken polarisToken =
+          InternalPolarisToken.of(
+              decodedJWT.getSubject(),
+              decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
+              decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString(),
+              decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString());
+      return new VerifiedSubjectToken(polarisToken, decodedJWT.getExpiresAtAsInstant());
     } catch (Exception e) {
       throw (NotAuthorizedException)
           new NotAuthorizedException("Failed to verify the token").initCause(e);
@@ -111,26 +113,63 @@ public class JWTBroker implements TokenBroker {
     if (subjectToken == null || subjectToken.isBlank()) {
       return TokenResponse.of(OAuthError.invalid_request);
     }
-    InternalPolarisToken decodedToken;
+    VerifiedSubjectToken verified;
     try {
-      decodedToken = verifyInternal(subjectToken);
+      verified = verifyInternal(subjectToken);
     } catch (NotAuthorizedException e) {
       LOGGER.error("Failed to verify the token", e.getCause());
       return TokenResponse.of(OAuthError.invalid_client);
     }
+    Instant now = Instant.now();
+    Optional<Integer> expiresInSeconds =
+        remainingLifetimeSeconds(now, verified.expiresAt(), maxTokenGenerationInSeconds);
+    if (expiresInSeconds.isEmpty()) {
+      // Subject is expired, missing exp, or has no remaining lifetime — do not mint a longer
+      // session.
+      return TokenResponse.of(OAuthError.invalid_grant);
+    }
     Optional<PrincipalEntity> principalLookup =
-        metaStoreManager.findPrincipalById(polarisCallContext, decodedToken.getPrincipalId());
+        metaStoreManager.findPrincipalById(polarisCallContext, verified.token().getPrincipalId());
     if (principalLookup.isEmpty()) {
       return TokenResponse.of(OAuthError.unauthorized_client);
     }
+    Instant newExpiresAt = now.plus(expiresInSeconds.get(), ChronoUnit.SECONDS);
     String tokenString =
         generateTokenString(
-            decodedToken.getPrincipalName(),
-            decodedToken.getPrincipalId(),
-            decodedToken.getClientId(),
-            decodedToken.getScope());
-    return TokenResponse.of(
-        tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
+            verified.token().getPrincipalName(),
+            verified.token().getPrincipalId(),
+            verified.token().getClientId(),
+            verified.token().getScope(),
+            now,
+            newExpiresAt);
+    return TokenResponse.of(tokenString, TokenType.ACCESS_TOKEN.getValue(), expiresInSeconds.get());
+  }
+
+  /**
+   * Computes the lifetime for a token minted via token exchange.
+   *
+   * <p>The exchanged token must not outlive the subject access token. Combined with the configured
+   * maximum token generation duration, this prevents token-exchange from being used as an infinite
+   * refresh mechanism that resets expiry to a full new session on every call.
+   *
+   * @return remaining lifetime in whole seconds, or empty when the subject must not be exchanged
+   */
+  @VisibleForTesting
+  static Optional<Integer> remainingLifetimeSeconds(
+      Instant now, Instant subjectExpiresAt, int maxTokenGenerationInSeconds) {
+    if (subjectExpiresAt == null || !subjectExpiresAt.isAfter(now)) {
+      return Optional.empty();
+    }
+    if (maxTokenGenerationInSeconds <= 0) {
+      return Optional.empty();
+    }
+    long remainingSeconds = ChronoUnit.SECONDS.between(now, subjectExpiresAt);
+    if (remainingSeconds < 1) {
+      return Optional.empty();
+    }
+    long capped = Math.min(remainingSeconds, maxTokenGenerationInSeconds);
+    // TokenResponse / OAuth expires_in is an int; clamp to Integer.MAX_VALUE defensively.
+    return Optional.of((int) Math.min(capped, Integer.MAX_VALUE));
   }
 
   @Override
@@ -152,20 +191,27 @@ public class JWTBroker implements TokenBroker {
     if (principal.isEmpty()) {
       return TokenResponse.of(OAuthError.unauthorized_client);
     }
+    Instant now = Instant.now();
+    Instant expiresAt = now.plus(maxTokenGenerationInSeconds, ChronoUnit.SECONDS);
     String tokenString =
-        generateTokenString(principal.get().getName(), principal.get().getId(), clientId, scope);
+        generateTokenString(
+            principal.get().getName(), principal.get().getId(), clientId, scope, now, expiresAt);
     return TokenResponse.of(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }
 
   private String generateTokenString(
-      String principalName, long principalId, String clientId, String scope) {
-    Instant now = Instant.now();
+      String principalName,
+      long principalId,
+      String clientId,
+      String scope,
+      Instant issuedAt,
+      Instant expiresAt) {
     return JWT.create()
         .withIssuer(ISSUER_KEY)
         .withSubject(principalName)
-        .withIssuedAt(now)
-        .withExpiresAt(now.plus(maxTokenGenerationInSeconds, ChronoUnit.SECONDS))
+        .withIssuedAt(issuedAt)
+        .withExpiresAt(expiresAt)
         .withJWTId(UUID.randomUUID().toString())
         .withClaim(CLAIM_KEY_ACTIVE, true)
         .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
@@ -201,4 +247,6 @@ public class JWTBroker implements TokenBroker {
     return metaStoreManager.findPrincipalById(
         polarisCallContext, principalSecrets.getPrincipalSecrets().getPrincipalId());
   }
+
+  private record VerifiedSubjectToken(InternalPolarisToken token, Instant expiresAt) {}
 }
