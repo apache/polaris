@@ -100,6 +100,17 @@ public class TreeMapMetaStore {
       return copied;
     }
 
+    private List<String> copyKeysInRange(String prefix) {
+      if (prefix.isEmpty()) {
+        return new ArrayList<>(this.slice.keySet());
+      }
+
+      String endKey =
+          prefix.substring(0, prefix.length() - 1)
+              + (char) (prefix.charAt(prefix.length() - 1) + 1);
+      return new ArrayList<>(slice.subMap(prefix, true, endKey, false).keySet());
+    }
+
     /**
      * write a value in the slice
      *
@@ -139,9 +150,9 @@ public class TreeMapMetaStore {
      */
     public void deleteRange(String prefix) {
       ensureReadWriteTr();
-      List<T> elements = this.readRange(prefix);
-      for (T element : elements) {
-        this.delete(element);
+      List<String> keys = this.copyKeysInRange(prefix);
+      for (String key : keys) {
+        this.delete(key);
       }
     }
 
