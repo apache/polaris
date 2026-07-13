@@ -33,6 +33,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
@@ -204,6 +208,63 @@ class LineageStoreManagerTest {
     assertEquals(1, graph.upstream().size());
     assertEquals("dataset:polaris:analytics.customers", graph.upstream().get(0).id());
     assertSingleLong("SELECT COUNT(*) FROM POLARIS_SCHEMA.lineage_edges WHERE realm_id = ?", 1L);
+  }
+
+  @Test
+  void concurrentLineageEdgeReplacementKeepsNewerSnapshot() throws Exception {
+    upsertSourceAlternativeAndTargetDatasets();
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try (Connection blocker = dataSource.getConnection();
+        PreparedStatement lockTarget =
+            blocker.prepareStatement(
+                "SELECT last_lineage_event_at FROM POLARIS_SCHEMA.lineage_datasets "
+                    + "WHERE realm_id = ? AND name = 'orders_daily' FOR UPDATE")) {
+      blocker.setAutoCommit(false);
+      lockTarget.setString(1, REALM_ID);
+      try (ResultSet resultSet = lockTarget.executeQuery()) {
+        resultSet.next();
+      }
+
+      Future<?> newerReplacement =
+          executor.submit(
+              () ->
+                  lineagePersistence.replaceDatasetEdges(
+                      List.of(targetDataset()),
+                      List.of(new LineageEdge(alternativeSourceDataset(), targetDataset())),
+                      EVENT_TIME.plusMillis(100)));
+      waitForBlockedSessions(1);
+
+      Future<?> olderReplacement =
+          executor.submit(
+              () ->
+                  lineagePersistence.replaceDatasetEdges(
+                      List.of(targetDataset()),
+                      List.of(new LineageEdge(sourceDataset(), targetDataset())),
+                      EVENT_TIME));
+      waitForBlockedSessions(2);
+
+      blocker.commit();
+      newerReplacement.get(5, TimeUnit.SECONDS);
+      olderReplacement.get(5, TimeUnit.SECONDS);
+    } finally {
+      executor.shutdownNow();
+    }
+
+    LineageGraph graph =
+        lineagePersistence.loadLineage(
+            new LineageQueryRequest(
+                "dataset:polaris:analytics.orders_daily",
+                LineageDirection.UPSTREAM,
+                LineageGranularity.DATASET));
+
+    assertEquals(1, graph.upstream().size());
+    assertEquals("dataset:polaris:analytics.customers", graph.upstream().get(0).id());
+    assertSingleLong("SELECT COUNT(*) FROM POLARIS_SCHEMA.lineage_edges WHERE realm_id = ?", 1L);
+    assertSingleLong(
+        "SELECT last_lineage_event_at FROM POLARIS_SCHEMA.lineage_datasets "
+            + "WHERE realm_id = ? AND name = 'orders_daily'",
+        EVENT_TIME.plusMillis(100).toEpochMilli());
   }
 
   @Test
@@ -441,6 +502,25 @@ class LineageStoreManagerTest {
         assertFalse(rs.next());
       }
     }
+  }
+
+  private void waitForBlockedSessions(int expected) throws SQLException, InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (System.nanoTime() < deadline) {
+      try (Connection connection = dataSource.getConnection();
+          PreparedStatement statement =
+              connection.prepareStatement(
+                  "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SESSIONS "
+                      + "WHERE BLOCKER_ID IS NOT NULL");
+          ResultSet resultSet = statement.executeQuery()) {
+        resultSet.next();
+        if (resultSet.getInt(1) >= expected) {
+          return;
+        }
+      }
+      Thread.sleep(10);
+    }
+    throw new AssertionError("Timed out waiting for " + expected + " blocked database sessions");
   }
 
   private static class TestJdbcConfiguration implements RelationalJdbcConfiguration {

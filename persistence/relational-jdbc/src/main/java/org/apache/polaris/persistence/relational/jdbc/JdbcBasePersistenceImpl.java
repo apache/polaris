@@ -1501,10 +1501,12 @@ public class JdbcBasePersistenceImpl
       datasourceOperations.runWithinTransaction(
           connection -> {
             for (Map.Entry<Long, List<ModelLineageEdge>> entry :
-                edgesByTargetDatasetId.entrySet()) {
+                edgesByTargetDatasetId.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .toList()) {
               long targetDatasetId = entry.getKey();
               Optional<Long> currentLastEventAt =
-                  loadLineageDatasetLastEventAt(connection, realmId, targetDatasetId);
+                  lockAndLoadLineageDatasetLastEventAt(connection, realmId, targetDatasetId);
               if (currentLastEventAt.isPresent() && currentLastEventAt.get() > lastEventAtMillis) {
                 continue;
               }
@@ -1537,14 +1539,14 @@ public class JdbcBasePersistenceImpl
     }
   }
 
-  private Optional<Long> loadLineageDatasetLastEventAt(
+  private Optional<Long> lockAndLoadLineageDatasetLastEventAt(
       Connection connection, String realmId, long targetDatasetId) throws SQLException {
     String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageDataset.TABLE_NAME);
     try (PreparedStatement statement =
         connection.prepareStatement(
             "SELECT last_lineage_event_at FROM "
                 + table
-                + " WHERE realm_id = ? AND dataset_id = ?")) {
+                + " WHERE realm_id = ? AND dataset_id = ? FOR UPDATE")) {
       statement.setString(1, realmId);
       statement.setLong(2, targetDatasetId);
       try (ResultSet resultSet = statement.executeQuery()) {
