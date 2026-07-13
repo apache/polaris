@@ -132,6 +132,18 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nullable List<PolarisBaseEntity> originalEntities);
 
   /**
+   * Flush any pending batched writes to the persistence backend. For backends that batch writes
+   * internally (e.g. JDBC), this commits the active transaction so that subsequent reads see the
+   * latest state. For backends that already commit each write independently, this is a no-op.
+   *
+   * <p>Callers that perform a sequence of write operations that should be atomic should invoke this
+   * method after the last write in the sequence.
+   */
+  default void flush() {
+    // no-op by default
+  }
+
+  /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
    * record with the same PK), this is a no-op, because currently all fields of the grantRecord are
    * part of the PK. If additional non-PK attributes are added this might change.

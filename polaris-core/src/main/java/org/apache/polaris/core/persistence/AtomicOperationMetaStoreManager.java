@@ -555,6 +555,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // catalog.
 
     // success, return the two entities
+    ms.flush();
     return new CreateCatalogResult(catalog, adminRole);
   }
 
@@ -1185,6 +1186,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // simply delete that entity. Will be removed from entities_active, added to the
     // entities_dropped and its version will be changed.
     this.dropEntity(callCtx, ms, refreshEntityToDrop);
+    ms.flush();
 
     // if cleanup, schedule a cleanup task for the entity. do this here, so that drop and scheduling
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task
@@ -1241,6 +1243,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     getDiagnostics().check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
     PolarisGrantRecord grantRecord =
         this.persistNewGrantRecord(callCtx, ms, role, grantee, usagePriv);
+    ms.flush();
     return new PrivilegeResult(grantRecord);
   }
 
@@ -1277,6 +1280,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // revoke usage on the role from the grantee
     this.revokeGrantRecord(callCtx, ms, role, grantee, grantRecord);
+    ms.flush();
 
     return new PrivilegeResult(grantRecord);
   }
@@ -1295,6 +1299,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // grant specified privilege on this securable to this role and return the grant
     PolarisGrantRecord grantRecord =
         this.persistNewGrantRecord(callCtx, ms, securable, grantee, privilege);
+    ms.flush();
     return new PrivilegeResult(grantRecord);
   }
 
@@ -1326,6 +1331,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // revoke the specified privilege on this securable from this role
     this.revokeGrantRecord(callCtx, ms, securable, grantee, grantRecord);
+    ms.flush();
 
     // success!
     return new PrivilegeResult(grantRecord);

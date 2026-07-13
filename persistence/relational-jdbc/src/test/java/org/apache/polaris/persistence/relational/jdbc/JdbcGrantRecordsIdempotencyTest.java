@@ -22,18 +22,21 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations.TransactionCallback;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -105,7 +108,16 @@ class JdbcGrantRecordsIdempotencyTest {
     when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
     doThrow(nonUniqueViolation)
         .when(datasourceOperations)
-        .executeUpdate(any(QueryGenerator.PreparedQuery.class));
+        .execute(any(), any(QueryGenerator.PreparedQuery.class));
+    doAnswer(
+            invocation -> {
+              TransactionCallback callback = invocation.getArgument(0);
+              Connection conn = Mockito.mock(Connection.class);
+              callback.execute(conn);
+              return null;
+            })
+        .when(datasourceOperations)
+        .runWithinTransaction(any());
     doCallRealMethod()
         .when(datasourceOperations)
         .isUniquenessConstraintViolation(any(SQLException.class));
