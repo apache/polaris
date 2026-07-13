@@ -28,8 +28,6 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -37,16 +35,15 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 public class DefaultPolarisLineageHandlerTest {
-  @Mock private RealmConfig realmConfig;
   @Mock private LineageConfiguration configuration;
-  @Mock private LineageStoreManager persistence;
+  @Mock private LineageStoreManager storeManager;
 
   private DefaultPolarisLineageHandler service;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    service = new DefaultPolarisLineageHandler(realmConfig, configuration, persistence);
+    service = new DefaultPolarisLineageHandler(configuration, storeManager);
   }
 
   @Test
@@ -57,19 +54,7 @@ public class DefaultPolarisLineageHandlerTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("polaris.lineage.enabled");
 
-    verifyNoInteractions(persistence);
-  }
-
-  @Test
-  void throwsWhenRealmFeatureDisabled() {
-    when(configuration.enabled()).thenReturn(true);
-    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(false);
-
-    assertThatThrownBy(() -> service.query(queryRequest()))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(FeatureConfiguration.ENABLE_LINEAGE.key());
-
-    verifyNoInteractions(persistence);
+    verifyNoInteractions(storeManager);
   }
 
   @Test
@@ -82,10 +67,10 @@ public class DefaultPolarisLineageHandlerTest {
             new LineageNode("dataset:test:orders", LineageNodeType.DATASET, null, false),
             List.of(),
             List.of());
-    when(persistence.loadLineage(request)).thenReturn(graph);
+    when(storeManager.loadLineage(request)).thenReturn(graph);
 
     assertThat(service.query(request)).isSameAs(graph);
-    verify(persistence).loadLineage(request);
+    verify(storeManager).loadLineage(request);
   }
 
   @Test
@@ -97,12 +82,12 @@ public class DefaultPolarisLineageHandlerTest {
     service.ingest(request);
 
     Instant lastEventAt = Instant.parse("2026-01-01T00:00:00Z");
-    InOrder inOrder = inOrder(persistence);
-    inOrder.verify(persistence).upsertDatasets(request.datasets());
+    InOrder inOrder = inOrder(storeManager);
+    inOrder.verify(storeManager).upsertDatasets(request.datasets());
     inOrder
-        .verify(persistence)
+        .verify(storeManager)
         .replaceDatasetEdges(request.targetDatasets(), request.edges(), lastEventAt);
-    inOrder.verify(persistence).upsertColumnEdges(request.columnEdges(), lastEventAt);
+    inOrder.verify(storeManager).upsertColumnEdges(request.columnEdges(), lastEventAt);
   }
 
   private static LineageQueryRequest queryRequest() {

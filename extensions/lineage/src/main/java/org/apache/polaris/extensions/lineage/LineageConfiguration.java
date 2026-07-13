@@ -35,10 +35,7 @@ public interface LineageConfiguration {
   DatasetResolutionConfiguration datasetResolution();
 
   interface PersistenceConfiguration {
-    @WithDefault("false")
-    boolean enabled();
-
-    @WithDefault("relational-jdbc")
+    @WithDefault("noop")
     String type();
   }
 

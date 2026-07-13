@@ -18,22 +18,18 @@
  */
 package org.apache.polaris.extensions.lineage;
 
-import jakarta.enterprise.inject.Vetoed;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import java.time.Instant;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
 
-@Vetoed
+@RequestScoped
 public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
-  private final RealmConfig realmConfig;
   private final LineageConfiguration configuration;
   private final LineageStoreManager storeManager;
 
+  @Inject
   public DefaultPolarisLineageHandler(
-      RealmConfig realmConfig,
-      LineageConfiguration configuration,
-      LineageStoreManager storeManager) {
-    this.realmConfig = realmConfig;
+      LineageConfiguration configuration, LineageStoreManager storeManager) {
     this.configuration = configuration;
     this.storeManager = storeManager;
   }
@@ -57,13 +53,6 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
     if (!configuration.enabled()) {
       throw new UnsupportedOperationException(
           "Lineage is disabled: set polaris.lineage.enabled=true to enable it.");
-    }
-
-    if (!realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)) {
-      throw new UnsupportedOperationException(
-          "Lineage realm feature is disabled: enable "
-              + FeatureConfiguration.ENABLE_LINEAGE.key()
-              + " in the realm feature configuration.");
     }
   }
 }

@@ -22,6 +22,8 @@ plugins {
   id("org.kordamp.gradle.jandex")
 }
 
+description = "Polaris lineage model and service contract"
+
 dependencies {
   implementation(project(":polaris-core"))
 
