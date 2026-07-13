@@ -60,7 +60,6 @@ public class DefaultPolarisLineageHandlerTest {
   @Test
   void delegatesQueryWhenLineageEnabled() {
     when(configuration.enabled()).thenReturn(true);
-    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
     LineageQueryRequest request = queryRequest();
     LineageGraph graph =
         new LineageGraph(
@@ -76,7 +75,6 @@ public class DefaultPolarisLineageHandlerTest {
   @Test
   void delegatesIngestWhenLineageEnabled() {
     when(configuration.enabled()).thenReturn(true);
-    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
     LineageIngestRequest request = ingestRequest();
 
     service.ingest(request);

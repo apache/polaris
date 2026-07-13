@@ -365,9 +365,16 @@ class LineageStoreManagerTest {
 
     // Core schema bootstrap alone intentionally has no lineage tables. JDBC lineage writes must
     // fail clearly instead of silently dropping data.
-    assertThrows(
-        IllegalStateException.class,
-        () -> v4LineageStoreManager.upsertDatasets(List.of(sourceDataset())));
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> v4LineageStoreManager.upsertDatasets(List.of(sourceDataset())));
+    assertEquals(
+        "Lineage store manager requires JDBC lineage schema version 1 or newer for realm"
+            + " 'TEST_REALM'; current lineage schema version is 0. Bootstrap the JDBC lineage"
+            + " schema with `polaris-admin bootstrap --schema-component-version lineage=1` before"
+            + " using relational-jdbc lineage persistence.",
+        exception.getMessage());
     assertThrows(
         IllegalStateException.class,
         () ->

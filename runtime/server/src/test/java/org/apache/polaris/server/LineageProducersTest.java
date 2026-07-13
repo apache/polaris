@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.config;
+package org.apache.polaris.server;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,8 +34,8 @@ import org.apache.polaris.extensions.lineage.NoopLineageStoreManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class ServiceProducersLineageTest {
-  private final ServiceProducers serviceProducers = new ServiceProducers();
+class LineageProducersTest {
+  private final LineageProducers producers = new LineageProducers();
   private final RealmContext realmContext = mock(RealmContext.class);
   private final MetaStoreManagerFactory metaStoreManagerFactory =
       mock(MetaStoreManagerFactory.class);
@@ -49,11 +49,11 @@ class ServiceProducersLineageTest {
   }
 
   @Test
-  void returnsNoopStoreManagerWhenLineageStoreDisabled() {
-    when(persistenceConfiguration.enabled()).thenReturn(false);
+  void returnsNoopStoreManagerForNoopPersistence() {
+    when(persistenceConfiguration.type()).thenReturn("noop");
 
     LineageStoreManager storeManager =
-        serviceProducers.lineageStoreManager(
+        producers.produceLineageStoreManager(
             realmContext, metaStoreManagerFactory, lineageConfiguration);
 
     assertThat(storeManager).isInstanceOf(NoopLineageStoreManager.class);
@@ -61,14 +61,13 @@ class ServiceProducersLineageTest {
   }
 
   @Test
-  void reusesMetastoreSessionWhenItImplementsLineageStoreManager() {
+  void reusesConfiguredSessionWhenItImplementsLineageStoreManager() {
     LineageStoreSession session = mock(LineageStoreSession.class);
-    when(persistenceConfiguration.enabled()).thenReturn(true);
     when(persistenceConfiguration.type()).thenReturn("relational-jdbc");
     when(metaStoreManagerFactory.getOrCreateSession(realmContext)).thenReturn(session);
 
     LineageStoreManager storeManager =
-        serviceProducers.lineageStoreManager(
+        producers.produceLineageStoreManager(
             realmContext, metaStoreManagerFactory, lineageConfiguration);
 
     assertThat(storeManager).isSameAs(session);
@@ -76,13 +75,12 @@ class ServiceProducersLineageTest {
   }
 
   @Test
-  void throwsWhenLineageStoreTypeUnsupported() {
-    when(persistenceConfiguration.enabled()).thenReturn(true);
+  void rejectsUnsupportedPersistenceType() {
     when(persistenceConfiguration.type()).thenReturn("custom");
 
     assertThatThrownBy(
             () ->
-                serviceProducers.lineageStoreManager(
+                producers.produceLineageStoreManager(
                     realmContext, metaStoreManagerFactory, lineageConfiguration))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("Unsupported lineage persistence type: custom");
@@ -91,15 +89,14 @@ class ServiceProducersLineageTest {
   }
 
   @Test
-  void throwsWhenConfiguredSessionDoesNotImplementLineageStoreManager() {
+  void rejectsSessionWithoutLineageStoreManager() {
     BasePersistence session = mock(BasePersistence.class);
-    when(persistenceConfiguration.enabled()).thenReturn(true);
     when(persistenceConfiguration.type()).thenReturn("relational-jdbc");
     when(metaStoreManagerFactory.getOrCreateSession(realmContext)).thenReturn(session);
 
     assertThatThrownBy(
             () ->
-                serviceProducers.lineageStoreManager(
+                producers.produceLineageStoreManager(
                     realmContext, metaStoreManagerFactory, lineageConfiguration))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining(LineageStoreManager.class.getSimpleName());

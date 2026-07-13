@@ -22,7 +22,6 @@ package org.apache.polaris.service.config;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,11 +30,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.bootstrap.ImmutableBootstrapOptions;
-import org.apache.polaris.core.persistence.bootstrap.ImmutableSchemaOptions;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.extensions.lineage.LineageConfiguration;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 
 /** Utility class for running per-realm bootstrap tasks each in a fresh Request Context. */
@@ -44,29 +40,23 @@ class Bootstrapper {
   private final ExecutorService executor;
   private final RealmContextHolder realmContextHolder;
   private final MetaStoreManagerFactory factory;
-  private final Instance<LineageConfiguration> lineageConfiguration;
 
   @Inject
   Bootstrapper(
       // Note: this executor is expected to NOT propagate CDI contexts to tasks.
       @Identifier("task-executor") ExecutorService executor,
       RealmContextHolder realmContextHolder,
-      MetaStoreManagerFactory factory,
-      Instance<LineageConfiguration> lineageConfiguration) {
+      MetaStoreManagerFactory factory) {
     this.executor = executor;
     this.realmContextHolder = realmContextHolder;
     this.factory = factory;
-    this.lineageConfiguration = lineageConfiguration;
   }
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realmIds, RootCredentialsSet rootCredentialsSet) {
     HashMap<String, PrincipalSecretsResult> result = new HashMap<>();
-    boolean lineagePersistenceEnabled = lineagePersistenceEnabled();
     for (String realmId : realmIds) {
-      Task t =
-          new Task(
-              realmContextHolder, realmId, rootCredentialsSet, factory, lineagePersistenceEnabled);
+      Task t = new Task(realmContextHolder, realmId, rootCredentialsSet, factory);
       try {
         // Submit an async task per realm to ensure it runs in a fresh RequestContext.
         // Note: simultaneous bootstrap of multiple realms is an edge case - no need
@@ -80,19 +70,11 @@ class Bootstrapper {
     return result;
   }
 
-  private boolean lineagePersistenceEnabled() {
-    if (lineageConfiguration == null || lineageConfiguration.isUnsatisfied()) {
-      return false;
-    }
-    return lineageConfiguration.get().persistence().enabled();
-  }
-
   private record Task(
       RealmContextHolder realmContextHolder,
       String realmId,
       RootCredentialsSet rootCredentialsSet,
-      MetaStoreManagerFactory factory,
-      boolean lineagePersistenceEnabled)
+      MetaStoreManagerFactory factory)
       implements Callable<Map<String, PrincipalSecretsResult>> {
 
     @Override
@@ -101,13 +83,7 @@ class Bootstrapper {
       // Note: each call to this method runs in a new CDI request context.
       // Make the realm ID effective in the current request context.
       realmContextHolder.set(() -> realmId);
-      return factory.bootstrapRealms(
-          ImmutableBootstrapOptions.builder()
-              .realms(Collections.singleton(realmId))
-              .rootCredentialsSet(rootCredentialsSet)
-              .schemaOptions(ImmutableSchemaOptions.builder().build())
-              .lineagePersistenceEnabled(lineagePersistenceEnabled)
-              .build());
+      return factory.bootstrapRealms(Collections.singleton(realmId), rootCredentialsSet);
     }
   }
 }

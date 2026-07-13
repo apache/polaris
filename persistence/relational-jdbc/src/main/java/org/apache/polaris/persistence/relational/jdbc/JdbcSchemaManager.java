@@ -117,8 +117,7 @@ final class JdbcSchemaManager {
             currentMetastoreVersion,
             requestedMetastoreVersion,
             entityTableExists));
-    if (bootstrapOptions.lineagePersistenceEnabled()
-        || isComponentRequested(bootstrapOptions, JdbcSchemaComponent.LINEAGE)) {
+    if (isComponentRequested(bootstrapOptions, JdbcSchemaComponent.LINEAGE)) {
       int requestedLineageVersion =
           JdbcBootstrapUtils.getRequestedSchemaVersion(
               bootstrapOptions, JdbcSchemaComponent.LINEAGE);

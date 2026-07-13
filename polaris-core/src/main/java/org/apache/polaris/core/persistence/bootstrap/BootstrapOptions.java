@@ -20,7 +20,6 @@
 package org.apache.polaris.core.persistence.bootstrap;
 
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
 
 @PolarisImmutable
 public interface BootstrapOptions {
@@ -29,9 +28,4 @@ public interface BootstrapOptions {
   RootCredentialsSet rootCredentialsSet();
 
   SchemaOptions schemaOptions();
-
-  @Value.Default
-  default boolean lineagePersistenceEnabled() {
-    return false;
-  }
 }

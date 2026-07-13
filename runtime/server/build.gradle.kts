@@ -33,6 +33,8 @@ val quarkusRunner =
   }
 
 dependencies {
+  implementation(project(":polaris-core"))
+  implementation(project(":polaris-extensions-lineage"))
   implementation(project(":polaris-runtime-service"))
 
   runtimeOnly("org.postgresql:postgresql")
@@ -41,7 +43,6 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
   runtimeOnly(project(":polaris-extensions-auth-ranger"))
-  runtimeOnly(project(":polaris-extensions-lineage"))
   runtimeOnly(project(":polaris-extensions-semantic-models"))
 
   val nonRestCatalogs = providers.gradleProperty("NonRESTCatalogs").orNull
@@ -58,6 +59,7 @@ dependencies {
     exclude(group = "com.google.protobuf", module = "protobuf-java-util")
   }
   implementation("io.quarkus:quarkus-container-image-docker")
+  implementation(libs.jakarta.enterprise.cdi.api)
 }
 
 quarkus {

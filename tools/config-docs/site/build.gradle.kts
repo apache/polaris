@@ -29,7 +29,6 @@ val genProjectPaths = listOf(
   ":polaris-async-api",
   ":polaris-core",
   ":polaris-extensions-auth-opa",
-  ":polaris-extensions-lineage",
   ":polaris-nodes-api",
   ":polaris-persistence-nosql-api",
   ":polaris-persistence-nosql-impl",

@@ -1768,7 +1768,7 @@ public class JdbcBasePersistenceImpl
             OptionalLong.of(dataset.getDatasetId()),
             dataset.getNamespace(),
             dataset.getName(),
-            null,
+            LineageNodeType.DATASET.name(),
             OptionalLong.of(dataset.getCreatedAt()),
             OptionalLong.of(dataset.getUpdatedAt()));
     return new LineageNode(
@@ -1786,7 +1786,7 @@ public class JdbcBasePersistenceImpl
     }
     throw new IllegalStateException(
         String.format(
-            "Lineage store manager requires JDBC lineage schema version %d or newer for realm '%s'; current lineage schema version is %d. Bootstrap the JDBC lineage schema to persist lineage.",
+            "Lineage store manager requires JDBC lineage schema version %d or newer for realm '%s'; current lineage schema version is %d. Bootstrap the JDBC lineage schema with `polaris-admin bootstrap --schema-component-version lineage=1` before using relational-jdbc lineage persistence.",
             MIN_LINEAGE_SCHEMA_VERSION, realmId, lineageSchemaVersion));
   }
 
