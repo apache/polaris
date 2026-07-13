@@ -39,6 +39,40 @@ public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase
   }
 
   @Test
+  public void testBootstrapWithExplicitLineageV1ComponentUsesCoreV4(QuarkusMainLauncher launcher) {
+    LaunchResult result =
+        launcher.launch(
+            "bootstrap",
+            "--schema-component-version",
+            "lineage=1",
+            "-r",
+            "realm1",
+            "-c",
+            "realm1,root,s3cr3t");
+    assertThat(result.exitCode()).isEqualTo(0);
+    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
+  }
+
+  @Test
+  public void testBootstrapAddsLineageV1ComponentToExistingCoreV4Realm(
+      QuarkusMainLauncher launcher) {
+    LaunchResult initialBootstrap =
+        launcher.launch("bootstrap", "-r", "realm1", "-c", "realm1,root,s3cr3t");
+    assertThat(initialBootstrap.exitCode()).isEqualTo(0);
+
+    LaunchResult componentBootstrap =
+        launcher.launch(
+            "bootstrap",
+            "--schema-component-version",
+            "lineage=1",
+            "-r",
+            "realm1",
+            "--print-credentials");
+    assertThat(componentBootstrap.exitCode()).isEqualTo(0);
+    assertThat(componentBootstrap.getOutput()).contains("Bootstrap completed successfully.");
+  }
+
+  @Test
   public void testBootstrap(QuarkusMainLauncher launcher) {
     // Test that bootstrap command works successfully.
     // Metrics tables are now part of the base schema (v4) and bootstrapped automatically.

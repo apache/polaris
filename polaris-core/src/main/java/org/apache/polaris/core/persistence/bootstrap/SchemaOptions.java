@@ -19,10 +19,13 @@
 
 package org.apache.polaris.core.persistence.bootstrap;
 
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 @PolarisImmutable
 public interface SchemaOptions {
   Optional<Integer> schemaVersion();
+
+  Map<String, Integer> schemaComponentVersions();
 }

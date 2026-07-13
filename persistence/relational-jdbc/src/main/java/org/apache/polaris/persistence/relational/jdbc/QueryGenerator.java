@@ -358,7 +358,14 @@ public class QueryGenerator {
 
   @VisibleForTesting
   static PreparedQuery generateVersionQuery() {
-    return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
+    return generateVersionQuery(JdbcSchemaComponent.METASTORE);
+  }
+
+  @VisibleForTesting
+  static PreparedQuery generateVersionQuery(JdbcSchemaComponent component) {
+    return new PreparedQuery(
+        "SELECT version_value FROM POLARIS_SCHEMA.VERSION WHERE version_key = ?",
+        List.of(component.versionKey()));
   }
 
   @VisibleForTesting

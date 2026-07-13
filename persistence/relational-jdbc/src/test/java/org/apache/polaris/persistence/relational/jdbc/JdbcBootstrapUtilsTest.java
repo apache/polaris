@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
@@ -161,15 +162,30 @@ class JdbcBootstrapUtilsTest {
     void whenVersionIsInFileName_shouldParseAndReturnIt(int expectedVersion) {
       when(mockSchemaOptions.schemaVersion()).thenReturn(Optional.of(expectedVersion));
 
-      int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
+      int result =
+          JdbcBootstrapUtils.getRequestedSchemaVersion(
+              mockBootstrapOptions, JdbcSchemaComponent.METASTORE);
       assertEquals(expectedVersion, result);
     }
 
     @Test
     void whenSchemaOptionsIsNull_shouldReturnDefault() {
       when(mockBootstrapOptions.schemaOptions()).thenReturn(null);
-      int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
+      int result =
+          JdbcBootstrapUtils.getRequestedSchemaVersion(
+              mockBootstrapOptions, JdbcSchemaComponent.METASTORE);
       assertEquals(-1, result);
+    }
+
+    @Test
+    void whenComponentSchemaVersionIsPresent_shouldReturnIt() {
+      when(mockSchemaOptions.schemaComponentVersions()).thenReturn(Map.of("lineage", 1));
+
+      int result =
+          JdbcBootstrapUtils.getRequestedSchemaVersion(
+              mockBootstrapOptions, JdbcSchemaComponent.LINEAGE);
+
+      assertEquals(1, result);
     }
   }
 }

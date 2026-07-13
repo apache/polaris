@@ -19,6 +19,7 @@
 package org.apache.polaris.admintool;
 
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
@@ -94,6 +95,13 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
           description =
               "The version of the schema to load. The set of valid values depends on the backend type. If omitted the latest schema version will be used.")
       Integer schemaVersion;
+
+      @CommandLine.Option(
+          names = {"--schema-component-version"},
+          paramLabel = "<component=version>",
+          description =
+              "The version of an optional schema component to load. May be specified multiple times, for example: lineage=1.")
+      List<String> schemaComponentVersions;
     }
   }
 
@@ -135,6 +143,19 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
 
         if (inputOptions.schemaInputOptions.schemaVersion != null) {
           builder.schemaVersion(inputOptions.schemaInputOptions.schemaVersion);
+        }
+        if (inputOptions.schemaInputOptions.schemaComponentVersions != null) {
+          Map<String, Integer> componentVersions = new HashMap<>();
+          inputOptions.schemaInputOptions.schemaComponentVersions.forEach(
+              option -> {
+                String[] parts = option.split("=", 2);
+                if (parts.length != 2) {
+                  throw new IllegalArgumentException(
+                      "Schema component versions must use <component=version> syntax: " + option);
+                }
+                componentVersions.put(parts[0], Integer.parseInt(parts[1]));
+              });
+          builder.schemaComponentVersions(componentVersions);
         }
 
         schemaOptions = builder.build();
