@@ -547,9 +547,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   /**
    * Rejects a caller-supplied table or view location unless the catalog is configured to allow it.
-   * By default Polaris generates the managed location for new tables and views; honoring a
-   * caller-specified location is opt-in (see {@link
-   * FeatureConfiguration#ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION}). This covers both the top-level
+   * Caller-specified locations are allowed by default and can be disabled with {@link
+   * FeatureConfiguration#ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION}. This covers both the top-level
    * {@code location} field and the {@code write.data.path} / {@code write.metadata.path}
    * properties.
    */

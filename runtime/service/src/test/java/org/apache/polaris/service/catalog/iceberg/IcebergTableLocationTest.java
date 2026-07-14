@@ -20,7 +20,9 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
+import static org.apache.polaris.core.config.FeatureConfiguration.DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED;
 import static org.apache.polaris.core.config.FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED;
+import static org.apache.polaris.core.config.FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,9 +40,14 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.CreateViewRequest;
+import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.util.LocationUtil;
+import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
+import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -48,6 +55,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -55,7 +63,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Tests for the unique default table location feature ({@link
  * org.apache.polaris.core.config.FeatureConfiguration#DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED}) and
- * the opt-in for caller-specified locations ({@link
+ * the gate for caller-specified locations ({@link
  * org.apache.polaris.core.config.FeatureConfiguration#ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION}).
  */
 public class IcebergTableLocationTest {
@@ -152,6 +160,82 @@ public class IcebergTableLocationTest {
     }
   }
 
+  /** Stages a table without a caller-specified location and returns its generated location. */
+  private String stageTableWithName(TestServices services, String name) {
+    CreateTableRequest createTableRequest =
+        CreateTableRequest.builder().withName(name).withSchema(SCHEMA).stageCreate().build();
+    try (Response response =
+        services
+            .restApi()
+            .createTable(
+                CATALOG,
+                NAMESPACE,
+                createTableRequest,
+                null,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return response.readEntity(LoadTableResponse.class).tableMetadata().location();
+    }
+  }
+
+  /** Creates a view without a caller-specified location and returns its generated location. */
+  private String createViewWithName(TestServices services, String name) {
+    CreateViewRequest createViewRequest = createViewRequest(name, null);
+    try (Response response =
+        services
+            .restApi()
+            .createView(
+                CATALOG,
+                NAMESPACE,
+                createViewRequest,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return response.readEntity(LoadViewResponse.class).metadata().location();
+    }
+  }
+
+  private CreateViewRequest createViewRequest(String name, String location) {
+    ImmutableCreateViewRequest.Builder builder =
+        ImmutableCreateViewRequest.builder()
+            .name(name)
+            .schema(SCHEMA)
+            .viewVersion(
+                ImmutableViewVersion.builder()
+                    .versionId(1)
+                    .timestampMillis(System.currentTimeMillis())
+                    .schemaId(SCHEMA.schemaId())
+                    .defaultNamespace(Namespace.of(NAMESPACE))
+                    .addRepresentations(
+                        ImmutableSQLViewRepresentation.builder()
+                            .sql("SELECT 1")
+                            .dialect("spark")
+                            .build())
+                    .build());
+    if (location != null) {
+      builder.location(location);
+    }
+    return builder.build();
+  }
+
+  private static void assertUniquePrefixedLocation(
+      String location, String baseLocation, String name) {
+    String normalizedLocation = LocationUtil.stripTrailingSlash(location);
+    TableIdentifier identifier = TableIdentifier.of(Namespace.of(NAMESPACE), name);
+    String expectedPrefix =
+        String.format(
+            "%s/%s/%s/%s/%s-",
+            baseLocation,
+            CATALOG,
+            LocationUtils.computeHash(identifier.toString()),
+            NAMESPACE,
+            name);
+    assertThat(normalizedLocation).startsWith(expectedPrefix);
+    assertThat(normalizedLocation.substring(expectedPrefix.length())).matches("[0-9a-f]{32}");
+  }
+
   private Response.StatusType createTableWithLocation(TestServices services, String location) {
     return submitCreateTable(
         services,
@@ -222,7 +306,48 @@ public class IcebergTableLocationTest {
   }
 
   @Test
-  @DisplayName("Caller-specified location is rejected when the opt-in is disabled")
+  @DisplayName("Unique and object-storage-prefix default locations compose")
+  void testUniqueAndObjectStoragePrefixLocationsCompose(@TempDir Path tempDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(
+                serverConfig(
+                    DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.key(), "true",
+                    OPTIMIZED_SIBLING_CHECK.key(), "true"))
+            .build();
+    String baseLocation =
+        LocationUtil.stripTrailingSlash(tempDir.toAbsolutePath().toUri().toString());
+    createCatalogAndNamespace(
+        services,
+        Map.of(
+            DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED.catalogConfig(), "true",
+            ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"),
+        baseLocation);
+
+    String directTableName = getTableName();
+    String firstLocation = createTableWithName(services, directTableName);
+    assertUniquePrefixedLocation(firstLocation, baseLocation, directTableName);
+
+    TableIdentifier directTableIdentifier =
+        TableIdentifier.of(Namespace.of(NAMESPACE), directTableName);
+    services
+        .catalogAdapter()
+        .newHandler(services.securityContext(), CATALOG)
+        .dropTableWithoutPurge(directTableIdentifier);
+    String secondLocation = createTableWithName(services, directTableName);
+    assertUniquePrefixedLocation(secondLocation, baseLocation, directTableName);
+    assertThat(secondLocation).isNotEqualTo(firstLocation);
+
+    String stagedTableName = getTableName();
+    assertUniquePrefixedLocation(
+        stageTableWithName(services, stagedTableName), baseLocation, stagedTableName);
+
+    String viewName = "view_" + UUID.randomUUID();
+    assertUniquePrefixedLocation(createViewWithName(services, viewName), baseLocation, viewName);
+  }
+
+  @Test
+  @DisplayName("Caller-specified location is rejected when the location gate is disabled")
   void testClientSpecifiedLocationRejectedWhenDisabled(@TempDir Path tempDir) {
     TestServices services =
         TestServices.builder()
@@ -234,6 +359,96 @@ public class IcebergTableLocationTest {
 
     String someLocation =
         String.format("%s/%s/%s/caller-location", baseLocation, CATALOG, NAMESPACE);
+    assertThatThrownBy(() -> createTableWithLocation(services, someLocation))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("the location field");
+  }
+
+  @Test
+  @DisplayName("Caller-specified location is rejected for staged creates when disabled")
+  void testClientSpecifiedLocationRejectedForStagedCreate(@TempDir Path tempDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(serverConfig(ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.key(), "false"))
+            .build();
+    String baseLocation =
+        LocationUtil.stripTrailingSlash(tempDir.toAbsolutePath().toUri().toString());
+    createCatalogAndNamespace(services, Map.of(), baseLocation);
+
+    String someLocation =
+        String.format("%s/%s/%s/staged-caller-location", baseLocation, CATALOG, NAMESPACE);
+    CreateTableRequest request =
+        CreateTableRequest.builder()
+            .withName(getTableName())
+            .withLocation(someLocation)
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+    assertThatThrownBy(() -> submitCreateTable(services, request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("the location field");
+  }
+
+  @Test
+  @DisplayName("Caller-specified locations are rejected for view create and replace when disabled")
+  void testClientSpecifiedLocationRejectedForViews(@TempDir Path tempDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(serverConfig(ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.key(), "false"))
+            .build();
+    String baseLocation =
+        LocationUtil.stripTrailingSlash(tempDir.toAbsolutePath().toUri().toString());
+    createCatalogAndNamespace(services, Map.of(), baseLocation);
+
+    String someLocation =
+        String.format("%s/%s/%s/view-caller-location", baseLocation, CATALOG, NAMESPACE);
+    assertThatThrownBy(
+            () ->
+                services
+                    .restApi()
+                    .createView(
+                        CATALOG,
+                        NAMESPACE,
+                        createViewRequest("view_" + UUID.randomUUID(), someLocation),
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("the location field");
+
+    String viewName = "view_" + UUID.randomUUID();
+    createViewWithName(services, viewName);
+    TableIdentifier viewIdentifier = TableIdentifier.of(Namespace.of(NAMESPACE), viewName);
+    UpdateTableRequest setLocation =
+        UpdateTableRequest.create(
+            viewIdentifier,
+            List.of(),
+            List.of(new MetadataUpdate.SetLocation(someLocation + "-replacement")));
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogAdapter()
+                    .newHandler(services.securityContext(), CATALOG)
+                    .replaceView(viewIdentifier, setLocation))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("the location field");
+  }
+
+  @Test
+  @DisplayName("Catalog-scoped location gate overrides the realm configuration")
+  void testClientSpecifiedLocationCatalogOverride(@TempDir Path tempDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(serverConfig(ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.key(), "true"))
+            .build();
+    String baseLocation =
+        LocationUtil.stripTrailingSlash(tempDir.toAbsolutePath().toUri().toString());
+    createCatalogAndNamespace(
+        services,
+        Map.of(ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.catalogConfig(), "false"),
+        baseLocation);
+
+    String someLocation =
+        String.format("%s/%s/%s/catalog-override", baseLocation, CATALOG, NAMESPACE);
     assertThatThrownBy(() -> createTableWithLocation(services, someLocation))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("the location field");
@@ -364,7 +579,7 @@ public class IcebergTableLocationTest {
   }
 
   @Test
-  @DisplayName("Caller-specified location is honored when the opt-in is enabled")
+  @DisplayName("Caller-specified location is honored when the location gate is enabled")
   void testClientSpecifiedLocationHonoredWhenEnabled(@TempDir Path tempDir) {
     TestServices services =
         TestServices.builder()

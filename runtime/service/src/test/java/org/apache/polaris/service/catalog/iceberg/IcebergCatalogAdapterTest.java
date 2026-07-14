@@ -20,15 +20,18 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Strings;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -40,9 +43,11 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.service.TestServices;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -59,7 +64,14 @@ public class IcebergCatalogAdapterTest {
   public void setUp() {
     // Set up test services with catalog federation enabled
     testServices =
-        TestServices.builder().config(Map.of("ENABLE_CATALOG_FEDERATION", "true")).build();
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ENABLE_CATALOG_FEDERATION",
+                    "true",
+                    FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.key(),
+                    "false"))
+            .build();
     catalogAdapter = Mockito.spy(testServices.catalogAdapter());
 
     // Prepare storage and connection configs for a federated Iceberg REST catalog
@@ -101,6 +113,40 @@ public class IcebergCatalogAdapterTest {
                     .build()),
             testServices.realmContext(),
             testServices.securityContext());
+  }
+
+  @Test
+  void testClientSpecifiedLocationAllowedForFederatedCatalog() throws IOException {
+    try (InMemoryCatalog inMemoryCatalog = new InMemoryCatalog()) {
+      inMemoryCatalog.initialize("inMemory", Map.of());
+      mockCatalogAdapter(inMemoryCatalog);
+
+      Namespace namespace = Namespace.of("ns");
+      inMemoryCatalog.createNamespace(namespace);
+      String tableName = "table";
+      String location = "s3://externally-owned-bucket/client-location";
+      CreateTableRequest request =
+          CreateTableRequest.builder()
+              .withName(tableName)
+              .withSchema(new Schema())
+              .withLocation(location)
+              .build();
+
+      try (Response response =
+          catalogAdapter.createTable(
+              FEDERATED_CATALOG_NAME,
+              namespace.toString(),
+              request,
+              null,
+              UUID.randomUUID(),
+              testServices.realmContext(),
+              testServices.securityContext())) {
+        Assertions.assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      }
+      Assertions.assertThat(
+              inMemoryCatalog.loadTable(TableIdentifier.of(namespace, tableName)).location())
+          .isEqualTo(location);
+    }
   }
 
   @ParameterizedTest(name = "[{index}] initialPageToken={0}, pageSize={1}")

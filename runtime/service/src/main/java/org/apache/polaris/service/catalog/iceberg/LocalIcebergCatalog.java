@@ -515,6 +515,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
+    String prefixedLocation = applyDefaultLocationObjectStoragePrefix(tableIdentifier, null);
+    if (prefixedLocation != null) {
+      return prefixedLocation;
+    }
+
     String namespaceLocation;
     if (tableIdentifier.namespace().isEmpty()) {
       namespaceLocation = defaultBaseLocation;
@@ -528,14 +533,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> namespacePath = resolvedNamespace.getRawFullPath();
       namespaceLocation = resolveLocationForPath(diagnostics, namespacePath);
     }
-    // Give the generated location a unique, unpredictable suffix so that no two tables share a
-    // path prefix.
-    String tableLocation = tableIdentifier.name();
+    return SLASH.join(namespaceLocation, defaultTableLikeName(tableIdentifier));
+  }
+
+  private String defaultTableLikeName(TableIdentifier tableIdentifier) {
     if (realmConfig.getConfig(
         FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED, catalogEntity)) {
-      tableLocation = LocationUtil.tableLocation(tableIdentifier, true);
+      return LocationUtil.tableLocation(tableIdentifier, true);
     }
-    return SLASH.join(namespaceLocation, tableLocation);
+    return tableIdentifier.name();
   }
 
   @Override
@@ -1189,7 +1195,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     locationBuilder
         .append("/")
-        .append(URLEncoder.encode(tableIdentifier.name(), Charset.defaultCharset()))
+        .append(URLEncoder.encode(defaultTableLikeName(tableIdentifier), Charset.defaultCharset()))
         .append("/");
     return locationBuilder.toString();
   }

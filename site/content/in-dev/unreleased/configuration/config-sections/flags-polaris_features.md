@@ -37,7 +37,10 @@ When set, the base location for a table or namespace will have `/` added as a su
 
 ##### `polaris.features."ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION"`
 
-If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties) explicitly supplied in a create-table or create-view request, subject to the usual allowed-location and overlap validation. If set to false, such a request is rejected and Polaris always generates the managed location. See DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.
+If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties)
+explicitly supplied in a create or update request, subject to the usual structured-location, allowed-location, metadata-location,
+and overlap validation. If set to false, such requests are rejected, regardless of the other location compatibility flags.
+This setting does not apply to federated catalogs.
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -254,7 +257,7 @@ If set to true, clean up data when a namespace is dropped
 
 ##### `polaris.features."DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED"`
 
-When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog.
+When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog. This layout composes with DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED, which controls whether the final table or view directory has a unique suffix.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -264,7 +267,7 @@ When enabled, Iceberg tables and views created without a location specified will
 
 ##### `polaris.features."DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED"`
 
-When enabled (the default), a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix. When disabled, the generated location is the legacy `<namespace location>/<table name>` form.
+When enabled (the default), a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix. When disabled, the generated location uses the legacy table or view name. This setting composes with DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED: the prefix flag controls the parent layout, while this flag controls the final directory name.
 
 - **Type:** `Boolean`
 - **Default:** `true`

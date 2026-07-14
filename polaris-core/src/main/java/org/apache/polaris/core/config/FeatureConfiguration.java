@@ -356,9 +356,10 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If set to true (the default), Polaris honors a `location` (and the "
                   + "`write.data.path` / `write.metadata.path` properties) explicitly supplied in a "
-                  + "create-table or create-view request, subject to the usual allowed-location and "
-                  + "overlap validation. If set to false, such a request is rejected and Polaris "
-                  + "always generates the managed location. See DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.")
+                  + "create or update request, subject to the usual structured-location, "
+                  + "allowed-location, metadata-location, and overlap validation. If set to false, "
+                  + "such requests are rejected, regardless of the other location compatibility flags."
+                  + "This setting does not apply to federated catalogs. ")
           .defaultValue(true)
           .buildFeatureConfiguration();
 
