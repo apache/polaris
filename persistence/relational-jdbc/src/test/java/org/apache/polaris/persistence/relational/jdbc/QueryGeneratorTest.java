@@ -349,13 +349,14 @@ public class QueryGeneratorTest {
 
   @Test
   void testGenerateOverlapQuery() {
+    // s3://bucket/tmp/location/ → withoutScheme //bucket/tmp/location/
+    // Slash-only prefixes "/" and "//" from the scheme separator are not emitted.
     assertEquals(
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
             + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
             + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
             + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
-            + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
-            + " location_without_scheme = ? OR location_without_scheme LIKE ?)",
+            + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
         QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/").sql());
     Assertions.assertThatCollection(
             QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/")
@@ -363,36 +364,48 @@ public class QueryGeneratorTest {
         .containsExactly(
             "realmId",
             -123L,
-            "/",
-            "//",
             "//bucket/",
             "//bucket/tmp/",
             "//bucket/tmp/location/",
             "//bucket/tmp/location/%");
 
+    // Absolute path becomes file:///tmp/location/ → withoutScheme ///tmp/location/
+    // Slash-only prefixes "/", "//", "///" are not emitted.
     assertEquals(
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
             + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
             + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
-            + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ? OR location_without_scheme = ?"
-            + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
+            + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
+            + " OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
         QueryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").sql());
     Assertions.assertThatCollection(
             QueryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").parameters())
-        .containsExactly(
-            "realmId", -123L, "/", "//", "///", "///tmp/", "///tmp/location/", "///tmp/location/%");
+        .containsExactly("realmId", -123L, "///tmp/", "///tmp/location/", "///tmp/location/%");
 
     assertEquals(
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
             + " create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp,"
             + " properties, internal_properties, grant_records_version, location_without_scheme"
             + " FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
-            + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
+            + " OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
         QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/").sql());
     Assertions.assertThatCollection(
             QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/")
                 .parameters())
         .containsExactly(
-            "realmId", -123L, "/", "//", "//バケツ/", "//バケツ/\"loc.ation\"/", "//バケツ/\"loc.ation\"/%");
+            "realmId", -123L, "//バケツ/", "//バケツ/\"loc.ation\"/", "//バケツ/\"loc.ation\"/%");
+  }
+
+  @Test
+  void generateOverlapQueryDoesNotEmitSlashOnlyPrefixes() {
+    Assertions.assertThat(
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/ns/t/")
+                .parameters())
+        .doesNotContain("/", "//", "///");
+    Assertions.assertThat(
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "file:///tmp/data/")
+                .parameters())
+        .filteredOn(p -> p instanceof String)
+        .noneMatch(p -> QueryGenerator.isSlashOnly((String) p));
   }
 }
