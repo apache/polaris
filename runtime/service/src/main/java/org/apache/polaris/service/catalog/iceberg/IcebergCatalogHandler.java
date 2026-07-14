@@ -1578,17 +1578,17 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
   }
 
-  private record FileToDelete(FileIO io, String location) {
+  record FileToDelete(FileIO io, String location) {
     void cleanup() {
       try {
         io.deleteFile(location);
       } catch (Exception e) {
-        LOGGER.warn("Failed to clean up metadata file {} after transaction failure", location, e);
+        LOGGER.warn("Failed to clean up metadata file {} after commit failure", location, e);
       }
     }
   }
 
-  private static void cleanupWrittenMetadataFiles(List<FileToDelete> writtenMetadataFiles) {
+  static void cleanupWrittenMetadataFiles(List<FileToDelete> writtenMetadataFiles) {
     writtenMetadataFiles.forEach(FileToDelete::cleanup);
   }
 

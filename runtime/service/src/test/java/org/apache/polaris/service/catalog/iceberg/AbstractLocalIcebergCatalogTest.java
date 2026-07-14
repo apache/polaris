@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -3263,4 +3264,67 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
       "Test is not compatible with Polaris: rename-table op does not change the table location")
   @Override
   public void dropAfterRenameDoesntCorruptTable() {}
+
+  @Test
+  public void testFailedTableCommitDeletesOrphanMetadataFile() {
+    LocalIcebergCatalog catalog = this.catalog();
+    if (this.requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+
+    catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+
+    List<String> writtenLocations = new ArrayList<>();
+    FileIO spyIO = spy(fileIO);
+    doAnswer(
+            inv -> {
+              writtenLocations.add(inv.getArgument(0));
+              return inv.callRealMethod();
+            })
+        .when(spyIO)
+        .newOutputFile(anyString());
+
+    TableOperations realOps = ((BaseTable) catalog.loadTable(TABLE)).operations();
+    TableOperations spyOps = spy(realOps);
+    Mockito.when(spyOps.io()).thenReturn(spyIO);
+
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+
+    TableMetadata staleBase = realOps.current();
+    TableMetadata attempted =
+        TableMetadata.buildFrom(staleBase).setProperties(Map.of("orphan-check", "v1")).build();
+
+    Assertions.assertThatThrownBy(() -> spyOps.commit(staleBase, attempted))
+        .isInstanceOf(CommitFailedException.class);
+
+    Assertions.assertThat(writtenLocations).isNotEmpty();
+    String orphanLocation = writtenLocations.get(writtenLocations.size() - 1);
+    Assertions.assertThat(fileIO.fileExists(orphanLocation)).isFalse();
+  }
+
+  @Test
+  public void testFailedRegisterTableDoesNotDeleteCallerProvidedMetadataFile() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_orphan_guard");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table created = catalog.buildTable(table, SCHEMA).create();
+    TableMetadata currentMetadata = ((BaseTable) created).operations().current();
+    String metadataDir =
+        currentMetadata
+            .metadataFileLocation()
+            .substring(0, currentMetadata.metadataFileLocation().lastIndexOf('/') + 1);
+    String externalMetadataLocation = metadataDir + "external-v1.metadata.json";
+    fileIO.addFile(
+        externalMetadataLocation, TableMetadataParser.toJson(currentMetadata).getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(
+            () -> catalog.registerTable(table, externalMetadataLocation, false))
+        .isInstanceOf(AlreadyExistsException.class);
+
+    Assertions.assertThat(fileIO.fileExists(externalMetadataLocation)).isTrue();
+  }
 }

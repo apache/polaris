@@ -161,6 +161,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   private static final Joiner SLASH = Joiner.on("/");
 
+  /** Result of {@code writeNewMetadataIfRequired}: the file location and whether we wrote it. */
+  record MetadataWriteResult(String location, boolean written) {}
+
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
         // Default arguments from BaseMetastoreTableOperation only stop retries on
@@ -1879,86 +1882,98 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   PolarisStorageActions.WRITE,
                   PolarisStorageActions.LIST));
 
-      String newLocation = writeNewMetadataIfRequired(base == null, metadata);
+      MetadataWriteResult writeResult = writeNewMetadataIfRequired(base == null, metadata);
+      String newLocation = writeResult.location();
       String oldLocation = base == null ? null : base.metadataFileLocation();
-
-      // TODO: Consider using the entity from doRefresh() directly to do the conflict detection
-      // instead of a two-layer CAS (checking metadataLocation to detect concurrent modification
-      // between doRefresh() and doCommit(), and then updateEntityPropertiesIfNotChanged to detect
-      // concurrent
-      // modification between our checking of unchanged metadataLocation here and actual
-      // persistence-layer commit).
-      PolarisResolvedPathWrapper resolvedPath =
-          resolvedEntityView.getPassthroughResolvedPath(
-              ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
-      if (resolvedPath != null && resolvedPath.getRawLeafEntity() != null) {
-        var subType = resolvedPath.getRawLeafEntity().getSubType();
-        if (subType != PolarisEntitySubType.ICEBERG_TABLE) {
-          throw alreadyExistsExceptionWithSameNameForTableLikeEntity(tableIdentifier, subType);
+      boolean writeSucceeded = false;
+      try {
+        // TODO: Consider using the entity from doRefresh() directly to do the conflict detection
+        // instead of a two-layer CAS (checking metadataLocation to detect concurrent modification
+        // between doRefresh() and doCommit(), and then updateEntityPropertiesIfNotChanged to detect
+        // concurrent
+        // modification between our checking of unchanged metadataLocation here and actual
+        // persistence-layer commit).
+        PolarisResolvedPathWrapper resolvedPath =
+            resolvedEntityView.getPassthroughResolvedPath(
+                ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
+        if (resolvedPath != null && resolvedPath.getRawLeafEntity() != null) {
+          var subType = resolvedPath.getRawLeafEntity().getSubType();
+          if (subType != PolarisEntitySubType.ICEBERG_TABLE) {
+            throw alreadyExistsExceptionWithSameNameForTableLikeEntity(tableIdentifier, subType);
+          }
         }
-      }
-      Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
-      IcebergTableLikeEntity entity =
-          IcebergTableLikeEntity.of(resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
-      String existingLocation;
-      if (null == entity) {
-        existingLocation = null;
-        Map<String, String> internalProperties =
-            idempotencyInternalProperties(storedProperties, null);
-        entity =
-            new IcebergTableLikeEntity.Builder(
-                    PolarisEntitySubType.ICEBERG_TABLE,
-                    tableIdentifier,
-                    Map.of(),
-                    internalProperties,
-                    newLocation)
-                .setCatalogId(getCatalogId())
-                .setBaseLocation(metadata.location())
-                .setId(
-                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
-                .build();
-      } else {
-        existingLocation = entity.getMetadataLocation();
-        Map<String, String> internalProperties =
-            idempotencyInternalProperties(storedProperties, entity);
-        entity =
-            new IcebergTableLikeEntity.Builder(entity)
-                .setInternalProperties(internalProperties)
-                .setBaseLocation(metadata.location())
-                .setMetadataLocation(newLocation)
-                .build();
-      }
-      if (!Objects.equal(existingLocation, oldLocation)) {
-        if (null == base) {
-          throw alreadyExistsExceptionForTableLikeEntity(
-              fullTableName, PolarisEntitySubType.ICEBERG_TABLE);
+        Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
+        IcebergTableLikeEntity entity =
+            IcebergTableLikeEntity.of(
+                resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
+        String existingLocation;
+        if (null == entity) {
+          existingLocation = null;
+          Map<String, String> internalProperties =
+              idempotencyInternalProperties(storedProperties, null);
+          entity =
+              new IcebergTableLikeEntity.Builder(
+                      PolarisEntitySubType.ICEBERG_TABLE,
+                      tableIdentifier,
+                      Map.of(),
+                      internalProperties,
+                      newLocation)
+                  .setCatalogId(getCatalogId())
+                  .setBaseLocation(metadata.location())
+                  .setId(
+                      getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
+                  .build();
+        } else {
+          existingLocation = entity.getMetadataLocation();
+          Map<String, String> internalProperties =
+              idempotencyInternalProperties(storedProperties, entity);
+          entity =
+              new IcebergTableLikeEntity.Builder(entity)
+                  .setInternalProperties(internalProperties)
+                  .setBaseLocation(metadata.location())
+                  .setMetadataLocation(newLocation)
+                  .build();
+        }
+        if (!Objects.equal(existingLocation, oldLocation)) {
+          if (null == base) {
+            throw alreadyExistsExceptionForTableLikeEntity(
+                fullTableName, PolarisEntitySubType.ICEBERG_TABLE);
+          }
+
+          if (null == existingLocation) {
+            throw notFoundExceptionForTableLikeEntity(
+                fullTableName, PolarisEntitySubType.ICEBERG_TABLE);
+          }
+
+          throw new CommitFailedException(
+              "Cannot commit to table %s metadata location from %s to %s "
+                  + "because it has been concurrently modified to %s",
+              tableIdentifier, oldLocation, newLocation, existingLocation);
         }
 
         if (null == existingLocation) {
-          throw notFoundExceptionForTableLikeEntity(
-              fullTableName, PolarisEntitySubType.ICEBERG_TABLE);
+          createTableLike(tableIdentifier, entity);
+        } else {
+          updateTableLike(tableIdentifier, entity);
         }
-
-        throw new CommitFailedException(
-            "Cannot commit to table %s metadata location from %s to %s "
-                + "because it has been concurrently modified to %s",
-            tableIdentifier, oldLocation, newLocation, existingLocation);
-      }
-
-      // We diverge from `BaseMetastoreTableOperations` in the below code block
-      if (makeMetadataCurrentOnCommit) {
-        currentMetadata =
-            TableMetadata.buildFrom(metadata)
-                .withMetadataLocation(newLocation)
-                .discardChanges()
-                .build();
-        currentMetadataLocation = newLocation;
-      }
-
-      if (null == existingLocation) {
-        createTableLike(tableIdentifier, entity);
-      } else {
-        updateTableLike(tableIdentifier, entity);
+        // We diverge from `BaseMetastoreTableOperations`: only update the in-memory state after
+        // the metastore persistence succeeds. If we updated it before and persistence threw,
+        // the finally-block cleanup would delete newLocation while this ops instance still
+        // pointed at it — leaving a dangling reference until the caller refreshes.
+        if (makeMetadataCurrentOnCommit) {
+          currentMetadata =
+              TableMetadata.buildFrom(metadata)
+                  .withMetadataLocation(newLocation)
+                  .discardChanges()
+                  .build();
+          currentMetadataLocation = newLocation;
+        }
+        writeSucceeded = true;
+      } finally {
+        if (!writeSucceeded && writeResult.written()) {
+          IcebergCatalogHandler.cleanupWrittenMetadataFiles(
+              List.of(new IcebergCatalogHandler.FileToDelete(io(), newLocation)));
+        }
       }
     }
 
@@ -2032,10 +2047,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       };
     }
 
-    protected String writeNewMetadataIfRequired(boolean newTable, TableMetadata metadata) {
-      return newTable && metadata.metadataFileLocation() != null
-          ? metadata.metadataFileLocation()
-          : writeNewMetadata(metadata, version + 1);
+    protected MetadataWriteResult writeNewMetadataIfRequired(
+        boolean newTable, TableMetadata metadata) {
+      if (newTable && metadata.metadataFileLocation() != null) {
+        return new MetadataWriteResult(metadata.metadataFileLocation(), false);
+      }
+      return new MetadataWriteResult(writeNewMetadata(metadata, version + 1), true);
     }
 
     protected String writeNewMetadata(TableMetadata metadata, int newVersion) {
@@ -2323,53 +2340,64 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               tableProperties,
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
 
-      String newLocation = writeNewMetadataIfRequired(metadata);
+      MetadataWriteResult writeResult = writeNewMetadataIfRequired(metadata);
+      String newLocation = writeResult.location();
       String oldLocation = base == null ? null : currentMetadataLocation;
-
-      IcebergTableLikeEntity entity =
-          IcebergTableLikeEntity.of(
-              resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
-      String existingLocation;
-      if (null == entity) {
-        existingLocation = null;
-        entity =
-            new IcebergTableLikeEntity.Builder(
-                    PolarisEntitySubType.ICEBERG_VIEW, identifier, newLocation)
-                .setCatalogId(getCatalogId())
-                .setId(
-                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
-                .build();
-      } else {
-        existingLocation = entity.getMetadataLocation();
-        entity =
-            new IcebergTableLikeEntity.Builder(entity).setMetadataLocation(newLocation).build();
-      }
-      if (!Objects.equal(existingLocation, oldLocation)) {
-        if (null == base) {
-          throw alreadyExistsExceptionForTableLikeEntity(
-              identifier, PolarisEntitySubType.ICEBERG_VIEW);
+      boolean writeSucceeded = false;
+      try {
+        IcebergTableLikeEntity entity =
+            IcebergTableLikeEntity.of(
+                resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
+        String existingLocation;
+        if (null == entity) {
+          existingLocation = null;
+          entity =
+              new IcebergTableLikeEntity.Builder(
+                      PolarisEntitySubType.ICEBERG_VIEW, identifier, newLocation)
+                  .setCatalogId(getCatalogId())
+                  .setId(
+                      getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
+                  .build();
+        } else {
+          existingLocation = entity.getMetadataLocation();
+          entity =
+              new IcebergTableLikeEntity.Builder(entity).setMetadataLocation(newLocation).build();
         }
+        if (!Objects.equal(existingLocation, oldLocation)) {
+          if (null == base) {
+            throw alreadyExistsExceptionForTableLikeEntity(
+                identifier, PolarisEntitySubType.ICEBERG_VIEW);
+          }
 
+          if (null == existingLocation) {
+            throw notFoundExceptionForTableLikeEntity(
+                identifier, PolarisEntitySubType.ICEBERG_VIEW);
+          }
+
+          throw new CommitFailedException(
+              "Cannot commit to view %s metadata location from %s to %s "
+                  + "because it has been concurrently modified to %s",
+              identifier, oldLocation, newLocation, existingLocation);
+        }
         if (null == existingLocation) {
-          throw notFoundExceptionForTableLikeEntity(identifier, PolarisEntitySubType.ICEBERG_VIEW);
+          createTableLike(identifier, entity);
+        } else {
+          updateTableLike(identifier, entity);
         }
-
-        throw new CommitFailedException(
-            "Cannot commit to view %s metadata location from %s to %s "
-                + "because it has been concurrently modified to %s",
-            identifier, oldLocation, newLocation, existingLocation);
-      }
-      if (null == existingLocation) {
-        createTableLike(identifier, entity);
-      } else {
-        updateTableLike(identifier, entity);
+        writeSucceeded = true;
+      } finally {
+        if (!writeSucceeded && writeResult.written()) {
+          IcebergCatalogHandler.cleanupWrittenMetadataFiles(
+              List.of(new IcebergCatalogHandler.FileToDelete(io(), newLocation)));
+        }
       }
     }
 
-    protected String writeNewMetadataIfRequired(ViewMetadata metadata) {
-      return null != metadata.metadataFileLocation()
-          ? metadata.metadataFileLocation()
-          : writeNewMetadata(metadata, version + 1);
+    protected MetadataWriteResult writeNewMetadataIfRequired(ViewMetadata metadata) {
+      if (null != metadata.metadataFileLocation()) {
+        return new MetadataWriteResult(metadata.metadataFileLocation(), false);
+      }
+      return new MetadataWriteResult(writeNewMetadata(metadata, version + 1), true);
     }
 
     private String writeNewMetadata(ViewMetadata metadata, int newVersion) {

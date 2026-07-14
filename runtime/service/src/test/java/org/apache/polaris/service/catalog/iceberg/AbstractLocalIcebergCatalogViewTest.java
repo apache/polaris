@@ -27,13 +27,20 @@ import jakarta.inject.Inject;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.view.BaseView;
 import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
+import org.apache.iceberg.view.ViewMetadata;
+import org.apache.iceberg.view.ViewOperations;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -275,5 +282,83 @@ public abstract class AbstractLocalIcebergCatalogViewTest
     Assertions.assertThat(
             afterRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
         .isEqualTo(TestData.TABLE);
+  }
+
+  @Test
+  public void testFailedViewCommitDeletesOrphanMetadataFile() {
+    List<String> writtenLocations = new ArrayList<>();
+    List<String> deletedLocations = new ArrayList<>();
+    FileIOFactory spiedFactory = Mockito.spy(fileIOFactory);
+    Mockito.doAnswer(
+            inv -> {
+              FileIO real = (FileIO) inv.callRealMethod();
+              FileIO spy = Mockito.spy(real);
+              Mockito.doAnswer(
+                      out -> {
+                        writtenLocations.add(out.getArgument(0));
+                        return out.callRealMethod();
+                      })
+                  .when(spy)
+                  .newOutputFile(Mockito.anyString());
+              Mockito.doAnswer(
+                      del -> {
+                        deletedLocations.add(del.getArgument(0));
+                        return del.callRealMethod();
+                      })
+                  .when(spy)
+                  .deleteFile(Mockito.anyString());
+              return spy;
+            })
+        .when(spiedFactory)
+        .loadFileIO(Mockito.any(), Mockito.any(), Mockito.any());
+
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
+    LocalIcebergCatalog spiedCatalog =
+        new LocalIcebergCatalog(
+            diagServices,
+            resolverFactory,
+            metaStoreManager,
+            polarisContext,
+            passthroughView,
+            authenticatedRoot,
+            Mockito.mock(),
+            storageAccessConfigProvider,
+            spiedFactory,
+            polarisEventDispatcher,
+            eventMetadataFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(VIEW_PREFIXES)
+            .build());
+
+    spiedCatalog.createNamespace(TestData.NAMESPACE);
+    spiedCatalog
+        .buildView(TestData.TABLE)
+        .withDefaultNamespace(TestData.NAMESPACE)
+        .withSchema(TestData.SCHEMA)
+        .withQuery("a", "b")
+        .create();
+
+    ViewOperations staleOps = ((BaseView) spiedCatalog.loadView(TestData.TABLE)).operations();
+    ViewMetadata staleBase = staleOps.current();
+
+    spiedCatalog.loadView(TestData.TABLE).updateProperties().set("concurrent", "true").commit();
+
+    Set<String> legitimateWrites = new HashSet<>(writtenLocations);
+
+    ViewMetadata attempted =
+        ViewMetadata.buildFrom(staleBase).setProperties(Map.of("orphan-check", "v1")).build();
+
+    Assertions.assertThatThrownBy(() -> staleOps.commit(staleBase, attempted))
+        .isInstanceOf(CommitFailedException.class);
+
+    List<String> orphanCandidates =
+        writtenLocations.stream().filter(loc -> !legitimateWrites.contains(loc)).toList();
+    Assertions.assertThat(orphanCandidates).isNotEmpty();
+    Assertions.assertThat(deletedLocations).containsAll(orphanCandidates);
   }
 }
