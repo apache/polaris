@@ -32,7 +32,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -180,7 +179,7 @@ public record TestServices(
     private final Clock clock = Clock.systemUTC();
     private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
     private RealmContext realmContext = TEST_REALM;
-    private Map<String, Object> config = new HashMap<>();
+    private Map<String, Object> config = Map.of();
     private StsClient stsClient;
     private boolean useEventDelegator = false;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
@@ -221,7 +220,7 @@ public record TestServices(
     }
 
     public Builder config(Map<String, Object> config) {
-      this.config.putAll(config);
+      this.config = config;
       return this;
     }
 
