@@ -213,6 +213,34 @@ public interface PolarisMetaStoreManager
       @NonNull List<PolarisEntityCore> principalRoles);
 
   /**
+   * Commit a batch of entity creates and updates atomically.
+   *
+   * <p>This is the primary mutation path for multi-entity changes. Single-entity operations are
+   * thin wrappers that build a {@link MetaStoreChangeSet} with one entry and delegate here.
+   *
+   * <p>The default implementation falls back to calling individual per-entity methods in sequence
+   * and is therefore not atomic. Concrete implementations should override this to provide the
+   * atomic guarantee.
+   *
+   * @param callCtx call context
+   * @param changeSet the set of entity creations and CAS-updates to commit
+   * @return result indicating success or failure
+   */
+  default @NonNull EntitiesResult commitTransactionBatch(
+      @NonNull PolarisCallContext callCtx, @NonNull MetaStoreChangeSet changeSet) {
+    for (EntityWithPath create : changeSet.creates()) {
+      EntityResult result = createEntityIfNotExists(callCtx, create.catalogPath(), create.entity());
+      if (!result.isSuccess()) {
+        return new EntitiesResult(result.getReturnStatus(), result.getExtraInformation());
+      }
+    }
+    if (!changeSet.updates().isEmpty()) {
+      return updateEntitiesPropertiesIfNotChanged(callCtx, changeSet.updates());
+    }
+    return new EntitiesResult(Page.fromItems(List.of()));
+  }
+
+  /**
    * Persist a newly created entity under the specified catalog path if specified, else this is a
    * top-level entity. We will re-resolve the specified path to ensure nothing has changed since the
    * Polaris app resolved the path. If the entity already exists with the same specified id, we will

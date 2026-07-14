@@ -132,15 +132,34 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nullable List<PolarisBaseEntity> originalEntities);
 
   /**
-   * Flush any pending batched writes to the persistence backend. For backends that batch writes
-   * internally (e.g. JDBC), this commits the active transaction so that subsequent reads see the
-   * latest state. For backends that already commit each write independently, this is a no-op.
+   * Atomically commit a mixed set of entity mutations and grant-record changes.
    *
-   * <p>Callers that perform a sequence of write operations that should be atomic should invoke this
-   * method after the last write in the sequence.
+   * <p>Either every mutation is applied durably and becomes visible together, or none are applied.
+   * This method enables backends that support multi-statement transactions to make complex
+   * operations (e.g., grant + version bumps, create catalog + grants) fully atomic.
+   *
+   * <p>The default implementation throws {@link UnsupportedOperationException}, preserving backward
+   * compatibility for existing backends. Callers should check {@link #supportsAtomicMixedCommit()}
+   * before relying on atomicity.
+   *
+   * @param callCtx call context
+   * @param entityMutations entity creates, updates (with CAS), and deletes
+   * @param grantMutations grant-record creates and deletes
    */
-  default void flush() {
-    // no-op by default
+  default void commitChangeSet(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<EntityMutation> entityMutations,
+      @NonNull List<GrantMutation> grantMutations) {
+    throw new UnsupportedOperationException(
+        "Backend does not support atomic mixed commits; use individual operations");
+  }
+
+  /**
+   * Returns true if this backend supports {@link #commitChangeSet} for atomic mixed entity and
+   * grant-record mutations.
+   */
+  default boolean supportsAtomicMixedCommit() {
+    return false;
   }
 
   /**
