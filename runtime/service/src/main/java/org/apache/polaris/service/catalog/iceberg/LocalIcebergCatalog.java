@@ -1785,8 +1785,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
      * when idempotency is active, so the key commits atomically with the metadata change.
      */
     private Map<String, String> idempotencyInternalProperties(
-        Map<String, String> storedProperties, @Nullable IcebergTableLikeEntity existing) {
-      Map<String, String> internalProperties = storedProperties;
+        Map<String, String> internalProperties, @Nullable IcebergTableLikeEntity existing) {
       // The idempotency key window lives only in internal properties, which are replaced wholesale
       // on write, so carry any prior window forward to keep earlier keys live across updates even
       // when a given update carries no key of its own.
