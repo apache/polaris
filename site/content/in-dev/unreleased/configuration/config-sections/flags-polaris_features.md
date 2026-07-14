@@ -37,10 +37,7 @@ When set, the base location for a table or namespace will have `/` added as a su
 
 ##### `polaris.features."ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION"`
 
-If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties)
-explicitly supplied in a create or update request, subject to the usual structured-location, allowed-location, metadata-location,
-and overlap validation. If set to false, such requests are rejected, regardless of the other location compatibility flags.
-This setting does not apply to federated catalogs.
+If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties) explicitly supplied in a create or update request, subject to the usual structured-location, allowed-location, metadata-location, and overlap validation. If set to false, such requests are rejected, regardless of the other location compatibility flags. This setting does not apply to federated catalogs.
 
 - **Type:** `Boolean`
 - **Default:** `true`

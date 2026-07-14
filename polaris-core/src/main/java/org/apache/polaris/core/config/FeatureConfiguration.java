@@ -358,8 +358,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "`write.data.path` / `write.metadata.path` properties) explicitly supplied in a "
                   + "create or update request, subject to the usual structured-location, "
                   + "allowed-location, metadata-location, and overlap validation. If set to false, "
-                  + "such requests are rejected, regardless of the other location compatibility flags."
-                  + "This setting does not apply to federated catalogs. ")
+                  + "such requests are rejected, regardless of the other location compatibility flags. "
+                  + "This setting does not apply to federated catalogs.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 

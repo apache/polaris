@@ -220,7 +220,7 @@ public class IcebergTableLocationTest {
     return builder.build();
   }
 
-  private static void assertUniquePrefixedLocation(
+  private static void assertObjectStorageLocationFormat(
       String location, String baseLocation, String name) {
     String normalizedLocation = LocationUtil.stripTrailingSlash(location);
     TableIdentifier identifier = TableIdentifier.of(Namespace.of(NAMESPACE), name);
@@ -326,7 +326,7 @@ public class IcebergTableLocationTest {
 
     String directTableName = getTableName();
     String firstLocation = createTableWithName(services, directTableName);
-    assertUniquePrefixedLocation(firstLocation, baseLocation, directTableName);
+    assertObjectStorageLocationFormat(firstLocation, baseLocation, directTableName);
 
     TableIdentifier directTableIdentifier =
         TableIdentifier.of(Namespace.of(NAMESPACE), directTableName);
@@ -335,15 +335,16 @@ public class IcebergTableLocationTest {
         .newHandler(services.securityContext(), CATALOG)
         .dropTableWithoutPurge(directTableIdentifier);
     String secondLocation = createTableWithName(services, directTableName);
-    assertUniquePrefixedLocation(secondLocation, baseLocation, directTableName);
+    assertObjectStorageLocationFormat(secondLocation, baseLocation, directTableName);
     assertThat(secondLocation).isNotEqualTo(firstLocation);
 
     String stagedTableName = getTableName();
-    assertUniquePrefixedLocation(
+    assertObjectStorageLocationFormat(
         stageTableWithName(services, stagedTableName), baseLocation, stagedTableName);
 
     String viewName = "view_" + UUID.randomUUID();
-    assertUniquePrefixedLocation(createViewWithName(services, viewName), baseLocation, viewName);
+    assertObjectStorageLocationFormat(
+        createViewWithName(services, viewName), baseLocation, viewName);
   }
 
   @Test
