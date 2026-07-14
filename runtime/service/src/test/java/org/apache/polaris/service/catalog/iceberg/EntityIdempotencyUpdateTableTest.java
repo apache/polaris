@@ -67,17 +67,22 @@ public class EntityIdempotencyUpdateTableTest {
     String tableName = "tbl_" + UUID.randomUUID();
     TableIdentifier tableId = TableIdentifier.of(Namespace.of(NAMESPACE), tableName);
     createTable(services, tableName);
+    String versionBeforeUpdate = currentMetadataVersion(services, tableId);
 
-    // First keyed update applies and stamps the key onto the entity.
+    // First keyed update applies the change, stamps the key onto the entity, and advances the table
+    // to a new metadata version.
     LoadTableResponse first =
-        updateTableProperties(services, tableId, Map.of("p", "first"), IDEMPOTENCY_KEY);
-    assertThat(first.tableMetadata().properties()).containsEntry("p", "first");
+        updateTableProperties(services, tableId, Map.of("p", "v"), IDEMPOTENCY_KEY);
+    String versionAfterFirst = first.tableMetadata().metadataFileLocation();
+    assertThat(first.tableMetadata().properties()).containsEntry("p", "v");
+    assertThat(versionAfterFirst).isNotEqualTo(versionBeforeUpdate);
 
-    // Same key, different payload: because the key is still live on the entity, the request replays
-    // current catalog state and does NOT apply the new value, so "p" stays "first".
+    // Spec-legal retry: same key AND same payload. The request replays the earlier success instead
+    // of committing a second time, so the table version (metadata file) does not advance.
     LoadTableResponse replay =
-        updateTableProperties(services, tableId, Map.of("p", "second"), IDEMPOTENCY_KEY);
-    assertThat(replay.tableMetadata().properties()).containsEntry("p", "first");
+        updateTableProperties(services, tableId, Map.of("p", "v"), IDEMPOTENCY_KEY);
+    assertThat(replay.tableMetadata().metadataFileLocation()).isEqualTo(versionAfterFirst);
+    assertThat(replay.tableMetadata().properties()).containsEntry("p", "v");
   }
 
   @Test
@@ -135,6 +140,16 @@ public class EntityIdempotencyUpdateTableTest {
         .catalogAdapter()
         .newHandler(services.securityContext(), CATALOG)
         .updateTable(tableId, request);
+  }
+
+  private static String currentMetadataVersion(TestServices services, TableIdentifier tableId) {
+    services.idempotencyRequestContext().clearPending();
+    return services
+        .catalogAdapter()
+        .newHandler(services.securityContext(), CATALOG)
+        .loadTable(tableId, "all")
+        .tableMetadata()
+        .metadataFileLocation();
   }
 
   private static void createTable(TestServices services, String tableName) {
