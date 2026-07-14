@@ -277,7 +277,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
    * @param priv privilege
    * @return new grant record which was created and persisted
    */
-  private @NonNull PolarisGrantRecord persistNewGrantRecord(
+  private @NonNull PrivilegeResult persistNewGrantRecordAndCommit(
       @NonNull PolarisCallContext callCtx,
       @NonNull BasePersistence ms,
       @NonNull PolarisEntityCore securable,
@@ -302,40 +302,37 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             grantee.getId(),
             priv.getCode());
 
-    // persist the new grant
-    ms.writeToGrantRecords(callCtx, grantRecord);
-
-    // load the grantee (either a catalog/principal role or a principal) and increment its grants
-    // version
+    // load the grantee and securable to bump their versions
     PolarisBaseEntity granteeEntity =
         ms.lookupEntity(callCtx, grantee.getCatalogId(), grantee.getId(), grantee.getTypeCode());
     getDiagnostics().checkNotNull(granteeEntity, "grantee_not_found", "grantee={}", grantee);
-    // grants have changed, we need to bump-up the grants version
     PolarisBaseEntity updatedGranteeEntity =
         granteeEntity.withGrantRecordsVersion(granteeEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, updatedGranteeEntity, false, granteeEntity);
 
-    // we also need to invalidate the grants on that securable so that we can reload them.
-    // load the securable and increment its grants version
     PolarisBaseEntity securableEntity =
         ms.lookupEntity(
             callCtx, securable.getCatalogId(), securable.getId(), securable.getTypeCode());
     getDiagnostics()
         .checkNotNull(securableEntity, "securable_not_found", "securable={}", securable);
-    // grants have changed, we need to bump-up the grants version
     PolarisBaseEntity updatedSecurableEntity =
         securableEntity.withGrantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, updatedSecurableEntity, false, securableEntity);
 
-    // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant records. In
-    // the meantime, cache can be disabled or configured with a short enough expiry time to
-    // define an "eventual consistency" timeframe.
-    // TODO: Figure out if it's actually necessary to separately validate whether the entities have
-    // not changed, if we plan to include the compare-and-swap in the helper method that updates the
-    // grantRecordsVersions already.
+    if (ms.supportsAtomicMixedCommit()) {
+      // Atomic path: commit grant + version bumps in one transaction
+      ms.commitChangeSet(
+          callCtx,
+          List.of(
+              EntityMutation.update(updatedGranteeEntity, granteeEntity),
+              EntityMutation.update(updatedSecurableEntity, securableEntity)),
+          List.of(GrantMutation.create(grantRecord)));
+    } else {
+      // Fallback: individual operations (eventual consistency)
+      ms.writeToGrantRecords(callCtx, grantRecord);
+      ms.writeEntity(callCtx, updatedGranteeEntity, false, granteeEntity);
+      ms.writeEntity(callCtx, updatedSecurableEntity, false, securableEntity);
+    }
 
-    // done, return the new grant record
-    return grantRecord;
+    return new PrivilegeResult(grantRecord);
   }
 
   /**
@@ -348,7 +345,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
    * @param grantee the grantee entity
    * @param grantRecord the grant record to remove, which was read in the same transaction
    */
-  private void revokeGrantRecord(
+  private @NonNull PrivilegeResult revokeGrantRecordAndCommit(
       @NonNull PolarisCallContext callCtx,
       @NonNull BasePersistence ms,
       @NonNull PolarisEntityCore securable,
@@ -378,22 +375,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // ensure the grantee is really a grantee
     getDiagnostics().check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
 
-    // remove that grant
-    ms.deleteFromGrantRecords(callCtx, grantRecord);
-
-    // load the grantee and increment its grants version
+    // load the grantee and securable to bump their versions
     PolarisBaseEntity refreshGrantee =
         ms.lookupEntity(callCtx, grantee.getCatalogId(), grantee.getId(), grantee.getTypeCode());
     getDiagnostics()
         .checkNotNull(
             refreshGrantee, "missing_grantee", "grantRecord={} grantee={}", grantRecord, grantee);
-    // grants have changed, we need to bump-up the grants version
     PolarisBaseEntity updatedRefreshGrantee =
         refreshGrantee.withGrantRecordsVersion(refreshGrantee.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, updatedRefreshGrantee, false, refreshGrantee);
 
-    // we also need to invalidate the grants on that securable so that we can reload them.
-    // load the securable and increment its grants version
     PolarisBaseEntity refreshSecurable =
         ms.lookupEntity(
             callCtx, securable.getCatalogId(), securable.getId(), securable.getTypeCode());
@@ -404,14 +394,25 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             "grantRecord={} securable={}",
             grantRecord,
             securable);
-    // grants have changed, we need to bump-up the grants version
     PolarisBaseEntity updatedRefreshSecurable =
         refreshSecurable.withGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, updatedRefreshSecurable, false, refreshSecurable);
 
-    // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant records. In
-    // the meantime, cache can be disabled or configured with a short enough expiry time to
-    // define an "eventual consistency" timeframe.
+    if (ms.supportsAtomicMixedCommit()) {
+      // Atomic path: commit grant delete + version bumps in one transaction
+      ms.commitChangeSet(
+          callCtx,
+          List.of(
+              EntityMutation.update(updatedRefreshGrantee, refreshGrantee),
+              EntityMutation.update(updatedRefreshSecurable, refreshSecurable)),
+          List.of(GrantMutation.delete(grantRecord)));
+    } else {
+      // Fallback: individual operations
+      ms.deleteFromGrantRecords(callCtx, grantRecord);
+      ms.writeEntity(callCtx, updatedRefreshGrantee, false, refreshGrantee);
+      ms.writeEntity(callCtx, updatedRefreshSecurable, false, refreshSecurable);
+    }
+
+    return new PrivilegeResult(grantRecord);
   }
 
   /** {@inheritDoc} */
@@ -506,12 +507,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     this.persistNewEntity(callCtx, ms, adminRole);
 
     // grant the catalog admin role access-management on the catalog
-    this.persistNewGrantRecord(
+    persistNewGrantRecordAndCommit(
         callCtx, ms, catalog, adminRole, PolarisPrivilege.CATALOG_MANAGE_ACCESS);
 
     // grant the catalog admin role metadata-management on the catalog; this one
     // is revocable
-    this.persistNewGrantRecord(
+    persistNewGrantRecordAndCommit(
         callCtx, ms, catalog, adminRole, PolarisPrivilege.CATALOG_MANAGE_METADATA);
 
     // immediately assign its catalog_admin role
@@ -525,7 +526,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               PolarisEntityType.PRINCIPAL_ROLE.getCode(),
               PolarisEntityConstants.getNameOfPrincipalServiceAdminRole());
       getDiagnostics().checkNotNull(serviceAdminRole, "missing_service_admin_role");
-      this.persistNewGrantRecord(
+      persistNewGrantRecordAndCommit(
           callCtx, ms, adminRole, serviceAdminRole, PolarisPrivilege.CATALOG_ROLE_USAGE);
     } else {
       // grant to each principal role usage on its catalog_admin role
@@ -540,7 +541,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                 principalRole.getType());
 
         // grant usage on that catalog admin role to this principal
-        this.persistNewGrantRecord(
+        persistNewGrantRecordAndCommit(
             callCtx, ms, adminRole, principalRole, PolarisPrivilege.CATALOG_ROLE_USAGE);
       }
     }
@@ -969,6 +970,31 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
+  public @NonNull EntitiesResult commitTransactionBatch(
+      @NonNull PolarisCallContext callCtx, @NonNull MetaStoreChangeSet changeSet) {
+    List<EntityWithPath> creates = changeSet.creates();
+    List<EntityWithPath> updates = changeSet.updates();
+    getDiagnostics().checkNotNull(creates, "unexpected_null_creates");
+    getDiagnostics().checkNotNull(updates, "unexpected_null_updates");
+    EntitiesResult empty = emptyBatchShortCircuit(creates, updates);
+    if (empty != null) {
+      return empty;
+    }
+    if (creates.isEmpty()) {
+      return updateEntitiesPropertiesIfNotChanged(callCtx, updates);
+    }
+    // Persist creates and CAS-updates in a single writeEntities call, atomic on JDBC.
+    BasePersistence ms = callCtx.getMetaStore();
+    return commitTransactionBatchViaWriteEntities(
+        callCtx,
+        ms,
+        creates,
+        updates,
+        (entities, originals) -> ms.writeEntities(callCtx, entities, originals));
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public @NonNull EntityResult renameEntity(
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
@@ -1239,9 +1265,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // grant usage on this role to this principal
     getDiagnostics().check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
-    PolarisGrantRecord grantRecord =
-        this.persistNewGrantRecord(callCtx, ms, role, grantee, usagePriv);
-    return new PrivilegeResult(grantRecord);
+    return persistNewGrantRecordAndCommit(callCtx, ms, role, grantee, usagePriv);
   }
 
   /** {@inheritDoc} */
@@ -1276,9 +1300,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     // revoke usage on the role from the grantee
-    this.revokeGrantRecord(callCtx, ms, role, grantee, grantRecord);
-
-    return new PrivilegeResult(grantRecord);
+    return revokeGrantRecordAndCommit(callCtx, ms, role, grantee, grantRecord);
   }
 
   /** {@inheritDoc} */
@@ -1293,9 +1315,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     BasePersistence ms = callCtx.getMetaStore();
 
     // grant specified privilege on this securable to this role and return the grant
-    PolarisGrantRecord grantRecord =
-        this.persistNewGrantRecord(callCtx, ms, securable, grantee, privilege);
-    return new PrivilegeResult(grantRecord);
+    return persistNewGrantRecordAndCommit(callCtx, ms, securable, grantee, privilege);
   }
 
   /** {@inheritDoc} */
@@ -1325,10 +1345,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     // revoke the specified privilege on this securable from this role
-    this.revokeGrantRecord(callCtx, ms, securable, grantee, grantRecord);
-
-    // success!
-    return new PrivilegeResult(grantRecord);
+    return revokeGrantRecordAndCommit(callCtx, ms, securable, grantee, grantRecord);
   }
 
   /** {@inheritDoc} */
@@ -1626,7 +1643,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
           // already be obsolete since it was just a holdover when bootstrap didn't create
           // the root container, so consider removing this backfill entirely or else fix
           // the backfill of this serviceAdminRole grant.
-          this.persistNewGrantRecord(
+          persistNewGrantRecordAndCommit(
               callCtx, ms, rootContainer, serviceAdminRole, PolarisPrivilege.SERVICE_MANAGE_ACCESS);
         }
       }

@@ -122,13 +122,11 @@ public class JdbcBasePersistenceImpl
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
     try {
-      persistEntity(
-          callCtx,
-          entity,
-          originalEntity,
-          null,
-          (connection, preparedQuery) -> {
-            return datasourceOperations.executeUpdate(preparedQuery);
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            persistEntity(
+                callCtx, entity, originalEntity, connection, datasourceOperations::execute);
+            return true;
           });
     } catch (SQLException e) {
       throw new RuntimeException("Error persisting entity", e);
@@ -140,6 +138,12 @@ public class JdbcBasePersistenceImpl
       @NonNull PolarisCallContext callCtx,
       @NonNull List<PolarisBaseEntity> entities,
       List<PolarisBaseEntity> originalEntities) {
+    if (originalEntities != null && originalEntities.size() != entities.size()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "originalEntities size (%s) must match entities size (%s)",
+              originalEntities.size(), entities.size()));
+    }
     try {
       datasourceOperations.runWithinTransaction(
           connection -> {
@@ -147,15 +151,11 @@ public class JdbcBasePersistenceImpl
               PolarisBaseEntity entity = entities.get(i);
               PolarisBaseEntity originalEntity =
                   originalEntities != null ? originalEntities.get(i) : null;
-              // first, check if the entity has already been created, in which case we will simply
-              // return it.
+              // Idempotent create-retry: if the entity already exists under the same id, skip.
               PolarisBaseEntity entityFound =
                   lookupEntity(
                       callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
               if (entityFound != null && originalEntity == null) {
-                // probably the client retried, simply return it
-                // TODO: Check correctness of returning entityFound vs entity here. It may have
-                // already been updated after the creation.
                 continue;
               }
               persistEntity(
@@ -169,6 +169,94 @@ public class JdbcBasePersistenceImpl
               "Error executing the transaction for writing entities due to %s", e.getMessage()),
           e);
     }
+  }
+
+  @Override
+  public boolean supportsAtomicMixedCommit() {
+    return true;
+  }
+
+  @Override
+  public void commitChangeSet(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<org.apache.polaris.core.persistence.EntityMutation> entityMutations,
+      @NonNull List<org.apache.polaris.core.persistence.GrantMutation> grantMutations) {
+    try {
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            for (org.apache.polaris.core.persistence.EntityMutation em : entityMutations) {
+              switch (em.type()) {
+                case CREATE ->
+                    persistEntity(
+                        callCtx, em.entity(), null, connection, datasourceOperations::execute);
+                case UPDATE ->
+                    persistEntity(
+                        callCtx,
+                        em.entity(),
+                        em.originalEntity(),
+                        connection,
+                        datasourceOperations::execute);
+                case DELETE -> deleteEntity(connection, em.entity());
+              }
+            }
+            for (org.apache.polaris.core.persistence.GrantMutation gm : grantMutations) {
+              switch (gm.type()) {
+                case CREATE -> persistGrantRecord(connection, gm.grantRecord());
+                case DELETE -> deleteGrantRecord(connection, gm.grantRecord());
+              }
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException("Error committing change set", e);
+    }
+  }
+
+  private void persistGrantRecord(Connection connection, PolarisGrantRecord grantRec)
+      throws SQLException {
+    ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
+    List<Object> values =
+        modelGrantRecord.toMap(datasourceOperations.getDatabaseType()).values().stream().toList();
+    try {
+      datasourceOperations.execute(
+          connection,
+          QueryGenerator.generateInsertQuery(
+              ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, values, realmId));
+    } catch (SQLException e) {
+      if (datasourceOperations.isUniquenessConstraintViolation(e)) {
+        LOGGER.debug("Grant record already exists; treating as no-op: {}", grantRec);
+        return;
+      }
+      throw e;
+    }
+  }
+
+  private void deleteGrantRecord(Connection connection, PolarisGrantRecord grantRec)
+      throws SQLException {
+    ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
+    Map<String, Object> whereClause =
+        modelGrantRecord.toMap(datasourceOperations.getDatabaseType());
+    whereClause.put("realm_id", realmId);
+    datasourceOperations.execute(
+        connection,
+        QueryGenerator.generateDeleteQuery(
+            ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, whereClause));
+  }
+
+  private void deleteEntity(Connection connection, PolarisBaseEntity entity) throws SQLException {
+    ModelEntity modelEntity = ModelEntity.fromEntity(entity, schemaVersion);
+    Map<String, Object> params =
+        Map.of(
+            "id",
+            modelEntity.getId(),
+            "catalog_id",
+            modelEntity.getCatalogId(),
+            "realm_id",
+            realmId);
+    datasourceOperations.execute(
+        connection,
+        QueryGenerator.generateDeleteQuery(
+            ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
   }
 
   private void persistEntity(
@@ -255,20 +343,14 @@ public class JdbcBasePersistenceImpl
   @Override
   public void writeToGrantRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
-    ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
     try {
-      List<Object> values =
-          modelGrantRecord.toMap(datasourceOperations.getDatabaseType()).values().stream().toList();
-      datasourceOperations.executeUpdate(
-          QueryGenerator.generateInsertQuery(
-              ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, values, realmId));
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            persistGrantRecord(connection, grantRec);
+            return true;
+          });
     } catch (SQLException e) {
-      if (datasourceOperations.isUniquenessConstraintViolation(e)) {
-        LOGGER.debug("Grant record already exists; treating as no-op: {}", grantRec);
-        return;
-      }
-      throw new RuntimeException(
-          String.format("Failed to write to grant records due to %s", e.getMessage()), e);
+      throw new RuntimeException("Failed to write to grant records", e);
     }
   }
 
@@ -331,39 +413,28 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public void deleteEntity(@NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
-    ModelEntity modelEntity = ModelEntity.fromEntity(entity, schemaVersion);
-    Map<String, Object> params =
-        Map.of(
-            "id",
-            modelEntity.getId(),
-            "catalog_id",
-            modelEntity.getCatalogId(),
-            "realm_id",
-            realmId);
     try {
-      datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQuery(
-              ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            deleteEntity(connection, entity);
+            return true;
+          });
     } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to delete entity due to %s", e.getMessage()), e);
+      throw new RuntimeException("Failed to delete entity", e);
     }
   }
 
   @Override
   public void deleteFromGrantRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
-    ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
     try {
-      Map<String, Object> whereClause =
-          modelGrantRecord.toMap(datasourceOperations.getDatabaseType());
-      whereClause.put("realm_id", realmId);
-      datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQuery(
-              ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, whereClause));
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            deleteGrantRecord(connection, grantRec);
+            return true;
+          });
     } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to delete from grant records due to %s", e.getMessage()), e);
+      throw new RuntimeException("Failed to delete from grant records", e);
     }
   }
 
@@ -374,11 +445,15 @@ public class JdbcBasePersistenceImpl
       @NonNull List<PolarisGrantRecord> grantsOnGrantee,
       @NonNull List<PolarisGrantRecord> grantsOnSecurable) {
     try {
-      datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQueryForEntityGrantRecords(entity, realmId));
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            datasourceOperations.execute(
+                connection,
+                QueryGenerator.generateDeleteQueryForEntityGrantRecords(entity, realmId));
+            return true;
+          });
     } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to delete grant records due to %s", e.getMessage()), e);
+      throw new RuntimeException("Failed to delete grant records", e);
     }
   }
 
@@ -419,6 +494,7 @@ public class JdbcBasePersistenceImpl
   @Override
   public PolarisBaseEntity lookupEntity(
       @NonNull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
+
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "type_code", typeCode, "realm_id", realmId);
     return getPolarisBaseEntity(
@@ -433,6 +509,7 @@ public class JdbcBasePersistenceImpl
       long parentId,
       int typeCode,
       @NonNull String name) {
+
     Map<String, Object> params =
         Map.of(
             "catalog_id",
@@ -474,6 +551,7 @@ public class JdbcBasePersistenceImpl
   @Override
   public List<PolarisBaseEntity> lookupEntities(
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
+
     if (entityIds == null || entityIds.isEmpty()) return new ArrayList<>();
     PreparedQuery query =
         QueryGenerator.generateSelectQueryWithEntityIds(realmId, schemaVersion, entityIds);
@@ -494,6 +572,7 @@ public class JdbcBasePersistenceImpl
   @Override
   public List<PolarisChangeTrackingVersions> lookupEntityVersions(
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
+
     Map<PolarisEntityId, ModelEntity> idToEntityMap =
         lookupEntities(callCtx, entityIds).stream()
             .filter(Objects::nonNull)
@@ -565,6 +644,7 @@ public class JdbcBasePersistenceImpl
       @NonNull PolarisEntityType entityType,
       @NonNull PolarisEntitySubType entitySubType,
       @NonNull PageToken pageToken) {
+
     try {
       PreparedQuery query =
           buildEntityQuery(
@@ -600,6 +680,7 @@ public class JdbcBasePersistenceImpl
       @NonNull Predicate<PolarisBaseEntity> entityFilter,
       @NonNull Function<PolarisBaseEntity, T> transformer,
       @NonNull PageToken pageToken) {
+
     try {
       PreparedQuery query =
           buildEntityQuery(
@@ -645,6 +726,7 @@ public class JdbcBasePersistenceImpl
       long granteeCatalogId,
       long granteeId,
       int privilegeCode) {
+
     Map<String, Object> params =
         Map.of(
             "securable_catalog_id",
@@ -683,6 +765,7 @@ public class JdbcBasePersistenceImpl
   @Override
   public List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
       @NonNull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
+
     Map<String, Object> params =
         Map.of(
             "securable_catalog_id",
@@ -711,6 +794,7 @@ public class JdbcBasePersistenceImpl
   @Override
   public List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
       @NonNull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
+
     Map<String, Object> params =
         Map.of(
             "grantee_catalog_id", granteeCatalogId, "grantee_id", granteeId, "realm_id", realmId);
@@ -736,6 +820,7 @@ public class JdbcBasePersistenceImpl
       PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId) {
+
     Map<String, Object> params = new HashMap<>();
     params.put("realm_id", realmId);
     params.put("catalog_id", catalogId);
@@ -796,6 +881,7 @@ public class JdbcBasePersistenceImpl
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext, T entity) {
+
     if (this.schemaVersion < 2) {
       return Optional.empty();
     }
@@ -847,6 +933,7 @@ public class JdbcBasePersistenceImpl
   @Override
   public PolarisPrincipalSecrets loadPrincipalSecrets(
       @NonNull PolarisCallContext callCtx, @NonNull String clientId) {
+
     Map<String, Object> params = Map.of("principal_client_id", clientId, "realm_id", realmId);
     try {
       var results =

@@ -132,6 +132,37 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nullable List<PolarisBaseEntity> originalEntities);
 
   /**
+   * Atomically commit a mixed set of entity mutations and grant-record changes.
+   *
+   * <p>Either every mutation is applied durably and becomes visible together, or none are applied.
+   * This method enables backends that support multi-statement transactions to make complex
+   * operations (e.g., grant + version bumps, create catalog + grants) fully atomic.
+   *
+   * <p>The default implementation throws {@link UnsupportedOperationException}, preserving backward
+   * compatibility for existing backends. Callers should check {@link #supportsAtomicMixedCommit()}
+   * before relying on atomicity.
+   *
+   * @param callCtx call context
+   * @param entityMutations entity creates, updates (with CAS), and deletes
+   * @param grantMutations grant-record creates and deletes
+   */
+  default void commitChangeSet(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<EntityMutation> entityMutations,
+      @NonNull List<GrantMutation> grantMutations) {
+    throw new UnsupportedOperationException(
+        "Backend does not support atomic mixed commits; use individual operations");
+  }
+
+  /**
+   * Returns true if this backend supports {@link #commitChangeSet} for atomic mixed entity and
+   * grant-record mutations.
+   */
+  default boolean supportsAtomicMixedCommit() {
+    return false;
+  }
+
+  /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
    * record with the same PK), this is a no-op, because currently all fields of the grantRecord are
    * part of the PK. If additional non-PK attributes are added this might change.

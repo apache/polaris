@@ -100,6 +100,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The token broker now builds the JWT `Algorithm` and `JWTVerifier` once per realm in the `TokenBrokerFactory` and reuses them across requests, instead of rebuilding them on every `verify()`/`sign()` call on the request-scoped broker. For deployments using file-based symmetric secrets, the secret is now read once per realm (at first use) rather than on every JWT operation; rotating the on-disk secret requires a restart.
 
 ### Fixes
+- Redesigned Persistence SPI to make batch/ChangeSet operations the primary mutation path.
+  Added `BasePersistence.commitChangeSet()` for atomic mixed entity+grant commits, removed the
+  `flush()` method that violated the per-call atomicity contract, and refactored
+  `AtomicOperationMetaStoreManager` grant operations to use `commitChangeSet` when the backend
+  supports it (JDBC). This provides true atomicity for grant/revoke operations without
+  leaking transaction state across SPI calls. Non-atomic backends keep the default throw and
+  callers fall back to individual operations.
 - Fixed a boundary condition in GCS downscoped credential generation (`GcpCredentialsStorageIntegration`). Locations without a trailing slash could previously grant access to sibling object prefixes via the generated CEL conditions for `resource.name` and list prefixes. Granted paths are now normalized to a directory prefix (with a trailing slash) before the CEL conditions are built, so sibling prefixes can no longer satisfy the `startsWith` checks.
 - Fixed `NullPointerException` during `dropEntity` when an entity referenced by a grant had been concurrently removed (or purged). `lookupEntities` can return null entries for dropped entities; these are now skipped safely.
 - `RateLimiterFilter` now returns an Iceberg-compatible `ErrorResponse` JSON body on HTTP 429, with `Content-Type: application/json`. Previously the body was empty, causing Iceberg REST clients to surface an opaque error.
