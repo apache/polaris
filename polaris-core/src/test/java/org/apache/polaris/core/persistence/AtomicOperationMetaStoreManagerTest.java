@@ -22,6 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -35,13 +39,15 @@ import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-/** Regression tests for {@link AtomicOperationMetaStoreManager#refreshResolvedEntity} (#3836). */
-public class AtomicOperationMetaStoreManagerRefreshTest {
+/** Unit tests for {@link AtomicOperationMetaStoreManager}. */
+public class AtomicOperationMetaStoreManagerTest {
 
   private static final long CATALOG_ID = 100L;
   private static final long ENTITY_ID = 200L;
@@ -182,5 +188,66 @@ public class AtomicOperationMetaStoreManagerRefreshTest {
     assertThat(result.getEntityGrantRecords()).isNotNull();
     Mockito.verify(metaStore).loadAllGrantRecordsOnGrantee(any(), anyLong(), anyLong());
     Mockito.verify(metaStore).loadAllGrantRecordsOnSecurable(any(), anyLong(), anyLong());
+  }
+
+  private static EntityWithPath newTable(long id, String name) {
+    PolarisBaseEntity entity =
+        new PolarisBaseEntity.Builder()
+            .catalogId(100L)
+            .id(id)
+            .parentId(50L)
+            .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+            .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+            .name(name)
+            .entityVersion(1)
+            .createTimestamp(System.currentTimeMillis())
+            .build();
+    return new EntityWithPath(List.of(), entity);
+  }
+
+  @Test
+  public void testCommitBatchMixedCreatesAndUpdatesUseOneWriteEntitiesCall() {
+    // Two creates + two CAS updates.The manager must issue exactly one writeEntities call — that
+    // call runs inside one JDBC transaction.
+    List<EntityWithPath> creates = List.of(newTable(11L, "create-a"), newTable(12L, "create-b"));
+    List<EntityWithPath> updates = List.of(newTable(21L, "update-a"), newTable(22L, "update-b"));
+
+    EntitiesResult result =
+        manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.ofBatch(creates, updates));
+
+    assertThat(result.isSuccess()).isTrue();
+    verify(metaStore, times(1)).writeEntities(eq(callCtx), any(), any());
+    verify(metaStore, never())
+        .writeEntity(any(), any(), Mockito.anyBoolean(), Mockito.nullable(PolarisBaseEntity.class));
+  }
+
+  @Test
+  public void testCommitBatchCreatesOnlyUsesOneWriteEntitiesCall() {
+    List<EntityWithPath> creates = List.of(newTable(11L, "c1"), newTable(12L, "c2"));
+
+    EntitiesResult result =
+        manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.ofBatch(creates, List.of()));
+
+    assertThat(result.isSuccess()).isTrue();
+    verify(metaStore, times(1)).writeEntities(eq(callCtx), any(), any());
+  }
+
+  @Test
+  public void testCommitBatchUpdatesOnlyUsesOneWriteEntitiesCall() {
+    List<EntityWithPath> updates = List.of(newTable(21L, "u1"), newTable(22L, "u2"));
+
+    EntitiesResult result =
+        manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.ofBatch(List.of(), updates));
+
+    assertThat(result.isSuccess()).isTrue();
+    verify(metaStore, times(1)).writeEntities(eq(callCtx), any(), any());
+  }
+
+  @Test
+  public void testCommitBatchEmptyBatchIsANoOp() {
+    EntitiesResult result = manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.EMPTY);
+
+    assertThat(result.isSuccess()).isTrue();
+    verify(metaStore, never()).writeEntities(any(), any(), any());
   }
 }

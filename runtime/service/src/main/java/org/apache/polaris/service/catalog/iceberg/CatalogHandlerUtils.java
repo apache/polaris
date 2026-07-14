@@ -387,7 +387,7 @@ public class CatalogHandlerUtils {
     return isCreate;
   }
 
-  private TableMetadata create(TableOperations ops, UpdateTableRequest request) {
+  TableMetadata create(TableOperations ops, UpdateTableRequest request) {
     // the only valid requirement is that the table will be created
     request.requirements().forEach(requirement -> requirement.validate(ops.current()));
     Optional<Integer> formatVersion =

@@ -932,6 +932,31 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
+  public @NonNull EntitiesResult commitTransactionBatch(
+      @NonNull PolarisCallContext callCtx, @NonNull MetaStoreChangeSet changeSet) {
+    List<EntityWithPath> creates = changeSet.creates();
+    List<EntityWithPath> updates = changeSet.updates();
+    getDiagnostics().checkNotNull(creates, "unexpected_null_creates");
+    getDiagnostics().checkNotNull(updates, "unexpected_null_updates");
+    EntitiesResult empty = emptyBatchShortCircuit(creates, updates);
+    if (empty != null) {
+      return empty;
+    }
+    if (creates.isEmpty()) {
+      return updateEntitiesPropertiesIfNotChanged(callCtx, updates);
+    }
+    // Persist creates and CAS-updates in a single writeEntities call, atomic on JDBC.
+    BasePersistence ms = callCtx.getMetaStore();
+    return commitTransactionBatchViaWriteEntities(
+        callCtx,
+        ms,
+        creates,
+        updates,
+        (entities, originals) -> ms.writeEntities(callCtx, entities, originals));
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public @NonNull EntitiesResult updateEntitiesPropertiesIfNotChanged(
       @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities) {
     // get metastore we should be using

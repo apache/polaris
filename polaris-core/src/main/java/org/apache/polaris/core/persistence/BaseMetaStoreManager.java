@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -25,9 +27,14 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
 public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
@@ -171,5 +178,67 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     BasePersistence ms = callCtx.getMetaStore();
 
     return new GenerateEntityIdResult(ms.generateNewId(callCtx));
+  }
+
+  /** Persists a merged (entities, originalEntities) batch within the caller's transaction. */
+  @FunctionalInterface
+  protected interface BatchWriteAction {
+    void write(List<PolarisBaseEntity> entities, List<PolarisBaseEntity> originalEntities);
+  }
+
+  /**
+   * Merges {@code creates} and CAS {@code updates} into a single write call. Creates land at
+   * indices with a null originalEntity; updates land at indices with the prior entity state.
+   */
+  protected @NonNull EntitiesResult commitTransactionBatchViaWriteEntities(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull List<EntityWithPath> creates,
+      @NonNull List<EntityWithPath> updates,
+      @NonNull BatchWriteAction write) {
+    List<PolarisBaseEntity> mergedEntities = new ArrayList<>(creates.size() + updates.size());
+    List<PolarisBaseEntity> mergedOriginals = new ArrayList<>(creates.size() + updates.size());
+
+    for (EntityWithPath create : creates) {
+      mergedEntities.add(
+          prepareToPersistNewEntity(
+              callCtx, ms, new PolarisBaseEntity.Builder(create.entity()).build()));
+      mergedOriginals.add(null);
+    }
+    for (EntityWithPath update : updates) {
+      mergedEntities.add(
+          prepareToPersistEntityAfterChange(
+              callCtx,
+              ms,
+              new PolarisBaseEntity.Builder(update.entity()).build(),
+              false,
+              update.entity()));
+      mergedOriginals.add(update.entity());
+    }
+
+    try {
+      write.write(mergedEntities, mergedOriginals);
+    } catch (EntityAlreadyExistsException e) {
+      return new EntitiesResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
+          String.format(
+              "Existing entity id: '%s', type %s subtype %s",
+              e.getExistingEntity().getId(),
+              e.getExistingEntity().getTypeCode(),
+              e.getExistingEntity().getSubTypeCode()));
+    } catch (RetryOnConcurrencyException e) {
+      return new EntitiesResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+    }
+    return new EntitiesResult(Page.fromItems(mergedEntities));
+  }
+
+  /** Returns an empty successful result if both lists are empty, otherwise {@code null}. */
+  protected static @Nullable EntitiesResult emptyBatchShortCircuit(
+      List<EntityWithPath> creates, List<EntityWithPath> updates) {
+    if (creates.isEmpty() && updates.isEmpty()) {
+      return new EntitiesResult(Page.fromItems(List.of()));
+    }
+    return null;
   }
 }
