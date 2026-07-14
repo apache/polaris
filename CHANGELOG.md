@@ -30,30 +30,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
-- Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
-  - `polaris.event-listener.executor.pool-size` configures the thread pool size.
-  - `polaris.event-listener.executor.queue-size` configures the queue size for pending events when all threads are busy.
 
 ### Breaking changes
+- Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms
+  are now always bootstrapped with the latest available schema version.
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
 - Admin grant APIs now reject table-like privilege targets with an empty namespace. A table-like target without a namespace is considered invalid input.
-- The REST layer now enforces stricter validation for entity names (including namespaces, tables, views, and generic tables). Requests containing invalid names will be rejected with an HTTP 400 error. Existing clients should verify and rename entities before upgrading if their names fall into the following forbidden categories:
-    - Empty strings
-    - Names consisting solely of `.` or `..`
-    - Names containing control (invisible) characters
-    - Names with leading or trailing whitespace
-    - Names containing any of these characters: <code>/\:*?"<>|#+`</code>
 
 ### New Features
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
-- Added `SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL` feature flag for AWS credential vending. Operators can now configure an ordered list of fields (`realm`, `catalog`, `namespace`, `table`, `principal`) to compose structured STS role session names (e.g. `p-acme-hr_catalog-employee-etl_writer`). Session names are sanitized and proportionally truncated to the AWS 64-character limit. When unset, existing `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` behaviour is preserved.
-- Added `hostUsers` support in Helm chart.
-- Added documentation for BigQuery Metastore Catalog federation. Build with `-PNonRESTCatalogs=BIGQUERY` to include the BigQueryMetastoreCatalog federation extension. See `site/content/in-dev/unreleased/federation/bigquery-metastore-federation.md`.
-- Support for view registration has been added.
-- Python client: added support for Python 3.14
-- Added support for `register table` overwrite semantics in the Iceberg REST catalog flow (`overwrite=true`) for internal Polaris catalogs. With overwrite enabled, existing table pointers can be updated to a new metadata location while preserving default behavior for `overwrite=false`.
-- Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
-- Added Polaris Spark 4.0 client.
 - Added `maintenance` support in Helm chart.
 - Python CLI: added `--catalog-url` to specify a custom base URL for the Iceberg REST Catalog (IRC) API. Allows use with deployments that map a path (e.g. `/server1`) directly to the catalog root instead of the standard `/api/catalog`. See #4927.
 - Added support for publishing histogram buckets for HTTP server request duration as configured SLO boundaries.
@@ -68,12 +53,51 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `PolarisMetaStoreManager.bootstrapPolarisService` now returns a result with
   `ReturnStatus.ENTITY_ALREADY_EXISTS` instead of throwing `IllegalArgumentException` when the
   root principal already exists. Existing credentials are never returned or altered.
+- Authorization failure messages (HTTP 403 / `ForbiddenException` from `PolarisAuthorizerImpl`) now log the specific missing privilege(s) and the entity each was checked against server-side (at `INFO` level), e.g. `missing TABLE_CREATE on NAMESPACE 'ns1'`. The client-facing 403 response remains a generic message to avoid leaking authorization metadata to untrusted clients. Operators can correlate client errors to server logs using the existing `X-Request-ID` header (present in default log MDC as `requestId`).
+
+### Deprecations
+
+### Fixes
+- Async task execution (table cleanup, manifest and batch file cleanup) now retries when a handler returns false on transient errors (e.g. IO or delete failures). Previously `false` was swallowed with only a warning log and the task was never retried via the existing retry mechanism.
+- `TableCleanupTaskHandler` now clamps `TABLE_METADATA_CLEANUP_BATCH_SIZE` to at least 1. Previously a non-positive realm override caused an infinite loop (0) or `IllegalArgumentException` (<0) when splitting metadata files for cleanup.
+- `ManifestFileCleanupTaskHandler` now handles Iceberg v2 delete manifests in addition to data manifests. Previously, `DROP TABLE PURGE` on a v2 table that had been updated via merge-on-read DML left position-delete files and their manifests as orphans in object storage; the cleanup task failed silently because `ManifestFiles.read()` rejects delete manifests.
+- OPA authorizer now includes the realm identifier in the authorization context sent to OPA (`input.context.realm`). This ensures OPA policies can enforce tenant isolation across realms, preventing potential collisions if identical principal or resource names exist in different realms.
+
+## [1.6.0]
+
+### Upgrade notes
+
+- Event listeners are now executed on a dedicated executor. **This executor does not propagate the original request's CDI context**; listeners that were improperly relying on that should instead manage their own CDI request scope from now on. Furthermore, two new configuration options were introduced to configure the executor: 
+  - `polaris.event-listener.executor.pool-size` configures the thread pool size.
+  - `polaris.event-listener.executor.queue-size` configures the queue size for pending events when all threads are busy.
+
+### Breaking changes
+
+- The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
+- The REST layer now enforces stricter validation for entity names (including namespaces, tables, views, and generic tables). Requests containing invalid names will be rejected with an HTTP 400 error. Existing clients should verify and rename entities before upgrading if their names fall into the following forbidden categories:
+    - Empty strings
+    - Names consisting solely of `.` or `..`
+    - Names containing control (invisible) characters
+    - Names with leading or trailing whitespace
+    - Names containing any of these characters: <code>/\:*?"<>|#+`</code>
+
+### New Features
+
+- Added `SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL` feature flag for AWS credential vending. Operators can now configure an ordered list of fields (`realm`, `catalog`, `namespace`, `table`, `principal`) to compose structured STS role session names (e.g. `p-acme-hr_catalog-employee-etl_writer`). Session names are sanitized and proportionally truncated to the AWS 64-character limit. When unset, existing `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` behaviour is preserved.
+- Added `hostUsers` support in Helm chart.
+- Added documentation for BigQuery Metastore Catalog federation. Build with `-PNonRESTCatalogs=BIGQUERY` to include the BigQueryMetastoreCatalog federation extension. See `site/content/in-dev/unreleased/federation/bigquery-metastore-federation.md`.
+- Support for view registration has been added.
+- Python client: added support for Python 3.14
+- Added support for `register table` overwrite semantics in the Iceberg REST catalog flow (`overwrite=true`) for internal Polaris catalogs. With overwrite enabled, existing table pointers can be updated to a new metadata location while preserving default behavior for `overwrite=false`.
+- Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
+- Added Polaris Spark 4.0 client.
+
+### Changes
+
 - Added REPL support to Polaris CLI.
 - The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
 - Added version option to Polaris CLI.
 - The token broker now builds the JWT `Algorithm` and `JWTVerifier` once per realm in the `TokenBrokerFactory` and reuses them across requests, instead of rebuilding them on every `verify()`/`sign()` call on the request-scoped broker. For deployments using file-based symmetric secrets, the secret is now read once per realm (at first use) rather than on every JWT operation; rotating the on-disk secret requires a restart.
-
-### Deprecations
 
 ### Fixes
 - Redesigned Persistence SPI to make batch/ChangeSet operations the primary mutation path.
@@ -84,7 +108,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   leaking transaction state across SPI calls. Non-atomic backends keep the default throw and
   callers fall back to individual operations.
 - Fixed a boundary condition in GCS downscoped credential generation (`GcpCredentialsStorageIntegration`). Locations without a trailing slash could previously grant access to sibling object prefixes via the generated CEL conditions for `resource.name` and list prefixes. Granted paths are now normalized to a directory prefix (with a trailing slash) before the CEL conditions are built, so sibling prefixes can no longer satisfy the `startsWith` checks.
-- Async task execution (table cleanup, manifest and batch file cleanup) now retries when a handler returns false on transient errors (e.g. IO or delete failures). Previously `false` was swallowed with only a warning log and the task was never retried via the existing retry mechanism.
 - Fixed `NullPointerException` during `dropEntity` when an entity referenced by a grant had been concurrently removed (or purged). `lookupEntities` can return null entries for dropped entities; these are now skipped safely.
 - `RateLimiterFilter` now returns an Iceberg-compatible `ErrorResponse` JSON body on HTTP 429, with `Content-Type: application/json`. Previously the body was empty, causing Iceberg REST clients to surface an opaque error.
 - The admin tool `purge` command now prints the underlying exception stack trace to stderr when a purge fails unexpectedly, matching the `bootstrap` command. Previously a failed purge printed only a generic message, giving operators no diagnostic information.
@@ -92,9 +115,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - JWT verification now validates the issuer claim (`"polaris"`) in addition to the active claim. Tokens signed with the same key but carrying a different issuer are now rejected.
 - Inheritable policy mapping inserts in the JDBC backend now use the active transaction connection, so they roll back correctly with the surrounding transaction.
 - Generic table drop now accepts table-scoped `TABLE_DROP` privilege.
-- `TableCleanupTaskHandler` now clamps `TABLE_METADATA_CLEANUP_BATCH_SIZE` to at least 1. Previously a non-positive realm override caused an infinite loop (0) or `IllegalArgumentException` (<0) when splitting metadata files for cleanup.
 - Azure SAS tokens are now signed for the configured duration instead of a hardcoded 1 hour, so long jobs no longer fail with expired credentials.
-- `ManifestFileCleanupTaskHandler` now handles Iceberg v2 delete manifests in addition to data manifests. Previously, `DROP TABLE PURGE` on a v2 table that had been updated via merge-on-read DML left position-delete files and their manifests as orphans in object storage; the cleanup task failed silently because `ManifestFiles.read()` rejects delete manifests.
 
 ## [1.5.0]
 

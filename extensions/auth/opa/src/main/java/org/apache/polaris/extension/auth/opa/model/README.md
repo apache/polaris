@@ -66,6 +66,7 @@ Individual resource with hierarchical context:
 ### Context
 Request metadata:
 - `request_id`: Unique correlation ID for logging
+- `realm`: Realm identifier (allows OPA policies to scope decisions by realm)
 
 ## Schema Evolution
 

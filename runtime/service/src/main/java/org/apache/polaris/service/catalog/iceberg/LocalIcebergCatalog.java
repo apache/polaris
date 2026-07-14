@@ -128,6 +128,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -135,7 +136,6 @@ import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.events.EventAttributeMap;
@@ -550,7 +550,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     Optional<PolarisEntity> storageInfoEntity =
-        FileIOUtil.findStorageInfoFromHierarchy(
+        PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
             CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
 
     // The storageProperties we stash away in the Task should be the superset of the
@@ -1114,7 +1114,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 : resolvedEntityView.getResolvedPath(
                     ResolvedPathKey.ofNamespace(identifier.namespace()));
         Optional<PolarisEntity> storageInfoEntity =
-            FileIOUtil.findStorageInfoFromHierarchy(storageHierarchy);
+            PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
+                storageHierarchy);
 
         storageInfoEntity.map(PolarisEntity::getInternalPropertiesAsMap).ifPresent(clone::putAll);
         clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
@@ -2842,7 +2843,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         resolvedStorageEntity =
             resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(nsLevel));
         if (resolvedStorageEntity != null) {
-          storageInfoEntity = FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
+          storageInfoEntity =
+              PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
+                  resolvedStorageEntity);
           break;
         }
       }

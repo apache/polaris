@@ -19,9 +19,11 @@
 package org.apache.polaris.core.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -34,10 +36,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.junit.jupiter.api.Test;
@@ -360,5 +366,163 @@ public class PolarisAuthorizerImplTest {
 
     assertThat(decision.isAllowed()).isFalse();
     assertThat(decision.getMessage()).hasValue("missing privilege");
+  }
+
+  // ----- Tests for server-side missing privilege logging -----
+
+  @Test
+  void authorizeOrThrowLogsMissingPrivilegeDetailsServerSide() {
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfigWithDefaults());
+    PolarisResolvedPathWrapper namespace = resolvedPath(namespaceEntity("ns1"));
+
+    assertThatThrownBy(
+            () ->
+                authorizer.authorizeOrThrow(
+                    PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
+                    Set.of(),
+                    PolarisAuthorizableOperation.CREATE_TABLE_DIRECT,
+                    List.of(namespace),
+                    null))
+        .isInstanceOf(ForbiddenException.class)
+        // Client-facing message is generic (no missing privilege details).
+        .hasMessage(
+            "Principal 'alice' with activated PrincipalRoles '[reader]'"
+                + " and activated grants via '[]' is not authorized for op CREATE_TABLE_DIRECT")
+        .hasMessageNotContaining("TABLE_CREATE")
+        .hasMessageNotContaining("NAMESPACE");
+    // Server-side log contains the detailed missing privilege info (verified via log capture
+    // in integration tests; unit tests here verify the exception message stays generic).
+  }
+
+  @Test
+  void authorizeOrThrowLogsAllMissingTargetPrivilegesWithoutShortCircuit() {
+    // CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION requires both TABLE_CREATE and TABLE_WRITE_DATA
+    // on the target namespace. With no grants at all, both should be logged server-side but NOT
+    // exposed in the client-facing exception.
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfigWithDefaults());
+    PolarisResolvedPathWrapper namespace = resolvedPath(namespaceEntity("ns1"));
+
+    assertThatThrownBy(
+            () ->
+                authorizer.authorizeOrThrow(
+                    PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
+                    Set.of(),
+                    PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
+                    List.of(namespace),
+                    null))
+        .isInstanceOf(ForbiddenException.class)
+        // Generic client message.
+        .hasMessage(
+            "Principal 'alice' with activated PrincipalRoles '[reader]'"
+                + " and activated grants via '[]' is not authorized for op CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION")
+        // No privilege details leaked to client.
+        .hasMessageNotContaining("TABLE_CREATE")
+        .hasMessageNotContaining("TABLE_WRITE_DATA");
+  }
+
+  @Test
+  void authorizeOrThrowLogsSecondaryMissingPrivilegeServerSide() {
+    // RENAME_TABLE: target privilege TABLE_DROP on the existing table; secondary privileges
+    // TABLE_LIST and TABLE_CREATE on the destination namespace. Secondary details must NOT
+    // appear in the client-facing exception.
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfigWithDefaults());
+    PolarisResolvedPathWrapper srcTable = resolvedPath(tableEntity("src_t"));
+    PolarisResolvedPathWrapper dstNamespace = resolvedPath(namespaceEntity("dst_ns"));
+
+    assertThatThrownBy(
+            () ->
+                authorizer.authorizeOrThrow(
+                    PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
+                    Set.of(),
+                    PolarisAuthorizableOperation.RENAME_TABLE,
+                    List.of(srcTable),
+                    List.of(dstNamespace)))
+        .isInstanceOf(ForbiddenException.class)
+        // Generic client message.
+        .hasMessage(
+            "Principal 'alice' with activated PrincipalRoles '[reader]'"
+                + " and activated grants via '[]' is not authorized for op RENAME_TABLE")
+        // No secondary details leaked to client.
+        .hasMessageNotContaining("TABLE_DROP")
+        .hasMessageNotContaining("TABLE_LIST")
+        .hasMessageNotContaining("TABLE_CREATE")
+        .hasMessageNotContaining("secondary");
+  }
+
+  @Test
+  void findMissingPrivilegesReturnsEmptyWhenNothingRequiredFails() {
+    // When the authorizer would say "yes", the helper must return an empty list — this is the
+    // invariant relied on by isAuthorized.
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfigWithDefaults()));
+    PolarisResolvedPathWrapper namespace = resolvedPath(namespaceEntity("ns1"));
+    // Stub hasTransitivePrivilege to always return true so we exercise the empty-result branch
+    // of findMissingPrivileges without rebuilding a full grant graph.
+    doReturn(true)
+        .when(authorizer)
+        .hasTransitivePrivilege(
+            any(PolarisPrincipal.class),
+            ArgumentMatchers.any(),
+            any(PolarisPrivilege.class),
+            any(PolarisResolvedPathWrapper.class));
+
+    List<PolarisAuthorizerImpl.MissingPrivilege> missing =
+        authorizer.findMissingPrivileges(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
+            Set.of(),
+            PolarisAuthorizableOperation.CREATE_TABLE_DIRECT,
+            List.of(namespace),
+            null);
+
+    assertThat(missing).isEmpty();
+  }
+
+  @Test
+  void missingPrivilegeDescribeHandlesNullLeafGracefully() {
+    // Defensive: the error-formatting path must never throw, even on partial mocks.
+    PolarisAuthorizerImpl.MissingPrivilege m =
+        PolarisAuthorizerImpl.MissingPrivilege.onTarget(
+            PolarisPrivilege.TABLE_CREATE, mock(PolarisResolvedPathWrapper.class));
+
+    assertThat(m.describe()).contains("TABLE_CREATE", "<unknown>");
+  }
+
+  // ----- helpers -----
+
+  private static PolarisResolvedPathWrapper resolvedPath(PolarisEntity leaf) {
+    // Single-entry path with no grants — the privilege check will always miss.
+    return new PolarisResolvedPathWrapper(
+        List.of(new ResolvedPolarisEntity(leaf, List.of(), List.of())));
+  }
+
+  private static PolarisEntity namespaceEntity(String name) {
+    return new PolarisEntity.Builder()
+        .setId(1)
+        .setCatalogId(0)
+        .setType(PolarisEntityType.NAMESPACE)
+        .setSubType(PolarisEntitySubType.NULL_SUBTYPE)
+        .setName(name)
+        .build();
+  }
+
+  private static PolarisEntity tableEntity(String name) {
+    return new PolarisEntity.Builder()
+        .setId(2)
+        .setCatalogId(0)
+        .setType(PolarisEntityType.TABLE_LIKE)
+        .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
+        .setName(name)
+        .build();
+  }
+
+  private static RealmConfig realmConfigWithDefaults() {
+    // The credential-rotation-required gate auto-unboxes a Boolean from RealmConfig.getConfig;
+    // Mockito's default null answer would NPE before we ever reach the authorization logic.
+    // Returning false (the production default for the configuration flag) sends control through
+    // to findMissingPrivileges, which is what we want to exercise.
+    RealmConfig realmConfig = mock(RealmConfig.class);
+    when(realmConfig.getConfig(
+            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING))
+        .thenReturn(false);
+    return realmConfig;
   }
 }
