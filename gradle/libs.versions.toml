@@ -57,6 +57,7 @@ commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.50.0" } # required by the polaris-java plugin
 google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.94.0" }
+floci-testcontainers = { module = "io.floci:testcontainers-floci", version = "2.11.0" }
 graalvm-js-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "ranger-graalvm" }
 graalvm-polyglot-js = { module = "org.graalvm.polyglot:js", version.ref = "ranger-graalvm" }
 graalvm-polyglot-polyglot = { module = "org.graalvm.polyglot:polyglot", version.ref = "ranger-graalvm" }
