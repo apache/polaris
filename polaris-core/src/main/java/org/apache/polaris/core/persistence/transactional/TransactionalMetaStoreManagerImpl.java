@@ -51,6 +51,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
+import org.apache.polaris.core.persistence.MetaStoreChangeSet;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
@@ -1175,9 +1176,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public @NonNull EntitiesResult commitTransactionBatch(
-      @NonNull PolarisCallContext callCtx,
-      @NonNull List<EntityWithPath> creates,
-      @NonNull List<EntityWithPath> updates) {
+      @NonNull PolarisCallContext callCtx, @NonNull MetaStoreChangeSet changeSet) {
+    List<EntityWithPath> creates = changeSet.creates();
+    List<EntityWithPath> updates = changeSet.updates();
     getDiagnostics().checkNotNull(creates, "unexpected_null_creates");
     getDiagnostics().checkNotNull(updates, "unexpected_null_updates");
     EntitiesResult empty = emptyBatchShortCircuit(creates, updates);

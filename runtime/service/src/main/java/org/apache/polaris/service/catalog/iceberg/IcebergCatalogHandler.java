@@ -105,10 +105,10 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.persistence.MetaStoreChangeSet;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -1429,13 +1429,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       localCatalog.setMetaStoreManager(metaStoreManager());
       validateDeferredLocations(localCatalog, state);
 
-      List<EntityWithPath> pendingCreations = transactionMetaStoreManager.getPendingCreations();
-      List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
+      MetaStoreChangeSet changeSet =
+          MetaStoreChangeSet.ofBatch(
+              transactionMetaStoreManager.getPendingCreations(),
+              transactionMetaStoreManager.getPendingUpdates());
 
       EntitiesResult result =
           metaStoreManager()
-              .commitTransactionBatch(
-                  callContext().getPolarisCallContext(), pendingCreations, pendingUpdates);
+              .commitTransactionBatch(callContext().getPolarisCallContext(), changeSet);
       if (!result.isSuccess()) {
         // TODO: Retries on failure
 

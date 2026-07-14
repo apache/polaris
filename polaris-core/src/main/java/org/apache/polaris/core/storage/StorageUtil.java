@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -105,28 +106,31 @@ public class StorageUtil {
    */
   public static void validateNoOverlapWithinBatch(
       List<Map.Entry<TableIdentifier, TableMetadata>> batch) {
+    // Collect one (location, identifier) pair per data location across all batch entries, then
+    // sort alphabetically by location string. Overlapping paths will be alphabetically adjacent
+    // after sorting, so a single linear scan catches all conflicts in O(n log n) rather than
+    // the O(n^2) pairwise scan.
     List<Map.Entry<TableIdentifier, StorageLocation>> entries =
         batch.stream()
             .flatMap(
                 e ->
                     getLocationsUsedByTable(e.getValue()).stream()
                         .map(loc -> Map.entry(e.getKey(), StorageLocation.of(loc))))
+            .sorted(Comparator.comparing(e -> e.getValue().toString()))
             .toList();
-    for (int i = 0; i < entries.size(); i++) {
-      for (int j = i + 1; j < entries.size(); j++) {
-        TableIdentifier idA = entries.get(i).getKey();
-        TableIdentifier idB = entries.get(j).getKey();
-        if (idA.equals(idB)) {
-          continue;
-        }
-        StorageLocation a = entries.get(i).getValue();
-        StorageLocation b = entries.get(j).getValue();
-        if (a.isChildOf(b) || b.isChildOf(a)) {
-          throw new BadRequestException(
-              "Transaction contains changes whose locations overlap: '%s' for table '%s' and"
-                  + " '%s' for table '%s'",
-              a, idA, b, idB);
-        }
+    for (int i = 0; i < entries.size() - 1; i++) {
+      TableIdentifier idA = entries.get(i).getKey();
+      TableIdentifier idB = entries.get(i + 1).getKey();
+      if (idA.equals(idB)) {
+        continue;
+      }
+      StorageLocation a = entries.get(i).getValue();
+      StorageLocation b = entries.get(i + 1).getValue();
+      if (a.isChildOf(b) || b.isChildOf(a)) {
+        throw new BadRequestException(
+            "Transaction contains changes whose locations overlap: '%s' for table '%s' and"
+                + " '%s' for table '%s'",
+            a, idA, b, idB);
       }
     }
   }

@@ -212,7 +212,8 @@ public class AtomicOperationMetaStoreManagerTest {
     List<EntityWithPath> creates = List.of(newTable(11L, "create-a"), newTable(12L, "create-b"));
     List<EntityWithPath> updates = List.of(newTable(21L, "update-a"), newTable(22L, "update-b"));
 
-    EntitiesResult result = manager.commitTransactionBatch(callCtx, creates, updates);
+    EntitiesResult result =
+        manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.ofBatch(creates, updates));
 
     assertThat(result.isSuccess()).isTrue();
     verify(metaStore, times(1)).writeEntities(eq(callCtx), any(), any());
@@ -224,7 +225,8 @@ public class AtomicOperationMetaStoreManagerTest {
   public void testCommitBatchCreatesOnlyUsesOneWriteEntitiesCall() {
     List<EntityWithPath> creates = List.of(newTable(11L, "c1"), newTable(12L, "c2"));
 
-    EntitiesResult result = manager.commitTransactionBatch(callCtx, creates, List.of());
+    EntitiesResult result =
+        manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.ofBatch(creates, List.of()));
 
     assertThat(result.isSuccess()).isTrue();
     verify(metaStore, times(1)).writeEntities(eq(callCtx), any(), any());
@@ -234,7 +236,8 @@ public class AtomicOperationMetaStoreManagerTest {
   public void testCommitBatchUpdatesOnlyUsesOneWriteEntitiesCall() {
     List<EntityWithPath> updates = List.of(newTable(21L, "u1"), newTable(22L, "u2"));
 
-    EntitiesResult result = manager.commitTransactionBatch(callCtx, List.of(), updates);
+    EntitiesResult result =
+        manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.ofBatch(List.of(), updates));
 
     assertThat(result.isSuccess()).isTrue();
     verify(metaStore, times(1)).writeEntities(eq(callCtx), any(), any());
@@ -242,7 +245,7 @@ public class AtomicOperationMetaStoreManagerTest {
 
   @Test
   public void testCommitBatchEmptyBatchIsANoOp() {
-    EntitiesResult result = manager.commitTransactionBatch(callCtx, List.of(), List.of());
+    EntitiesResult result = manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.EMPTY);
 
     assertThat(result.isSuccess()).isTrue();
     verify(metaStore, never()).writeEntities(any(), any(), any());

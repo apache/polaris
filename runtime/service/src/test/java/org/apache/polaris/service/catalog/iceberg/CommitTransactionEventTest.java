@@ -1037,7 +1037,7 @@ public class CommitTransactionEventTest {
                             return invocation.callRealMethod();
                           })
                       .when(spy)
-                      .commitTransactionBatch(Mockito.any(), Mockito.any(), Mockito.any());
+                      .commitTransactionBatch(Mockito.any(), Mockito.any());
                   return spy;
                 })
             .build();

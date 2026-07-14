@@ -933,9 +933,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public @NonNull EntitiesResult commitTransactionBatch(
-      @NonNull PolarisCallContext callCtx,
-      @NonNull List<EntityWithPath> creates,
-      @NonNull List<EntityWithPath> updates) {
+      @NonNull PolarisCallContext callCtx, @NonNull MetaStoreChangeSet changeSet) {
+    List<EntityWithPath> creates = changeSet.creates();
+    List<EntityWithPath> updates = changeSet.updates();
     getDiagnostics().checkNotNull(creates, "unexpected_null_creates");
     getDiagnostics().checkNotNull(updates, "unexpected_null_updates");
     EntitiesResult empty = emptyBatchShortCircuit(creates, updates);
