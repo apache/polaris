@@ -257,7 +257,7 @@ If set to true, clean up data when a namespace is dropped
 
 ##### `polaris.features."DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED"`
 
-When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog. This layout composes with DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED, which controls whether the final table or view directory has a unique suffix.
+When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -267,10 +267,10 @@ When enabled, Iceberg tables and views created without a location specified will
 
 ##### `polaris.features."DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED"`
 
-When enabled (the default), a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix. When disabled, the generated location uses the legacy table or view name. This setting composes with DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED: the prefix flag controls the parent layout, while this flag controls the final directory name.
+When enabled, a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix. When disabled (the default), the generated location is the legacy `<namespace location>/<table name>` form.
 
 - **Type:** `Boolean`
-- **Default:** `true`
+- **Default:** `false`
 - **Catalog Config:** `polaris.config.default-unique-table-location.enabled`
 
 ---

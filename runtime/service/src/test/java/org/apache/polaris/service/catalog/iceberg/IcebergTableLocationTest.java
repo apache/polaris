@@ -599,12 +599,9 @@ public class IcebergTableLocationTest {
   }
 
   @Test
-  @DisplayName("Default table location is the legacy form when the feature is disabled")
-  void testLegacyLocationWhenDisabled(@TempDir Path tempDir) {
-    TestServices services =
-        TestServices.builder()
-            .config(serverConfig(DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.key(), "false"))
-            .build();
+  @DisplayName("Default table location uses the legacy form")
+  void testLegacyLocationByDefault(@TempDir Path tempDir) {
+    TestServices services = TestServices.builder().config(serverConfig()).build();
     String baseLocation =
         LocationUtil.stripTrailingSlash(tempDir.toAbsolutePath().toUri().toString());
     createCatalogAndNamespace(services, Map.of(), baseLocation);

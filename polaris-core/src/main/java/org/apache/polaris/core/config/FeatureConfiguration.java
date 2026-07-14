@@ -643,11 +643,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED")
           .catalogConfig("polaris.config.default-unique-table-location.enabled")
           .description(
-              "When enabled (the default), a managed location generated for a table or view "
-                  + "created without an explicit location is given a unique, unpredictable suffix, "
-                  + "so that no two tables share a path prefix. When disabled, the generated "
+              "When enabled, a managed location generated for a table or view created without an "
+                  + "explicit location is given a unique, unpredictable suffix, so that no two "
+                  + "tables share a path prefix. When disabled (the default), the generated "
                   + "location is the legacy `<namespace location>/<table name>` form.")
-          .defaultValue(true)
+          .defaultValue(false)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ENABLE_CREDENTIAL_RESET =

@@ -140,12 +140,12 @@ class PolarisConfigurationTest {
 
   @Test
   void tableLocationDefaults() {
-    // Lock the production defaults: UUID locations on, caller-specified locations allowed.
+    // Lock the production defaults: legacy locations, caller-specified locations allowed.
     assertThat(FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.key())
         .isEqualTo("DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED");
     assertThat(FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.catalogConfig())
         .isEqualTo("polaris.config.default-unique-table-location.enabled");
-    assertThat(FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.defaultValue()).isTrue();
+    assertThat(FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.defaultValue()).isFalse();
 
     assertThat(FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.key())
         .isEqualTo("ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION");

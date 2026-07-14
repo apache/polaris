@@ -47,7 +47,6 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
@@ -178,15 +177,10 @@ public record TestServices(
   }
 
   public static class Builder {
-    // Pin the legacy default location layout for backward-compatible tests; callers testing the
-    // unique-location default override this key explicitly via config(...).
-    private static final Map<String, Object> LOCATION_TEST_DEFAULTS =
-        Map.of(FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.key(), "false");
-
     private final Clock clock = Clock.systemUTC();
     private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
     private RealmContext realmContext = TEST_REALM;
-    private Map<String, Object> config = new HashMap<>(LOCATION_TEST_DEFAULTS);
+    private Map<String, Object> config = new HashMap<>();
     private StsClient stsClient;
     private boolean useEventDelegator = false;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
