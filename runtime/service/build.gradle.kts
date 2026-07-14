@@ -156,7 +156,7 @@ dependencies {
   testImplementation("io.rest-assured:rest-assured")
 
   testImplementation(platform(libs.testcontainers.bom))
-  testImplementation("org.testcontainers:testcontainers-localstack")
+  testImplementation(project(":polaris-floci-aws-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
