@@ -19,6 +19,8 @@
 -- Changes from v2:
 --  * Added `events` table
 
+CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
+SET search_path TO POLARIS_SCHEMA;
 
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,
