@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.metrics.iceberg;
+package org.apache.polaris.extension.metrics.jdbc;
 
 import java.time.Instant;
 import java.util.Collections;

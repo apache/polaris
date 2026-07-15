@@ -16,33 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.reporting;
+package org.apache.polaris.extension.metrics.reports;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
+import org.apache.polaris.core.metrics.MetricType;
+import org.apache.polaris.core.metrics.MetricsReportEnvelope;
 import org.junit.jupiter.api.Test;
 
-public class DefaultMetricsReporterTest {
+class LoggingMetricsReporterTest {
 
   @Test
-  void testLogging() {
-    DefaultMetricsReporter.ReportConsumer mockConsumer =
-        mock(DefaultMetricsReporter.ReportConsumer.class);
-    DefaultMetricsReporter reporter = new DefaultMetricsReporter(mockConsumer);
-    String warehouse = "testWarehouse";
-    long catalogId = 12345L;
-    TableIdentifier table = TableIdentifier.of("testNamespace", "testTable");
-    long tableId = 67890L;
-    MetricsReport metricsReport = mock(MetricsReport.class);
-    Instant receivedTimestamp = Instant.ofEpochMilli(1234567890L);
+  void forwardsEnvelopeToConsumer() {
+    AtomicReference<MetricsReportEnvelope> captured = new AtomicReference<>();
+    LoggingMetricsReporter reporter = new LoggingMetricsReporter(captured::set);
 
-    reporter.reportMetric(warehouse, catalogId, table, tableId, metricsReport, receivedTimestamp);
+    MetricsReportEnvelope envelope =
+        new MetricsReportEnvelope(
+            "cat",
+            1L,
+            TableIdentifier.of(Namespace.of("ns"), "t"),
+            2L,
+            MetricType.SCAN,
+            mock(MetricsReport.class),
+            Instant.ofEpochMilli(123L));
 
-    verify(mockConsumer)
-        .accept(warehouse, catalogId, table, tableId, metricsReport, receivedTimestamp);
+    reporter.reportMetric(envelope);
+
+    assertThat(captured.get()).isSameAs(envelope);
   }
 }

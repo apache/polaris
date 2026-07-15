@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
+package org.apache.polaris.extension.metrics.jdbc;
 
 import java.io.InputStream;
 import java.sql.SQLException;
@@ -24,27 +24,26 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
+import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Integration tests for metrics report persistence using JdbcBasePersistenceImpl. Tests the
+ * Integration tests for metrics report persistence using {@link JdbcMetricsPersistence}. Tests the
  * SPI-level write operations for scan and commit metrics reports.
  */
-class MetricsReportPersistenceTest {
+class JdbcMetricsPersistenceTest {
 
-  private JdbcBasePersistenceImpl metricsPersistence;
-  private DataSource dataSource;
+  private JdbcMetricsPersistence metricsPersistence;
 
   @BeforeEach
   void setUp() throws SQLException {
-    dataSource =
+    DataSource dataSource =
         JdbcConnectionPool.create(
             "jdbc:h2:mem:test_metrics_" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1", "sa", "");
 
@@ -56,15 +55,8 @@ class MetricsReportPersistenceTest {
     InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
     datasourceOperations.executeScript(schemaStream);
 
-    PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
-
-    metricsPersistence =
-        new JdbcBasePersistenceImpl(
-            diagnostics,
-            datasourceOperations,
-            PrincipalSecretsGenerator.RANDOM_SECRETS,
-            "TEST_REALM",
-            4);
+    RealmContext realmContext = () -> "TEST_REALM";
+    metricsPersistence = new JdbcMetricsPersistence(datasourceOperations, realmContext);
   }
 
   @Test

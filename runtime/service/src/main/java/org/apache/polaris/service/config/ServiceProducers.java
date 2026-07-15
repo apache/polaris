@@ -47,12 +47,12 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.metrics.IcebergMetricsReporter;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -82,7 +82,6 @@ import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
 import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
@@ -140,13 +139,6 @@ public class ServiceProducers {
       MetaStoreManagerFactory metaStoreManagerFactory) {
     BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
     return new PolarisCallContext(realmContext, metaStore, configurationSource);
-  }
-
-  @Produces
-  @RequestScoped
-  public MetricsPersistence metricsPersistence(
-      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    return metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
   }
 
   @Produces
@@ -451,9 +443,19 @@ public class ServiceProducers {
 
   @Produces
   @ApplicationScoped
-  public PolarisMetricsReporter metricsReporter(
-      MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
-    return reporters.select(Identifier.Literal.of(config.type())).get();
+  public IcebergMetricsReporter metricsReporter(
+      MetricsReportingConfiguration config, @Any Instance<IcebergMetricsReporter> reporters) {
+    Instance<IcebergMetricsReporter> selected =
+        reporters.select(Identifier.Literal.of(config.type()));
+    if (selected.isResolvable()) {
+      return selected.get();
+    }
+    // Reporter implementations live in the polaris-extensions-metrics-reports(-jdbc) modules; when
+    // none matches the configured type, drop metrics rather than failing core service startup.
+    LOGGER.warn(
+        "No IcebergMetricsReporter found for type '{}'; Iceberg metrics will be dropped",
+        config.type());
+    return envelope -> {};
   }
 
   @Produces

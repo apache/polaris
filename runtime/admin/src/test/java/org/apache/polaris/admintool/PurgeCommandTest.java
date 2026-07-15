@@ -32,7 +32,6 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
 
@@ -115,11 +114,6 @@ class PurgeCommandTest {
 
     @Override
     public PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
       throw new UnsupportedOperationException();
     }
 
