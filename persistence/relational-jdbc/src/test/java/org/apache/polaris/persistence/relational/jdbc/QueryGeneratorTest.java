@@ -19,7 +19,9 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -460,5 +462,34 @@ public class QueryGeneratorTest {
                 .parameters())
         .containsExactly(
             "realmId", -123L, "/", "//", "//バケツ/", "//バケツ/\"loc.ation\"/", "//バケツ/\"loc.ation\"/%");
+  }
+
+  @Test
+  void testGenerateExistsQuery() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("realm_id", "realm1");
+    params.put("catalog_id", 1L);
+    params.put("parent_id", 2L);
+    String sql =
+        QueryGenerator.generateExistsQuery(
+                ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, params)
+            .sql();
+    assertTrue(sql.startsWith("SELECT 1 "), sql);
+    assertTrue(sql.endsWith("LIMIT 1"), sql);
+    assertFalse(sql.contains("properties"), sql);
+    assertTrue(sql.contains("realm_id"), sql);
+    assertTrue(sql.contains("catalog_id"), sql);
+    assertTrue(sql.contains("parent_id"), sql);
+  }
+
+  @Test
+  void testGenerateExistsQueryRejectsUnknownColumn() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            QueryGenerator.generateExistsQuery(
+                ModelEntity.getAllColumnNames(2),
+                ModelEntity.TABLE_NAME,
+                Map.of("not_a_column", 1)));
   }
 }

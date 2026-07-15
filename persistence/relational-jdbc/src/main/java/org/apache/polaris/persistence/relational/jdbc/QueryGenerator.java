@@ -413,6 +413,20 @@ public class QueryGenerator {
     return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
   }
 
+  /**
+   * Generates a {@code SELECT 1 ... WHERE ... LIMIT 1} query to test row existence without fetching
+   * any column data. All filter conditions must be supplied in {@code whereClause}.
+   */
+  public static PreparedQuery generateExistsQuery(
+      @NonNull List<String> tableColumns,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereClause) {
+    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
+    String sql =
+        "SELECT 1 FROM " + getFullyQualifiedTableName(tableName) + where.sql() + " LIMIT 1";
+    return new PreparedQuery(sql, where.parameters());
+  }
+
   @VisibleForTesting
   static PreparedQuery generateEntityTableExistQuery() {
     return new PreparedQuery(

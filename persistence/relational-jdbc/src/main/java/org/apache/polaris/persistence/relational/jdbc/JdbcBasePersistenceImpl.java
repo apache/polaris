@@ -22,6 +22,7 @@ import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.Prep
 
 import com.google.common.base.Preconditions;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -68,6 +69,7 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityVersionConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
@@ -746,9 +748,19 @@ public class JdbcBasePersistenceImpl
     try {
       var results =
           datasourceOperations.executeSelect(
-              QueryGenerator.generateSelectQuery(
-                  ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params, 1),
-              new ModelEntity(schemaVersion));
+              QueryGenerator.generateExistsQuery(
+                  ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params),
+              new Converter<Integer>() {
+                @Override
+                public Integer fromResultSet(ResultSet rs) {
+                  return 1;
+                }
+
+                @Override
+                public Map<String, Object> toMap(DatabaseType databaseType) {
+                  throw new UnsupportedOperationException();
+                }
+              });
       return results != null && !results.isEmpty();
     } catch (SQLException e) {
       throw new RuntimeException(

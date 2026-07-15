@@ -217,6 +217,45 @@ class JdbcBasePersistenceImplTest {
     assertThat(captor.getValue().sql()).doesNotContain("properties");
   }
 
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void hasChildrenUsesExistsQueryNotFullScan(int schemaVersion) throws SQLException, IOException {
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:has_children_v"
+                + schemaVersion
+                + "_"
+                + System.nanoTime()
+                + ";DB_CLOSE_DELAY=-1",
+            "sa",
+            "");
+    DatasourceOperations real = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    try (InputStream script = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+      real.executeScript(script);
+    }
+    DatasourceOperations spy = Mockito.spy(real);
+    doCallRealMethod().when(spy).executeSelect(any(), any());
+
+    JdbcBasePersistenceImpl impl =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            spy,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier(),
+            schemaVersion);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, impl);
+
+    impl.hasChildren(callCtx, null, 0L, 0L);
+
+    ArgumentCaptor<QueryGenerator.PreparedQuery> captor =
+        ArgumentCaptor.forClass(QueryGenerator.PreparedQuery.class);
+    verify(spy).executeSelect(captor.capture(), any());
+    String sql = captor.getValue().sql();
+    assertThat(sql).contains("LIMIT 1");
+    assertThat(sql).doesNotContain("properties");
+    assertThat(sql).doesNotContain("internal_properties");
+  }
+
   private static final class TestJdbcConfiguration implements RelationalJdbcConfiguration {
     @Override
     public Optional<Integer> maxRetries() {
