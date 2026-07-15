@@ -21,6 +21,7 @@ package org.apache.polaris.service.metrics;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
@@ -39,9 +40,12 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
@@ -54,8 +58,9 @@ import org.junit.jupiter.api.Test;
 /**
  * Unit tests for {@link MetricsReportsService}.
  *
- * <p>The read path currently returns 501 Not Implemented pending the durable extension (#4756).
- * These tests cover authorization, resolution error paths, and input validation.
+ * <p>Without a durable query backend the no-op default provider returns empty pages; the durable
+ * JDBC implementation (#4756) returns real data. These tests cover authorization, resolution error
+ * paths, and input validation.
  */
 class MetricsReportsServiceTest {
 
@@ -78,6 +83,9 @@ class MetricsReportsServiceTest {
     principal = mock(PolarisPrincipal.class);
 
     PolarisResolvedPathWrapper tableWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisEntity leafEntity = mock(PolarisEntity.class);
+    when(leafEntity.getId()).thenReturn(42L);
+    when(tableWrapper.getRawLeafEntity()).thenReturn(leafEntity);
     manifest = mock(PolarisResolutionManifest.class);
     factory = mock(ResolutionManifestFactory.class);
     realmContext = mock(RealmContext.class);
@@ -98,9 +106,19 @@ class MetricsReportsServiceTest {
             any(PolarisResolvedPathWrapper.class),
             (PolarisResolvedPathWrapper) isNull());
 
+    // By default the no-op query provider is active (durable backend absent) and returns
+    // empty pages, mirroring the @DefaultBean NoOpMetricsQuery in
+    // polaris-extensions-metrics-reports.
+    MetricsQuerySpi noOp = mock(MetricsQuerySpi.class);
+    when(noOp.listScanReports(
+            anyLong(), anyLong(), any(), any(), any(), any(), any(PageToken.class)))
+        .thenReturn(Page.fromItems(List.of()));
+    when(noOp.listCommitReports(
+            anyLong(), anyLong(), any(), any(), any(), any(), any(PageToken.class)))
+        .thenReturn(Page.fromItems(List.of()));
     @SuppressWarnings("unchecked")
     Instance<MetricsQuerySpi> noOpProvider = mock(Instance.class);
-    when(noOpProvider.isResolvable()).thenReturn(false);
+    when(noOpProvider.get()).thenReturn(noOp);
     queryProvider = noOpProvider;
 
     service = new MetricsReportsService(authorizer, principal, factory, queryProvider);
@@ -109,7 +127,7 @@ class MetricsReportsServiceTest {
   }
 
   @Test
-  void authorizedRequestReturnsNotImplemented() {
+  void authorizedRequestWithNoBackendReturnsEmptyPage() {
     Response response =
         service.listTableMetrics(
             CATALOG,
@@ -125,7 +143,8 @@ class MetricsReportsServiceTest {
             realmContext,
             securityContext);
 
-    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_IMPLEMENTED.getStatusCode());
+    // With the no-op default query provider, the read path succeeds with an empty result set.
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
   }
 
   @Test
@@ -250,6 +269,6 @@ class MetricsReportsServiceTest {
             realmContext,
             securityContext);
 
-    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_IMPLEMENTED.getStatusCode());
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
   }
 }
