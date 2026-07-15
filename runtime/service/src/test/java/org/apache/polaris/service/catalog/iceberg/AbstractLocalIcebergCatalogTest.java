@@ -56,6 +56,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -65,10 +67,14 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.ContentScanTask;
+import org.apache.iceberg.DataFile;
+import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.DataOperations;
 import org.apache.iceberg.DeleteFile;
+import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.FileMetadata;
 import org.apache.iceberg.FileScanTask;
+import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.NullOrder;
 import org.apache.iceberg.PartitionSpec;
@@ -81,12 +87,16 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.TableProperties;
+import org.apache.iceberg.Transaction;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.UpdateRequirements;
 import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.encryption.EncryptedOutputFile;
+import org.apache.iceberg.encryption.EncryptingFileIO;
+import org.apache.iceberg.encryption.EncryptionUtil;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
@@ -97,6 +107,8 @@ import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.PositionOutputStream;
+import org.apache.iceberg.io.SeekableInputStream;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
@@ -112,6 +124,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -148,6 +161,7 @@ import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
+import org.apache.polaris.service.catalog.io.PolarisTestKms;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
@@ -161,6 +175,8 @@ import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
+import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
@@ -1944,6 +1960,312 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testEncryptedCatalogClosesKms() throws IOException {
+    PolarisTestKms.resetClosed();
+    LocalIcebergCatalog encryptedCatalog =
+        initCatalog(
+            CATALOG_NAME,
+            Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()));
+    try {
+      Assertions.assertThat(encryptedCatalog).isNotNull();
+    } finally {
+      encryptedCatalog.close();
+    }
+
+    Assertions.assertThat(PolarisTestKms.wasClosed()).isTrue();
+  }
+
+  @Test
+  public void testEncryptedTableCreateTransactionWritesEncryptedManifests() throws IOException {
+    LocalIcebergCatalog encryptedCatalog =
+        initCatalog(
+            CATALOG_NAME,
+            Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()));
+    try {
+      if (requiresNamespaceCreate()) {
+        encryptedCatalog.createNamespace(NS);
+      }
+
+      Transaction transaction =
+          encryptedCatalog
+              .buildTable(TABLE, SCHEMA)
+              .withProperty(TableProperties.FORMAT_VERSION, "3")
+              .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, PolarisTestKms.MASTER_KEY_NAME)
+              .createTransaction();
+      transaction.table().newFastAppend().appendFile(FILE_A).commit();
+      transaction.commitTransaction();
+
+      BaseTable table = (BaseTable) encryptedCatalog.loadTable(TABLE);
+      FileIO tableFileIO = table.operations().io();
+      TableMetadata metadata = table.operations().current();
+      Snapshot snapshot = metadata.currentSnapshot();
+
+      Assertions.assertThat(tableFileIO).isInstanceOf(EncryptingFileIO.class);
+      Assertions.assertThat(metadata.encryptionKeys()).isNotEmpty();
+      Assertions.assertThat(snapshot).isNotNull();
+
+      List<ManifestFile> manifests = snapshot.allManifests(tableFileIO);
+      Assertions.assertThat(manifests).isNotEmpty();
+      manifests.forEach(manifest -> assertEncryptedFile(tableFileIO, manifest.path()));
+      assertEncryptedFile(tableFileIO, snapshot.manifestListLocation());
+    } finally {
+      encryptedCatalog.close();
+    }
+  }
+
+  @Test
+  public void testPlaintextIoDoesNotPoisonTemporaryEncryptedOperations() throws IOException {
+    LocalIcebergCatalog encryptedCatalog =
+        initCatalog(
+            CATALOG_NAME,
+            Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()));
+    try {
+      InMemoryFileIO rawFileIO = new InMemoryFileIO();
+      LocalIcebergCatalog.BasePolarisTableOperations operations =
+          encryptedCatalog.new BasePolarisTableOperations(rawFileIO, TABLE, false);
+
+      Assertions.assertThat(operations.io()).isSameAs(rawFileIO);
+
+      TableOperations temporary =
+          operations.temp(
+              newEncryptedTableMetadata(
+                  "file:///tmp/plaintext-before-encrypted", PolarisTestKms.MASTER_KEY_NAME, 16));
+      Assertions.assertThat(temporary.io()).isInstanceOf(EncryptingFileIO.class);
+      Assertions.assertThat(((EncryptingFileIO) temporary.io()).encryptionManager())
+          .isSameAs(temporary.encryption());
+    } finally {
+      encryptedCatalog.close();
+    }
+  }
+
+  @Test
+  public void testTemporaryOperationsValidateCachedEncryptionSettings() throws IOException {
+    LocalIcebergCatalog encryptedCatalog =
+        initCatalog(
+            CATALOG_NAME,
+            Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()));
+    try {
+      LocalIcebergCatalog.BasePolarisTableOperations operations =
+          encryptedCatalog.new BasePolarisTableOperations(new InMemoryFileIO(), TABLE, false);
+      var encryptionManager =
+          operations
+              .temp(
+                  newEncryptedTableMetadata(
+                      "file:///tmp/encrypted-a", PolarisTestKms.MASTER_KEY_NAME, 16))
+              .encryption();
+
+      Assertions.assertThat(
+              operations
+                  .temp(
+                      newEncryptedTableMetadata(
+                          "file:///tmp/encrypted-b", PolarisTestKms.MASTER_KEY_NAME, 16))
+                  .encryption())
+          .isSameAs(encryptionManager);
+
+      Assertions.assertThatThrownBy(
+              () ->
+                  operations
+                      .temp(
+                          newEncryptedTableMetadata("file:///tmp/changed-key", "different-key", 16))
+                      .encryption())
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("Cannot reuse encryption manager")
+          .hasMessageContaining("different-key");
+
+      Assertions.assertThatThrownBy(
+              () ->
+                  operations
+                      .temp(
+                          newEncryptedTableMetadata(
+                              "file:///tmp/changed-dek", PolarisTestKms.MASTER_KEY_NAME, 32))
+                      .encryption())
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("Cannot reuse encryption manager")
+          .hasMessageContaining("dataKeyLength=32");
+
+      TableMetadata plaintextMetadata =
+          TableMetadata.newTableMetadata(
+              SCHEMA,
+              PartitionSpec.unpartitioned(),
+              "file:///tmp/plaintext",
+              Map.of(TableProperties.FORMAT_VERSION, "3"));
+      Assertions.assertThatThrownBy(() -> operations.temp(plaintextMetadata).encryption())
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("metadata requires plaintext");
+    } finally {
+      encryptedCatalog.close();
+    }
+  }
+
+  @Test
+  public void testEncryptedTableLifecycleAndServerPurge() throws IOException {
+    LocalIcebergCatalog encryptedCatalog =
+        initCatalog(
+            CATALOG_NAME,
+            Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()));
+    try {
+      if (requiresNamespaceCreate()) {
+        encryptedCatalog.createNamespace(NS);
+      }
+
+      Table table =
+          encryptedCatalog
+              .buildTable(TABLE, SCHEMA)
+              .withProperty(TableProperties.FORMAT_VERSION, "3")
+              .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, PolarisTestKms.MASTER_KEY_NAME)
+              .create();
+      BaseTable baseTable = (BaseTable) table;
+      FileIO tableFileIO = baseTable.operations().io();
+      Assertions.assertThat(tableFileIO).isInstanceOf(EncryptingFileIO.class);
+      EncryptingFileIO encryptingFileIO = (EncryptingFileIO) tableFileIO;
+
+      String dataFileLocation = table.location() + "/data/encrypted-data.parquet";
+      byte[] data = "encrypted table data".getBytes(UTF_8);
+      EncryptedOutputFile encryptedData =
+          encryptingFileIO.newEncryptingOutputFile(dataFileLocation);
+      try (PositionOutputStream output = encryptedData.encryptingOutputFile().createOrOverwrite()) {
+        output.write(data);
+      }
+      DataFile dataFile =
+          DataFiles.builder(PartitionSpec.unpartitioned())
+              .withPath(dataFileLocation)
+              .withFileSizeInBytes(encryptingFileIO.newInputFile(dataFileLocation).getLength())
+              .withEncryptionKeyMetadata(
+                  EncryptionUtil.setFileLength(
+                      encryptedData.keyMetadata().buffer(),
+                      encryptingFileIO.newInputFile(dataFileLocation).getLength()))
+              .withFormat(FileFormat.PARQUET)
+              .withRecordCount(1)
+              .build();
+
+      table.newFastAppend().appendFile(dataFile).commit();
+      Assertions.assertThat(EncryptionUtil.encryptionKeys(baseTable.operations().encryption()))
+          .as("The commit operation must retain keys generated by the snapshot writer")
+          .isNotEmpty();
+      table.refresh();
+      TableMetadata metadata = baseTable.operations().current();
+      Snapshot snapshot = metadata.currentSnapshot();
+      Assertions.assertThat(metadata.encryptionKeys())
+          .as("Committed table metadata must contain the wrapped keys used by encrypted snapshots")
+          .isNotEmpty();
+      Assertions.assertThat(metadata.properties())
+          .containsEntry(TableProperties.ENCRYPTION_TABLE_KEY, PolarisTestKms.MASTER_KEY_NAME);
+      Assertions.assertThat(snapshot).isNotNull();
+
+      List<ManifestFile> manifests = snapshot.allManifests(tableFileIO);
+      Assertions.assertThat(manifests).isNotEmpty();
+      manifests.forEach(manifest -> assertEncryptedFile(tableFileIO, manifest.path()));
+      assertEncryptedFile(tableFileIO, snapshot.manifestListLocation());
+      assertEncryptedFile(tableFileIO, dataFileLocation);
+
+      try (CloseableIterable<FileScanTask> plannedFiles = table.newScan().planFiles()) {
+        Assertions.assertThat(Streams.stream(plannedFiles)).hasSize(1);
+      }
+      try (SeekableInputStream input =
+          baseTable.operations().io().newInputFile(dataFile).newStream()) {
+        Assertions.assertThat(input.readAllBytes()).containsExactly(data);
+      }
+
+      Table reloaded = encryptedCatalog.loadTable(TABLE);
+      try (CloseableIterable<FileScanTask> plannedFiles = reloaded.newScan().planFiles()) {
+        Assertions.assertThat(Streams.stream(plannedFiles)).hasSize(1);
+      }
+
+      Assertions.assertThat(encryptedCatalog.dropTable(TABLE, true)).isTrue();
+      Assertions.assertThat(encryptedCatalog.tableExists(TABLE)).isFalse();
+
+      List<TaskEntity> tasks =
+          metaStoreManager
+              .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(100))
+              .getEntities()
+              .stream()
+              .map(TaskEntity::of)
+              .toList();
+      TaskEntity tableCleanupTask =
+          tasks.stream()
+              .filter(task -> task.getTaskType() == AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
+              .findFirst()
+              .orElseThrow();
+
+      TableCleanupTaskHandler tableCleanupHandler =
+          new TableCleanupTaskHandler(
+              Mockito.mock(TaskExecutor.class), clock, metaStoreManagerFactory, taskFileIOSupplier);
+      Assertions.assertThat(tableCleanupHandler.handleTask(tableCleanupTask, polarisContext))
+          .isTrue();
+
+      List<TaskEntity> childTasks =
+          metaStoreManager
+              .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(100))
+              .getEntities()
+              .stream()
+              .map(TaskEntity::of)
+              .toList();
+      List<TaskEntity> manifestTasks =
+          childTasks.stream()
+              .filter(task -> task.getTaskType() == AsyncTaskType.MANIFEST_FILE_CLEANUP)
+              .toList();
+      List<TaskEntity> metadataTasks =
+          childTasks.stream()
+              .filter(task -> task.getTaskType() == AsyncTaskType.BATCH_FILE_CLEANUP)
+              .toList();
+      Assertions.assertThat(manifestTasks).hasSize(manifests.size());
+      Assertions.assertThat(metadataTasks).isNotEmpty();
+
+      ExecutorService executor = Executors.newSingleThreadExecutor();
+      try {
+        ManifestFileCleanupTaskHandler manifestCleanupHandler =
+            new ManifestFileCleanupTaskHandler(taskFileIOSupplier, executor);
+        for (TaskEntity taskEntity : manifestTasks) {
+          Assertions.assertThat(manifestCleanupHandler.handleTask(taskEntity, polarisContext))
+              .isTrue();
+        }
+
+        BatchFileCleanupTaskHandler metadataCleanupHandler =
+            new BatchFileCleanupTaskHandler(taskFileIOSupplier, executor);
+        for (TaskEntity taskEntity : metadataTasks) {
+          Assertions.assertThat(metadataCleanupHandler.handleTask(taskEntity, polarisContext))
+              .isTrue();
+        }
+      } finally {
+        executor.shutdownNow();
+      }
+
+      Assertions.assertThat(metadataFileExists(metadata.metadataFileLocation())).isFalse();
+      Assertions.assertThat(metadataFileExists(dataFileLocation)).isFalse();
+      Assertions.assertThat(metadataFileExists(snapshot.manifestListLocation())).isFalse();
+      manifests.forEach(
+          manifest -> Assertions.assertThat(metadataFileExists(manifest.path())).isFalse());
+    } finally {
+      encryptedCatalog.close();
+    }
+  }
+
+  private static void assertEncryptedFile(FileIO fileIO, String location) {
+    try (SeekableInputStream input = fileIO.newInputFile(location).newStream()) {
+      byte[] magic = new byte[4];
+      Assertions.assertThat(input.read(magic)).isEqualTo(magic.length);
+      Assertions.assertThat(magic).containsExactly('A', 'G', 'S', '1');
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static TableMetadata newEncryptedTableMetadata(
+      String location, String tableKeyId, int dataKeyLength) {
+    return TableMetadata.newTableMetadata(
+        SCHEMA,
+        PartitionSpec.unpartitioned(),
+        location,
+        Map.of(
+            TableProperties.FORMAT_VERSION,
+            "3",
+            TableProperties.ENCRYPTION_TABLE_KEY,
+            tableKeyId,
+            TableProperties.ENCRYPTION_DEK_LENGTH,
+            String.valueOf(dataKeyLength)));
+  }
+
+  @Test
   public void testDropViewWithPurge() {
     MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
     LocalIcebergCatalog viewCatalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
@@ -2607,6 +2929,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     final TableIdentifier tableId = TableIdentifier.of(namespace, "conflict_table");
 
     Table table = catalog.buildTable(tableId, SCHEMA).create();
+    TableOperations operations = ((BaseTable) table).operations();
+    TableMetadata metadataBeforeCommit = operations.current();
 
     doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
         .when(spyMetaStore)
@@ -2618,6 +2942,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitConflictException.class)
         .hasMessageContaining("conflict_table");
+
+    assertThat(operations.current()).isSameAs(metadataBeforeCommit);
   }
 
   @Test
@@ -2662,6 +2988,16 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
     newAdminService().deleteCatalog("updateCatalogWithReservedProperty");
+  }
+
+  @Test
+  public void testTableOperationsIoFailsWhenFileIoIsNotInitialized() {
+    LocalIcebergCatalog.BasePolarisTableOperations operations =
+        catalog.new BasePolarisTableOperations(null, TABLE, false);
+
+    Assertions.assertThatThrownBy(operations::io)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("FileIO has not been initialized");
   }
 
   @ParameterizedTest
