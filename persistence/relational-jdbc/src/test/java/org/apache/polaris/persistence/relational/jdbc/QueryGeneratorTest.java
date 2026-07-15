@@ -41,6 +41,10 @@ public class QueryGeneratorTest {
 
   private static final String REALM_ID = "testRealm";
 
+  // Bound to H2 for the bulk of the assertions; tests that need a different DatabaseType
+  // construct their own instance.
+  private final QueryGenerator queryGenerator = new QueryGenerator(DatabaseType.H2);
+
   @Test
   void testGenerateSelectQuery_withMaQueryGeneratorpWhereClause() {
     Map<String, Object> whereClause = new HashMap<>();
@@ -50,7 +54,8 @@ public class QueryGeneratorTest {
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM POLARIS_SCHEMA.ENTITIES WHERE entity_version = ? AND name = ?";
     assertEquals(
         expectedQuery,
-        QueryGenerator.generateSelectQuery(
+        queryGenerator
+            .generateSelectQuery(
                 ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause)
             .sql());
   }
@@ -123,7 +128,8 @@ public class QueryGeneratorTest {
         "UPDATE POLARIS_SCHEMA.ENTITIES SET id = ?, catalog_id = ?, parent_id = ?, type_code = ?, name = ?, entity_version = ?, sub_type_code = ?, create_timestamp = ?, drop_timestamp = ?, purge_timestamp = ?, to_purge_timestamp = ?, last_update_timestamp = ?, properties = ?, internal_properties = ?, grant_records_version = ?, location_without_scheme = ? WHERE id = ?";
     assertEquals(
         expectedQuery,
-        QueryGenerator.generateUpdateQuery(
+        queryGenerator
+            .generateUpdateQuery(
                 ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
                 entity.toMap(DatabaseType.H2).values().stream().toList(),
@@ -140,7 +146,8 @@ public class QueryGeneratorTest {
         "UPDATE POLARIS_SCHEMA.ENTITIES SET id = ?, catalog_id = ?, parent_id = ?, type_code = ?, name = ?, entity_version = ?, sub_type_code = ?, create_timestamp = ?, drop_timestamp = ?, purge_timestamp = ?, to_purge_timestamp = ?, last_update_timestamp = ?, properties = ?, internal_properties = ?, grant_records_version = ?, location_without_scheme = ? WHERE id = ?";
     assertEquals(
         expectedQuery,
-        QueryGenerator.generateUpdateQuery(
+        queryGenerator
+            .generateUpdateQuery(
                 ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
                 entity.toMap(DatabaseType.H2).values().stream().toList(),
@@ -155,7 +162,8 @@ public class QueryGeneratorTest {
     String expectedQuery = "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE name = ?";
     assertEquals(
         expectedQuery,
-        QueryGenerator.generateDeleteQuery(
+        queryGenerator
+            .generateDeleteQuery(
                 ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause)
             .sql());
   }
@@ -165,7 +173,8 @@ public class QueryGeneratorTest {
     String expectedQuery = "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE name = ?";
     assertEquals(
         expectedQuery,
-        QueryGenerator.generateDeleteQuery(
+        queryGenerator
+            .generateDeleteQuery(
                 ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, Map.of("name", "oldName"))
             .sql());
   }
@@ -180,8 +189,8 @@ public class QueryGeneratorTest {
         "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE id = ? AND catalog_id = ? AND parent_id = ? AND type_code = ? AND name = ? AND entity_version = ? AND sub_type_code = ? AND create_timestamp = ? AND drop_timestamp = ? AND purge_timestamp = ? AND to_purge_timestamp = ? AND last_update_timestamp = ? AND properties = ? AND internal_properties = ? AND grant_records_version = ? AND location_without_scheme = ? AND realm_id = ?";
     assertEquals(
         expectedQuery,
-        QueryGenerator.generateDeleteQuery(
-                ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, objMap)
+        queryGenerator
+            .generateDeleteQuery(ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, objMap)
             .sql());
   }
 
@@ -191,7 +200,9 @@ public class QueryGeneratorTest {
     whereClause.put("name", "test");
     assertEquals(
         " WHERE name = ?",
-        QueryGenerator.generateWhereClause(Set.of("name"), whereClause, Map.of()).sql());
+        queryGenerator
+            .generateWhereClause(ModelEntity.TABLE_NAME, Set.of("name"), whereClause, Map.of())
+            .sql());
   }
 
   @Test
@@ -201,7 +212,10 @@ public class QueryGeneratorTest {
     whereClause.put("version", 1);
     assertEquals(
         " WHERE name = ? AND version = ?",
-        QueryGenerator.generateWhereClause(Set.of("name", "version"), whereClause, Map.of()).sql());
+        queryGenerator
+            .generateWhereClause(
+                ModelEntity.TABLE_NAME, Set.of("name", "version"), whereClause, Map.of())
+            .sql());
   }
 
   @Test
@@ -211,15 +225,23 @@ public class QueryGeneratorTest {
     whereClause.put("version", 1);
     assertEquals(
         " WHERE name = ? AND version = ? AND id > ?",
-        QueryGenerator.generateWhereClause(
-                Set.of("name", "version", "id"), whereClause, Map.of("id", 123))
+        queryGenerator
+            .generateWhereClause(
+                ModelEntity.TABLE_NAME,
+                Set.of("name", "version", "id"),
+                whereClause,
+                Map.of("id", 123))
             .sql());
   }
 
   @Test
   void testGenerateWhereClause_emptyMap() {
     Map<String, Object> whereClause = Collections.emptyMap();
-    assertEquals("", QueryGenerator.generateWhereClause(Set.of(), whereClause, Map.of()).sql());
+    assertEquals(
+        "",
+        queryGenerator
+            .generateWhereClause(ModelEntity.TABLE_NAME, Set.of(), whereClause, Map.of())
+            .sql());
   }
 
   @Test
@@ -235,7 +257,8 @@ public class QueryGeneratorTest {
     Set<String> whereIsNotNull = new LinkedHashSet<>(List.of("e"));
 
     QueryGenerator.QueryFragment where =
-        QueryGenerator.generateWhereClauseExtended(
+        queryGenerator.generateWhereClauseExtended(
+            "test_table",
             Set.of("a", "b", "c", "d", "e"),
             whereEquals,
             whereGreater,
@@ -245,6 +268,26 @@ public class QueryGeneratorTest {
 
     assertEquals(" WHERE a = ? AND b > ? AND c < ? AND d IS NULL AND e IS NOT NULL", where.sql());
     Assertions.assertThat(where.parameters()).containsExactly("A", 2, 3);
+  }
+
+  @Test
+  void testGenerateWhereClause_mysqlJsonColumn_emitsCastPlaceholder() {
+    // POLICY_MAPPING_RECORD.parameters is declared as JSON in ModelRegistry; MySQL needs
+    // CAST(? AS JSON) for structural equality, other backends keep the plain ? placeholder.
+    Map<String, Object> whereEquals = new LinkedHashMap<>();
+    whereEquals.put("parameters", "{\"a\":1}");
+
+    QueryGenerator mysqlGenerator = new QueryGenerator(DatabaseType.MYSQL);
+    QueryGenerator.QueryFragment mysqlFragment =
+        mysqlGenerator.generateWhereClause(
+            "POLICY_MAPPING_RECORD", Set.of("parameters"), whereEquals, Map.of());
+    assertEquals(" WHERE parameters = CAST(? AS JSON)", mysqlFragment.sql());
+
+    QueryGenerator postgresGenerator = new QueryGenerator(DatabaseType.POSTGRES);
+    QueryGenerator.QueryFragment postgresFragment =
+        postgresGenerator.generateWhereClause(
+            "POLICY_MAPPING_RECORD", Set.of("parameters"), whereEquals, Map.of());
+    assertEquals(" WHERE parameters = ?", postgresFragment.sql());
   }
 
   @Test
@@ -261,7 +304,7 @@ public class QueryGeneratorTest {
     whereLess.put("http_status", 500);
 
     QueryGenerator.PreparedQuery q =
-        QueryGenerator.generateUpdateQuery(
+        queryGenerator.generateUpdateQuery(
             List.of("error_subtype", "http_status", "realm_id", "idempotency_key", "executor_id"),
             "idempotency_records",
             setClause,
@@ -283,7 +326,7 @@ public class QueryGeneratorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            QueryGenerator.generateUpdateQuery(
+            queryGenerator.generateUpdateQuery(
                 List.of("a"),
                 "t",
                 Map.of(),
@@ -297,7 +340,7 @@ public class QueryGeneratorTest {
   @Test
   void testGenerateDeleteQueryExtended_includesNullPredicatesAndLessThan() {
     QueryGenerator.PreparedQuery q =
-        QueryGenerator.generateDeleteQuery(
+        queryGenerator.generateDeleteQuery(
             List.of("realm_id", "expires_at", "finalized_at"),
             "idempotency_records",
             Map.of("realm_id", "r1"),
@@ -315,7 +358,7 @@ public class QueryGeneratorTest {
   @Test
   void testGenerateDeleteQueryExtended_allowsRealmIdEvenIfNotInTableColumns() {
     QueryGenerator.PreparedQuery q =
-        QueryGenerator.generateDeleteQuery(
+        queryGenerator.generateDeleteQuery(
             List.of("id"),
             "some_table",
             Map.of("realm_id", "r1"),
@@ -336,7 +379,7 @@ public class QueryGeneratorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            QueryGenerator.generateUpdateQuery(
+            queryGenerator.generateUpdateQuery(
                 List.of("a"),
                 "t",
                 setClause,
