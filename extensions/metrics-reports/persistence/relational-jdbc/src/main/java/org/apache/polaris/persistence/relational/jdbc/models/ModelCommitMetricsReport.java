@@ -18,25 +18,24 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.jspecify.annotations.Nullable;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 
-/** Model class for commit_metrics_report table - stores commit metrics as first-class entities. */
+/** JDBC model for the {@code COMMIT_METRICS_REPORT} table. */
 @PolarisImmutable
 public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsReport> {
   String TABLE_NAME = "COMMIT_METRICS_REPORT";
 
-  // Column names
   String REPORT_ID = "report_id";
   String REALM_ID = "realm_id";
   String CATALOG_ID = "catalog_id";
@@ -104,7 +103,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
           ATTEMPTS,
           METADATA);
 
-  // Getters
   String getReportId();
 
   String getRealmId();
@@ -240,7 +238,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     map.put(TOTAL_FILE_SIZE_BYTES, getTotalFileSizeBytes());
     map.put(TOTAL_DURATION_MS, getTotalDurationMs());
     map.put(ATTEMPTS, getAttempts());
-
     if (databaseType.equals(DatabaseType.POSTGRES)) {
       map.put(METADATA, toJsonbPGobject(getMetadata() != null ? getMetadata() : "{}"));
     } else {
@@ -249,24 +246,8 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     return map;
   }
 
-  // === Static conversion methods (following ModelEntity pattern) ===
-
-  ObjectMapper OBJECT_MAPPER = JsonMapper.shared();
-
-  /**
-   * Converts a CommitMetricsRecord (SPI) to ModelCommitMetricsReport (JDBC).
-   *
-   * <p>Request context fields (principalName, requestId, otelTraceId, otelSpanId) are read directly
-   * from the record, which should have been populated by the service layer.
-   *
-   * @param record the SPI record containing all metrics and request context
-   * @param realmId the realm ID for multi-tenancy
-   * @return the JDBC model
-   */
   static ModelCommitMetricsReport fromRecord(CommitMetricsRecord record, String realmId) {
-    // Extract client-provided report trace ID from metadata
     String reportTraceId = record.metadata().get("report-trace-id");
-
     return ImmutableModelCommitMetricsReport.builder()
         .reportId(record.reportId())
         .realmId(realmId)
@@ -303,20 +284,43 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .build();
   }
 
-  // === Helper Methods ===
-
-  private static String toJsonString(Map<String, String> map) {
-    if (map == null || map.isEmpty()) {
-      return "{}";
-    }
-    try {
-      return OBJECT_MAPPER.writeValueAsString(map);
-    } catch (JacksonException e) {
-      return "{}";
-    }
+  default CommitMetricsRecord toRecord() {
+    return CommitMetricsRecord.builder()
+        .reportId(getReportId())
+        .catalogId(getCatalogId())
+        .tableId(getTableId())
+        .timestamp(Instant.ofEpochMilli(getTimestampMs()))
+        .metadata(MetricsModelUtils.parseMetadata(getMetadata()))
+        .principalName(getPrincipalName())
+        .requestId(getRequestId())
+        .otelTraceId(getOtelTraceId())
+        .otelSpanId(getOtelSpanId())
+        .snapshotId(getSnapshotId())
+        .sequenceNumber(Optional.ofNullable(getSequenceNumber()))
+        .operation(getOperation())
+        .addedDataFiles(getAddedDataFiles())
+        .removedDataFiles(getRemovedDataFiles())
+        .totalDataFiles(getTotalDataFiles())
+        .addedDeleteFiles(getAddedDeleteFiles())
+        .removedDeleteFiles(getRemovedDeleteFiles())
+        .totalDeleteFiles(getTotalDeleteFiles())
+        .addedEqualityDeleteFiles(getAddedEqualityDeleteFiles())
+        .removedEqualityDeleteFiles(getRemovedEqualityDeleteFiles())
+        .addedPositionalDeleteFiles(getAddedPositionalDeleteFiles())
+        .removedPositionalDeleteFiles(getRemovedPositionalDeleteFiles())
+        .addedRecords(getAddedRecords())
+        .removedRecords(getRemovedRecords())
+        .totalRecords(getTotalRecords())
+        .addedFileSizeBytes(getAddedFileSizeBytes())
+        .removedFileSizeBytes(getRemovedFileSizeBytes())
+        .totalFileSizeBytes(getTotalFileSizeBytes())
+        // total_duration_ms is NOT NULL in DB; 0 means unknown duration
+        .totalDurationMs(
+            getTotalDurationMs() == 0L ? Optional.empty() : Optional.of(getTotalDurationMs()))
+        .attempts(getAttempts())
+        .build();
   }
 
-  /** Dummy instance to be used as a Converter when calling fromResultSet(). */
   ModelCommitMetricsReport CONVERTER =
       ImmutableModelCommitMetricsReport.builder()
           .reportId("")
@@ -345,4 +349,13 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
           .totalDurationMs(0L)
           .attempts(1)
           .build();
+
+  private static String toJsonString(Map<String, String> map) {
+    if (map == null || map.isEmpty()) return "{}";
+    try {
+      return MetricsModelUtils.OBJECT_MAPPER.writeValueAsString(map);
+    } catch (JsonProcessingException e) {
+      return "{}";
+    }
+  }
 }
