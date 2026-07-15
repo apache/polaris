@@ -336,8 +336,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .buildFeatureConfiguration();
 
   /**
-   * @deprecated Use {@link #ALLOW_EXTERNAL_METADATA_FILE_LOCATION} instead. This legacy flag is
-   *     retained as a compatibility alias for external metadata file locations.
+   * @deprecated since 1.7.0, will be removed in 1.8.0. Use {@link
+   *     #ALLOW_EXTERNAL_METADATA_FILE_LOCATION} instead. This legacy flag is retained as a
+   *     compatibility alias for external metadata file locations.
    */
   @SuppressWarnings("DeprecatedIsStillUsed")
   @Deprecated
