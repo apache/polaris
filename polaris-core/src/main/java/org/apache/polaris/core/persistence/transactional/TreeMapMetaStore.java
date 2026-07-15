@@ -83,13 +83,8 @@ public class TreeMapMetaStore {
         return copyValues(this.slice.values());
       }
 
-      // end of the key
-      String endKey =
-          prefix.substring(0, prefix.length() - 1)
-              + (char) (prefix.charAt(prefix.length() - 1) + 1);
-
-      // Get the sub-map with keys in the range [prefix, endKey)
-      return copyValues(slice.subMap(prefix, true, endKey, false).values());
+      // Get the sub-map with keys in the range [prefix, rangeEndKey(prefix))
+      return copyValues(slice.subMap(prefix, true, rangeEndKey(prefix), false).values());
     }
 
     private List<T> copyValues(Collection<T> values) {
@@ -105,10 +100,12 @@ public class TreeMapMetaStore {
         return new ArrayList<>(this.slice.keySet());
       }
 
-      String endKey =
-          prefix.substring(0, prefix.length() - 1)
-              + (char) (prefix.charAt(prefix.length() - 1) + 1);
-      return new ArrayList<>(slice.subMap(prefix, true, endKey, false).keySet());
+      return new ArrayList<>(slice.subMap(prefix, true, rangeEndKey(prefix), false).keySet());
+    }
+
+    private String rangeEndKey(String prefix) {
+      return prefix.substring(0, prefix.length() - 1)
+          + (char) (prefix.charAt(prefix.length() - 1) + 1);
     }
 
     /**
