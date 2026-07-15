@@ -1331,8 +1331,50 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
     rejectClientSpecifiedLocationIfDisallowed(request);
+
+    // Idempotency replay: on a retry the update already committed and stamped the key onto the
+    // table entity's internal properties (atomically with the metadata change). Re-applying would
+    // fail the request's requirements against the already-advanced table, so replay the success by
+    // returning current catalog state instead.
+    if (idempotencyRequestContext().isActive()) {
+      UUID idempotencyKey = requireNonNull(idempotencyRequestContext().pendingKey());
+      LoadTableResponse replay = replayIfKeyLive(tableIdentifier, idempotencyKey);
+      if (replay != null) {
+        return replay;
+      }
+      try {
+        return catalogHandlerUtils()
+            .updateTable(baseCatalog, tableIdentifier, applyUpdateFilters(request));
+      } catch (CommitFailedException e) {
+        // Concurrent same-key update: the race winner committed the key atomically with its
+        // metadata change, so a single fresh lookup is enough to replay instead of surfacing 409.
+        LoadTableResponse raceReplay = replayIfKeyLive(tableIdentifier, idempotencyKey);
+        if (raceReplay != null) {
+          return raceReplay;
+        }
+        throw e;
+      }
+    }
+
     return catalogHandlerUtils()
         .updateTable(baseCatalog, tableIdentifier, applyUpdateFilters(request));
+  }
+
+  /**
+   * Returns the current table state when {@code idempotencyKey} is already recorded live on the
+   * table entity (i.e. a prior request with this key already committed), so the caller can replay
+   * that success instead of re-applying the update; returns {@code null} when the key is not live
+   * and the update should proceed normally.
+   */
+  private @Nullable LoadTableResponse replayIfKeyLive(
+      TableIdentifier tableIdentifier, UUID idempotencyKey) {
+    IcebergTableLikeEntity entity = passthroughResolveTableEntityForIdempotency(tableIdentifier);
+    if (entity != null
+        && EntityIdempotency.hasLiveKey(
+            entity.getInternalPropertiesAsMap(), idempotencyKey, clock().instant())) {
+      return catalogHandlerUtils().loadTable(baseCatalog, tableIdentifier);
+    }
+    return null;
   }
 
   public LoadTableResponse updateTableForStagedCreate(

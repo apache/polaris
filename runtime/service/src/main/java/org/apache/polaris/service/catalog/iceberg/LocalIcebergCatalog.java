@@ -1785,6 +1785,35 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
+    /**
+     * Builds the entity internal properties for a commit, carrying forward any existing idempotency
+     * key window from {@code existing} (a create has none) and stamping the current request's key
+     * when idempotency is active, so the key commits atomically with the metadata change.
+     */
+    private Map<String, String> idempotencyInternalProperties(
+        Map<String, String> internalProperties, @Nullable IcebergTableLikeEntity existing) {
+      // The idempotency key window lives only in internal properties, which are replaced wholesale
+      // on write, so carry any prior window forward to keep earlier keys live across updates even
+      // when a given update carries no key of its own.
+      if (existing != null) {
+        String priorWindow =
+            existing.getInternalPropertiesAsMap().get(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY);
+        if (priorWindow != null) {
+          internalProperties.put(EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY, priorWindow);
+        }
+      }
+      if (idempotencyRequestContext.isActive()) {
+        // Stamp this operation's key atomically with the metadata change, purging expired keys.
+        internalProperties =
+            EntityIdempotency.recordKey(
+                internalProperties,
+                idempotencyRequestContext.pendingKey(),
+                idempotencyRequestContext.pendingExpiry(),
+                Instant.now());
+      }
+      return internalProperties;
+    }
+
     public void doCommit(TableMetadata base, TableMetadata metadata) {
       LOGGER.debug(
           "doCommit for table {} with metadataBefore {}, metadataAfter {}",
@@ -1874,17 +1903,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       String existingLocation;
       if (null == entity) {
         existingLocation = null;
-        Map<String, String> internalProperties = storedProperties;
-        if (idempotencyRequestContext.isActive()) {
-          // Embed the idempotency key into the new entity's internal properties so it is persisted
-          // in the same transaction as the table create (no separate idempotency-store write).
-          internalProperties =
-              EntityIdempotency.recordKey(
-                  storedProperties,
-                  idempotencyRequestContext.pendingKey(),
-                  idempotencyRequestContext.pendingExpiry(),
-                  Instant.now());
-        }
+        Map<String, String> internalProperties =
+            idempotencyInternalProperties(storedProperties, null);
         entity =
             new IcebergTableLikeEntity.Builder(
                     PolarisEntitySubType.ICEBERG_TABLE,
@@ -1899,9 +1919,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 .build();
       } else {
         existingLocation = entity.getMetadataLocation();
+        Map<String, String> internalProperties =
+            idempotencyInternalProperties(storedProperties, entity);
         entity =
             new IcebergTableLikeEntity.Builder(entity)
-                .setInternalProperties(storedProperties)
+                .setInternalProperties(internalProperties)
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation)
                 .build();
