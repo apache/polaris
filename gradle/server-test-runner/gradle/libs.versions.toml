@@ -19,4 +19,4 @@
 
 [libraries]
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.7" }
-junit-bom = { module = "org.junit:junit-bom", version = "6.1.1" }
+junit-bom = { module = "org.junit:junit-bom", version = "6.1.2" }

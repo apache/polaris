@@ -102,16 +102,11 @@ docker run apache/polaris-admin-tool:latest bootstrap --help
 The basic usage of the `bootstrap` command is outlined below:
 
 ```
-Usage: polaris-admin-tool.jar bootstrap [-hV] [-v=<schema version>]
-                                        ([-r=<realm> [-r=<realm>]... [-c=<realm,
-                                        clientId,clientSecret>]... [-p]] |
-                                        [[-f=<file>]])
+Usage: polaris-admin-tool.jar bootstrap [-hV] ([-r=<realm> [-r=<realm>]...
+                                        [-c=<realm,clientId,clientSecret>]...
+                                        [-p]] | [[-f=<file>]])
 Bootstraps realms and root principal credentials.
   -h, --help                Show this help message and exit.
-  -v, --schema-version=<schema version>
-                            The version of the schema to load. The set of valid
-                              values depends on the backend type. If omitted the
-                              latest schema version will be used.
   -V, --version             Print version information and exit.
 Standard Input Options:
   -c, --credential=<realm,clientId,clientSecret>

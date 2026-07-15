@@ -468,6 +468,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
     }
 
+    rejectClientSpecifiedLocationIfDisallowed(request.location(), request.properties());
+
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
     properties.putAll(reservedProperties().removeReservedProperties(request.properties()));
@@ -533,11 +535,102 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
+  /**
+   * Table/view properties through which a caller can specify a storage location, in addition to the
+   * top-level {@code location} field. These redirect where data/metadata files are written, so they
+   * are gated by the same configuration as an explicit location.
+   */
+  private static final List<String> CLIENT_LOCATION_PROPERTY_KEYS =
+      List.of(
+          IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+          IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+
+  /**
+   * Rejects a caller-supplied table or view location unless the catalog is configured to allow it.
+   * Caller-specified locations are allowed by default and can be disabled with {@link
+   * FeatureConfiguration#ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION}. This covers both the top-level
+   * {@code location} field and the {@code write.data.path} / {@code write.metadata.path}
+   * properties.
+   */
+  private void rejectClientSpecifiedLocationIfDisallowed(
+      String requestLocation, Map<String, String> requestProperties) {
+    enforceClientSpecifiedLocationAllowed(
+        clientSpecifiedLocationSource(requestLocation, requestProperties));
+  }
+
+  /**
+   * Rejects an update that changes a table/view location (via {@code SetLocation} or the {@code
+   * write.data.path} / {@code write.metadata.path} properties) unless the catalog is configured to
+   * allow caller-specified locations.
+   */
+  private void rejectClientSpecifiedLocationIfDisallowed(UpdateTableRequest request) {
+    enforceClientSpecifiedLocationAllowed(clientSpecifiedLocationSource(request));
+  }
+
+  private void enforceClientSpecifiedLocationAllowed(String specifiedBy) {
+    // Federated catalogs delegate location handling to the remote catalog, so this constraint
+    // only applies to Polaris-managed catalogs.
+    if (specifiedBy == null || isFederated) {
+      return;
+    }
+    if (!realmConfig()
+        .getConfig(
+            FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION,
+            getResolvedCatalogEntity())) {
+      throw new BadRequestException(
+          "Specifying a table or view location using %s is not allowed.", specifiedBy);
+    }
+  }
+
+  /**
+   * Returns a human-readable description of how a create request specified a location (the {@code
+   * location} field or a write-path property), or {@code null} if none was specified.
+   */
+  private static String clientSpecifiedLocationSource(
+      String requestLocation, Map<String, String> requestProperties) {
+    if (requestLocation != null) {
+      return "the location field";
+    }
+    return firstClientLocationProperty(requestProperties);
+  }
+
+  /**
+   * Returns a human-readable description of how an update request changes a location (a {@code
+   * SetLocation} update or a write-path property), or {@code null} if none does.
+   */
+  private static String clientSpecifiedLocationSource(UpdateTableRequest request) {
+    for (MetadataUpdate update : request.updates()) {
+      if (update instanceof MetadataUpdate.SetLocation) {
+        return "the location field";
+      }
+      if (update instanceof MetadataUpdate.SetProperties setProperties) {
+        String key = firstClientLocationProperty(setProperties.updated());
+        if (key != null) {
+          return key;
+        }
+      }
+    }
+    return null;
+  }
+
+  private static String firstClientLocationProperty(Map<String, String> properties) {
+    if (properties != null) {
+      for (String key : CLIENT_LOCATION_PROPERTY_KEYS) {
+        if (properties.containsKey(key)) {
+          return key;
+        }
+      }
+    }
+    return null;
+  }
+
   private TableMetadata stageTableCreateHelper(Namespace namespace, CreateTableRequest request) {
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(ident)) {
       throw alreadyExistsExceptionForTableLikeEntity(ident, PolarisEntitySubType.ICEBERG_TABLE);
     }
+
+    rejectClientSpecifiedLocationIfDisallowed(request.location(), request.properties());
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
@@ -1226,6 +1319,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
+    rejectClientSpecifiedLocationIfDisallowed(request);
 
     // Idempotency replay: on a retry the update already committed and stamped the key onto the
     // table entity's internal properties (atomically with the metadata change). Re-applying would
@@ -1397,6 +1491,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           // both expect schema ID 0, the second will fail after the first increments it).
           TableMetadata currentMetadata = baseMetadata;
           for (UpdateTableRequest change : changes) {
+            // A multi-table transaction must not be a way to bypass the caller-specified-location
+            // gate enforced on the single-table updateTable path.
+            rejectClientSpecifiedLocationIfDisallowed(change);
+
             // Validate requirements against the current metadata state
             final TableMetadata metadataForValidation = currentMetadata;
             change
@@ -1527,6 +1625,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
         op, TableIdentifier.of(namespace, request.name()));
 
+    rejectClientSpecifiedLocationIfDisallowed(request.location(), request.properties());
+
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot create view on static-facade external catalogs.");
@@ -1559,6 +1659,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot replace view on static-facade external catalogs.");
     }
+    rejectClientSpecifiedLocationIfDisallowed(request);
     return catalogHandlerUtils()
         .updateView(viewCatalog, viewIdentifier, applyUpdateFilters(request));
   }

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -26,26 +25,10 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.jspecify.annotations.NonNull;
 
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
 public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
-
-  public static PolarisStorageConfigurationInfo extractStorageConfiguration(
-      @NonNull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {
-    Map<String, String> propMap = reloadedEntity.getInternalPropertiesAsMap();
-    String storageConfigInfoStr =
-        propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-
-    diagnostics.check(
-        storageConfigInfoStr != null,
-        "missing_storage_configuration_info",
-        "catalogId={}, entityId={}",
-        reloadedEntity.getCatalogId(),
-        reloadedEntity.getId());
-    return PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr);
-  }
 
   private final PolarisDiagnostics diagnostics;
 

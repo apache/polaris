@@ -128,6 +128,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -135,7 +136,6 @@ import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.events.EventAttributeMap;
@@ -515,9 +515,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
+    String prefixedLocation = applyDefaultLocationObjectStoragePrefix(tableIdentifier, null);
+    if (prefixedLocation != null) {
+      return prefixedLocation;
+    }
+
+    String namespaceLocation;
     if (tableIdentifier.namespace().isEmpty()) {
-      return SLASH.join(
-          defaultNamespaceLocation(tableIdentifier.namespace()), tableIdentifier.name());
+      namespaceLocation = defaultBaseLocation;
     } else {
       PolarisResolvedPathWrapper resolvedNamespace =
           resolvedEntityView.getResolvedPath(
@@ -526,17 +531,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         throw noSuchNamespaceException(tableIdentifier.namespace());
       }
       List<PolarisEntity> namespacePath = resolvedNamespace.getRawFullPath();
-      String namespaceLocation = resolveLocationForPath(diagnostics, namespacePath);
-      return SLASH.join(namespaceLocation, tableIdentifier.name());
+      namespaceLocation = resolveLocationForPath(diagnostics, namespacePath);
     }
+    return SLASH.join(namespaceLocation, defaultTableLikeName(tableIdentifier));
   }
 
-  private String defaultNamespaceLocation(Namespace namespace) {
-    if (namespace.isEmpty()) {
-      return defaultBaseLocation;
-    } else {
-      return SLASH.join(defaultBaseLocation, SLASH.join(namespace.levels()));
+  private String defaultTableLikeName(TableIdentifier tableIdentifier) {
+    if (realmConfig.getConfig(
+        FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED, catalogEntity)) {
+      return LocationUtil.tableLocation(tableIdentifier, true);
     }
+    return tableIdentifier.name();
   }
 
   @Override
@@ -550,7 +555,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     Optional<PolarisEntity> storageInfoEntity =
-        FileIOUtil.findStorageInfoFromHierarchy(
+        PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
             CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
 
     // The storageProperties we stash away in the Task should be the superset of the
@@ -1114,7 +1119,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 : resolvedEntityView.getResolvedPath(
                     ResolvedPathKey.ofNamespace(identifier.namespace()));
         Optional<PolarisEntity> storageInfoEntity =
-            FileIOUtil.findStorageInfoFromHierarchy(storageHierarchy);
+            PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
+                storageHierarchy);
 
         storageInfoEntity.map(PolarisEntity::getInternalPropertiesAsMap).ifPresent(clone::putAll);
         clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
@@ -1189,7 +1195,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     locationBuilder
         .append("/")
-        .append(URLEncoder.encode(tableIdentifier.name(), Charset.defaultCharset()))
+        .append(URLEncoder.encode(defaultTableLikeName(tableIdentifier), Charset.defaultCharset()))
         .append("/");
     return locationBuilder.toString();
   }
@@ -2864,7 +2870,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         resolvedStorageEntity =
             resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(nsLevel));
         if (resolvedStorageEntity != null) {
-          storageInfoEntity = FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
+          storageInfoEntity =
+              PolarisStorageConfigurationInfo.findEntityWithStorageConfigFromHierarchy(
+                  resolvedStorageEntity);
           break;
         }
       }

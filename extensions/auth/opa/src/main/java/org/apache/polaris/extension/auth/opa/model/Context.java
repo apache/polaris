@@ -36,4 +36,12 @@ import org.apache.polaris.immutables.PolarisImmutable;
 public interface Context {
   /** A unique identifier for correlating this request with OPA server logs. */
   String requestId();
+
+  /**
+   * The realm identifier for this authorization request.
+   *
+   * <p>This enables OPA policies to enforce isolation when the same principal names or resource
+   * names exist across different realms (multi-realm deployments using a shared OPA policy).
+   */
+  String realm();
 }

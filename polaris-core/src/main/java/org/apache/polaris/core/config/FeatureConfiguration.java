@@ -349,6 +349,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION")
+          .catalogConfig("polaris.config.allow.client-specified.table.location")
+          .description(
+              "If set to true (the default), Polaris honors a `location` (and the "
+                  + "`write.data.path` / `write.metadata.path` properties) explicitly supplied in a "
+                  + "create or update request, subject to the usual structured-location, "
+                  + "allowed-location, metadata-location, and overlap validation. If set to false, "
+                  + "such requests are rejected, regardless of the other location compatibility flags. "
+                  + "This setting does not apply to federated catalogs.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING")
@@ -621,6 +635,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be "
                   + "enabled, but with OPTIMIZED_SIBLING_CHECK enabled "
                   + "it is still possible to enforce the uniqueness of table locations within a catalog.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED")
+          .catalogConfig("polaris.config.default-unique-table-location.enabled")
+          .description(
+              "When enabled, a managed location generated for a table or view created without an "
+                  + "explicit location is given a unique, unpredictable suffix, so that no two "
+                  + "tables share a path prefix. When disabled (the default), the generated "
+                  + "location is the legacy `<namespace location>/<table name>` form.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

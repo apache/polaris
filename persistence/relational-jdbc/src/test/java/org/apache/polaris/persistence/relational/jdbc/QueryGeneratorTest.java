@@ -100,6 +100,41 @@ public class QueryGeneratorTest {
   }
 
   @Test
+  void testGenerateSelectQueryWithEntityIdsVersionOnly_selectsOnlyVersionColumns() {
+    List<PolarisEntityId> entityIds = Collections.singletonList(new PolarisEntityId(123L, 1L));
+    String expectedQuery =
+        "SELECT id, catalog_id, entity_version, grant_records_version"
+            + " FROM POLARIS_SCHEMA.ENTITIES"
+            + " WHERE (catalog_id, id) IN ((?, ?)) AND realm_id = ?";
+    Assertions.assertThat(
+            QueryGenerator.generateSelectQueryWithEntityIdsVersionOnly(REALM_ID, entityIds).sql())
+        .isEqualTo(expectedQuery);
+  }
+
+  @Test
+  void testGenerateSelectQueryWithEntityIdsVersionOnly_multipleIds() {
+    List<PolarisEntityId> entityIds =
+        Arrays.asList(new PolarisEntityId(10L, 1L), new PolarisEntityId(20L, 2L));
+    String sql =
+        QueryGenerator.generateSelectQueryWithEntityIdsVersionOnly(REALM_ID, entityIds).sql();
+    // Must NOT contain large property columns on the hot path.
+    Assertions.assertThat(sql).doesNotContain("properties");
+    Assertions.assertThat(sql).doesNotContain("internal_properties");
+    Assertions.assertThat(sql).contains("entity_version");
+    Assertions.assertThat(sql).contains("grant_records_version");
+    Assertions.assertThat(sql).contains("(catalog_id, id) IN ((?, ?), (?, ?))");
+  }
+
+  @Test
+  void testGenerateSelectQueryWithEntityIdsVersionOnly_emptyList() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            QueryGenerator.generateSelectQueryWithEntityIdsVersionOnly(
+                REALM_ID, Collections.emptyList()));
+  }
+
+  @Test
   void testGenerateInsertQuery_nonNullFields() {
     ModelEntity entity = ModelEntity.builder().name("test").entityVersion(1).build();
     String expectedQuery =

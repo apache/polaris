@@ -22,6 +22,8 @@ import com.google.common.base.Throwables;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -32,12 +34,14 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -167,17 +171,13 @@ public class DefaultAuthenticator implements Authenticator {
     Predicate<String> includeRoleFilter =
         requestedRoles == ALL_ROLES_REQUESTED ? role -> true : requestedRoles::contains;
 
+    Map<Long, PolarisBaseEntity> entitiesById = loadGrantsResult.getEntitiesAsMap();
+
     Set<String> activeRoles =
         loadGrantsResult.getGrantRecords().stream()
-            .map(
-                gr ->
-                    metaStoreManager.loadEntity(
-                        callContext.getPolarisCallContext(),
-                        gr.getSecurableCatalogId(),
-                        gr.getSecurableId(),
-                        PolarisEntityType.PRINCIPAL_ROLE))
-            .filter(EntityResult::isSuccess)
-            .map(EntityResult::getEntity)
+            .map(gr -> loadSecurableEntity(gr, entitiesById))
+            .filter(Objects::nonNull)
+            .filter(entity -> entity.getType() == PolarisEntityType.PRINCIPAL_ROLE)
             .map(PrincipalRoleEntity::of)
             .map(PrincipalRoleEntity::getName)
             .filter(includeRoleFilter)
@@ -248,5 +248,24 @@ public class DefaultAuthenticator implements Authenticator {
       throw new NotAuthorizedException("Unable to authenticate");
     }
     return principalGrantResults;
+  }
+
+  /**
+   * Resolves the securable entity for a grant record, using preloaded entities when available and
+   * falling back to {@link PolarisMetaStoreManager#loadEntity} only when the metastore did not
+   * populate {@link LoadGrantsResult#getEntities()}.
+   */
+  private @Nullable PolarisBaseEntity loadSecurableEntity(
+      PolarisGrantRecord grant, @Nullable Map<Long, PolarisBaseEntity> entitiesById) {
+    if (entitiesById != null) {
+      return entitiesById.get(grant.getSecurableId());
+    }
+    return metaStoreManager
+        .loadEntity(
+            callContext.getPolarisCallContext(),
+            grant.getSecurableCatalogId(),
+            grant.getSecurableId(),
+            PolarisEntityType.PRINCIPAL_ROLE)
+        .getEntity();
   }
 }

@@ -25,7 +25,7 @@ build:
 
 Configuration interface containing parameters for clients accessing S3 services from Polaris  servers.  
 
-Currently, this configuration does not apply to all of Polaris code, but only to select  services.
+Applies to the STS client pool and to Iceberg S3 clients created for table operations via  `S3FileIO`.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
