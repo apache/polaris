@@ -112,14 +112,6 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
 
     PolarisResolutionManifest manifest = resolveAndAuthorizeTableMetrics(catalogName, identifier);
 
-    if (!queryProvider.isResolvable()) {
-      return Response.status(Response.Status.NOT_IMPLEMENTED)
-          .entity(
-              "Durable metrics query is not available in this deployment. "
-                  + "Install the polaris-extensions-metrics-reports-jdbc extension to enable it.")
-          .build();
-    }
-
     CatalogEntity catalogEntity = manifest.getResolvedCatalogEntity();
     long catalogId = catalogEntity != null ? catalogEntity.getId() : -1L;
     PolarisResolvedPathWrapper tableWrapper =
