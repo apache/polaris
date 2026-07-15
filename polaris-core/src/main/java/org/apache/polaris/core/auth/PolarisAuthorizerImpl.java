@@ -98,6 +98,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_STRUCTURE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_METRICS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPERTIES;
@@ -458,6 +459,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         TABLE_READ_DATA, List.of(CATALOG_MANAGE_CONTENT, TABLE_READ_DATA, TABLE_WRITE_DATA));
     SUPER_PRIVILEGES.putAll(TABLE_WRITE_DATA, List.of(CATALOG_MANAGE_CONTENT, TABLE_WRITE_DATA));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_READ_METRICS,
+        List.of(CATALOG_MANAGE_CONTENT, TABLE_FULL_METADATA, TABLE_READ_DATA, TABLE_READ_METRICS));
     SUPER_PRIVILEGES.putAll(
         NAMESPACE_FULL_METADATA,
         List.of(CATALOG_MANAGE_CONTENT, CATALOG_MANAGE_METADATA, NAMESPACE_FULL_METADATA));
