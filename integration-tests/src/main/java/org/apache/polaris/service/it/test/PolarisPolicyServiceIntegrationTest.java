@@ -133,7 +133,7 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final Map<String, String> DEFAULT_CATALOG_PROPERTIES =
       Map.of(
           "polaris.config.allow.unstructured.table.location", "true",
-          "polaris.config.allow.external.table.location", "true");
+          "polaris.config.allow.external.metadata.file.location", "true");
 
   @BeforeAll
   public static void setup(

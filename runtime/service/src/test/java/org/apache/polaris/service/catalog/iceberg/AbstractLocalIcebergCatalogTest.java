@@ -318,7 +318,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                         .setName(CATALOG_NAME)
                         .setDefaultBaseLocation(STORAGE_LOCATION)
                         .addProperty(
-                            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(),
+                            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION
+                                .catalogConfig(),
                             "true")
                         .addProperty(
                             FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
@@ -1229,7 +1230,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     updateCatalogProperties(
         Map.of(
-            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false",
             FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
     LocalIcebergCatalog catalog = catalog();
     TableMetadata tableMetadata =
@@ -1284,7 +1285,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     updateCatalogProperties(
         Map.of(
-            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false",
             FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
     LocalIcebergCatalog catalog = catalog();
     TableMetadata tableMetadata =
@@ -1336,7 +1337,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     updateCatalogProperties(
         Map.of(
-            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false",
             FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
     LocalIcebergCatalog catalog = catalog();
 
@@ -2008,7 +2009,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                     .setName(noPurgeCatalogName)
                     .setDefaultBaseLocation(storageLocation)
                     .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                        FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                        "true")
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
@@ -2958,7 +2960,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     updateCatalogProperties(
         Map.of(
-            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false",
             FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
 
     catalog.createNamespace(NS);
@@ -2991,9 +2993,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     updateCatalogProperties(
         Map.of(
-            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
-            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true",
-            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "true"));
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "true",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
 
     catalog.createNamespace(NS);
     Table table = catalog.buildTable(TABLE, SCHEMA).create();

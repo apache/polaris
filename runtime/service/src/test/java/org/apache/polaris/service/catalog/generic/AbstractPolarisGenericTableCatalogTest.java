@@ -184,7 +184,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(storageLocation)
                     .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                        FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                        "true")
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
