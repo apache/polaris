@@ -20,7 +20,7 @@
 services:
 
   ozone-datanode:
-    image: &ozone-image apache/ozone:2.1.1
+    image: &ozone-image apache/ozone:2.2.0
     ports:
       - "9864"
     command: ["ozone","datanode"]
