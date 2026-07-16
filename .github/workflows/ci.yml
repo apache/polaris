@@ -62,7 +62,8 @@ jobs:
       - name: Verify configuration reference is up to date
         run: |
           ./gradlew :polaris-config-docs-site:copyConfigSectionsToSite
-          if ! git diff --exit-code site/content/in-dev/unreleased/configuration/config-sections/; then
+          if ! git diff --exit-code site/content/in-dev/unreleased/configuration/config-sections/ || \
+             [ -n "$(git ls-files --others --exclude-standard site/content/in-dev/unreleased/configuration/config-sections/)" ]; then
             echo "ERROR: Configuration reference is out of date. Please run './gradlew :polaris-config-docs-site:copyConfigSectionsToSite' and commit the changes."
             exit 1
           fi
