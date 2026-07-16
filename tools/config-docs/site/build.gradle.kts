@@ -160,6 +160,7 @@ abstract class CopyConfigSectionsToSite : DefaultTask() {
       .matching {
         include("smallrye-*.md")
         include("flags-*.md")
+        include("storage-*.md")
       }
       .files
       .forEach { file ->
