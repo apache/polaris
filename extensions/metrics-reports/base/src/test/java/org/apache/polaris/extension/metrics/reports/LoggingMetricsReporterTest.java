@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
-import org.apache.polaris.core.metrics.MetricType;
-import org.apache.polaris.core.metrics.MetricsReportEnvelope;
+import org.apache.polaris.service.metrics.MetricType;
+import org.apache.polaris.service.metrics.MetricsReportEnvelope;
 import org.junit.jupiter.api.Test;
 
 class LoggingMetricsReporterTest {

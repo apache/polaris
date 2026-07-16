@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.metrics;
+package org.apache.polaris.service.metrics;
 
 import com.google.common.annotations.Beta;
 

@@ -30,7 +30,6 @@ import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.metrics.IcebergMetricsReporter;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -40,6 +39,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
+import org.apache.polaris.service.metrics.IcebergMetricsReporter;
 
 @RequestScoped
 public class IcebergCatalogHandlerFactory {

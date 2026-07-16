@@ -47,7 +47,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.metrics.IcebergMetricsReporter;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -76,6 +75,7 @@ import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
+import org.apache.polaris.service.metrics.IcebergMetricsReporter;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -450,12 +450,20 @@ public class ServiceProducers {
     if (selected.isResolvable()) {
       return selected.get();
     }
-    // Reporter implementations live in the polaris-extensions-metrics-reports(-jdbc) modules; when
-    // none matches the configured type, drop metrics rather than failing core service startup.
-    LOGGER.warn(
-        "No IcebergMetricsReporter found for type '{}'; Iceberg metrics will be dropped",
-        config.type());
-    return envelope -> {};
+    // No reporter matched the configured type. Reporter implementations live in the
+    // polaris-extensions-metrics-reports(-jdbc) modules; a downstream build may legitimately omit
+    // them. Don't warn at startup (it would be a false alarm for such builds); instead return a
+    // reporter that fails loudly only if metrics are actually reported.
+    String type = config.type();
+    return envelope -> {
+      LOGGER.error(
+          "No IcebergMetricsReporter is configured for type '{}'; cannot report Iceberg metrics."
+              + " Install a metrics reporter extension or set"
+              + " polaris.iceberg-metrics.reporting.type to an available reporter.",
+          type);
+      throw new IllegalStateException(
+          "No IcebergMetricsReporter configured for type '" + type + "'");
+    };
   }
 
   @Produces

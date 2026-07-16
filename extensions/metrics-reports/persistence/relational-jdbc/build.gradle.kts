@@ -25,6 +25,7 @@ plugins {
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-relational-jdbc"))
+  implementation(project(":polaris-runtime-service"))
   implementation(project(":polaris-extensions-metrics-reports"))
 
   implementation(platform(libs.iceberg.bom))
