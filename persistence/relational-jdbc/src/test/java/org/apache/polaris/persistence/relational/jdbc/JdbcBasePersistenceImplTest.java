@@ -256,6 +256,76 @@ class JdbcBasePersistenceImplTest {
     assertThat(sql).doesNotContain("internal_properties");
   }
 
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void lookupEntityGrantRecordsVersionReturnsVersionOrZeroForMissing(int schemaVersion)
+      throws SQLException, IOException {
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:lookup_grant_version_v"
+                + schemaVersion
+                + "_"
+                + System.nanoTime()
+                + ";DB_CLOSE_DELAY=-1",
+            "sa",
+            "");
+    DatasourceOperations real = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    try (InputStream script = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+      real.executeScript(script);
+    }
+    // Spy so we can assert on the SQL actually issued, without blocking the real call.
+    DatasourceOperations spy = Mockito.spy(real);
+    doCallRealMethod().when(spy).executeSelect(any(), any());
+
+    JdbcBasePersistenceImpl impl =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            spy,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier(),
+            schemaVersion);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, impl);
+
+    PolarisBaseEntity e1 =
+        new PolarisBaseEntity.Builder()
+            .id(201L)
+            .catalogId(0L)
+            .parentId(0L)
+            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .name("e1")
+            .entityVersion(1)
+            .grantRecordsVersion(5)
+            .createTimestamp(System.currentTimeMillis())
+            .build();
+    PolarisBaseEntity e2 =
+        new PolarisBaseEntity.Builder()
+            .id(202L)
+            .catalogId(0L)
+            .parentId(0L)
+            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .name("e2")
+            .entityVersion(1)
+            .grantRecordsVersion(9)
+            .createTimestamp(System.currentTimeMillis())
+            .build();
+    impl.writeEntity(callCtx, e1, false, null);
+    impl.writeEntity(callCtx, e2, false, null);
+
+    // Behavioural: returns the stored version per entity, 0 for a missing entity.
+    assertThat(impl.lookupEntityGrantRecordsVersion(callCtx, 0L, 201L)).isEqualTo(5);
+    assertThat(impl.lookupEntityGrantRecordsVersion(callCtx, 0L, 202L)).isEqualTo(9);
+    assertThat(impl.lookupEntityGrantRecordsVersion(callCtx, 0L, 999L)).isEqualTo(0);
+
+    // Perf: the SQL that actually executed must not fetch the large JSON property columns.
+    ArgumentCaptor<QueryGenerator.PreparedQuery> captor =
+        ArgumentCaptor.forClass(QueryGenerator.PreparedQuery.class);
+    verify(spy, Mockito.atLeastOnce()).executeSelect(captor.capture(), any());
+    assertThat(captor.getAllValues())
+        .allSatisfy(q -> assertThat(q.sql()).doesNotContain("properties"));
+  }
+
   private static final class TestJdbcConfiguration implements RelationalJdbcConfiguration {
     @Override
     public Optional<Integer> maxRetries() {
