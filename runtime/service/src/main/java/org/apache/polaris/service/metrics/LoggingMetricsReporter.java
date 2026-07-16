@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.metrics.reports;
+package org.apache.polaris.service.metrics;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.function.Consumer;
-import org.apache.polaris.service.metrics.IcebergMetricsReporter;
-import org.apache.polaris.service.metrics.MetricsReportEnvelope;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
