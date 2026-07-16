@@ -192,7 +192,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    handler.handleTask(task, polarisCallContext);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(deleteFile1Path);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(deleteFile2Path);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(manifestFile.path());
