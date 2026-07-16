@@ -341,7 +341,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
    *     compatibility alias for external metadata file locations.
    */
   @SuppressWarnings("DeprecatedIsStillUsed")
-  @Deprecated
+  @Deprecated(since = "1.7.0", forRemoval = true)
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")

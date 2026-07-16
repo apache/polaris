@@ -2525,7 +2525,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  @SuppressWarnings("deprecation")
+  @SuppressWarnings({"deprecation", "removal"})
   private boolean allowExternalMetadataFileLocation() {
     // ALLOW_EXTERNAL_TABLE_LOCATION is deprecated, but remains honored as a compatibility alias for
     // existing catalogs during the migration to ALLOW_EXTERNAL_METADATA_FILE_LOCATION.
