@@ -22,6 +22,9 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.google.common.annotations.VisibleForTesting;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -29,6 +32,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
@@ -48,6 +52,14 @@ public class JWTBroker implements TokenBroker {
   private static final String CLAIM_KEY_CLIENT_ID = "client_id";
   private static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
   private static final String CLAIM_KEY_SCOPE = "scope";
+
+  /**
+   * Credentials-generation fingerprint bound to the principal's current credentials version (see
+   * {@link PolarisPrincipalSecrets#getCredentialsVersion()}). When secrets are rotated or reset,
+   * the version changes and tokens carrying a prior value are rejected on verify. The claim name is
+   * collision-resistant per RFC 7519.
+   */
+  @VisibleForTesting static final String CLAIM_KEY_CREDENTIALS_VERSION = "polaris-cv";
 
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisCallContext polarisCallContext;
@@ -84,16 +96,56 @@ public class JWTBroker implements TokenBroker {
   private InternalPolarisToken verifyInternal(String token) {
     try {
       DecodedJWT decodedJWT = verifier.verify(token);
+      String clientId = decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString();
+      String credentialsVersion = decodedJWT.getClaim(CLAIM_KEY_CREDENTIALS_VERSION).asString();
+      assertCredentialsVersionCurrent(clientId, credentialsVersion);
       return InternalPolarisToken.of(
           decodedJWT.getSubject(),
           decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
-          decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString(),
+          clientId,
           decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString());
 
+    } catch (NotAuthorizedException e) {
+      throw e;
     } catch (Exception e) {
       throw (NotAuthorizedException)
           new NotAuthorizedException("Failed to verify the token").initCause(e);
     }
+  }
+
+  /**
+   * Rejects tokens that were minted against a previous credentials generation (i.e. before the
+   * principal's secrets were last rotated or reset). Tokens minted before credentials binding was
+   * introduced carry no claim and are accepted so existing clients are not broken on upgrade;
+   * binding activates for them on the next rotate/reset, when their principal's version changes and
+   * all bound tokens are rejected.
+   */
+  private void assertCredentialsVersionCurrent(String clientId, String credentialsVersion) {
+    if (credentialsVersion == null) {
+      // Legacy token minted before credentials binding existed.
+      return;
+    }
+    if (clientId == null || clientId.isBlank() || credentialsVersion.isBlank()) {
+      throw new NotAuthorizedException("Failed to verify the token");
+    }
+    PrincipalSecretsResult secretsResult =
+        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
+    if (!secretsResult.isSuccess() || secretsResult.getPrincipalSecrets() == null) {
+      throw new NotAuthorizedException("Failed to verify the token");
+    }
+    String currentVersion = secretsResult.getPrincipalSecrets().getCredentialsVersion();
+    if (!constantTimeEquals(credentialsVersion, currentVersion)) {
+      throw new NotAuthorizedException("Failed to verify the token");
+    }
+  }
+
+  @VisibleForTesting
+  static boolean constantTimeEquals(String a, String b) {
+    if (a == null || b == null) {
+      return false;
+    }
+    return MessageDigest.isEqual(
+        a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
   }
 
   @Override
@@ -114,6 +166,7 @@ public class JWTBroker implements TokenBroker {
     }
     InternalPolarisToken decodedToken;
     try {
+      // verifyInternal enforces credentials-version binding (rejects after rotate/reset).
       decodedToken = verifyInternal(subjectToken);
     } catch (NotAuthorizedException e) {
       LOGGER.error("Failed to verify the token", e.getCause());
@@ -138,12 +191,17 @@ public class JWTBroker implements TokenBroker {
       }
       tokenScope = scope;
     }
+    Optional<String> credentialsVersion = loadCurrentCredentialsVersion(decodedToken.getClientId());
+    if (credentialsVersion.isEmpty()) {
+      return TokenResponse.of(OAuthError.unauthorized_client);
+    }
     String tokenString =
         generateTokenString(
             decodedToken.getPrincipalName(),
             decodedToken.getPrincipalId(),
             decodedToken.getClientId(),
-            tokenScope);
+            tokenScope,
+            credentialsVersion.get());
     return TokenResponse.of(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }
@@ -163,30 +221,45 @@ public class JWTBroker implements TokenBroker {
       return TokenResponse.of(initialValidationResponse.get());
     }
 
-    Optional<PrincipalEntity> principal = findPrincipalEntity(clientId, clientSecret);
-    if (principal.isEmpty()) {
+    Optional<AuthenticatedPrincipal> authenticated =
+        authenticateWithClientSecrets(clientId, clientSecret);
+    if (authenticated.isEmpty()) {
       return TokenResponse.of(OAuthError.unauthorized_client);
     }
+    AuthenticatedPrincipal principal = authenticated.get();
     String tokenString =
-        generateTokenString(principal.get().getName(), principal.get().getId(), clientId, scope);
+        generateTokenString(
+            principal.entity().getName(),
+            principal.entity().getId(),
+            clientId,
+            scope,
+            principal.credentialsVersion());
     return TokenResponse.of(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }
 
   private String generateTokenString(
-      String principalName, long principalId, String clientId, String scope) {
+      String principalName,
+      long principalId,
+      String clientId,
+      String scope,
+      String credentialsVersion) {
     Instant now = Instant.now();
-    return JWT.create()
-        .withIssuer(ISSUER_KEY)
-        .withSubject(principalName)
-        .withIssuedAt(now)
-        .withExpiresAt(now.plus(maxTokenGenerationInSeconds, ChronoUnit.SECONDS))
-        .withJWTId(UUID.randomUUID().toString())
-        .withClaim(CLAIM_KEY_ACTIVE, true)
-        .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
-        .withClaim(CLAIM_KEY_PRINCIPAL_ID, principalId)
-        .withClaim(CLAIM_KEY_SCOPE, scopes(scope))
-        .sign(algorithm);
+    var builder =
+        JWT.create()
+            .withIssuer(ISSUER_KEY)
+            .withSubject(principalName)
+            .withIssuedAt(now)
+            .withExpiresAt(now.plus(maxTokenGenerationInSeconds, ChronoUnit.SECONDS))
+            .withJWTId(UUID.randomUUID().toString())
+            .withClaim(CLAIM_KEY_ACTIVE, true)
+            .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
+            .withClaim(CLAIM_KEY_PRINCIPAL_ID, principalId)
+            .withClaim(CLAIM_KEY_SCOPE, scopes(scope));
+    if (credentialsVersion != null) {
+      builder.withClaim(CLAIM_KEY_CREDENTIALS_VERSION, credentialsVersion);
+    }
+    return builder.sign(algorithm);
   }
 
   @Override
@@ -203,17 +276,34 @@ public class JWTBroker implements TokenBroker {
     return scope == null || scope.isBlank() ? DefaultAuthenticator.PRINCIPAL_ROLE_ALL : scope;
   }
 
-  private Optional<PrincipalEntity> findPrincipalEntity(String clientId, String clientSecret) {
-    // Validate the principal is present and secrets match
+  private Optional<String> loadCurrentCredentialsVersion(String clientId) {
     PrincipalSecretsResult principalSecrets =
         metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
-    if (!principalSecrets.isSuccess()) {
+    if (!principalSecrets.isSuccess() || principalSecrets.getPrincipalSecrets() == null) {
       return Optional.empty();
     }
-    if (!principalSecrets.getPrincipalSecrets().matchesSecret(clientSecret)) {
-      return Optional.empty();
-    }
-    return metaStoreManager.findPrincipalById(
-        polarisCallContext, principalSecrets.getPrincipalSecrets().getPrincipalId());
+    return Optional.ofNullable(principalSecrets.getPrincipalSecrets().getCredentialsVersion());
   }
+
+  private Optional<AuthenticatedPrincipal> authenticateWithClientSecrets(
+      String clientId, String clientSecret) {
+    PrincipalSecretsResult principalSecrets =
+        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
+    if (!principalSecrets.isSuccess() || principalSecrets.getPrincipalSecrets() == null) {
+      return Optional.empty();
+    }
+    PolarisPrincipalSecrets secrets = principalSecrets.getPrincipalSecrets();
+    if (!secrets.matchesSecret(clientSecret)) {
+      return Optional.empty();
+    }
+    Optional<PrincipalEntity> principal =
+        metaStoreManager.findPrincipalById(polarisCallContext, secrets.getPrincipalId());
+    if (principal.isEmpty()) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        new AuthenticatedPrincipal(principal.get(), secrets.getCredentialsVersion()));
+  }
+
+  private record AuthenticatedPrincipal(PrincipalEntity entity, String credentialsVersion) {}
 }
