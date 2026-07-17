@@ -1022,12 +1022,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     Set<PolarisStorageActions> actionsRequested =
         new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-    try {
-      authorizeResolvedBasicTableLikeOperationOrThrow(
-          write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+    if (isResolvedBasicTableLikeOperationAuthorized(
+        write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier)) {
       actionsRequested.add(PolarisStorageActions.WRITE);
-    } catch (ForbiddenException e) {
-      // Reuse the already-resolved table view for the read-delegation fallback.
+      initializeCatalog();
+    } else {
+      // Fall back to read-delegation authorization. Reuse the already-resolved table view.
       authorizeResolvedBasicTableLikeOperationOrThrow(
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
