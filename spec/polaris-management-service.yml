@@ -1010,7 +1010,7 @@ components:
 
     GcpAuthenticationParameters:
       type: object
-      description: Uses GCP authentication from the Iceberg codebase
+      description: Uses server-side Google Application Default Credentials for outbound GCP authentication. Configure an attached service account, workload identity, or GOOGLE_APPLICATION_CREDENTIALS on the Polaris server instead of passing credential material in catalog properties.
       allOf:
         - $ref: '#/components/schemas/AuthenticationParameters'
 
@@ -1793,3 +1793,4 @@ components:
             $ref: "#/components/schemas/GrantResource"
       required:
         - grants
+

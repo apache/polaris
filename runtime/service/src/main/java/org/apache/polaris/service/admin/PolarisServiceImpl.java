@@ -78,6 +78,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
+import org.apache.polaris.service.catalog.GcpExternalCatalogSecurity;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
@@ -132,7 +133,8 @@ public class PolarisServiceImpl
     validateExternalCatalog(catalog);
     validateCatalogProperties(catalog.getProperties());
     Catalog newCatalog =
-        CatalogEntity.of(adminService.createCatalog(request)).asCatalog(serviceIdentityProvider);
+        sanitizeCatalogResponse(
+            CatalogEntity.of(adminService.createCatalog(request)).asCatalog(serviceIdentityProvider));
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).entity(newCatalog).build();
   }
@@ -171,6 +173,7 @@ public class PolarisServiceImpl
         if (connectionConfigInfo != null) {
           validateConnectionConfigInfo(connectionConfigInfo);
           validateAuthenticationParameters(connectionConfigInfo.getAuthenticationParameters());
+          GcpExternalCatalogSecurity.validateNoSensitiveProperties(catalog);
           BigLakeCatalogValidator.validate(realmConfig, catalog);
         }
       }
@@ -232,7 +235,9 @@ public class PolarisServiceImpl
   @Override
   public Response getCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    return Response.ok(adminService.getCatalog(catalogName).asCatalog(serviceIdentityProvider))
+    return Response.ok(
+            sanitizeCatalogResponse(
+                adminService.getCatalog(catalogName).asCatalog(serviceIdentityProvider)))
         .build();
   }
 
@@ -248,19 +253,27 @@ public class PolarisServiceImpl
     }
     validateCatalogProperties(updateRequest.getProperties());
     return Response.ok(
-            adminService
-                .updateCatalog(catalogName, updateRequest)
-                .asCatalog(serviceIdentityProvider))
+            sanitizeCatalogResponse(
+                adminService
+                    .updateCatalog(catalogName, updateRequest)
+                    .asCatalog(serviceIdentityProvider)))
         .build();
   }
 
   /** From PolarisCatalogsApiService */
   @Override
   public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
-    List<Catalog> catalogList = adminService.listCatalogs();
+    List<Catalog> catalogList =
+        adminService.listCatalogs().stream()
+            .map(PolarisServiceImpl::sanitizeCatalogResponse)
+            .toList();
     Catalogs catalogs = new Catalogs(catalogList);
     LOGGER.debug("listCatalogs returning: {}", catalogs);
     return Response.ok(catalogs).build();
+  }
+
+  private static Catalog sanitizeCatalogResponse(Catalog catalog) {
+    return GcpExternalCatalogSecurity.sanitizeCatalog(catalog);
   }
 
   /** From PolarisPrincipalsApiService */
@@ -736,3 +749,10 @@ public class PolarisServiceImpl
     return Response.ok(grantResources).build();
   }
 }
+
+
+
+
+
+
+

@@ -474,6 +474,115 @@ public class ManagementServiceTest {
         .hasMessageContaining("default-base-location");
   }
 
+  @Test
+  public void testCreateBigLakeCatalogRejectsSensitiveGoogleCatalogProperties() {
+    String catalogName = "biglake-catalog";
+    String defaultBaseLocation = "gs://bucket/path/to/data";
+    Catalog catalog =
+        createBigLakeCatalog(
+            catalogName, defaultBaseLocation, createBigLakeStorageConfig(defaultBaseLocation));
+    catalog.getProperties().put(
+        "google_application_credentials", "/var/run/secrets/google/service-account.json");
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .createCatalog(
+                        new CreateCatalogRequest(catalog),
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("catalog.properties.google_application_credentials")
+        .hasMessageContaining("Application Default Credentials");
+  }
+
+  @Test
+  public void testCreateBigLakeCatalogRejectsSensitiveGoogleConnectionProperties() {
+    String catalogName = "biglake-catalog";
+    String defaultBaseLocation = "gs://bucket/path/to/data";
+    CatalogProperties catalogProperties = CatalogProperties.builder(defaultBaseLocation).build();
+    catalogProperties.put("enable.credential.vending", "true");
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName(catalogName)
+            .setProperties(catalogProperties)
+            .setStorageConfigInfo(createBigLakeStorageConfig(defaultBaseLocation))
+            .setConnectionConfigInfo(
+                createBigLakeConnectionConfig(
+                    Map.of(
+                        "header.x-goog-user-project",
+                        "my-billing-project",
+                        "google.credentials.path",
+                        "/var/run/secrets/google/service-account.json")))
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .createCatalog(
+                        new CreateCatalogRequest(catalog),
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("connectionConfigInfo.properties.google.credentials.path")
+        .hasMessageContaining("GOOGLE_APPLICATION_CREDENTIALS");
+  }
+
+  @Test
+  public void testUpdateBigLakeCatalogRejectsSensitiveGoogleCatalogProperties() {
+    String catalogName = "biglake-catalog";
+    String defaultBaseLocation = "gs://bucket/path/to/data";
+    Catalog catalog =
+        createBigLakeCatalog(
+            catalogName, defaultBaseLocation, createBigLakeStorageConfig(defaultBaseLocation));
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = (Catalog) response.getEntity();
+    }
+
+    UpdateCatalogRequest updateRequest =
+        UpdateCatalogRequest.builder()
+            .setCurrentEntityVersion(fetchedCatalog.getEntityVersion())
+            .setProperties(
+                Map.of(
+                    "default-base-location",
+                    defaultBaseLocation,
+                    "google.private-key",
+                    "-----BEGIN PRIVATE KEY-----test-key"))
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .updateCatalog(
+                        catalogName,
+                        updateRequest,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("catalog.properties.google.private-key")
+        .hasMessageContaining("Application Default Credentials");
+  }
+
   private PolarisAdminService setupPolarisAdminService(
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
     PrincipalEntity rootPrincipal =
@@ -506,15 +615,20 @@ public class ManagementServiceTest {
         .setProperties(catalogProperties)
         .setStorageConfigInfo(storageConfigInfo)
         .setConnectionConfigInfo(
-            IcebergRestConnectionConfigInfo.builder(
-                    ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
-                .setUri("https://biglake.googleapis.com/iceberg/v1/restcatalog")
-                .setRemoteCatalogName("my-remote-catalog")
-                .setProperties(Map.of("header.x-goog-user-project", "my-billing-project"))
-                .setAuthenticationParameters(
-                    GcpAuthenticationParameters.builder()
-                        .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.GCP)
-                        .build())
+            createBigLakeConnectionConfig(
+                Map.of("header.x-goog-user-project", "my-billing-project")))
+        .build();
+  }
+
+  private ConnectionConfigInfo createBigLakeConnectionConfig(Map<String, String> properties) {
+    return IcebergRestConnectionConfigInfo.builder(
+            ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+        .setUri("https://biglake.googleapis.com/iceberg/v1/restcatalog")
+        .setRemoteCatalogName("my-remote-catalog")
+        .setProperties(properties)
+        .setAuthenticationParameters(
+            GcpAuthenticationParameters.builder()
+                .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.GCP)
                 .build())
         .build();
   }
@@ -886,3 +1000,5 @@ public class ManagementServiceTest {
                 resultWithError.getExtraInformation()));
   }
 }
+
+
