@@ -198,6 +198,7 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
   conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- Added a `webhook` event listener (`polaris.event-listener.types=webhook`) that delivers Polaris events as JSON HTTP POST requests to a configurable endpoint, for example a SIEM or audit collector. Deliveries are retried with exponential backoff (`polaris.event-listener.webhook.max-attempts`, `polaris.event-listener.webhook.retry-backoff`) on a best-effort basis, payloads can be signed with HMAC-SHA256 via `polaris.event-listener.webhook.secret` (sent as the `X-Polaris-Signature-256` header) so receivers can verify authenticity, and `polaris.event-listener.webhook.headers` allows custom headers such as `Authorization` for receivers that require them.
 
 ### Changes
 
