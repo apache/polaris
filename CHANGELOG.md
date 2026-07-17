@@ -235,6 +235,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - OPA authorizer now includes the realm identifier in the authorization context sent to OPA (`input.context.realm`). This ensures OPA policies can enforce tenant isolation across realms, preventing potential collisions if identical principal or resource names exist in different realms.
 - Management API delete operations for principals, principal roles, catalog roles, and catalogs now return error messages that match the actual failure reason (for example, concurrent modification no longer reports a misleading protected-entity message).
 - Python CLI `setup apply` now defaults to an `INTERNAL` catalog type when the `type` field is left blank or null in the setup config, instead of crashing with `AttributeError`
+- Ptyhon CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
+- Internal JWTs are bound to the generation of the principal secret they were minted with (`polaris-cv` claim, a salted fingerprint of the secret hashes so no secret material is exposed in the token). One rotation keeps prior-generation tokens valid via the secondary-secret grace; a reset (or a second rotation) invalidates them, so sessions cannot outlive a secret compromise response. Tokens minted before this change carry no claim and remain valid until expiry for upgrade compatibility.
 
 ## [1.6.0]
 

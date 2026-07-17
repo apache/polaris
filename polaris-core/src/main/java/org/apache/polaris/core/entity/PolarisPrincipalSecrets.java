@@ -185,6 +185,22 @@ public class PolarisPrincipalSecrets {
     return mainSecretHash;
   }
 
+  /**
+   * Credentials-generation fingerprint bound to the current main secret. Changes whenever the main
+   * secret is rotated or reset, so tokens carrying a prior value can be rejected on verify.
+   *
+   * <p>The value is derived from existing fields (a hash of {@link #mainSecretHash}) and therefore
+   * requires no schema change. It is not itself usable as a credential, and unlike {@code
+   * mainSecretHash} it is not the artifact secrets are verified against, so it is safe to embed in
+   * signed (but not encrypted) tokens.
+   *
+   * @return the credentials version, or {@code null} when no main secret hash is set
+   */
+  @Nullable
+  public String getCredentialsVersion() {
+    return mainSecretHash == null ? null : DigestUtils.sha256Hex(mainSecretHash);
+  }
+
   public String getSecondarySecretHash() {
     return secondarySecretHash;
   }
