@@ -39,7 +39,7 @@ public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
     ensureEnabled();
     Instant lastEventAt = request.eventTime().orElseGet(Instant::now);
     storeManager.upsertDatasets(request.datasets());
-    storeManager.replaceDatasetEdges(request.edges(), lastEventAt);
+    storeManager.replaceDatasetEdges(request.targetDatasets(), request.edges(), lastEventAt);
     storeManager.upsertColumnEdges(request.columnEdges(), lastEventAt);
   }
 

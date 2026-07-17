@@ -34,7 +34,7 @@ class NoopLineageStoreManagerTest {
 
   @Test
   void ignoresDatasetEdgeReplace() {
-    storeManager.replaceDatasetEdges(List.of(), Instant.EPOCH);
+    storeManager.replaceDatasetEdges(List.of(), List.of(), Instant.EPOCH);
   }
 
   @Test

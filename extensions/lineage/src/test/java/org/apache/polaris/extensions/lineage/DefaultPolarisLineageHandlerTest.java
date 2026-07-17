@@ -82,8 +82,24 @@ public class DefaultPolarisLineageHandlerTest {
     Instant lastEventAt = Instant.parse("2026-01-01T00:00:00Z");
     InOrder inOrder = inOrder(storeManager);
     inOrder.verify(storeManager).upsertDatasets(request.datasets());
-    inOrder.verify(storeManager).replaceDatasetEdges(request.edges(), lastEventAt);
+    inOrder
+        .verify(storeManager)
+        .replaceDatasetEdges(request.targetDatasets(), request.edges(), lastEventAt);
     inOrder.verify(storeManager).upsertColumnEdges(request.columnEdges(), lastEventAt);
+  }
+
+  @Test
+  void delegatesEmptyDatasetEdgeSnapshotWhenLineageEnabled() {
+    when(configuration.enabled()).thenReturn(true);
+    Instant lastEventAt = Instant.parse("2026-01-01T00:00:00Z");
+    LineageDataset target = new LineageDataset("test", "analytics", "orders_daily");
+    LineageIngestRequest request =
+        new LineageIngestRequest(
+            List.of(target), List.of(target), List.of(), List.of(), Optional.of(lastEventAt));
+
+    service.ingest(request);
+
+    verify(storeManager).replaceDatasetEdges(List.of(target), List.of(), lastEventAt);
   }
 
   private static LineageQueryRequest queryRequest() {
@@ -96,6 +112,7 @@ public class DefaultPolarisLineageHandlerTest {
     LineageDataset target = new LineageDataset("test", "analytics", "orders_daily");
     return new LineageIngestRequest(
         List.of(source, target),
+        List.of(target),
         List.of(new LineageEdge(source, target)),
         List.of(),
         Optional.of(Instant.parse("2026-01-01T00:00:00Z")));

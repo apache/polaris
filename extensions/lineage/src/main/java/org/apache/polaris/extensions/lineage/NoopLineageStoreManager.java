@@ -31,7 +31,8 @@ public class NoopLineageStoreManager implements LineageStoreManager {
   public void upsertDatasets(List<LineageDataset> datasets) {}
 
   @Override
-  public void replaceDatasetEdges(List<LineageEdge> edges, Instant lastEventAt) {}
+  public void replaceDatasetEdges(
+      List<LineageDataset> targetDatasets, List<LineageEdge> edges, Instant lastEventAt) {}
 
   @Override
   public void upsertColumnEdges(List<LineageColumnEdge> columnEdges, Instant lastEventAt) {}
