@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -72,6 +73,33 @@ public class ResolverTest extends BaseResolverTest {
       tm = new PolarisTestMetaStoreManager(metaStoreManager(), callCtx());
     }
     return tm;
+  }
+
+  @Test
+  public void testResolveExternalCallerPrincipalIsSynthetic() {
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of("ext-user", Map.of(), Set.of("ext-role1", "ext-role2")),
+            null,
+            null);
+
+    // The external principal and its roles do not exist in the metastore, yet resolution succeeds.
+    ResolverStatus status = resolver.resolveAll();
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+
+    ResolvedPolarisEntity principal = resolver.getResolvedCallerPrincipal();
+    Assertions.assertThat(principal.getEntity().getName()).isEqualTo("ext-user");
+    Assertions.assertThat(principal.getEntity().getType()).isEqualTo(PolarisEntityType.PRINCIPAL);
+    Assertions.assertThat(principal.getGrantRecordsAsGrantee()).isEmpty();
+
+    Assertions.assertThat(resolver.getResolvedCallerPrincipalRoles())
+        .extracting(r -> r.getEntity().getName())
+        .containsExactlyInAnyOrder("ext-role1", "ext-role2");
+    Assertions.assertThat(resolver.getResolvedCallerPrincipalRoles())
+        .allSatisfy(r -> Assertions.assertThat(r.getGrantRecordsAsGrantee()).isEmpty());
   }
 
   @Test
@@ -126,7 +154,12 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of(
+                "missing",
+                Map.of(
+                    PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                    new PrincipalEntity.Builder().setName("missing").build()),
+                Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_CATALOG_ROLES));
@@ -161,7 +194,12 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of(
+                "missing",
+                Map.of(
+                    PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                    new PrincipalEntity.Builder().setName("missing").build()),
+                Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_PRINCIPAL));
@@ -176,7 +214,12 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            PolarisPrincipal.of(
+                "missing",
+                Map.of(
+                    PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                    new PrincipalEntity.Builder().setName("missing").build()),
+                Set.of()),
             null,
             "test");
     ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_PRINCIPAL_ROLES));
