@@ -109,6 +109,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- Added a `webhook` event listener (`polaris.event-listener.types=webhook`) that delivers Polaris events as JSON HTTP POST requests to a configurable endpoint, for example a SIEM or audit collector. Deliveries are retried with exponential backoff (`polaris.event-listener.webhook.max-attempts`, `polaris.event-listener.webhook.retry-backoff`) on a best-effort basis, payloads can be signed with HMAC-SHA256 via `polaris.event-listener.webhook.secret` (sent as the `X-Polaris-Signature-256` header) so receivers can verify authenticity, and `polaris.event-listener.webhook.headers` allows custom headers such as `Authorization` for receivers that require them.
 
 ### Changes
 

@@ -138,6 +138,36 @@ All properties listed here are **runtime** properties and can be changed without
 
 {{% include-config-section "smallrye-polaris_event_listener_aws_cloudwatch" %}}
 
+### `polaris.event-listener.webhook`
+
+{{% include-config-section "smallrye-polaris_event_listener_webhook" %}}
+
+The webhook listener delivers each (sanitized) event as an HTTP POST with a JSON body of the
+following shape:
+
+```json
+{
+  "event_type": "AFTER_REFRESH_TABLE",
+  "timestamp": 1760000000000,
+  "realm_id": "my-realm",
+  "principal": "alice",
+  "activated_roles": ["role1", "role2"],
+  "request_id": "d3b0...",
+  "table_identifier": "ns.tbl"
+}
+```
+
+`principal`, `activated_roles`, `request_id`, and `table_identifier` are omitted when not
+applicable to the event. Each request also carries an `X-Polaris-Event` header with the event
+type. When `polaris.event-listener.webhook.secret` is set, an `X-Polaris-Signature-256` header
+contains `sha256=` followed by the hex-encoded HMAC-SHA256 of the raw request body; receivers
+should recompute the HMAC with the shared secret and compare.
+
+Delivery is best-effort: failed deliveries are retried with exponential backoff and dropped after
+`max-attempts`. Retries are in-memory only, so pending retries are lost on restart. Deployments
+that need stronger delivery guarantees should also enable the `persistence-in-memory-buffer`
+listener. Redirects are not followed; the endpoint must respond directly with a 2xx status code.
+
 ### `opentelemetry` event listener
 
 Set `polaris.event-listener.types=opentelemetry` to emit Polaris events as OpenTelemetry log
