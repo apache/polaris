@@ -230,60 +230,6 @@ public class QueryGenerator {
   }
 
   /**
-   * Builds an UPDATE query that updates only the specified columns and supports richer WHERE
-   * predicates (equality, greater-than, less-than, IS NULL, IS NOT NULL).
-   *
-   * <p>Callers should prefer passing an ordered map (e.g. {@link java.util.LinkedHashMap}) for the
-   * set clause so generated SQL and parameter order are consistent.
-   *
-   * @param tableColumns List of valid table columns.
-   * @param tableName Target table.
-   * @param setClause Column-value pairs to update.
-   * @param whereEquals Column-value pairs used in WHERE equality filtering.
-   * @param whereGreater Column-value pairs used in WHERE greater-than filtering.
-   * @param whereLess Column-value pairs used in WHERE less-than filtering.
-   * @param whereIsNull Columns that must be NULL.
-   * @param whereIsNotNull Columns that must be NOT NULL.
-   * @return UPDATE query with parameter bindings.
-   */
-  public static PreparedQuery generateUpdateQuery(
-      @NonNull List<String> tableColumns,
-      @NonNull String tableName,
-      @NonNull Map<String, Object> setClause,
-      @NonNull Map<String, Object> whereEquals,
-      @NonNull Map<String, Object> whereGreater,
-      @NonNull Map<String, Object> whereLess,
-      @NonNull Set<String> whereIsNull,
-      @NonNull Set<String> whereIsNotNull) {
-    if (setClause.isEmpty()) {
-      throw new IllegalArgumentException("Empty setClause");
-    }
-
-    Set<String> columns = new HashSet<>(tableColumns);
-    validateColumns(columns, setClause.keySet());
-
-    QueryFragment where =
-        generateWhereClauseExtended(
-            columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
-
-    List<String> setParts = new ArrayList<>();
-    List<Object> params = new ArrayList<>();
-    for (Map.Entry<String, Object> entry : setClause.entrySet()) {
-      setParts.add(entry.getKey() + " = ?");
-      params.add(entry.getValue());
-    }
-    params.addAll(where.parameters());
-
-    String sql =
-        "UPDATE "
-            + getFullyQualifiedTableName(tableName)
-            + " SET "
-            + String.join(", ", setParts)
-            + where.sql();
-    return new PreparedQuery(sql, params);
-  }
-
-  /**
    * Builds a DELETE query with the given conditions.
    *
    * @param tableColumns List of valid table columns.
@@ -296,26 +242,6 @@ public class QueryGenerator {
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
     QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
-    return new PreparedQuery(
-        "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
-  }
-
-  /**
-   * Builds a DELETE query that supports richer WHERE predicates (equality, greater-than, less-than,
-   * IS NULL, IS NOT NULL).
-   */
-  public static PreparedQuery generateDeleteQuery(
-      @NonNull List<String> tableColumns,
-      @NonNull String tableName,
-      @NonNull Map<String, Object> whereEquals,
-      @NonNull Map<String, Object> whereGreater,
-      @NonNull Map<String, Object> whereLess,
-      @NonNull Set<String> whereIsNull,
-      @NonNull Set<String> whereIsNotNull) {
-    Set<String> columns = new HashSet<>(tableColumns);
-    QueryFragment where =
-        generateWhereClauseExtended(
-            columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
     return new PreparedQuery(
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
