@@ -59,7 +59,7 @@ class JdbcBasePersistenceImplTest {
   private static final int PRIVILEGE_CODE = 21;
 
   @ParameterizedTest
-  @ValueSource(ints = {1, 2, 3, 4})
+  @ValueSource(ints = {1, 2, 3, 4, 5})
   void writeToGrantRecordsIsIdempotent(int schemaVersion) throws SQLException {
     JdbcConnectionPool dataSource =
         JdbcConnectionPool.create(

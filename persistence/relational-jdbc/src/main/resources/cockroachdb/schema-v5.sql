@@ -16,19 +16,26 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
--- Changes from v2:
---  * Added `events` table
---  * Added `idempotency_records` table for REST idempotency
+-- CockroachDB schema v5 (matching PostgreSQL schema v5)
+-- Schema version is kept in sync with PostgreSQL to ensure correct column selection in ModelEntity.
+-- Changes from v4:
+--  * Removed the `idempotency_records` table (the durable idempotency store it
+--    backed was never wired into any request path and has been removed)
+-- Features:
+--  * Uses INT4 explicitly for all integer columns (required for CockroachDB JDBC driver)
+--  * Includes all tables: version, entities, grant_records, principal_authentication_data,
+--    policy_mapping_record, events, scan_metrics_report, commit_metrics_report
+--  * Compatible with PostgreSQL wire protocol
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET search_path TO POLARIS_SCHEMA;
 
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,
-    version_value INTEGER NOT NULL
+    version_value INT4 NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 4)
+VALUES ('version', 5)
 ON CONFLICT (version_key) DO UPDATE
 SET version_value = EXCLUDED.version_value;
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
@@ -39,9 +46,9 @@ CREATE TABLE IF NOT EXISTS entities (
     id BIGINT NOT NULL,
     parent_id BIGINT NOT NULL,
     name TEXT NOT NULL,
-    entity_version INT NOT NULL,
-    type_code INT NOT NULL,
-    sub_type_code INT NOT NULL,
+    entity_version INT4 NOT NULL,
+    type_code INT4 NOT NULL,
+    sub_type_code INT4 NOT NULL,
     create_timestamp BIGINT NOT NULL,
     drop_timestamp BIGINT NOT NULL,
     purge_timestamp BIGINT NOT NULL,
@@ -49,7 +56,7 @@ CREATE TABLE IF NOT EXISTS entities (
     last_update_timestamp BIGINT NOT NULL,
     properties JSONB not null default '{}'::JSONB,
     internal_properties JSONB not null default '{}'::JSONB,
-    grant_records_version INT NOT NULL,
+    grant_records_version INT4 NOT NULL,
     location_without_scheme TEXT,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
@@ -57,7 +64,6 @@ CREATE TABLE IF NOT EXISTS entities (
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
-CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON entities (catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_locations
     ON entities USING btree (realm_id, parent_id, location_without_scheme)
     WHERE location_without_scheme IS NOT NULL;
@@ -86,7 +92,7 @@ CREATE TABLE IF NOT EXISTS grant_records (
     securable_id BIGINT NOT NULL,
     grantee_catalog_id BIGINT NOT NULL,
     grantee_id BIGINT NOT NULL,
-    privilege_code INTEGER,
+    privilege_code INT4,
     PRIMARY KEY (realm_id, securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
 );
 
@@ -97,11 +103,6 @@ COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
 COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
-
-CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee 
-    ON grant_records (realm_id, grantee_id);
-CREATE INDEX IF NOT EXISTS idx_grants_realm_securable 
-    ON grant_records (realm_id, securable_id);
 
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
     realm_id TEXT NOT NULL,
@@ -119,7 +120,7 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
     realm_id TEXT NOT NULL,
     target_catalog_id BIGINT NOT NULL,
     target_id BIGINT NOT NULL,
-    policy_type_code INTEGER NOT NULL,
+    policy_type_code INT4 NOT NULL,
     policy_catalog_id BIGINT NOT NULL,
     policy_id BIGINT NOT NULL,
     parameters JSONB NOT NULL DEFAULT '{}'::JSONB,
@@ -141,34 +142,6 @@ CREATE TABLE IF NOT EXISTS events (
     additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
     PRIMARY KEY (event_id)
 );
-
--- Idempotency records (key-only idempotency; durable replay)
-CREATE TABLE IF NOT EXISTS idempotency_records (
-    realm_id TEXT NOT NULL,
-    idempotency_key TEXT NOT NULL,
-    operation_type TEXT NOT NULL,
-    resource_id TEXT NOT NULL,            -- normalized request-derived resource identifier (not a generated entity id)
-
-    -- Finalization/replay
-    http_status INTEGER,                 -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
-    error_subtype TEXT,                  -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
-    response_summary TEXT,               -- minimal body to reproduce equivalent response (JSON string)
-    response_headers TEXT,               -- small whitelisted headers to replay (JSON string)
-    finalized_at TIMESTAMP,              -- when http_status was written
-
-    -- Liveness/ops
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    heartbeat_at TIMESTAMP,              -- updated by owner while IN_PROGRESS
-    executor_id TEXT,                    -- owner pod/worker id
-    expires_at TIMESTAMP,
-
-    PRIMARY KEY (realm_id, idempotency_key)
-);
-
--- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
-    ON idempotency_records (realm_id, expires_at);
 
 -- ============================================================================
 -- SCAN METRICS REPORT TABLE
@@ -192,7 +165,7 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
 
     -- Scan context
     snapshot_id BIGINT,
-    schema_id INTEGER,
+    schema_id INT4,
     filter_expression TEXT,
     projected_field_ids TEXT,
     projected_field_names TEXT,
@@ -284,7 +257,7 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
 
     -- Duration and attempts
     total_duration_ms BIGINT DEFAULT 0,
-    attempts INTEGER DEFAULT 1,
+    attempts INT4 DEFAULT 1,
 
     -- Additional metadata (for extensibility)
     metadata JSONB DEFAULT '{}'::JSONB,
@@ -299,3 +272,8 @@ CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(
 
 -- Index for query lookups by catalog_id and table_id
 CREATE INDEX IF NOT EXISTS idx_commit_report_lookup ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
+
+-- INT4 type used directly in table definitions for CockroachDB JDBC compatibility
+-- CockroachDB requires explicit INT4 type declarations to correctly map columns to Java's Integer type.
+-- Using generic INTEGER or INT types causes type mapping failures in CockroachDB's JDBC driver.
+-- INT4 is equivalent to INTEGER in PostgreSQL, ensuring compatibility with both databases.
