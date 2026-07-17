@@ -48,6 +48,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   are now always bootstrapped with the latest available schema version.
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
 - Admin grant APIs now reject table-like privilege targets with an empty namespace. A table-like target without a namespace is considered invalid input.
+- `PolarisPrincipal` now carries a generic `Map<String, Object> attributes` bag instead of the
+  previous `Map<String, String> properties` and `Optional<String> token` fields. Two well-known
+  attribute keys are defined as constants on the interface:
+  `PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY` (holds the `PrincipalEntity`) and
+  `PolarisPrincipal.JWT_ATTRIBUTE_KEY` (holds the raw JWT string). Use
+  `PolarisPrincipal.getAttribute(key, type)` for type-safe access. The `Authenticator` interface now
+  accepts a Quarkus `SecurityIdentity` instead of a `PolarisCredential`, and throws
+  `AuthenticationFailedException` (mapped to HTTP 401) instead of Iceberg's
+  `NotAuthorizedException`.
 
 ### New Features
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.

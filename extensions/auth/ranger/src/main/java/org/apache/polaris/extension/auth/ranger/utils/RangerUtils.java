@@ -30,6 +30,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.ranger.authz.model.RangerAccessInfo;
@@ -127,10 +128,12 @@ public class RangerUtils {
   }
 
   private static Map<String, Object> getUserAttributes(PolarisPrincipal principal) {
-    Map<String, String> properties = principal.getProperties();
+    Map<String, String> properties =
+        principal
+            .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
+            .map(PrincipalEntity::getInternalPropertiesAsMap)
+            .orElse(Collections.emptyMap());
 
-    return (properties == null || properties.isEmpty())
-        ? Collections.emptyMap()
-        : new HashMap<>(properties);
+    return properties.isEmpty() ? Collections.emptyMap() : new HashMap<>(properties);
   }
 }

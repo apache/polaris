@@ -411,7 +411,7 @@ public abstract class BaseResolverTest {
   @NonNull
   private Resolver allocateResolver(
       @Nullable InMemoryEntityCache cache,
-      Set<String> principalRolesScope,
+      @Nullable Set<String> principalRolesScope,
       @Nullable String referenceCatalogName) {
 
     // create a new cache if needs be
@@ -419,10 +419,18 @@ public abstract class BaseResolverTest {
       this.cache =
           new InMemoryEntityCache(diagServices, callCtx().getRealmConfig(), metaStoreManager());
     }
+
+    PrincipalEntity principalEntity = PrincipalEntity.of(P1);
     PolarisPrincipal authenticatedPrincipal =
-        principalRolesScope == null
-            ? PolarisPrincipal.ofAllRoles(PrincipalEntity.of(P1))
-            : PolarisPrincipal.of(PrincipalEntity.of(P1), principalRolesScope);
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                principalRolesScope == null),
+            Optional.ofNullable(principalRolesScope).orElse(Set.of()));
+
     return new Resolver(
         diagServices,
         callCtx(),

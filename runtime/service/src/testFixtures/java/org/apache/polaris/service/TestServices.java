@@ -296,7 +296,13 @@ public record TestServices(
                   .setCreateTimestamp(Instant.now().toEpochMilli())
                   .setCredentialRotationRequiredState()
                   .build());
-      PolarisPrincipal principal = PolarisPrincipal.of(createdPrincipal.getPrincipal(), Set.of());
+
+      PrincipalEntity principalEntity = createdPrincipal.getPrincipal();
+      PolarisPrincipal principal =
+          PolarisPrincipal.of(
+              principalEntity.getName(),
+              Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+              Set.of());
 
       SecurityContext securityContext =
           new SecurityContext() {
