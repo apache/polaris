@@ -36,7 +36,7 @@ import org.jspecify.annotations.NonNull;
  * @see JWTBroker
  */
 @PolarisImmutable
-abstract class InternalPolarisToken implements PolarisCredential {
+public abstract class InternalPolarisToken implements PolarisCredential {
 
   private static final Splitter SCOPE_SPLITTER = Splitter.on(' ').omitEmptyStrings().trimResults();
 
@@ -52,12 +52,10 @@ abstract class InternalPolarisToken implements PolarisCredential {
 
   @NonNull // switch from nullable to non-nullable
   @Override
-  @SuppressWarnings("NullableProblems")
   public abstract String getPrincipalName();
 
   @NonNull // switch from nullable to non-nullable
   @Override
-  @SuppressWarnings("NullableProblems")
   public abstract Long getPrincipalId();
 
   @Value.Lazy
@@ -67,7 +65,7 @@ abstract class InternalPolarisToken implements PolarisCredential {
     return SCOPE_SPLITTER.splitToStream(getScope()).collect(Collectors.toSet());
   }
 
-  abstract String getClientId();
+  public abstract String getClientId();
 
-  abstract String getScope();
+  public abstract String getScope();
 }

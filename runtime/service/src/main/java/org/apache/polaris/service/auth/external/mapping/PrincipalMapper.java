@@ -36,7 +36,12 @@ import java.util.OptionalLong;
 public interface PrincipalMapper {
 
   /**
-   * Maps the {@link SecurityIdentity} to a Polaris principal.
+   * Maps the {@link SecurityIdentity} to a Polaris principal ID.
+   *
+   * <p>When using internal principals backed by a {@link
+   * org.apache.polaris.core.entity.PrincipalEntity} in the metastore, either the principal ID or
+   * the principal name must be provided. If external principals are used instead, the principal ID
+   * is irrelevant.
    *
    * @param identity the {@link SecurityIdentity} of the user
    * @return the Polaris principal, or an empty optional if no mapping is available
@@ -45,6 +50,11 @@ public interface PrincipalMapper {
 
   /**
    * Maps the {@link SecurityIdentity} to a Polaris principal name.
+   *
+   * <p>When using internal principals backed by a {@link
+   * org.apache.polaris.core.entity.PrincipalEntity} in the metastore, either the principal ID or
+   * the principal name must be provided. If external principals are used instead, the principal
+   * name must be provided.
    *
    * @param identity the {@link SecurityIdentity} of the user
    * @return the Polaris principal name, or an empty optional if no mapping is available
