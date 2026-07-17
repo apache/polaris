@@ -99,6 +99,7 @@ dependencies {
     api(project(":polaris-extensions-auth-opa"))
     api(project(":polaris-extensions-auth-ranger"))
     api(project(":polaris-extensions-events-kafka"))
+    api(project(":polaris-extensions-events-webhook"))
     api(project(":polaris-extensions-federation-bigquery"))
     api(project(":polaris-extensions-federation-hadoop"))
     api(project(":polaris-extensions-federation-hive"))
