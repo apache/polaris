@@ -63,7 +63,7 @@ public class DefaultPolarisLineageHandlerTest {
     LineageQueryRequest request = queryRequest();
     LineageGraph graph =
         new LineageGraph(
-            new LineageNode("dataset:test:orders", LineageNodeType.DATASET, null, false),
+            new LineageNode("dataset:test:analytics.orders", LineageNodeType.DATASET, null, false),
             List.of(),
             List.of());
     when(storeManager.loadLineage(request)).thenReturn(graph);
@@ -90,7 +90,7 @@ public class DefaultPolarisLineageHandlerTest {
 
   private static LineageQueryRequest queryRequest() {
     return new LineageQueryRequest(
-        "dataset:test:orders", LineageDirection.BOTH, LineageGranularity.DATASET);
+        "dataset:test:analytics.orders", LineageDirection.BOTH, LineageGranularity.DATASET);
   }
 
   private static LineageIngestRequest ingestRequest() {

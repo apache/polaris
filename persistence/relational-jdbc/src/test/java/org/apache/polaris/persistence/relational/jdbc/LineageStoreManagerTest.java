@@ -353,6 +353,33 @@ class LineageStoreManagerTest {
   }
 
   @Test
+  void generatedLineageNodeIdRoundTripsDelimitedDatasetIdentity() {
+    LineageDataset source = new LineageDataset("polaris:prod", "analytics.daily", "orders.daily");
+    lineagePersistence.upsertDatasets(List.of(source, targetDataset()));
+    lineagePersistence.replaceDatasetEdges(
+        List.of(targetDataset()), List.of(new LineageEdge(source, targetDataset())), EVENT_TIME);
+
+    LineageGraph targetGraph =
+        lineagePersistence.loadLineage(
+            new LineageQueryRequest(
+                "dataset:polaris:analytics.orders_daily",
+                LineageDirection.UPSTREAM,
+                LineageGranularity.DATASET));
+    String generatedNodeId = targetGraph.upstream().get(0).id();
+
+    assertEquals("dataset:polaris%3Aprod:analytics%2Edaily.orders%2Edaily", generatedNodeId);
+
+    LineageGraph sourceGraph =
+        lineagePersistence.loadLineage(
+            new LineageQueryRequest(
+                generatedNodeId, LineageDirection.BOTH, LineageGranularity.DATASET));
+
+    assertFalse(sourceGraph.node().opaque());
+    assertEquals("analytics.daily", sourceGraph.node().data().namespace());
+    assertEquals("orders.daily", sourceGraph.node().data().name());
+  }
+
+  @Test
   void loadLineageBatchesColumnMappingsForAdjacentDatasets() {
     upsertSourceAlternativeAndTargetDatasets();
     LineageColumnEdge alternativeColumnEdge =

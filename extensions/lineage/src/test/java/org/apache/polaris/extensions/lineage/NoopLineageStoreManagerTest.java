@@ -49,11 +49,11 @@ class NoopLineageStoreManagerTest {
   void loadsEmptyDatasetGraph() {
     LineageQueryRequest request =
         new LineageQueryRequest(
-            "dataset:test:orders", LineageDirection.BOTH, LineageGranularity.DATASET);
+            "dataset:test:analytics.orders", LineageDirection.BOTH, LineageGranularity.DATASET);
 
     LineageGraph graph = storeManager.loadLineage(request);
 
-    assertThat(graph.node().id()).isEqualTo("dataset:test:orders");
+    assertThat(graph.node().id()).isEqualTo("dataset:test:analytics.orders");
     assertThat(graph.node().type()).isEqualTo(LineageNodeType.DATASET);
     assertThat(graph.node().opaque()).isTrue();
     assertThat(graph.upstream()).isEmpty();

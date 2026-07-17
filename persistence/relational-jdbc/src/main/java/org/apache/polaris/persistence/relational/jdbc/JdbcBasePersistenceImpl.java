@@ -82,6 +82,7 @@ import org.apache.polaris.extensions.lineage.LineageFieldMapping;
 import org.apache.polaris.extensions.lineage.LineageGranularity;
 import org.apache.polaris.extensions.lineage.LineageGraph;
 import org.apache.polaris.extensions.lineage.LineageNode;
+import org.apache.polaris.extensions.lineage.LineageNodeIdCodec;
 import org.apache.polaris.extensions.lineage.LineageNodeType;
 import org.apache.polaris.extensions.lineage.LineageQueryRequest;
 import org.apache.polaris.extensions.lineage.LineageStoreManager;
@@ -1640,25 +1641,8 @@ public class JdbcBasePersistenceImpl
 
   private Optional<ModelLineageDataset> lookupLineageDatasetByNodeId(
       String realmId, String nodeId) {
-    return parseLineageDatasetNodeId(nodeId)
+    return LineageNodeIdCodec.decode(nodeId)
         .flatMap(dataset -> lookupLineageDataset(realmId, dataset));
-  }
-
-  private Optional<LineageDataset> parseLineageDatasetNodeId(String nodeId) {
-    String prefix = "dataset:";
-    if (!nodeId.startsWith(prefix)) {
-      return Optional.empty();
-    }
-    String identity = nodeId.substring(prefix.length());
-    int catalogSeparator = identity.lastIndexOf(':');
-    int nameSeparator = identity.lastIndexOf('.');
-    if (catalogSeparator < 0 || nameSeparator <= catalogSeparator + 1) {
-      return Optional.empty();
-    }
-    String catalog = identity.substring(0, catalogSeparator);
-    String namespace = identity.substring(catalogSeparator + 1, nameSeparator);
-    String name = identity.substring(nameSeparator + 1);
-    return Optional.of(new LineageDataset(catalog, namespace, name));
   }
 
   private long requireLineageDatasetId(String realmId, LineageDataset dataset) {
@@ -1778,8 +1762,8 @@ public class JdbcBasePersistenceImpl
   }
 
   private static String lineageNodeId(ModelLineageDataset dataset) {
-    return String.format(
-        "dataset:%s:%s.%s", dataset.getCatalog(), dataset.getNamespace(), dataset.getName());
+    return LineageNodeIdCodec.encode(
+        new LineageDataset(dataset.getCatalog(), dataset.getNamespace(), dataset.getName()));
   }
 
   private void verifyLineageStoreManagerSupported() {
