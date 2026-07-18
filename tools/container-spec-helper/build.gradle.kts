@@ -26,4 +26,7 @@ dependencies {
   implementation(libs.slf4j.api)
   api(platform(libs.testcontainers.bom))
   api("org.testcontainers:testcontainers")
+
+  api(platform(libs.awssdk.bom))
+  api("software.amazon.awssdk:s3")
 }

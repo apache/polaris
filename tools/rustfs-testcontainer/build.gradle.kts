@@ -30,7 +30,7 @@ dependencies {
   api("software.amazon.awssdk:s3")
   api("software.amazon.awssdk:kms")
 
-  implementation(project(":polaris-container-spec-helper"))
+  api(project(":polaris-container-spec-helper"))
   implementation("software.amazon.awssdk:url-connection-client")
   implementation(libs.guava)
 
