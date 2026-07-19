@@ -91,6 +91,34 @@ class TestSetupCommand(CLITestBase):
         )
         self.assertEqual(command._failure_count, 0)
 
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    def test_setup_dry_run_reports_policy_lookup_failures(
+        self, mock_policy_api: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_policy_api.return_value.load_policy.side_effect = RuntimeError(
+            "listing unavailable"
+        )
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            dry_run=True,
+        )
+
+        command._create_policies_and_attachments(
+            mock_client,
+            "catalog",
+            {
+                "policy": {
+                    "namespace": "namespace",
+                    "type": "data-compaction",
+                    "content": {},
+                }
+            },
+            dry_run=True,
+        )
+
+        self.assertEqual(command._failure_count, 1)
+
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_s3_optional_fields(self, mock_isfile: MagicMock) -> None:
         mock_client = self.build_mock_client()
@@ -109,6 +137,27 @@ class TestSetupCommand(CLITestBase):
         mock_client.list_principals.assert_not_called()
         mock_client.list_principal_roles.assert_not_called()
         mock_client.list_catalog_roles.assert_not_called()
+
+    @patch("apache_polaris.cli.command.setup.os.path.isfile")
+    def test_setup_apply_reports_missing_external_catalog_connection(
+        self, mock_isfile: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_isfile.return_value = True
+        setup_yaml = "catalogs:\n  - name: broken\n    type: external"
+
+        with (
+            patch(
+                "apache_polaris.cli.command.setup.open",
+                mock_open(read_data=setup_yaml),
+            ),
+            self.assertRaises(CliError) as cm,
+        ):
+            self.mock_execute(mock_client, ["setup", "apply", "config.yaml"])
+
+        self.assertEqual(cm.exception.exit_code, CLI_ERROR_EXIT_CODE)
+        self.assertIn("setup errors: 1", str(cm.exception))
+        mock_client.create_catalog.assert_not_called()
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_reports_provisioning_failures(

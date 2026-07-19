@@ -902,6 +902,7 @@ class SetupCommand(Command):
                             logger.warning(
                                 f"External catalog '{catalog_name}' is missing the required 'connection' info block."
                             )
+                            self._failure_count += 1
                             overall_success = False
                             continue
                         command_args.update(conn_args)
@@ -1279,8 +1280,8 @@ class SetupCommand(Command):
             except NotFoundException:
                 policy_exists = False
             except Exception:
-                logger.warning(
-                    f"Could not verify existence of policy '{policy_name}', attempting creation."
+                self._record_failure(
+                    f"Could not verify existence of policy '{policy_name}'"
                 )
                 policy_exists = False
             if policy_exists:
