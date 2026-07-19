@@ -20,11 +20,11 @@ import os
 import logging
 import yaml
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Optional, List, Any, Set
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.exceptions import CliError
+from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.constants import (
     PrincipalType,
     Subcommands,
@@ -76,6 +76,7 @@ class SetupCommand(Command):
     _existing_catalogs: Optional[Set[str]] = None
     _existing_principals: Optional[Set[str]] = None
     _catalog_api: Optional[Any] = None
+    _failure_count: int = field(default=0, init=False, repr=False)
 
     def _get_catalog_api(self, api: PolarisDefaultApi) -> Any:
         """Get or create and cache the IcebergCatalogAPI client."""
@@ -524,6 +525,7 @@ class SetupCommand(Command):
     def execute(self, api: PolarisDefaultApi) -> None:
         """Execute the setup command based on the subcommand (apply or export)."""
         if self.setup_subcommand == Subcommands.APPLY:
+            self._failure_count = 0
             if self.dry_run:
                 logger.info("=== Starting Setup Dry-Run ===")
             else:
@@ -574,6 +576,11 @@ class SetupCommand(Command):
                 logger.info(f"--- Finished processing catalog: {catalog_name} ---")
             if self.dry_run:
                 logger.info("=== Dry-Run Finished ===")
+            elif self._failure_count:
+                raise CliError(
+                    f"Setup apply failed; provisioning errors: {self._failure_count}",
+                    exit_code=CLI_ERROR_EXIT_CODE,
+                )
             else:
                 logger.info("=== Setup Apply Process Completed Successfully ===")
         elif self.setup_subcommand == Subcommands.EXPORT:
@@ -600,6 +607,10 @@ class SetupCommand(Command):
                 details_str = yaml.dump(details_copy, indent=2, sort_keys=False).strip()
                 message += f" with details:\n{details_str}"
         logger.info(message)
+
+    def _record_failure(self, message: str) -> None:
+        self._failure_count += 1
+        logger.exception(message)
 
     def _create_principals(
         self,
@@ -640,7 +651,7 @@ class SetupCommand(Command):
                         )
                         existing_principals.add(principal_name)
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to create principal '{principal_name}'"
                         )
             # Assign roles
@@ -681,7 +692,7 @@ class SetupCommand(Command):
                             f"Assigned principal '{principal_name}' to role '{role_name}' successfully."
                         )
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to assign principal '{principal_name}' to role '{role_name}'"
                         )
         logger.info("--- Finished processing principals ---")
@@ -722,7 +733,9 @@ class SetupCommand(Command):
                     if self._existing_principal_roles is not None:
                         self._existing_principal_roles.add(role_name)
                 except Exception:
-                    logger.exception(f"Failed to create principal role '{role_name}'")
+                    self._record_failure(
+                        f"Failed to create principal role '{role_name}'"
+                    )
         logger.info("--- Finished processing principal roles ---")
 
     def _map_storage_properties(self, catalog_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -954,7 +967,7 @@ class SetupCommand(Command):
                     logger.info(f"Catalog '{catalog_name}' created successfully.")
                     existing_catalogs.add(catalog_name)
                 except Exception:
-                    logger.exception(f"Failed to create catalog '{catalog_name}'")
+                    self._record_failure(f"Failed to create catalog '{catalog_name}'")
                     overall_success = False
         logger.info("--- Finished processing catalogs ---")
         return overall_success
@@ -1001,7 +1014,7 @@ class SetupCommand(Command):
                         # Update the cache with the newly created role
                         existing_roles_in_catalog.add(role_name)
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to create catalog role '{role_name}' in catalog '{catalog_name}'"
                         )
                         continue
@@ -1040,7 +1053,7 @@ class SetupCommand(Command):
                             f"Assigned catalog role '{role_name}' to principal role '{principal_role_name}' successfully."
                         )
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to assign catalog role '{role_name}' to principal role '{principal_role_name}'"
                         )
             # Grant privileges
@@ -1115,7 +1128,7 @@ class SetupCommand(Command):
             cmd.execute(api)
             logger.info(f"Successfully granted {log_message}")
         except Exception:
-            logger.exception(f"Failed to grant {log_message}")
+            self._record_failure(f"Failed to grant {log_message}")
 
     def _create_namespaces(
         self,
@@ -1216,7 +1229,7 @@ class SetupCommand(Command):
                     )
                     existing_namespaces.add(ns_name)
                 except Exception:
-                    logger.exception(
+                    self._record_failure(
                         f"Failed to create namespace '{ns_name}' in catalog '{catalog_name}'"
                     )
         logger.info(
@@ -1314,7 +1327,7 @@ class SetupCommand(Command):
                         )
                         logger.info(f"Policy '{policy_name}' created successfully.")
                     except Exception:
-                        logger.exception(f"Failed to create policy '{policy_name}'")
+                        self._record_failure(f"Failed to create policy '{policy_name}'")
                         continue
             # Attachments
             attachments = policy_data.get("attach", [])
@@ -1355,7 +1368,7 @@ class SetupCommand(Command):
                         cmd.execute(api)
                         logger.info(f"Successfully attached policy '{policy_name}'")
                     except Exception:
-                        logger.exception(f"Failed to attach policy '{policy_name}'")
+                        self._record_failure(f"Failed to attach policy '{policy_name}'")
         logger.info(f"--- Finished processing policies for catalog: {catalog_name} ---")
 
     def _validate_entity(
