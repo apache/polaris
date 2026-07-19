@@ -2351,7 +2351,7 @@ public class PolarisAdminService {
     if (completePathWrapper == null
         || leafEntity == null
         || !(leafEntity.getType() == PolarisEntityType.TABLE_LIKE
-            && leafEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+            && subTypes.contains(leafEntity.getSubType())
             && Objects.equals(leafEntity.getName(), identifier.name()))) {
       throw new RuntimeException(
           String.format(
