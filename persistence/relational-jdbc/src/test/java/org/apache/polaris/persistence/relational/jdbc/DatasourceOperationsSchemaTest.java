@@ -75,7 +75,7 @@ class DatasourceOperationsSchemaTest {
   }
 
   private static InputStream openSchemaScript() {
-    return DatasourceOperations.class.getClassLoader().getResourceAsStream("h2/schema-v4.sql");
+    return DatasourceOperations.class.getClassLoader().getResourceAsStream("h2/schema-v5.sql");
   }
 
   /** Schemas holding an ENTITIES table, as reported by the database catalog. */
@@ -108,7 +108,7 @@ class DatasourceOperationsSchemaTest {
     ops.executeScript(openSchemaScript());
 
     // Unqualified queries resolve against the configured schema.
-    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false)).isEqualTo(4);
+    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false)).isEqualTo(5);
     // H2 case-folds the unquoted identifier to uppercase.
     assertThat(schemasContainingEntitiesTable(dataSource)).containsExactly("CUSTOM_POLARIS");
   }
@@ -123,7 +123,7 @@ class DatasourceOperationsSchemaTest {
 
     ops.executeScript(openSchemaScript());
 
-    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false)).isEqualTo(4);
+    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false)).isEqualTo(5);
     assertThat(schemasContainingEntitiesTable(dataSource))
         .containsExactly(RelationalJdbcConfiguration.DEFAULT_SCHEMA_NAME);
   }

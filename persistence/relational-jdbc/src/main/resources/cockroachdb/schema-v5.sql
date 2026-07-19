@@ -27,8 +27,6 @@
 --    policy_mapping_record, events, scan_metrics_report, commit_metrics_report
 --  * Compatible with PostgreSQL wire protocol
 
-CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
-SET search_path TO POLARIS_SCHEMA;
 
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,

@@ -21,8 +21,6 @@
 --  * Removed the `idempotency_records` table (the durable idempotency store it
 --    backed was never wired into any request path and has been removed)
 
-CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
-SET SCHEMA POLARIS_SCHEMA;
 
 CREATE TABLE IF NOT EXISTS version (
     version_key VARCHAR PRIMARY KEY,
