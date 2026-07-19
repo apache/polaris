@@ -56,9 +56,4 @@ final class SimpleRelationalJdbcConfiguration implements RelationalJdbcConfigura
   public Optional<String> databaseType() {
     return Optional.of(databaseType);
   }
-
-  @Override
-  public Optional<String> schemaName() {
-    return Optional.empty();
-  }
 }

@@ -53,7 +53,7 @@ class MetricsReportPersistenceTest {
 
     // Execute main schema v4 (includes metrics tables)
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-    InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
+    InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v5.sql");
     datasourceOperations.executeScript(schemaStream);
 
     PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
@@ -64,7 +64,7 @@ class MetricsReportPersistenceTest {
             datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
             "TEST_REALM",
-            4);
+            5);
   }
 
   @Test
@@ -187,11 +187,6 @@ class MetricsReportPersistenceTest {
 
     @Override
     public Optional<String> databaseType() {
-      return Optional.empty();
-    }
-
-    @Override
-    public Optional<String> schemaName() {
       return Optional.empty();
     }
   }

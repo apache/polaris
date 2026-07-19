@@ -40,7 +40,8 @@ import org.jspecify.annotations.Nullable;
  * consistent SQL generation and protects against injection by managing parameters separately.
  *
  * <p>Generated queries reference tables by their unqualified names; the schema holding the Polaris
- * tables is selected per connection by {@link DatasourceOperations}.
+ * tables is selected through the datasource configuration (for example the PostgreSQL driver's
+ * {@code currentSchema} connection property), so the persistence code is agnostic of it.
  */
 public class QueryGenerator {
 

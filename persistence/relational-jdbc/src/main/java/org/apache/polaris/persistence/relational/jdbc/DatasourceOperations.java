@@ -39,7 +39,6 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
@@ -61,22 +60,19 @@ public class DatasourceOperations {
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
 
   // H2 STATUS CODES
-  // 90079 = Schema not found, 42S02 = Table or view not found
+  // 90079 = Schema not found, 42S02 = Table or view not found, 42S04 = Table or view not found
+  // (database empty). The latter surfaces for unqualified table references against a fresh
+  // database, where previously a schema-qualified reference produced a schema-not-found error.
   private static final String H2_SCHEMA_DOES_NOT_EXIST = "90079";
   private static final String H2_TABLE_DOES_NOT_EXIST = "42S02";
+  private static final String H2_TABLE_NOT_FOUND_DATABASE_EMPTY = "42S04";
 
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
 
-  // The schema name is interpolated directly into SQL (it cannot be a bind parameter), so it must
-  // be a plain SQL identifier: a leading letter or underscore followed by letters, digits, or
-  // underscores. This guards against SQL injection through the configured value.
-  private static final Pattern VALID_SCHEMA_NAME = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
-
   private final DataSource datasource;
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
   private final DatabaseType databaseType;
-  private final String schemaName;
 
   private static final Random random = new Random();
 
@@ -84,7 +80,6 @@ public class DatasourceOperations {
       DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
-    this.schemaName = resolveSchemaName(relationalJdbcConfiguration);
     try (Connection connection = this.datasource.getConnection()) {
       // Get explicitly configured database type, if any
       DatabaseType configuredType =
@@ -96,36 +91,14 @@ public class DatasourceOperations {
       // Infer database type from connection, falling back to configured type
       this.databaseType = DatabaseType.inferFromConnection(connection, configuredType);
 
-      LOGGER.info("Detected database type: {}, using schema: {}", databaseType, schemaName);
+      LOGGER.info("Detected database type: {}", databaseType);
     } catch (SQLException e) {
       throw new RuntimeException("Failed to initialize DatasourceOperations", e);
     }
   }
 
-  private static String resolveSchemaName(RelationalJdbcConfiguration configuration) {
-    String schemaName =
-        configuration
-            .schemaName()
-            .map(String::trim)
-            .filter(name -> !name.isEmpty())
-            .orElse(RelationalJdbcConfiguration.DEFAULT_SCHEMA_NAME);
-    if (!VALID_SCHEMA_NAME.matcher(schemaName).matches()) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Invalid schema name '%s' configured via polaris.persistence.relational.jdbc.schema-name. "
-                  + "It must start with a letter or underscore and contain only letters, digits, and underscores.",
-              schemaName));
-    }
-    return schemaName;
-  }
-
   DatabaseType getDatabaseType() {
     return databaseType;
-  }
-
-  /** The database schema (namespace) holding the Polaris tables. */
-  public String getSchemaName() {
-    return schemaName;
   }
 
   /**
@@ -135,7 +108,6 @@ public class DatasourceOperations {
    * @throws SQLException : Exception while executing the script.
    */
   public void executeScript(InputStream scriptInputStream) throws SQLException {
-    ensureSchemaExists();
     try (BufferedReader scriptReader =
         new BufferedReader(
             new InputStreamReader(Objects.requireNonNull(scriptInputStream), UTF_8))) {
@@ -488,49 +460,13 @@ public class DatasourceOperations {
     return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
             && (databaseType == DatabaseType.POSTGRES || databaseType == DatabaseType.COCKROACHDB))
         || ((H2_SCHEMA_DOES_NOT_EXIST.equals(e.getSQLState())
-                || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState()))
+                || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState())
+                || H2_TABLE_NOT_FOUND_DATABASE_EMPTY.equals(e.getSQLState()))
             && databaseType == DatabaseType.H2);
   }
 
-  /**
-   * Borrows a connection from the datasource and selects the configured schema as the session
-   * schema, so that the unqualified table names in generated SQL resolve against it. Pooled
-   * connections may be reused across borrowers, so the schema is (re-)selected on every borrow.
-   */
   private Connection borrowConnection() throws SQLException {
-    Connection connection = datasource.getConnection();
-    try (Statement statement = connection.createStatement()) {
-      // schemaName is validated as a plain SQL identifier in resolveSchemaName; identifiers cannot
-      // be bind parameters.
-      statement.execute(selectSessionSchemaStatement());
-      return connection;
-    } catch (SQLException | RuntimeException e) {
-      try {
-        connection.close();
-      } catch (SQLException closeException) {
-        e.addSuppressed(closeException);
-      }
-      throw e;
-    }
-  }
-
-  private String selectSessionSchemaStatement() {
-    return switch (databaseType) {
-      case H2 -> "SET SCHEMA " + schemaName;
-      case POSTGRES, COCKROACHDB -> "SET search_path TO " + schemaName;
-    };
-  }
-
-  /**
-   * Creates the configured schema if it does not exist yet. Uses a raw connection instead of {@link
-   * #borrowConnection()}: on some databases (H2) selecting a non-existent session schema fails, so
-   * the schema must exist before connections can be borrowed.
-   */
-  private void ensureSchemaExists() throws SQLException {
-    try (Connection connection = datasource.getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE SCHEMA IF NOT EXISTS " + schemaName);
-    }
+    return datasource.getConnection();
   }
 
   private static void logQuery(QueryGenerator.PreparedQuery query) {
