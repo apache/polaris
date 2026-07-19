@@ -671,6 +671,7 @@ class SetupCommand(Command):
                     logger.warning(
                         f"Skipping assignment for non-existing principal role '{role_name}' for principal '{principal_name}'"
                     )
+                    self._failure_count += 1
                     continue
 
                 if dry_run:
@@ -1041,6 +1042,7 @@ class SetupCommand(Command):
                     logger.warning(
                         f"Skipping assignment of catalog role '{role_name}' to non-existing principal role '{principal_role_name}'"
                     )
+                    self._failure_count += 1
                     continue
                 if dry_run:
                     self._log_dry_run(

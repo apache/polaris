@@ -42,7 +42,14 @@ class TestSetupCommand(CLITestBase):
     @patch(
         "apache_polaris.cli.command.setup.open",
         new_callable=mock_open,
-        read_data="principals:\n  quickstart_user:\n    roles:\n      - quickstart_user_role",
+        read_data=(
+            "principal_roles:\n"
+            "  - quickstart_user_role\n"
+            "principals:\n"
+            "  quickstart_user:\n"
+            "    roles:\n"
+            "      - quickstart_user_role"
+        ),
     )
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_dry_run(
@@ -77,6 +84,29 @@ class TestSetupCommand(CLITestBase):
         self.assertEqual(cm.exception.exit_code, CLI_ERROR_EXIT_CODE)
         self.assertIn("setup errors: 1", str(cm.exception))
         mock_client.create_principal.assert_not_called()
+
+    @patch("apache_polaris.cli.command.setup.os.path.isfile")
+    def test_setup_dry_run_reports_missing_role_assignments(
+        self, mock_isfile: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_isfile.return_value = True
+        setup_yaml = "principals:\n  user:\n    roles:\n      - missing-role"
+
+        with (
+            patch(
+                "apache_polaris.cli.command.setup.open",
+                mock_open(read_data=setup_yaml),
+            ),
+            self.assertRaises(CliError) as cm,
+        ):
+            self.mock_execute(
+                mock_client,
+                ["setup", "apply", "config.yaml", "--dry-run"],
+            )
+
+        self.assertEqual(cm.exception.exit_code, CLI_ERROR_EXIT_CODE)
+        self.assertIn("setup errors: 1", str(cm.exception))
 
     def test_setup_dry_run_ignores_missing_catalog_roles(self) -> None:
         mock_client = self.build_mock_client()
