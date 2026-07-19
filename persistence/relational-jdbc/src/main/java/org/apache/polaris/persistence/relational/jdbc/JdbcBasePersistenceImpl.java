@@ -203,10 +203,14 @@ public class JdbcBasePersistenceImpl
           // 1. PRIMARY KEY violated
           // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
           // With SERIALIZABLE isolation, the conflicting entity may _not_ be visible and
-          // existingEntity can be null, which would cause an NPE in
-          // EntityAlreadyExistsException.message().
-          throw new EntityAlreadyExistsException(
-              existingEntity != null ? existingEntity : entity, e);
+          // existingEntity can be null. We cannot distinguish a same-id idempotent retry from a
+          // genuine name collision in that case, so we must report a concurrency conflict rather
+          // than fabricate the entity we were trying to create.
+          if (existingEntity != null) {
+            throw new EntityAlreadyExistsException(existingEntity, e);
+          }
+          throw new RetryOnConcurrencyException(
+              e, "Conflicting entity is not visible in the current transaction snapshot; retry");
         }
         throw new RuntimeException(
             String.format("Failed to write entity due to %s", e.getMessage()), e);
