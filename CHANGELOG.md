@@ -32,6 +32,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade notes
 
 ### Breaking changes
+- The Relational JDBC backend no longer creates its database schema during bootstrap: creating the
+  schema is a privileged operation that belongs to a database administrator. Fresh installations
+  must create the schema (by default `CREATE SCHEMA polaris_schema;` on PostgreSQL) before running
+  the admin tool's `bootstrap` command. Existing deployments are unaffected — their schema already
+  exists, and the shipped `currentSchema` default (`POLARIS_SCHEMA`) preserves the previous
+  behavior on upgrade.
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms
   are now always bootstrapped with the latest available schema version.
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
@@ -42,7 +48,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added the `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` feature flag (off by default). When enabled, a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix.
 - Added the `ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION` feature flag (on by default). When set to false, a caller-specified location (the `location` field, a `SetLocation` update, or the `write.data.path` / `write.metadata.path` properties) on a create-table (including a staged create-table request), create-view, update-table, replace-view, or commit-transaction request is rejected, forcing Polaris to manage all locations. Federated catalogs, committing an already staged create, and `register table` / `register view` are unaffected.
 - Added `maintenance` support in Helm chart.
-- Added `polaris.persistence.relational.jdbc.schema-name` to configure the database schema used by the Relational JDBC persistence backend (defaults to `POLARIS_SCHEMA`). Also exposed as `persistence.relationalJdbc.schemaName` in the Helm chart.
+- The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.schemaName` in the Helm chart.
 - Python CLI: added `--catalog-url` to specify a custom base URL for the Iceberg REST Catalog (IRC) API. Allows use with deployments that map a path (e.g. `/server1`) directly to the catalog root instead of the standard `/api/catalog`. See #4927.
 - Added support for publishing histogram buckets for HTTP server request duration as configured SLO boundaries.
 - Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
