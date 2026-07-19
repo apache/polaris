@@ -304,6 +304,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
               if (e.getExistingEntity().getId() != entityToCreate.getId()) {
                 throw e;
               }
+              continue;
             }
             this.writeEntityInCurrentTxn(callCtx, entityToCreate, true, null);
           }

@@ -36,6 +36,11 @@ public class PolarisTreeMapAtomicOperationMetaStoreManagerTest
     assertCleanupTaskCreationFailureRollsBackEntityDrop();
   }
 
+  @Test
+  void testCleanupTaskCreationRetryIsIdempotent() {
+    assertCleanupTaskCreationRetryIsIdempotent();
+  }
+
   @Override
   public PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
