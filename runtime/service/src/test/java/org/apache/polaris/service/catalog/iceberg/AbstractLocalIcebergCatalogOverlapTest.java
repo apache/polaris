@@ -258,7 +258,7 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
   }
 
   @Test
-  public void testPendingTableCommitPreservesOptimizedLocationOverlapFailure() {
+  public void testBufferedTableCommitActionsPreserveOptimizedLocationOverlapFailure() {
     Namespace namespace = Namespace.of("ns-for-pending-commit-test");
     catalog().createNamespace(namespace);
     TableIdentifier identifier = TableIdentifier.of(namespace, "table");
@@ -267,7 +267,7 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
             .buildTable(identifier, SCHEMA)
             .withLocation(STORAGE_LOCATION + "/pending-table")
             .create();
-    catalog().setPendingTableCommit(new PendingTableCommit());
+    catalog().setTableCommitActions(new BufferedTableCommitActions());
 
     try {
       assertThatThrownBy(
@@ -280,7 +280,7 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
           .hasMessageContaining("illegal_method_in_transaction_workspace")
           .hasMessageContaining("hasOverlappingSiblings");
     } finally {
-      catalog().resetPendingTableCommit();
+      catalog().resetTableCommitActions();
     }
   }
 

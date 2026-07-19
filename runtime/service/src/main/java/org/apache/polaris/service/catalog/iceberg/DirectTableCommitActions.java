@@ -18,34 +18,34 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import java.util.ArrayList;
 import java.util.List;
+import org.apache.iceberg.CatalogUtil;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.jspecify.annotations.NonNull;
 
-/**
- * Buffers the persistence and metadata-cleanup effects of table commits until they can be applied.
- */
-final class PendingTableCommit {
-  private final List<EntityWithPath> pendingUpdates = new ArrayList<>();
-  private final List<MetadataFileCleanup> pendingMetadataFileCleanups = new ArrayList<>();
+/** Applies table-commit actions immediately. */
+final class DirectTableCommitActions implements TableCommitActions {
+  private final PolarisMetaStoreManager metaStoreManager;
 
-  void addPendingUpdate(
-      @NonNull List<PolarisEntityCore> catalogPath, @NonNull PolarisBaseEntity entity) {
-    pendingUpdates.add(new EntityWithPath(catalogPath, entity));
+  DirectTableCommitActions(@NonNull PolarisMetaStoreManager metaStoreManager) {
+    this.metaStoreManager = metaStoreManager;
   }
 
-  void addPendingMetadataFileCleanup(@NonNull MetadataFileCleanup cleanup) {
-    pendingMetadataFileCleanups.add(cleanup);
+  @Override
+  public EntityResult updateEntityPropertiesIfNotChanged(
+      @NonNull PolarisCallContext callContext,
+      @NonNull List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entity) {
+    return metaStoreManager.updateEntityPropertiesIfNotChanged(callContext, catalogPath, entity);
   }
 
-  List<EntityWithPath> pendingUpdates() {
-    return List.copyOf(pendingUpdates);
-  }
-
-  List<MetadataFileCleanup> pendingMetadataFileCleanups() {
-    return List.copyOf(pendingMetadataFileCleanups);
+  @Override
+  public void cleanupMetadataFiles(@NonNull MetadataFileCleanup cleanup) {
+    CatalogUtil.deleteRemovedMetadataFiles(
+        cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
   }
 }

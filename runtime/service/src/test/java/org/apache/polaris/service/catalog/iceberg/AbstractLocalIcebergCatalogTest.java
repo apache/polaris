@@ -2725,7 +2725,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
-  public void testDeleteRemovedMetadataFilesIsDeferredForPendingTableCommit() {
+  public void testDeleteRemovedMetadataFilesIsDeferredForBufferedTableCommitActions() {
     catalog.createNamespace(NS);
 
     // Enable delete-after-commit and keep only one previous version so the original
@@ -2752,8 +2752,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     TableMetadata preCommitMeta1 = ops1.current();
 
     // Simulate exactly what commitTransaction does: buffer table-commit side effects.
-    PendingTableCommit pendingTableCommit = new PendingTableCommit();
-    catalog.setPendingTableCommit(pendingTableCommit);
+    BufferedTableCommitActions bufferedTableCommitActions = new BufferedTableCommitActions();
+    catalog.setTableCommitActions(bufferedTableCommitActions);
 
     try {
       // Now perform a commit "as if" inside commitTransaction for table1 (v2 -> v3).
@@ -2776,9 +2776,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
       // Verify that the update and cleanup were buffered and that replaying the cleanup deletes the
       // old metadata file.
-      assertThat(pendingTableCommit.pendingUpdates()).hasSize(1);
-      assertThat(pendingTableCommit.pendingMetadataFileCleanups()).hasSize(1);
-      MetadataFileCleanup cleanup = pendingTableCommit.pendingMetadataFileCleanups().get(0);
+      assertThat(bufferedTableCommitActions.pendingUpdates()).hasSize(1);
+      assertThat(bufferedTableCommitActions.pendingMetadataFileCleanups()).hasSize(1);
+      MetadataFileCleanup cleanup = bufferedTableCommitActions.pendingMetadataFileCleanups().get(0);
       CatalogUtil.deleteRemovedMetadataFiles(
           cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
       assertThat(metadataFileExists(createMetadataLocation))
@@ -2799,7 +2799,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           .isTrue();
 
     } finally {
-      catalog.resetPendingTableCommit();
+      catalog.resetTableCommitActions();
       catalog.dropTable(TABLE, false);
       catalog.dropTable(table2Id, false);
     }
@@ -2822,8 +2822,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     table.newFastAppend().appendFile(FILE_A).commit();
 
     // Buffer the next commit (v2 -> v3) to test the atomic update and cleanup replay logic.
-    PendingTableCommit pendingTableCommit = new PendingTableCommit();
-    catalog.setPendingTableCommit(pendingTableCommit);
+    BufferedTableCommitActions bufferedTableCommitActions = new BufferedTableCommitActions();
+    catalog.setTableCommitActions(bufferedTableCommitActions);
 
     try {
       // This commit makes v1 eligible for deletion, but the delete is collected.
@@ -2835,7 +2835,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           .isTrue();
 
       // Explicitly verify that the collector captured a cleanup targeting v1.
-      assertThat(pendingTableCommit.pendingMetadataFileCleanups())
+      assertThat(bufferedTableCommitActions.pendingMetadataFileCleanups())
           .as("Collector should have captured cleanup for v1 metadata")
           .anyMatch(
               cleanup ->
@@ -2847,10 +2847,11 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
       assertThat(
               metaStoreManager
                   .updateEntitiesPropertiesIfNotChanged(
-                      callContext.getPolarisCallContext(), pendingTableCommit.pendingUpdates())
+                      callContext.getPolarisCallContext(),
+                      bufferedTableCommitActions.pendingUpdates())
                   .isSuccess())
           .isTrue();
-      for (MetadataFileCleanup cleanup : pendingTableCommit.pendingMetadataFileCleanups()) {
+      for (MetadataFileCleanup cleanup : bufferedTableCommitActions.pendingMetadataFileCleanups()) {
         CatalogUtil.deleteRemovedMetadataFiles(
             cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
       }
@@ -2860,7 +2861,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           .as("Old metadata file should be deleted after replaying collected cleanup")
           .isFalse();
     } finally {
-      catalog.resetPendingTableCommit();
+      catalog.resetTableCommitActions();
       catalog.dropTable(TABLE, false);
     }
   }

@@ -53,7 +53,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.LocationProviders;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
@@ -202,7 +201,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final FileIOFactory fileIOFactory;
   private final PolarisMetaStoreManager metaStoreManager;
-  private @Nullable PendingTableCommit pendingTableCommit;
+  private final TableCommitActions directTableCommitActions;
+  private TableCommitActions tableCommitActions;
 
   // Entity-property idempotency: when the request context carries a key, it is stamped into the new
   // table entity's internal properties within the same transaction as the create.
@@ -267,6 +267,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.fileIOFactory = fileIOFactory;
     this.metaStoreManager = metaStoreManager;
+    this.directTableCommitActions = new DirectTableCommitActions(metaStoreManager);
+    this.tableCommitActions = directTableCommitActions;
     this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
     this.idempotencyRequestContext = idempotencyRequestContext;
@@ -323,14 +325,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
   }
 
-  /** Buffers table-commit entity updates and metadata-file cleanups in the supplied collector. */
-  void setPendingTableCommit(@NonNull PendingTableCommit pendingTableCommit) {
-    this.pendingTableCommit = pendingTableCommit;
+  /** Uses the supplied actions for table-entity updates and metadata-file cleanup. */
+  void setTableCommitActions(@NonNull TableCommitActions tableCommitActions) {
+    this.tableCommitActions = tableCommitActions;
   }
 
   /** Restores immediate persistence and metadata-file cleanup for table commits. */
-  void resetPendingTableCommit() {
-    this.pendingTableCommit = null;
+  void resetTableCommitActions() {
+    this.tableCommitActions = directTableCommitActions;
   }
 
   @Override
@@ -1427,7 +1429,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     // Attempt to directly query for siblings
     boolean useOptimizedSiblingCheck =
         realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
-    if (pendingTableCommit != null) {
+    if (tableCommitActions instanceof BufferedTableCommitActions) {
       String methodName = useOptimizedSiblingCheck ? "hasOverlappingSiblings" : "listEntities";
       throw diagnostics.fail("illegal_method_in_transaction_workspace", methodName);
     }
@@ -1690,13 +1692,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
       long start = System.currentTimeMillis();
       doCommit(base, metadata);
-      MetadataFileCleanup cleanup = new MetadataFileCleanup(io(), base, metadata);
-      if (pendingTableCommit != null) {
-        pendingTableCommit.addPendingMetadataFileCleanup(cleanup);
-      } else {
-        CatalogUtil.deleteRemovedMetadataFiles(
-            cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
-      }
+      tableCommitActions.cleanupMetadataFiles(new MetadataFileCleanup(io(), base, metadata));
       requestRefresh();
 
       LOGGER.info(
@@ -2804,15 +2800,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     List<PolarisEntityCore> catalogPathCore = PolarisEntity.toCoreList(catalogPath);
-    EntityResult res;
-    if (pendingTableCommit != null) {
-      pendingTableCommit.addPendingUpdate(catalogPathCore, icebergTableLikeEntity);
-      res = new EntityResult(icebergTableLikeEntity);
-    } else {
-      res =
-          metaStoreManager.updateEntityPropertiesIfNotChanged(
-              callContext.getPolarisCallContext(), catalogPathCore, icebergTableLikeEntity);
-    }
+    EntityResult res =
+        tableCommitActions.updateEntityPropertiesIfNotChanged(
+            callContext.getPolarisCallContext(), catalogPathCore, icebergTableLikeEntity);
     if (!res.isSuccess()) {
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:

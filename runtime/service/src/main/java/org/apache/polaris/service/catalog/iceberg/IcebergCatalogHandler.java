@@ -1444,8 +1444,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // Buffer the entity updates and metadata-file cleanups produced by each table commit. The
     // entity updates are persisted as a single atomic unit after all validations succeed.
-    PendingTableCommit pendingTableCommit = new PendingTableCommit();
-    ((LocalIcebergCatalog) baseCatalog).setPendingTableCommit(pendingTableCommit);
+    BufferedTableCommitActions bufferedTableCommitActions = new BufferedTableCommitActions();
+    ((LocalIcebergCatalog) baseCatalog).setTableCommitActions(bufferedTableCommitActions);
 
     // Group all changes by table identifier to handle them atomically.
     // This prevents conflicts when multiple changes target the same table entity.
@@ -1520,8 +1520,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             currentMetadata = metadataBuilder.build();
           }
 
-          // Commit all accumulated changes for this table in a single atomic operation.
-          // The delete logic (set above to collectCleanup) will record instead of delete.
+          // Commit all accumulated changes for this table in a single atomic operation. The
+          // buffered actions record entity updates and metadata cleanup instead of applying them.
           if (!currentMetadata.changes().isEmpty()) {
             tableOps.commit(baseMetadata, currentMetadata);
             tableFileIOs.put(tableIdentifier, tableOps.io());
@@ -1530,7 +1530,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           tableMetadataObjs.add(currentMetadata);
         });
 
-    List<EntityWithPath> pendingUpdates = pendingTableCommit.pendingUpdates();
+    List<EntityWithPath> pendingUpdates = bufferedTableCommitActions.pendingUpdates();
     EntitiesResult result =
         metaStoreManager()
             .updateEntitiesPropertiesIfNotChanged(
@@ -1562,7 +1562,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // It is now safe to delete removed metadata files for all tables that were part of
     // this transaction (if the table has write.metadata.delete-after-commit.enabled).
     // Because we reach here, the DB pointers have been updated to the new metadata.
-    for (MetadataFileCleanup cleanup : pendingTableCommit.pendingMetadataFileCleanups()) {
+    for (MetadataFileCleanup cleanup : bufferedTableCommitActions.pendingMetadataFileCleanups()) {
       CatalogUtil.deleteRemovedMetadataFiles(
           cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
     }
