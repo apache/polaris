@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -87,7 +88,12 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "test-realm");
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
@@ -115,6 +121,10 @@ public class OpaPolarisAuthorizerTest {
       assertThat(input.has("action")).as("Input should have 'action' field").isTrue();
       assertThat(input.has("resource")).as("Input should have 'resource' field").isTrue();
       assertThat(input.has("context")).as("Input should have 'context' field").isTrue();
+
+      // Verify realm is included for tenant isolation
+      assertThat(input.get("context").has("realm")).as("context should contain realm").isTrue();
+      assertThat(input.get("context").get("realm").asText()).isEqualTo("test-realm");
     } finally {
       server.stop(0);
     }
@@ -132,7 +142,12 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "prod-realm");
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -208,6 +223,10 @@ public class OpaPolarisAuthorizerTest {
       assertThat(input.has("resource")).as("Input should have 'resource' field").isTrue();
       assertThat(input.has("context")).as("Input should have 'context' field").isTrue();
 
+      // Verify realm for tenant isolation
+      assertThat(input.get("context").has("realm")).isTrue();
+      assertThat(input.get("context").get("realm").asText()).isEqualTo("prod-realm");
+
       // Verify actor details
       var actor = input.get("actor");
       assertThat(actor.has("principal")).as("Actor should have 'principal' field").isTrue();
@@ -263,7 +282,12 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "analytics-realm");
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -351,6 +375,10 @@ public class OpaPolarisAuthorizerTest {
       assertThat(input.has("resource")).as("Input should have 'resource' field").isTrue();
       assertThat(input.has("context")).as("Input should have 'context' field").isTrue();
 
+      // Verify realm for tenant isolation
+      assertThat(input.get("context").has("realm")).isTrue();
+      assertThat(input.get("context").get("realm").asText()).isEqualTo("analytics-realm");
+
       // Verify actor details
       var actor = input.get("actor");
       assertThat(actor.get("principal").asText()).isEqualTo("bob");
@@ -427,7 +455,12 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "test-realm");
 
       PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
 
@@ -473,7 +506,12 @@ public class OpaPolarisAuthorizerTest {
     URI policyUri = URI.create("http://opa.example.com:8181/v1/data/polaris/allow");
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
-            policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), tokenProvider);
+            policyUri,
+            HttpClients.createDefault(),
+            JsonMapper.builder().build(),
+            tokenProvider,
+            null,
+            "test-realm");
 
     assertThat(authorizer).isNotNull();
   }
@@ -492,7 +530,9 @@ public class OpaPolarisAuthorizerTest {
             policyUri,
             mock(CloseableHttpClient.class),
             JsonMapper.builder().build(),
-            tokenProvider) {
+            tokenProvider,
+            null,
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -535,7 +575,9 @@ public class OpaPolarisAuthorizerTest {
             policyUri,
             mock(CloseableHttpClient.class),
             JsonMapper.builder().build(),
-            tokenProvider) {
+            tokenProvider,
+            null,
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -573,7 +615,9 @@ public class OpaPolarisAuthorizerTest {
             URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
             mock(CloseableHttpClient.class),
             JsonMapper.builder().build(),
-            null);
+            null,
+            null,
+            "test-realm");
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(resolutionManifest);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
@@ -600,7 +644,9 @@ public class OpaPolarisAuthorizerTest {
             URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
             mock(CloseableHttpClient.class),
             JsonMapper.builder().build(),
-            null) {
+            null,
+            null,
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -648,7 +694,9 @@ public class OpaPolarisAuthorizerTest {
             URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
             mock(CloseableHttpClient.class),
             JsonMapper.builder().build(),
-            null) {
+            null,
+            null,
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -695,7 +743,9 @@ public class OpaPolarisAuthorizerTest {
             URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
             mock(CloseableHttpClient.class),
             JsonMapper.builder().build(),
-            null) {
+            null,
+            null,
+            "catalog-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -711,6 +761,7 @@ public class OpaPolarisAuthorizerTest {
     JsonNode root = mapper.readTree(capturedRequestBody[0]);
 
     assertThat(decision.isAllowed()).isTrue();
+    assertThat(root.path("input").path("context").get("realm").asText()).isEqualTo("catalog-realm");
     JsonNode expectedTarget =
         mapper.readTree(
             """
@@ -739,7 +790,12 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "test-realm");
 
       PolarisEntity rootEntity =
           new PolarisEntity.Builder()
@@ -808,7 +864,12 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "test-realm");
 
       PolarisEntity rootEntity =
           new PolarisEntity.Builder()
@@ -879,7 +940,9 @@ public class OpaPolarisAuthorizerTest {
             URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
             mock(CloseableHttpClient.class),
             JsonMapper.builder().build(),
-            null) {
+            null,
+            null,
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -944,7 +1007,9 @@ public class OpaPolarisAuthorizerTest {
             URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
             mock(CloseableHttpClient.class),
             JsonMapper.builder().build(),
-            null) {
+            null,
+            null,
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -1030,7 +1095,9 @@ public class OpaPolarisAuthorizerTest {
             URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
             mock(CloseableHttpClient.class),
             JsonMapper.builder().build(),
-            null) {
+            null,
+            null,
+            "test-realm") {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -1053,6 +1120,163 @@ public class OpaPolarisAuthorizerTest {
 
     assertThat(decision.isAllowed()).isTrue();
     assertThat(requestCount[0]).isEqualTo(2);
+  }
+
+  @Test
+  void serializesInputWithRealm() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "explicit-realm");
+
+      PolarisPrincipal principal = PolarisPrincipal.of("eve", Map.of(), Set.of("auditor"));
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      Set.of(),
+                      PolarisAuthorizableOperation.GET_CATALOG,
+                      (PolarisResolvedPathWrapper) null,
+                      (PolarisResolvedPathWrapper) null));
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      var context = root.path("input").path("context");
+      assertThat(context.has("request_id")).isTrue();
+      assertThat(context.path("realm").asText()).isEqualTo("explicit-realm");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void serializesRealmInAuthorizePath() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "tenant-xyz");
+
+      PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+      AuthorizationState authzState = new AuthorizationState(resolutionManifest);
+
+      PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+      AuthorizationRequest request = requestWithCatalogTarget(principal);
+
+      assertThatNoException().isThrownBy(() -> authorizer.authorize(authzState, request));
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      assertThat(root.path("input").path("context").get("realm").asText()).isEqualTo("tenant-xyz");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void requestIdIsIncludedInContextWhenProvided() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              "test-id",
+              "test-realm");
+
+      PolarisPrincipal principal =
+          PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+      PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
+      PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      Set.of(),
+                      PolarisAuthorizableOperation.LOAD_VIEW,
+                      target,
+                      secondary));
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      assertThat(root.at("/input/context/request_id").asText()).isEqualTo("test-id");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void requestIdFallsBackToRandomUuidWhenNull() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "test-realm");
+
+      PolarisPrincipal principal =
+          PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+      PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
+      PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      Set.of(),
+                      PolarisAuthorizableOperation.LOAD_VIEW,
+                      target,
+                      secondary));
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      String requestId = root.at("/input/context/request_id").asText();
+      assertThatNoException().isThrownBy(() -> UUID.fromString(requestId));
+    } finally {
+      server.stop(0);
+    }
   }
 
   private AuthorizationRequest requestWithCatalogTarget(PolarisPrincipal principal) {

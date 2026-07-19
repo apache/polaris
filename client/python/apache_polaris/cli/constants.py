@@ -191,6 +191,7 @@ class Arguments:
     ACCESS_TOKEN = "access_token"
     HOST = "host"
     PORT = "port"
+    SCHEME = "scheme"
     BASE_URL = "base_url"
     CATALOG_URL = "catalog_url"
     PARENT = "parent"
@@ -359,6 +360,7 @@ HEADER_ENV = "HEADER"
 DEFAULT_HEADER = "Polaris-Realm"
 DEFAULT_HOSTNAME = "localhost"
 DEFAULT_PORT = 8181
+DEFAULT_SCHEME = "http"
 CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduser(
     "~/.polaris"
 )

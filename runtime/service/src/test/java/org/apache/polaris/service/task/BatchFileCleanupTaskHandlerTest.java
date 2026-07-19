@@ -20,6 +20,8 @@ package org.apache.polaris.service.task;
 
 import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
 import io.quarkus.test.InjectMock;
@@ -183,8 +185,10 @@ public class BatchFileCleanupTaskHandlerTest {
             .build();
 
     task = addTaskLocation(task);
+    TaskEntity finalTask = task;
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThatCode(() -> handler.handleTask(finalTask, polarisCallContext))
+        .doesNotThrowAnyException();
 
     for (String cleanupFile : cleanupFiles) {
       assertThatPredicate((String file) -> TaskUtils.exists(file, fileIO)).rejects(cleanupFile);
@@ -225,9 +229,10 @@ public class BatchFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
 
-    task = addTaskLocation(task);
-    assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    TaskEntity taskWithLocation = addTaskLocation(task);
+    assertThatPredicate(handler::canHandleTask).accepts(taskWithLocation);
+    assertThatNoException()
+        .isThrownBy(() -> handler.handleTask(taskWithLocation, polarisCallContext));
   }
 
   @Test
@@ -259,7 +264,7 @@ public class BatchFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
 
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThatCode(() -> handler.handleTask(task, polarisCallContext)).doesNotThrowAnyException();
 
     // Each file must have been checked exactly once by the pre-delete scan.
     Mockito.verify(fileIO, Mockito.times(1)).newInputFile(presentFile1);

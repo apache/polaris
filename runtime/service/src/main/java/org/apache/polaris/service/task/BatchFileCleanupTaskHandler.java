@@ -51,7 +51,7 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity task, CallContext callContext) {
+  public void handleTask(TaskEntity task, CallContext callContext) {
     BatchFileCleanupTask cleanupTask = task.readData(BatchFileCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
     List<String> batchFiles = cleanupTask.batchFiles();
@@ -67,7 +67,7 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
             .addKeyValue("batchFiles", batchFiles.toString())
             .addKeyValue("tableId", tableId)
             .log("File batch cleanup task scheduled, but none of the files in batch exists");
-        return true;
+        return;
       }
       if (!missingFiles.isEmpty()) {
         LOGGER
@@ -90,8 +90,6 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
         LOGGER.error("Exception detected during batch files deletion", e);
         throw new RuntimeException(e);
       }
-
-      return true;
     }
   }
 

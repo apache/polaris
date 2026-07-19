@@ -19,6 +19,7 @@
 package org.apache.polaris.service.task;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -59,16 +60,16 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity task, CallContext callContext) {
+  public void handleTask(TaskEntity task, CallContext callContext) {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId)) {
       ManifestFile manifestFile = TaskUtils.decodeManifestFileData(cleanupTask.manifestFileData());
-      return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
+      cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
     }
   }
 
-  private boolean cleanUpManifestFile(
+  private void cleanUpManifestFile(
       ManifestFile manifestFile, FileIO fileIO, TableIdentifier tableId) {
     // if the file doesn't exist, we assume that another task execution was successful, but
     // failed to drop the task entity. Log a warning and return success
@@ -78,7 +79,7 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
           .addKeyValue("manifestFile", manifestFile.path())
           .addKeyValue("tableId", tableId)
           .log("Manifest cleanup task scheduled, but manifest file doesn't exist");
-      return true;
+      return;
     }
 
     try (ManifestReader<? extends ContentFile<?>> reader =
@@ -108,7 +109,7 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
                       tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);
                 })
             .get();
-        return true;
+        return;
       } catch (InterruptedException e) {
         LOGGER.error(
             "Interrupted exception deleting content files from manifest {}",
@@ -122,10 +123,9 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
     } catch (IOException e) {
       // Catches from ManifestFiles.read() (resource creation), from inside the block
       // (e.g. manifest iteration), or from close(). We throw (wrapping) so the original
-      // failure propagates and TaskExecutorImpl's retry path is used. (handleTask returns
-      // boolean and cannot declare a checked throws IOException.)
+      // failure propagates and the retry path is used.
       LOGGER.error("Failed to process manifest reader for {}", manifestFile.path(), e);
-      throw new RuntimeException(e);
+      throw new UncheckedIOException(e);
     }
   }
 

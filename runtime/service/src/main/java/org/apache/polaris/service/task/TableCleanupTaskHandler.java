@@ -84,16 +84,17 @@ public class TableCleanupTaskHandler implements TaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity cleanupTask, CallContext callContext) {
+  public void handleTask(TaskEntity cleanupTask, CallContext callContext) {
     IcebergTableLikeEntity entity = tryGetTableEntity(cleanupTask).orElseThrow();
 
     if (entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
-      return handleViewCleanup(cleanupTask, entity);
+      handleViewCleanup(cleanupTask, entity);
+    } else {
+      handleTableCleanup(cleanupTask, entity, callContext);
     }
-    return handleTableCleanup(cleanupTask, entity, callContext);
   }
 
-  private boolean handleTableCleanup(
+  private void handleTableCleanup(
       TaskEntity cleanupTask, IcebergTableLikeEntity tableEntity, CallContext callContext) {
     LOGGER
         .atInfo()
@@ -111,7 +112,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
             .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
             .addKeyValue("metadataLocation", tableEntity.getMetadataLocation())
             .log("Table metadata cleanup scheduled, but metadata file does not exist");
-        return true;
+        return;
       }
 
       TableMetadata tableMetadata =
@@ -155,13 +156,14 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
         fileIO.deleteFile(tableEntity.getMetadataLocation());
 
-        return true;
+        return;
       }
     }
-    return false;
+    throw new RuntimeException(
+        "Failed to create sub cleanup tasks for table " + tableEntity.getTableIdentifier());
   }
 
-  private boolean handleViewCleanup(TaskEntity cleanupTask, IcebergTableLikeEntity viewEntity) {
+  private void handleViewCleanup(TaskEntity cleanupTask, IcebergTableLikeEntity viewEntity) {
     LOGGER
         .atInfo()
         .addKeyValue("viewIdentifier", viewEntity.getTableIdentifier())
@@ -175,7 +177,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
             .addKeyValue("viewIdentifier", viewEntity.getTableIdentifier())
             .addKeyValue("metadataLocation", viewEntity.getMetadataLocation())
             .log("View metadata cleanup scheduled, but metadata file does not exist");
-        return true;
+        return;
       }
 
       fileIO.deleteFile(viewEntity.getMetadataLocation());
@@ -185,7 +187,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
           .addKeyValue("metadataLocation", viewEntity.getMetadataLocation())
           .log("Successfully deleted view metadata file");
 
-      return true;
+      return;
     }
   }
 

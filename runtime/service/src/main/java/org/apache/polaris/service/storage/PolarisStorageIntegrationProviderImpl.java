@@ -33,7 +33,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -129,8 +128,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   @Override
   public @Nullable PolarisStorageIntegration getStorageIntegration(
       @NonNull List<PolarisEntity> resolvedEntityPath) {
-    return PolarisStorageConfigurationInfo.findStorageInfoFromHierarchy(resolvedEntityPath)
-        .map(entity -> BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity))
+    return PolarisStorageConfigurationInfo.findStorageConfigFromHierarchy(resolvedEntityPath)
         .map(this::createIntegration)
         .orElse(null);
   }

@@ -242,9 +242,8 @@ class TableCleanupTaskHandlerTest {
 
     // handle the same task twice
     // the first one should successfully delete the metadata
-    List<Boolean> results =
-        List.of(handler.handleTask(task, callContext), handler.handleTask(task, callContext));
-    assertThat(results).containsExactly(true, true);
+    handler.handleTask(task, callContext);
+    handler.handleTask(task, callContext);
 
     // both tasks successfully executed, but only one should queue subtasks
     assertThat(
@@ -299,9 +298,8 @@ class TableCleanupTaskHandlerTest {
 
     // handle the same task twice
     // the first one should successfully delete the metadata
-    List<Boolean> results =
-        List.of(handler.handleTask(task, callContext), handler.handleTask(task, callContext));
-    assertThat(results).containsExactly(true, true);
+    handler.handleTask(task, callContext);
+    handler.handleTask(task, callContext);
 
     // both tasks successfully executed, but only one should queue subtasks
     assertThat(
