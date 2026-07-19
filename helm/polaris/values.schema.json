@@ -1158,7 +1158,7 @@
                     "type": "object",
                     "properties": {
                         "schemaName": {
-                            "description": "The database schema (namespace) holding the Polaris tables. Must be a valid SQL identifier: it must start with a letter or underscore and contain only letters, digits, and underscores.",
+                            "description": "The database schema (namespace) holding the Polaris tables. Applied as the JDBC driver's currentSchema connection property. The schema must exist before Polaris connects; creating it is a DBA task. The name is passed to the driver unquoted, so the database applies its usual identifier case folding.",
                             "type": "string"
                         },
                         "secret": {

@@ -57,7 +57,7 @@ data:
     {{- end -}}
     {{- if eq .Values.persistence.type "relational-jdbc" -}}
     {{- if .Values.persistence.relationalJdbc.schemaName -}}
-    {{- $_ = set $map "polaris.persistence.relational.jdbc.schema-name" .Values.persistence.relationalJdbc.schemaName -}}
+    {{- $_ = set $map "quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema" .Values.persistence.relationalJdbc.schemaName -}}
     {{- end -}}
     {{- end -}}
 

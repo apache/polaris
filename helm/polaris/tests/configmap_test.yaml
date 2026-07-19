@@ -125,14 +125,14 @@ tests:
       persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence" } } }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=relational-jdbc" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.relational.jdbc.schema-name=POLARIS_SCHEMA" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema=POLARIS_SCHEMA" }
 
   - it: should configure relational-jdbc persistence with a custom schema name
     set:
       persistence: { type: "relational-jdbc", relationalJdbc: { schemaName: "custom_schema", secret: { name: "polaris-persistence" } } }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=relational-jdbc" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.relational.jdbc.schema-name=custom_schema" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema=custom_schema" }
 
   - it: should configure nosql persistence with default values
     set:

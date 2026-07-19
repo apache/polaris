@@ -265,7 +265,7 @@ weight: 900
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | persistence.type | string | `"in-memory"` | The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta). |
-| persistence.relationalJdbc.schemaName | string | `"POLARIS_SCHEMA"` | The database schema (namespace) holding the Polaris tables. Must be a valid SQL identifier: it must start with a letter or underscore and contain only letters, digits, and underscores. |
+| persistence.relationalJdbc.schemaName | string | `"POLARIS_SCHEMA"` | The database schema (namespace) holding the Polaris tables. Applied as the JDBC driver's currentSchema connection property. The schema must exist before Polaris connects; creating it is a DBA task. The name is passed to the driver unquoted, so the database applies its usual identifier case folding. |
 | persistence.relationalJdbc.secret.name | string | `""` | The secret name to pull database connection properties from |
 | persistence.relationalJdbc.secret.username | string | `"username"` | The secret key holding the database username for authentication |
 | persistence.relationalJdbc.secret.password | string | `"password"` | The secret key holding the database password for authentication |
