@@ -178,7 +178,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
    * @param callCtx call context
    * @param ms meta store
    * @param entity the entity being dropped
-  */
+   */
   private void dropEntity(
       @NonNull PolarisCallContext callCtx,
       @NonNull BasePersistence ms,

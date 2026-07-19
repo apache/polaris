@@ -320,6 +320,37 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .containsExactlyInAnyOrderElementsOf(taskIdsBeforeDrop);
   }
 
+  protected void assertCleanupTaskCreationRetryIsIdempotent() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    PolarisBaseEntity entityToDrop =
+        polarisTestMetaStoreManager.createEntity(
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "principal_role_to_drop_on_retry");
+
+    var dropResult =
+        metaStoreManager.dropEntityIfExists(callCtx, null, entityToDrop, Map.of(), true);
+    PolarisBaseEntity cleanupTask =
+        metaStoreManager
+            .loadEntity(callCtx, 0L, dropResult.getCleanupTaskId(), PolarisEntityType.TASK)
+            .getEntity();
+
+    Assertions.assertThat(cleanupTask).isNotNull();
+    Assertions.assertThatCode(
+            () ->
+                callCtx
+                    .getMetaStore()
+                    .deleteEntityAndCreateEntities(callCtx, entityToDrop, List.of(cleanupTask)))
+        .doesNotThrowAnyException();
+    Assertions.assertThat(
+            metaStoreManager
+                .loadEntity(callCtx, 0L, cleanupTask.getId(), PolarisEntityType.TASK)
+                .getEntity())
+        .isEqualTo(cleanupTask);
+  }
+
   /** Test that granting/revoking privileges works well */
   @Test
   protected void testPrivileges() {
