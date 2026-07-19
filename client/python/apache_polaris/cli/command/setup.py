@@ -92,7 +92,7 @@ class SetupCommand(Command):
                     p.name for p in api.list_principals().principals
                 }
             except Exception:
-                logger.exception("Failed to fetch existing principals")
+                self._record_failure("Failed to fetch existing principals")
                 self._existing_principals = set()
         return self._existing_principals
 
@@ -104,7 +104,7 @@ class SetupCommand(Command):
                     role.name for role in api.list_principal_roles().roles
                 }
             except Exception:
-                logger.exception("Failed to fetch existing principal roles")
+                self._record_failure("Failed to fetch existing principal roles")
                 self._existing_principal_roles = set()
         return self._existing_principal_roles
 
@@ -126,8 +126,8 @@ class SetupCommand(Command):
                     # In dry-run, a 404 is expected if the catalog doesn't exist yet
                     is_404 = getattr(e, "status", None) == 404 or "(404)" in str(e)
                     if not (self.dry_run and is_404):
-                        logger.warning(
-                            f"Failed to fetch catalog roles for catalog '{catalog_name}': {e}"
+                        self._record_failure(
+                            f"Failed to fetch catalog roles for catalog '{catalog_name}'"
                         )
                     self._existing_catalog_roles[catalog_name] = set()
             return self._existing_catalog_roles[catalog_name]
@@ -139,7 +139,7 @@ class SetupCommand(Command):
             try:
                 self._existing_catalogs = {c.name for c in api.list_catalogs().catalogs}
             except Exception:
-                logger.exception("Failed to fetch existing catalogs")
+                self._record_failure("Failed to fetch existing catalogs")
                 self._existing_catalogs = set()
         return self._existing_catalogs
 
@@ -574,13 +574,13 @@ class SetupCommand(Command):
                     dry_run=self.dry_run,
                 )
                 logger.info(f"--- Finished processing catalog: {catalog_name} ---")
-            if self.dry_run:
-                logger.info("=== Dry-Run Finished ===")
-            elif self._failure_count:
+            if self._failure_count:
                 raise CliError(
-                    f"Setup apply failed; provisioning errors: {self._failure_count}",
+                    f"Setup apply failed; setup errors: {self._failure_count}",
                     exit_code=CLI_ERROR_EXIT_CODE,
                 )
+            elif self.dry_run:
+                logger.info("=== Dry-Run Finished ===")
             else:
                 logger.info("=== Setup Apply Process Completed Successfully ===")
         elif self.setup_subcommand == Subcommands.EXPORT:
@@ -620,6 +620,9 @@ class SetupCommand(Command):
     ) -> None:
         """Create principals and assign them to principal roles."""
         logger.info("--- Processing principals ---")
+        if not principals_config:
+            logger.info("--- Finished processing principals ---")
+            return
         existing_principals = self._get_existing_principals(api)
         for principal_name, principal_data in principals_config.items():
             if principal_name in existing_principals:
@@ -705,6 +708,9 @@ class SetupCommand(Command):
     ) -> None:
         """Create principal roles."""
         logger.info("--- Processing principal roles ---")
+        if not principal_roles_config:
+            logger.info("--- Finished processing principal roles ---")
+            return
         self._get_existing_principal_roles(api)
 
         for role_name in principal_roles_config:
@@ -981,8 +987,14 @@ class SetupCommand(Command):
     ) -> None:
         """Create catalog roles, assign them to principal roles, and grant privileges."""
         logger.info(f"--- Processing catalog roles for catalog: {catalog_name} ---")
+        if not roles_config:
+            logger.info(
+                f"--- Finished processing catalog roles for catalog: {catalog_name} ---"
+            )
+            return
         existing_roles_in_catalog = self._get_existing_catalog_roles(api, catalog_name)
-        self._get_existing_principal_roles(api)
+        if any(role_data.get("assign_to") for role_data in roles_config.values()):
+            self._get_existing_principal_roles(api)
         for role_name, role_data in roles_config.items():
             if role_name in existing_roles_in_catalog:
                 logger.info(
@@ -1189,7 +1201,7 @@ class SetupCommand(Command):
                             existing_namespaces.add(".".join(ns))
                             listed_parents.add(parent_ns)
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to list sub-namespaces for '{parent_ns}'"
                         )
 

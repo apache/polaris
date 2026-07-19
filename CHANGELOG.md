@@ -88,7 +88,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
 ### Fixes
-- Python CLI `setup apply` now exits with an error after any provisioning operation fails, while still attempting the remaining operations. Previously, individual failures were logged but the command reported success and exited with status 0.
+- Python CLI `setup apply` now exits with an error after any setup operation fails, while still attempting the remaining operations. Previously, individual failures were logged but the command reported success and exited with status 0.
 - Python CLI `tables list`, `tables get`, and `tables delete` commands now exit with status 1 when catalog API requests fail. Previously, these commands printed an error but exited successfully.
 - Default table storage locations with object-storage prefixing enabled are now percent-encoded with UTF-8 instead of the JVM default charset. Previously the persisted location of a table under a non-ASCII namespace or table name depended on the platform default charset, so the same table could resolve to a different (or lossy) location on a non-UTF-8 JVM.
 - Async task execution (table cleanup, manifest and batch file cleanup) now retries when a handler returns false on transient errors (e.g. IO or delete failures). Previously `false` was swallowed with only a warning log and the task was never retried via the existing retry mechanism.
