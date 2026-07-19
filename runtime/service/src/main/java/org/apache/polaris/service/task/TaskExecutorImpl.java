@@ -60,7 +60,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * Given a list of registered {@link TaskHandler}s, execute tasks asynchronously with the provided
  * {@link CallContext}.
@@ -227,8 +227,8 @@ public class TaskExecutorImpl implements TaskExecutor {
       if (handlerOpt.isEmpty()) {
         LOGGER
             .atWarn()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("taskType", task.getTaskType())
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .addKeyValue(StructuredLogKeys.TASK_TYPE, task.getTaskType())
             .log("Unable to find handler for task type");
         throw new TaskHandlerNotFoundException(
             "Unable to find handler for task type "
@@ -244,8 +244,8 @@ public class TaskExecutorImpl implements TaskExecutor {
       success = true;
       LOGGER
           .atInfo()
-          .addKeyValue("taskEntityId", taskEntityId)
-          .addKeyValue("handlerClass", handler.getClass())
+          .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+          .addKeyValue(StructuredLogKeys.HANDLER_CLASS, handler.getClass())
           .log("Task successfully handled");
       metaStoreManager.dropEntityIfExists(
           ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
@@ -258,8 +258,8 @@ public class TaskExecutorImpl implements TaskExecutor {
       if (!success) {
         LOGGER
             .atWarn()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("taskEntityName", taskEntity != null ? taskEntity.getName() : "")
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_NAME, taskEntity != null ? taskEntity.getName() : "")
             .log("Unable to execute async task");
       }
       throw e;

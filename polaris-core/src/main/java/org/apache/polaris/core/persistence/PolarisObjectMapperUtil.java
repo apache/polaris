@@ -34,7 +34,7 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /** A mapper to serialize/deserialize polaris objects. */
 public final class PolarisObjectMapperUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisObjectMapperUtil.class);
@@ -166,8 +166,8 @@ public final class PolarisObjectMapperUtil {
     } catch (IOException | NumberFormatException e) {
       LOGGER
           .atWarn()
-          .addKeyValue("json", entity.getProperties())
-          .addKeyValue("error", e.getMessage())
+          .addKeyValue(StructuredLogKeys.JSON, entity.getProperties())
+          .addKeyValue(StructuredLogKeys.ERROR, e.getMessage())
           .log("Unable to parse task properties");
       return null;
     }

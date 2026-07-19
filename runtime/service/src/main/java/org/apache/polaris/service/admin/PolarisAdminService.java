@@ -137,7 +137,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * Just as an Iceberg Catalog represents the logical model of Iceberg business logic to manage
  * Namespaces, Tables and Views, abstracted away from Iceberg REST objects, this class represents
@@ -286,7 +286,7 @@ public class PolarisAdminService {
     if (isSelfEntity(entity) && isSelfOperation(op)) {
       LOGGER
           .atDebug()
-          .addKeyValue("principalName", topLevelEntityName)
+          .addKeyValue(StructuredLogKeys.PRINCIPAL_NAME, topLevelEntityName)
           .log("Allowing rotate own credentials");
     } else {
       authorizer.authorizeOrThrow(
@@ -800,7 +800,7 @@ public class PolarisAdminService {
                 LOGGER
                     .atWarn()
                     .setCause(e)
-                    .addKeyValue("secretReference", secretReference.urn())
+                    .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
                     .log(
                         "Failed to clean up secret {} after catalog creation failure",
                         secretReference.urn());
@@ -848,7 +848,7 @@ public class PolarisAdminService {
         if (connectionConfigInfo != null) {
           LOGGER
               .atDebug()
-              .addKeyValue("catalogName", entity.getName())
+              .addKeyValue(StructuredLogKeys.CATALOG_NAME, entity.getName())
               .log("Creating a federated catalog");
           FeatureConfiguration.enforceFeatureEnabledOrThrow(
               realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);

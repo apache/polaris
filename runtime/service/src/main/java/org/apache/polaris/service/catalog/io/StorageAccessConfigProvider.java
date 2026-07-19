@@ -44,7 +44,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * Request-scoped entry point for vending scoped storage credentials. Resolves the storage
  * integration for the given entity path via {@link PolarisStorageIntegrationProvider}, builds a
@@ -80,8 +80,8 @@ public class StorageAccessConfigProvider {
       @NonNull PolarisResolvedPathWrapper resolvedPath) {
     LOGGER
         .atDebug()
-        .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("tableLocation", tableLocations)
+        .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+        .addKeyValue(StructuredLogKeys.TABLE_LOCATION, tableLocations)
         .log("Fetching client credentials for table");
 
     StorageAccessConfig accessConfig =
@@ -93,9 +93,9 @@ public class StorageAccessConfigProvider {
 
     LOGGER
         .atDebug()
-        .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("credentialKeys", accessConfig.credentials().keySet())
-        .addKeyValue("extraProperties", accessConfig.extraProperties())
+        .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+        .addKeyValue(StructuredLogKeys.CREDENTIAL_KEYS, accessConfig.credentials().keySet())
+        .addKeyValue(StructuredLogKeys.EXTRA_PROPERTIES, accessConfig.extraProperties())
         .log("Loaded scoped credentials for table");
     if (accessConfig.credentials().isEmpty()) {
       LOGGER.debug("No credentials found for table");

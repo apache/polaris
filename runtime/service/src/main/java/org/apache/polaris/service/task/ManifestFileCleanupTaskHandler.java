@@ -38,7 +38,7 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * {@link ManifestFileCleanupTaskHandler} responsible for deleting all the files in a manifest and
  * the manifest itself. Since data files may be present in multiple manifests across different
@@ -76,8 +76,8 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
     if (!TaskUtils.exists(manifestFile.path(), fileIO)) {
       LOGGER
           .atWarn()
-          .addKeyValue("manifestFile", manifestFile.path())
-          .addKeyValue("tableId", tableId)
+          .addKeyValue(StructuredLogKeys.MANIFEST_FILE, manifestFile.path())
+          .addKeyValue(StructuredLogKeys.TABLE_ID, tableId)
           .log("Manifest cleanup task scheduled, but manifest file doesn't exist");
       return;
     }
@@ -103,7 +103,7 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
                 (v) -> {
                   LOGGER
                       .atInfo()
-                      .addKeyValue("manifestFile", manifestFile.path())
+                      .addKeyValue(StructuredLogKeys.MANIFEST_FILE, manifestFile.path())
                       .log("All content files in manifest deleted - deleting manifest");
                   return tryDelete(
                       tableId, fileIO, manifestFile.path(), manifestFile.path(), null, 1);

@@ -146,7 +146,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * Performs hierarchical resolution logic by matching the transively expanded set of grants to a
  * calling principal against the cascading permissions over the parent hierarchy of a target
@@ -932,7 +932,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       }
       LOGGER
           .atDebug()
-          .addKeyValue("principalName", polarisPrincipal.getName())
+          .addKeyValue(StructuredLogKeys.PRINCIPAL_NAME, polarisPrincipal.getName())
           .log("Root principal allowed to reset credentials");
     } else {
       List<MissingPrivilege> missing =

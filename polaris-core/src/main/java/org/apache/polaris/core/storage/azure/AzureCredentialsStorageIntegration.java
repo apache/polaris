@@ -69,7 +69,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /** Azure credential vendor that supports generating SAS token */
 public class AzureCredentialsStorageIntegration
     extends CachingStorageIntegration<AzureStorageConfigurationInfo> {
@@ -206,14 +206,14 @@ public class AzureCredentialsStorageIntegration
 
     LOGGER
         .atDebug()
-        .addKeyValue("allowedListAction", allowList)
-        .addKeyValue("locations", locations)
-        .addKeyValue("writeLocations", writeLocations)
-        .addKeyValue("location", loc)
-        .addKeyValue("storageAccount", location.getStorageAccount())
-        .addKeyValue("endpoint", location.getEndpoint())
-        .addKeyValue("container", location.getContainer())
-        .addKeyValue("filePath", filePath)
+        .addKeyValue(StructuredLogKeys.ALLOWED_LIST_ACTION, allowList)
+        .addKeyValue(StructuredLogKeys.LOCATIONS, locations)
+        .addKeyValue(StructuredLogKeys.WRITE_LOCATIONS, writeLocations)
+        .addKeyValue(StructuredLogKeys.LOCATION, loc)
+        .addKeyValue(StructuredLogKeys.STORAGE_ACCOUNT, location.getStorageAccount())
+        .addKeyValue(StructuredLogKeys.ENDPOINT, location.getEndpoint())
+        .addKeyValue(StructuredLogKeys.CONTAINER, location.getContainer())
+        .addKeyValue(StructuredLogKeys.FILE_PATH, filePath)
         .log("Subscope Azure SAS");
     String sasToken;
     if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {

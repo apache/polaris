@@ -137,7 +137,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * Authorization-aware adapter between REST stubs and shared Iceberg SDK CatalogHandlers.
  *
@@ -223,7 +223,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (connectionConfigInfoDpo != null) {
       LOGGER
           .atInfo()
-          .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
+          .addKeyValue(StructuredLogKeys.REMOTE_URL, connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
           realmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
@@ -799,8 +799,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.INTERNAL)) {
       LOGGER
           .atWarn()
-          .addKeyValue("catalog", catalog)
-          .addKeyValue("notification", request)
+          .addKeyValue(StructuredLogKeys.CATALOG, catalog)
+          .addKeyValue(StructuredLogKeys.NOTIFICATION, request)
           .log("Attempted notification on internal catalog");
       throw new BadRequestException("Cannot update internal catalog via notifications");
     }
@@ -961,7 +961,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (baseLocation == null) {
       LOGGER
           .atDebug()
-          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
           .log(
               "Entity missing location in internal properties, requires backfill "
                   + "as it was likely not updated with stored property changes. "
@@ -1143,8 +1143,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       if (tableEntity == null || tableEntity.getMetadataLocation() == null) {
         LOGGER
             .atWarn()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .addKeyValue("tableEntity", tableEntity)
+            .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+            .addKeyValue(StructuredLogKeys.TABLE_ENTITY, tableEntity)
             .log("Failed to getMetadataLocation to generate ETag when loading table");
       } else {
         // TODO: Refactor null-checking into the helper method once we create a more canonical
@@ -1255,14 +1255,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       LOGGER
           .atInfo()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .addKeyValue("tableLocations", tableLocations)
+          .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+          .addKeyValue(StructuredLogKeys.TABLE_LOCATIONS, tableLocations)
           .log("Validated table locations for credential vending");
     } catch (ForbiddenException e) {
       LOGGER
           .atError()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .addKeyValue("tableLocations", tableLocations)
+          .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+          .addKeyValue(StructuredLogKeys.TABLE_LOCATIONS, tableLocations)
           .log("Table locations validation failed for credential vending");
       throw new ForbiddenException(
           "Table '%s' has locations outside the catalog's current allowed locations: %s",

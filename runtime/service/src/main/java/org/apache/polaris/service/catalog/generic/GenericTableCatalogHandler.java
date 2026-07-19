@@ -41,7 +41,7 @@ import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 @PolarisImmutable
 @SuppressWarnings("immutables:incompat")
 public abstract class GenericTableCatalogHandler extends CatalogHandler {
@@ -61,7 +61,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     if (connectionConfigInfoDpo != null) {
       LOGGER
           .atInfo()
-          .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
+          .addKeyValue(StructuredLogKeys.REMOTE_URL, connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
           realmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);

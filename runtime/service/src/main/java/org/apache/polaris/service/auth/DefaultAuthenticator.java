@@ -44,7 +44,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * The default {@link Authenticator}.
  *
@@ -136,8 +136,8 @@ public class DefaultAuthenticator implements Authenticator {
     } catch (Exception e) {
       LOGGER
           .atError()
-          .addKeyValue("errMsg", e.getMessage())
-          .addKeyValue("stackTrace", Throwables.getStackTraceAsString(e))
+          .addKeyValue(StructuredLogKeys.ERR_MSG, e.getMessage())
+          .addKeyValue(StructuredLogKeys.STACK_TRACE, Throwables.getStackTraceAsString(e))
           .log("Unable to authenticate user with token");
       throw new ServiceFailureException("Unable to fetch principal entity");
     }
@@ -186,9 +186,9 @@ public class DefaultAuthenticator implements Authenticator {
     if (requestedRoles != ALL_ROLES_REQUESTED && !activeRoles.containsAll(requestedRoles)) {
       LOGGER
           .atWarn()
-          .addKeyValue("principal", principal.getName())
-          .addKeyValue("credentials", credentials)
-          .addKeyValue("roles", activeRoles)
+          .addKeyValue(StructuredLogKeys.PRINCIPAL, principal.getName())
+          .addKeyValue(StructuredLogKeys.CREDENTIALS, credentials)
+          .addKeyValue(StructuredLogKeys.ROLES, activeRoles)
           .log("Some principal roles were not found in the principal's grants");
     }
 
@@ -212,8 +212,8 @@ public class DefaultAuthenticator implements Authenticator {
     if (credentialsRoles.stream().anyMatch(s -> !s.startsWith(PRINCIPAL_ROLE_PREFIX))) {
       LOGGER
           .atWarn()
-          .addKeyValue("credentials", credentials)
-          .addKeyValue("roles", credentialsRoles)
+          .addKeyValue(StructuredLogKeys.CREDENTIALS, credentials)
+          .addKeyValue(StructuredLogKeys.ROLES, credentialsRoles)
           .log(
               "Credentials contain roles that do not start with expected prefix '{}'. "
                   + "These roles will be ignored during authentication.",

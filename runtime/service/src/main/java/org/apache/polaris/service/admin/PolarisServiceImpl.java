@@ -81,7 +81,7 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /** Concrete implementation of the Polaris API services */
 @RequestScoped
 public class PolarisServiceImpl
@@ -142,7 +142,7 @@ public class PolarisServiceImpl
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
-          .addKeyValue("storageConfig", storageConfigInfo)
+          .addKeyValue(StructuredLogKeys.STORAGE_CONFIG, storageConfigInfo)
           .log("Disallowed storage type in catalog");
       throw new IllegalArgumentException(
           "Unsupported storage type: " + storageConfigInfo.getStorageType());
@@ -693,8 +693,8 @@ public class PolarisServiceImpl
       default:
         LOGGER
             .atWarn()
-            .addKeyValue("catalog", catalogName)
-            .addKeyValue("role", catalogRoleName)
+            .addKeyValue(StructuredLogKeys.CATALOG, catalogName)
+            .addKeyValue(StructuredLogKeys.ROLE, catalogRoleName)
             .log(
                 "Don't know how to handle privilege {}: {}",
                 direction == GrantDirection.GRANT ? "grant" : "revocation",

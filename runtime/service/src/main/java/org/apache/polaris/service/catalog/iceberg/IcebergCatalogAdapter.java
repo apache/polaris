@@ -67,7 +67,7 @@ import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * An adapter between generated service types like `IcebergRestCatalogApiService` and
  * `IcebergCatalogHandler`.
@@ -197,8 +197,8 @@ public class IcebergCatalogAdapter
     } else {
       LOGGER
           .atWarn()
-          .addKeyValue("namespace", namespace)
-          .addKeyValue("tableName", tableName)
+          .addKeyValue(StructuredLogKeys.NAMESPACE, namespace)
+          .addKeyValue(StructuredLogKeys.TABLE_NAME, tableName)
           .log("Response has null metadataLocation; omitting etag");
     }
     return builder;

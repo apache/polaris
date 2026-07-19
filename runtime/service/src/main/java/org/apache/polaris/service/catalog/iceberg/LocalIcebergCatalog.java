@@ -153,7 +153,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
 public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     implements SupportsNamespaces, SupportsNotifications, Closeable {
@@ -1738,7 +1738,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
-              .addKeyValue("tableIdentifier", tableIdentifier)
+              .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
               .log("Stored table identifier mismatches requested identifier");
         }
       }
@@ -2226,7 +2226,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
-              .addKeyValue("identifier", identifier)
+              .addKeyValue(StructuredLogKeys.IDENTIFIER, identifier)
               .log("Stored view identifier mismatches requested identifier");
         }
       }
@@ -3045,7 +3045,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atInfo()
               .setCause(aee)
-              .addKeyValue("namespace", namespace)
+              .addKeyValue(StructuredLogKeys.NAMESPACE, namespace)
               .log("Namespace already exists in createNonExistingNamespace");
         }
       }

@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * GCS implementation of {@link PolarisStorageIntegration} with support for scoping credentials for
  * input read/write locations
@@ -324,10 +324,10 @@ public class GcpCredentialsStorageIntegration
     } catch (IOException e) {
       LOGGER
           .atError()
-          .addKeyValue("readLocations", readLocations)
-          .addKeyValue("listLocations", listLocations)
-          .addKeyValue("writeLocations", writeLocations)
-          .addKeyValue("accessBoundary", convertToString(accessBoundary))
+          .addKeyValue(StructuredLogKeys.READ_LOCATIONS, readLocations)
+          .addKeyValue(StructuredLogKeys.LIST_LOCATIONS, listLocations)
+          .addKeyValue(StructuredLogKeys.WRITE_LOCATIONS, writeLocations)
+          .addKeyValue(StructuredLogKeys.ACCESS_BOUNDARY, convertToString(accessBoundary))
           .log("Unable to refresh access credentials", e);
       throw new RuntimeException("Unable to fetch access credentials " + e.getMessage());
     }

@@ -30,7 +30,7 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.polaris.core.StructuredLogKeys;
 /**
  * {@link BatchFileCleanupTaskHandler} responsible for batch file cleanup by processing multiple
  * file deletions in a single task handler. Valid files are deleted asynchronously with retries for
@@ -64,17 +64,17 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
       if (validFiles.isEmpty()) {
         LOGGER
             .atWarn()
-            .addKeyValue("batchFiles", batchFiles.toString())
-            .addKeyValue("tableId", tableId)
+            .addKeyValue(StructuredLogKeys.BATCH_FILES, batchFiles.toString())
+            .addKeyValue(StructuredLogKeys.TABLE_ID, tableId)
             .log("File batch cleanup task scheduled, but none of the files in batch exists");
         return;
       }
       if (!missingFiles.isEmpty()) {
         LOGGER
             .atWarn()
-            .addKeyValue("batchFiles", batchFiles.toString())
-            .addKeyValue("missingFiles", missingFiles.toString())
-            .addKeyValue("tableId", tableId)
+            .addKeyValue(StructuredLogKeys.BATCH_FILES, batchFiles.toString())
+            .addKeyValue(StructuredLogKeys.MISSING_FILES, missingFiles.toString())
+            .addKeyValue(StructuredLogKeys.TABLE_ID, tableId)
             .log(
                 "File batch cleanup task scheduled, but {} files in the batch are missing",
                 missingFiles.size());
