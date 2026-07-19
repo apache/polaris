@@ -178,11 +178,19 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
    * @param callCtx call context
    * @param ms meta store
    * @param entity the entity being dropped
-   */
+  */
   private void dropEntity(
       @NonNull PolarisCallContext callCtx,
       @NonNull BasePersistence ms,
       @NonNull PolarisBaseEntity entity) {
+    dropEntity(callCtx, ms, entity, List.of());
+  }
+
+  private void dropEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull PolarisBaseEntity entity,
+      @NonNull List<PolarisBaseEntity> entitiesToCreateAtomically) {
 
     // validate the entity type and subtype
     getDiagnostics().checkNotNull(entity, "unexpected_null_dpo");
@@ -193,7 +201,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // Remove the main entity itself first-thing; once its id no longer resolves successfully
     // it will be pruned out of any grant-record lookups anyways.
-    ms.deleteEntity(callCtx, entity);
+    if (entitiesToCreateAtomically.isEmpty()) {
+      ms.deleteEntity(callCtx, entity);
+    } else {
+      ms.deleteEntityAndCreateEntities(callCtx, entity, entitiesToCreateAtomically);
+    }
 
     // Best-effort cleanup - drop grant records, update grantRecordVersions for affected
     // other entities.
@@ -1200,10 +1212,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       }
     }
 
-    // simply delete that entity. Will be removed from entities_active, added to the
-    // entities_dropped and its version will be changed.
-    this.dropEntity(callCtx, ms, refreshEntityToDrop);
-
     // if cleanup, schedule a cleanup task for the entity. do this here, so that drop and scheduling
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task
     // later
@@ -1226,14 +1234,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       if (cleanupProperties != null) {
         taskEntityBuilder.internalPropertiesAsMap(cleanupProperties);
       }
-      // TODO: Add a way to create the task entities atomically with dropping the entity;
-      // in the meantime, if the server fails partway through a dropEntity, it's possible that
-      // the entity is dropped but we don't have any persisted task records that will carry
-      // out the cleanup.
-      PolarisBaseEntity taskEntity = taskEntityBuilder.build();
-      createEntityIfNotExists(callCtx, null, taskEntity);
+      PolarisBaseEntity taskEntity =
+          prepareToPersistNewEntity(callCtx, ms, taskEntityBuilder.build());
+      this.dropEntity(callCtx, ms, refreshEntityToDrop, List.of(taskEntity));
       return new DropEntityResult(taskEntity.getId());
     }
+
+    // simply delete that entity. Will be removed from entities_active, added to the
+    // entities_dropped and its version will be changed.
+    this.dropEntity(callCtx, ms, refreshEntityToDrop);
 
     // done, return success
     return new DropEntityResult();

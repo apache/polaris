@@ -379,6 +379,40 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   @Override
+  public void deleteEntityAndCreateEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entityToDelete,
+      @Nonnull List<PolarisBaseEntity> entitiesToCreate) {
+    ModelEntity modelEntity = ModelEntity.fromEntity(entityToDelete, schemaVersion);
+    Map<String, Object> params =
+        Map.of(
+            "id",
+            modelEntity.getId(),
+            "catalog_id",
+            modelEntity.getCatalogId(),
+            "realm_id",
+            realmId);
+    try {
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            datasourceOperations.execute(
+                connection,
+                QueryGenerator.generateDeleteQuery(
+                    ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+            for (PolarisBaseEntity entityToCreate : entitiesToCreate) {
+              persistEntity(
+                  callCtx, entityToCreate, null, connection, datasourceOperations::execute);
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to delete entity and create entities due to %s", e.getMessage()),
+          e);
+    }
+  }
+
+  @Override
   public void deleteFromGrantRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);

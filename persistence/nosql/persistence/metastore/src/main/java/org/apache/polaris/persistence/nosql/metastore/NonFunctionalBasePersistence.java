@@ -83,6 +83,14 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
   }
 
   @Override
+  public void deleteEntityAndCreateEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entityToDelete,
+      @Nonnull List<PolarisBaseEntity> entitiesToCreate) {
+    throw useMetaStoreManager("create/update/rename/delete");
+  }
+
+  @Override
   public void deleteFromGrantRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
     throw unimplemented();
