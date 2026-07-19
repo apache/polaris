@@ -171,9 +171,9 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @param entitiesToCreate entities to create atomically with the delete
    */
   void deleteEntityAndCreateEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entityToDelete,
-      @Nonnull List<PolarisBaseEntity> entitiesToCreate);
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entityToDelete,
+      @NonNull List<PolarisBaseEntity> entitiesToCreate);
 
   /**
    * Delete the specified grantRecord to the grant_records table.

@@ -354,9 +354,9 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public void deleteEntityAndCreateEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entityToDelete,
-      @Nonnull List<PolarisBaseEntity> entitiesToCreate) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entityToDelete,
+      @NonNull List<PolarisBaseEntity> entitiesToCreate) {
     ModelEntity modelEntity = ModelEntity.fromEntity(entityToDelete, schemaVersion);
     Map<String, Object> params =
         Map.of(
@@ -374,6 +374,15 @@ public class JdbcBasePersistenceImpl
                 QueryGenerator.generateDeleteQuery(
                     ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
             for (PolarisBaseEntity entityToCreate : entitiesToCreate) {
+              PolarisBaseEntity existingEntity =
+                  lookupEntity(
+                      connection,
+                      entityToCreate.getCatalogId(),
+                      entityToCreate.getId(),
+                      entityToCreate.getTypeCode());
+              if (existingEntity != null) {
+                continue;
+              }
               persistEntity(
                   callCtx, entityToCreate, null, connection, datasourceOperations::execute);
             }
@@ -455,11 +464,25 @@ public class JdbcBasePersistenceImpl
   @Override
   public PolarisBaseEntity lookupEntity(
       @NonNull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
+    return getPolarisBaseEntity(entityLookupQuery(catalogId, entityId, typeCode));
+  }
+
+  private PolarisBaseEntity lookupEntity(
+      @NonNull Connection connection, long catalogId, long entityId, int typeCode)
+      throws SQLException {
+    return getPolarisBaseEntity(
+        datasourceOperations.executeSelect(
+            connection,
+            entityLookupQuery(catalogId, entityId, typeCode),
+            new ModelEntity(schemaVersion)));
+  }
+
+  private QueryGenerator.PreparedQuery entityLookupQuery(
+      long catalogId, long entityId, int typeCode) {
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "type_code", typeCode, "realm_id", realmId);
-    return getPolarisBaseEntity(
-        QueryGenerator.generateSelectQuery(
-            ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+    return QueryGenerator.generateSelectQuery(
+        ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params);
   }
 
   @Override
@@ -489,20 +512,25 @@ public class JdbcBasePersistenceImpl
   @Nullable
   private PolarisBaseEntity getPolarisBaseEntity(QueryGenerator.PreparedQuery query) {
     try {
-      var results = datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
-      if (results.isEmpty()) {
-        return null;
-      } else if (results.size() > 1) {
-        throw new IllegalStateException(
-            String.format(
-                "More than one(%s) entities were found for a given type code : %s",
-                results.size(), results.getFirst().getTypeCode()));
-      } else {
-        return results.getFirst();
-      }
+      return getPolarisBaseEntity(
+          datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion)));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entity due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Nullable
+  private PolarisBaseEntity getPolarisBaseEntity(List<PolarisBaseEntity> results) {
+    if (results.isEmpty()) {
+      return null;
+    } else if (results.size() > 1) {
+      throw new IllegalStateException(
+          String.format(
+              "More than one(%s) entities were found for a given type code : %s",
+              results.size(), results.getFirst().getTypeCode()));
+    } else {
+      return results.getFirst();
     }
   }
 

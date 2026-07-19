@@ -53,6 +53,11 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     assertCleanupTaskCreationFailureRollsBackEntityDrop();
   }
 
+  @Test
+  void testCleanupTaskCreationRetryIsIdempotent() {
+    assertCleanupTaskCreationRetryIsIdempotent();
+  }
+
   protected DatabaseType databaseType() {
     return DatabaseType.H2;
   }
