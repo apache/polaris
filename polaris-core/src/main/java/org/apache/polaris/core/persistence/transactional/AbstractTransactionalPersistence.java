@@ -287,6 +287,31 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
+  public void deleteEntityAndCreateEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entityToDelete,
+      @Nonnull List<PolarisBaseEntity> entitiesToCreate) {
+    runActionInTransaction(
+        callCtx,
+        () -> {
+          this.deleteEntityInCurrentTxn(callCtx, entityToDelete);
+          for (PolarisBaseEntity entityToCreate : entitiesToCreate) {
+            try {
+              this.checkConditionsForWriteEntityInCurrentTxn(callCtx, entityToCreate, null);
+            } catch (EntityAlreadyExistsException e) {
+              // Matching ids indicate a retried create whose id was already reserved for the same
+              // entity. Treat that as idempotent, matching writeEntities.
+              if (e.getExistingEntity().getId() != entityToCreate.getId()) {
+                throw e;
+              }
+            }
+            this.writeEntityInCurrentTxn(callCtx, entityToCreate, true, null);
+          }
+        });
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public void deleteFromGrantRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
     runActionInTransaction(

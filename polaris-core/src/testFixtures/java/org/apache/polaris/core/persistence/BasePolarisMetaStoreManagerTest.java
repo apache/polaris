@@ -272,6 +272,51 @@ public abstract class BasePolarisMetaStoreManagerTest {
     polarisTestMetaStoreManager.testDropEntities();
   }
 
+  protected void assertCleanupTaskCreationFailureRollsBackEntityDrop() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    PolarisBaseEntity entityToDrop =
+        polarisTestMetaStoreManager.createEntity(
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "principal_role_to_drop");
+    TaskEntity conflictingTask =
+        createTask(
+            "entityCleanup_" + entityToDrop.getId(),
+            metaStoreManager.generateNewEntityId(callCtx).getId());
+    metaStoreManager.createEntitiesIfNotExist(callCtx, null, List.of(conflictingTask));
+
+    List<Long> taskIdsBeforeDrop =
+        metaStoreManager
+            .listFullEntitiesAll(
+                callCtx, null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE)
+            .stream()
+            .map(PolarisBaseEntity::getId)
+            .toList();
+
+    Assertions.assertThatThrownBy(
+            () -> metaStoreManager.dropEntityIfExists(callCtx, null, entityToDrop, Map.of(), true))
+        .isInstanceOf(EntityAlreadyExistsException.class);
+
+    Assertions.assertThat(
+            metaStoreManager
+                .loadEntity(
+                    callCtx,
+                    entityToDrop.getCatalogId(),
+                    entityToDrop.getId(),
+                    entityToDrop.getType())
+                .getEntity())
+        .isNotNull()
+        .extracting(PolarisBaseEntity::getId)
+        .isEqualTo(entityToDrop.getId());
+    Assertions.assertThat(
+            metaStoreManager.listFullEntitiesAll(
+                callCtx, null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE))
+        .extracting(PolarisBaseEntity::getId)
+        .containsExactlyInAnyOrderElementsOf(taskIdsBeforeDrop);
+  }
+
   /** Test that granting/revoking privileges works well */
   @Test
   protected void testPrivileges() {

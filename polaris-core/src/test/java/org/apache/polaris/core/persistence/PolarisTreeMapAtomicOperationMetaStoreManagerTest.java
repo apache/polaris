@@ -31,6 +31,11 @@ import org.mockito.Mockito;
 
 public class PolarisTreeMapAtomicOperationMetaStoreManagerTest
     extends BasePolarisMetaStoreManagerTest {
+  @Test
+  void testCleanupTaskCreationFailureRollsBackEntityDrop() {
+    assertCleanupTaskCreationFailureRollsBackEntityDrop();
+  }
+
   @Override
   public PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();

@@ -159,6 +159,23 @@ public interface BasePersistence extends PolicyMappingPersistence {
   void deleteEntity(@NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity);
 
   /**
+   * Delete one entity and create the supplied entities in one atomic persistence operation. If the
+   * operation succeeds, the deleted entity must be durably removed and every created entity must be
+   * durably visible; if it fails, none of those changes may be applied.
+   *
+   * <p>The created entities use the same create semantics as {@link
+   * #writeEntities(PolarisCallContext, List, List)} with {@code originalEntities == null}.
+   *
+   * @param callCtx call context
+   * @param entityToDelete entity to delete
+   * @param entitiesToCreate entities to create atomically with the delete
+   */
+  void deleteEntityAndCreateEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entityToDelete,
+      @Nonnull List<PolarisBaseEntity> entitiesToCreate);
+
+  /**
    * Delete the specified grantRecord to the grant_records table.
    *
    * @param callCtx call context
