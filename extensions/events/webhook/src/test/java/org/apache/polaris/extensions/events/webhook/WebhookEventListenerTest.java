@@ -181,12 +181,12 @@ class WebhookEventListenerTest {
 
       RecordedRequest request = recordedRequests.getFirst();
       JsonNode json = OBJECT_MAPPER.readTree(request.body());
-      assertThat(json.get("schema_version").asInt()).isEqualTo(WebhookEventListener.SCHEMA_VERSION);
-      assertThat(json.get("event_id").asText()).isEqualTo(EVENT_ID.toString());
-      assertThat(json.get("timestamp").asLong()).isEqualTo(EVENT_TIME.toEpochMilli());
-      assertThat(json.get("delivery_timestamp").asLong()).isPositive();
-      assertThat(json.get("event_type").asText())
-          .isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
+      assertThat(json.get("specversion").asText()).isEqualTo(WebhookEventListener.SPEC_VERSION);
+      assertThat(json.get("id").asText()).isEqualTo(EVENT_ID.toString());
+      assertThat(json.get("time").asText()).isEqualTo(EVENT_TIME.toString());
+      assertThat(json.get("delivery_time").asText()).isNotBlank();
+      assertThat(json.get("source").asText()).isEqualTo(WebhookEventListener.EVENT_SOURCE);
+      assertThat(json.get("type").asText()).isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
       assertThat(json.get("realm_id").asText()).isEqualTo(REALM);
       assertThat(json.get("principal").asText()).isEqualTo(TEST_USER);
       assertThat(json.get("table_identifier").asText()).isEqualTo("test_ns.test_table");

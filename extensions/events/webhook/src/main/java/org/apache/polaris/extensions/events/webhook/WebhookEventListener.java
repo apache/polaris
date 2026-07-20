@@ -49,7 +49,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.crypto.Mac;
@@ -75,7 +74,12 @@ public class WebhookEventListener implements PolarisEventListener {
 
   static final String SIGNATURE_HEADER = "X-Polaris-Signature-256";
   static final String EVENT_TYPE_HEADER = "X-Polaris-Event";
-  static final int SCHEMA_VERSION = 1;
+
+  /** CloudEvents spec version the payload envelope is shaped after. */
+  static final String SPEC_VERSION = "1.0";
+
+  /** CloudEvents {@code source} attribute identifying Polaris as the event producer. */
+  static final String EVENT_SOURCE = "org.apache.polaris";
 
   private static final Set<String> RESERVED_HEADERS =
       Set.of(
@@ -106,7 +110,6 @@ public class WebhookEventListener implements PolarisEventListener {
   private HttpClient client;
   private ExecutorService deliveryExecutor;
   private ScheduledExecutorService retryExecutor;
-  private Semaphore concurrency;
 
   private Counter successCounter;
   private Counter failureCounter;
@@ -144,7 +147,6 @@ public class WebhookEventListener implements PolarisEventListener {
     }
     validateEndpoint(endpoint, requireHttps);
     this.client = createHttpClient();
-    this.concurrency = new Semaphore(maxConcurrent);
     this.deliveryExecutor =
         Executors.newFixedThreadPool(
             maxConcurrent,
@@ -322,15 +324,6 @@ public class WebhookEventListener implements PolarisEventListener {
   }
 
   private void deliverWithConcurrency(String payload, String eventType, int attempt) {
-    try {
-      concurrency.acquire();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      releaseAccepted();
-      dropCounter.increment();
-      LOGGER.warn("Interrupted while waiting for webhook concurrency; dropping event");
-      return;
-    }
     inFlight.incrementAndGet();
     long startNanos = System.nanoTime();
     try {
@@ -353,7 +346,6 @@ public class WebhookEventListener implements PolarisEventListener {
       handleFailure(payload, eventType, attempt, null, null, e);
     } finally {
       inFlight.decrementAndGet();
-      concurrency.release();
     }
   }
 
@@ -472,12 +464,14 @@ public class WebhookEventListener implements PolarisEventListener {
   @VisibleForTesting
   String toJson(PolarisEvent event) {
     HashMap<String, Object> properties = new HashMap<>();
-    properties.put("schema_version", SCHEMA_VERSION);
-    properties.put("event_id", event.metadata().eventId().toString());
-    properties.put("event_type", event.type().name());
-    // Original event time from metadata (not delivery time).
-    properties.put("timestamp", event.metadata().timestamp().toEpochMilli());
-    properties.put("delivery_timestamp", clock.millis());
+    // CloudEvents-shaped envelope (no SDK): stable id, original event time, spec version.
+    properties.put("specversion", SPEC_VERSION);
+    properties.put("id", event.metadata().eventId().toString());
+    properties.put("type", event.type().name());
+    properties.put("source", EVENT_SOURCE);
+    // Original event time from metadata (not delivery time), RFC 3339 per CloudEvents.
+    properties.put("time", event.metadata().timestamp().toString());
+    properties.put("delivery_time", clock.instant().toString());
     event
         .attributes()
         .get(EventAttributes.TABLE_IDENTIFIER)
