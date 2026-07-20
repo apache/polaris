@@ -43,21 +43,25 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.spi.CatalogConfigEndpointContributor;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 
 @RequestScoped
 public class CatalogConfigHandler {
   private final CatalogPrefixParser prefixParser;
   private final ResolverFactory resolverFactory;
   private final Instance<CatalogConfigEndpointContributor> endpointContributors;
+  private final IdempotencyConfiguration idempotencyConfiguration;
 
   @Inject
   public CatalogConfigHandler(
       CatalogPrefixParser prefixParser,
       ResolverFactory resolverFactory,
-      @Any Instance<CatalogConfigEndpointContributor> endpointContributors) {
+      @Any Instance<CatalogConfigEndpointContributor> endpointContributors,
+      IdempotencyConfiguration idempotencyConfiguration) {
     this.prefixParser = prefixParser;
     this.resolverFactory = resolverFactory;
     this.endpointContributors = endpointContributors;
+    this.idempotencyConfiguration = idempotencyConfiguration;
   }
 
   public ConfigResponse getConfig(String catalogName, PolarisPrincipal principal) {
@@ -70,18 +74,27 @@ public class CatalogConfigHandler {
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
-    return ConfigResponse.builder()
-        .withDefaults(properties)
-        .withOverrides(
-            ImmutableMap.of(
-                "prefix",
-                prefixParser.catalogNameToPrefix(catalogName),
-                // Polaris does not handle custom namespace separators;
-                // always communicate the default namespace separator to clients.
-                RESTCatalogProperties.NAMESPACE_SEPARATOR,
-                NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED))
-        .withEndpoints(ImmutableList.copyOf(supportedEndpoints()))
-        .build();
+    ConfigResponse.Builder builder =
+        ConfigResponse.builder()
+            .withDefaults(properties)
+            .withOverrides(
+                ImmutableMap.of(
+                    "prefix",
+                    prefixParser.catalogNameToPrefix(catalogName),
+                    // Polaris does not handle custom namespace separators;
+                    // always communicate the default namespace separator to clients.
+                    RESTCatalogProperties.NAMESPACE_SEPARATOR,
+                    NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED))
+            .withEndpoints(ImmutableList.copyOf(supportedEndpoints()));
+
+    // Advertise Idempotency-Key support to clients. Per the REST spec, presence of this field
+    // signals that mutation endpoints honor Idempotency-Key; its value is the reuse window a
+    // client may retry a key within, which mirrors the server-side key TTL.
+    if (idempotencyConfiguration.enabled()) {
+      builder.withIdempotencyKeyLifetime(idempotencyConfiguration.ttl().toString());
+    }
+
+    return builder.build();
   }
 
   private Set<Endpoint> supportedEndpoints() {

@@ -22,6 +22,7 @@ import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.ws.rs.core.Response;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +37,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.rest.GenericTableEndpoints;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.policy.PolicyEndpoints;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -43,17 +45,33 @@ public class GetConfigTest {
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testGetConfig(boolean enableGenericTable) {
-    TestServices services =
-        TestServices.builder()
-            .config(
-                Map.of(
-                    "ALLOW_INSECURE_STORAGE_TYPES",
-                    true,
-                    "SUPPORTED_CATALOG_STORAGE_TYPES",
-                    List.of("FILE", "S3"),
-                    "ENABLE_GENERIC_TABLES",
-                    enableGenericTable))
-            .build();
+    ConfigResponse configResponse = getConfig(Map.of("ENABLE_GENERIC_TABLES", enableGenericTable));
+
+    assertThat(configResponse.endpoints()).contains(PolicyEndpoints.V1_CREATE_POLICY);
+    assertEndpointOrder(configResponse, enableGenericTable);
+    assertGenericTableEndpoints(configResponse, enableGenericTable);
+  }
+
+  @Test
+  public void testIdempotencyKeyLifetimeAdvertisedWhenEnabled() {
+    ConfigResponse configResponse =
+        getConfig(Map.of("polaris.idempotency.enabled", true, "polaris.idempotency.ttl", "PT30M"));
+    assertThat(configResponse.idempotencyKeyLifetime()).isEqualTo("PT30M");
+  }
+
+  @Test
+  public void testIdempotencyKeyLifetimeAbsentWhenDisabled() {
+    ConfigResponse configResponse = getConfig(Map.of("polaris.idempotency.enabled", false));
+    assertThat(configResponse.idempotencyKeyLifetime()).isNull();
+  }
+
+  private static ConfigResponse getConfig(Map<String, Object> extraConfig) {
+    Map<String, Object> config = new HashMap<>();
+    config.put("ALLOW_INSECURE_STORAGE_TYPES", true);
+    config.put("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("FILE", "S3"));
+    config.putAll(extraConfig);
+
+    TestServices services = TestServices.builder().config(config).build();
 
     FileStorageConfigInfo fileStorage =
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
@@ -84,9 +102,7 @@ public class GetConfigTest {
     ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
 
     assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
-    assertThat(configResponse.endpoints()).contains(PolicyEndpoints.V1_CREATE_POLICY);
-    assertEndpointOrder(configResponse, enableGenericTable);
-    assertGenericTableEndpoints(configResponse, enableGenericTable);
+    return configResponse;
   }
 
   private static void assertEndpointOrder(

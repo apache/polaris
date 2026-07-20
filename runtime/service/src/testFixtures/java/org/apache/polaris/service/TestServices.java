@@ -431,7 +431,10 @@ public record TestServices(
                             endpointContributorHandle(
                                 IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
             return new CatalogConfigHandler(
-                new DefaultCatalogPrefixParser(), resolverFactory, configEndpointContributors);
+                new DefaultCatalogPrefixParser(),
+                resolverFactory,
+                configEndpointContributors,
+                idempotencyConfiguration);
           };
 
       Supplier<IcebergCatalogAdapter> catalogAdapterSupplier =
