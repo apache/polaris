@@ -29,7 +29,7 @@ public class KeycloakTestResource implements QuarkusTestResourceLifecycleManager
    *
    * <p>The value associated with this key should be a comma-separated list of role names.
    */
-  public static final String ROLES_INIT_ARG = "roles";
+  public static final String ROLES_ARG = "roles";
 
   /**
    * Initialization argument key for specifying users to be created in the Keycloak server.
@@ -37,7 +37,7 @@ public class KeycloakTestResource implements QuarkusTestResourceLifecycleManager
    * <p>The value associated with this key should be a comma-separated list of user entries, where
    * each entry is represented as a key-value pair in the format "username=password".
    */
-  public static final String USERS_INIT_ARG = "users";
+  public static final String USERS_ARG = "users";
 
   /**
    * Initialization argument key for specifying role grants to users in the Keycloak server.
@@ -45,7 +45,7 @@ public class KeycloakTestResource implements QuarkusTestResourceLifecycleManager
    * <p>The value associated with this key should be a comma-separated list of grant entries, where
    * each entry is represented as a key-value pair in the format "username=role".
    */
-  public static final String GRANTS_INIT_ARG = "grants";
+  public static final String GRANTS_ARG = "grants";
 
   /**
    * Initialization argument key for specifying service accounts to be created in the Keycloak
@@ -54,7 +54,7 @@ public class KeycloakTestResource implements QuarkusTestResourceLifecycleManager
    * <p>The value associated with this key should be a comma-separated list of client entries, where
    * each entry is represented as a key-value pair in the format "client_id=client_secret".
    */
-  public static final String CLIENTS_INIT_ARG = "clients";
+  public static final String CLIENTS_ARG = "clients";
 
   private Map<String, String> initArgs = Map.of();
   private KeycloakContainer keycloak;
@@ -75,26 +75,25 @@ public class KeycloakTestResource implements QuarkusTestResourceLifecycleManager
     keycloak = new KeycloakContainer();
     keycloak.start();
 
-    var roles =
-        Splitter.on(",").trimResults().omitEmptyStrings().split(initArgs.get(ROLES_INIT_ARG));
+    var roles = Splitter.on(",").trimResults().omitEmptyStrings().split(initArgs.get(ROLES_ARG));
     var users =
         Splitter.on(",")
             .trimResults()
             .omitEmptyStrings()
             .withKeyValueSeparator("=")
-            .split(initArgs.get(USERS_INIT_ARG));
+            .split(initArgs.get(USERS_ARG));
     var grants =
         Splitter.on(",")
             .trimResults()
             .omitEmptyStrings()
             .withKeyValueSeparator("=")
-            .split(initArgs.get(GRANTS_INIT_ARG));
+            .split(initArgs.get(GRANTS_ARG));
     var clients =
         Splitter.on(",")
             .trimResults()
             .omitEmptyStrings()
             .withKeyValueSeparator("=")
-            .split(initArgs.get(CLIENTS_INIT_ARG));
+            .split(initArgs.get(CLIENTS_ARG));
 
     roles.forEach(role -> keycloak.createRole(role));
     users.forEach((user, password) -> keycloak.createUser(user, password));

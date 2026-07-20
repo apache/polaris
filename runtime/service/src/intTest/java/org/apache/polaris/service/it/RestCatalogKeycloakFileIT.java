@@ -59,10 +59,10 @@ public class RestCatalogKeycloakFileIT extends PolarisRestCatalogFileIntegration
           new TestResourceEntry(
               KeycloakTestResource.class,
               Map.of(
-                  KeycloakTestResource.ROLES_INIT_ARG, "PRINCIPAL_ROLE:ALL",
-                  KeycloakTestResource.USERS_INIT_ARG, "root=s3cr3t",
-                  KeycloakTestResource.GRANTS_INIT_ARG, "root=PRINCIPAL_ROLE:ALL",
-                  KeycloakTestResource.CLIENTS_INIT_ARG, clients.orElse(""))));
+                  KeycloakTestResource.ROLES_ARG, "PRINCIPAL_ROLE:ALL",
+                  KeycloakTestResource.USERS_ARG, "root=s3cr3t",
+                  KeycloakTestResource.GRANTS_ARG, "root=PRINCIPAL_ROLE:ALL",
+                  KeycloakTestResource.CLIENTS_ARG, clients.orElse(""))));
     }
   }
 
