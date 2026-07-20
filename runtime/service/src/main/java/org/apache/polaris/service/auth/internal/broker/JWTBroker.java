@@ -23,8 +23,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import com.google.common.annotations.VisibleForTesting;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -135,15 +133,6 @@ public class JWTBroker implements TokenBroker {
     if (!secretsResult.getPrincipalSecrets().matchesCredentialsVersion(credentialsVersion)) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
-  }
-
-  @VisibleForTesting
-  static boolean constantTimeEquals(String a, String b) {
-    if (a == null || b == null) {
-      return false;
-    }
-    return MessageDigest.isEqual(
-        a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
   }
 
   @Override

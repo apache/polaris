@@ -20,8 +20,6 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import org.apache.polaris.core.DigestUtils;
 import org.jspecify.annotations.Nullable;
@@ -214,11 +212,11 @@ public class PolarisPrincipalSecrets {
     boolean matches = false;
     String mainVersion = credentialsVersionForHash(mainSecretHash);
     if (mainVersion != null) {
-      matches |= constantTimeEquals(credentialsVersion, mainVersion);
+      matches |= DigestUtils.constantTimeEquals(credentialsVersion, mainVersion);
     }
     String secondaryVersion = credentialsVersionForHash(secondarySecretHash);
     if (secondaryVersion != null) {
-      matches |= constantTimeEquals(credentialsVersion, secondaryVersion);
+      matches |= DigestUtils.constantTimeEquals(credentialsVersion, secondaryVersion);
     }
     return matches;
   }
@@ -234,11 +232,6 @@ public class PolarisPrincipalSecrets {
     }
     String salt = secretSalt == null ? "" : secretSalt;
     return DigestUtils.sha256Hex(secretHash + ":" + salt);
-  }
-
-  private static boolean constantTimeEquals(String a, String b) {
-    return MessageDigest.isEqual(
-        a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
   }
 
   public String getSecondarySecretHash() {
