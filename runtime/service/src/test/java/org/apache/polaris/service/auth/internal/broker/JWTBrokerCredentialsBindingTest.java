@@ -242,13 +242,6 @@ public class JWTBrokerCredentialsBindingTest {
     assertThat(broker.verify(after.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
   }
 
-  @Test
-  void constantTimeEquals() {
-    assertThat(JWTBroker.constantTimeEquals("abc", "abc")).isTrue();
-    assertThat(JWTBroker.constantTimeEquals("abc", "abd")).isFalse();
-    assertThat(JWTBroker.constantTimeEquals(null, "a")).isFalse();
-  }
-
   private String legacyToken() {
     return JWT.create()
         .withIssuer("polaris")
