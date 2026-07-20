@@ -114,11 +114,10 @@ public class JWTBroker implements TokenBroker {
   }
 
   /**
-   * Rejects tokens that were minted against a previous credentials generation (i.e. before the
-   * principal's secrets were last rotated or reset). Tokens minted before credentials binding was
-   * introduced carry no claim and are accepted so existing clients are not broken on upgrade;
-   * binding activates for them on the next rotate/reset, when their principal's version changes and
-   * all bound tokens are rejected.
+   * Rejects tokens that were minted against a credentials generation that is no longer current.
+   * Accepts the main or secondary generation fingerprint so dual-secret rotate grace matches
+   * client-secret matching. Tokens minted before credentials binding (no claim) are accepted so
+   * existing clients are not broken on upgrade; they remain unbound until expiry.
    */
   private void assertCredentialsVersionCurrent(String clientId, String credentialsVersion) {
     if (credentialsVersion == null) {
@@ -133,8 +132,7 @@ public class JWTBroker implements TokenBroker {
     if (!secretsResult.isSuccess() || secretsResult.getPrincipalSecrets() == null) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
-    String currentVersion = secretsResult.getPrincipalSecrets().getCredentialsVersion();
-    if (!constantTimeEquals(credentialsVersion, currentVersion)) {
+    if (!secretsResult.getPrincipalSecrets().matchesCredentialsVersion(credentialsVersion)) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
   }

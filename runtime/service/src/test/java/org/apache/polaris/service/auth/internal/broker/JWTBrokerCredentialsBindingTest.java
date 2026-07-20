@@ -27,6 +27,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.util.Optional;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
+import org.apache.polaris.core.DigestUtils;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -39,9 +40,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /**
- * Internal JWTs are bound to the principal's current credentials version (derived from the main
- * secret hash) so rotate/reset invalidates outstanding access tokens. Tokens minted before
- * credentials binding existed (no claim) remain valid until expiry for upgrade compatibility.
+ * Internal JWTs are bound to a salted credentials-version fingerprint derived from secret hashes.
+ * One rotate keeps the previous main hash as secondary so bound tokens remain valid for that grace
+ * generation; a further rotate/reset invalidates them. Tokens without the claim stay valid until
+ * expiry for upgrade compatibility.
  */
 public class JWTBrokerCredentialsBindingTest {
 
@@ -75,7 +77,7 @@ public class JWTBrokerCredentialsBindingTest {
   }
 
   @Test
-  void mintedTokenCarriesDerivedCredentialsVersion() {
+  void mintedTokenCarriesSaltedCredentialsVersion() {
     TokenResponse response =
         broker.generateFromClientSecrets(
             CLIENT_ID,
@@ -87,8 +89,10 @@ public class JWTBrokerCredentialsBindingTest {
     DecodedJWT jwt = JWT.decode(response.getAccessToken());
     String claim = jwt.getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION).asString();
     assertThat(claim).isEqualTo(secrets.getCredentialsVersion());
-    // The claim must not expose the raw secret-verification artifact.
+    // Must not expose the raw secret-verification hash, nor an unsalted hash of it.
     assertThat(claim).isNotEqualTo(secrets.getMainSecretHash());
+    assertThat(claim).isNotEqualTo(DigestUtils.sha256Hex(secrets.getMainSecretHash()));
+    assertThat(secrets.matchesCredentialsVersion(claim)).isTrue();
   }
 
   @Test
@@ -104,7 +108,7 @@ public class JWTBrokerCredentialsBindingTest {
   }
 
   @Test
-  void verifyFailsAfterSecretRotate() {
+  void verifyStillSucceedsAfterOneRotateViaSecondaryGrace() {
     TokenResponse response =
         broker.generateFromClientSecrets(
             CLIENT_ID,
@@ -114,7 +118,26 @@ public class JWTBrokerCredentialsBindingTest {
             TokenType.ACCESS_TOKEN);
     String accessToken = response.getAccessToken();
 
-    // Simulate rotate: main secret hash changes, and so does the derived credentials version.
+    // After one rotate, previous main becomes secondary; dual-secret grace keeps the JWT valid.
+    secrets.rotateSecrets(secrets.getMainSecretHash());
+    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
+        .thenReturn(new PrincipalSecretsResult(secrets));
+
+    assertThat(broker.verify(accessToken).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+  }
+
+  @Test
+  void verifyFailsAfterSecondRotate() {
+    TokenResponse response =
+        broker.generateFromClientSecrets(
+            CLIENT_ID,
+            MAIN_SECRET,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            SCOPE,
+            TokenType.ACCESS_TOKEN);
+    String accessToken = response.getAccessToken();
+
+    secrets.rotateSecrets(secrets.getMainSecretHash());
     secrets.rotateSecrets(secrets.getMainSecretHash());
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenReturn(new PrincipalSecretsResult(secrets));
@@ -125,7 +148,32 @@ public class JWTBrokerCredentialsBindingTest {
   }
 
   @Test
-  void tokenExchangeFailsAfterSecretRotate() {
+  void tokenExchangeFailsAfterSecondRotate() {
+    TokenResponse original =
+        broker.generateFromClientSecrets(
+            CLIENT_ID,
+            MAIN_SECRET,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            SCOPE,
+            TokenType.ACCESS_TOKEN);
+
+    secrets.rotateSecrets(secrets.getMainSecretHash());
+    secrets.rotateSecrets(secrets.getMainSecretHash());
+    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
+        .thenReturn(new PrincipalSecretsResult(secrets));
+
+    TokenResponse exchanged =
+        broker.generateFromToken(
+            TokenType.ACCESS_TOKEN,
+            original.getAccessToken(),
+            TokenRequestValidator.TOKEN_EXCHANGE,
+            SCOPE,
+            TokenType.ACCESS_TOKEN);
+    assertThat(exchanged.getError()).isEqualTo(OAuthError.invalid_client);
+  }
+
+  @Test
+  void tokenExchangeSucceedsAfterOneRotate() {
     TokenResponse original =
         broker.generateFromClientSecrets(
             CLIENT_ID,
@@ -145,23 +193,23 @@ public class JWTBrokerCredentialsBindingTest {
             TokenRequestValidator.TOKEN_EXCHANGE,
             SCOPE,
             TokenType.ACCESS_TOKEN);
-    assertThat(exchanged.getError()).isEqualTo(OAuthError.invalid_client);
+    assertThat(exchanged.getError()).isNull();
+    // Re-minted token is bound to the *current* main generation.
+    assertThat(
+            JWT.decode(exchanged.getAccessToken())
+                .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
+                .asString())
+        .isEqualTo(secrets.getCredentialsVersion());
   }
 
   @Test
   void verifyAcceptsLegacyTokenWithoutCredentialsVersionClaim() {
-    // Craft a token with signature/issuer/active but no cv claim (pre-binding tokens). These
-    // must keep working so existing clients are not broken on upgrade.
     String legacy = legacyToken();
-
     assertThat(broker.verify(legacy).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
   }
 
   @Test
   void legacyTokenWithoutClaimIsNotBoundByRotate() {
-    // Documents the accepted trade-off: tokens minted before credentials binding existed carry
-    // no version to check, so they remain valid until expiry even after rotate/reset. All
-    // tokens minted after the upgrade are bound.
     String legacy = legacyToken();
 
     secrets.rotateSecrets(secrets.getMainSecretHash());
@@ -172,16 +220,7 @@ public class JWTBrokerCredentialsBindingTest {
   }
 
   @Test
-  void newTokenAfterRotateUsesNewVersionAndVerifies() {
-    TokenResponse before =
-        broker.generateFromClientSecrets(
-            CLIENT_ID,
-            MAIN_SECRET,
-            TokenRequestValidator.CLIENT_CREDENTIALS,
-            SCOPE,
-            TokenType.ACCESS_TOKEN);
-    String oldToken = before.getAccessToken();
-
+  void newTokenAfterRotateUsesNewMainVersion() {
     secrets.rotateSecrets(secrets.getMainSecretHash());
     String newMain = secrets.getMainSecret();
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
@@ -201,7 +240,6 @@ public class JWTBrokerCredentialsBindingTest {
                 .asString())
         .isEqualTo(secrets.getCredentialsVersion());
     assertThat(broker.verify(after.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
-    assertThatThrownBy(() -> broker.verify(oldToken)).isInstanceOf(NotAuthorizedException.class);
   }
 
   @Test
