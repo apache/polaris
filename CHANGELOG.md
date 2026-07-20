@@ -198,7 +198,7 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
   conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
-- Added a `webhook` event listener (`polaris.event-listener.types=webhook`) that delivers Polaris events as JSON HTTP POST requests to a configurable endpoint, for example a SIEM or audit collector. Deliveries are retried with exponential backoff (`polaris.event-listener.webhook.max-attempts`, `polaris.event-listener.webhook.retry-backoff`) on a best-effort basis, payloads can be signed with HMAC-SHA256 via `polaris.event-listener.webhook.secret` (sent as the `X-Polaris-Signature-256` header) so receivers can verify authenticity, and `polaris.event-listener.webhook.headers` allows custom headers such as `Authorization` for receivers that require them.
+- Added a `webhook` event listener (`polaris.event-listener.types=webhook`) that delivers sanitized Polaris events as JSON HTTP POSTs to a configurable endpoint (SIEM/audit collectors). Payloads are a versioned envelope (`schema_version`, `event_id`, original `timestamp`, optional `delivery_timestamp`) with optional HMAC-SHA256 signing (`X-Polaris-Signature-256`). Delivery is best-effort and bounded (`max-concurrent`, `max-pending`); transient failures retry with jitter (and `Retry-After` when present); HTTPS is required by default (`require-https`); reserved signature/event headers cannot be overridden by custom headers. Metrics cover success, failure, retries, drops, pending, in-flight, and latency.
 
 ### Changes
 
