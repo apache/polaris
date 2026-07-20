@@ -149,6 +149,35 @@ class TestSetupCommand(CLITestBase):
 
         self.assertEqual(command._failure_count, 1)
 
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    def test_setup_apply_recovers_policy_lookup_failure(
+        self, mock_policy_api: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_policy_api.return_value.load_policy.side_effect = RuntimeError(
+            "listing unavailable"
+        )
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            dry_run=False,
+        )
+
+        command._create_policies_and_attachments(
+            mock_client,
+            "catalog",
+            {
+                "policy": {
+                    "namespace": "namespace",
+                    "type": "data-compaction",
+                    "content": {},
+                }
+            },
+            dry_run=False,
+        )
+
+        self.assertEqual(command._failure_count, 0)
+        mock_policy_api.return_value.create_policy.assert_called_once()
+
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_s3_optional_fields(self, mock_isfile: MagicMock) -> None:
         mock_client = self.build_mock_client()

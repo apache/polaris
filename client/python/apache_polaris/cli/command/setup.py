@@ -525,7 +525,6 @@ class SetupCommand(Command):
     def execute(self, api: PolarisDefaultApi) -> None:
         """Execute the setup command based on the subcommand (apply or export)."""
         if self.setup_subcommand == Subcommands.APPLY:
-            self._failure_count = 0
             if self.dry_run:
                 logger.info("=== Starting Setup Dry-Run ===")
             else:
@@ -1282,9 +1281,15 @@ class SetupCommand(Command):
             except NotFoundException:
                 policy_exists = False
             except Exception:
-                self._record_failure(
-                    f"Could not verify existence of policy '{policy_name}'"
-                )
+                if dry_run:
+                    self._record_failure(
+                        f"Could not verify existence of policy '{policy_name}'"
+                    )
+                else:
+                    logger.warning(
+                        f"Could not verify existence of policy '{policy_name}', attempting creation.",
+                        exc_info=True,
+                    )
                 policy_exists = False
             if policy_exists:
                 logger.info(
