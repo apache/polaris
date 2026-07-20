@@ -37,8 +37,8 @@ import java.util.Optional;
  * durable audit spool and is not strengthened by enabling {@code persistence-in-memory-buffer}
  * (that buffer is a separate listener, not a webhook delivery queue).
  *
- * <p>HTTP redirects are not followed; the endpoint must respond directly. When {@link
- * #requireHttps()} is {@code true} (the default), only {@code https} endpoints are accepted.
+ * <p>HTTP redirects are not followed; the endpoint must respond directly. When {@code
+ * require-https} is {@code true} (the default), only {@code https} endpoints are accepted.
  */
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.event-listener.webhook")
@@ -98,7 +98,7 @@ public interface WebhookEventListenerConfiguration {
 
   /**
    * Base delay before the first retry. Subsequent delays grow exponentially with full jitter,
-   * capped by {@link #maxRetryBackoff()}.
+   * capped by {@code max-retry-backoff}.
    *
    * <p>Configuration property: {@code polaris.event-listener.webhook.retry-backoff}
    */
@@ -117,7 +117,7 @@ public interface WebhookEventListenerConfiguration {
 
   /**
    * Maximum concurrent HTTP deliveries (including retries currently executing). Additional work
-   * waits on the concurrency limit while still counting toward {@link #maxPending()}.
+   * waits on the concurrency limit while still counting toward {@code max-pending}.
    *
    * <p>Configuration property: {@code polaris.event-listener.webhook.max-concurrent}
    */
