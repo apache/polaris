@@ -41,7 +41,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.HashMap;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -399,7 +402,7 @@ public class WebhookEventListener implements PolarisEventListener {
 
   @VisibleForTesting
   long computeRetryDelayMillis(int attempt, HttpHeaders headers) {
-    Optional<Long> retryAfter = parseRetryAfterMillis(headers);
+    Optional<Long> retryAfter = parseRetryAfterMillis(headers, clock);
     if (retryAfter.isPresent()) {
       return Math.min(retryAfter.get(), maxRetryBackoff.toMillis());
     }
@@ -412,8 +415,13 @@ public class WebhookEventListener implements PolarisEventListener {
     return (long) (random.nextDouble() * capped);
   }
 
+  /**
+   * Parses the {@code Retry-After} header in either of its two standard forms: delta-seconds or
+   * HTTP-date (RFC 9110). Returns the requested delay in milliseconds, clamped at zero for dates in
+   * the past, or empty when the header is absent or malformed.
+   */
   @VisibleForTesting
-  static Optional<Long> parseRetryAfterMillis(HttpHeaders headers) {
+  static Optional<Long> parseRetryAfterMillis(HttpHeaders headers, Clock clock) {
     if (headers == null) {
       return Optional.empty();
     }
@@ -423,13 +431,22 @@ public class WebhookEventListener implements PolarisEventListener {
         .flatMap(
             value -> {
               try {
-                // Delta-seconds form only (HTTP-date not supported).
                 long seconds = Long.parseLong(value);
                 if (seconds < 0) {
                   return Optional.empty();
                 }
                 return Optional.of(TimeUnit.SECONDS.toMillis(seconds));
               } catch (NumberFormatException e) {
+                // Not delta-seconds; try HTTP-date below.
+              }
+              try {
+                long delayMs =
+                    ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME)
+                            .toInstant()
+                            .toEpochMilli()
+                        - clock.millis();
+                return Optional.of(Math.max(delayMs, 0L));
+              } catch (DateTimeParseException e) {
                 return Optional.empty();
               }
             });
@@ -463,30 +480,31 @@ public class WebhookEventListener implements PolarisEventListener {
 
   @VisibleForTesting
   String toJson(PolarisEvent event) {
-    HashMap<String, Object> properties = new HashMap<>();
-    // CloudEvents-shaped envelope (no SDK): stable id, original event time, spec version.
+    // LinkedHashMap for deterministic field order: core CloudEvents attributes first, then
+    // extension attributes (compliant names: lowercase alphanumerics).
+    Map<String, Object> properties = new LinkedHashMap<>();
     properties.put("specversion", SPEC_VERSION);
     properties.put("id", event.metadata().eventId().toString());
     properties.put("type", event.type().name());
     properties.put("source", EVENT_SOURCE);
     // Original event time from metadata (not delivery time), RFC 3339 per CloudEvents.
     properties.put("time", event.metadata().timestamp().toString());
-    properties.put("delivery_time", clock.instant().toString());
+    properties.put("deliverytime", clock.instant().toString());
+    properties.put("realmid", event.metadata().realmId());
     event
         .attributes()
         .get(EventAttributes.TABLE_IDENTIFIER)
         .map(TableIdentifier::toString)
-        .ifPresent(id -> properties.put("table_identifier", id));
-    properties.put("realm_id", event.metadata().realmId());
+        .ifPresent(id -> properties.put("tableidentifier", id));
     event
         .metadata()
         .user()
         .ifPresent(
             p -> {
               properties.put("principal", p.getName());
-              properties.put("activated_roles", p.getRoles());
+              properties.put("activatedroles", p.getRoles());
             });
-    event.metadata().requestId().ifPresent(id -> properties.put("request_id", id));
+    event.metadata().requestId().ifPresent(id -> properties.put("requestid", id));
     try {
       return objectMapper.writeValueAsString(properties);
     } catch (JsonProcessingException e) {

@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -184,12 +185,13 @@ class WebhookEventListenerTest {
       assertThat(json.get("specversion").asText()).isEqualTo(WebhookEventListener.SPEC_VERSION);
       assertThat(json.get("id").asText()).isEqualTo(EVENT_ID.toString());
       assertThat(json.get("time").asText()).isEqualTo(EVENT_TIME.toString());
-      assertThat(json.get("delivery_time").asText()).isNotBlank();
+      assertThat(json.get("deliverytime").asText()).isNotBlank();
       assertThat(json.get("source").asText()).isEqualTo(WebhookEventListener.EVENT_SOURCE);
       assertThat(json.get("type").asText()).isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
-      assertThat(json.get("realm_id").asText()).isEqualTo(REALM);
+      assertThat(json.get("realmid").asText()).isEqualTo(REALM);
       assertThat(json.get("principal").asText()).isEqualTo(TEST_USER);
-      assertThat(json.get("table_identifier").asText()).isEqualTo("test_ns.test_table");
+      assertThat(json.get("activatedroles")).hasSize(2);
+      assertThat(json.get("tableidentifier").asText()).isEqualTo("test_ns.test_table");
       assertThat(request.eventType()).isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
       assertThat(request.signature())
           .isEqualTo("sha256=" + WebhookEventListener.sign(request.body(), SECRET));
@@ -391,7 +393,25 @@ class WebhookEventListenerTest {
   @Test
   void parseRetryAfterSeconds() {
     HttpHeaders headers = HttpHeaders.of(Map.of("Retry-After", List.of("3")), (a, b) -> true);
-    assertThat(WebhookEventListener.parseRetryAfterMillis(headers)).contains(3000L);
+    assertThat(WebhookEventListener.parseRetryAfterMillis(headers, CLOCK)).contains(3000L);
+  }
+
+  @Test
+  void parseRetryAfterHttpDate() {
+    Clock fixed = Clock.fixed(EVENT_TIME, ZoneOffset.UTC);
+    HttpHeaders future =
+        HttpHeaders.of(
+            Map.of("Retry-After", List.of("Thu, 15 Jan 2026 12:00:30 GMT")), (a, b) -> true);
+    assertThat(WebhookEventListener.parseRetryAfterMillis(future, fixed)).contains(30000L);
+    // Dates in the past clamp to zero delay.
+    HttpHeaders past =
+        HttpHeaders.of(
+            Map.of("Retry-After", List.of("Thu, 15 Jan 2026 11:59:00 GMT")), (a, b) -> true);
+    assertThat(WebhookEventListener.parseRetryAfterMillis(past, fixed)).contains(0L);
+    // Malformed values are ignored so computed backoff applies.
+    HttpHeaders malformed =
+        HttpHeaders.of(Map.of("Retry-After", List.of("not-a-date")), (a, b) -> true);
+    assertThat(WebhookEventListener.parseRetryAfterMillis(malformed, fixed)).isEmpty();
   }
 
   @Test
