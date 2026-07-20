@@ -420,7 +420,7 @@
             "id.token.claim": "true",
             "access.token.claim": "true",
             "claim.name": "principal_roles",
-            "claim.value": "[\"service_admin\", \"catalog_admin\"]",
+            "claim.value": "[\"service_admin\"]",
             "jsonType.label": "JSON"
           }
         },
