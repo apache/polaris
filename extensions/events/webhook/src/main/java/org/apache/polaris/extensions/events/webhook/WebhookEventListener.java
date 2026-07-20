@@ -20,6 +20,11 @@ package org.apache.polaris.extensions.events.webhook;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -27,18 +32,26 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -49,9 +62,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Delivers Polaris events to an HTTP(S) endpoint as JSON POST requests, optionally signed with
- * HMAC-SHA256. Failed deliveries (non-2xx responses or connection errors) are retried with
- * exponential backoff; events that exhaust all attempts are dropped and logged.
+ * Delivers Polaris events to an HTTP(S) endpoint as JSON POSTs, optionally signed with HMAC-SHA256.
+ *
+ * <p>Delivery is best-effort and bounded: concurrency and pending work are capped; retries use
+ * exponential backoff with full jitter for transient failures only. Ordering is not guaranteed.
+ * In-flight and pending work are not durable across restarts.
  */
 @ApplicationScoped
 @Identifier("webhook")
@@ -60,6 +75,15 @@ public class WebhookEventListener implements PolarisEventListener {
 
   static final String SIGNATURE_HEADER = "X-Polaris-Signature-256";
   static final String EVENT_TYPE_HEADER = "X-Polaris-Event";
+  static final int SCHEMA_VERSION = 1;
+
+  private static final Set<String> RESERVED_HEADERS =
+      Set.of(
+          "content-type",
+          "content-length",
+          "host",
+          SIGNATURE_HEADER.toLowerCase(Locale.ROOT),
+          EVENT_TYPE_HEADER.toLowerCase(Locale.ROOT));
 
   private final URI endpoint;
   private final String secret;
@@ -67,23 +91,48 @@ public class WebhookEventListener implements PolarisEventListener {
   private final Duration timeout;
   private final int maxAttempts;
   private final Duration retryBackoff;
+  private final Duration maxRetryBackoff;
+  private final int maxConcurrent;
+  private final int maxPending;
+  private final boolean requireHttps;
   private final ObjectMapper objectMapper;
   private final Clock clock;
+  private final MeterRegistry meterRegistry;
+  private final SecureRandom random = new SecureRandom();
+
+  private final AtomicInteger pending = new AtomicInteger();
+  private final AtomicInteger inFlight = new AtomicInteger();
 
   private HttpClient client;
+  private ExecutorService deliveryExecutor;
   private ScheduledExecutorService retryExecutor;
+  private Semaphore concurrency;
+
+  private Counter successCounter;
+  private Counter failureCounter;
+  private Counter retryCounter;
+  private Counter dropCounter;
+  private Timer deliveryTimer;
 
   @Inject
   public WebhookEventListener(
-      WebhookEventListenerConfiguration config, ObjectMapper objectMapper, Clock clock) {
+      WebhookEventListenerConfiguration config,
+      ObjectMapper objectMapper,
+      Clock clock,
+      MeterRegistry meterRegistry) {
     this.endpoint = config.endpoint().orElse(null);
     this.secret = config.secret().orElse(null);
-    this.headers = config.headers();
+    this.headers = Map.copyOf(config.headers());
     this.timeout = config.timeout();
     this.maxAttempts = config.maxAttempts();
     this.retryBackoff = config.retryBackoff();
+    this.maxRetryBackoff = config.maxRetryBackoff();
+    this.maxConcurrent = Math.max(1, config.maxConcurrent());
+    this.maxPending = Math.max(1, config.maxPending());
+    this.requireHttps = config.requireHttps();
     this.objectMapper = objectMapper;
     this.clock = clock;
+    this.meterRegistry = meterRegistry;
   }
 
   @PostConstruct
@@ -93,7 +142,17 @@ public class WebhookEventListener implements PolarisEventListener {
           "The webhook event listener is enabled but polaris.event-listener.webhook.endpoint is"
               + " not set");
     }
+    validateEndpoint(endpoint, requireHttps);
     this.client = createHttpClient();
+    this.concurrency = new Semaphore(maxConcurrent);
+    this.deliveryExecutor =
+        Executors.newFixedThreadPool(
+            maxConcurrent,
+            runnable -> {
+              Thread thread = new Thread(runnable, "polaris-webhook-event-listener-delivery");
+              thread.setDaemon(true);
+              return thread;
+            });
     this.retryExecutor =
         Executors.newSingleThreadScheduledExecutor(
             runnable -> {
@@ -101,10 +160,68 @@ public class WebhookEventListener implements PolarisEventListener {
               thread.setDaemon(true);
               return thread;
             });
+    registerMetrics();
+  }
+
+  private void registerMetrics() {
+    successCounter =
+        Counter.builder("polaris.event.webhook.deliveries")
+            .tag("result", "success")
+            .description("Successful webhook deliveries")
+            .register(meterRegistry);
+    failureCounter =
+        Counter.builder("polaris.event.webhook.deliveries")
+            .tag("result", "failure")
+            .description("Failed webhook deliveries after retries exhausted or permanent errors")
+            .register(meterRegistry);
+    retryCounter =
+        Counter.builder("polaris.event.webhook.retries")
+            .description("Scheduled webhook delivery retries")
+            .register(meterRegistry);
+    dropCounter =
+        Counter.builder("polaris.event.webhook.drops")
+            .description("Events dropped (queue full or non-retryable failure)")
+            .register(meterRegistry);
+    deliveryTimer =
+        Timer.builder("polaris.event.webhook.delivery")
+            .description("Webhook HTTP attempt latency")
+            .register(meterRegistry);
+    Gauge.builder("polaris.event.webhook.pending", pending, AtomicInteger::get)
+        .description("Events accepted but not yet finished (in flight or awaiting retry)")
+        .register(meterRegistry);
+    Gauge.builder("polaris.event.webhook.in_flight", inFlight, AtomicInteger::get)
+        .description("Concurrent HTTP attempts in progress")
+        .register(meterRegistry);
+  }
+
+  @VisibleForTesting
+  static void validateEndpoint(URI endpoint, boolean requireHttps) {
+    String scheme = endpoint.getScheme();
+    if (scheme == null) {
+      throw new IllegalStateException(
+          "polaris.event-listener.webhook.endpoint must include a scheme (https://...)");
+    }
+    String lower = scheme.toLowerCase(Locale.ROOT);
+    if (requireHttps && !"https".equals(lower)) {
+      throw new IllegalStateException(
+          "polaris.event-listener.webhook.endpoint must use https when require-https is true"
+              + " (got scheme '"
+              + scheme
+              + "')");
+    }
+    if (!"https".equals(lower) && !"http".equals(lower)) {
+      throw new IllegalStateException(
+          "polaris.event-listener.webhook.endpoint must use http or https (got scheme '"
+              + scheme
+              + "')");
+    }
   }
 
   protected HttpClient createHttpClient() {
-    return HttpClient.newBuilder().connectTimeout(timeout).build();
+    return HttpClient.newBuilder()
+        .connectTimeout(timeout)
+        .followRedirects(HttpClient.Redirect.NEVER)
+        .build();
   }
 
   @PreDestroy
@@ -113,71 +230,254 @@ public class WebhookEventListener implements PolarisEventListener {
       retryExecutor.shutdownNow();
       retryExecutor = null;
     }
+    if (deliveryExecutor != null) {
+      deliveryExecutor.shutdownNow();
+      deliveryExecutor = null;
+    }
   }
 
   @Override
   public void onEvent(PolarisEvent event) {
-    String payload = toJson(event);
-    if (payload == null) {
+    if (!tryAccept()) {
+      dropCounter.increment();
+      LOGGER.warn(
+          "Webhook pending capacity full ({}); dropping event type={}",
+          maxPending,
+          event.type().name());
       return;
     }
-    send(payload, event.type().name(), 1);
+    String payload = toJson(event);
+    if (payload == null) {
+      releaseAccepted();
+      dropCounter.increment();
+      return;
+    }
+    scheduleDelivery(payload, event.type().name(), 1, /*delayMs*/ 0);
   }
 
-  private void send(String payload, String eventType, int attempt) {
+  /** Try to reserve a pending slot for a new event. */
+  private boolean tryAccept() {
+    for (; ; ) {
+      int current = pending.get();
+      if (current >= maxPending) {
+        return false;
+      }
+      if (pending.compareAndSet(current, current + 1)) {
+        return true;
+      }
+    }
+  }
+
+  private void releaseAccepted() {
+    pending.decrementAndGet();
+  }
+
+  private void scheduleDelivery(String payload, String eventType, int attempt, long delayMs) {
+    ExecutorService delivery = deliveryExecutor;
+    ScheduledExecutorService retry = retryExecutor;
+    if (delivery == null || delivery.isShutdown()) {
+      releaseAccepted();
+      dropCounter.increment();
+      return;
+    }
+    Runnable task = () -> deliverWithConcurrency(payload, eventType, attempt);
+    if (delayMs <= 0) {
+      try {
+        delivery.execute(task);
+      } catch (RuntimeException e) {
+        releaseAccepted();
+        dropCounter.increment();
+      }
+      return;
+    }
+    if (retry == null || retry.isShutdown()) {
+      releaseAccepted();
+      dropCounter.increment();
+      return;
+    }
+    // Retries are best-effort; the Future is not joined (delivery completion is handled in-task).
+    try {
+      var unused =
+          retry.schedule(
+              () -> {
+                ExecutorService d = deliveryExecutor;
+                if (d == null || d.isShutdown()) {
+                  releaseAccepted();
+                  dropCounter.increment();
+                  return;
+                }
+                try {
+                  d.execute(task);
+                } catch (RuntimeException e) {
+                  releaseAccepted();
+                  dropCounter.increment();
+                }
+              },
+              delayMs,
+              TimeUnit.MILLISECONDS);
+    } catch (RuntimeException e) {
+      releaseAccepted();
+      dropCounter.increment();
+    }
+  }
+
+  private void deliverWithConcurrency(String payload, String eventType, int attempt) {
+    try {
+      concurrency.acquire();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      releaseAccepted();
+      dropCounter.increment();
+      LOGGER.warn("Interrupted while waiting for webhook concurrency; dropping event");
+      return;
+    }
+    inFlight.incrementAndGet();
+    long startNanos = System.nanoTime();
+    try {
+      HttpRequest request = buildRequest(payload, eventType);
+      HttpResponse<Void> response = client.send(request, HttpResponse.BodyHandlers.discarding());
+      deliveryTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+      int status = response.statusCode();
+      if (status >= 200 && status < 300) {
+        successCounter.increment();
+        releaseAccepted();
+        return;
+      }
+      handleFailure(payload, eventType, attempt, status, response.headers(), null);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      deliveryTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+      handleFailure(payload, eventType, attempt, null, null, e);
+    } catch (Exception e) {
+      deliveryTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+      handleFailure(payload, eventType, attempt, null, null, e);
+    } finally {
+      inFlight.decrementAndGet();
+      concurrency.release();
+    }
+  }
+
+  private void handleFailure(
+      String payload,
+      String eventType,
+      int attempt,
+      Integer status,
+      HttpHeaders headers,
+      Throwable error) {
+    boolean transientFailure = isTransient(status, error);
+    if (transientFailure && attempt < maxAttempts) {
+      long delayMs = computeRetryDelayMillis(attempt, headers);
+      retryCounter.increment();
+      LOGGER.debug(
+          "Webhook delivery to {} failed (attempt {}/{}, status: {}); retrying in {} ms",
+          endpoint,
+          attempt,
+          maxAttempts,
+          status,
+          delayMs,
+          error);
+      scheduleDelivery(payload, eventType, attempt + 1, delayMs);
+      return;
+    }
+    failureCounter.increment();
+    releaseAccepted();
+    LOGGER.error(
+        "Webhook delivery to {} failed after {} attempt(s), dropping event (status: {}, transient:"
+            + " {})",
+        endpoint,
+        attempt,
+        status,
+        transientFailure,
+        error);
+  }
+
+  @VisibleForTesting
+  static boolean isTransient(Integer status, Throwable error) {
+    if (error != null) {
+      return true;
+    }
+    if (status == null) {
+      return true;
+    }
+    if (status == 408 || status == 425 || status == 429) {
+      return true;
+    }
+    return status >= 500 && status <= 599;
+  }
+
+  @VisibleForTesting
+  long computeRetryDelayMillis(int attempt, HttpHeaders headers) {
+    Optional<Long> retryAfter = parseRetryAfterMillis(headers);
+    if (retryAfter.isPresent()) {
+      return Math.min(retryAfter.get(), maxRetryBackoff.toMillis());
+    }
+    long exp = retryBackoff.toMillis() << Math.min(attempt - 1, 16);
+    long capped = Math.min(exp, maxRetryBackoff.toMillis());
+    // Full jitter: random in [0, capped]
+    if (capped <= 0) {
+      return 0;
+    }
+    return (long) (random.nextDouble() * capped);
+  }
+
+  @VisibleForTesting
+  static Optional<Long> parseRetryAfterMillis(HttpHeaders headers) {
+    if (headers == null) {
+      return Optional.empty();
+    }
+    return headers
+        .firstValue("Retry-After")
+        .map(String::trim)
+        .flatMap(
+            value -> {
+              try {
+                // Delta-seconds form only (HTTP-date not supported).
+                long seconds = Long.parseLong(value);
+                if (seconds < 0) {
+                  return Optional.empty();
+                }
+                return Optional.of(TimeUnit.SECONDS.toMillis(seconds));
+              } catch (NumberFormatException e) {
+                return Optional.empty();
+              }
+            });
+  }
+
+  private HttpRequest buildRequest(String payload, String eventType) {
     HttpRequest.Builder requestBuilder =
         HttpRequest.newBuilder(endpoint)
             .timeout(timeout)
             .header("Content-Type", "application/json")
-            .header(EVENT_TYPE_HEADER, eventType);
-    headers.forEach(requestBuilder::header);
-    requestBuilder.POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8));
+            .header(EVENT_TYPE_HEADER, eventType)
+            .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8));
+    headers.forEach(
+        (name, value) -> {
+          if (name != null && !isReservedHeader(name)) {
+            requestBuilder.header(name, value);
+          } else if (name != null) {
+            LOGGER.debug("Ignoring reserved custom webhook header '{}'", name);
+          }
+        });
     if (secret != null) {
       requestBuilder.header(SIGNATURE_HEADER, "sha256=" + sign(payload, secret));
     }
-    // The delivery future is intentionally not joined: retries are scheduled from the
-    // completion callback and failures are only logged.
-    var delivery =
-        client
-            .sendAsync(requestBuilder.build(), HttpResponse.BodyHandlers.discarding())
-            .whenComplete(
-                (response, error) -> {
-                  Integer status = response != null ? response.statusCode() : null;
-                  boolean succeeded = status != null && status >= 200 && status < 300;
-                  if (succeeded) {
-                    return;
-                  }
-                  if (attempt < maxAttempts) {
-                    long delayMillis = retryBackoff.toMillis() << (attempt - 1);
-                    LOGGER.debug(
-                        "Webhook delivery to {} failed (attempt {}/{}, status: {}); retrying in {} ms",
-                        endpoint,
-                        attempt,
-                        maxAttempts,
-                        status,
-                        delayMillis,
-                        error);
-                    var retry =
-                        retryExecutor.schedule(
-                            () -> send(payload, eventType, attempt + 1),
-                            delayMillis,
-                            TimeUnit.MILLISECONDS);
-                  } else {
-                    LOGGER.error(
-                        "Webhook delivery to {} failed after {} attempt(s), dropping event"
-                            + " (status: {})",
-                        endpoint,
-                        attempt,
-                        status,
-                        error);
-                  }
-                });
+    return requestBuilder.build();
   }
 
-  private String toJson(PolarisEvent event) {
+  @VisibleForTesting
+  static boolean isReservedHeader(String name) {
+    return RESERVED_HEADERS.contains(name.toLowerCase(Locale.ROOT));
+  }
+
+  @VisibleForTesting
+  String toJson(PolarisEvent event) {
     HashMap<String, Object> properties = new HashMap<>();
+    properties.put("schema_version", SCHEMA_VERSION);
+    properties.put("event_id", event.metadata().eventId().toString());
     properties.put("event_type", event.type().name());
-    properties.put("timestamp", clock.millis());
+    // Original event time from metadata (not delivery time).
+    properties.put("timestamp", event.metadata().timestamp().toEpochMilli());
+    properties.put("delivery_timestamp", clock.millis());
     event
         .attributes()
         .get(EventAttributes.TABLE_IDENTIFIER)
@@ -216,5 +516,15 @@ public class WebhookEventListener implements PolarisEventListener {
     } catch (NoSuchAlgorithmException | InvalidKeyException e) {
       throw new IllegalStateException("Failed to sign webhook payload", e);
     }
+  }
+
+  @VisibleForTesting
+  int pendingCount() {
+    return pending.get();
+  }
+
+  @VisibleForTesting
+  MeterRegistry meterRegistry() {
+    return meterRegistry;
   }
 }
