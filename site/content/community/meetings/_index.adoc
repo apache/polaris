@@ -62,7 +62,7 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 
 | 2026-07-09
 | https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.wpla94qvsagh[Meeting Notes]
-| https://lists.apache.org/thread/tr8zh8121t2jb41s0q2yd9s73y2tp2tq
+| https://drive.google.com/file/d/1hxYkk2t-BcnFOk8eJG9NYCHfjkOXg3Iz/view?usp=sharing
 
 | 2026-04-30
 | https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.8pa8envnzys4[Meeting Notes]
