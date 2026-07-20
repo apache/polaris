@@ -223,15 +223,15 @@ public class PolarisPrincipalSecrets {
 
   /**
    * Salted, non-reversible fingerprint of a secret-verification hash for embedding in JWTs. Uses
-   * the same per-principal {@link #secretSalt} already stored for secret hashing.
+   * the same per-principal {@link #secretSalt} already stored for secret hashing, which is always
+   * set by the constructors.
    */
   @Nullable
   private String credentialsVersionForHash(@Nullable String secretHash) {
     if (secretHash == null || secretHash.isEmpty()) {
       return null;
     }
-    String salt = secretSalt == null ? "" : secretSalt;
-    return DigestUtils.sha256Hex(secretHash + ":" + salt);
+    return DigestUtils.sha256Hex(secretHash + ":" + secretSalt);
   }
 
   public String getSecondarySecretHash() {

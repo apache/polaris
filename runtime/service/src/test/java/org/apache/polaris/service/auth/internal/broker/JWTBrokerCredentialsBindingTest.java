@@ -185,6 +185,7 @@ public class JWTBrokerCredentialsBindingTest {
     secrets.rotateSecrets(secrets.getMainSecretHash());
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenReturn(new PrincipalSecretsResult(secrets));
+    Mockito.clearInvocations(metaStore);
 
     TokenResponse exchanged =
         broker.generateFromToken(
@@ -200,6 +201,8 @@ public class JWTBrokerCredentialsBindingTest {
                 .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
                 .asString())
         .isEqualTo(secrets.getCredentialsVersion());
+    // The secrets loaded during verify are reused for re-minting: no second metastore read.
+    Mockito.verify(metaStore, Mockito.times(1)).loadPrincipalSecrets(callContext, CLIENT_ID);
   }
 
   @Test
