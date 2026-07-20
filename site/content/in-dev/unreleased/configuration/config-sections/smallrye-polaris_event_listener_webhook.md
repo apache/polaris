@@ -23,15 +23,26 @@ build:
   render: never
 ---
 
-Configuration interface for the webhook event listener integration. 
+Configuration for the webhook event listener.
 
-Deliveries are performed asynchronously and do not block the event executor; in-flight  requests to a slow or unreachable endpoint are bounded by (`#timeout()`). Delivery is  best-effort: retries are kept in memory only, so pending retries are lost on shutdown, and an  event that exhausts all attempts is dropped (and logged). Deployments that need stronger delivery  guarantees should also enable the `persistence-in-memory-buffer` event listener. HTTP  redirects are not followed; the endpoint must respond directly.
+Delivery is **best-effort and in-process only**: pending and in-flight deliveries are not durable
+and are lost on process restart; events that exhaust retries or cannot be accepted into the bounded
+queue are dropped. Ordering is not guaranteed. This listener is not a durable audit spool and is
+**not** strengthened by enabling `persistence-in-memory-buffer` (that buffer is a separate listener,
+not a webhook delivery queue).
+
+HTTP redirects are not followed. When `require-https` is `true` (default), only `https` endpoints
+are accepted.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.event-listener.webhook.endpoint` |  | `uri` | Returns the HTTP(S) endpoint that webhook events are delivered to. <br><br>Each event is sent as an HTTP POST request with a JSON body. The endpoint must return a 2xx  status code for the delivery to be considered successful; any other status code (or a  connection error) triggers a retry. HTTPS is strongly recommended because the payload may  contain sensitive audit data.   <br><br>This property is required when the `webhook` event listener is enabled.   <br><br>Configuration property: `polaris.event-listener.webhook.endpoint` |
-| `polaris.event-listener.webhook.secret` |  | `string` | Returns the shared secret used to sign webhook payloads. <br><br>When set, each request carries an `X-Polaris-Signature-256` header containing the hex  encoded HMAC-SHA256 of the request body, prefixed with `sha256=`. Receivers should  recompute the HMAC over the raw request body and compare it against this header to verify  authenticity and integrity. If not set, no signature header is sent.   <br><br>Configuration property: `polaris.event-listener.webhook.secret` |
-| `polaris.event-listener.webhook.headers.`_`<name>`_ |  | `string` | Returns additional HTTP headers to send with every webhook request. <br><br>This is typically used to authenticate against the receiver, for example  `polaris.event-listener.webhook.headers."Authorization"=Bearer ` or  `polaris.event-listener.webhook.headers."Authorization"=Splunk <hec-token>`. Header values may  contain secrets; protect them like any other Polaris credential.   <br><br>Configuration property: `polaris.event-listener.webhook.headers."<header-name>"` |
-| `polaris.event-listener.webhook.timeout` | `10s` | `duration` | Returns the timeout for a single webhook delivery attempt. <br><br>If a delivery attempt does not complete within this duration, it is treated as failed and  the retry schedule applies.   <br><br>Configuration property: `polaris.event-listener.webhook.timeout` |
-| `polaris.event-listener.webhook.max-attempts` | `3` | `int` | Returns the maximum number of delivery attempts per event, including the initial attempt. <br><br>When all attempts fail, the event is dropped and an error is logged.   <br><br>Configuration property: `polaris.event-listener.webhook.max-attempts` |
-| `polaris.event-listener.webhook.retry-backoff` | `1s` | `duration` | Returns the initial backoff between delivery attempts. <br><br>The backoff doubles after each failed attempt (exponential backoff).   <br><br>Configuration property: `polaris.event-listener.webhook.retry-backoff` |
+| `polaris.event-listener.webhook.endpoint` |  | `uri` | HTTP(S) endpoint that receives JSON POSTs. Required when the webhook listener is enabled. |
+| `polaris.event-listener.webhook.secret` |  | `string` | Optional HMAC-SHA256 shared secret (`X-Polaris-Signature-256: sha256=<hex>`). Protects authenticity/integrity, not confidentiality. |
+| `polaris.event-listener.webhook.headers.`_`<name>`_ |  | `string` | Extra headers (e.g. `Authorization`). Reserved headers (`Content-Type`, `X-Polaris-Signature-256`, `X-Polaris-Event`, `Host`, `Content-Length`) cannot be overridden. |
+| `polaris.event-listener.webhook.timeout` | `10s` | `duration` | Timeout for a single HTTP attempt. |
+| `polaris.event-listener.webhook.max-attempts` | `3` | `int` | Max attempts per event including the first. |
+| `polaris.event-listener.webhook.retry-backoff` | `1s` | `duration` | Base retry delay (exponential growth with full jitter). |
+| `polaris.event-listener.webhook.max-retry-backoff` | `1m` | `duration` | Cap on retry delay (also caps `Retry-After`). |
+| `polaris.event-listener.webhook.max-concurrent` | `16` | `int` | Max concurrent HTTP deliveries. |
+| `polaris.event-listener.webhook.max-pending` | `1000` | `int` | Max events accepted for delivery/retry; excess are dropped. |
+| `polaris.event-listener.webhook.require-https` | `true` | `boolean` | When true, only `https` endpoints are allowed. |

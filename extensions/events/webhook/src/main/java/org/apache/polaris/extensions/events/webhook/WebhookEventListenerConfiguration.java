@@ -29,14 +29,16 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Configuration interface for the webhook event listener integration.
+ * Configuration for the webhook event listener.
  *
- * <p>Deliveries are performed asynchronously and do not block the event executor; in-flight
- * requests to a slow or unreachable endpoint are bounded by {@link #timeout()}. Delivery is
- * best-effort: retries are kept in memory only, so pending retries are lost on shutdown, and an
- * event that exhausts all attempts is dropped (and logged). Deployments that need stronger delivery
- * guarantees should also enable the {@code persistence-in-memory-buffer} event listener. HTTP
- * redirects are not followed; the endpoint must respond directly.
+ * <p>Delivery is <strong>best-effort and in-process only</strong>: pending and in-flight deliveries
+ * are not durable and are lost on process restart; events that exhaust retries or cannot be
+ * accepted into the bounded queue are dropped. Ordering is not guaranteed. This listener is not a
+ * durable audit spool and is not strengthened by enabling {@code persistence-in-memory-buffer}
+ * (that buffer is a separate listener, not a webhook delivery queue).
+ *
+ * <p>HTTP redirects are not followed; the endpoint must respond directly. When {@link
+ * #requireHttps()} is {@code true} (the default), only {@code https} endpoints are accepted.
  */
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.event-listener.webhook")
@@ -44,89 +46,101 @@ import java.util.Optional;
 public interface WebhookEventListenerConfiguration {
 
   /**
-   * Returns the HTTP(S) endpoint that webhook events are delivered to.
+   * HTTP(S) endpoint that receives webhook POSTs with a JSON body.
    *
-   * <p>Each event is sent as an HTTP POST request with a JSON body. The endpoint must return a 2xx
-   * status code for the delivery to be considered successful; any other status code (or a
-   * connection error) triggers a retry. HTTPS is strongly recommended because the payload may
-   * contain sensitive audit data.
+   * <p>A 2xx response marks success. Transient failures (network errors, 408/429/5xx) are retried
+   * within the concurrency limits; permanent client errors (other 4xx) are not retried.
    *
-   * <p>This property is required when the {@code webhook} event listener is enabled.
+   * <p>Required when the {@code webhook} event listener is enabled.
    *
    * <p>Configuration property: {@code polaris.event-listener.webhook.endpoint}
-   *
-   * @return an optional URI of the webhook endpoint
    */
   @WithName("endpoint")
   Optional<URI> endpoint();
 
   /**
-   * Returns the shared secret used to sign webhook payloads.
-   *
-   * <p>When set, each request carries an {@code X-Polaris-Signature-256} header containing the hex
-   * encoded HMAC-SHA256 of the request body, prefixed with {@code sha256=}. Receivers should
-   * recompute the HMAC over the raw request body and compare it against this header to verify
-   * authenticity and integrity. If not set, no signature header is sent.
+   * Shared secret for HMAC-SHA256 signing. When set, each request includes {@code
+   * X-Polaris-Signature-256: sha256=<hex>} over the raw body. HMAC authenticates and protects
+   * integrity; it does not encrypt the payload — use HTTPS for confidentiality.
    *
    * <p>Configuration property: {@code polaris.event-listener.webhook.secret}
-   *
-   * @return an optional String containing the HMAC signing secret
    */
   @WithName("secret")
   Optional<String> secret();
 
   /**
-   * Returns additional HTTP headers to send with every webhook request.
-   *
-   * <p>This is typically used to authenticate against the receiver, for example
-   * `polaris.event-listener.webhook.headers."Authorization"=Bearer <token>` or
-   * `polaris.event-listener.webhook.headers."Authorization"=Splunk <hec-token>`. Header values may
-   * contain secrets; protect them like any other Polaris credential.
+   * Extra headers on every request (for example {@code Authorization}). Reserved headers ({@code
+   * Content-Type}, {@code X-Polaris-Signature-256}, {@code X-Polaris-Event}, {@code Host}, {@code
+   * Content-Length}) cannot be overridden. Header values may be secrets; protect them accordingly.
    *
    * <p>Configuration property: {@code polaris.event-listener.webhook.headers."<header-name>"}
-   *
-   * @return a map of header names to header values
    */
   @WithName("headers")
   Map<String, String> headers();
 
   /**
-   * Returns the timeout for a single webhook delivery attempt.
-   *
-   * <p>If a delivery attempt does not complete within this duration, it is treated as failed and
-   * the retry schedule applies.
+   * Timeout for a single HTTP attempt. Timed-out attempts count as transient failures.
    *
    * <p>Configuration property: {@code polaris.event-listener.webhook.timeout}
-   *
-   * @return the delivery attempt timeout
    */
   @WithName("timeout")
   @WithDefault("10s")
   Duration timeout();
 
   /**
-   * Returns the maximum number of delivery attempts per event, including the initial attempt.
-   *
-   * <p>When all attempts fail, the event is dropped and an error is logged.
+   * Maximum delivery attempts per event including the first try. After this, the event is dropped.
    *
    * <p>Configuration property: {@code polaris.event-listener.webhook.max-attempts}
-   *
-   * @return the maximum number of delivery attempts
    */
   @WithName("max-attempts")
   @WithDefault("3")
   int maxAttempts();
 
   /**
-   * Returns the initial backoff between delivery attempts.
-   *
-   * <p>The backoff doubles after each failed attempt (exponential backoff).
+   * Base delay before the first retry. Subsequent delays grow exponentially with full jitter,
+   * capped by {@link #maxRetryBackoff()}.
    *
    * <p>Configuration property: {@code polaris.event-listener.webhook.retry-backoff}
-   *
-   * @return the initial retry backoff
    */
   @WithName("retry-backoff")
   @WithDefault("1s")
   Duration retryBackoff();
+
+  /**
+   * Upper bound on retry delay after exponential growth and jitter.
+   *
+   * <p>Configuration property: {@code polaris.event-listener.webhook.max-retry-backoff}
+   */
+  @WithName("max-retry-backoff")
+  @WithDefault("1m")
+  Duration maxRetryBackoff();
+
+  /**
+   * Maximum concurrent HTTP deliveries (including retries currently executing). Additional work
+   * waits on the concurrency limit while still counting toward {@link #maxPending()}.
+   *
+   * <p>Configuration property: {@code polaris.event-listener.webhook.max-concurrent}
+   */
+  @WithName("max-concurrent")
+  @WithDefault("16")
+  int maxConcurrent();
+
+  /**
+   * Maximum events accepted for delivery or retry at once. When full, new events are dropped.
+   *
+   * <p>Configuration property: {@code polaris.event-listener.webhook.max-pending}
+   */
+  @WithName("max-pending")
+  @WithDefault("1000")
+  int maxPending();
+
+  /**
+   * When {@code true}, only {@code https} endpoints are allowed (recommended for production). Set
+   * {@code false} only for local testing with plain HTTP.
+   *
+   * <p>Configuration property: {@code polaris.event-listener.webhook.require-https}
+   */
+  @WithName("require-https")
+  @WithDefault("true")
+  boolean requireHttps();
 }
