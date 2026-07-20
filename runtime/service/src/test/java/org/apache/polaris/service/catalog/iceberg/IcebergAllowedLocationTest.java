@@ -815,6 +815,7 @@ public class IcebergAllowedLocationTest {
         .hasMessageContaining("outside the catalog's current allowed locations");
   }
 
+  @SuppressWarnings({"deprecation", "RedundantSuppression"})
   private record TestSnapshot(
       long sequenceNumber,
       long snapshotId,
