@@ -40,6 +40,9 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
@@ -52,6 +55,7 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -588,5 +592,77 @@ class IcebergCatalogHandlerTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("credential vending disabled");
     verify(icebergCatalog, never()).loadTable(any());
+  }
+
+  /**
+   * Builds a two-snapshot {@link TableMetadata} with only the latest snapshot referenced by the
+   * "main" branch, then re-stamps a metadata-location onto it and clears its change log, mimicking
+   * what a real catalog load hands to {@code filterResponseToSnapshots} (a clean object, no pending
+   * changes, non-null location).
+   */
+  private TableMetadata loadedTwoSnapshotTableMetadata() {
+    Snapshot historicalSnapshot = mock(Snapshot.class);
+    when(historicalSnapshot.snapshotId()).thenReturn(1L);
+    when(historicalSnapshot.sequenceNumber()).thenReturn(1L);
+
+    Snapshot currentSnapshot = mock(Snapshot.class);
+    when(currentSnapshot.snapshotId()).thenReturn(2L);
+    when(currentSnapshot.sequenceNumber()).thenReturn(2L);
+
+    TableMetadata uncommitted =
+        TableMetadata.buildFrom(
+                TableMetadata.newTableMetadata(
+                    new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get())),
+                    PartitionSpec.unpartitioned(),
+                    TABLE_LOCATION,
+                    Map.of()))
+            .addSnapshot(historicalSnapshot)
+            // setBranchSnapshot() adds currentSnapshot itself, no separate addSnapshot() call.
+            .setBranchSnapshot(currentSnapshot, "main")
+            .build();
+
+    return TableMetadata.buildFrom(uncommitted)
+        .withMetadataLocation(TABLE_LOCATION + "/metadata/00002-fake.metadata.json")
+        .discardChanges()
+        .build();
+  }
+
+  @Test
+  void filterResponseToSnapshotsRefsPreservesMetadataLocation() {
+    TableMetadata metadata = loadedTwoSnapshotTableMetadata();
+    assertThat(metadata.snapshots()).hasSize(2);
+
+    LoadTableResponse response = LoadTableResponse.builder().withTableMetadata(metadata).build();
+    String metadataLocation = response.metadataLocation();
+    assertThat(metadataLocation)
+        .as("precondition: the unfiltered (snapshots=all) response carries a metadata-location")
+        .isNotNull();
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    LoadTableResponse filtered = handler.filterResponseToSnapshots(response, "refs");
+
+    assertThat(filtered.tableMetadata().snapshots())
+        .as("snapshots=refs must still drop the historical (non-ref) snapshot")
+        .hasSize(1);
+    assertThat(filtered.metadataLocation())
+        .as("metadata-location must be preserved when filtering snapshots=refs")
+        .isEqualTo(metadataLocation);
+  }
+
+  @Test
+  void filterResponseToSnapshotsAllAndNullReturnResponseUnchanged() {
+    TableMetadata metadata = loadedTwoSnapshotTableMetadata();
+    LoadTableResponse response = LoadTableResponse.builder().withTableMetadata(metadata).build();
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThat(handler.filterResponseToSnapshots(response, "all"))
+        .as("snapshots=all must be a pure passthrough")
+        .isSameAs(response);
+    assertThat(handler.filterResponseToSnapshots(response, null))
+        .as("no snapshots param must be a pure passthrough, same as snapshots=all")
+        .isSameAs(response);
   }
 }
