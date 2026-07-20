@@ -49,12 +49,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
 - Admin grant APIs now reject table-like privilege targets with an empty namespace. A table-like target without a namespace is considered invalid input.
 - `PolarisPrincipal` now carries a generic `Map<String, Object> attributes` bag instead of the
-  previous `Map<String, String> properties` and `Optional<String> token` fields. Two well-known
+  previous `Map<String, String> properties` and `Optional<String> token` fields. Three well-known
   attribute keys are defined as constants on the interface:
-  `PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY` (holds the `PrincipalEntity`) and
-  `PolarisPrincipal.JWT_ATTRIBUTE_KEY` (holds the raw JWT string). Use
-  `PolarisPrincipal.getAttribute(key, type)` for type-safe access. The `Authenticator` interface now
-  accepts a Quarkus `SecurityIdentity` instead of a `PolarisCredential`, and throws
+
+  - `PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY`: holds the `PrincipalEntity`;
+  - `PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY`: holds a boolean indicating if the 
+    `PRINCIPAL_ROLE:ALL` pseudo-role is present;
+  - `PolarisPrincipal.JWT_ATTRIBUTE_KEY`: holds the raw JWT string.
+
+  Use `PolarisPrincipal.getAttribute(key, type)` for type-safe access. The `Authenticator` interface
+  now accepts a Quarkus `SecurityIdentity` instead of a `PolarisCredential`, and throws
   `AuthenticationFailedException` (mapped to HTTP 401) instead of Iceberg's
   `NotAuthorizedException`.
 
