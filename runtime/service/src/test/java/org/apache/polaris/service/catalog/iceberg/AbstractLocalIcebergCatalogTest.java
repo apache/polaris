@@ -2620,7 +2620,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   @ValueSource(booleans = {false, true})
   public void testRegisterTableRejectsMetadataFileOutsideTableLocation(boolean overwrite) {
     updateCatalogProperties(
-        Map.of(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false"));
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false"));
 
     LocalIcebergCatalog catalog = catalog();
     Namespace namespace = Namespace.of("register_metadata_outside_table_location");
@@ -2718,7 +2719,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   @Test
   public void testRegisterViewRejectsMetadataFileOutsideViewLocation() {
     updateCatalogProperties(
-        Map.of(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false"));
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false"));
 
     LocalIcebergCatalog catalog = catalog();
     Namespace namespace = Namespace.of("register_view_metadata_outside_view_location");
