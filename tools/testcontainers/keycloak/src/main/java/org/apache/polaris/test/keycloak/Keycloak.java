@@ -16,31 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.test.commons.keycloak;
 
-import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.List;
-import java.util.Map;
+package org.apache.polaris.test.keycloak;
 
-public class KeycloakProfile implements QuarkusTestProfile {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  @Override
-  public Map<String, String> getConfigOverrides() {
-    return Map.of(
-        "quarkus.oidc.tenant-enabled",
-        "true",
-        "quarkus.oidc.client-id",
-        "polaris",
-        "polaris.authentication.type",
-        "external",
-        "polaris.oidc.principal-mapper.name-claim-path",
-        KeycloakAccess.PRINCIPAL_NAME_CLAIM,
-        "polaris.oidc.principal-roles-mapper.filter",
-        "PRINCIPAL_ROLE:.*");
-  }
-
-  @Override
-  public List<TestResourceEntry> testResources() {
-    return List.of(new TestResourceEntry(KeycloakLifecycleManager.class, Map.of()));
-  }
-}
+/**
+ * Annotation identifying a field or parameter that should be injected with a {@link KeycloakAccess}
+ * instance.
+ *
+ * <p>The field or parameter must be of type {@link KeycloakAccess}.
+ */
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Inherited
+public @interface Keycloak {}

@@ -89,7 +89,6 @@ jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 junit-bom = { module = "org.junit:junit-bom", version = "6.1.2" }
 junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version = "2.3.0" }
-keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.11" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.38" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.17.0" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
@@ -117,7 +116,6 @@ smallrye-jandex = { module = "io.smallrye:jandex", version = "3.6.0" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "2.0.5" }
-testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "4.3.1" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.10.0" }
 weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.3.Final" }
 weld-core-bom = { module = "org.jboss.weld:weld-core-bom", version = "6.0.4.Final" }

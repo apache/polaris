@@ -157,6 +157,7 @@ dependencies {
 
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation(project(":polaris-floci-aws-testcontainer"))
+  testImplementation(project(":polaris-keycloak-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
@@ -209,10 +210,6 @@ dependencies {
   testFixturesImplementation("com.azure:azure-core")
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
-
-  // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
-  // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
-  intTestRuntimeOnly(libs.keycloak.admin.client)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

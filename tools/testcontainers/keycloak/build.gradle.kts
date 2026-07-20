@@ -18,30 +18,21 @@
  */
 
 plugins {
-  alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
-  id("polaris-runtime")
-}
-
-configurations.configureEach {
-  if (name != "checkstyle") {
-    exclude(group = "org.antlr", module = "antlr4-runtime")
-    exclude(group = "org.scala-lang", module = "scala-library")
-    exclude(group = "org.scala-lang", module = "scala-reflect")
-  }
+  id("polaris-server")
 }
 
 dependencies {
-  implementation(libs.s3mock.testcontainers)
-  implementation(project(":polaris-core"))
-  implementation(libs.jakarta.ws.rs.api)
-  implementation(enforcedPlatform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-junit")
+  api(platform(libs.testcontainers.bom))
+  api("org.testcontainers:testcontainers")
 
-  implementation(platform(libs.testcontainers.bom))
-  implementation("org.testcontainers:testcontainers")
-  implementation("org.testcontainers:testcontainers-postgresql")
-  implementation("org.testcontainers:testcontainers-cockroachdb")
+  // For KeycloakTestResource
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-test-common")
 
   implementation(project(":polaris-container-spec-helper"))
+  implementation(libs.guava)
+
+  implementation(platform(libs.jackson3.bom))
+  implementation("tools.jackson.core:jackson-databind")
 }

@@ -17,18 +17,16 @@
  * under the License.
  */
 
-package org.apache.polaris.test.commons.keycloak;
+package org.apache.polaris.test.keycloak;
 
 import java.net.URI;
+import java.util.Map;
 
 /** A facade interface for accessing Keycloak server functionalities. */
 public interface KeycloakAccess {
 
   /** The claim name used to identify the principal in Keycloak tokens. */
   String PRINCIPAL_NAME_CLAIM = "preferred_username";
-
-  /** The password used for all users in Keycloak. */
-  String USER_PASSWORD = "s3cr3t";
 
   /**
    * Returns the URL of the Keycloak issuer. This is typically {@code
@@ -50,28 +48,19 @@ public interface KeycloakAccess {
     return getIssuerUrl().relativize(getTokenEndpoint()).getPath();
   }
 
-  /**
-   * Creates a new role in Keycloak with the specified name. The role should not have the {@code
-   * PRINCIPAL_ROLE:} prefix.
-   */
+  /** Creates a new role in Keycloak with the specified name. */
   void createRole(String name);
 
-  /** Creates a new user in Keycloak. The password is always {@value #USER_PASSWORD} */
-  void createUser(String name);
+  /** Creates a new user in Keycloak. */
+  void createUser(String name, String password);
 
-  /**
-   * Assigns a role to a user in Keycloak. The role should not have the {@code PRINCIPAL_ROLE:}
-   * prefix. Both the role and the user must exist.
-   */
+  /** Assigns a role to a user in Keycloak. Both the role and the user must exist. */
   void assignRoleToUser(String role, String user);
 
   /** Creates a new service account in Keycloak with the specified client ID and client secret. */
   void createServiceAccount(String clientId, String clientSecret);
 
-  /**
-   * Deletes a role in Keycloak with the specified name. The role should not have the {@code
-   * PRINCIPAL_ROLE:} prefix.
-   */
+  /** Deletes a role in Keycloak with the specified name. */
   void deleteRole(String name);
 
   /** Deletes a user in Keycloak with the specified name. */
@@ -79,4 +68,10 @@ public interface KeycloakAccess {
 
   /** Deletes a service account in Keycloak with the specified client ID. */
   void deleteServiceAccount(String clientId);
+
+  /**
+   * Obtains an access token from the Keycloak server. The passed map becomes the POST request body
+   * and should contain the grant type and all required parameters.
+   */
+  String getToken(Map<String, String> params);
 }

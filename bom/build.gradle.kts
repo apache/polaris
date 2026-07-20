@@ -35,6 +35,7 @@ dependencies {
     api(project(":polaris-floci-aws-testcontainer"))
     api(project(":polaris-floci-az-testcontainer"))
     api(project(":polaris-floci-gcp-testcontainer"))
+    api(project(":polaris-keycloak-testcontainer"))
     api(project(":polaris-minio-testcontainer"))
     api(project(":polaris-rustfs-testcontainer"))
     api(project(":polaris-immutables"))
