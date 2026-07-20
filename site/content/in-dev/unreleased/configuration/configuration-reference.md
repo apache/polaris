@@ -143,12 +143,15 @@ All properties listed here are **runtime** properties and can be changed without
 {{% include-config-section "smallrye-polaris_event_listener_webhook" %}}
 
 The webhook listener delivers each (sanitized) event as an HTTP POST with a JSON body of the
-following shape:
+following shape (`schema_version` is currently `1`):
 
 ```json
 {
+  "schema_version": 1,
+  "event_id": "11111111-2222-3333-4444-555555555555",
   "event_type": "AFTER_REFRESH_TABLE",
   "timestamp": 1760000000000,
+  "delivery_timestamp": 1760000000500,
   "realm_id": "my-realm",
   "principal": "alice",
   "activated_roles": ["role1", "role2"],
@@ -157,16 +160,22 @@ following shape:
 }
 ```
 
-`principal`, `activated_roles`, `request_id`, and `table_identifier` are omitted when not
-applicable to the event. Each request also carries an `X-Polaris-Event` header with the event
+`timestamp` is the original event time from Polaris event metadata; `delivery_timestamp` is when
+the payload was serialized for send. `event_id` is stable for the event and can be used by receivers
+to detect retry duplicates. `principal`, `activated_roles`, `request_id`, and `table_identifier`
+are omitted when not applicable. Each request carries an `X-Polaris-Event` header with the event
 type. When `polaris.event-listener.webhook.secret` is set, an `X-Polaris-Signature-256` header
-contains `sha256=` followed by the hex-encoded HMAC-SHA256 of the raw request body; receivers
-should recompute the HMAC with the shared secret and compare.
+contains `sha256=` followed by the hex-encoded HMAC-SHA256 of the raw request body.
 
-Delivery is best-effort: failed deliveries are retried with exponential backoff and dropped after
-`max-attempts`. Retries are in-memory only, so pending retries are lost on restart. Deployments
-that need stronger delivery guarantees should also enable the `persistence-in-memory-buffer`
-listener. Redirects are not followed; the endpoint must respond directly with a 2xx status code.
+Delivery is **best-effort and bounded**: concurrency and pending work are capped
+(`max-concurrent`, `max-pending`); excess events are dropped. Only transient failures (network
+errors, 408/429/5xx) are retried, with exponential backoff, full jitter, optional `Retry-After`,
+and a max backoff. Permanent 4xx responses are not retried. Retries and in-flight work are
+in-memory only and lost on restart. This is **not** a durable spool; enabling
+`persistence-in-memory-buffer` does not replay webhook deliveries. By default only HTTPS endpoints
+are accepted (`require-https=true`). Redirects are not followed. Metrics include
+`polaris.event.webhook.deliveries`, `retries`, `drops`, `pending`, `in_flight`, and `delivery`
+latency.
 
 ### `opentelemetry` event listener
 
