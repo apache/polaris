@@ -748,8 +748,7 @@ fixed claims:&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;code&gt;principal_id&lt;/code&gt;: the principal ID of the user. It is always set to zero (0) in this example.&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;principal_name&lt;/code&gt;: the principal name of the user. It is always set to &amp;ldquo;root&amp;rdquo; in this example.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;principal_roles&lt;/code&gt;: the principal roles of the user. It is always set to &lt;code&gt;[&amp;quot;server_admin&amp;quot;, &amp;quot;catalog_admin&amp;quot;]&lt;/code&gt; in this
-example.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;principal_roles&lt;/code&gt;: the principal roles of the user. It is always set to &lt;code&gt;[&amp;quot;server_admin&amp;quot;]&lt;/code&gt; in this example.&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;This is obviously not a realistic configuration. In a real-world scenario, you would configure Keycloak to return the
 actual principal ID, name and roles of the user. Note that principals and principal roles must have been created in
