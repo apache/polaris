@@ -133,6 +133,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.SupportsNotifications;
@@ -2637,12 +2638,20 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider.getStorageAccessConfig(
             identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
-    // Catalog-level FileIO properties (e.g. s3.access-key-id / s3.secret-access-key for
-    // S3-compatible storage with stsUnavailable=true) form the base; the caller's
-    // tableProperties overlay on top, and DefaultFileIOFactory further overlays
-    // storageAccessConfig so STS-vended subscoped credentials always take precedence
-    // over static catalog credentials when STS is available.
-    Map<String, String> mergedProperties = new HashMap<>(catalogProperties);
+    // For S3-compatible storage with stsUnavailable=true the admin sets static credentials
+    // (s3.access-key-id / s3.secret-access-key) as catalog properties. These form the base so
+    // that tableProperties can override them, and DefaultFileIOFactory then further overlays
+    // storageAccessConfig credentials so STS-vended credentials always win when STS is available.
+    // Only the two S3 credential keys are forwarded from catalogProperties to avoid leaking
+    // unrelated catalog configuration into the FileIO property map.
+    Map<String, String> mergedProperties = new HashMap<>();
+    for (StorageAccessProperty credProp :
+        List.of(StorageAccessProperty.AWS_KEY_ID, StorageAccessProperty.AWS_SECRET_KEY)) {
+      String val = catalogProperties.get(credProp.getPropertyName());
+      if (val != null) {
+        mergedProperties.put(credProp.getPropertyName(), val);
+      }
+    }
     mergedProperties.putAll(tableProperties);
     FileIO fileIO =
         fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, mergedProperties);
