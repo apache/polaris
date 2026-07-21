@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS version (
 -- CockroachDB scripts. Overwriting would let bootstrap stamp an older, unmigrated database as the
 -- current version and defeat the schema-compatibility check.
 INSERT INTO version (version_key, version_value)
-    SELECT 'version', 6
+    SELECT 'version', 7
     WHERE NOT EXISTS (SELECT 1 FROM version WHERE version_key = 'version');
 
 -- H2 supports COMMENT, but some modes may ignore it
@@ -268,3 +268,14 @@ CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(
 
 -- Index for query lookups by catalog_id and table_id
 CREATE INDEX IF NOT EXISTS idx_commit_report_lookup ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
+
+-- Queue of realms whose time-series data (events, metrics reports) is pending asynchronous,
+-- batched deletion by the background purge drainer. One row per realm being purged.
+CREATE TABLE IF NOT EXISTS realm_purge (
+    realm_id TEXT NOT NULL,
+    requested_at BIGINT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    claimed_by TEXT,
+    claimed_at BIGINT,
+    PRIMARY KEY (realm_id)
+);

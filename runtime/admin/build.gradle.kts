@@ -33,7 +33,7 @@ dependencies {
 
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
-  runtimeOnly(project(":polaris-relational-jdbc"))
+  implementation(project(":polaris-relational-jdbc"))
   runtimeOnly("org.postgresql:postgresql")
 
   implementation(project(":polaris-persistence-nosql-api"))

@@ -110,6 +110,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   queued by an older version only carry the table's base location: files under a custom
   `write.data.path` or `write.metadata.path` outside of it are not deleted by those tasks.
 
+- Relational JDBC: the migration to schema v7 is **required** before starting this version of
+  Polaris. It adds the `realm_purge` table, which records realms whose time-series data is still
+  pending deletion. The table is a pure addition, so it can be created while the previous version is
+  still serving, which keeps the restart the only window where no node can serve. Time-series data
+  of realms purged by an earlier version is not queued and is not reclaimed by the drain unless the
+  optional one-off statement in the migration is run. See the [Relational JDBC metastore
+  documentation] for the migration SQL and the full upgrade path.
+
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 
 ### Breaking changes
@@ -185,6 +193,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `namespaces update` to set and remove namespace properties
 - NoSQL: the commit retry settings are now configurable via `polaris.persistence.retry.*`
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- New admin tool command `purge-drain`: deletes the time-series data of already purged realms in
+  bounded batches. Intended to be scheduled periodically, like `nosql maintenance-run`.
 
 ### Changes
 
@@ -392,6 +402,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
 - Setting a namespace's `location` property no longer fails with an internal error when its parent
   is itself a nested namespace that has no stored location.
+- Relational JDBC: purging a realm no longer leaves its events and metrics reports behind. The
+  realm is queued for an asynchronous, batched deletion of that data, drained by the new
+  `purge-drain` admin tool command.
 - The Ranger authorizer no longer fails with `NoClassDefFoundError: javax/ws/rs/core/Cookie` when
   using `RangerAdminRESTClient` as the policy source. Ranger 2.9 no longer bundles the JAX-RS 1.x
   API, so `javax.ws.rs:jsr311-api` is now shipped with the Ranger extension (see #5728).
