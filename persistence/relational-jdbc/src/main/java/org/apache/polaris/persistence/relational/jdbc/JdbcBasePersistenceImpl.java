@@ -404,6 +404,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                     ModelPolicyMappingRecord.ALL_COLUMNS,
                     ModelPolicyMappingRecord.TABLE_NAME,
                     params));
+            // Queue time-series data (events, metrics) for async batched purge instead of
+            // deleting inline. realm_purge exists from schema v5 only.
+            if (schemaVersion >= 5) {
+              new RealmPurgeStore(datasourceOperations)
+                  .enqueueInTransaction(connection, realmId, System.currentTimeMillis());
+            }
             return true;
           });
     } catch (SQLException e) {
