@@ -37,6 +37,7 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
+  testImplementation(libs.mockito.junit.jupiter)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

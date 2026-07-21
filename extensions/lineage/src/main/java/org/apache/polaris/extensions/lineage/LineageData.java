@@ -19,6 +19,7 @@
 package org.apache.polaris.extensions.lineage;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalLong;
 
 /** Dataset metadata returned in a lineage query response. */
@@ -27,7 +28,7 @@ public record LineageData(
     OptionalLong datasetId,
     String namespace,
     String name,
-    String subType,
+    Optional<String> entitySubType,
     OptionalLong createdAt,
     OptionalLong updatedAt) {
   public LineageData {
@@ -35,6 +36,7 @@ public record LineageData(
     Objects.requireNonNull(datasetId, "datasetId must be non-null");
     Objects.requireNonNull(namespace, "namespace must be non-null");
     Objects.requireNonNull(name, "name must be non-null");
+    Objects.requireNonNull(entitySubType, "entitySubType must be non-null");
     Objects.requireNonNull(createdAt, "createdAt must be non-null");
     Objects.requireNonNull(updatedAt, "updatedAt must be non-null");
   }
@@ -44,7 +46,7 @@ public record LineageData(
       long datasetId,
       String namespace,
       String name,
-      String subType,
+      String entitySubType,
       long createdAt,
       long updatedAt) {
     this(
@@ -52,7 +54,7 @@ public record LineageData(
         OptionalLong.of(datasetId),
         namespace,
         name,
-        subType,
+        Optional.of(entitySubType),
         OptionalLong.of(createdAt),
         OptionalLong.of(updatedAt));
   }

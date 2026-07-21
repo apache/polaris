@@ -21,7 +21,24 @@ package org.apache.polaris.extensions.lineage;
 import java.util.List;
 import java.util.Objects;
 
-/** Normalized response model for lineage queries. */
+/**
+ * Normalized response model for lineage queries.
+ *
+ * <p>The neighbor lists are filtered according to the {@linkplain LineageQueryRequest#direction()
+ * requested direction}:
+ *
+ * <ul>
+ *   <li>{@link LineageDirection#UPSTREAM} populates {@code upstream} and leaves {@code downstream}
+ *       empty.
+ *   <li>{@link LineageDirection#DOWNSTREAM} populates {@code downstream} and leaves {@code
+ *       upstream} empty.
+ *   <li>{@link LineageDirection#BOTH} populates both lists as applicable.
+ * </ul>
+ *
+ * <p>All lists are non-null. An empty requested list means that no neighbors were found in that
+ * direction within the requested scope. An empty unrequested list means that direction was not
+ * queried. Populating an unrequested list violates this contract.
+ */
 public record LineageGraph(
     LineageNode node, List<LineageNode> upstream, List<LineageNode> downstream) {
   public LineageGraph {
