@@ -61,6 +61,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   now accepts a Quarkus `SecurityIdentity` instead of a `PolarisCredential`, and throws
   `AuthenticationFailedException` (mapped to HTTP 401) instead of Iceberg's
   `NotAuthorizedException`.
+- Polaris does not include the `expiration-time` property anymore when vending credentials. This 
+  property is not consumed by any known client and duplicates the properties specific to each
+  storage provider, such as `s3.session-token-expires-at-ms` for S3.
 
 ### New Features
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
