@@ -35,6 +35,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.StaticBearerTokenProvider;
@@ -53,6 +54,7 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   private final Clock clock;
   private final ObjectMapper objectMapper;
   private final AsyncExec asyncExec;
+  private final RequestIdSupplier requestIdSupplier;
   private final RealmContext realmContext;
   private CloseableHttpClient httpClient;
   private BearerTokenProvider bearerTokenProvider;
@@ -62,10 +64,12 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
       OpaAuthorizationConfig opaConfig,
       Clock clock,
       AsyncExec asyncExec,
+      RequestIdSupplier requestIdSupplier,
       RealmContext realmContext) {
     this.opaConfig = opaConfig;
     this.clock = clock;
     this.asyncExec = asyncExec;
+    this.requestIdSupplier = requestIdSupplier;
     this.realmContext = realmContext;
     this.objectMapper = JsonMapper.builder().build();
   }
@@ -107,6 +111,7 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
         httpClient,
         objectMapper,
         bearerTokenProvider,
+        requestIdSupplier.getRequestId(),
         realmContext.getRealmIdentifier());
   }
 

@@ -30,6 +30,18 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
+- Relational JDBC: a new schema version 5 makes the `events.catalog_id` column nullable. Events that
+  are not scoped to a catalog (principal, policy, rate-limiting, etc.) now persist `NULL` instead of
+  the placeholder string `__realm__` (which only ever existed in 1.6.0 release candidates). Fresh
+  bootstraps use schema v5 automatically. Existing deployments on schema v3/v4 keep working — the
+  server detects the older schema version and continues writing the legacy placeholder — but
+  operators are encouraged to upgrade manually, since Polaris has no automated schema migrations:
+  ```sql
+  ALTER TABLE polaris_schema.events ALTER COLUMN catalog_id DROP NOT NULL;
+  UPDATE polaris_schema.events SET catalog_id = NULL WHERE catalog_id = '__realm__';
+  UPDATE polaris_schema.version SET version_value = 5 WHERE version_key = 'version';
+  ```
+  See the Relational JDBC metastore documentation for details.
 
 ### Breaking changes
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms
@@ -46,7 +58,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for publishing histogram buckets for HTTP server request duration as configured SLO boundaries.
 - Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
 - Added optional `sessionPolicy` field to `SigV4AuthenticationParameters` for catalog federation. When set, the IAM session policy JSON is attached to the STS AssumeRole request, allowing administrators to restrict vended credentials to only the required AWS services and actions (Principle of Least Privilege).
-- Added opt-in idempotency for `createTable` in the Iceberg REST catalog. When enabled via `polaris.idempotency.enabled=true` (default `false`), a client-supplied `Idempotency-Key` header is embedded into the new table entity and committed in the same transaction; a retry carrying the same key within the TTL window (`polaris.idempotency.ttl`, default `PT5M`) replays the original success instead of failing with `AlreadyExists`.
+- Python CLI: added `--scheme` to specify URL scheme
+- Added opt-in idempotency for `createTable` and `updateTable` in the Iceberg REST catalog. When enabled via `polaris.idempotency.enabled=true` (default `false`), a client-supplied `Idempotency-Key` header is embedded into the table entity and committed in the same transaction as the operation; a retry carrying the same key within the TTL window (`polaris.idempotency.ttl`, default `PT5M`) replays the original success instead of failing — with `AlreadyExists` for `createTable`, or with `CommitFailedException` for `updateTable` when the request's requirements no longer match the already-advanced table.
 
 ### Changes
 - The admin tool's `bootstrap` command is now idempotent: bootstrapping a realm that is already
@@ -58,8 +71,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Authorization failure messages (HTTP 403 / `ForbiddenException` from `PolarisAuthorizerImpl`) now log the specific missing privilege(s) and the entity each was checked against server-side (at `INFO` level), e.g. `missing TABLE_CREATE on NAMESPACE 'ns1'`. The client-facing 403 response remains a generic message to avoid leaking authorization metadata to untrusted clients. Operators can correlate client errors to server logs using the existing `X-Request-ID` header (present in default log MDC as `requestId`).
 
 ### Deprecations
+- Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
 ### Fixes
+- Default table storage locations with object-storage prefixing enabled are now percent-encoded with UTF-8 instead of the JVM default charset. Previously the persisted location of a table under a non-ASCII namespace or table name depended on the platform default charset, so the same table could resolve to a different (or lossy) location on a non-UTF-8 JVM.
 - Async task execution (table cleanup, manifest and batch file cleanup) now retries when a handler returns false on transient errors (e.g. IO or delete failures). Previously `false` was swallowed with only a warning log and the task was never retried via the existing retry mechanism.
 - `TableCleanupTaskHandler` now clamps `TABLE_METADATA_CLEANUP_BATCH_SIZE` to at least 1. Previously a non-positive realm override caused an infinite loop (0) or `IllegalArgumentException` (<0) when splitting metadata files for cleanup.
 - `ManifestFileCleanupTaskHandler` now handles Iceberg v2 delete manifests in addition to data manifests. Previously, `DROP TABLE PURGE` on a v2 table that had been updated via merge-on-read DML left position-delete files and their manifests as orphans in object storage; the cleanup task failed silently because `ManifestFiles.read()` rejects delete manifests.
@@ -102,6 +117,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The token broker now builds the JWT `Algorithm` and `JWTVerifier` once per realm in the `TokenBrokerFactory` and reuses them across requests, instead of rebuilding them on every `verify()`/`sign()` call on the request-scoped broker. For deployments using file-based symmetric secrets, the secret is now read once per realm (at first use) rather than on every JWT operation; rotating the on-disk secret requires a restart.
 
 ### Fixes
+- `polaris.storage.max-http-connections` (and related read/connect/acquisition/idle timeouts) now take effect for Iceberg S3FileIO clients used in table operations (previously only affected the STS client pool).
 - Fixed a boundary condition in GCS downscoped credential generation (`GcpCredentialsStorageIntegration`). Locations without a trailing slash could previously grant access to sibling object prefixes via the generated CEL conditions for `resource.name` and list prefixes. Granted paths are now normalized to a directory prefix (with a trailing slash) before the CEL conditions are built, so sibling prefixes can no longer satisfy the `startsWith` checks.
 - Fixed `NullPointerException` during `dropEntity` when an entity referenced by a grant had been concurrently removed (or purged). `lookupEntities` can return null entries for dropped entities; these are now skipped safely.
 - `RateLimiterFilter` now returns an Iceberg-compatible `ErrorResponse` JSON body on HTTP 429, with `Content-Type: application/json`. Previously the body was empty, causing Iceberg REST clients to surface an opaque error.

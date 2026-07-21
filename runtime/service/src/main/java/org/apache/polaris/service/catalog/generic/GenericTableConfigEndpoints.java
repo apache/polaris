@@ -26,8 +26,8 @@ import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.rest.CatalogConfigEndpointContributor;
 import org.apache.polaris.core.rest.GenericTableEndpoints;
+import org.apache.polaris.service.catalog.spi.CatalogConfigEndpointContributor;
 
 @ApplicationScoped
 @Priority(300)

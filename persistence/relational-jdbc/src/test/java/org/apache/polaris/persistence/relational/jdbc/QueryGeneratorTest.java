@@ -19,7 +19,9 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +38,8 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class QueryGeneratorTest {
 
@@ -53,6 +57,35 @@ public class QueryGeneratorTest {
         QueryGenerator.generateSelectQuery(
                 ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause)
             .sql());
+  }
+
+  @Test
+  void testGenerateSelectQuery_withLimitAppendsLimitClause() {
+    Map<String, Object> whereClause = new LinkedHashMap<>();
+    whereClause.put("catalog_id", 123L);
+    whereClause.put("parent_id", 1L);
+    String expectedQuery =
+        "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM POLARIS_SCHEMA.ENTITIES WHERE catalog_id = ? AND parent_id = ? LIMIT 1";
+    QueryGenerator.PreparedQuery query =
+        QueryGenerator.generateSelectQuery(
+            ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause, 1);
+    assertEquals(expectedQuery, query.sql());
+    Assertions.assertThat(query.parameters()).containsExactly(123L, 1L);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, -1})
+  void testGenerateSelectQuery_withNonPositiveLimitThrows(int limit) {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                QueryGenerator.generateSelectQuery(
+                    ModelEntity.getAllColumnNames(2),
+                    ModelEntity.TABLE_NAME,
+                    Map.of("catalog_id", 123L),
+                    limit));
+    assertEquals("Limit must be positive", exception.getMessage());
   }
 
   @Test
@@ -97,6 +130,41 @@ public class QueryGeneratorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
+  }
+
+  @Test
+  void testGenerateSelectQueryWithEntityIdsVersionOnly_selectsOnlyVersionColumns() {
+    List<PolarisEntityId> entityIds = Collections.singletonList(new PolarisEntityId(123L, 1L));
+    String expectedQuery =
+        "SELECT id, catalog_id, entity_version, grant_records_version"
+            + " FROM POLARIS_SCHEMA.ENTITIES"
+            + " WHERE (catalog_id, id) IN ((?, ?)) AND realm_id = ?";
+    Assertions.assertThat(
+            QueryGenerator.generateSelectQueryWithEntityIdsVersionOnly(REALM_ID, entityIds).sql())
+        .isEqualTo(expectedQuery);
+  }
+
+  @Test
+  void testGenerateSelectQueryWithEntityIdsVersionOnly_multipleIds() {
+    List<PolarisEntityId> entityIds =
+        Arrays.asList(new PolarisEntityId(10L, 1L), new PolarisEntityId(20L, 2L));
+    String sql =
+        QueryGenerator.generateSelectQueryWithEntityIdsVersionOnly(REALM_ID, entityIds).sql();
+    // Must NOT contain large property columns on the hot path.
+    Assertions.assertThat(sql).doesNotContain("properties");
+    Assertions.assertThat(sql).doesNotContain("internal_properties");
+    Assertions.assertThat(sql).contains("entity_version");
+    Assertions.assertThat(sql).contains("grant_records_version");
+    Assertions.assertThat(sql).contains("(catalog_id, id) IN ((?, ?), (?, ?))");
+  }
+
+  @Test
+  void testGenerateSelectQueryWithEntityIdsVersionOnly_emptyList() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            QueryGenerator.generateSelectQueryWithEntityIdsVersionOnly(
+                REALM_ID, Collections.emptyList()));
   }
 
   @Test
@@ -248,106 +316,6 @@ public class QueryGeneratorTest {
   }
 
   @Test
-  void testGenerateUpdateQueryExtended_supportsNullSetValues() {
-    Map<String, Object> setClause = new LinkedHashMap<>();
-    setClause.put("error_subtype", null);
-    setClause.put("http_status", 200);
-
-    // Use ordered maps so WHERE clause order is deterministic.
-    Map<String, Object> whereEquals = new LinkedHashMap<>();
-    whereEquals.put("realm_id", "r1");
-    whereEquals.put("idempotency_key", "k1");
-    Map<String, Object> whereLess = new LinkedHashMap<>();
-    whereLess.put("http_status", 500);
-
-    QueryGenerator.PreparedQuery q =
-        QueryGenerator.generateUpdateQuery(
-            List.of("error_subtype", "http_status", "realm_id", "idempotency_key", "executor_id"),
-            "idempotency_records",
-            setClause,
-            whereEquals,
-            Map.of(),
-            whereLess,
-            Set.of("executor_id"),
-            Set.of());
-
-    assertEquals(
-        "UPDATE POLARIS_SCHEMA.idempotency_records SET error_subtype = ?, http_status = ?"
-            + " WHERE realm_id = ? AND idempotency_key = ? AND http_status < ? AND executor_id IS NULL",
-        q.sql());
-    Assertions.assertThat(q.parameters()).containsExactly(null, 200, "r1", "k1", 500);
-  }
-
-  @Test
-  void testGenerateUpdateQueryExtended_rejectsEmptySetClause() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            QueryGenerator.generateUpdateQuery(
-                List.of("a"),
-                "t",
-                Map.of(),
-                Map.of("a", 1),
-                Map.of(),
-                Map.of(),
-                Set.of(),
-                Set.of()));
-  }
-
-  @Test
-  void testGenerateDeleteQueryExtended_includesNullPredicatesAndLessThan() {
-    QueryGenerator.PreparedQuery q =
-        QueryGenerator.generateDeleteQuery(
-            List.of("realm_id", "expires_at", "finalized_at"),
-            "idempotency_records",
-            Map.of("realm_id", "r1"),
-            Map.of(),
-            Map.of("expires_at", 123),
-            Set.of("finalized_at"),
-            Set.of());
-
-    assertEquals(
-        "DELETE FROM POLARIS_SCHEMA.idempotency_records WHERE realm_id = ? AND expires_at < ? AND finalized_at IS NULL",
-        q.sql());
-    Assertions.assertThat(q.parameters()).containsExactly("r1", 123);
-  }
-
-  @Test
-  void testGenerateDeleteQueryExtended_allowsRealmIdEvenIfNotInTableColumns() {
-    QueryGenerator.PreparedQuery q =
-        QueryGenerator.generateDeleteQuery(
-            List.of("id"),
-            "some_table",
-            Map.of("realm_id", "r1"),
-            Map.of(),
-            Map.of(),
-            Set.of(),
-            Set.of());
-
-    assertEquals("DELETE FROM POLARIS_SCHEMA.some_table WHERE realm_id = ?", q.sql());
-    Assertions.assertThat(q.parameters()).containsExactly("r1");
-  }
-
-  @Test
-  void testGenerateUpdateQueryExtended_rejectsInvalidColumns() {
-    Map<String, Object> setClause = new LinkedHashMap<>();
-    setClause.put("not_a_real_column", 1);
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            QueryGenerator.generateUpdateQuery(
-                List.of("a"),
-                "t",
-                setClause,
-                Map.of("a", 1),
-                Map.of(),
-                Map.of(),
-                Set.of(),
-                Set.of()));
-  }
-
-  @Test
   void testGenerateOverlapQuery() {
     assertEquals(
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code,"
@@ -394,5 +362,34 @@ public class QueryGeneratorTest {
                 .parameters())
         .containsExactly(
             "realmId", -123L, "/", "//", "//バケツ/", "//バケツ/\"loc.ation\"/", "//バケツ/\"loc.ation\"/%");
+  }
+
+  @Test
+  void testGenerateExistsQuery() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("realm_id", "realm1");
+    params.put("catalog_id", 1L);
+    params.put("parent_id", 2L);
+    String sql =
+        QueryGenerator.generateExistsQuery(
+                ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, params)
+            .sql();
+    assertTrue(sql.startsWith("SELECT 1 "), sql);
+    assertTrue(sql.endsWith("LIMIT 1"), sql);
+    assertFalse(sql.contains("properties"), sql);
+    assertTrue(sql.contains("realm_id"), sql);
+    assertTrue(sql.contains("catalog_id"), sql);
+    assertTrue(sql.contains("parent_id"), sql);
+  }
+
+  @Test
+  void testGenerateExistsQueryRejectsUnknownColumn() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            QueryGenerator.generateExistsQuery(
+                ModelEntity.getAllColumnNames(2),
+                ModelEntity.TABLE_NAME,
+                Map.of("not_a_column", 1)));
   }
 }

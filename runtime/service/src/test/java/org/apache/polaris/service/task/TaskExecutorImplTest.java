@@ -90,7 +90,7 @@ public class TaskExecutorImplTest {
           }
 
           @Override
-          public boolean handleTask(TaskEntity task, CallContext callContext) {
+          public void handleTask(TaskEntity task, CallContext callContext) {
             PolarisEvent beforeTaskAttemptedEvent =
                 testPolarisEventDispatcher.getLatest(PolarisEventType.BEFORE_ATTEMPT_TASK);
             Assertions.assertEquals(
@@ -99,7 +99,6 @@ public class TaskExecutorImplTest {
             Assertions.assertEquals(
                 attempt,
                 beforeTaskAttemptedEvent.attributes().getRequired(EventAttributes.TASK_ATTEMPT));
-            return true;
           }
         });
 
@@ -168,7 +167,7 @@ public class TaskExecutorImplTest {
   }
 
   @Test
-  void handleTaskThrowsWhenHandlerReturnsFalse() {
+  void handleTaskThrowsWhenHandlerThrows() {
     String realm = "myrealm";
     RealmContext realmContext = () -> realm;
 
@@ -211,8 +210,8 @@ public class TaskExecutorImplTest {
           }
 
           @Override
-          public boolean handleTask(TaskEntity task, CallContext callContext) {
-            return false; // simulate transient failure
+          public void handleTask(TaskEntity task, CallContext callContext) {
+            throw new RuntimeException("simulate transient failure");
           }
         });
 
@@ -224,8 +223,7 @@ public class TaskExecutorImplTest {
                     PolarisEventMetadata.builder().realmId(realm).build(),
                     1))
         .isInstanceOf(RuntimeException.class)
-        .hasMessageContaining("Task handler returned false")
-        .hasMessageContaining(String.valueOf(taskEntity.getId()));
+        .hasMessageContaining("simulate transient failure");
 
     // Event should have been emitted with TASK_SUCCESS=false even though we threw
     PolarisEvent afterEvent =
@@ -234,7 +232,7 @@ public class TaskExecutorImplTest {
   }
 
   @Test
-  void asyncRetryIsTriggeredWhenHandlerReturnsFalse() throws InterruptedException {
+  void asyncRetryIsTriggeredWhenHandlerThrows() throws InterruptedException {
     String realm = "myrealm";
     RealmContext realmContext = () -> realm;
 
@@ -276,22 +274,21 @@ public class TaskExecutorImplTest {
           }
 
           @Override
-          public boolean handleTask(TaskEntity task, CallContext callContext) {
+          public void handleTask(TaskEntity task, CallContext callContext) {
             int call = handlerCalls.incrementAndGet();
             // Fail first 2 attempts (transient), succeed on 3rd
             if (call < 3) {
-              return false;
+              throw new RuntimeException("transient failure " + call);
             }
-            return true;
           }
         });
 
     // This starts the async processing. With Runnable::run the first handleTask runs
-    // synchronously in the current thread (so handler is called immediately), returns false
-    // -> throws inside the future (the exception path is taken, which is what we verify).
+    // synchronously in the current thread (so handler is called immediately), throws
+    // -> the exception path is taken, which is what we verify.
     executor.addTaskHandlerContext(taskEntity.getId(), polarisCallCtx);
 
-    // We verify at least the first call happened (return-false leads to exception path).
+    // We verify at least the first call happened (throw leads to exception path).
     assertThat(handlerCalls.get()).isGreaterThanOrEqualTo(1);
   }
 }

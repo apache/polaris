@@ -27,6 +27,7 @@ from apache_polaris.cli.constants import (
     DEFAULT_HEADER,
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
+    DEFAULT_SCHEME,
 )
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.profile_config import (
@@ -35,6 +36,19 @@ from apache_polaris.cli.profile_config import (
     save_profiles,
 )
 from apache_polaris.sdk.management import PolarisDefaultApi
+
+ALLOWED_SCHEMES = ("http", "https")
+
+
+def _prompt_scheme(default: str) -> str:
+    while True:
+        scheme = (input(f"Polaris URL Scheme [{default}]: ") or default).lower()
+        if scheme in ALLOWED_SCHEMES:
+            return scheme
+        else:
+            print(
+                f"Invalid scheme '{scheme}'. Supported one of {list(ALLOWED_SCHEMES)}."
+            )
 
 
 @dataclass
@@ -62,6 +76,7 @@ class ProfilesCommand(Command):
             client_secret = input("Polaris Client Secret: ")
             host = input(f"Polaris Host [{DEFAULT_HOSTNAME}]: ") or DEFAULT_HOSTNAME
             port = input(f"Polaris Port [{DEFAULT_PORT}]: ") or DEFAULT_PORT
+            scheme = _prompt_scheme(DEFAULT_SCHEME)
             realm = input("Polaris Context Realm: ")
             header = (
                 input(f"Polaris Context Header Name [{DEFAULT_HEADER}]: ")
@@ -72,6 +87,7 @@ class ProfilesCommand(Command):
                 "client_secret": client_secret,
                 "host": host,
                 "port": port,
+                Arguments.SCHEME: scheme,
                 Arguments.REALM: realm,
                 Arguments.HEADER: header,
             }
@@ -100,6 +116,7 @@ class ProfilesCommand(Command):
             current_client_secret = profiles[name].get("client_secret")
             current_host = profiles[name].get("host")
             current_port = profiles[name].get("port")
+            current_scheme = profiles[name].get(Arguments.SCHEME) or DEFAULT_SCHEME
             current_realm = profiles[name].get(Arguments.REALM)
             current_header = profiles[name].get(Arguments.HEADER)
 
@@ -112,6 +129,7 @@ class ProfilesCommand(Command):
             )
             host = input(f"Polaris Host [{current_host}]: ") or current_host
             port = input(f"Polaris Port [{current_port}]: ") or current_port
+            scheme = _prompt_scheme(current_scheme)
             realm = input(f"Polaris Context Realm [{current_realm}]: ") or current_realm
             header = (
                 input(f"Polaris Context Header Name [{current_header}]: ")
@@ -122,6 +140,7 @@ class ProfilesCommand(Command):
                 "client_secret": client_secret,
                 "host": host,
                 "port": port,
+                Arguments.SCHEME: scheme,
                 Arguments.REALM: realm,
                 Arguments.HEADER: header,
             }

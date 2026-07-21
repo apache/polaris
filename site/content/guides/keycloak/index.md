@@ -42,8 +42,7 @@ fixed claims:
 
 - `principal_id`: the principal ID of the user. It is always set to zero (0) in this example.
 - `principal_name`: the principal name of the user. It is always set to "root" in this example.
-- `principal_roles`: the principal roles of the user. It is always set to `["server_admin", "catalog_admin"]` in this 
-  example.
+- `principal_roles`: the principal roles of the user. It is always set to `["server_admin"]` in this example.
 
 This is obviously not a realistic configuration. In a real-world scenario, you would configure Keycloak to return the
 actual principal ID, name and roles of the user. Note that principals and principal roles must have been created in

@@ -24,7 +24,6 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.iceberg.MetadataUpdate;
@@ -48,7 +47,7 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
   private IcebergCatalogHandler newHandler() {
-    PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
+    PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.ofAllRoles(principalEntity);
     IcebergCatalogHandler handler =
         icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
     return ImmutableIcebergCatalogHandler.builder().from(handler).build();

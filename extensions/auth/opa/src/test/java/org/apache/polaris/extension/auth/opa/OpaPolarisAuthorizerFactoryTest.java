@@ -37,12 +37,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
 import org.apache.polaris.nosql.async.java.JavaPoolAsyncExec;
@@ -80,7 +83,8 @@ public class OpaPolarisAuthorizerFactoryTest {
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       RealmContext realmContext = () -> "test-realm";
       OpaPolarisAuthorizerFactory factory =
-          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
+          new OpaPolarisAuthorizerFactory(
+              opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
       // Create authorizer
       RealmConfig realmConfig = mock(RealmConfig.class);
@@ -125,7 +129,8 @@ public class OpaPolarisAuthorizerFactoryTest {
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       RealmContext realmContext = () -> "test-realm";
       OpaPolarisAuthorizerFactory factory =
-          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
+          new OpaPolarisAuthorizerFactory(
+              opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
       // Create authorizer
       RealmConfig realmConfig = mock(RealmConfig.class);
@@ -171,7 +176,8 @@ public class OpaPolarisAuthorizerFactoryTest {
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       RealmContext realmContext = () -> "test-realm";
       OpaPolarisAuthorizerFactory factory =
-          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
+          new OpaPolarisAuthorizerFactory(
+              opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
       // Create authorizer
       RealmConfig realmConfig = mock(RealmConfig.class);
@@ -208,7 +214,8 @@ public class OpaPolarisAuthorizerFactoryTest {
       try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
         RealmContext realmContext = () -> "factory-realm";
         OpaPolarisAuthorizerFactory factory =
-            new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
+            new OpaPolarisAuthorizerFactory(
+                opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
         factory.initialize();
         OpaPolarisAuthorizer authorizer =
@@ -263,7 +270,8 @@ public class OpaPolarisAuthorizerFactoryTest {
       try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
         RealmContext realmContext = () -> "realm-b";
         OpaPolarisAuthorizerFactory factory =
-            new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec, realmContext);
+            new OpaPolarisAuthorizerFactory(
+                opaConfig, Clock.systemUTC(), asyncExec, () -> null, realmContext);
 
         factory.initialize();
         OpaPolarisAuthorizer authorizer =
@@ -284,6 +292,148 @@ public class OpaPolarisAuthorizerFactoryTest {
         JsonNode root = mapper.readTree(capturedRequestBody[0]);
         assertThat(root.path("input").path("context").get("realm").asText()).isEqualTo("realm-b");
         factory.cleanup();
+      }
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  public void testFactoryPassesResolvedRequestIdToAuthorizerContext() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      OpaAuthorizationConfig opaConfig =
+          ImmutableOpaAuthorizationConfig.builder()
+              .policyUri(
+                  URI.create(
+                      "http://localhost:"
+                          + server.getAddress().getPort()
+                          + "/v1/data/polaris/allow"))
+              .auth(
+                  ImmutableAuthenticationConfig.builder()
+                      .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                      .build())
+              .http(
+                  ImmutableHttpConfig.builder()
+                      .timeout(Duration.ofSeconds(2))
+                      .verifySsl(true)
+                      .build())
+              .build();
+
+      try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+        RealmContext realmContext = () -> "test-realm";
+        OpaPolarisAuthorizerFactory factory =
+            new OpaPolarisAuthorizerFactory(
+                opaConfig,
+                Clock.systemUTC(),
+                asyncExec,
+                () -> "factory-test-request-id",
+                realmContext);
+        factory.initialize();
+
+        RealmConfig realmConfig = mock(RealmConfig.class);
+        OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+
+        PolarisPrincipal principal =
+            PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+        PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
+        PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
+
+        assertThatNoException()
+            .isThrownBy(
+                () ->
+                    authorizer.authorizeOrThrow(
+                        principal,
+                        Set.<PolarisBaseEntity>of(),
+                        PolarisAuthorizableOperation.LOAD_VIEW,
+                        target,
+                        secondary));
+
+        JsonNode root = JsonMapper.builder().build().readTree(capturedRequestBody[0]);
+        assertThat(root.at("/input/context/request_id").asText())
+            .isEqualTo("factory-test-request-id");
+      }
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  public void testFactoryResolvesFreshRequestIdPerCreateCall() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      OpaAuthorizationConfig opaConfig =
+          ImmutableOpaAuthorizationConfig.builder()
+              .policyUri(
+                  URI.create(
+                      "http://localhost:"
+                          + server.getAddress().getPort()
+                          + "/v1/data/polaris/allow"))
+              .auth(
+                  ImmutableAuthenticationConfig.builder()
+                      .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                      .build())
+              .http(
+                  ImmutableHttpConfig.builder()
+                      .timeout(Duration.ofSeconds(2))
+                      .verifySsl(true)
+                      .build())
+              .build();
+
+      // Simulates the CDI proxy resolving to a different value on each request, the way the real
+      // RequestIdSupplier does via CurrentRequestManager.
+      AtomicInteger requestCounter = new AtomicInteger();
+      try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+        RealmContext realmContext = () -> "test-realm";
+        OpaPolarisAuthorizerFactory factory =
+            new OpaPolarisAuthorizerFactory(
+                opaConfig,
+                Clock.systemUTC(),
+                asyncExec,
+                () -> "request-" + requestCounter.incrementAndGet(),
+                realmContext);
+
+        factory.initialize();
+
+        RealmConfig realmConfig = mock(RealmConfig.class);
+        PolarisPrincipal principal =
+            PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+        PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
+        PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
+
+        // First "request": factory.create() is called fresh, as it would be for each incoming
+        // HTTP request via the @RequestScoped PolarisAuthorizer producer.
+        OpaPolarisAuthorizer firstAuthorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+        assertThatNoException()
+            .isThrownBy(
+                () ->
+                    firstAuthorizer.authorizeOrThrow(
+                        principal,
+                        Set.<PolarisBaseEntity>of(),
+                        PolarisAuthorizableOperation.LOAD_VIEW,
+                        target,
+                        secondary));
+        JsonNode firstRoot = JsonMapper.builder().build().readTree(capturedRequestBody[0]);
+        assertThat(firstRoot.at("/input/context/request_id").asText()).isEqualTo("request-1");
+
+        // Second "request": a new authorizer is created against the same long-lived factory,
+        // and must pick up a distinct, freshly-resolved request ID rather than reusing the first.
+        OpaPolarisAuthorizer secondAuthorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+        assertThatNoException()
+            .isThrownBy(
+                () ->
+                    secondAuthorizer.authorizeOrThrow(
+                        principal,
+                        Set.<PolarisBaseEntity>of(),
+                        PolarisAuthorizableOperation.LOAD_VIEW,
+                        target,
+                        secondary));
+        JsonNode secondRoot = JsonMapper.builder().build().readTree(capturedRequestBody[0]);
+        assertThat(secondRoot.at("/input/context/request_id").asText()).isEqualTo("request-2");
       }
     } finally {
       server.stop(0);

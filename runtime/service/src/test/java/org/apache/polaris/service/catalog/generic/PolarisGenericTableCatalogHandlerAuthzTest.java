@@ -46,19 +46,16 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   @jakarta.inject.Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
 
   private GenericTableCatalogHandler newWrapper() {
-    return newWrapper(Set.of());
+    return newWrapper(PolarisPrincipal.ofAllRoles(principalEntity));
   }
 
   private GenericTableCatalogHandler newWrapper(Set<String> activatedPrincipalRoles) {
-    return newWrapper(activatedPrincipalRoles, CATALOG_NAME);
+    return newWrapper(PolarisPrincipal.of(principalEntity, activatedPrincipalRoles));
   }
 
-  private GenericTableCatalogHandler newWrapper(
-      Set<String> activatedPrincipalRoles, String catalogName) {
-    PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
+  private GenericTableCatalogHandler newWrapper(PolarisPrincipal authenticatedPrincipal) {
     return ImmutableGenericTableCatalogHandler.builder()
-        .catalogName(catalogName)
+        .catalogName(PolarisAuthzTestBase.CATALOG_NAME)
         .polarisPrincipal(authenticatedPrincipal)
         .callContext(callContext)
         .resolutionManifestFactory(resolutionManifestFactory)

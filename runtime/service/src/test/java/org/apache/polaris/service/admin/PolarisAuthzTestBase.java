@@ -33,7 +33,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -219,7 +218,7 @@ public abstract class PolarisAuthzTestBase {
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    this.authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    this.authenticatedRoot = PolarisPrincipal.ofAllRoles(rootPrincipal);
     QuarkusMock.installMockForType(authenticatedRoot, PolarisPrincipal.class);
 
     this.adminService =

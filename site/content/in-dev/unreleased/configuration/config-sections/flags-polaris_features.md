@@ -77,7 +77,7 @@ If set to true, Polaris allows metadata files to be located outside the table's 
 
 ##### `polaris.features."ALLOW_EXTERNAL_TABLE_LOCATION"`
 
-If set to true, Polaris treats table locations as externally managed instead of assuming the default managed structure. Allowed-location validation still applies, but metadata location checks are relaxed, so operators should keep allowed locations narrow and specific. This setting is typically used together with ALLOW_UNSTRUCTURED_TABLE_LOCATION.
+Deprecated. Use ALLOW_EXTERNAL_METADATA_FILE_LOCATION instead. When enabled, this legacy compatibility flag relaxes metadata location checks; it does not control whether table locations may escape the structured namespace layout. Use ALLOW_UNSTRUCTURED_TABLE_LOCATION for that behavior.
 
 - **Type:** `Boolean`
 - **Default:** `false`

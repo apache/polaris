@@ -22,17 +22,24 @@ package org.apache.polaris.service.storage.aws;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.OptionalInt;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Configuration interface containing parameters for clients accessing S3 services from Polaris
  * servers.
  *
- * <p>Currently, this configuration does not apply to all of Polaris code, but only to select
- * services.
+ * <p>Applies to the STS client pool and to Iceberg S3 clients created for table operations via
+ * {@code S3FileIO}.
  */
+@PolarisImmutable
 public interface S3AccessConfig {
   /** Default value for {@link #clientsCacheMaxSize()}. */
   int DEFAULT_MAX_STS_CLIENT_CACHE_ENTRIES = 50;
+
+  /** An empty config with no HTTP client overrides (e.g. tests and fixtures). */
+  static S3AccessConfig empty() {
+    return ImmutableS3AccessConfig.builder().build();
+  }
 
   /** Maximum number of entries to keep in the STS clients cache. */
   OptionalInt clientsCacheMaxSize();

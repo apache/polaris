@@ -224,10 +224,11 @@ Leave out `FILE` to prevent its use. Only include the storage types your setup n
 ### Review Location Compatibility Flags
 
 Treat non-default location compatibility flags as part of your production deployment review.
-`ALLOW_UNSTRUCTURED_TABLE_LOCATION`, `ALLOW_EXTERNAL_TABLE_LOCATION`,
-`ALLOW_EXTERNAL_METADATA_FILE_LOCATION`, `ALLOW_TABLE_LOCATION_OVERLAP`, and wildcard allowed
-locations all relax the default storage boundary model and should only be enabled for specific
-interoperability or migration requirements. `OPTIMIZED_SIBLING_CHECK` is not a bypass mode, but it
+`ALLOW_UNSTRUCTURED_TABLE_LOCATION`, `ALLOW_EXTERNAL_METADATA_FILE_LOCATION`,
+`ALLOW_TABLE_LOCATION_OVERLAP`, and wildcard allowed locations all relax the default storage
+boundary model and should only be enabled for specific interoperability or migration requirements.
+`ALLOW_EXTERNAL_TABLE_LOCATION` is a deprecated compatibility alias for
+`ALLOW_EXTERNAL_METADATA_FILE_LOCATION`. `OPTIMIZED_SIBLING_CHECK` is not a bypass mode, but it
 changes how overlap detection is performed and should only be enabled when the required index and
 backfill state is known to be correct.
 

@@ -48,6 +48,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
+import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.assertj.core.api.Assertions;
 import org.jspecify.annotations.NonNull;
@@ -105,7 +106,7 @@ public class FileIOFactoryTest {
     Supplier<FileIOFactory> fileIOFactorySupplier =
         () ->
             Mockito.spy(
-                new DefaultFileIOFactory() {
+                new DefaultFileIOFactory(S3AccessConfig.empty()) {
                   @Override
                   FileIO loadFileIOInternal(
                       @NonNull String ioImplClassName, @NonNull Map<String, String> properties) {

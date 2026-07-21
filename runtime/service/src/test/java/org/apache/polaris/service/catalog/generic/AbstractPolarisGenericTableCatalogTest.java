@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
@@ -151,7 +150,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    authenticatedRoot = PolarisPrincipal.ofAllRoles(rootPrincipal);
     polarisPrincipalHolder.set(authenticatedRoot);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
@@ -184,7 +183,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(storageLocation)
                     .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                        FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                        "true")
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")

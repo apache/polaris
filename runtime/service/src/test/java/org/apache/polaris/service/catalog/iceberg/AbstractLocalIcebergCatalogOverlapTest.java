@@ -164,7 +164,8 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(STORAGE_LOCATION)
                     .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                        FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                        "true")
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")

@@ -24,7 +24,7 @@ description = "Apache Polaris"
 authors = [{ name = "Apache Software Foundation", email = "dev@polaris.apache.org" }]
 requires-python = ">=3.10,<3.15"
 readme = "README.md"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 keywords = [
     "Apache Polaris",

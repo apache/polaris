@@ -68,6 +68,8 @@ import org.apache.polaris.extension.auth.opa.model.ResourceEntity;
 import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * OPA-based implementation of {@link PolarisAuthorizer}.
@@ -81,10 +83,13 @@ import org.jspecify.annotations.Nullable;
  * environments.
  */
 class OpaPolarisAuthorizer implements PolarisAuthorizer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpaPolarisAuthorizer.class);
+
   private final URI policyUri;
   private final BearerTokenProvider tokenProvider;
   private final CloseableHttpClient httpClient;
   private final ObjectMapper objectMapper;
+  private final String requestId;
   private final String realm;
 
   /**
@@ -97,6 +102,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param objectMapper Jackson ObjectMapper for JSON serialization (required). Shared across
    *     authorizer instances to avoid initialization overhead.
    * @param tokenProvider Token provider for authentication (optional)
+   * @param requestId The server-generated request ID (optional), used to correlate OPA queries with
+   *     the originating HTTP request. Resolved once by the caller since this authorizer is
+   *     constructed fresh per request.
    * @param realm The realm identifier (from RealmContext) for isolation in OPA policies.
    */
   public OpaPolarisAuthorizer(
@@ -104,12 +112,14 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @NonNull CloseableHttpClient httpClient,
       @NonNull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider,
+      @Nullable String requestId,
       @NonNull String realm) {
 
     this.policyUri = policyUri;
     this.tokenProvider = tokenProvider;
     this.httpClient = httpClient;
     this.objectMapper = objectMapper;
+    this.requestId = requestId;
     this.realm = realm;
   }
 
@@ -281,6 +291,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private boolean queryOpaCheckResponse(ClassicHttpResponse response) throws IOException {
     int statusCode = response.getCode();
     if (statusCode != 200) {
+      LOGGER.warn("OPA returned unexpected HTTP status {}, treating as deny", statusCode);
       return false;
     }
 
@@ -338,7 +349,10 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   private ImmutableContext buildContext() {
-    return ImmutableContext.builder().requestId(UUID.randomUUID().toString()).realm(realm).build();
+    return ImmutableContext.builder()
+        .requestId(requestId != null ? requestId : UUID.randomUUID().toString())
+        .realm(realm)
+        .build();
   }
 
   private ImmutableResource buildResource(

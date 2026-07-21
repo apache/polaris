@@ -122,7 +122,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
-  public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
+  public synchronized Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
     Map<String, BaseResult> results = new HashMap<>();
 
     for (String realm : realms) {
@@ -136,6 +136,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
       sessionSupplierMap.remove(realm);
       metaStoreManagerMap.remove(realm);
+      entityCacheMap.remove(realm);
     }
 
     return Map.copyOf(results);
