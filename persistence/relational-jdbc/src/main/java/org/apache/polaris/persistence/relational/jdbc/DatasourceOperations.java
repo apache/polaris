@@ -65,7 +65,7 @@ public class DatasourceOperations {
   // 2) Increment this constant to match the version number in schema.sql
   // 3) Add the corresponding migration SQL to the Relational JDBC metastore documentation
   // 4) Add a note to the changelog
-  public static final int CURRENT_SCHEMA_VERSION = 6;
+  public static final int CURRENT_SCHEMA_VERSION = 7;
 
   // PG STATUS CODES
   // 23505 = unique key violation, consistent across PG/Cockroach/H2; other checks (FK, NOT NULL,
