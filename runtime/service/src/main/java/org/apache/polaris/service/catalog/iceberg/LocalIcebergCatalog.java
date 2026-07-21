@@ -65,12 +65,7 @@ import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.encryption.EncryptingFileIO;
 import org.apache.iceberg.encryption.EncryptionManager;
-import org.apache.iceberg.encryption.EncryptionUtil;
-import org.apache.iceberg.encryption.KeyManagementClient;
-import org.apache.iceberg.encryption.PlaintextEncryptionManager;
-import org.apache.iceberg.encryption.StandardEncryptionManager;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
@@ -199,7 +194,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private FileIO catalogFileIO;
   private CloseableGroup closeableGroup;
   private Map<String, String> tableDefaultProperties;
-  private KeyManagementClient keyManagementClient;
 
   private final String catalogName;
   private final long catalogId;
@@ -330,11 +324,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     this.closeableGroup = new CloseableGroup();
     closeableGroup.addCloseable(metricsReporter());
-    if (properties.containsKey(CatalogProperties.ENCRYPTION_KMS_TYPE)
-        || properties.containsKey(CatalogProperties.ENCRYPTION_KMS_IMPL)) {
-      keyManagementClient = EncryptionUtil.createKmsClient(properties);
-      closeableGroup.addCloseable(keyManagementClient);
-    }
     closeableGroup.setSuppressCloseFailure(true);
 
     tableDefaultProperties =
@@ -582,6 +571,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   clone.put(CatalogProperties.FILE_IO_IMPL, ioImplClassName);
                   clone.putAll(properties);
                   clone.put(PolarisTaskConstants.STORAGE_LOCATION, lastMetadata.location());
+
+                  // Polaris does not write encrypted manifests here. Preserve the encryption
+                  // context only so the asynchronous server-side purge can read manifest lists
+                  // and manifests that were written by the engine and enumerate files to delete.
                   PolarisEncryptionUtil.addCleanupTaskEncryptionProperties(
                       clone, catalogProperties, lastMetadata);
                   return clone;
@@ -1660,26 +1653,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private record TableEncryptionConfig(String tableKeyId, int dataKeyLength) {
-    private static @Nullable TableEncryptionConfig from(TableMetadata metadata) {
-      if (metadata == null) {
-        return null;
-      }
-
-      String tableKeyId = metadata.properties().get(TableProperties.ENCRYPTION_TABLE_KEY);
-      if (tableKeyId == null) {
-        return null;
-      }
-
-      return new TableEncryptionConfig(
-          tableKeyId,
-          PropertyUtil.propertyAsInt(
-              metadata.properties(),
-              TableProperties.ENCRYPTION_DEK_LENGTH,
-              TableProperties.ENCRYPTION_DEK_LENGTH_DEFAULT));
-    }
-  }
-
   /**
    * An implementation of {@link TableOperations} that integrates with {@link LocalIcebergCatalog}.
    * Much of this code was originally copied from {@link
@@ -1694,9 +1667,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     private final boolean makeMetadataCurrentOnCommit;
 
     private FileIO tableFileIO;
-    private EncryptionManager encryptionManager;
-    private TableEncryptionConfig encryptionManagerConfig;
-    private EncryptingFileIO encryptingFileIO;
 
     BasePolarisTableOperations(
         FileIO defaultFileIO,
@@ -1732,7 +1702,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         currentMetadata = null;
         currentMetadataLocation = null;
         version = -1;
-        resetEncryptionState();
         throw e;
       }
       return current();
@@ -1770,65 +1739,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     @Override
     public FileIO io() {
-      return io(currentMetadata);
-    }
-
-    private FileIO io(TableMetadata metadata) {
-      Preconditions.checkState(
-          tableFileIO != null, "FileIO has not been initialized for table %s", fullTableName);
-
-      EncryptionManager manager = encryption(metadata);
-      if (manager == PlaintextEncryptionManager.instance()) {
-        return tableFileIO;
-      }
-
-      if (encryptingFileIO == null) {
-        encryptingFileIO = EncryptingFileIO.combine(tableFileIO, manager);
-      }
-      return encryptingFileIO;
-    }
-
-    @Override
-    public EncryptionManager encryption() {
-      return encryption(currentMetadata);
-    }
-
-    private EncryptionManager encryption(TableMetadata metadata) {
-      TableEncryptionConfig requestedConfig = TableEncryptionConfig.from(metadata);
-      if (encryptionManager != null) {
-        // A successful new-table commit may leave currentMetadata null until the next refresh, but
-        // transaction cleanup still calls the public io() method. Preserve the manager that was
-        // bound to the committed metadata in that case. A non-null plaintext metadata object is a
-        // real configuration change and is rejected below.
-        if (metadata == null) {
-          return encryptionManager;
-        }
-
-        Preconditions.checkState(
-            requestedConfig != null && requestedConfig.equals(encryptionManagerConfig),
-            "Cannot reuse encryption manager for table %s: initialized with %s but metadata requires %s",
-            fullTableName,
-            encryptionManagerConfig,
-            requestedConfig == null ? "plaintext" : requestedConfig);
-        return encryptionManager;
-      }
-
-      // Do not cache the plaintext singleton. In particular, io() may be called before metadata is
-      // loaded for a new table, and that must not prevent temporary operations from initializing
-      // encryption from uncommitted metadata later.
-      if (requestedConfig == null) {
-        return PlaintextEncryptionManager.instance();
-      }
-
-      encryptionManager = PolarisEncryptionUtil.encryptionManager(metadata, keyManagementClient);
-      encryptionManagerConfig = requestedConfig;
-      return encryptionManager;
-    }
-
-    private void resetEncryptionState() {
-      encryptionManager = null;
-      encryptionManagerConfig = null;
-      encryptingFileIO = null;
+      return tableFileIO;
     }
 
     @Override
@@ -1892,10 +1803,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                       resolvedEntities,
                       new HashMap<>(tableDefaultProperties),
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-              TableMetadata metadata = TableMetadataParser.read(fileIO, metadataLocation);
-              tableFileIO = fileIO;
-              resetEncryptionState();
-              return metadata;
+              return TableMetadataParser.read(fileIO, metadataLocation);
             });
         if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_REFRESH_TABLE)) {
           polarisEventDispatcher.dispatch(
@@ -2146,12 +2054,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
         @Override
         public FileIO io() {
-          return BasePolarisTableOperations.this.io(uncommittedMetadata);
+          return BasePolarisTableOperations.this.io();
         }
 
         @Override
         public EncryptionManager encryption() {
-          return BasePolarisTableOperations.this.encryption(uncommittedMetadata);
+          return BasePolarisTableOperations.this.encryption();
         }
 
         @Override
@@ -2171,7 +2079,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     protected String writeNewMetadata(TableMetadata metadata, int newVersion) {
       String newTableMetadataFilePath = newTableMetadataFilePath(metadata, newVersion);
-      OutputFile newMetadataLocation = io(metadata).newOutputFile(newTableMetadataFilePath);
+      OutputFile newMetadataLocation = io().newOutputFile(newTableMetadataFilePath);
 
       // write the new metadata
       // use overwrite to avoid negative caching in S3. this is safe because the metadata location

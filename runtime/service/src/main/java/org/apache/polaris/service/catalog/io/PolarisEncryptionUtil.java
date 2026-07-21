@@ -31,7 +31,6 @@ import org.apache.iceberg.encryption.EncryptingFileIO;
 import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.encryption.EncryptionUtil;
 import org.apache.iceberg.encryption.KeyManagementClient;
-import org.apache.iceberg.encryption.PlaintextEncryptionManager;
 import org.apache.iceberg.encryption.StandardEncryptionManager;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.util.PropertyUtil;
@@ -42,26 +41,6 @@ import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 public final class PolarisEncryptionUtil {
 
   private PolarisEncryptionUtil() {}
-
-  /**
-   * Returns the table encryption manager, or Iceberg's plaintext manager for an unencrypted table.
-   */
-  public static EncryptionManager encryptionManager(
-      TableMetadata metadata, KeyManagementClient keyManagementClient) {
-    if (metadata == null
-        || metadata.properties().get(TableProperties.ENCRYPTION_TABLE_KEY) == null) {
-      return PlaintextEncryptionManager.instance();
-    }
-
-    if (keyManagementClient == null) {
-      throw new IllegalArgumentException(
-          "Cannot create encryption manager without a key management client. "
-              + "Configure encryption.kms-type or encryption.kms-impl on the catalog");
-    }
-
-    return EncryptionUtil.createEncryptionManager(
-        metadata.encryptionKeys(), metadata.properties(), keyManagementClient);
-  }
 
   /**
    * Copies the catalog KMS configuration and the table's wrapped encryption keys into a cleanup
@@ -109,6 +88,9 @@ public final class PolarisEncryptionUtil {
           "Cannot purge an encrypted table without encryption.kms-type or encryption.kms-impl");
     }
 
+    // Like CatalogUtil.loadFileIO, createKmsClient dynamically loads the configured implementation
+    // and initializes it with the supplied catalog properties. Credential resolution is delegated
+    // to the configured KeyManagementClient.
     KeyManagementClient keyManagementClient = EncryptionUtil.createKmsClient(catalogKmsProperties);
     boolean kmsOwnershipTransferred = false;
     try {

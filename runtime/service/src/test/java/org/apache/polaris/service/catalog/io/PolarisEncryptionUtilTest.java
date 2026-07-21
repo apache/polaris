@@ -37,7 +37,6 @@ import org.apache.iceberg.encryption.EncryptedOutputFile;
 import org.apache.iceberg.encryption.EncryptingFileIO;
 import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.encryption.EncryptionUtil;
-import org.apache.iceberg.encryption.PlaintextEncryptionManager;
 import org.apache.iceberg.encryption.StandardEncryptionManager;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
@@ -56,21 +55,6 @@ class PolarisEncryptionUtilTest {
   @AfterEach
   void resetKmsState() {
     PolarisTestKms.resetClosed();
-  }
-
-  @Test
-  void unencryptedMetadataUsesPlaintextEncryptionManager() {
-    TableMetadata metadata = plainMetadata();
-
-    assertThat(PolarisEncryptionUtil.encryptionManager(metadata, null))
-        .isSameAs(PlaintextEncryptionManager.instance());
-  }
-
-  @Test
-  void encryptedMetadataRequiresKms() {
-    assertThatThrownBy(() -> PolarisEncryptionUtil.encryptionManager(encryptedMetadata(), null))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("encryption.kms-type or encryption.kms-impl");
   }
 
   @Test
@@ -181,7 +165,8 @@ class PolarisEncryptionUtilTest {
     InMemoryFileIO rawFileIO = new InMemoryFileIO();
     TableMetadata metadata = encryptedMetadata();
     EncryptionManager writerManager =
-        PolarisEncryptionUtil.encryptionManager(metadata, new PolarisTestKms());
+        EncryptionUtil.createEncryptionManager(
+            metadata.encryptionKeys(), metadata.properties(), new PolarisTestKms());
     EncryptingFileIO writerFileIO = EncryptingFileIO.combine(rawFileIO, writerManager);
     String location = "memory:encrypted-data";
     byte[] expected = "encrypted payload".getBytes(StandardCharsets.UTF_8);
@@ -221,14 +206,6 @@ class PolarisEncryptionUtilTest {
     }
 
     assertThat(PolarisTestKms.wasClosed()).isTrue();
-  }
-
-  private static TableMetadata plainMetadata() {
-    return TableMetadata.newTableMetadata(
-        new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get())),
-        org.apache.iceberg.PartitionSpec.unpartitioned(),
-        "file:///tmp/plain-table",
-        Map.of());
   }
 
   private static PolarisEncryptionUtil.CleanupTaskEncryptionContext encryptionContext(
