@@ -265,7 +265,7 @@ weight: 900
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | persistence.type | string | `"in-memory"` | The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta). |
-| persistence.relationalJdbc.schemaName | string | `"POLARIS_SCHEMA"` | The database schema (namespace) holding the Polaris tables. Applied as the JDBC driver's currentSchema connection property. The schema must exist before Polaris connects; creating it is a DBA task. The name is passed to the driver unquoted, so the database applies its usual identifier case folding. |
+| persistence.relationalJdbc.additionalProperties | object | `{"currentSchema":"POLARIS_SCHEMA"}` | Additional JDBC connection properties passed to the datasource driver as `quarkus.datasource.jdbc.additional-jdbc-properties.<name>`. The default sets `currentSchema`, which selects the database schema (namespace) holding the Polaris tables; that schema must exist before Polaris connects (creating it is a DBA task) and is passed to the driver unquoted, so the database applies its usual identifier case folding. Add further entries to customize other driver properties. |
 | persistence.relationalJdbc.secret.name | string | `""` | The secret name to pull database connection properties from |
 | persistence.relationalJdbc.secret.username | string | `"username"` | The secret key holding the database username for authentication |
 | persistence.relationalJdbc.secret.password | string | `"password"` | The secret key holding the database password for authentication |
