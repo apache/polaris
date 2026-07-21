@@ -24,6 +24,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -61,11 +62,19 @@ public final class EntityIdempotency {
   /** Internal-properties key under which the per-entity idempotency key window is stored. */
   public static final String IDEMPOTENCY_KEYS_PROPERTY = "polaris-idempotency-keys";
 
-  /** Upper bound on live idempotency keys stored on a single entity. */
-  public static final int MAX_WINDOW_SIZE = 64;
+  /**
+   * Live-key window size at the {@link #BASELINE_TTL}; the effective cap scales with the key TTL.
+   */
+  private static final int BASELINE_WINDOW_SIZE = 64;
+
+  /** TTL that {@link #BASELINE_WINDOW_SIZE} is calibrated for. */
+  private static final Duration BASELINE_TTL = Duration.ofMinutes(5);
+
+  /** Absolute ceiling on live keys per entity, to bound entity size for large TTLs. */
+  private static final int MAX_WINDOW_CEILING = 1024;
 
   /** Magic prefix for the version 1 SMILE window ({@code IS1} + base64url bytes). */
-  private static final String WINDOW_FORMAT_SMILE_V1 = "IS1";
+  private static final String FORMAT_SMILE_V1 = "IS1";
 
   private static final ObjectMapper SMILE_MAPPER = SmileMapper.builder().build();
 
@@ -93,7 +102,8 @@ public final class EntityIdempotency {
    * Returns a copy of {@code internalProperties} with {@code key} recorded (expiring at {@code
    * expiry}) and any keys already expired as of {@code now} dropped. This is the inline
    * purge-on-write step: it runs within the same transaction that persists the entity, so no
-   * separate maintenance pass is required to bound the window. Capped at {@link #MAX_WINDOW_SIZE}.
+   * separate maintenance pass is required to bound the window. The window is capped at a size
+   * derived from this key's TTL ({@code expiry - now}); see {@link #maxWindowSize(Duration)}.
    */
   public static Map<String, String> recordKey(
       Map<String, String> internalProperties, UUID key, Instant expiry, Instant now) {
@@ -110,10 +120,11 @@ public final class EntityIdempotency {
       }
     }
 
-    // Bounded window: drop the earliest-expiring entries (front of the sorted list) to make room
-    // *before* inserting, so the key just recorded is always retained even when every entry shares
-    // the same expiry (e.g. a burst of writes at one instant) and expiry order can't rank recency.
-    while (window.size() >= MAX_WINDOW_SIZE) {
+    // Bounded window, sized from this key's TTL. Drop the earliest-expiring entries (front of the
+    // sorted list) *before* inserting so the key just recorded is always retained. This matters
+    // when entries share an expiry (e.g. a burst of writes) and expiry order can't rank recency.
+    int maxWindowSize = maxWindowSize(Duration.between(now, expiry));
+    while (window.size() >= maxWindowSize) {
       window.remove(0);
     }
 
@@ -129,25 +140,35 @@ public final class EntityIdempotency {
     return updated;
   }
 
+  /**
+   * Effective cap on the live-key window, scaled linearly from {@link #BASELINE_WINDOW_SIZE} at
+   * {@link #BASELINE_TTL} (e.g. 5m -> 64, 10m -> 128), floored at 1 and clamped by {@link
+   * #MAX_WINDOW_CEILING} so a large TTL can't grow the per-entity window without bound.
+   */
+  private static int maxWindowSize(Duration ttl) {
+    long scaled = (long) BASELINE_WINDOW_SIZE * ttl.toSeconds() / BASELINE_TTL.toSeconds();
+    return (int) Math.max(1, Math.min(MAX_WINDOW_CEILING, scaled));
+  }
+
   private static List<KeyEntry> decode(String raw) {
-    if (raw == null || raw.isEmpty()) {
+    if (raw == null || !raw.startsWith(FORMAT_SMILE_V1)) {
       return List.of();
     }
-    if (!raw.startsWith(WINDOW_FORMAT_SMILE_V1)) {
-      throw new IllegalArgumentException("Unrecognized idempotency key window format");
-    }
-    byte[] smile = Base64.getUrlDecoder().decode(raw.substring(WINDOW_FORMAT_SMILE_V1.length()));
+    // An unreadable window (bad base64 or SMILE decode failure) is treated as no live keys rather
+    // than failing the operation: a corrupt property degrades to normal behavior and the next
+    // recordKey overwrites it.
     try {
+      byte[] smile = Base64.getUrlDecoder().decode(raw.substring(FORMAT_SMILE_V1.length()));
       return SMILE_MAPPER.readValue(smile, new TypeReference<List<KeyEntry>>() {});
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to decode idempotency key window", e);
+    } catch (IllegalArgumentException | IOException e) {
+      return List.of();
     }
   }
 
   private static String encode(Collection<KeyEntry> window) {
     try {
       byte[] smile = SMILE_MAPPER.writeValueAsBytes(window);
-      return WINDOW_FORMAT_SMILE_V1 + Base64.getUrlEncoder().withoutPadding().encodeToString(smile);
+      return FORMAT_SMILE_V1 + Base64.getUrlEncoder().withoutPadding().encodeToString(smile);
     } catch (JsonProcessingException e) {
       throw new RuntimeException("Failed to encode idempotency key window", e);
     }
