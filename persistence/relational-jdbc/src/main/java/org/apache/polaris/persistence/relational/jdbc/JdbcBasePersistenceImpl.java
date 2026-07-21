@@ -629,26 +629,10 @@ public class JdbcBasePersistenceImpl
   @Override
   public int lookupEntityGrantRecordsVersion(
       @NonNull PolarisCallContext callCtx, long catalogId, long entityId) {
-    Map<String, Object> params =
-        Map.of("catalog_id", catalogId, "id", entityId, "realm_id", realmId);
-    PreparedQuery query =
-        QueryGenerator.generateSelectQuery(
-            ModelEntity.VERSION_COLUMNS, ModelEntity.TABLE_NAME, params);
-    try {
-      var results = datasourceOperations.executeSelect(query, new EntityVersionConverter());
-      if (results.isEmpty()) {
-        return 0;
-      } else if (results.size() > 1) {
-        throw new IllegalStateException(
-            String.format(
-                "More than one(%s) entities were found for catalogId=%s, entityId=%s",
-                results.size(), catalogId, entityId));
-      }
-      return results.getFirst().versions().grantRecordsVersion();
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to retrieve grant records version due to %s", e.getMessage()), e);
-    }
+    List<PolarisChangeTrackingVersions> versions =
+        lookupEntityVersions(callCtx, List.of(new PolarisEntityId(catalogId, entityId)));
+    PolarisChangeTrackingVersions version = versions.getFirst();
+    return version == null ? 0 : version.grantRecordsVersion();
   }
 
   @Override
