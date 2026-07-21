@@ -108,7 +108,7 @@ public class DefaultAuthenticator implements Authenticator {
     var principalName = entity != null ? entity.getName() : credentials.getPrincipalName();
     var polarisPrincipal = PolarisPrincipal.of(principalName, attributes, roleSelection.roles());
 
-    LOGGER.debug("Resolved internal principal: {}", polarisPrincipal);
+    LOGGER.debug("Resolved principal: {} - entity available: {}", polarisPrincipal, entity != null);
     return polarisPrincipal;
   }
 

@@ -59,7 +59,7 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
   public Map<String, String> start() {
     opa = new OpaContainer();
     opa.start();
-    opa.createRegoPolicy(POLICY_NAME, regoPolicy);
+    opa.uploadRegoPolicy(POLICY_NAME, regoPolicy);
     return Map.of(
         "polaris.authorization.type",
         "opa",
