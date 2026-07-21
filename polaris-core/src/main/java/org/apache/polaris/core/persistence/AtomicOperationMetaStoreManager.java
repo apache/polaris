@@ -1122,6 +1122,18 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // if this entity was not found, return failure
     if (refreshEntityToDrop == null) {
+      if (cleanup && entityToDrop.getType() != PolarisEntityType.POLICY) {
+        PolarisBaseEntity cleanupTask =
+            ms.lookupEntityByName(
+                callCtx,
+                PolarisEntityConstants.getNullId(),
+                PolarisEntityConstants.getNullId(),
+                PolarisEntityType.TASK.getCode(),
+                "entityCleanup_" + entityToDrop.getId());
+        if (cleanupTask != null) {
+          return new DropEntityResult(cleanupTask.getId());
+        }
+      }
       return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
@@ -1227,7 +1239,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               .propertiesAsMap(properties)
               .id(ms.generateNewId(callCtx))
               .catalogId(0L)
-              .name("entityCleanup_" + entityToDrop.getId())
+              .name("entityCleanup_" + refreshEntityToDrop.getId())
               .typeCode(PolarisEntityType.TASK.getCode())
               .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
               .createTimestamp(clock.millis());
@@ -1236,7 +1248,17 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       }
       PolarisBaseEntity taskEntity =
           prepareToPersistNewEntity(callCtx, ms, taskEntityBuilder.build());
-      this.dropEntity(callCtx, ms, refreshEntityToDrop, List.of(taskEntity));
+      try {
+        this.dropEntity(callCtx, ms, refreshEntityToDrop, List.of(taskEntity));
+      } catch (EntityAlreadyExistsException e) {
+        return new DropEntityResult(
+            BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
+            String.format(
+                "Existing entity id: '%s', type %s subtype %s",
+                e.getExistingEntity().getId(),
+                e.getExistingEntity().getTypeCode(),
+                e.getExistingEntity().getSubTypeCode()));
+      }
       return new DropEntityResult(taskEntity.getId());
     }
 

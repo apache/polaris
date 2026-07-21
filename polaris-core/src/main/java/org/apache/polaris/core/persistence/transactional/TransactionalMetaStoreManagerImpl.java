@@ -51,6 +51,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
+import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
@@ -1316,6 +1317,26 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // entity cannot be null
     getDiagnostics().checkNotNull(entityToDrop, "unexpected_null_entity");
 
+    // Resolve the entity by id before validating its path so a retry after a successful commit can
+    // recover the cleanup task even though the dropped entity no longer resolves.
+    PolarisBaseEntity refreshEntityToDrop =
+        ms.lookupEntityInCurrentTxn(
+            callCtx, entityToDrop.getCatalogId(), entityToDrop.getId(), entityToDrop.getTypeCode());
+    if (refreshEntityToDrop == null
+        && cleanup
+        && entityToDrop.getType() != PolarisEntityType.POLICY) {
+      PolarisBaseEntity cleanupTask =
+          ms.lookupEntityByNameInCurrentTxn(
+              callCtx,
+              PolarisEntityConstants.getNullId(),
+              PolarisEntityConstants.getNullId(),
+              PolarisEntityType.TASK.getCode(),
+              "entityCleanup_" + entityToDrop.getId());
+      if (cleanupTask != null) {
+        return new DropEntityResult(cleanupTask.getId());
+      }
+    }
+
     // re-resolve everything including that entity
     PolarisEntityResolver resolver =
         new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath, entityToDrop);
@@ -1324,11 +1345,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     if (resolver.isFailure()) {
       return new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
     }
-
-    // first find the entity to drop
-    PolarisBaseEntity refreshEntityToDrop =
-        ms.lookupEntityInCurrentTxn(
-            callCtx, entityToDrop.getCatalogId(), entityToDrop.getId(), entityToDrop.getTypeCode());
 
     // if this entity was not found, return failure
     if (refreshEntityToDrop == null) {
@@ -1443,7 +1459,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         taskEntityBuilder.internalPropertiesAsMap(cleanupProperties);
       }
       PolarisBaseEntity taskEntity = taskEntityBuilder.build();
-      createEntityIfNotExists(callCtx, ms, null, taskEntity);
+      EntityResult createTaskResult = createEntityIfNotExists(callCtx, ms, null, taskEntity);
+      if (!createTaskResult.isSuccess()) {
+        ms.rollback();
+        return new DropEntityResult(
+            createTaskResult.getReturnStatus(), createTaskResult.getExtraInformation());
+      }
       return new DropEntityResult(taskEntity.getId());
     }
 
@@ -1463,11 +1484,21 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
     // need to run inside a read/write transaction
-    return ms.runInTransaction(
-        callCtx,
-        () ->
-            this.dropEntityIfExists(
-                callCtx, ms, catalogPath, entityToDrop, cleanupProperties, cleanup));
+    try {
+      return ms.runInTransaction(
+          callCtx,
+          () ->
+              this.dropEntityIfExists(
+                  callCtx, ms, catalogPath, entityToDrop, cleanupProperties, cleanup));
+    } catch (EntityAlreadyExistsException e) {
+      return new DropEntityResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
+          String.format(
+              "Existing entity id: '%s', type %s subtype %s",
+              e.getExistingEntity().getId(),
+              e.getExistingEntity().getTypeCode(),
+              e.getExistingEntity().getSubTypeCode()));
+    }
   }
 
   /**

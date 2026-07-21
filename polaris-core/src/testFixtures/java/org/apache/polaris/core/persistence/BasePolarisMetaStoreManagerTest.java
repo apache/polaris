@@ -298,9 +298,10 @@ public abstract class BasePolarisMetaStoreManagerTest {
             .map(PolarisBaseEntity::getId)
             .toList();
 
-    Assertions.assertThatThrownBy(
-            () -> metaStoreManager.dropEntityIfExists(callCtx, null, entityToDrop, Map.of(), true))
-        .isInstanceOf(EntityAlreadyExistsException.class);
+    Assertions.assertThat(
+            metaStoreManager.dropEntityIfExists(callCtx, null, entityToDrop, Map.of(), true))
+        .extracting(BaseResult::getReturnStatus)
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
 
     Assertions.assertThat(
             metaStoreManager
@@ -338,12 +339,10 @@ public abstract class BasePolarisMetaStoreManagerTest {
             .getEntity();
 
     Assertions.assertThat(cleanupTask).isNotNull();
-    Assertions.assertThatCode(
-            () ->
-                callCtx
-                    .getMetaStore()
-                    .deleteEntityAndCreateEntities(callCtx, entityToDrop, List.of(cleanupTask)))
-        .doesNotThrowAnyException();
+    var retryResult =
+        metaStoreManager.dropEntityIfExists(callCtx, null, entityToDrop, Map.of(), true);
+    Assertions.assertThat(retryResult.isSuccess()).isTrue();
+    Assertions.assertThat(retryResult.getCleanupTaskId()).isEqualTo(dropResult.getCleanupTaskId());
     Assertions.assertThat(
             metaStoreManager
                 .loadEntity(callCtx, 0L, cleanupTask.getId(), PolarisEntityType.TASK)
