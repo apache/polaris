@@ -32,12 +32,14 @@ public final class PolarisApiEndpoints implements Serializable {
 
   private final URI catalogApiEndpoint;
   private final URI managementApiEndpoint;
+  private final URI openLineageApiEndpoint;
   private final String realmId;
   private final Map<String, String> headers;
 
   public PolarisApiEndpoints(URI baseUri, String realmId, Map<String, String> headers) {
     this.catalogApiEndpoint = appendPath(baseUri, "api/catalog");
     this.managementApiEndpoint = appendPath(baseUri, "api/management");
+    this.openLineageApiEndpoint = appendPath(baseUri, "api/openlineage/v1");
     this.realmId = realmId;
     this.headers = headers;
   }
@@ -51,7 +53,7 @@ public final class PolarisApiEndpoints implements Serializable {
   }
 
   public URI openLineageApiEndpoint() {
-    return baseUri.resolve(baseUri.getRawPath() + "/api/v1").normalize();
+    return openLineageApiEndpoint;
   }
 
   public String realmId() {

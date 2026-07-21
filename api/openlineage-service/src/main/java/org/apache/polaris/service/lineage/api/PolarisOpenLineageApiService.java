@@ -20,6 +20,7 @@ package org.apache.polaris.service.lineage.api;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import org.apache.polaris.core.context.RealmContext;
 
 /**
@@ -46,4 +47,16 @@ public interface PolarisOpenLineageApiService {
    */
   Response sendLineageEvent(
       PolarisLineageEvent event, RealmContext realmContext, SecurityContext securityContext);
+
+  /**
+   * Handle a batch of OpenLineage events accepted at the batch ingest endpoint. Implementations
+   * translate each event into an {@link OpenLineageIngestRequest}, delegate to an {@link
+   * OpenLineageIngestProvider}, and aggregate the per-event outcomes.
+   *
+   * @param events the parsed OpenLineage events, each dispatched to the correct variant by Jackson.
+   * @return the JAX-RS response. Per the OpenLineage batch API this is {@code 200 OK} with an
+   *     {@link OpenLineageBatchIngestResponse} body summarizing received/successful/failed counts.
+   */
+  Response sendLineageEventBatch(
+      List<PolarisLineageEvent> events, RealmContext realmContext, SecurityContext securityContext);
 }

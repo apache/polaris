@@ -537,6 +537,17 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false) // beta feature, keep it off by default
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_OPENLINEAGE_INGEST =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_OPENLINEAGE_INGEST")
+          .description(
+              "If true, the OpenLineage ingest endpoint is advertised in the catalog configuration "
+                  + "response. The endpoint itself is mounted whenever the OpenLineage extension is "
+                  + "assembled into the server; this flag only controls whether it is advertised to "
+                  + "clients during endpoint discovery.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_CONNECTION_TYPES")

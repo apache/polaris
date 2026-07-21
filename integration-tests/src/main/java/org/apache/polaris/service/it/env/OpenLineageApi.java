@@ -23,7 +23,7 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
 
-/** Test helper for {@code POST /api/v1/lineage} (the OpenLineage ingest endpoint). */
+/** Test helper for the OpenLineage ingest endpoints under {@code /api/openlineage/v1}. */
 public class OpenLineageApi extends PolarisRestApi {
 
   OpenLineageApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
@@ -31,10 +31,20 @@ public class OpenLineageApi extends PolarisRestApi {
   }
 
   /**
-   * POSTs a JSON event body to the OpenLineage ingest endpoint and returns the raw response. The
-   * caller is responsible for closing the response.
+   * POSTs a JSON event body to the single-event ingest endpoint ({@code POST
+   * /api/openlineage/v1/lineage}) and returns the raw response. The caller is responsible for
+   * closing the response.
    */
   public Response sendEvent(String json) {
     return request("lineage").post(Entity.json(json));
+  }
+
+  /**
+   * POSTs a JSON array body to the batch ingest endpoint ({@code POST
+   * /api/openlineage/v1/lineage/batch}) and returns the raw response. The caller is responsible for
+   * closing the response.
+   */
+  public Response sendBatch(String json) {
+    return request("lineage/batch").post(Entity.json(json));
   }
 }

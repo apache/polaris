@@ -16,10 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it;
+package org.apache.polaris.service.lineage;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
 import org.apache.polaris.service.it.test.PolarisOpenLineageServiceIntegrationTest;
 
-@QuarkusIntegrationTest
+/**
+ * Runs the shared OpenLineage ingest contract against a full Polaris server that has the {@code
+ * polaris-extensions-openlineage} module assembled in. The server is spawned by the {@code
+ * polaris-server-test-runner} plugin and resolved through {@code ExternalPolarisServerManager}
+ * (registered via {@code META-INF/services} in this source set).
+ */
 public class OpenLineageServiceIT extends PolarisOpenLineageServiceIntegrationTest {}

@@ -45,13 +45,13 @@ info:
   version: 0.0.1
   description:
     Defines the OpenLineage-compatible ingest API exposed by Apache Polaris.
-    Polaris accepts OpenLineage events at the standard OpenLineage path so
+    Polaris accepts OpenLineage events under the /api/openlineage/v1 path so
     engines (Spark, Flink, Airflow, Trino, dbt) can be reconfigured by URL
     alone. Event bodies follow the OpenLineage specification at
     https://openlineage.io/spec/2-0-2/OpenLineage.json.
 
 servers:
-  - url: "{scheme}://{host}/api/v1"
+  - url: "{scheme}://{host}/api/openlineage/v1"
     description: Server URL when the port can be inferred from the scheme
     variables:
       scheme:
@@ -105,6 +105,81 @@ paths:
             OpenLineage server specification the response body is empty.
         400:
           description: Bad Request - The request body is not a valid OpenLineage event
+        401:
+          description: Unauthorized - The caller is not authenticated
+        403:
+          description: Forbidden - The caller is not authorized to submit lineage events
+        503:
+          description: Service Unavailable - The lineage subsystem is temporarily unable to accept events
+        5XX:
+          description: Server error
+
+  /lineage/batch:
+    post:
+      tags:
+        - OpenLineage API
+      summary: Submit a batch of OpenLineage events
+      description:
+        Accepts a JSON array of OpenLineage RunEvent, JobEvent, or DatasetEvent
+        objects as defined by the OpenLineage batch API
+        (https://openlineage.io/apidocs/openapi/).
+
+
+        Each event is dispatched to the correct variant by inspecting its
+        `schemaURL` field, exactly as the single-event endpoint does. Events are
+        processed independently; the response summarizes how many were accepted
+        and lists any that failed along with whether the failure is retriable.
+      operationId: sendLineageEventBatch
+      requestBody:
+        description:
+          A JSON array of OpenLineage events. Each element follows the upstream
+          OpenLineage 2-0-2 JSON Schema referenced above.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+              externalDocs:
+                description: OpenLineage 2-0-2 JSON Schema (authoritative)
+                url: https://openlineage.io/spec/2-0-2/OpenLineage.json
+      responses:
+        200:
+          description:
+            OK. The batch was processed. The body summarizes the
+            received/successful/failed counts and lists any failed events.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [SUCCESS, PARTIAL, FAILURE]
+                  summary:
+                    type: object
+                    properties:
+                      received:
+                        type: integer
+                      successful:
+                        type: integer
+                      failed:
+                        type: integer
+                  failed_events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        retriable:
+                          type: boolean
+                        message:
+                          type: string
+        400:
+          description: Bad Request - The request body is not a valid array of OpenLineage events
         401:
           description: Unauthorized - The caller is not authenticated
         403:

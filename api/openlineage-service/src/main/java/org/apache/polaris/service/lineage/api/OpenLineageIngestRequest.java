@@ -38,7 +38,9 @@ public final class OpenLineageIngestRequest {
     this.realmId = realmId;
   }
 
-  /** The parsed OpenLineage event (one of {@code RunEvent}, {@code JobEvent}, {@code DatasetEvent}). */
+  /**
+   * The parsed OpenLineage event (one of {@code RunEvent}, {@code JobEvent}, {@code DatasetEvent}).
+   */
   public OpenLineage.BaseEvent event() {
     return event;
   }

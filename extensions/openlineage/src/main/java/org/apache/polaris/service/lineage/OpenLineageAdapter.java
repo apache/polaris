@@ -22,7 +22,10 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.lineage.api.OpenLineageBatchIngestResponse;
 import org.apache.polaris.service.lineage.api.OpenLineageIngestProvider;
 import org.apache.polaris.service.lineage.api.OpenLineageIngestRequest;
 import org.apache.polaris.service.lineage.api.OpenLineageIngestResult;
@@ -35,6 +38,11 @@ import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
  * <p>Responsible for translating the HTTP request context into an {@link OpenLineageIngestRequest}
  * and mapping the provider result back to a JAX-RS {@link Response}. Provider implementations do
  * not interact with JAX-RS types.
+ *
+ * <p>Batch ingest is aggregated here rather than on the provider seam: the adapter fans a batch out
+ * into per-event {@link OpenLineageIngestProvider#ingest} calls and assembles the per-event
+ * outcomes into an {@link OpenLineageBatchIngestResponse}. This keeps the provider contract a
+ * single event in / single result out.
  */
 @RequestScoped
 public class OpenLineageAdapter implements PolarisOpenLineageApiService {
@@ -49,10 +57,52 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
   @Override
   public Response sendLineageEvent(
       PolarisLineageEvent event, RealmContext realmContext, SecurityContext securityContext) {
+    OpenLineageIngestResult result = ingestOne(event, realmContext);
+    return toResponse(result);
+  }
+
+  @Override
+  public Response sendLineageEventBatch(
+      List<PolarisLineageEvent> events,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    int successful = 0;
+    List<OpenLineageBatchIngestResponse.FailedEvent> failed = new ArrayList<>();
+
+    for (int i = 0; i < events.size(); i++) {
+      OpenLineageIngestResult result = ingestOne(events.get(i), realmContext);
+      switch (result) {
+        case ACCEPTED -> successful++;
+        case REJECTED ->
+            failed.add(new OpenLineageBatchIngestResponse.FailedEvent(i, false, "Event rejected"));
+        case UNAVAILABLE ->
+            failed.add(
+                new OpenLineageBatchIngestResponse.FailedEvent(
+                    i, true, "Ingest backend unavailable"));
+      }
+    }
+
+    OpenLineageBatchIngestResponse.Status status;
+    if (failed.isEmpty()) {
+      status = OpenLineageBatchIngestResponse.Status.SUCCESS;
+    } else if (successful == 0) {
+      status = OpenLineageBatchIngestResponse.Status.FAILURE;
+    } else {
+      status = OpenLineageBatchIngestResponse.Status.PARTIAL;
+    }
+
+    OpenLineageBatchIngestResponse body =
+        new OpenLineageBatchIngestResponse(
+            status,
+            new OpenLineageBatchIngestResponse.Summary(events.size(), successful, failed.size()),
+            failed);
+    return Response.status(Response.Status.OK).entity(body).build();
+  }
+
+  private OpenLineageIngestResult ingestOne(PolarisLineageEvent event, RealmContext realmContext) {
     OpenLineageIngestRequest request =
         new OpenLineageIngestRequest(event.event(), realmContext.getRealmIdentifier());
-    OpenLineageIngestResult result = provider.ingest(request);
-    return toResponse(result);
+    return provider.ingest(request);
   }
 
   private static Response toResponse(OpenLineageIngestResult result) {

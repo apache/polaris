@@ -27,22 +27,22 @@ import io.openlineage.server.OpenLineage;
 /**
  * Polaris-side wrapper for an OpenLineage event accepted by the lineage ingest endpoint.
  *
- * <p>Targets the OpenLineage spec as implemented by {@code io.openlineage:openlineage-java}
- * 1.48.0. The spec itself is at <a
+ * <p>Targets the OpenLineage spec as implemented by {@code io.openlineage:openlineage-java} 1.48.0.
+ * The spec itself is at <a
  * href="https://github.com/OpenLineage/OpenLineage/blob/main/spec/OpenLineage.json">OpenLineage.json</a>;
  * the event model is defined under {@code /definitions/BaseEvent}, {@code RunEvent}, {@code
  * JobEvent}, and {@code DatasetEvent}.
  *
- * <p>The OpenLineage spec models events as a {@code oneOf} over {@code RunEvent}, {@code
- * JobEvent}, and {@code DatasetEvent}, discriminated by the value of the {@code schemaURL} field.
- * The official {@code openlineage-java} library ships POJOs for these three event types in {@link
+ * <p>The OpenLineage spec models events as a {@code oneOf} over {@code RunEvent}, {@code JobEvent},
+ * and {@code DatasetEvent}, discriminated by the value of the {@code schemaURL} field. The official
+ * {@code openlineage-java} library ships POJOs for these three event types in {@link
  * io.openlineage.server.OpenLineage} but does not annotate them for polymorphic JSON
  * deserialization. This class provides that polymorphism on top.
  *
  * <p>Wrappers compose the OpenLineage event by reference rather than extending it because the
  * {@code OpenLineage.*Event} classes are {@code final}. {@link #event()} returns the underlying
- * event for follow-up code that needs typed access to fields (inputs, outputs, columnLineage
- * facet, etc.).
+ * event for follow-up code that needs typed access to fields (inputs, outputs, columnLineage facet,
+ * etc.).
  *
  * <p>This pattern follows Marquez (the OpenLineage reference server), which uses the same
  * {@code @JsonTypeInfo} + {@code @JsonTypeIdResolver} discrimination on {@code schemaURL}.

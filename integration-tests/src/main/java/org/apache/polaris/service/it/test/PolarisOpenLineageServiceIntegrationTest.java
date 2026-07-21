@@ -33,12 +33,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
- * Integration tests for the OpenLineage ingest endpoint ({@code POST /api/v1/lineage}).
+ * Integration tests for the OpenLineage ingest endpoints under {@code /api/openlineage/v1}: single
+ * event ({@code POST /api/openlineage/v1/lineage}) and batch ({@code POST
+ * /api/openlineage/v1/lineage/batch}).
  *
- * <p>The endpoint is currently a no-op: every authenticated, well-formed event returns {@code
- * 201 Created}. These tests pin down the wire-level contract so that follow-up PRs (persistence,
- * dataset resolution, downstream forwarding) cannot accidentally regress dispatch or auth
- * behavior.
+ * <p>The endpoints are currently a no-op: every authenticated, well-formed event returns {@code 201
+ * Created} (single) or is counted as successful in the {@code 200 OK} batch summary. These tests
+ * pin down the wire-level contract so that follow-up PRs (persistence, dataset resolution,
+ * downstream forwarding) cannot accidentally regress dispatch or auth behavior.
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisOpenLineageServiceIntegrationTest {
@@ -105,6 +107,9 @@ public class PolarisOpenLineageServiceIntegrationTest {
       }
       """;
 
+  private static final String BATCH_OF_EVENTS =
+      "[" + RUN_EVENT + "," + JOB_EVENT + "," + DATASET_EVENT + "]";
+
   private static PolarisClient client;
   private static OpenLineageApi authenticated;
   private static OpenLineageApi anonymous;
@@ -167,6 +172,42 @@ public class PolarisOpenLineageServiceIntegrationTest {
   @Test
   public void malformedJsonReturns400() {
     try (Response res = authenticated.sendEvent("not-json")) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+    }
+  }
+
+  @Test
+  public void batchOfEventsReturns200AndSummary() {
+    try (Response res = authenticated.sendBatch(BATCH_OF_EVENTS)) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      String body = res.readEntity(String.class);
+      assertThat(body).contains("\"status\":\"SUCCESS\"");
+      assertThat(body).contains("\"received\":3");
+      assertThat(body).contains("\"successful\":3");
+      assertThat(body).contains("\"failed\":0");
+    }
+  }
+
+  @Test
+  public void emptyBatchReturns200() {
+    try (Response res = authenticated.sendBatch("[]")) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      String body = res.readEntity(String.class);
+      assertThat(body).contains("\"received\":0");
+      assertThat(body).contains("\"successful\":0");
+    }
+  }
+
+  @Test
+  public void unauthenticatedBatchReturns401() {
+    try (Response res = anonymous.sendBatch(BATCH_OF_EVENTS)) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.UNAUTHORIZED.getStatusCode());
+    }
+  }
+
+  @Test
+  public void malformedBatchReturns400() {
+    try (Response res = authenticated.sendBatch("not-json")) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
     }
   }
