@@ -1281,6 +1281,7 @@ class SetupCommand(Command):
             except NotFoundException:
                 policy_exists = False
             except Exception:
+                # A real apply's create attempt determines whether this failure is terminal.
                 if dry_run:
                     self._record_failure(
                         f"Could not verify existence of policy '{policy_name}'"

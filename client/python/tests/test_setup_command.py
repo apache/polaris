@@ -60,6 +60,20 @@ class TestSetupCommand(CLITestBase):
         self.mock_execute(mock_client, ["setup", "apply", "config.yaml", "--dry-run"])
         mock_client.list_principals.assert_called()
 
+    def test_setup_apply_succeeds_without_failures(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.list_principal_roles.return_value.roles = []
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            setup_config="config.yaml",
+            _config_cache={"principal_roles": ["successful-role"]},
+        )
+
+        command.execute(mock_client)
+
+        self.assertEqual(command._failure_count, 0)
+        mock_client.create_principal_role.assert_called_once()
+
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_dry_run_reports_lookup_failures(
         self, mock_isfile: MagicMock
