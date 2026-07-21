@@ -22,6 +22,7 @@ import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -67,11 +68,14 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
@@ -181,6 +185,25 @@ public class PolarisAdminServiceTest {
         .isInstanceOf(AlreadyExistsException.class);
 
     verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testDeleteCatalogWithCleanupTaskConflict() {
+    String catalogName = "test-catalog";
+    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
+    when(resolutionManifest.getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG))
+        .thenReturn(resolvedPathWrapper);
+    when(resolvedPathWrapper.getResolvedLeafEntity())
+        .thenReturn(new ResolvedPolarisEntity(catalogEntity, List.of(), List.of()));
+    when(realmConfig.getConfig(FeatureConfiguration.CLEANUP_ON_CATALOG_DROP)).thenReturn(true);
+    when(metaStoreManager.dropEntityIfExists(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(new DropEntityResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
+
+    assertThatThrownBy(() -> adminService.deleteCatalog(catalogName))
+        .isInstanceOf(CommitConflictException.class)
+        .hasMessageContaining("Concurrent cleanup task creation")
+        .hasMessageContaining(catalogName);
   }
 
   @Test
