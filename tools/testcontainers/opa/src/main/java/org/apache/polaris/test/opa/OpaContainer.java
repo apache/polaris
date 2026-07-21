@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.test.opa;
 
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
@@ -65,19 +65,21 @@ public class OpaContainer extends GenericContainer<OpaContainer> {
     return externalUrl;
   }
 
-  public void createRegoPolicy(String name, String rego) {
+  public void uploadRegoPolicy(String name, String rego) {
     try {
-      URL url = getExternalUrl().resolve("v1/policies/" + name).toURL();
-      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-      conn.setRequestMethod("PUT");
-      conn.setDoOutput(true);
-      conn.setRequestProperty("Content-Type", "text/plain");
-      try (OutputStream os = conn.getOutputStream()) {
-        os.write(rego.getBytes(StandardCharsets.UTF_8));
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(getExternalUrl().resolve("v1/policies/" + name))
+              .header("Content-Type", "text/plain")
+              .PUT(HttpRequest.BodyPublishers.ofString(rego, StandardCharsets.UTF_8))
+              .build();
+      HttpResponse<Void> response;
+      try (HttpClient client =
+          HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()) {
+        response = client.send(request, HttpResponse.BodyHandlers.discarding());
       }
-      int code = conn.getResponseCode();
-      if (code < 200 || code >= 300) {
-        throw new IllegalStateException("OPA policy upload failed, HTTP " + code);
+      if (response.statusCode() < 200 || response.statusCode() >= 300) {
+        throw new IllegalStateException("OPA policy upload failed, HTTP " + response.statusCode());
       }
     } catch (Exception e) {
       String logs = "";

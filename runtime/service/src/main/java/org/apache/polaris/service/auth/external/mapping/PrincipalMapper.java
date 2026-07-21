@@ -44,7 +44,7 @@ public interface PrincipalMapper {
    * is irrelevant.
    *
    * @param identity the {@link SecurityIdentity} of the user
-   * @return the Polaris principal, or an empty optional if no mapping is available
+   * @return the Polaris principal ID, or an empty optional if no mapping is available
    */
   OptionalLong mapPrincipalId(SecurityIdentity identity);
 
