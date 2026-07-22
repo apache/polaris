@@ -23,25 +23,37 @@ import static org.apache.iceberg.types.Types.NestedField.optional;
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import com.google.common.collect.ImmutableMap;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.FileFormat;
+import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
+import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -59,10 +71,12 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,28 +98,23 @@ public class GcpCatalogFederationIntegrationIT {
       LoggerFactory.getLogger(GcpCatalogFederationIntegrationIT.class);
   private static final String BIG_LAKE_REST_URI =
       "https://biglake.googleapis.com/iceberg/v1/restcatalog";
-  private static CatalogApi catalogApi;
+  private static final String PRESERVE_RESOURCES_ENV =
+      "INTEGRATION_TEST_GCS_FEDERATED_PRESERVE_RESOURCES";
+  private static final String REFRESH_WAIT_SECONDS_ENV =
+      "INTEGRATION_TEST_GCS_FEDERATED_REFRESH_WAIT_SECONDS";
+  private static final String OAUTH_SCOPE = "PRINCIPAL_ROLE:ALL";
 
-  static {
-    String googleCredentials = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
-    if (googleCredentials == null) {
-      LOGGER.warn("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set");
-    } else {
-      LOGGER.info("GOOGLE_APPLICATION_CREDENTIALS defined");
-    }
-  }
+  private static final String GOOGLE_APPLICATION_CREDENTIALS =
+      "GOOGLE_APPLICATION_CREDENTIALS";
+  private static final String SERVICE_ACCOUNT_ENV = "INTEGRATION_TEST_GCS_SERVICE_ACCOUNT";
+  private static final String FEDERATED_CATALOG_ENV = "INTEGRATION_TEST_GCS_FEDERATED_CATALOG";
+  private static final String QUOTA_PROJECT_ENV = "INTEGRATION_TEST_GCS_FEDERATED_QUOTA_PROJECT";
+  private static final String BASE_LOCATION_ENV = "INTEGRATION_TEST_GCS_FEDERATED_PATH";
 
-  private static final String SERVICE_ACCOUNT =
-      System.getenv("INTEGRATION_TEST_GCS_SERVICE_ACCOUNT");
-  private static final String FEDERATED_CATALOG =
-      System.getenv("INTEGRATION_TEST_GCS_FEDERATED_CATALOG");
-  private static final String QUOTA_PROJECT =
-      System.getenv("INTEGRATION_TEST_GCS_FEDERATED_QUOTA_PROJECT");
-  private static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_GCS_FEDERATED_PATH");
-
-  private static final String PRINCIPAL_NAME = "test-catalog-federation-user";
-  private static final String PRINCIPAL_ROLE_NAME = "test-catalog-federation-user-role";
-  private String localCatalogName;
+  private static final String SERVICE_ACCOUNT = System.getenv(SERVICE_ACCOUNT_ENV);
+  private static final String FEDERATED_CATALOG = System.getenv(FEDERATED_CATALOG_ENV);
+  private static final String QUOTA_PROJECT = System.getenv(QUOTA_PROJECT_ENV);
+  private static final String BASE_LOCATION = System.getenv(BASE_LOCATION_ENV);
 
   private static final CatalogGrant DEFAULT_CATALOG_GRANT =
       CatalogGrant.builder()
@@ -113,55 +122,197 @@ public class GcpCatalogFederationIntegrationIT {
           .setPrivilege(CatalogPrivilege.CATALOG_MANAGE_CONTENT)
           .build();
 
+  private static final Schema SCHEMA =
+      new Schema(
+          required(1, "id", Types.IntegerType.get(), "doc"),
+          optional(2, "data", Types.StringType.get()));
+
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
-  private PrincipalWithCredentials newUserCredentials;
+
+  private final List<TableIdentifier> createdTables = new ArrayList<>();
+  private final List<Namespace> createdNamespaces = new ArrayList<>();
+
+  private PrincipalWithCredentials userCredentials;
+  private String principalName;
+  private String principalRoleName;
+  private String localCatalogName;
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+    validateCloudConfiguration();
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     String adminToken = client.obtainToken(credentials);
     managementApi = client.managementApi(adminToken);
-    catalogApi = client.catalogApi(adminToken);
+  }
+
+  @AfterAll
+  static void closeClient() throws Exception {
+    if (client != null) {
+      client.close();
+    }
   }
 
   @BeforeEach
   void before() {
-    setupCatalogs();
-  }
+    principalName = ownedEntityName("biglake_user");
+    principalRoleName = ownedEntityName("biglake_user_role");
+    localCatalogName = ownedEntityName("biglake_catalog");
 
-  @AfterEach
-  void tearDown() {
-    managementApi.dropCatalog(localCatalogName);
-    managementApi.deletePrincipalRole(PRINCIPAL_ROLE_NAME);
-    managementApi.deletePrincipal(PRINCIPAL_NAME);
-  }
-
-  private void setupCatalogs() {
-    purgePolaris();
     LOGGER.info(
-        "federated catalog name = {}, service account = {}, base location = {}, quota project = {}",
+        "Using federated catalog {}, local catalog {}, base location {}, quota project {}",
         FEDERATED_CATALOG,
-        SERVICE_ACCOUNT,
+        localCatalogName,
         BASE_LOCATION,
         QUOTA_PROJECT);
-    newUserCredentials = managementApi.createPrincipalWithRole(PRINCIPAL_NAME, PRINCIPAL_ROLE_NAME);
-    localCatalogName = "test_catalog" + UUID.randomUUID().toString().replace("-", "");
+
+    userCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
     createCatalog();
     permissionCatalog();
   }
 
+  @AfterEach
+  void tearDown() {
+    if (preserveResources()) {
+      LOGGER.info(
+          "Preserving BigLake test resources because {} is enabled. catalog={}, principal={}, role={}",
+          PRESERVE_RESOURCES_ENV,
+          localCatalogName,
+          principalName,
+          principalRoleName);
+      return;
+    }
+
+    cleanupTablesAndNamespaces();
+    bestEffort("drop local catalog", () -> managementApi.dropCatalog(localCatalogName));
+    bestEffort("delete principal role", () -> managementApi.deletePrincipalRole(principalRoleName));
+    bestEffort("delete principal", () -> managementApi.deletePrincipal(principalName));
+  }
+
+  @Test
+  void testFederatedCatalogNamespaceTableAndDataWorkflows() throws IOException {
+    String userToken = client.obtainToken(userCredentials);
+    RESTCatalog sessionCatalog = newRestCatalogWithToken(userToken);
+    CatalogApi userCatalogApi = client.catalogApi(userToken);
+
+    Namespace namespace = createTrackedNamespace();
+    TableIdentifier tableIdentifier = createTrackedTableIdentifier(namespace);
+    String payload = "biglake-payload-" + UUID.randomUUID();
+
+    sessionCatalog.createNamespace(namespace);
+    assertThat(sessionCatalog.listNamespaces(Namespace.empty())).contains(namespace);
+
+    Table createdTable = sessionCatalog.createTable(tableIdentifier, SCHEMA);
+    createdTables.add(tableIdentifier);
+
+    assertThat(createdTable).isNotNull();
+    assertThat(createdTable.currentSnapshot()).isNull();
+    assertThat(sessionCatalog.listTables(namespace)).contains(tableIdentifier);
+
+    Table firstLoadedTable = sessionCatalog.loadTable(tableIdentifier);
+    Table secondLoadedTable = sessionCatalog.loadTable(tableIdentifier);
+    assertThat(firstLoadedTable.location()).isEqualTo(createdTable.location());
+    assertThat(secondLoadedTable.location()).isEqualTo(createdTable.location());
+    assertThat(secondLoadedTable.currentSnapshot()).isNull();
+
+    LoadTableResponse loadTableResponse =
+        userCatalogApi.loadTable(localCatalogName, tableIdentifier, "all");
+    assertThat(loadTableResponse.tableMetadata()).isNotNull();
+    assertThat(loadTableResponse.tableMetadata().location()).isEqualTo(createdTable.location());
+
+    LoadTableResponse delegatedLoadResponse =
+        userCatalogApi.loadTableWithAccessDelegation(localCatalogName, tableIdentifier, "all");
+    assertThat(delegatedLoadResponse.credentials()).isNotEmpty();
+    assertThat(delegatedLoadResponse.tableMetadata()).isNotNull();
+
+    LoadCredentialsResponse credentialsResponse =
+        userCatalogApi.loadCredentials(localCatalogName, tableIdentifier);
+    assertThat(credentialsResponse.credentials()).isNotEmpty();
+
+    writePayloadTo(createdTable, payload);
+
+    assertThat(secondLoadedTable.currentSnapshot()).isNull();
+    secondLoadedTable.refresh();
+    assertThat(rowCountFor(secondLoadedTable)).isEqualTo(1L);
+    assertThat(readPayloads(secondLoadedTable)).containsExactly(payload);
+
+    assertThat(sessionCatalog.loadTable(tableIdentifier).location()).isEqualTo(createdTable.location());
+    assertThat(sessionCatalog.listTables(namespace)).containsExactly(tableIdentifier);
+    assertThat(sessionCatalog.listNamespaces(Namespace.empty())).contains(namespace);
+  }
+
+  @Test
+  void testFederatedCatalogSessionSurvivesCredentialRefresh()
+      throws IOException, InterruptedException {
+    int refreshWaitSeconds = refreshWaitSeconds();
+    assumeTrue(
+        refreshWaitSeconds > 0,
+        () ->
+            "Set "
+                + REFRESH_WAIT_SECONDS_ENV
+                + " to a positive number of seconds to enable the BigLake OAuth refresh coverage.");
+
+    RESTCatalog sessionCatalog = newRestCatalogWithClientCredentials();
+
+    Namespace namespace = createTrackedNamespace();
+    TableIdentifier tableIdentifier = createTrackedTableIdentifier(namespace);
+    String beforeRefreshPayload = "before-refresh-" + UUID.randomUUID();
+    String afterRefreshPayload = "after-refresh-" + UUID.randomUUID();
+
+    sessionCatalog.createNamespace(namespace);
+    assertThat(sessionCatalog.listNamespaces(Namespace.empty())).contains(namespace);
+
+    Table table = sessionCatalog.createTable(tableIdentifier, SCHEMA);
+    createdTables.add(tableIdentifier);
+    writePayloadTo(table, beforeRefreshPayload);
+    assertThat(rowCountFor(table)).isEqualTo(1L);
+
+    Thread.sleep(refreshWaitSeconds * 1000L);
+
+    Table reloadedTable = sessionCatalog.loadTable(tableIdentifier);
+    reloadedTable.refresh();
+    assertThat(readPayloads(reloadedTable)).containsExactly(beforeRefreshPayload);
+
+    writePayloadTo(reloadedTable, afterRefreshPayload);
+    reloadedTable.refresh();
+
+    assertThat(rowCountFor(reloadedTable)).isEqualTo(2L);
+    assertThat(readPayloads(reloadedTable))
+        .containsExactlyInAnyOrder(beforeRefreshPayload, afterRefreshPayload);
+  }
+
+  private static void validateCloudConfiguration() {
+    List<String> missing = new ArrayList<>();
+    requireEnv(GOOGLE_APPLICATION_CREDENTIALS, missing);
+    requireEnv(SERVICE_ACCOUNT_ENV, missing);
+    requireEnv(FEDERATED_CATALOG_ENV, missing);
+    requireEnv(QUOTA_PROJECT_ENV, missing);
+    requireEnv(BASE_LOCATION_ENV, missing);
+
+    assumeTrue(
+        missing.isEmpty(),
+        () ->
+            "Skipping BigLake cloud integration tests because these environment variables are "
+                + "required but not set: "
+                + String.join(", ", missing));
+  }
+
+  private static void requireEnv(String name, List<String> missing) {
+    if (isBlank(System.getenv(name))) {
+      missing.add(name);
+    }
+  }
+
   private void permissionCatalog() {
-    String localCatalogRoleName =
-        "test-catalog-role_" + UUID.randomUUID().toString().replace("-", "");
+    String localCatalogRoleName = ownedEntityName("biglake_catalog_role");
     managementApi.createCatalogRole(localCatalogName, localCatalogRoleName);
     managementApi.addGrant(localCatalogName, localCatalogRoleName, DEFAULT_CATALOG_GRANT);
     CatalogRole localCatalogRole =
         managementApi.getCatalogRole(localCatalogName, localCatalogRoleName);
     managementApi.grantCatalogRoleToPrincipalRole(
-        PRINCIPAL_ROLE_NAME, localCatalogName, localCatalogRole);
+        principalRoleName, localCatalogName, localCatalogRole);
   }
 
   private void createCatalog() {
@@ -198,50 +349,46 @@ public class GcpCatalogFederationIntegrationIT {
     managementApi.createCatalog(catalog);
   }
 
-  private void purgePolaris() {
-    managementApi.listPrincipals().stream()
-        .filter(p -> p.getName().equals(PRINCIPAL_NAME))
-        .forEach(p -> managementApi.deletePrincipal(p.getName()));
-    managementApi.listPrincipalRoles().stream()
-        .filter(r -> r.getName().equals(PRINCIPAL_ROLE_NAME))
-        .forEach(r -> managementApi.deletePrincipalRole(r.getName()));
+  private RESTCatalog newRestCatalogWithToken(String userToken) {
+    return IcebergHelper.restCatalog(
+        endpoints,
+        localCatalogName,
+        Map.of("header.X-Iceberg-Access-Delegation", "vended-credentials"),
+        userToken);
   }
 
-  private static final Schema SCHEMA =
-      new Schema(
-          required(1, "id", Types.IntegerType.get(), "doc"),
-          optional(2, "data", Types.StringType.get()));
-
-  @Test
-  void testFederatedCatalogBasicReadWriteOperations() {
-    String namespace = "test_namespace" + UUID.randomUUID().toString().replace("-", "");
-    String tableName = "test_table";
-    catalogApi.createNamespace(localCatalogName, namespace);
-    TableIdentifier id = TableIdentifier.of(namespace, tableName);
+  private RESTCatalog newRestCatalogWithClientCredentials() {
     RESTCatalog restCatalog = new RESTCatalog();
-    String userToken = client.obtainToken(newUserCredentials);
-    ImmutableMap.Builder<String, String> propertiesBuilder =
-        ImmutableMap.<String, String>builder()
-            .put(
-                org.apache.iceberg.CatalogProperties.URI, endpoints.catalogApiEndpoint().toString())
-            .put(OAuth2Properties.TOKEN, userToken)
-            .put("warehouse", localCatalogName)
-            .put("header.X-Iceberg-Access-Delegation", "vended-credentials")
-            .putAll(endpoints.extraHeaders("header."));
-
-    restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
-    Table table = restCatalog.createTable(id, SCHEMA);
-    assertThat(table).isNotNull();
-    assertThat(table.currentSnapshot()).isNull();
-    writeRowTo(table);
-    assertThat(rowCountFor(table)).isEqualTo(1);
+    String credentialString =
+        userCredentials.credentials().clientId() + ":" + userCredentials.credentials().clientSecret();
+    Map<String, String> properties = new java.util.HashMap<>(endpoints.extraHeaders("header."));
+    properties.put(org.apache.iceberg.CatalogProperties.URI, endpoints.catalogApiEndpoint().toString());
+    properties.put(OAuth2Properties.CREDENTIAL, credentialString);
+    properties.put(OAuth2Properties.OAUTH2_SERVER_URI, endpoints.catalogApiEndpoint() + "/v1/oauth/tokens");
+    properties.put(OAuth2Properties.SCOPE, OAUTH_SCOPE);
+    properties.put("warehouse", localCatalogName);
+    properties.put("header.X-Iceberg-Access-Delegation", "vended-credentials");
+    restCatalog.initialize("polaris", properties);
+    return restCatalog;
   }
 
-  private void writeRowTo(Table table) {
+  private Namespace createTrackedNamespace() {
+    Namespace namespace = Namespace.of(ownedEntityName("biglake_ns"));
+    createdNamespaces.add(namespace);
+    return namespace;
+  }
+
+  private TableIdentifier createTrackedTableIdentifier(Namespace namespace) {
+    return TableIdentifier.of(namespace, ownedEntityName("biglake_tbl"));
+  }
+
+  private void writePayloadTo(Table table, String payload) throws IOException {
+    byte[] payloadBytes = payload.getBytes(StandardCharsets.UTF_8);
+
     @SuppressWarnings("resource")
     FileIO io = table.io();
 
-    URI loc =
+    URI location =
         URI.create(
             table
                 .locationProvider()
@@ -249,28 +396,114 @@ public class GcpCatalogFederationIntegrationIT {
                     String.format(
                         "test-file-%s.txt", UUID.randomUUID().toString().replace("-", ""))));
 
-    OutputFile f1 = io.newOutputFile(loc.toString());
-    String location = f1.location();
-    DataFile df =
+    OutputFile outputFile = io.newOutputFile(location.toString());
+    try (PositionOutputStream outputStream = outputFile.createOrOverwrite()) {
+      outputStream.write(payloadBytes);
+    }
+
+    DataFile dataFile =
         DataFiles.builder(PartitionSpec.unpartitioned())
-            .withPath(location)
-            .withFormat(FileFormat.PARQUET) // bogus value
-            .withFileSizeInBytes(4)
+            .withPath(outputFile.location())
+            .withFormat(FileFormat.PARQUET)
+            .withFileSizeInBytes(payloadBytes.length)
             .withRecordCount(1)
             .build();
 
-    table.newAppend().appendFile(df).commit();
+    table.newAppend().appendFile(dataFile).commit();
+  }
+
+  private List<String> readPayloads(Table table) throws IOException {
+    table.refresh();
+
+    List<String> payloads = new ArrayList<>();
+    try (CloseableIterable<FileScanTask> plannedFiles = table.newScan().planFiles()) {
+      for (FileScanTask plannedFile : plannedFiles) {
+        InputFile inputFile = table.io().newInputFile(plannedFile.file().location());
+        try (var inputStream = inputFile.newStream()) {
+          payloads.add(new String(inputStream.readAllBytes(), StandardCharsets.UTF_8));
+        }
+      }
+    }
+
+    payloads.sort(Comparator.naturalOrder());
+    return payloads;
   }
 
   private long rowCountFor(Table table) {
     Snapshot currentSnapshot = table.currentSnapshot();
     assertThat(currentSnapshot).isNotNull();
 
-    long totalRows = 0;
+    long totalRows = 0L;
     for (ManifestFile manifest : currentSnapshot.allManifests(table.io())) {
-      totalRows += manifest.addedRowsCount() + manifest.existingRowsCount();
-      totalRows -= manifest.deletedRowsCount();
+      totalRows += manifest.addedRowsCount() != null ? manifest.addedRowsCount() : 0L;
+      totalRows += manifest.existingRowsCount() != null ? manifest.existingRowsCount() : 0L;
     }
     return totalRows;
   }
+
+  private void cleanupTablesAndNamespaces() {
+    if (userCredentials == null) {
+      return;
+    }
+
+    CatalogApi userCatalogApi = client.catalogApi(client.obtainToken(userCredentials));
+
+    for (int i = createdTables.size() - 1; i >= 0; i--) {
+      TableIdentifier tableIdentifier = createdTables.get(i);
+      bestEffort(
+          "drop table " + tableIdentifier,
+          () -> userCatalogApi.dropTable(localCatalogName, tableIdentifier));
+    }
+
+    for (int i = createdNamespaces.size() - 1; i >= 0; i--) {
+      Namespace namespace = createdNamespaces.get(i);
+      bestEffort(
+          "delete namespace " + namespace,
+          () -> userCatalogApi.deleteNamespace(localCatalogName, namespace));
+    }
+  }
+
+  private String ownedEntityName(String hint) {
+    return (client.newEntityName(hint) + "_" + UUID.randomUUID().toString().replace("-", ""))
+        .toLowerCase(Locale.ROOT);
+  }
+
+  private static int refreshWaitSeconds() {
+    String configured = System.getenv(REFRESH_WAIT_SECONDS_ENV);
+    if (isBlank(configured)) {
+      return 0;
+    }
+
+    try {
+      return Integer.parseInt(configured);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+          REFRESH_WAIT_SECONDS_ENV + " must be an integer number of seconds", e);
+    }
+  }
+
+  private static boolean preserveResources() {
+    String configured = System.getenv(PRESERVE_RESOURCES_ENV);
+    return "1".equals(configured)
+        || "true".equalsIgnoreCase(configured)
+        || "yes".equalsIgnoreCase(configured);
+  }
+
+  private static boolean isBlank(String value) {
+    return value == null || value.isBlank();
+  }
+
+  private void bestEffort(String action, ThrowingRunnable runnable) {
+    try {
+      runnable.run();
+    } catch (RuntimeException | Error e) {
+      LOGGER.warn("Failed to {} during BigLake cleanup", action, e);
+    }
+  }
+
+  @FunctionalInterface
+  private interface ThrowingRunnable {
+    void run();
+  }
 }
+

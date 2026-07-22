@@ -18,12 +18,15 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.HTTPClient;
+import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
@@ -32,11 +35,13 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.service.catalog.GcpExternalCatalogSecurity;
 
 /** Factory class for creating an Iceberg REST catalog handle based on connection configuration. */
 @ApplicationScoped
 @Identifier(ConnectionType.ICEBERG_REST_FACTORY_IDENTIFIER)
 public class IcebergRESTFederatedCatalogFactory implements FederatedCatalogFactory {
+  @Inject MeterRegistry meterRegistry;
 
   @Override
   public Catalog createCatalog(
@@ -50,13 +55,21 @@ public class IcebergRESTFederatedCatalogFactory implements FederatedCatalogFacto
     }
 
     SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
+    String localCatalogName =
+        catalogProperties == null
+            ? null
+            : catalogProperties.get(BigLakeFederatedRestClient.LOCAL_CATALOG_NAME_PROPERTY);
     RESTCatalog federatedCatalog =
         new RESTCatalog(
             context,
             (config) ->
-                HTTPClient.builder(config)
-                    .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
-                    .build());
+                maybeWrapBigLakeClient(
+                    connectionConfig,
+                    localCatalogName,
+                    config,
+                    HTTPClient.builder(config)
+                        .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
+                        .build()));
 
     // Merge properties with precedence: connection config properties override catalog properties
     // to ensure required settings like URI and authentication cannot be accidentally overwritten.
@@ -68,6 +81,18 @@ public class IcebergRESTFederatedCatalogFactory implements FederatedCatalogFacto
     federatedCatalog.initialize(icebergConfig.getRemoteCatalogName(), mergedProperties);
 
     return federatedCatalog;
+  }
+
+  private RESTClient maybeWrapBigLakeClient(
+      ConnectionConfigInfoDpo connectionConfig,
+      String localCatalogName,
+      Map<String, String> config,
+      RESTClient delegate) {
+    if (!GcpExternalCatalogSecurity.isGcpExternalCatalog(connectionConfig)) {
+      return delegate;
+    }
+
+    return new BigLakeFederatedRestClient(delegate, meterRegistry, localCatalogName, config);
   }
 
   @Override

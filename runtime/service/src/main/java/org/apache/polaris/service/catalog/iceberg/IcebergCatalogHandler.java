@@ -227,7 +227,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (connectionConfigInfoDpo != null) {
       LOGGER
           .atInfo()
-          .addKeyValue(StructuredLogKeys.REMOTE_URL, connectionConfigInfoDpo.getUri())
+          .addKeyValue("remoteHost", BigLakeFederatedRestClient.sanitizeRemoteHost(connectionConfigInfoDpo.getUri()))
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
           realmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
@@ -243,8 +243,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       if (federatedCatalogFactory.isResolvable()) {
         // Pass through catalog properties (e.g., rest.client.proxy.*, timeout settings)
         // to the federated catalog factory for configuration of the underlying HTTP client
-        Map<String, String> catalogProperties = resolvedCatalogEntity.getPropertiesAsMap();
+        Map<String, String> catalogProperties =
+            new LinkedHashMap<>(resolvedCatalogEntity.getPropertiesAsMap());
         if (GcpExternalCatalogSecurity.isGcpExternalCatalog(connectionConfigInfoDpo)) {
+          catalogProperties.put(
+              BigLakeFederatedRestClient.LOCAL_CATALOG_NAME_PROPERTY,
+              resolvedCatalogEntity.getName());
           catalogProperties = GcpExternalCatalogSecurity.sanitizePropertyMap(catalogProperties);
         }
         federatedCatalog =
@@ -1920,6 +1924,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         .build();
   }
 }
+
 
 
 

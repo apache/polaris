@@ -20,8 +20,11 @@ package org.apache.polaris.service.credentials.connection;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.List;
+import org.apache.polaris.service.exception.BigLakeFailureCategory;
+import org.apache.polaris.service.exception.BigLakeFederationException;
 
 /**
  * Validates the server-side Google identity used for outbound GCP-authenticated catalog requests.
@@ -47,11 +50,19 @@ public class GoogleApplicationDefaultCredentialsProvider {
           ? credentials.createScoped(List.of(CLOUD_PLATFORM_SCOPE))
           : credentials;
     } catch (IOException e) {
-      throw new IllegalStateException(
+      throw new BigLakeFederationException(
+          BigLakeFailureCategory.CREDENTIAL_LOADING,
+          "BigLakeCredentialLoadingException",
+          Status.SERVICE_UNAVAILABLE.getStatusCode(),
+          -1,
+          null,
+          null,
+          0,
           "Unable to load server-side Google Application Default Credentials for outbound GCP"
               + " catalog authentication. Configure an attached service account, workload"
               + " identity, or the GOOGLE_APPLICATION_CREDENTIALS environment variable on the"
-              + " Polaris server.");
+              + " Polaris server.",
+          e);
     }
   }
 
@@ -59,11 +70,19 @@ public class GoogleApplicationDefaultCredentialsProvider {
     try {
       credentials.refreshAccessToken();
     } catch (IOException e) {
-      throw new IllegalStateException(
+      throw new BigLakeFederationException(
+          BigLakeFailureCategory.TOKEN_ACQUISITION,
+          "BigLakeTokenAcquisitionException",
+          Status.SERVICE_UNAVAILABLE.getStatusCode(),
+          -1,
+          null,
+          null,
+          0,
           "Server-side Google Application Default Credentials are configured but unusable for"
               + " outbound GCP catalog authentication. Verify that the Polaris server can obtain"
               + " Google access tokens and that the configured identity has permission to access"
-              + " the target catalog.");
+              + " the target catalog.",
+          e);
     }
   }
 }

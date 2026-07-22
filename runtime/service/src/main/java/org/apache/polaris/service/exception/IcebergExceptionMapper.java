@@ -92,6 +92,10 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
 
     int responseCode = mapExceptionToResponseCode(runtimeException);
+    String errorType =
+        runtimeException instanceof BigLakeFederationException bigLakeException
+            ? bigLakeException.errorType()
+            : runtimeException.getClass().getSimpleName();
     if (responseCode == Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
       getLoggerForExceptionLogging()
           .error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
@@ -105,14 +109,18 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     ErrorResponse icebergErrorResponse =
         ErrorResponse.builder()
             .responseCode(responseCode)
-            .withType(runtimeException.getClass().getSimpleName())
+            .withType(errorType)
             .withMessage(runtimeException.getMessage())
             .build();
-    Response errorResp =
+    Response.ResponseBuilder responseBuilder =
         Response.status(responseCode)
             .entity(icebergErrorResponse)
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .build();
+            .type(MediaType.APPLICATION_JSON_TYPE);
+    if (runtimeException instanceof BigLakeFederationException bigLakeException
+        && bigLakeException.retryAfter() != null) {
+      responseBuilder.header("Retry-After", bigLakeException.retryAfter());
+    }
+    Response errorResp = responseBuilder.build();
     LOGGER.debug("Mapped exception to errorResp: {}", errorResp);
     return errorResp;
   }
@@ -187,6 +195,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case ServiceUnavailableException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
       case RuntimeIOException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
       case ServiceFailureException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case BigLakeFederationException e -> e.responseCode();
       case CleanableFailure e -> Status.BAD_REQUEST.getStatusCode();
       case RESTException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
       case IllegalArgumentException e -> Status.BAD_REQUEST.getStatusCode();

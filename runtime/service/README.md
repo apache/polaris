@@ -46,11 +46,25 @@ export INTEGRATION_TEST_GCS_PATH="gs://bucket/subpath"
 export INTEGRATION_TEST_GCS_SERVICE_ACCOUNT="your-service-account"
 ./gradlew :polaris-runtime-service:cloudTest
 ```
-To run the GCP federated catalog test using end-user credentials:
-```shell 
-export INTEGRATION_TEST_GCS_FEDERATED_CATALOG=YOUR_GCS_WAREHOUSE 
-export INTEGRATION_TEST_GCS_FEDERATED_PATH=YOUR_GCS_BUCKET_PATH
-export INTEGRATION_TEST_GCS_FEDERATED_QUOTA_PROJECT=YOUR_PROJECT_ID
-export INTEGRATION_TEST_GCS_SERVICE_ACCOUNT=YOUR_SERVICE_ACCOUNT_USER@YOUR_PROJECT_ID.iam.gserviceaccount.com 
+To run the GCP federated catalog cloud tests using externally supplied end-user credentials:
+```shell
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/application-default-credentials.json
+export INTEGRATION_TEST_GCS_FEDERATED_CATALOG=YOUR_BIGLAKE_REST_CATALOG
+export INTEGRATION_TEST_GCS_FEDERATED_PATH=gs://your-bucket/your-prefix
+export INTEGRATION_TEST_GCS_FEDERATED_QUOTA_PROJECT=YOUR_BILLING_PROJECT
+export INTEGRATION_TEST_GCS_SERVICE_ACCOUNT=YOUR_SERVICE_ACCOUNT@YOUR_PROJECT_ID.iam.gserviceaccount.com
 ./gradlew :polaris-runtime-service:cloudTest --tests "org.apache.polaris.service.it.GcpCatalogFederationIntegrationIT"
 ```
+
+Optional environment variables for the BigLake cloud tests:
+```shell
+export INTEGRATION_TEST_GCS_FEDERATED_PRESERVE_RESOURCES=true
+export INTEGRATION_TEST_GCS_FEDERATED_REFRESH_WAIT_SECONDS=3900
+```
+
+`INTEGRATION_TEST_GCS_FEDERATED_PRESERVE_RESOURCES=true` keeps the test-owned Polaris catalog,
+namespaces, tables, and principals for troubleshooting instead of cleaning them up.
+
+`INTEGRATION_TEST_GCS_FEDERATED_REFRESH_WAIT_SECONDS` enables the longer-running OAuth refresh
+coverage. Set it to a positive number of seconds that exceeds the expected token lifetime for your
+environment if you want the credential-refresh scenario to run; otherwise that scenario is skipped.

@@ -34,6 +34,7 @@ import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.Catalogs;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
@@ -470,8 +471,49 @@ public class ManagementServiceTest {
                         updateRequest,
                         services.realmContext(),
                         services.securityContext()))
-        .isInstanceOfAny(BadRequestException.class, IllegalArgumentException.class)
-        .hasMessageContaining("default-base-location");
+            .isInstanceOfAny(BadRequestException.class, IllegalArgumentException.class)
+            .hasMessageContaining("default-base-location");
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog unchangedCatalog = (Catalog) response.getEntity();
+      assertThat(unchangedCatalog.getProperties().getDefaultBaseLocation())
+          .isEqualTo(initialBaseLocation);
+    }
+  }
+
+  @Test
+  public void testCreateInvalidBigLakeCatalogDoesNotPersistState() {
+    String catalogName = "invalid-biglake-catalog";
+    String defaultBaseLocation = "gs://bucket/path/to/data";
+    Catalog catalog =
+        createBigLakeCatalog(
+            catalogName,
+            defaultBaseLocation,
+            createBigLakeStorageConfig(defaultBaseLocation),
+            Map.of("header.x-goog-user-project", "INVALID_PROJECT"),
+            "my-remote-catalog");
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .createCatalog(
+                        new CreateCatalogRequest(catalog),
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("not a valid GCP quota project");
+
+    try (Response response =
+        services.catalogsApi().listCatalogs(services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalogs catalogs = (Catalogs) response.getEntity();
+      assertThat(catalogs.getCatalogs()).extracting(Catalog::getName).doesNotContain(catalogName);
+    }
   }
 
   @Test
@@ -607,6 +649,20 @@ public class ManagementServiceTest {
 
   private Catalog createBigLakeCatalog(
       String catalogName, String defaultBaseLocation, StorageConfigInfo storageConfigInfo) {
+    return createBigLakeCatalog(
+        catalogName,
+        defaultBaseLocation,
+        storageConfigInfo,
+        Map.of("header.x-goog-user-project", "my-billing-project"),
+        "my-remote-catalog");
+  }
+
+  private Catalog createBigLakeCatalog(
+      String catalogName,
+      String defaultBaseLocation,
+      StorageConfigInfo storageConfigInfo,
+      Map<String, String> connectionProperties,
+      String remoteCatalogName) {
     CatalogProperties catalogProperties = CatalogProperties.builder(defaultBaseLocation).build();
     catalogProperties.put("enable.credential.vending", "true");
     return ExternalCatalog.builder()
@@ -614,17 +670,20 @@ public class ManagementServiceTest {
         .setName(catalogName)
         .setProperties(catalogProperties)
         .setStorageConfigInfo(storageConfigInfo)
-        .setConnectionConfigInfo(
-            createBigLakeConnectionConfig(
-                Map.of("header.x-goog-user-project", "my-billing-project")))
+        .setConnectionConfigInfo(createBigLakeConnectionConfig(connectionProperties, remoteCatalogName))
         .build();
   }
 
   private ConnectionConfigInfo createBigLakeConnectionConfig(Map<String, String> properties) {
+    return createBigLakeConnectionConfig(properties, "my-remote-catalog");
+  }
+
+  private ConnectionConfigInfo createBigLakeConnectionConfig(
+      Map<String, String> properties, String remoteCatalogName) {
     return IcebergRestConnectionConfigInfo.builder(
             ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
         .setUri("https://biglake.googleapis.com/iceberg/v1/restcatalog")
-        .setRemoteCatalogName("my-remote-catalog")
+        .setRemoteCatalogName(remoteCatalogName)
         .setProperties(properties)
         .setAuthenticationParameters(
             GcpAuthenticationParameters.builder()

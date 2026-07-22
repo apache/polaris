@@ -29,7 +29,13 @@ import com.google.auth.oauth2.GoogleCredentials;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Stream;
+import org.apache.polaris.service.exception.BigLakeFailureCategory;
+import org.apache.polaris.service.exception.BigLakeFederationException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -73,28 +79,61 @@ public class GoogleApplicationDefaultCredentialsProviderTest {
           .thenThrow(new IOException("missing /var/run/secrets/google/service-account.json"));
 
       assertThatThrownBy(provider::validateCredentialsAvailable)
-          .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("GOOGLE_APPLICATION_CREDENTIALS")
-          .hasMessageNotContaining("service-account.json");
+          .isInstanceOf(BigLakeFederationException.class)
+          .satisfies(
+              throwable -> {
+                BigLakeFederationException exception = (BigLakeFederationException) throwable;
+                org.assertj.core.api.Assertions.assertThat(exception.category())
+                    .isEqualTo(BigLakeFailureCategory.CREDENTIAL_LOADING);
+                org.assertj.core.api.Assertions.assertThat(exception.getMessage())
+                    .contains("GOOGLE_APPLICATION_CREDENTIALS")
+                    .doesNotContain("service-account.json");
+              });
     }
   }
 
-  @Test
-  public void validateCredentialsAvailableSanitizesCredentialRefreshErrors() throws Exception {
-    GoogleCredentials defaultCredentials = mock(GoogleCredentials.class);
+  static Stream<Arguments> credentialRefreshFailures() {
+    return Stream.of(
+        Arguments.of(false, "invalid_grant: token expired for secret-project", "secret-project"),
+        Arguments.of(true, "credentials revoked: private_key_id=abc123", "abc123"));
+  }
 
-    when(defaultCredentials.createScopedRequired()).thenReturn(false);
-    when(defaultCredentials.refreshAccessToken())
-        .thenThrow(new IOException("token fetch failed for secret-project"));
+  @ParameterizedTest
+  @MethodSource
+  public void validateCredentialsAvailableSanitizesCredentialRefreshErrors(
+      boolean scopedCredentialsRequired, String refreshFailureMessage, String sensitiveFragment)
+      throws Exception {
+    GoogleCredentials defaultCredentials = mock(GoogleCredentials.class);
+    GoogleCredentials refreshCredentials = defaultCredentials;
+
+    when(defaultCredentials.createScopedRequired()).thenReturn(scopedCredentialsRequired);
+    if (scopedCredentialsRequired) {
+      GoogleCredentials scopedCredentials = mock(GoogleCredentials.class);
+      when(defaultCredentials.createScoped(List.of(CLOUD_PLATFORM_SCOPE))).thenReturn(scopedCredentials);
+      refreshCredentials = scopedCredentials;
+    }
+    when(refreshCredentials.refreshAccessToken()).thenThrow(new IOException(refreshFailureMessage));
 
     try (MockedStatic<GoogleCredentials> mockedStatic =
         Mockito.mockStatic(GoogleCredentials.class)) {
       mockedStatic.when(GoogleCredentials::getApplicationDefault).thenReturn(defaultCredentials);
 
       assertThatThrownBy(provider::validateCredentialsAvailable)
-          .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("configured but unusable")
-          .hasMessageNotContaining("secret-project");
+          .isInstanceOf(BigLakeFederationException.class)
+          .satisfies(
+              throwable -> {
+                BigLakeFederationException exception = (BigLakeFederationException) throwable;
+                org.assertj.core.api.Assertions.assertThat(exception.category())
+                    .isEqualTo(BigLakeFailureCategory.TOKEN_ACQUISITION);
+                org.assertj.core.api.Assertions.assertThat(exception.getMessage())
+                    .contains("configured but unusable")
+                    .doesNotContain(sensitiveFragment);
+              });
+
+      if (scopedCredentialsRequired) {
+        verify(defaultCredentials).createScoped(List.of(CLOUD_PLATFORM_SCOPE));
+      }
+      verify(refreshCredentials).refreshAccessToken();
     }
   }
 }

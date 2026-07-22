@@ -96,6 +96,23 @@ class BigLakeCatalogValidatorTest {
   }
 
   @Test
+  void rejectsEndpointWithUnsupportedQueryComponent() {
+    assertThatThrownBy(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog?warehouse=test",
+                        "my-remote-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("query, fragment, and custom port components are not supported");
+  }
+
+  @Test
   void rejectsMissingRemoteCatalogIdentifier() {
     assertThatThrownBy(
             () ->
@@ -113,6 +130,40 @@ class BigLakeCatalogValidatorTest {
   }
 
   @Test
+  void rejectsMalformedRemoteWarehouseLocation() {
+    assertThatThrownBy(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "gs://",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("connectionConfigInfo.remoteCatalogName");
+  }
+
+  @Test
+  void rejectsInvalidRemoteCatalogIdentifier() {
+    assertThatThrownBy(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "catalog with spaces",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("expected a BigLake catalog identifier or gs:// warehouse location");
+  }
+
+  @Test
   void rejectsMissingQuotaProjectHeader() {
     assertThatThrownBy(
             () ->
@@ -127,6 +178,23 @@ class BigLakeCatalogValidatorTest {
                         validGcsStorage("gs://bucket/path/to/data"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("a quota project is required");
+  }
+
+  @Test
+  void rejectsInvalidQuotaProjectHeader() {
+    assertThatThrownBy(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "my-remote-catalog",
+                        Map.of("header.x-goog-user-project", "INVALID_PROJECT"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("not a valid GCP quota project");
   }
 
   @Test
@@ -165,6 +233,26 @@ class BigLakeCatalogValidatorTest {
                         null)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("GCS storage configuration is required");
+  }
+
+  @Test
+  void rejectsMissingGcsServiceAccountWhenCredentialVendingEnabled() {
+    assertThatThrownBy(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "my-remote-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        GcpStorageConfigInfo.builder()
+                            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                            .setAllowedLocations(List.of("gs://bucket/path/to/data"))
+                            .build())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("a Google service account is required");
   }
 
   @Test
