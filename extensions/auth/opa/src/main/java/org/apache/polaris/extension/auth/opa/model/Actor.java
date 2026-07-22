@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
+import java.util.Map;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
@@ -40,4 +41,10 @@ public interface Actor {
 
   /** The list of roles associated with the principal. */
   List<String> roles();
+
+  /**
+   * Optional attributes associated with the principal, such as user-defined properties from the
+   * backing {@link org.apache.polaris.core.entity.PrincipalEntity}.
+   */
+  Map<String, String> attributes();
 }
