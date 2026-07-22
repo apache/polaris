@@ -186,6 +186,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   root principal already exists. Existing credentials are never returned or altered.
 - Authorization failure messages (HTTP 403 / `ForbiddenException` from `PolarisAuthorizerImpl`) now log the specific missing privilege(s) and the entity each was checked against server-side (at `INFO` level), e.g. `missing TABLE_CREATE on NAMESPACE 'ns1'`. The client-facing 403 response remains a generic message to avoid leaking authorization metadata to untrusted clients. Operators can correlate client errors to server logs using the existing `X-Request-ID` header (present in default log MDC as `requestId`).
 - The field `clientSecret` of the Polaris management API type `ResetPrincipalRequest` is now using `format: password`. This does not change the wire format, but code generated from the OpenAPI may require downstream changes.
+- OPA and Ranger authorizers now receive user-defined principal properties from the backing
+  `PrincipalEntity` (exposed via `PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY`), alongside
+  internal properties. Internal properties win on key collision so system-managed values such as
+  `client_id` cannot be shadowed by user input.
 
 ### Deprecations
 - The `currentKmsKey` and `allowedKmsKeys` AWS storage configuration properties are deprecated. Use `encryptionKeys` instead.

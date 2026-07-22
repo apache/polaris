@@ -500,11 +500,37 @@ public class DefaultAuthenticatorTest {
     assertThat(result.getAttribute("custom-key", String.class)).isEmpty();
   }
 
+  @Test
+  void testPrincipalEntityAttributeContainsUserProperties() {
+    // Given: a principal with user-defined properties
+    PrincipalEntity entity =
+        createPrincipal("principal-with-properties", Map.of("department", "finance"));
+    PolarisCredential credentials =
+        PolarisCredential.of(
+            null, entity.getName(), Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+
+    // When: authenticating the principal
+    PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
+
+    // Then: the principal entity attribute must include the user-defined properties
+    PrincipalEntity entityAttr =
+        result
+            .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
+            .orElseThrow();
+    assertThat(entityAttr.getPropertiesAsMap()).containsEntry("department", "finance");
+  }
+
   private PrincipalEntity createPrincipal(String name, String... roles) {
+    return createPrincipal(name, Map.of(), roles);
+  }
+
+  private PrincipalEntity createPrincipal(
+      String name, Map<String, String> properties, String... roles) {
 
     PrincipalWithCredentialsCredentials credentials =
         newAdminService()
-            .createPrincipal(new PrincipalEntity.Builder().setName(name).build())
+            .createPrincipal(
+                new PrincipalEntity.Builder().setName(name).setProperties(properties).build())
             .getCredentials();
 
     metaStoreManager.rotatePrincipalSecrets(
