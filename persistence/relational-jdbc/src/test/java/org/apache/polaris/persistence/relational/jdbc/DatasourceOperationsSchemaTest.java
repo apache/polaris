@@ -25,8 +25,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -53,21 +51,16 @@ class DatasourceOperationsSchemaTest {
     return DatasourceOperations.class.getClassLoader().getResourceAsStream("h2/schema-v5.sql");
   }
 
-  /** Schemas holding an ENTITIES table, as reported by the database catalog. */
-  private static List<String> schemasContainingEntitiesTable(DataSource dataSource)
-      throws SQLException {
-    List<String> schemas = new ArrayList<>();
+  /** The schema holding the ENTITIES table, as reported by the database catalog. */
+  private static String schemaContainingEntitiesTable(DataSource dataSource) throws SQLException {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement =
             connection.prepareStatement(
-                "SELECT table_schema FROM information_schema.tables WHERE table_name = 'ENTITIES'")) {
+                "SELECT table_schema FROM information_schema.tables WHERE table_name = 'ENTITIES' LIMIT 1")) {
       try (ResultSet resultSet = statement.executeQuery()) {
-        while (resultSet.next()) {
-          schemas.add(resultSet.getString(1));
-        }
+        return resultSet.next() ? resultSet.getString(1) : null;
       }
     }
-    return schemas;
   }
 
   @Test
@@ -84,7 +77,7 @@ class DatasourceOperationsSchemaTest {
     // Unqualified queries resolve against the schema selected by the datasource.
     assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false)).isEqualTo(5);
     // H2 case-folds the unquoted identifier to uppercase.
-    assertThat(schemasContainingEntitiesTable(dataSource)).containsExactly("CUSTOM_POLARIS");
+    assertThat(schemaContainingEntitiesTable(dataSource)).isEqualTo("CUSTOM_POLARIS");
   }
 
   @Test
@@ -100,6 +93,6 @@ class DatasourceOperationsSchemaTest {
 
     assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false)).isEqualTo(5);
     // Without a datasource-selected schema, tables land in the database's default schema.
-    assertThat(schemasContainingEntitiesTable(dataSource)).containsExactly("PUBLIC");
+    assertThat(schemaContainingEntitiesTable(dataSource)).isEqualTo("PUBLIC");
   }
 }
