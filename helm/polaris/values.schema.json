@@ -1158,7 +1158,7 @@
                     "type": "object",
                     "properties": {
                         "additionalProperties": {
-                            "description": "Additional JDBC connection properties passed to the datasource driver as `quarkus.datasource.jdbc.additional-jdbc-properties.\u003cname\u003e`. The default sets `currentSchema`, which selects the database schema (namespace) holding the Polaris tables; that schema must exist before Polaris connects (creating it is a DBA task) and is passed to the driver unquoted, so the database applies its usual identifier case folding. Add further entries to customize other driver properties.",
+                            "description": "Additional JDBC connection properties passed to the datasource driver as `quarkus.datasource.jdbc.additional-jdbc-properties.\u003cname\u003e`. The default sets `currentSchema`, which on PostgreSQL and CockroachDB selects the database schema (namespace) holding the Polaris tables; that schema must exist before Polaris connects (creating it is a DBA task) and is passed to the driver unquoted, so the database applies its usual identifier case folding. Note that `currentSchema` is PostgreSQL/CockroachDB-specific and is silently ignored by other drivers such as MySQL, where the schema is instead the database named in the JDBC URL. Add further entries to customize other driver properties.",
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
