@@ -24,7 +24,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.io.IOException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -53,25 +52,15 @@ import java.util.UUID;
  * evolve the encoding later without ambiguity.
  *
  * <p>For {@code createTable} this window holds a single entry, but the shape generalizes to a
- * bounded per-entity window for repeated mutations (e.g. {@code updateTable}). Expired keys are
- * dropped inline whenever the entity is rewritten ({@link #recordKey}); expiry is also honored at
- * read time ({@link #hasLiveKey}) so a stale-but-not-yet-purged key is treated as absent.
+ * per-entity window for repeated mutations (e.g. {@code updateTable}). The window is bounded only
+ * by expiry (TTL): expired keys are dropped inline whenever the entity is rewritten ({@link
+ * #recordKey}), and expiry is also honored at read time ({@link #hasLiveKey}) so a
+ * stale-but-not-yet-purged key is treated as absent. Live keys are never evicted by count.
  */
 public final class EntityIdempotency {
 
   /** Internal-properties key under which the per-entity idempotency key window is stored. */
   public static final String IDEMPOTENCY_KEYS_PROPERTY = "polaris-idempotency-keys";
-
-  /**
-   * Live-key window size at the {@link #BASELINE_TTL}; the effective cap scales with the key TTL.
-   */
-  private static final int BASELINE_WINDOW_SIZE = 64;
-
-  /** TTL that {@link #BASELINE_WINDOW_SIZE} is calibrated for. */
-  private static final Duration BASELINE_TTL = Duration.ofMinutes(5);
-
-  /** Absolute ceiling on live keys per entity, to bound entity size for large TTLs. */
-  private static final int MAX_WINDOW_CEILING = 1024;
 
   /** Magic prefix for the version 1 SMILE window ({@code IS1} + base64url bytes). */
   private static final String FORMAT_SMILE_V1 = "IS1";
@@ -102,8 +91,12 @@ public final class EntityIdempotency {
    * Returns a copy of {@code internalProperties} with {@code key} recorded (expiring at {@code
    * expiry}) and any keys already expired as of {@code now} dropped. This is the inline
    * purge-on-write step: it runs within the same transaction that persists the entity, so no
-   * separate maintenance pass is required to bound the window. The window is capped at a size
-   * derived from this key's TTL ({@code expiry - now}); see {@link #maxWindowSize(Duration)}.
+   * separate maintenance pass is required.
+   *
+   * <p>The window is bounded only by expiry (TTL), never by a fixed count: a live key is never
+   * evicted to make room. Evicting a still-live key would silently disable idempotency for it and
+   * reintroduce the corruption failure mode (a retry would re-run and could 409), so under a high
+   * write rate we accept a larger window rather than dropping keys that could still be retried.
    */
   public static Map<String, String> recordKey(
       Map<String, String> internalProperties, UUID key, Instant expiry, Instant now) {
@@ -120,14 +113,6 @@ public final class EntityIdempotency {
       }
     }
 
-    // Bounded window, sized from this key's TTL. Drop the earliest-expiring entries (front of the
-    // sorted list) *before* inserting so the key just recorded is always retained. This matters
-    // when entries share an expiry (e.g. a burst of writes) and expiry order can't rank recency.
-    int maxWindowSize = maxWindowSize(Duration.between(now, expiry));
-    while (window.size() >= maxWindowSize) {
-      window.remove(0);
-    }
-
     KeyEntry newEntry = new KeyEntry(keyString, expiry.toEpochMilli());
     int insertionPoint = Collections.binarySearch(window, newEntry, BY_EXPIRY);
     if (insertionPoint < 0) {
@@ -138,16 +123,6 @@ public final class EntityIdempotency {
     Map<String, String> updated = new HashMap<>(internalProperties);
     updated.put(IDEMPOTENCY_KEYS_PROPERTY, encode(window));
     return updated;
-  }
-
-  /**
-   * Effective cap on the live-key window, scaled linearly from {@link #BASELINE_WINDOW_SIZE} at
-   * {@link #BASELINE_TTL} (e.g. 5m -> 64, 10m -> 128), floored at 1 and clamped by {@link
-   * #MAX_WINDOW_CEILING} so a large TTL can't grow the per-entity window without bound.
-   */
-  private static int maxWindowSize(Duration ttl) {
-    long scaled = (long) BASELINE_WINDOW_SIZE * ttl.toSeconds() / BASELINE_TTL.toSeconds();
-    return (int) Math.max(1, Math.min(MAX_WINDOW_CEILING, scaled));
   }
 
   private static List<KeyEntry> decode(String raw) {

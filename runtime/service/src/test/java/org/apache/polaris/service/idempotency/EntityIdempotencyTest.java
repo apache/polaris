@@ -21,7 +21,6 @@ package org.apache.polaris.service.idempotency;
 import static org.apache.polaris.service.idempotency.EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -105,49 +104,21 @@ public class EntityIdempotencyTest {
   }
 
   @Test
-  public void recordKeyEvictsEarliestWhenFull() {
-    // The cap scales with the key TTL. At the 5-minute baseline the window holds 64 keys.
-    // Expiries are spaced by milliseconds so they stay distinct but share one TTL bucket,
-    // giving a well-defined earliest-expiring eviction target.
-    Instant base = NOW.plus(Duration.ofMinutes(5));
-    int baselineCap = 64;
-
-    UUID earliest = UUID.randomUUID();
-    Map<String, String> internal =
-        EntityIdempotency.recordKey(Map.of(), earliest, base.plusMillis(1), NOW);
-    UUID secondEarliest = UUID.randomUUID();
-    internal = EntityIdempotency.recordKey(internal, secondEarliest, base.plusMillis(2), NOW);
-    for (int i = 3; i <= baselineCap; i++) {
-      internal = EntityIdempotency.recordKey(internal, UUID.randomUUID(), base.plusMillis(i), NOW);
+  public void recordKeyRetainsAllLiveKeysWithoutCountCap() {
+    // The window is bounded only by expiry, never by a fixed count: recording many still-live keys
+    // must retain every one. Evicting a live key would silently disable idempotency for it and
+    // could reintroduce the corruption failure mode idempotency exists to prevent.
+    int numberOfKeys = 500;
+    UUID[] keys = new UUID[numberOfKeys];
+    Map<String, String> internal = Map.of();
+    for (int i = 0; i < numberOfKeys; i++) {
+      keys[i] = UUID.randomUUID();
+      internal = EntityIdempotency.recordKey(internal, keys[i], LATER, NOW);
     }
 
-    // One more write past capacity must evict only the earliest-expiring key while retaining the
-    // key just recorded (trim-before-insert: the new key is never the one dropped).
-    UUID newest = UUID.randomUUID();
-    internal =
-        EntityIdempotency.recordKey(internal, newest, base.plusMillis(baselineCap + 1L), NOW);
-
-    // Read at NOW, when every recorded key would still be live if present, so absence == eviction.
-    // Only the single earliest key is dropped: the new key and the next-earliest survive.
-    assertThat(EntityIdempotency.hasLiveKey(internal, newest, NOW)).isTrue();
-    assertThat(EntityIdempotency.hasLiveKey(internal, secondEarliest, NOW)).isTrue();
-    assertThat(EntityIdempotency.hasLiveKey(internal, earliest, NOW)).isFalse();
-  }
-
-  @Test
-  public void windowCapScalesWithTtl() {
-    // A 10-minute TTL doubles the baseline cap to 128, so 65 keys (which would evict the earliest
-    // at
-    // the 5-minute baseline) all fit and none is evicted.
-    Instant base = NOW.plus(Duration.ofMinutes(10));
-    UUID earliest = UUID.randomUUID();
-    Map<String, String> internal =
-        EntityIdempotency.recordKey(Map.of(), earliest, base.plusMillis(1), NOW);
-    for (int i = 2; i <= 65; i++) {
-      internal = EntityIdempotency.recordKey(internal, UUID.randomUUID(), base.plusMillis(i), NOW);
+    for (UUID key : keys) {
+      assertThat(EntityIdempotency.hasLiveKey(internal, key, NOW)).isTrue();
     }
-
-    assertThat(EntityIdempotency.hasLiveKey(internal, earliest, NOW)).isTrue();
   }
 
   @Test
