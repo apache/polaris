@@ -99,6 +99,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- OPA and Ranger authorizers now receive user-defined principal properties from the backing
+  `PrincipalEntity` (exposed via `PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY`), alongside
+  internal properties. Internal properties win on key collision so system-managed values such as
+  `client_id` cannot be shadowed by user input.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which

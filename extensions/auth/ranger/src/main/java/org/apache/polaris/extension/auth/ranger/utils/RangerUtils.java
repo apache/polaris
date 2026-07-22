@@ -131,7 +131,14 @@ public class RangerUtils {
     Map<String, String> properties =
         principal
             .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
-            .map(PrincipalEntity::getInternalPropertiesAsMap)
+            .map(
+                entity -> {
+                  Map<String, String> merged = new HashMap<>(entity.getPropertiesAsMap());
+                  // Internal properties win on collision so system-managed values cannot be
+                  // shadowed by user-supplied properties.
+                  merged.putAll(entity.getInternalPropertiesAsMap());
+                  return merged;
+                })
             .orElse(Collections.emptyMap());
 
     return properties.isEmpty() ? Collections.emptyMap() : new HashMap<>(properties);
