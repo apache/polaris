@@ -21,6 +21,8 @@ package org.apache.polaris.extensions.lineage;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.context.CallContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,12 +32,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class DefaultPolarisLineageHandlerTest {
   @Mock private LineageConfiguration configuration;
+  @Mock private CallContext callContext;
+  @Mock private PolarisPrincipal principal;
 
   private DefaultPolarisLineageHandler handler;
 
   @BeforeEach
   void setUp() {
-    handler = new DefaultPolarisLineageHandler(configuration);
+    handler = new DefaultPolarisLineageHandler(configuration, callContext, principal);
   }
 
   @Test
