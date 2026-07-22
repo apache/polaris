@@ -39,7 +39,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
+import org.apache.polaris.service.metrics.IcebergMetricsReporter;
 
 @RequestScoped
 public class IcebergCatalogHandlerFactory {
@@ -58,7 +58,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject EventAttributeMap eventAttributeMap;
-  @Inject PolarisMetricsReporter metricsReporter;
+  @Inject IcebergMetricsReporter metricsReporter;
   @Inject Clock clock;
   @Inject AccessDelegationModeResolver accessDelegationModeResolver;
   @Inject IdempotencyRequestContext idempotencyRequestContext;

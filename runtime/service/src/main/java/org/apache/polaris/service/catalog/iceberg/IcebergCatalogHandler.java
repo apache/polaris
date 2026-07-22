@@ -131,7 +131,9 @@ import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.idempotency.EntityIdempotency;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
+import org.apache.polaris.service.metrics.IcebergMetricsReporter;
+import org.apache.polaris.service.metrics.MetricType;
+import org.apache.polaris.service.metrics.MetricsReportEnvelope;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -178,7 +180,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract EventAttributeMap eventAttributeMap();
 
-  protected abstract PolarisMetricsReporter metricsReporter();
+  protected abstract IcebergMetricsReporter metricsReporter();
 
   protected abstract Clock clock();
 
@@ -828,9 +830,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
     long tableId = tableEntity.getId();
 
+    MetricType metricType =
+        request.report() instanceof ScanReport ? MetricType.SCAN : MetricType.COMMIT;
     metricsReporter()
         .reportMetric(
-            catalogName(), catalogId, identifier, tableId, request.report(), clock().instant());
+            new MetricsReportEnvelope(
+                catalogName(),
+                catalogId,
+                identifier,
+                tableId,
+                metricType,
+                request.report(),
+                clock().instant()));
   }
 
   /**

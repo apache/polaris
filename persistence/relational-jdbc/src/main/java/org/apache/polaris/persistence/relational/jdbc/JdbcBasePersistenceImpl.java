@@ -57,9 +57,6 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
-import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -72,21 +69,18 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityVersionConverter;
-import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
-import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JdbcBasePersistenceImpl
-    implements BasePersistence, IntegrationPersistence, MetricsPersistence {
+public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
@@ -286,7 +280,7 @@ public class JdbcBasePersistenceImpl
           QueryGenerator.generateInsertQuery(
               ModelEvent.ALL_COLUMNS,
               ModelEvent.TABLE_NAME,
-              ModelEvent.fromEvent(events.getFirst())
+              ModelEvent.fromEvent(events.getFirst(), schemaVersion)
                   .toMap(datasourceOperations.getDatabaseType())
                   .values()
                   .stream()
@@ -304,7 +298,7 @@ public class JdbcBasePersistenceImpl
             QueryGenerator.generateInsertQuery(
                 ModelEvent.ALL_COLUMNS,
                 ModelEvent.TABLE_NAME,
-                ModelEvent.fromEvent(event)
+                ModelEvent.fromEvent(event, schemaVersion)
                     .toMap(datasourceOperations.getDatabaseType())
                     .values()
                     .stream()
@@ -1348,60 +1342,5 @@ public class JdbcBasePersistenceImpl
   @FunctionalInterface
   private interface QueryAction {
     Integer apply(Connection connection, QueryGenerator.PreparedQuery query) throws SQLException;
-  }
-
-  // ============================================================================
-  // MetricsPersistence Implementation
-  // ============================================================================
-
-  /** Returns the datasource operations to use for metrics persistence. */
-  private DatasourceOperations getMetricsDatasource() {
-    return datasourceOperations;
-  }
-
-  @Override
-  public void writeScanReport(@NonNull ScanMetricsRecord record) {
-    ModelScanMetricsReport model = ModelScanMetricsReport.fromRecord(record, realmId);
-    writeScanMetricsReport(model);
-  }
-
-  @Override
-  public void writeCommitReport(@NonNull CommitMetricsRecord record) {
-    ModelCommitMetricsReport model = ModelCommitMetricsReport.fromRecord(record, realmId);
-    writeCommitMetricsReport(model);
-  }
-
-  // ========== Internal Metrics JDBC methods ==========
-
-  private void writeScanMetricsReport(@NonNull ModelScanMetricsReport report) {
-    DatasourceOperations metricsOps = getMetricsDatasource();
-    try {
-      PreparedQuery pq =
-          QueryGenerator.generateInsertQuery(
-              ModelScanMetricsReport.ALL_COLUMNS,
-              ModelScanMetricsReport.TABLE_NAME,
-              report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),
-              realmId);
-      metricsOps.executeUpdate(pq);
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to write scan metrics report due to %s", e.getMessage()), e);
-    }
-  }
-
-  private void writeCommitMetricsReport(@NonNull ModelCommitMetricsReport report) {
-    DatasourceOperations metricsOps = getMetricsDatasource();
-    try {
-      PreparedQuery pq =
-          QueryGenerator.generateInsertQuery(
-              ModelCommitMetricsReport.ALL_COLUMNS,
-              ModelCommitMetricsReport.TABLE_NAME,
-              report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),
-              realmId);
-      metricsOps.executeUpdate(pq);
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
-    }
   }
 }

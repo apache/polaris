@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.policy;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -43,12 +44,26 @@ import org.junit.jupiter.api.TestFactory;
 public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   private PolicyCatalogHandler newHandler() {
-    return newHandler(Set.of());
+    return newHandler(
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of()));
   }
 
   private PolicyCatalogHandler newHandler(Set<String> activatedPrincipalRoles) {
-    PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
+    return newHandler(
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            activatedPrincipalRoles));
+  }
+
+  private PolicyCatalogHandler newHandler(PolarisPrincipal authenticatedPrincipal) {
     return ImmutablePolicyCatalogHandler.builder()
         .catalogName(CATALOG_NAME)
         .polarisPrincipal(authenticatedPrincipal)

@@ -30,6 +30,18 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
+- Relational JDBC: a new schema version 5 makes the `events.catalog_id` column nullable. Events that
+  are not scoped to a catalog (principal, policy, rate-limiting, etc.) now persist `NULL` instead of
+  the placeholder string `__realm__` (which only ever existed in 1.6.0 release candidates). Fresh
+  bootstraps use schema v5 automatically. Existing deployments on schema v3/v4 keep working — the
+  server detects the older schema version and continues writing the legacy placeholder — but
+  operators are encouraged to upgrade manually, since Polaris has no automated schema migrations:
+  ```sql
+  ALTER TABLE polaris_schema.events ALTER COLUMN catalog_id DROP NOT NULL;
+  UPDATE polaris_schema.events SET catalog_id = NULL WHERE catalog_id = '__realm__';
+  UPDATE polaris_schema.version SET version_value = 5 WHERE version_key = 'version';
+  ```
+  See the Relational JDBC metastore documentation for details.
 
 ### Breaking changes
 - The Relational JDBC backend no longer creates its database schema during bootstrap: creating the
@@ -42,6 +54,19 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   are now always bootstrapped with the latest available schema version.
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
 - Admin grant APIs now reject table-like privilege targets with an empty namespace. A table-like target without a namespace is considered invalid input.
+- `PolarisPrincipal` now carries a generic `Map<String, Object> attributes` bag instead of the
+  previous `Map<String, String> properties` and `Optional<String> token` fields. Three well-known
+  attribute keys are defined as constants on the interface:
+
+  - `PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY`: holds the `PrincipalEntity`;
+  - `PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY`: holds a boolean indicating if the 
+    `PRINCIPAL_ROLE:ALL` pseudo-role is present;
+  - `PolarisPrincipal.JWT_ATTRIBUTE_KEY`: holds the raw JWT string.
+
+  Use `PolarisPrincipal.getAttribute(key, type)` for type-safe access. The `Authenticator` interface
+  now accepts a Quarkus `SecurityIdentity` instead of a `PolarisCredential`, and throws
+  `AuthenticationFailedException` (mapped to HTTP 401) instead of Iceberg's
+  `NotAuthorizedException`.
 
 ### New Features
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
@@ -54,7 +79,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
 - Added optional `sessionPolicy` field to `SigV4AuthenticationParameters` for catalog federation. When set, the IAM session policy JSON is attached to the STS AssumeRole request, allowing administrators to restrict vended credentials to only the required AWS services and actions (Principle of Least Privilege).
 - Python CLI: added `--scheme` to specify URL scheme
-- Added opt-in idempotency for `createTable` and `updateTable` in the Iceberg REST catalog. When enabled via `polaris.idempotency.enabled=true` (default `false`), a client-supplied `Idempotency-Key` header is embedded into the table entity and committed in the same transaction as the operation; a retry carrying the same key within the TTL window (`polaris.idempotency.ttl`, default `PT5M`) replays the original success instead of failing — with `AlreadyExists` for `createTable`, or with `CommitFailedException` for `updateTable` when the request's requirements no longer match the already-advanced table.
+- Added opt-in idempotency for `createTable` and `updateTable` in the Iceberg REST catalog. When enabled via `polaris.idempotency.enabled=true` (default `false`), a client-supplied `Idempotency-Key` header is embedded into the table entity and committed in the same transaction as the operation; a retry carrying the same key within the TTL window (`polaris.idempotency.ttl`, default `PT5M`) replays the original success instead of failing — with `AlreadyExists` for `createTable`, or with `CommitFailedException` for `updateTable` when the request's requirements no longer match the already-advanced table. When idempotency is enabled, the reuse window is advertised to clients through the `idempotency-key-lifetime` field of the `GET /v1/config` response.
 
 ### Changes
 - The admin tool's `bootstrap` command is now idempotent: bootstrapping a realm that is already
@@ -64,11 +89,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `ReturnStatus.ENTITY_ALREADY_EXISTS` instead of throwing `IllegalArgumentException` when the
   root principal already exists. Existing credentials are never returned or altered.
 - Authorization failure messages (HTTP 403 / `ForbiddenException` from `PolarisAuthorizerImpl`) now log the specific missing privilege(s) and the entity each was checked against server-side (at `INFO` level), e.g. `missing TABLE_CREATE on NAMESPACE 'ns1'`. The client-facing 403 response remains a generic message to avoid leaking authorization metadata to untrusted clients. Operators can correlate client errors to server logs using the existing `X-Request-ID` header (present in default log MDC as `requestId`).
+- The field `clientSecret` of the Polaris management API type `ResetPrincipalRequest` is now using `format: password`. This does not change the wire format, but code generated from the OpenAPI may require downstream changes.
 
 ### Deprecations
 - Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
 ### Fixes
+- Python CLI `tables list`, `tables get`, and `tables delete` commands now exit with status 1 when catalog API requests fail. Previously, these commands printed an error but exited successfully.
 - Default table storage locations with object-storage prefixing enabled are now percent-encoded with UTF-8 instead of the JVM default charset. Previously the persisted location of a table under a non-ASCII namespace or table name depended on the platform default charset, so the same table could resolve to a different (or lossy) location on a non-UTF-8 JVM.
 - Async task execution (table cleanup, manifest and batch file cleanup) now retries when a handler returns false on transient errors (e.g. IO or delete failures). Previously `false` was swallowed with only a warning log and the task was never retried via the existing retry mechanism.
 - `TableCleanupTaskHandler` now clamps `TABLE_METADATA_CLEANUP_BATCH_SIZE` to at least 1. Previously a non-positive realm override caused an infinite loop (0) or `IllegalArgumentException` (<0) when splitting metadata files for cleanup.

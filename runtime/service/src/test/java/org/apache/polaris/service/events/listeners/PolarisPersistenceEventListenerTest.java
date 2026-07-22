@@ -193,7 +193,7 @@ class PolarisPersistenceEventListenerTest {
             PolarisEventType.BEFORE_LIMIT_REQUEST_RATE, metadata(), new EventAttributeMap()));
 
     EventEntity persisted = listener.persistedEvent(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
-    assertThat(persisted.getCatalogId()).isEqualTo(EventEntity.REALM_SCOPED);
+    assertThat(persisted.getCatalogId()).isNull();
     assertThat(persisted.getResourceType()).isEqualTo(EventEntity.ResourceType.REALM);
     assertThat(persisted.getResourceIdentifier())
         .isEqualTo(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE.name());

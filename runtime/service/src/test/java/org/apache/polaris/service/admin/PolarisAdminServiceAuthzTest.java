@@ -42,12 +42,32 @@ import org.junit.jupiter.api.TestFactory;
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   private PolarisAdminService newTestAdminService() {
-    return newTestAdminService(Set.of());
+    final PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of());
+    return new PolarisAdminService(
+        callContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        authenticatedPrincipal,
+        polarisAuthorizer,
+        reservedProperties);
   }
 
   private PolarisAdminService newTestAdminService(Set<String> activatedPrincipalRoles) {
     final PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            activatedPrincipalRoles);
     return PolarisAdminServiceTestSupport.newAdminService(
         callContext,
         resolutionManifestFactory,

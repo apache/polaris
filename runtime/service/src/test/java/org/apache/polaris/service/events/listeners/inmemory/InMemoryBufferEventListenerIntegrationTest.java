@@ -44,6 +44,8 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
@@ -151,6 +153,10 @@ class InMemoryBufferEventListenerIntegrationTest {
           .create();
     }
 
+    try (Response response = managementApi.request("v1/principals").get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+
     String query =
         "SELECT * FROM polaris_schema.events WHERE realm_id = '"
             + realm
@@ -172,7 +178,15 @@ class InMemoryBufferEventListenerIntegrationTest {
                   }
                   return e.build();
                 },
-                e -> e.size() >= 2);
+                e ->
+                    e.stream()
+                        .map(EventEntity::getEventType)
+                        .collect(Collectors.toSet())
+                        .containsAll(
+                            Set.of(
+                                "AFTER_CREATE_CATALOG",
+                                "AFTER_CREATE_TABLE",
+                                "AFTER_LIST_PRINCIPALS")));
 
     EventEntity e1 =
         events.stream()
@@ -214,5 +228,14 @@ class InMemoryBufferEventListenerIntegrationTest {
             OPEN_TELEMETRY_TRACE_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{32}"))
         .hasEntrySatisfying(
             OPEN_TELEMETRY_SPAN_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{16}"));
+
+    EventEntity e3 =
+        events.stream()
+            .filter(e -> e.getEventType().equals("AFTER_LIST_PRINCIPALS"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(e3.getCatalogId()).isNull();
+    assertThat(e3.getResourceType()).isEqualTo(EventEntity.ResourceType.REALM);
+    assertThat(e3.getResourceIdentifier()).isEqualTo("AFTER_LIST_PRINCIPALS");
   }
 }

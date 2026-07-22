@@ -55,7 +55,6 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -247,11 +246,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Override
   public BasePersistence getOrCreateSession(RealmContext realmContext) {
-    return createJdbcPersistence(realmContext);
-  }
-
-  @Override
-  public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
     return createJdbcPersistence(realmContext);
   }
 

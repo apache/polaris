@@ -151,7 +151,15 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    authenticatedRoot =
+        PolarisPrincipal.of(
+            rootPrincipal.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                rootPrincipal,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of());
     polarisPrincipalHolder.set(authenticatedRoot);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);

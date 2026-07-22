@@ -1028,7 +1028,7 @@ public class PolarisManagementServiceIntegrationTest {
           .isNotNull()
           .extracting(ErrorResponse::message)
           .asString()
-          .contains("PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE");
+          .contains("must rotate credentials first");
     }
 
     // Now try to rotate using the principal's token.

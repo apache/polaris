@@ -28,13 +28,21 @@ import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.junit.jupiter.api.Test;
 
 public class AuthorizationPreConditionsTest {
 
-  private static final String ROTATION_KEY =
-      PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE;
+  private static final PolarisPrincipal PRINCIPAL =
+      PolarisPrincipal.of(
+          "alice",
+          Map.of(
+              PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+              new PrincipalEntity.Builder()
+                  .setName("alice")
+                  .setCredentialRotationRequiredState()
+                  .build()),
+          Set.of("role"));
 
   private static RealmConfig realmConfigWithEnforcement(boolean enforce) {
     RealmConfig realmConfig = mock(RealmConfig.class);
@@ -46,13 +54,10 @@ public class AuthorizationPreConditionsTest {
 
   @Test
   public void testFlagOff_noException() {
-    PolarisPrincipal principal =
-        PolarisPrincipal.of("alice", Map.of(ROTATION_KEY, "true"), Set.of("role"));
-
     assertThatCode(
             () ->
                 AuthorizationPreConditions.checkCredentialRotationRequired(
-                    principal,
+                    PRINCIPAL,
                     PolarisAuthorizableOperation.LIST_CATALOGS,
                     realmConfigWithEnforcement(false)))
         .doesNotThrowAnyException();
@@ -60,13 +65,10 @@ public class AuthorizationPreConditionsTest {
 
   @Test
   public void testFlagOn_rotateCredentialsOp_noException() {
-    PolarisPrincipal principal =
-        PolarisPrincipal.of("alice", Map.of(ROTATION_KEY, "true"), Set.of("role"));
-
     assertThatCode(
             () ->
                 AuthorizationPreConditions.checkCredentialRotationRequired(
-                    principal,
+                    PRINCIPAL,
                     PolarisAuthorizableOperation.ROTATE_CREDENTIALS,
                     realmConfigWithEnforcement(true)))
         .doesNotThrowAnyException();
@@ -74,17 +76,14 @@ public class AuthorizationPreConditionsTest {
 
   @Test
   public void testFlagOn_nonRotationOp_propertySet_throwsForbidden() {
-    PolarisPrincipal principal =
-        PolarisPrincipal.of("alice", Map.of(ROTATION_KEY, "true"), Set.of("role"));
-
     assertThatThrownBy(
             () ->
                 AuthorizationPreConditions.checkCredentialRotationRequired(
-                    principal,
+                    PRINCIPAL,
                     PolarisAuthorizableOperation.LIST_CATALOGS,
                     realmConfigWithEnforcement(true)))
         .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE");
+        .hasMessageContaining("must rotate credentials");
   }
 
   @Test
