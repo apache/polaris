@@ -36,6 +36,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -439,6 +440,74 @@ public class StorageCredentialCacheTest {
               .build());
     }
     return res;
+  }
+
+  @Test
+  public void testRefreshBufferEvictsNearExpiryCredentials() {
+    // Credentials expire in 120 seconds from now.
+    // With a 300-second refresh buffer, effective TTL = 120s - 300s = -180s → clamped to 0.
+    // The entry must be absent immediately after load.
+    long expiresAt = System.currentTimeMillis() + 120_000;
+    StorageAccessConfig nearExpiryConfig =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+            .put(
+                StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                String.valueOf(expiresAt))
+            .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt))
+            .build();
+
+    // RealmConfig with STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS = 300
+    RealmConfig realmConfigWithBuffer =
+        new RealmConfigImpl(
+            (rc, name) ->
+                FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key().equals(name)
+                    ? 300
+                    : null,
+            realmContext);
+
+    StorageCredentialCacheKey key =
+        new TestKey(
+            realmContext.getRealmIdentifier(),
+            "bufferConfig",
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of(),
+            Optional.empty(),
+            realmConfigWithBuffer,
+            () -> nearExpiryConfig);
+
+    storageCredentialCache.getOrLoad(key);
+    Assertions.assertThat(storageCredentialCache.getIfPresent(key)).isNull();
+  }
+
+  @Test
+  public void testRefreshBufferZeroPreservesHalfLifetimeBehavior() {
+    // Credentials expire in 120 seconds from now.
+    // With buffer = 0 (default), effective TTL = 120s / 2 = 60s > 0 → entry is kept in cache.
+    long expiresAt = System.currentTimeMillis() + 120_000;
+    StorageAccessConfig config =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_KEY_ID, "key")
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
+            .put(
+                StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                String.valueOf(expiresAt))
+            .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt))
+            .build();
+
+    StorageCredentialCacheKey key =
+        buildKey(
+            "bufferZeroConfig",
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of(),
+            Optional.empty(),
+            () -> config);
+
+    storageCredentialCache.getOrLoad(key);
+    Assertions.assertThat(storageCredentialCache.getIfPresent(key)).isNotNull();
   }
 
   private static List<String> getStorageConfigStrings() {
