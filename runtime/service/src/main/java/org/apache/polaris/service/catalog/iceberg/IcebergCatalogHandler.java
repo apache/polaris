@@ -1711,11 +1711,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
       TableMetadata metadata = loadTableResponse.tableMetadata();
 
-      // suppressHistoricalSnapshots() removes snapshots not referenced by any branch/tag without
-      // recording a MetadataUpdate. TableMetadata only allows a non-null metadataLocation when
-      // its change list is empty, so this keeps the filtered response pointing at the same
-      // persisted metadata file a snapshots=all request would return. Matches
-      // org.apache.iceberg.rest.CatalogHandlers#loadTable's REFS case in Iceberg core.
+      // suppressHistoricalSnapshots() preserves metadataLocation() while dropping unreferenced
+      // snapshots, matching org.apache.iceberg.rest.CatalogHandlers#loadTable's REFS case.
       TableMetadata filteredMetadata =
           TableMetadata.buildFrom(metadata)
               .withMetadataLocation(metadata.metadataFileLocation())
