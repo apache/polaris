@@ -47,7 +47,7 @@ public final class PolarisEncryptionUtil {
    * task. Cleanup tasks run after the catalog request has ended, so they cannot reconstruct these
    * values from the live table operations object.
    */
-  public static void addCleanupTaskEncryptionProperties(
+  public static void setupCleanupTaskEncryptionProperties(
       Map<String, String> taskProperties,
       Map<String, String> catalogProperties,
       TableMetadata metadata) {
@@ -65,7 +65,7 @@ public final class PolarisEncryptionUtil {
     // merged into the FileIO and storage properties already resolved for the cleanup task.
     CleanupTaskEncryptionContext context =
         new CleanupTaskEncryptionContext(
-            Map.copyOf(catalogProperties),
+            catalogProperties,
             metadata.encryptionKeys().stream().map(EncryptedKeyParser::toJson).toList());
     taskProperties.put(
         PolarisTaskConstants.ENCRYPTION_CONTEXT, PolarisObjectMapperUtil.serialize(context));

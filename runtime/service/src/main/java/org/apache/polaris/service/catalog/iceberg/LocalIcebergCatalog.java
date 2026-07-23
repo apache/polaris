@@ -575,7 +575,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   // Polaris does not write encrypted manifests here. Preserve the encryption
                   // context only so the asynchronous server-side purge can read manifest lists
                   // and manifests that were written by the engine and enumerate files to delete.
-                  PolarisEncryptionUtil.addCleanupTaskEncryptionProperties(
+                  PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
                       clone, catalogProperties, lastMetadata);
                   return clone;
                 })

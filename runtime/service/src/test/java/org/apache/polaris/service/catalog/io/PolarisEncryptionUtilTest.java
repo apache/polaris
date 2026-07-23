@@ -65,7 +65,7 @@ class PolarisEncryptionUtilTest {
     TableMetadata metadata = encryptedMetadata(key);
     Map<String, String> taskProperties = new HashMap<>(metadata.properties());
 
-    PolarisEncryptionUtil.addCleanupTaskEncryptionProperties(
+    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()),
         metadata);
@@ -87,7 +87,7 @@ class PolarisEncryptionUtilTest {
     taskProperties.put("storage.region", "restricted-region");
     taskProperties.put(PolarisTaskConstants.ENCRYPTION_CONTEXT, "untrusted-value");
 
-    PolarisEncryptionUtil.addCleanupTaskEncryptionProperties(
+    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(
             CatalogProperties.FILE_IO_IMPL,
@@ -125,7 +125,7 @@ class PolarisEncryptionUtilTest {
             "data-key", ByteBuffer.wrap(new byte[] {1, 2, 3}), TABLE_KEY, Map.of());
     TableMetadata metadata = encryptedMetadata(key);
     Map<String, String> taskProperties = new HashMap<>(metadata.properties());
-    PolarisEncryptionUtil.addCleanupTaskEncryptionProperties(
+    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()),
         metadata);
@@ -142,7 +142,7 @@ class PolarisEncryptionUtilTest {
   void encryptedTaskFileIoClosesKmsClientWhenTaskKeyIsInvalid() {
     TableMetadata metadata = encryptedMetadata();
     Map<String, String> taskProperties = new HashMap<>(metadata.properties());
-    PolarisEncryptionUtil.addCleanupTaskEncryptionProperties(
+    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()),
         metadata);
@@ -178,7 +178,7 @@ class PolarisEncryptionUtilTest {
 
     TableMetadata metadataWithKeys = addEncryptionKeys(metadata, writerManager);
     Map<String, String> taskProperties = new HashMap<>(metadataWithKeys.properties());
-    PolarisEncryptionUtil.addCleanupTaskEncryptionProperties(
+    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()),
         metadataWithKeys);

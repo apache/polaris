@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
@@ -68,8 +67,6 @@ class TaskFileIOSupplierTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Missing encryption context")
         .satisfies(failure -> assertThat(failure.getSuppressed()).containsExactly(closeFailure));
-
-    verify(fileIO).close();
   }
 
   @Test

@@ -52,6 +52,8 @@ public class TaskFileIOSupplier {
 
   public FileIO apply(TaskEntity task, TableIdentifier identifier) {
     Map<String, String> taskProperties = task.getInternalPropertiesAsMap();
+    // Task properties carry both raw FileIO settings and the task-only encryption context.
+    // Initialize the raw FileIO from a filtered copy; retain the original for wrapping it below.
     Map<String, String> fileIOProperties = new HashMap<>(taskProperties);
     fileIOProperties.remove(PolarisTaskConstants.ENCRYPTION_CONTEXT);
 
