@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.maintenance;
 
-import java.util.Optional;
-
 public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConfig {
 
   private static CatalogsMaintenanceConfig current =
@@ -30,42 +28,42 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
   }
 
   @Override
-  public Optional<String> principalsRetain() {
+  public int principalsRetain() {
     return current.principalsRetain();
   }
 
   @Override
-  public Optional<String> principalRolesRetain() {
+  public int principalRolesRetain() {
     return current.principalRolesRetain();
   }
 
   @Override
-  public Optional<String> grantsRetain() {
+  public int grantsRetain() {
     return current.grantsRetain();
   }
 
   @Override
-  public Optional<String> immediateTasksRetain() {
+  public int immediateTasksRetain() {
     return current.immediateTasksRetain();
   }
 
   @Override
-  public Optional<String> catalogsHistoryRetain() {
+  public int catalogsHistoryRetain() {
     return current.catalogsHistoryRetain();
   }
 
   @Override
-  public Optional<String> catalogRolesRetain() {
+  public int catalogRolesRetain() {
     return current.catalogRolesRetain();
   }
 
   @Override
-  public Optional<String> catalogStateRetain() {
+  public int catalogStateRetain() {
     return current.catalogStateRetain();
   }
 
   @Override
-  public Optional<String> catalogPoliciesRetain() {
+  public int catalogPoliciesRetain() {
     return current.catalogPoliciesRetain();
   }
 }
