@@ -278,3 +278,14 @@ CREATE INDEX IF NOT EXISTS idx_commit_report_lookup ON commit_metrics_report(rea
 -- CockroachDB requires explicit INT4 type declarations to correctly map columns to Java's Integer type.
 -- Using generic INTEGER or INT types causes type mapping failures in CockroachDB's JDBC driver.
 -- INT4 is equivalent to INTEGER in PostgreSQL, ensuring compatibility with both databases.
+
+-- Queue of realms whose time-series data (events, metrics reports) is pending asynchronous,
+-- batched deletion by the background purge drainer. One row per realm being purged.
+CREATE TABLE IF NOT EXISTS realm_purge (
+    realm_id TEXT NOT NULL,
+    requested_at BIGINT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    claimed_by TEXT,
+    claimed_at BIGINT,
+    PRIMARY KEY (realm_id)
+);

@@ -59,10 +59,11 @@ Polaris administration & maintenance tool
   -h, --help      Show this help message and exit.
   -V, --version   Print version information and exit.
 Commands:
-  help       Display help information about the specified command.
-  bootstrap  Bootstraps realms and root principal credentials.
-  purge      Purge realms and all associated entities.
-  nosql      Sub-commands specific to NoSQL persistence.
+  help         Display help information about the specified command.
+  bootstrap    Bootstraps realms and root principal credentials.
+  purge        Purge realms and all associated entities.
+  purge-drain  Drain queued realm purges (relational-JDBC backend).
+  nosql        Sub-commands specific to NoSQL persistence.
 ```
 
 ## Configuration
@@ -206,6 +207,63 @@ docker run --rm -it \
 ```
 
 Again, the Polaris Admin Tool must be executed with appropriate configuration to connect to the same database used by the Polaris server. The configuration can be done via environment variables (as above) or system properties.
+
+## Draining Queued Realm Purges
+
+On the relational-JDBC backend, purging a realm does not delete its time-series data (events and
+metrics reports) inline. Instead, the realm is queued for asynchronous, batched deletion, and the
+`purge-drain` command processes that queue.
+
+{{< alert note >}}
+The `purge-drain` command applies to the relational-JDBC backend only. On the NoSQL backend this data
+is reclaimed by [NoSQL maintenance](#running-nosql-maintenance) instead, and `purge-drain` is a no-op.
+{{< /alert >}}
+
+The command is safe to run repeatedly and concurrently across nodes: each queued realm is claimed for
+the duration of a lease, so only one drain works a given realm at a time, and a realm left unfinished
+(e.g. because a node stopped) is resumed once its claim lease expires. It is intended to be scheduled
+to run periodically, for example once per day.
+
+If you have downloaded the [binary distribution]({{% ref "getting-started/binary-distribution" %}}), you can run the `purge-drain` command as follows:
+
+```shell
+java -jar polaris-bin-<version>/admin/quarkus-run.jar purge-drain --help
+```
+
+You can also use the Docker image to run the `purge-drain` command:
+
+```shell
+docker run apache/polaris-admin-tool:latest purge-drain --help
+```
+
+The basic usage of the `purge-drain` command is outlined below:
+
+```
+Usage: polaris-admin-tool.jar purge-drain [-hV] [--batch-size=<batchSize>]
+                                          [--claim-lease-ms=<claimLeaseMs>]
+Drain queued realm purges (relational-JDBC backend).
+Deletes purged realms' time-series data (events and metrics reports) in bounded
+batches. Safe to run repeatedly and concurrently; intended to be scheduled (e.g.
+as a periodic job).
+      --batch-size=<batchSize>
+                  Maximum rows deleted per statement (default: 1000).
+      --claim-lease-ms=<claimLeaseMs>
+                  Milliseconds a drain claim is honored before another run may
+                    resume an interrupted realm (default: 600000).
+  -h, --help      Show this help message and exit.
+  -V, --version   Print version information and exit.
+```
+
+For example, to drain queued realm purges on the PostgreSQL backend:
+
+```bash
+docker run --rm -it \
+  --env="polaris.persistence.type=relational-jdbc" \
+  --env="quarkus.datasource.username=<your-username>" \
+  --env="quarkus.datasource.password=<your-password>" \
+  --env="quarkus.datasource.jdbc.url=<jdbc-url-of-postgres>" \
+  apache/polaris-admin-tool:latest purge-drain
+```
 
 ## NoSQL Specific Operations
 

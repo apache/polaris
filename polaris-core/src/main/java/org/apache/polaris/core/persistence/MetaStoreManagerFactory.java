@@ -45,4 +45,18 @@ public interface MetaStoreManagerFactory {
 
   /** Purge all metadata for the realms provided */
   Map<String, BaseResult> purgeRealms(Iterable<String> realms);
+
+  /**
+   * Drains queued realm purges: deletes the time-series data (events, metrics reports) of already
+   * purged realms, in bounded batches, resuming any interrupted drains. Backends without an
+   * asynchronous realm-purge queue (e.g. those that purge such data through their own maintenance)
+   * return 0.
+   *
+   * @param batchSize maximum rows deleted per statement
+   * @param claimLeaseMs how long a drain claim is honored before another node may resume it
+   * @return the number of realms fully drained during this run
+   */
+  default int drainRealmPurges(int batchSize, long claimLeaseMs) {
+    return 0;
+  }
 }

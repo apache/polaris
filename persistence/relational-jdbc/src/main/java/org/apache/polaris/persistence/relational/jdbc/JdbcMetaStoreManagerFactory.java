@@ -25,12 +25,15 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
@@ -87,6 +90,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisDiagnostics diagnostics;
   @Inject DatasourceOperations datasourceOperations;
   @Inject RealmConfigurationSource realmConfigurationSource;
+  @Inject Instance<RealmDataPurger> realmDataPurgers;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -226,6 +230,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         continue;
       }
 
+      // purge -> deleteAll enqueues the realm into realm_purge in the same transaction.
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
@@ -236,6 +241,30 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
 
     return Map.copyOf(results);
+  }
+
+  @Override
+  public int drainRealmPurges(int batchSize, long claimLeaseMs) {
+    RealmPurgeService service =
+        new RealmPurgeService(
+            new RealmPurgeStore(datasourceOperations), realmDataPurgers.stream().toList());
+    return service.drainOnce(nodeId(), batchSize, claimLeaseMs, clock.millis());
+  }
+
+  // Resolved once: getLocalHost() can block for seconds on a misconfigured resolver.
+  private static final String NODE_HOST = resolveHost();
+
+  private static String resolveHost() {
+    try {
+      return InetAddress.getLocalHost().getHostName();
+    } catch (UnknownHostException e) {
+      return "unknown-host";
+    }
+  }
+
+  // Claim owner: hostname (so a stuck lease points at a node) plus a UUID for per-run uniqueness.
+  private static String nodeId() {
+    return NODE_HOST + "-" + UUID.randomUUID();
   }
 
   @Override
