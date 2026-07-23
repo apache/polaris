@@ -138,14 +138,14 @@ public class TestCatalogMaintenance {
     // tell maintenance to only retain the latest commit
     MutableCatalogsMaintenanceConfig.setCurrent(
         CatalogsMaintenanceConfig.BuildableCatalogsMaintenanceConfig.builder()
-            .catalogRolesRetain("false")
-            .catalogsHistoryRetain("false")
-            .catalogPoliciesRetain("false")
-            .catalogStateRetain("false")
-            .grantsRetain("false")
-            .principalRolesRetain("false")
-            .principalsRetain("false")
-            .immediateTasksRetain("false")
+            .catalogRolesRetain(1)
+            .catalogsHistoryRetain(1)
+            .catalogPoliciesRetain(1)
+            .catalogStateRetain(1)
+            .grantsRetain(1)
+            .principalRolesRetain(1)
+            .principalsRetain(1)
+            .immediateTasksRetain(1)
             .build());
   }
 

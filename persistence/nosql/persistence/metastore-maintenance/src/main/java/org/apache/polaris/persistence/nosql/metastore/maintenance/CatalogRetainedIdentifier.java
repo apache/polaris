@@ -31,14 +31,6 @@ import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj.POLICY_MAPPINGS_REF_NAME;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj.REALM_GRANTS_REF_NAME;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.RootObj.ROOT_REF_NAME;
-import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_CATALOGS_HISTORY_RETAIN;
-import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_CATALOG_POLICIES_RETAIN;
-import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_CATALOG_ROLES_RETAIN;
-import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_CATALOG_STATE_RETAIN;
-import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_GRANTS_RETAIN;
-import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_IMMEDIATE_TASKS_RETAIN;
-import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_PRINCIPALS_RETAIN;
-import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_PRINCIPAL_ROLES_RETAIN;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -52,10 +44,10 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.ids.api.MonotonicClock;
-import org.apache.polaris.maintenance.cel.CelReferenceContinuePredicate;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.exceptions.ReferenceNotFoundException;
 import org.apache.polaris.persistence.nosql.api.index.Index;
@@ -140,21 +132,21 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     perRealmContainer(
         "principals",
         PRINCIPALS_REF_NAME,
-        catalogsMaintenanceConfig.principalsRetain().orElse(DEFAULT_PRINCIPALS_RETAIN),
+        catalogsMaintenanceConfig.principalsRetain(),
         PrincipalsObj.class,
         collector);
 
     perRealmContainer(
         "principal roles",
         PRINCIPAL_ROLES_REF_NAME,
-        catalogsMaintenanceConfig.principalRolesRetain().orElse(DEFAULT_PRINCIPAL_ROLES_RETAIN),
+        catalogsMaintenanceConfig.principalRolesRetain(),
         PrincipalRolesObj.class,
         collector);
 
     perRealm(
         "grants",
         REALM_GRANTS_REF_NAME,
-        catalogsMaintenanceConfig.grantsRetain().orElse(DEFAULT_GRANTS_RETAIN),
+        catalogsMaintenanceConfig.grantsRetain(),
         RealmGrantsObj.class,
         RealmGrantsObj::acls,
         collector);
@@ -162,7 +154,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     perRealmContainer(
         "immediate tasks",
         IMMEDIATE_TASKS_REF_NAME,
-        catalogsMaintenanceConfig.immediateTasksRetain().orElse(DEFAULT_IMMEDIATE_TASKS_RETAIN),
+        catalogsMaintenanceConfig.immediateTasksRetain(),
         ImmediateTasksObj.class,
         collector);
 
@@ -170,12 +162,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(
         () -> {
           var policyMappingsContinue =
-              new CelReferenceContinuePredicate<PolicyMappingsObj>(
-                  POLICY_MAPPINGS_REF_NAME,
-                  persistence,
-                  catalogsMaintenanceConfig
-                      .catalogPoliciesRetain()
-                      .orElse(DEFAULT_CATALOG_POLICIES_RETAIN));
+              CatalogRetainedIdentifier.<PolicyMappingsObj>retainLatest(
+                  catalogsMaintenanceConfig.catalogPoliciesRetain());
           // PolicyMappings are stored _INLINE_
           collector.refRetain(
               POLICY_MAPPINGS_REF_NAME,
@@ -198,12 +186,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(
         () -> {
           var catalogsHistoryContinue =
-              new CelReferenceContinuePredicate<CatalogsObj>(
-                  CATALOGS_REF_NAME,
-                  persistence,
-                  catalogsMaintenanceConfig
-                      .catalogsHistoryRetain()
-                      .orElse(DEFAULT_CATALOGS_HISTORY_RETAIN));
+              CatalogRetainedIdentifier.<CatalogsObj>retainLatest(
+                  catalogsMaintenanceConfig.catalogsHistoryRetain());
           var currentCatalogs = new ConcurrentHashMap<IndexKey, ObjRef>();
           collector.refRetain(
               CATALOGS_REF_NAME,
@@ -231,7 +215,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
             perCatalogRoles(
                 catalogObj,
-                catalogsMaintenanceConfig.catalogRolesRetain().orElse(DEFAULT_CATALOG_ROLES_RETAIN),
+                catalogsMaintenanceConfig.catalogRolesRetain(),
                 collector,
                 catalogRolesObj -> collector.indexRetain(catalogRolesObj.stableIdToName()));
 
@@ -244,12 +228,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                   var catalogStateRefName =
                       format(CATALOG_STATE_REF_NAME_PATTERN, catalogObj.stableId());
                   var catalogStateContinue =
-                      new CelReferenceContinuePredicate<CatalogStateObj>(
-                          catalogStateRefName,
-                          persistence,
-                          catalogsMaintenanceConfig
-                              .catalogStateRetain()
-                              .orElse(DEFAULT_CATALOG_STATE_RETAIN));
+                      CatalogRetainedIdentifier.<CatalogStateObj>retainLatest(
+                          catalogsMaintenanceConfig.catalogStateRetain());
                   collector.refRetainIndexToSingleObj(
                       catalogStateRefName,
                       CatalogStateObj.class,
@@ -303,7 +283,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
   private <O extends BaseCommitObj> void perRealm(
       String what,
       String refName,
-      String celRetainExpr,
+      int commitsToRetain,
       Class<O> objClazz,
       Function<O, IndexContainer<ObjRef>> indexContainerFunction,
       RetainedCollector collector) {
@@ -311,9 +291,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     LOGGER.info("Identifying {}...", what);
     ignoreReferenceNotFound(
         () -> {
-          var persistence = collector.realmPersistence();
-          var historyContinue =
-              new CelReferenceContinuePredicate<O>(refName, persistence, celRetainExpr);
+          var historyContinue = CatalogRetainedIdentifier.<O>retainLatest(commitsToRetain);
           collector.refRetainIndexToSingleObj(
               refName, objClazz, historyContinue, indexContainerFunction);
         });
@@ -323,16 +301,14 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
   private <O extends ContainerObj> void perRealmContainer(
       String what,
       String refName,
-      String celRetainExpr,
+      int commitsToRetain,
       Class<O> objClazz,
       RetainedCollector collector) {
 
     LOGGER.info("Identifying {}...", what);
     ignoreReferenceNotFound(
         () -> {
-          var persistence = collector.realmPersistence();
-          var historyContinue =
-              new CelReferenceContinuePredicate<O>(refName, persistence, celRetainExpr);
+          var historyContinue = CatalogRetainedIdentifier.<O>retainLatest(commitsToRetain);
           collector.refRetainIndexToSingleObj(
               refName,
               objClazz,
@@ -344,7 +320,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
   private void perCatalogRoles(
       CatalogObj catalogObj,
-      String celRetainExpr,
+      int commitsToRetain,
       RetainedCollector collector,
       Consumer<CatalogRolesObj> objConsumer) {
     LOGGER.info(
@@ -354,12 +330,10 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
         catalogObj.stableId());
     ignoreReferenceNotFound(
         () -> {
-          var persistence = collector.realmPersistence();
           var refName =
               format(CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN, catalogObj.stableId());
           var historyContinue =
-              new CelReferenceContinuePredicate<CatalogRolesObj>(
-                  refName, persistence, celRetainExpr);
+              CatalogRetainedIdentifier.<CatalogRolesObj>retainLatest(commitsToRetain);
           collector.refRetainIndexToSingleObj(
               refName,
               CatalogRolesObj.class,
@@ -725,4 +699,18 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
   }
 
   private record RefIndexKey(String refName, Class<? extends ContainerObj> containerClass) {}
+
+  static <O> Predicate<O> retainLatest(int commitsToRetain) {
+    if (commitsToRetain < 1) {
+      throw new IllegalArgumentException("commitsToRetain must be at least 1");
+    }
+    return new Predicate<>() {
+      private int remaining = commitsToRetain;
+
+      @Override
+      public boolean test(O ignored) {
+        return --remaining > 0;
+      }
+    };
+  }
 }

@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import org.apache.polaris.maintenance.cel.CelReferenceContinuePredicate;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.commit.Commits;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
@@ -114,8 +113,6 @@ public interface RetainedCollector {
    * Functionality to identify the objects in a {@link Reference} to retain by {@linkplain
    * Commits#commitLog(String, OptionalLong, Class) walking} the commit log.
    *
-   * <p>For flexibility, consider using {@link CelReferenceContinuePredicate}.
-   *
    * @param ref reference name, automatically marked as to-be-retained
    * @param clazz type of the {@linkplain Reference#pointer() referenced objects}
    * @param continuePredicate predicate to test whether to continue processing the reference
@@ -183,8 +180,6 @@ public interface RetainedCollector {
    * Similar to {@link #refRetain(String, Class, Predicate, Consumer)}, with convenience to iterate
    * over an {@link IndexContainer} having {@link ObjRef} index-element values to mark those as
    * to-be-retained.
-   *
-   * <p>For flexibility, consider using {@link CelReferenceContinuePredicate}.
    *
    * @param ref reference name
    * @param clazz type of the {@linkplain Reference#pointer() referenced objects}
