@@ -87,7 +87,14 @@ localhost, the metrics can be accessed via http://localhost:8182/q/metrics.&lt;/
 &lt;p&gt;Additional tags can be added to the metrics by setting the &lt;code&gt;polaris.metrics.tags.*&lt;/code&gt; property. Each
 tag is a key-value pair, where the key is the tag name and the value is the tag value. For example,
 to add a tag &lt;code&gt;environment=prod&lt;/code&gt; to all metrics, set &lt;code&gt;polaris.metrics.tags.environment=prod&lt;/code&gt;. Many
-tags can be added, such as below:&lt;/p&gt;</description></item><item><title>Polaris Spark Client</title><link>https://polaris.apache.org/in-dev/unreleased/polaris-spark-client/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/polaris-spark-client/</guid><description>&lt;p&gt;Polaris provides a Spark client to manage non-Iceberg tables through &lt;a href="https://polaris.apache.org/in-dev/unreleased/generic-table/"&gt;Generic Tables&lt;/a&gt;.&lt;/p&gt;
+tags can be added, such as below:&lt;/p&gt;</description></item><item><title>Vended Credentials Reference</title><link>https://polaris.apache.org/in-dev/unreleased/vended-credentials/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/vended-credentials/</guid><description>&lt;p&gt;When an Iceberg client (Spark, Trino, PyIceberg, etc.) loads a table or view, Polaris can be
+configured to return short-lived, scoped credentials that the client uses to access cloud storage
+directly. These credentials are returned as key-value properties in the Iceberg REST API response
+(see &lt;code&gt;LoadTableResult&lt;/code&gt; and &lt;code&gt;LoadViewResult&lt;/code&gt; in the &lt;a href="https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml"&gt;Iceberg REST
+spec&lt;/a&gt;).&lt;/p&gt;
+&lt;p&gt;Properties with kind &lt;code&gt;credential&lt;/code&gt; carry sensitive material and are returned in the &lt;code&gt;credentials&lt;/code&gt;
+map of the API response (never logged). Properties with kind &lt;code&gt;config&lt;/code&gt; carry non-sensitive
+configuration and are returned in the &lt;code&gt;config&lt;/code&gt; map.&lt;/p&gt;</description></item><item><title>Polaris Spark Client</title><link>https://polaris.apache.org/in-dev/unreleased/polaris-spark-client/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/polaris-spark-client/</guid><description>&lt;p&gt;Polaris provides a Spark client to manage non-Iceberg tables through &lt;a href="https://polaris.apache.org/in-dev/unreleased/generic-table/"&gt;Generic Tables&lt;/a&gt;.&lt;/p&gt;
 &lt;div class="alert alert-info"&gt;&lt;p class="alert-heading"&gt;
  📝 Note&lt;/p&gt;
  &lt;p&gt;The Spark client can manage Iceberg tables and non-Iceberg tables.&lt;/p&gt;
