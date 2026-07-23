@@ -133,6 +133,8 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -201,6 +203,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   private final String catalogName;
   private final long catalogId;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private String defaultBaseLocation;
   private Map<String, String> catalogProperties;
   private final StorageAccessConfigProvider storageAccessConfigProvider;
@@ -249,7 +252,37 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         fileIOFactory,
         polarisEventDispatcher,
         eventMetadataFactory,
-        IdempotencyRequestContext.DISABLED);
+        IdempotencyRequestContext.DISABLED,
+        resolvedEntityPath -> null);
+  }
+
+  public LocalIcebergCatalog(
+      PolarisDiagnostics diagnostics,
+      ResolverFactory resolverFactory,
+      PolarisMetaStoreManager metaStoreManager,
+      CallContext callContext,
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      PolarisPrincipal principal,
+      TaskExecutor taskExecutor,
+      StorageAccessConfigProvider storageAccessConfigProvider,
+      FileIOFactory fileIOFactory,
+      PolarisEventDispatcher polarisEventDispatcher,
+      PolarisEventMetadataFactory eventMetadataFactory,
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    this(
+        diagnostics,
+        resolverFactory,
+        metaStoreManager,
+        callContext,
+        resolvedEntityView,
+        principal,
+        taskExecutor,
+        storageAccessConfigProvider,
+        fileIOFactory,
+        polarisEventDispatcher,
+        eventMetadataFactory,
+        IdempotencyRequestContext.DISABLED,
+        storageIntegrationProvider);
   }
 
   public LocalIcebergCatalog(
@@ -265,6 +298,36 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory,
       IdempotencyRequestContext idempotencyRequestContext) {
+    this(
+        diagnostics,
+        resolverFactory,
+        metaStoreManager,
+        callContext,
+        resolvedEntityView,
+        principal,
+        taskExecutor,
+        storageAccessConfigProvider,
+        fileIOFactory,
+        polarisEventDispatcher,
+        eventMetadataFactory,
+        idempotencyRequestContext,
+        resolvedEntityPath -> null);
+  }
+
+  public LocalIcebergCatalog(
+      PolarisDiagnostics diagnostics,
+      ResolverFactory resolverFactory,
+      PolarisMetaStoreManager metaStoreManager,
+      CallContext callContext,
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      PolarisPrincipal principal,
+      TaskExecutor taskExecutor,
+      StorageAccessConfigProvider storageAccessConfigProvider,
+      FileIOFactory fileIOFactory,
+      PolarisEventDispatcher polarisEventDispatcher,
+      PolarisEventMetadataFactory eventMetadataFactory,
+      IdempotencyRequestContext idempotencyRequestContext,
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.callContext = callContext;
@@ -281,6 +344,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
     this.idempotencyRequestContext = idempotencyRequestContext;
+    this.storageIntegrationProvider = storageIntegrationProvider;
   }
 
   @Override
@@ -1284,6 +1348,21 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         resolvedStorageEntity.getRawFullPath());
   }
 
+  @VisibleForTesting
+  void prepareStorageForTableCreation(
+      TableIdentifier tableIdentifier,
+      TableMetadata tableMetadata,
+      PolarisResolvedPathWrapper resolvedStorageEntity) {
+    PolarisStorageIntegration integration =
+        storageIntegrationProvider.getStorageIntegration(resolvedStorageEntity.getRawFullPath());
+    if (integration == null) {
+      return;
+    }
+    integration.prepareLocations(
+        StorageUtil.getLocationsToPrepareForTable(
+            tableMetadata.location(), tableMetadata.properties()));
+  }
+
   /**
    * Validates that the specified {@code location} is valid for whatever storage config is found for
    * this TableLike's parent hierarchy.
@@ -1933,6 +2012,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         // and that the metadata file points to a location within the table's directory structure
         validateMetadataFileInTableDir(
             tableIdentifier, metadata.location(), nextMetadataFileLocation(metadata));
+      }
+
+      if (base == null) {
+        prepareStorageForTableCreation(tableIdentifier, metadata, resolvedStorageEntity);
       }
 
       tableFileIO =
