@@ -89,7 +89,7 @@ jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 junit-bom = { module = "org.junit:junit-bom", version = "6.1.2" }
 junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version = "2.3.0" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.38" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.6.0" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.17.0" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.23.0" }
