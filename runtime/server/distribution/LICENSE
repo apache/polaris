@@ -2044,15 +2044,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Projectnessie CEL.
-
-* Maven group:artifact IDs: org.projectnessie.cel:cel-standalone
-
-Project URL: https://github.com/projectnessie/cel-java
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles ANTLR 4 Runtime.
 
 Project URL: https://github.com/antlr/antlr4
