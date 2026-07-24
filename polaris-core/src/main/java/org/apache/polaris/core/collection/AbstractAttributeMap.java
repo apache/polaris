@@ -27,7 +27,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /** Base implementation of {@link AttributeMap} backed by a {@link HashMap}. */
@@ -61,7 +60,7 @@ public abstract sealed class AbstractAttributeMap implements AttributeMap
     public abstract M build();
   }
 
-  private final Map<AttributeKey<?>, Object> delegate = new HashMap<>();
+  private final Map<AttributeKey<?>, @Nullable Object> delegate = new HashMap<>();
 
   protected AbstractAttributeMap() {}
 
@@ -69,7 +68,7 @@ public abstract sealed class AbstractAttributeMap implements AttributeMap
     toCopy.entrySet().forEach(entry -> delegate.put(entry.key(), entry.value()));
   }
 
-  protected final Map<AttributeKey<?>, Object> delegate() {
+  protected final Map<AttributeKey<?>, @Nullable Object> delegate() {
     return delegate;
   }
 
@@ -95,6 +94,7 @@ public abstract sealed class AbstractAttributeMap implements AttributeMap
   }
 
   @Override
+  @Nullable
   public <T> T put(AttributeKey<T> key, @Nullable T value) {
     return cast(delegate.put(key, value));
   }
@@ -126,19 +126,16 @@ public abstract sealed class AbstractAttributeMap implements AttributeMap
   }
 
   @Override
-  @NonNull
   public Set<AttributeKey<?>> keySet() {
     return delegate.keySet();
   }
 
   @Override
-  @NonNull
-  public Collection<Object> values() {
+  public Collection<@Nullable Object> values() {
     return delegate.values();
   }
 
   @Override
-  @NonNull
   public Set<Attribute<?>> entrySet() {
     return new AttributeSet();
   }
@@ -170,7 +167,6 @@ public abstract sealed class AbstractAttributeMap implements AttributeMap
     }
 
     @Override
-    @NonNull
     public Iterator<Attribute<?>> iterator() {
       return Iterators.transform(
           delegate.entrySet().iterator(),
@@ -179,7 +175,8 @@ public abstract sealed class AbstractAttributeMap implements AttributeMap
   }
 
   @SuppressWarnings("unchecked")
-  private static <T> T cast(Object o) {
+  @Nullable
+  private static <T> T cast(@Nullable Object o) {
     return (T) o;
   }
 }

@@ -22,7 +22,6 @@ package org.apache.polaris.core.collection;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -82,19 +81,16 @@ public final class ImmutableAttributeMap extends AbstractAttributeMap implements
   }
 
   @Override
-  @NonNull
   public Set<AttributeKey<?>> keySet() {
     return Collections.unmodifiableMap(delegate()).keySet();
   }
 
   @Override
-  @NonNull
-  public Collection<Object> values() {
+  public Collection<@Nullable Object> values() {
     return Collections.unmodifiableMap(delegate()).values();
   }
 
   @Override
-  @NonNull
   public Set<Attribute<?>> entrySet() {
     return Collections.unmodifiableSet(super.entrySet());
   }

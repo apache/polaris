@@ -24,7 +24,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -68,14 +67,13 @@ public sealed interface AttributeMap
    * @param key the string identifier for this attribute key.
    */
   @SuppressWarnings({"UnusedTypeParameter", "unused"})
-  record AttributeKey<T>(@NonNull String key) {
+  record AttributeKey<T>(String key) {
 
     public AttributeKey {
       Objects.requireNonNull(key, "key");
     }
 
     @Override
-    @NonNull
     public String toString() {
       return key;
     }
@@ -89,10 +87,13 @@ public sealed interface AttributeMap
    * @see #forEach(Consumer)
    * @see #put(Attribute)
    */
-  record Attribute<T>(AttributeKey<T> key, T value) {
+  record Attribute<T>(AttributeKey<T> key, @Nullable T value) {
+
+    public Attribute {
+      Objects.requireNonNull(key, "key");
+    }
 
     @Override
-    @NonNull
     public String toString() {
       // Do not print attribute values!
       return "Attribute{key=" + key + "}";
@@ -128,6 +129,7 @@ public sealed interface AttributeMap
    * Returns the value associated with {@code key}, throwing {@link IllegalStateException} if the
    * key is absent.
    */
+  @Nullable
   default <T> T getRequired(AttributeKey<T> key) {
     if (!containsKey(key)) {
       throw new IllegalStateException("Required attribute " + key.key() + " not found");
@@ -182,7 +184,7 @@ public sealed interface AttributeMap
    * remove the corresponding mapping from the map. Immutable implementations may return an
    * unmodifiable view that throws {@link UnsupportedOperationException} on mutation attempts.
    */
-  Collection<Object> values();
+  Collection<@Nullable Object> values();
 
   /**
    * Returns a {@link Set} view of the attribute entries contained in this map.
