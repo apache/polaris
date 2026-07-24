@@ -104,7 +104,7 @@ abstract class AbstractAttributeMapTest<T extends AttributeMap> {
     AttributeMap map = threeEntryMap();
     assertThat(map.getRequired(KEY1)).isEqualTo(VALUE1);
     assertThat(map.getRequired(KEY2)).isEqualTo(VALUE2);
-    assertThat(map.getOptional(KEY3)).contains(VALUE3);
+    assertThat(map.getRequired(KEY3)).isEqualTo(VALUE3);
     assertThatThrownBy(() -> map.getRequired(NONEXISTENT_KEY))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("nonexistent");
@@ -185,6 +185,16 @@ abstract class AbstractAttributeMapTest<T extends AttributeMap> {
     AttributeMap b = threeEntryMap();
     assertThat(a).isEqualTo(b);
     assertThat(a.hashCode()).isEqualTo(b.hashCode());
+  }
+
+  @Test
+  void builderReused() {
+    AbstractAttributeMap.Builder<T, ?> builder = emptyBuilder().put(KEY1, VALUE1);
+    AttributeMap map1 = builder.build();
+    builder.put(KEY2, VALUE2);
+    AttributeMap map2 = builder.build();
+    assertThat(map1.keySet()).containsExactly(KEY1);
+    assertThat(map2.keySet()).containsExactlyInAnyOrder(KEY1, KEY2);
   }
 
   @Test

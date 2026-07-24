@@ -36,7 +36,7 @@ public final class MutableAttributeMap extends AbstractAttributeMap implements A
 
     @Override
     public MutableAttributeMap build() {
-      return map;
+      return new MutableAttributeMap(map);
     }
   }
 

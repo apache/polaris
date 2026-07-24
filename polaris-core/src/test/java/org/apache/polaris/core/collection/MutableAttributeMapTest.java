@@ -37,7 +37,7 @@ class MutableAttributeMapTest extends AbstractAttributeMapTest<MutableAttributeM
   @Test
   void copyConstructor() {
     AttributeMap original = MutableAttributeMap.builder().put(KEY1, "1").build();
-    AttributeMap copy = new ImmutableAttributeMap(original);
+    AttributeMap copy = new MutableAttributeMap(original);
     assertThat(copy).isEqualTo(original);
     original.put(KEY2, 42);
     assertThat(copy.containsKey(KEY2)).isFalse();

@@ -68,7 +68,11 @@ public sealed interface AttributeMap
    * @param key the string identifier for this attribute key.
    */
   @SuppressWarnings({"UnusedTypeParameter", "unused"})
-  record AttributeKey<T>(String key) {
+  record AttributeKey<T>(@NonNull String key) {
+
+    public AttributeKey {
+      Objects.requireNonNull(key, "key");
+    }
 
     @Override
     @NonNull
@@ -140,7 +144,7 @@ public sealed interface AttributeMap
   /**
    * Adds the given attribute to this map. Returns the previous value associated with the
    * attribute's key, or {@code null} if there was no mapping for that key. This is just a shortcut
-   * for {@code putAttribute(attribute.getKey(), attribute.getValue())}.
+   * for {@code put(attribute.getKey(), attribute.getValue())}.
    */
   @Nullable
   default <T> T put(Attribute<T> attribute) {
@@ -163,36 +167,29 @@ public sealed interface AttributeMap
   boolean containsValue(@Nullable Object value);
 
   /**
-   * Returns a {@link Set} view of the keys contained in this map. The set is backed by the map, so
-   * changes to the map are reflected in the set, and vice versa. If the map is modified while an
-   * iteration over the set is in progress (except through the iterator's own {@code remove}
-   * operation), the results of the iteration are undefined. The set supports element removal, which
-   * removes the corresponding mapping from the map, via the {@code Iterator.remove}, {@code
-   * Set.remove}, {@code removeAll}, {@code retainAll}, and {@code clear} operations. It does not
-   * support the {@code add} or {@code addAll} operations.
+   * Returns a {@link Set} view of the keys contained in this map.
+   *
+   * <p>For mutable implementations, the set is backed by the map and supports removals which remove
+   * the corresponding mapping from the map. Immutable implementations may return an unmodifiable
+   * view that throws {@link UnsupportedOperationException} on mutation attempts.
    */
   Set<AttributeKey<?>> keySet();
 
   /**
-   * Returns a {@link Collection} view of the values contained in this map. The collection is backed
-   * by the map, so changes to the map are reflected in the collection, and vice versa. If the map
-   * is modified while an iteration over the collection is in progress (except through the
-   * iterator's own {@code remove} operation), the results of the iteration are undefined. The
-   * collection supports element removal, which removes the corresponding mapping from the map, via
-   * the {@code Iterator.remove}, {@code Collection.remove}, {@code removeAll}, {@code retainAll}
-   * and {@code clear} operations. It does not support the {@code add} or {@code addAll} operations.
+   * Returns a {@link Collection} view of the values contained in this map.
+   *
+   * <p>For mutable implementations, the collection is backed by the map and supports removals which
+   * remove the corresponding mapping from the map. Immutable implementations may return an
+   * unmodifiable view that throws {@link UnsupportedOperationException} on mutation attempts.
    */
   Collection<Object> values();
 
   /**
-   * Returns a {@link Set} view of the mappings contained in this map. The set is backed by the map,
-   * so changes to the map are reflected in the set, and vice versa. If the map is modified while an
-   * iteration over the set is in progress (except through the iterator's own {@code remove}
-   * operation, or through the {@code setValue} operation on a map entry returned by the iterator)
-   * the results of the iteration are undefined. The set supports element removal, which removes the
-   * corresponding mapping from the map, via the {@code Iterator.remove}, {@code Set.remove}, {@code
-   * removeAll}, {@code retainAll} and {@code clear} operations. It does not support the {@code add}
-   * or {@code addAll} operations.
+   * Returns a {@link Set} view of the attribute entries contained in this map.
+   *
+   * <p>For mutable implementations, the set is backed by the map and supports removals which remove
+   * the corresponding mapping from the map. Immutable implementations may return an unmodifiable
+   * view that throws {@link UnsupportedOperationException} on mutation attempts.
    */
   Set<Attribute<?>> entrySet();
 
