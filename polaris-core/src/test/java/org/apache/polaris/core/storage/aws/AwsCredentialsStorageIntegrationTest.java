@@ -26,10 +26,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
@@ -109,7 +109,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
           .build();
   public static final String AWS_PARTITION = "aws";
   public static final PolarisPrincipal POLARIS_PRINCIPAL =
-      PolarisPrincipal.of("test-principal", Map.of(), Set.of());
+      PolarisPrincipal.of("test-principal", AttributeMap.EMPTY, Set.of());
   private static final CredentialVendingContext CONTEXT_WITH_PRINCIPAL =
       CredentialVendingContext.builder()
           .principalName(Optional.of(POLARIS_PRINCIPAL.getName()))

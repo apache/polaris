@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -130,7 +131,8 @@ public class RangerUtils {
   private static Map<String, Object> getUserAttributes(PolarisPrincipal principal) {
     Map<String, String> properties =
         principal
-            .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
+            .getAttributes()
+            .getOptional(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
             .map(PrincipalEntity::getInternalPropertiesAsMap)
             .orElse(Collections.emptyMap());
 
