@@ -40,10 +40,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /**
- * Internal JWTs are bound to a salted credentials-version fingerprint derived from secret hashes.
- * One rotate keeps the previous main hash as secondary so bound tokens remain valid for that grace
- * generation; a further rotate/reset invalidates them. Tokens without the claim stay valid until
- * expiry for upgrade compatibility.
+ * Internal JWTs are bound to the salted credentials-version fingerprint of the secret generation
+ * they were minted with (main or secondary). One rotate keeps the previous main hash as secondary
+ * so client secrets and their bound tokens remain valid for that grace generation; a further
+ * rotate/reset invalidates both. Tokens without the claim stay valid until expiry for upgrade
+ * compatibility.
  */
 public class JWTBrokerCredentialsBindingTest {
 
@@ -243,6 +244,39 @@ public class JWTBrokerCredentialsBindingTest {
                 .asString())
         .isEqualTo(secrets.getCredentialsVersion());
     assertThat(broker.verify(after.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+  }
+
+  @Test
+  void tokenMintedWithSecondarySecretIsBoundToSecondaryGeneration() {
+    // After one rotate, the previous main secret still authenticates via secondary grace.
+    secrets.rotateSecrets(secrets.getMainSecretHash());
+    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
+        .thenReturn(new PrincipalSecretsResult(secrets));
+
+    TokenResponse response =
+        broker.generateFromClientSecrets(
+            CLIENT_ID,
+            MAIN_SECRET,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            SCOPE,
+            TokenType.ACCESS_TOKEN);
+    assertThat(response.getError()).isNull();
+    String claim =
+        JWT.decode(response.getAccessToken())
+            .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
+            .asString();
+    // Bound to the generation of the secondary secret that matched, not the new main generation.
+    assertThat(claim).isNotEqualTo(secrets.getCredentialsVersion());
+    assertThat(secrets.matchesCredentialsVersion(claim)).isTrue();
+    assertThat(broker.verify(response.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+
+    // A second rotate drops the secondary generation: the token dies with the credentials.
+    secrets.rotateSecrets(secrets.getMainSecretHash());
+    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
+        .thenReturn(new PrincipalSecretsResult(secrets));
+    assertThatThrownBy(() -> broker.verify(response.getAccessToken()))
+        .isInstanceOf(NotAuthorizedException.class)
+        .hasMessageContaining("Failed to verify the token");
   }
 
   private String legacyToken() {

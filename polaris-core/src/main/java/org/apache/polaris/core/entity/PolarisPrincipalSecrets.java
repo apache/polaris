@@ -168,9 +168,26 @@ public class PolarisPrincipalSecrets {
   }
 
   public boolean matchesSecret(String potentialSecret) {
+    return getCredentialsVersionForSecret(potentialSecret) != null;
+  }
+
+  /**
+   * Credentials-generation fingerprint corresponding to the secret that matches {@code
+   * potentialSecret}: the main generation when it matches the main secret hash, the secondary
+   * generation when it matches the secondary secret hash, or {@code null} when it matches neither.
+   * Tokens minted from these credentials are bound to the matching generation, so their validity
+   * cannot outlive the validity of the credentials that produced them.
+   */
+  @Nullable
+  public String getCredentialsVersionForSecret(String potentialSecret) {
     String potentialSecretHash = hashSecret(potentialSecret);
-    return potentialSecretHash.equals(this.mainSecretHash)
-        || potentialSecretHash.equals(this.secondarySecretHash);
+    if (potentialSecretHash.equals(this.mainSecretHash)) {
+      return credentialsVersionForHash(mainSecretHash);
+    }
+    if (potentialSecretHash.equals(this.secondarySecretHash)) {
+      return credentialsVersionForHash(secondarySecretHash);
+    }
+    return null;
   }
 
   public String getMainSecret() {
