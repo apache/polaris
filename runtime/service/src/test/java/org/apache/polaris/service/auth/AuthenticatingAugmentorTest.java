@@ -29,6 +29,9 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import java.security.Principal;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -82,11 +85,18 @@ public class AuthenticatingAugmentorTest {
     // Given
     PolarisPrincipal polarisPrincipal = mock(PolarisPrincipal.class);
     when(polarisPrincipal.getName()).thenReturn("user1");
+    PrincipalEntity principalEntity = new PrincipalEntity.Builder().setName("user1").build();
+    when(polarisPrincipal.getAttributes())
+        .thenReturn(
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .build());
     PolarisCredential credential = mock(PolarisCredential.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(polarisPrincipal)
             .addCredential(credential)
+            .addAttribute("attr1", "value1")
             .build();
 
     when(authenticator.authenticate(identity)).thenReturn(polarisPrincipal);
@@ -99,5 +109,12 @@ public class AuthenticatingAugmentorTest {
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(polarisPrincipal);
     assertThat(result.getPrincipal().getName()).isEqualTo("user1");
+    // original attribute
+    assertThat(result.<String>getAttribute("attr1")).isEqualTo("value1");
+    // attribute added by the authenticator
+    assertThat(
+            result.<PrincipalEntity>getAttribute(
+                PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY.key()))
+        .isEqualTo(principalEntity);
   }
 }

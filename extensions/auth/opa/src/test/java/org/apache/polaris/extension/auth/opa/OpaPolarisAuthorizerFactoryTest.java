@@ -38,11 +38,13 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -221,7 +223,8 @@ public class OpaPolarisAuthorizerFactoryTest {
         OpaPolarisAuthorizer authorizer =
             (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
 
-        PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+        PolarisPrincipal principal =
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
         assertThatNoException()
             .isThrownBy(
                 () ->
@@ -277,7 +280,8 @@ public class OpaPolarisAuthorizerFactoryTest {
         OpaPolarisAuthorizer authorizer =
             (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
 
-        PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+        PolarisPrincipal principal =
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
         assertThatNoException()
             .isThrownBy(
                 () ->
@@ -337,7 +341,12 @@ public class OpaPolarisAuthorizerFactoryTest {
         OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
         PolarisPrincipal principal =
-            PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+            PolarisPrincipal.of(
+                "eve",
+                ImmutableAttributeMap.builder()
+                    .put(new AttributeKey<>("department"), "finance")
+                    .build(),
+                Set.of("auditor"));
         PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
         PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
@@ -401,7 +410,12 @@ public class OpaPolarisAuthorizerFactoryTest {
 
         RealmConfig realmConfig = mock(RealmConfig.class);
         PolarisPrincipal principal =
-            PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+            PolarisPrincipal.of(
+                "eve",
+                ImmutableAttributeMap.builder()
+                    .put(new AttributeKey<>("department"), "finance")
+                    .build(),
+                Set.of("auditor"));
         PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
         PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 

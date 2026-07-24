@@ -63,6 +63,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -157,7 +158,7 @@ class IcebergCatalogHandlerTest {
 
     return ImmutableIcebergCatalogHandler.builder()
         .catalogName(CATALOG_NAME)
-        .polarisPrincipal(PolarisPrincipal.of("test", Map.of(), Set.of()))
+        .polarisPrincipal(PolarisPrincipal.of("test", AttributeMap.EMPTY, Set.of()))
         .callContext(callContext)
         .metaStoreManager(mock(PolarisMetaStoreManager.class))
         .resolutionManifestFactory(resolutionManifestFactory)

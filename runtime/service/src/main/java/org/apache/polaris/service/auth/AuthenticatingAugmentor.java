@@ -25,7 +25,10 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 
 /**
  * A custom {@link SecurityIdentityAugmentor} that, after Quarkus OIDC or Internal Auth extracted
@@ -61,11 +64,14 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
 
   private SecurityIdentity authenticatePolarisPrincipal(SecurityIdentity identity) {
     PolarisPrincipal polarisPrincipal = authenticator.authenticate(identity);
+    Map<String, Object> attributes =
+        polarisPrincipal.getAttributes().entrySet().stream()
+            .collect(Collectors.toMap(entry -> entry.key().key(), AttributeMap.Attribute::value));
     return QuarkusSecurityIdentity.builder(identity)
         .setAnonymous(false)
         .setPrincipal(polarisPrincipal)
         .addRoles(polarisPrincipal.getRoles())
-        .addAttributes(polarisPrincipal.getAttributes())
+        .addAttributes(attributes)
         .build();
   }
 }

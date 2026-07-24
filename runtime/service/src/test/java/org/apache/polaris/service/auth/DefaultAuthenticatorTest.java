@@ -35,12 +35,15 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ServiceUnavailableException;
-import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -98,7 +101,9 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal root =
         PolarisPrincipal.of(
             PolarisEntityConstants.getRootPrincipalName(),
-            Map.of(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     authenticatedRoot = root;
     identityAssociation.setIdentity(QuarkusSecurityIdentity.builder().setPrincipal(root).build());
@@ -193,8 +198,9 @@ public class DefaultAuthenticatorTest {
 
     // Then: should return principal with all assigned roles
     assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
-    assertThat(result.getAttributes())
-        .containsEntry(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true);
+    assertThat(
+            result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isTrue();
   }
 
   @Test
@@ -211,8 +217,9 @@ public class DefaultAuthenticatorTest {
 
     // Then: should return principal with only the requested role
     assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1);
-    assertThat(result.getAttributes())
-        .containsEntry(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, false);
+    assertThat(
+            result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isFalse();
   }
 
   @Test
@@ -308,8 +315,9 @@ public class DefaultAuthenticatorTest {
 
     // Then: should return principal with empty roles set
     assertPrincipal(result, principalEntity);
-    assertThat(result.getAttributes())
-        .containsEntry(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, false);
+    assertThat(
+            result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isFalse();
   }
 
   @Test
@@ -393,7 +401,8 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
     // Then: JWT attribute must not be present
-    assertThat(result.getAttribute(PolarisPrincipal.JWT_ATTRIBUTE_KEY, String.class)).isEmpty();
+    assertThat(result.getAttributes().containsKey(PolarisPrincipalAttributes.JWT_ATTRIBUTE_KEY))
+        .isFalse();
   }
 
   @Test
@@ -415,8 +424,8 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(jwtIdentity);
 
     // Then: JWT attribute must carry the raw token
-    assertThat(result.getAttribute(PolarisPrincipal.JWT_ATTRIBUTE_KEY, String.class))
-        .hasValue("raw.jwt.token");
+    assertThat(result.getAttributes().get(PolarisPrincipalAttributes.JWT_ATTRIBUTE_KEY))
+        .isEqualTo("raw.jwt.token");
   }
 
   @Test
@@ -435,7 +444,8 @@ public class DefaultAuthenticatorTest {
     PolarisPrincipal result = authenticator.authenticate(identityWithAttrs);
 
     // Then: custom attribute must be present alongside the Polaris-specific ones
-    assertThat(result.getAttribute("custom-key", String.class)).hasValue("custom-value");
+    assertThat(result.getAttributes().get(new AttributeKey<String>("custom-key")))
+        .isEqualTo("custom-value");
   }
 
   private PrincipalEntity createPrincipal(String name, String... roles) {
@@ -485,16 +495,15 @@ public class DefaultAuthenticatorTest {
     assertThat(result).isNotNull();
     assertThat(result.getName()).isEqualTo(entity.getName());
     assertThat(result.getRoles()).containsExactlyInAnyOrder(roles);
-    assertThat(result.getAttributes())
-        .hasSize(2)
-        .containsKey(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
-        .containsKey(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY);
+    AttributeMap attributes = result.getAttributes();
+    assertThat(attributes.size()).isEqualTo(2);
+    assertThat(attributes.keySet())
+        .contains(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
+        .contains(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY);
     assertThat(
-            result
-                .getAttribute(
-                    PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
-                .map(PrincipalEntity::getInternalPropertiesAsMap)
-                .orElseThrow())
+            attributes
+                .getRequired(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
+                .getInternalPropertiesAsMap())
         .containsKey(PolarisEntityConstants.getClientIdPropertyName());
   }
 
