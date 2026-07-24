@@ -25,11 +25,11 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.EventAttributes;
@@ -63,7 +63,7 @@ class AwsCloudWatchEventListenerTest {
   private static final String REALM = "test-realm";
   private static final String TEST_USER = "test-user";
   private static final PolarisPrincipal PRINCIPAL =
-      PolarisPrincipal.of(TEST_USER, Map.of(), Set.of("role1", "role2"));
+      PolarisPrincipal.of(TEST_USER, AttributeMap.EMPTY, Set.of("role1", "role2"));
   private static final Clock CLOCK = Clock.systemUTC();
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
