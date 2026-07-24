@@ -302,7 +302,10 @@ public class JWTBroker implements TokenBroker {
       return Optional.empty();
     }
     PolarisPrincipalSecrets secrets = principalSecrets.getPrincipalSecrets();
-    if (!secrets.matchesSecret(clientSecret)) {
+    // Bind the token to the generation of the secret that actually matched, so a token minted
+    // with the secondary (pre-rotation) secret expires with that generation.
+    String credentialsVersion = secrets.getCredentialsVersionForSecret(clientSecret);
+    if (credentialsVersion == null) {
       return Optional.empty();
     }
     Optional<PrincipalEntity> principal =
@@ -310,8 +313,7 @@ public class JWTBroker implements TokenBroker {
     if (principal.isEmpty()) {
       return Optional.empty();
     }
-    return Optional.of(
-        new AuthenticatedPrincipal(principal.get(), secrets.getCredentialsVersion()));
+    return Optional.of(new AuthenticatedPrincipal(principal.get(), credentialsVersion));
   }
 
   private record AuthenticatedPrincipal(PrincipalEntity entity, String credentialsVersion) {}
