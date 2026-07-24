@@ -20,10 +20,12 @@ package org.apache.polaris.service.idempotency;
 
 import static org.apache.polaris.service.idempotency.EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -119,6 +121,24 @@ public class EntityIdempotencyTest {
     for (UUID key : keys) {
       assertThat(EntityIdempotency.hasLiveKey(internal, key, NOW)).isTrue();
     }
+  }
+
+  @Test
+  public void recordKeyFailsRatherThanEvictWhenSafetyCeilingReached() {
+    // At the safety ceiling the write fails instead of evicting a live key. Fill the window to the
+    // (small, test-only) ceiling, then a further live key must throw rather than drop an existing
+    // one. Expired entries are still purged, so a full window of live keys is required to trip it.
+    int ceiling = 3;
+    Map<String, String> internal = Map.of();
+    for (int i = 0; i < ceiling; i++) {
+      internal = EntityIdempotency.recordKey(internal, UUID.randomUUID(), LATER, NOW, ceiling);
+    }
+
+    Map<String, String> full = internal;
+    assertThatThrownBy(
+            () -> EntityIdempotency.recordKey(full, UUID.randomUUID(), LATER, NOW, ceiling))
+        .isInstanceOf(ServiceUnavailableException.class)
+        .hasMessageContaining("full");
   }
 
   @Test
