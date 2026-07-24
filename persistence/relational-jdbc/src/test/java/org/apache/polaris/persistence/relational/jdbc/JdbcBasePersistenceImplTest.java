@@ -25,11 +25,13 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +45,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.h2.jdbcx.JdbcConnectionPool;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -285,6 +288,124 @@ class JdbcBasePersistenceImplTest {
         .name(name)
         .entityVersion(entityVersion)
         .grantRecordsVersion(grantRecordsVersion)
+        .createTimestamp(System.currentTimeMillis())
+        .build();
+  }
+
+  /**
+   * On the create path (no original entity) {@code writeEntities} must detect an already-created
+   * entity with a cheap {@code SELECT 1 ... LIMIT 1} existence check that does not fetch the large
+   * JSON property blobs, and a retried create must stay idempotent.
+   */
+  @Test
+  void writeEntitiesCreatePathUsesExistsCheckNotFullRowFetch() throws SQLException, IOException {
+    int schemaVersion = 5;
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:write_entities_create_v"
+                + schemaVersion
+                + "_"
+                + System.nanoTime()
+                + ";DB_CLOSE_DELAY=-1",
+            "sa",
+            "");
+    DatasourceOperations real = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    try (InputStream script = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+      real.executeScript(script);
+    }
+    DatasourceOperations spy = Mockito.spy(real);
+
+    JdbcBasePersistenceImpl impl =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            spy,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier(),
+            schemaVersion);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, impl);
+
+    PolarisBaseEntity entity = principalEntity(1L, "create-me", 1);
+    impl.writeEntities(callCtx, List.of(entity), null);
+
+    // The create-path existence check must run as SELECT 1 ... LIMIT 1 (no JSON property columns),
+    // on the transaction connection.
+    ArgumentCaptor<QueryGenerator.PreparedQuery> captor =
+        ArgumentCaptor.forClass(QueryGenerator.PreparedQuery.class);
+    verify(spy).executeSelectOverStream(any(Connection.class), captor.capture(), any(), any());
+    String sql = captor.getValue().sql();
+    assertThat(sql).contains("SELECT 1").contains("LIMIT 1");
+    assertThat(sql).doesNotContain("properties");
+
+    // The entity was actually inserted.
+    assertThat(
+            impl.lookupEntity(callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode()))
+        .isNotNull();
+
+    // A retried create is idempotent (the existence check short-circuits the insert).
+    assertThatCode(() -> impl.writeEntities(callCtx, List.of(entity), null))
+        .doesNotThrowAnyException();
+  }
+
+  /**
+   * On the update path (original entity supplied) {@code writeEntities} already knows the entity
+   * exists, so it must not issue any pre-write existence/lookup SELECT before the CAS update.
+   */
+  @Test
+  void writeEntitiesUpdatePathSkipsExistenceLookup() throws SQLException, IOException {
+    int schemaVersion = 5;
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:write_entities_update_v"
+                + schemaVersion
+                + "_"
+                + System.nanoTime()
+                + ";DB_CLOSE_DELAY=-1",
+            "sa",
+            "");
+    DatasourceOperations real = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    try (InputStream script = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+      real.executeScript(script);
+    }
+    DatasourceOperations spy = Mockito.spy(real);
+
+    JdbcBasePersistenceImpl impl =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            spy,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier(),
+            schemaVersion);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, impl);
+
+    PolarisBaseEntity original = principalEntity(1L, "update-me", 1);
+    impl.writeEntities(callCtx, List.of(original), null);
+
+    // Only observe the update below.
+    Mockito.clearInvocations(spy);
+
+    PolarisBaseEntity updated = principalEntity(1L, "update-me", 2);
+    impl.writeEntities(callCtx, List.of(updated), List.of(original));
+
+    // No existence/lookup SELECT is issued before the CAS update.
+    verify(spy, never()).executeSelectOverStream(any(Connection.class), any(), any(), any());
+
+    // The CAS update was applied (original v1 -> v2).
+    PolarisBaseEntity reloaded =
+        impl.lookupEntity(callCtx, updated.getCatalogId(), updated.getId(), updated.getTypeCode());
+    assertThat(reloaded).isNotNull();
+    assertThat(reloaded.getEntityVersion()).isEqualTo(2);
+  }
+
+  private static PolarisBaseEntity principalEntity(long id, String name, int entityVersion) {
+    return new PolarisBaseEntity.Builder()
+        .id(id)
+        .catalogId(0L)
+        .parentId(0L)
+        .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+        .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+        .name(name)
+        .entityVersion(entityVersion)
+        .grantRecordsVersion(1)
         .createTimestamp(System.currentTimeMillis())
         .build();
   }
