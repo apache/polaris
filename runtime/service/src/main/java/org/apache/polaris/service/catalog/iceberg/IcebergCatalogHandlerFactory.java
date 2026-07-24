@@ -28,6 +28,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -37,7 +38,6 @@ import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.metrics.IcebergMetricsReporter;
 
@@ -57,7 +57,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject CatalogHandlerUtils catalogHandlerUtils;
   @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
-  @Inject EventAttributeMap eventAttributeMap;
+  @Inject MutableAttributeMap eventAttributeMap;
   @Inject IcebergMetricsReporter metricsReporter;
   @Inject Clock clock;
   @Inject AccessDelegationModeResolver accessDelegationModeResolver;
