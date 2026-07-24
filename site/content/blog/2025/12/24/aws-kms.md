@@ -35,7 +35,7 @@ This functionality will be available in the next release _after_ `1.3.0-incubati
 KMS settings in Polaris are relevant to S3 buckets that have been configure to use KMS on the AWS side
 (e.g. using SSE-KMS).
 
-Make a note of the KMS keys ARN that the bucket uses and pass it to the `--current-kms-key` CLI option
+Make a note of the KMS key ARN that the bucket uses and pass it to the `--allowed-kms-key` CLI option
 when creating the corresponding Polaris Catalog.
 
 For example:
@@ -51,7 +51,7 @@ For example:
   --role-arn ${ROLE_ARN} \
   --region ${REGION} \
   --external-id ${EXTERNAL_ID} \
-  --current-kms-key ${KMS_ARN} \
+  --allowed-kms-key ${KMS_ARN} \
   quickstart_catalog
 ```
 
@@ -85,8 +85,9 @@ If the bucket used by the catalog has had multiple different KMS key ARNs associ
 Polaris needs to know all related key ARNs. This is necessary for the catalog server to properly form policies
 associated with vended credentials so that accessing both old and new data is possible.
 
-This can be achieved by using the `--allowed-kms-key` CLI option to add zero or more extra KMS key ARNs to the
-catalog's storage configuration.
+Keys currently used for encryption should be configured with the repeatable `--allowed-kms-key`
+option. When a key is decommissioned for encryption, move it to the repeatable
+`--legacy-kms-key` option so that clients retain decrypt access without receiving encrypt access.
 
 Note: the key material may be automatically rotated by AWS services (if configured) without introducing a new key ARN,
 in that case no catalog changes are necessary.

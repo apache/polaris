@@ -64,13 +64,17 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract String getRoleARN();
 
-  /** KMS Key ARN for server-side encryption,used for writes, optional */
+  /** Deprecated KMS Key ARN, retained for compatibility and treated as an allowed KMS key. */
   @Nullable
   public abstract String getCurrentKmsKey();
 
-  /** Comma-separated list of allowed KMS Key ARNs, optional */
+  /** List of KMS Key ARNs allowed for encryption and decryption, optional. */
   @Nullable
   public abstract List<String> getAllowedKmsKeys();
+
+  /** List of historical KMS Key ARNs allowed only for decryption, optional. */
+  @Nullable
+  public abstract List<String> getLegacyKmsKeys();
 
   /** AWS external ID, optional */
   @Nullable
@@ -165,6 +169,19 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
       if (!matcher.matches()) {
         throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
       }
+    }
+
+    List<String> legacyKmsKeys = getLegacyKmsKeys();
+    if (legacyKmsKeys != null) {
+      String currentKmsKey = getCurrentKmsKey();
+      checkArgument(
+          currentKmsKey == null || !legacyKmsKeys.contains(currentKmsKey),
+          "currentKmsKey must not also be configured in legacyKmsKeys");
+
+      List<String> allowedKmsKeys = getAllowedKmsKeys();
+      checkArgument(
+          allowedKmsKeys == null || allowedKmsKeys.stream().noneMatch(legacyKmsKeys::contains),
+          "allowedKmsKeys and legacyKmsKeys must not overlap");
     }
   }
 
