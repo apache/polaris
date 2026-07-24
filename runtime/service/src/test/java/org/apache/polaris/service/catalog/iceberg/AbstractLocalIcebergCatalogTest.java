@@ -95,7 +95,6 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
-import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
@@ -127,6 +126,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -2874,7 +2874,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         // Transient conflict: entity present but concurrently modified -> 503, retryable.
         Arguments.of(
             BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
-            ServiceUnavailableException.class),
+            PolarisServiceUnavailableException.class),
         // Source path could not be resolved (e.g. concurrently dropped) -> 404, not retryable.
         Arguments.of(
             BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, NoSuchNamespaceException.class),

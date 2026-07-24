@@ -29,6 +29,7 @@ import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import java.io.IOException;
@@ -37,6 +38,7 @@ import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.jboss.logmanager.Level;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -98,6 +100,15 @@ public class ExceptionMapperTest {
     PolarisExceptionMapper mapper = new PolarisExceptionMapper();
     Response response = mapper.toResponse(new CommitConflictException("test"));
     assertThat(response.getStatus()).isEqualTo(409);
+  }
+
+  @Test
+  public void testServiceUnavailableWithRetryAfter() {
+    PolarisExceptionMapper mapper = new PolarisExceptionMapper();
+    Response response =
+        mapper.toResponse(new PolarisServiceUnavailableException(3, "transient conflict"));
+    assertThat(response.getStatus()).isEqualTo(503);
+    assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("3");
   }
 
   static Stream<Arguments> testFullExceptionIsLogged() {

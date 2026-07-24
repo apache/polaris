@@ -80,7 +80,6 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
-import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
@@ -117,6 +116,7 @@ import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -2745,9 +2745,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         // Surface as 503 so clients can retry. We avoid 409 because the rename endpoint reserves
         // 409 for "target already exists" (handled by the ENTITY_ALREADY_EXISTS case above).
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
-          throw new ServiceUnavailableException(
+          // TODO: make the value of 'Retry-After' header configurable
+          throw new PolarisServiceUnavailableException(
+              3,
               "Cannot rename %s to %s because it was concurrently modified; please retry",
-              from, to);
+              from,
+              to);
 
         // some entities cannot be renamed
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
