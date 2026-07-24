@@ -115,7 +115,8 @@ public interface RetainedCollector {
    *
    * @param ref reference name, automatically marked as to-be-retained
    * @param clazz type of the {@linkplain Reference#pointer() referenced objects}
-   * @param continuePredicate predicate to test whether to continue processing the reference
+   * @param continuePredicate invoked after retaining the current commit to determine whether to
+   *     process another commit; the current commit remains retained when this returns {@code false}
    * @param retainedObjConsumer called for every retained object
    * @param <O> type of the {@linkplain Reference#pointer() referenced objects}
    */
@@ -183,7 +184,8 @@ public interface RetainedCollector {
    *
    * @param ref reference name
    * @param clazz type of the {@linkplain Reference#pointer() referenced objects}
-   * @param continuePredicate predicate to test whether to continue processing the reference
+   * @param continuePredicate invoked after retaining the current commit to determine whether to
+   *     process another commit; the current commit remains retained when this returns {@code false}
    * @param indexToObjIdFromRetainedObj function to extract the {@link IndexContainer} from objects
    * @param <O> type of the {@linkplain Reference#pointer() referenced objects}
    */

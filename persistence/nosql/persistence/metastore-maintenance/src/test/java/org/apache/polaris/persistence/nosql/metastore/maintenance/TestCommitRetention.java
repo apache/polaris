@@ -26,20 +26,24 @@ import org.junit.jupiter.api.Test;
 class TestCommitRetention {
 
   @Test
-  void retainsConfiguredNumberOfCommits() {
-    var retainOne = CatalogRetainedIdentifier.<Object>retainLatest(1);
-    assertThat(retainOne.test(new Object())).isFalse();
+  void stopsAfterConfiguredNumberOfCommits() {
+    var continueAfterCommit = CatalogRetainedIdentifier.<Object>continueWhileMoreCommitsRemain(1);
+    // The current commit has already been retained, so no second commit is needed.
+    assertThat(continueAfterCommit.test(new Object())).isFalse();
 
-    var retainThree = CatalogRetainedIdentifier.<Object>retainLatest(3);
-    assertThat(retainThree.test(new Object())).isTrue();
-    assertThat(retainThree.test(new Object())).isTrue();
-    assertThat(retainThree.test(new Object())).isFalse();
+    continueAfterCommit = CatalogRetainedIdentifier.continueWhileMoreCommitsRemain(3);
+    assertThat(continueAfterCommit.test(new Object())).isTrue();
+    assertThat(continueAfterCommit.test(new Object())).isTrue();
+    // The third commit has already been retained, so traversal stops here.
+    assertThat(continueAfterCommit.test(new Object())).isFalse();
+    // Further calls remain false without underflowing the counter.
+    assertThat(continueAfterCommit.test(new Object())).isFalse();
   }
 
   @Test
   void rejectsInvalidCommitCount() {
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> CatalogRetainedIdentifier.retainLatest(0))
+        .isThrownBy(() -> CatalogRetainedIdentifier.continueWhileMoreCommitsRemain(0))
         .withMessage("commitsToRetain must be at least 1");
   }
 }
