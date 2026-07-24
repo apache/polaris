@@ -103,8 +103,12 @@ abstract class AbstractAttributeMapTest<T extends AttributeMap> {
   void getRequired() {
     AttributeMap map = threeEntryMap();
     assertThat(map.getRequired(KEY1)).isEqualTo(VALUE1);
-    assertThat(map.getRequired(KEY2)).isEqualTo(VALUE2);
     assertThat(map.getRequired(KEY3)).isEqualTo(VALUE3);
+    // mapped to null
+    assertThatThrownBy(() -> map.getRequired(KEY2))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("attr2");
+    // missing
     assertThatThrownBy(() -> map.getRequired(NONEXISTENT_KEY))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("nonexistent");

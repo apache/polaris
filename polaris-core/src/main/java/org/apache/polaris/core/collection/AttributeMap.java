@@ -127,14 +127,15 @@ public sealed interface AttributeMap
 
   /**
    * Returns the value associated with {@code key}, throwing {@link IllegalStateException} if the
-   * key is absent.
+   * key is absent, or if the value is {@code null}.
    */
-  @Nullable
   default <T> T getRequired(AttributeKey<T> key) {
-    if (!containsKey(key)) {
-      throw new IllegalStateException("Required attribute " + key.key() + " not found");
+    T value = get(key);
+    if (value == null) {
+      throw new IllegalStateException(
+          "Required attribute " + key.key() + " not found or mapped to null");
     }
-    return get(key);
+    return value;
   }
 
   /**
