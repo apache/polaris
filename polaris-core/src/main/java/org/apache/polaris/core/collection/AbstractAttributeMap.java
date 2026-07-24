@@ -89,7 +89,8 @@ public abstract sealed class AbstractAttributeMap implements AttributeMap
   }
 
   @Override
-  public @Nullable <V> V getOrDefault(AttributeKey<V> key, @Nullable V defaultValue) {
+  @Nullable
+  public <V> V getOrDefault(AttributeKey<V> key, @Nullable V defaultValue) {
     return cast(delegate.getOrDefault(key, defaultValue));
   }
 

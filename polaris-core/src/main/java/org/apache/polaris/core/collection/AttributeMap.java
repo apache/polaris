@@ -119,7 +119,7 @@ public sealed interface AttributeMap
 
   /**
    * Returns the value associated with {@code key} wrapped in an {@link Optional}, or an empty
-   * {@link Optional} if the key is absent.
+   * {@link Optional} if the key is absent or mapped to {@code null}.
    */
   default <T> Optional<T> getOptional(AttributeKey<T> key) {
     return Optional.ofNullable(get(key));
@@ -130,12 +130,8 @@ public sealed interface AttributeMap
    * key is absent, or if the value is {@code null}.
    */
   default <T> T getRequired(AttributeKey<T> key) {
-    T value = get(key);
-    if (value == null) {
-      throw new IllegalStateException(
-          "Required attribute " + key.key() + " not found or mapped to null");
-    }
-    return value;
+    return getOptional(key)
+        .orElseThrow(() -> new IllegalStateException("Missing required attribute " + key));
   }
 
   /**
