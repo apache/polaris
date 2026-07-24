@@ -35,6 +35,7 @@ from apache_polaris.cli.constants import (
     CatalogConnectionType,
     AuthenticationType,
     ServiceIdentityType,
+    EntityType,
 )
 
 from apache_polaris.sdk.management import PolarisDefaultApi
@@ -49,7 +50,7 @@ from apache_polaris.cli.command.catalog_roles import CatalogRolesCommand
 from apache_polaris.cli.command.namespaces import NamespacesCommand
 from apache_polaris.cli.command.privileges import PrivilegesCommand
 from apache_polaris.cli.command.policies import PoliciesCommand
-from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.command.utils import crawl_namespace, get_catalog_api_client
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -420,6 +421,21 @@ class SetupCommand(Command):
             )
         return roles_map
 
+    def _list_namespaces_recursively(
+        self, catalog_api: IcebergCatalogAPI, catalog_name: str
+    ) -> List[List[str]]:
+        return sorted(
+            namespace
+            for _, namespace in crawl_namespace(
+                catalog_api=catalog_api,
+                catalog_name=catalog_name,
+                on_error=lambda label, _: logger.exception(
+                    "Failed to export %s", label
+                ),
+                entity_type_filter=EntityType.NAMESPACE.value,
+            )
+        )
+
     def _export_namespaces_for_catalog(
         self, api: PolarisDefaultApi, catalog_name: str
     ) -> List[Any]:
@@ -428,9 +444,7 @@ class SetupCommand(Command):
         catalog_api_client = self._get_catalog_api(api)
         catalog_api = IcebergCatalogAPI(catalog_api_client)
         try:
-            namespaces = sorted(
-                catalog_api.list_namespaces(prefix=catalog_name).namespaces
-            )
+            namespaces = self._list_namespaces_recursively(catalog_api, catalog_name)
             for ns in namespaces:
                 ns_name = ".".join(ns)
                 ns_details = catalog_api.load_namespace_metadata(
@@ -460,9 +474,7 @@ class SetupCommand(Command):
         catalog_api = IcebergCatalogAPI(catalog_api_client)
         try:
             policy_api = PolicyAPI(catalog_api_client)
-            namespaces = sorted(
-                catalog_api.list_namespaces(prefix=catalog_name).namespaces
-            )
+            namespaces = self._list_namespaces_recursively(catalog_api, catalog_name)
             for ns in namespaces:
                 ns_name = ".".join(ns)
                 namespace_str = ns_name.replace(".", UNIT_SEPARATOR)
