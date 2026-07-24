@@ -162,7 +162,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(
         () -> {
           var policyMappingsContinue =
-              CatalogRetainedIdentifier.<PolicyMappingsObj>retainLatest(
+              CatalogRetainedIdentifier.<PolicyMappingsObj>continueWhileMoreCommitsRemain(
                   catalogsMaintenanceConfig.catalogPoliciesRetain());
           // PolicyMappings are stored _INLINE_
           collector.refRetain(
@@ -186,7 +186,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(
         () -> {
           var catalogsHistoryContinue =
-              CatalogRetainedIdentifier.<CatalogsObj>retainLatest(
+              CatalogRetainedIdentifier.<CatalogsObj>continueWhileMoreCommitsRemain(
                   catalogsMaintenanceConfig.catalogsHistoryRetain());
           var currentCatalogs = new ConcurrentHashMap<IndexKey, ObjRef>();
           collector.refRetain(
@@ -228,7 +228,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                   var catalogStateRefName =
                       format(CATALOG_STATE_REF_NAME_PATTERN, catalogObj.stableId());
                   var catalogStateContinue =
-                      CatalogRetainedIdentifier.<CatalogStateObj>retainLatest(
+                      CatalogRetainedIdentifier.<CatalogStateObj>continueWhileMoreCommitsRemain(
                           catalogsMaintenanceConfig.catalogStateRetain());
                   collector.refRetainIndexToSingleObj(
                       catalogStateRefName,
@@ -291,7 +291,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     LOGGER.info("Identifying {}...", what);
     ignoreReferenceNotFound(
         () -> {
-          var historyContinue = CatalogRetainedIdentifier.<O>retainLatest(commitsToRetain);
+          var historyContinue =
+              CatalogRetainedIdentifier.<O>continueWhileMoreCommitsRemain(commitsToRetain);
           collector.refRetainIndexToSingleObj(
               refName, objClazz, historyContinue, indexContainerFunction);
         });
@@ -308,7 +309,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     LOGGER.info("Identifying {}...", what);
     ignoreReferenceNotFound(
         () -> {
-          var historyContinue = CatalogRetainedIdentifier.<O>retainLatest(commitsToRetain);
+          var historyContinue =
+              CatalogRetainedIdentifier.<O>continueWhileMoreCommitsRemain(commitsToRetain);
           collector.refRetainIndexToSingleObj(
               refName,
               objClazz,
@@ -333,7 +335,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
           var refName =
               format(CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN, catalogObj.stableId());
           var historyContinue =
-              CatalogRetainedIdentifier.<CatalogRolesObj>retainLatest(commitsToRetain);
+              CatalogRetainedIdentifier.<CatalogRolesObj>continueWhileMoreCommitsRemain(
+                  commitsToRetain);
           collector.refRetainIndexToSingleObj(
               refName,
               CatalogRolesObj.class,
@@ -700,7 +703,13 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
   private record RefIndexKey(String refName, Class<? extends ContainerObj> containerClass) {}
 
-  static <O> Predicate<O> retainLatest(int commitsToRetain) {
+  /**
+   * Returns a predicate that continues traversal while more commits need to be retained.
+   *
+   * <p>{@link RetainedCollector} invokes this predicate after retaining the current commit, so it
+   * returns {@code false} when the configured number of commits has been reached.
+   */
+  static <O> Predicate<O> continueWhileMoreCommitsRemain(int commitsToRetain) {
     if (commitsToRetain < 1) {
       throw new IllegalArgumentException("commitsToRetain must be at least 1");
     }
@@ -709,7 +718,11 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
       @Override
       public boolean test(O ignored) {
-        return --remaining > 0;
+        if (remaining <= 1) {
+          return false;
+        }
+        remaining--;
+        return true;
       }
     };
   }
