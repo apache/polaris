@@ -102,6 +102,7 @@ class CatalogsCommand(Command):
     path_style_access: Optional[bool] = None
     current_kms_key: Optional[str] = None
     allowed_kms_keys: Optional[List[str]] = None
+    legacy_kms_keys: Optional[List[str]] = None
     catalog_connection_type: Optional[str] = None
     catalog_authentication_type: Optional[str] = None
     catalog_service_identity_type: Optional[str] = None
@@ -221,6 +222,7 @@ class CatalogsCommand(Command):
                     f" {Argument.to_flag_name(Arguments.ENDPOINT_INTERNAL)},"
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_CURRENT)},"
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_KEY_LEGACY)},"
                     f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)},"
                     f" {Argument.to_flag_name(Arguments.STS_UNAVAILABLE)},"
                     f" {Argument.to_flag_name(Arguments.KMS_UNAVAILABLE)}, and"
@@ -266,6 +268,7 @@ class CatalogsCommand(Command):
             or self.sts_endpoint
             or self.current_kms_key
             or self.allowed_kms_keys
+            or self.legacy_kms_keys
             or self.path_style_access
         )
 
@@ -298,6 +301,7 @@ class CatalogsCommand(Command):
                 path_style_access=self.path_style_access,
                 current_kms_key=self.current_kms_key,
                 allowed_kms_keys=self.allowed_kms_keys,
+                legacy_kms_keys=self.legacy_kms_keys,
             )
         elif self.storage_type == StorageType.AZURE.value:
             config = AzureStorageConfigInfo(

@@ -1142,11 +1142,18 @@ components:
               example: "arn:aws:iam::123456789001:user/abc1-b-self1234"
             currentKmsKey:
               type: string
-              description: the aws kms key arn used to encrypt s3 data
+              deprecated: true
+              description: Deprecated. Use allowedKmsKeys instead. The aws kms key arn used to encrypt and decrypt s3 data.
               example: "arn:aws:kms::123456789001:key/01234578"
             allowedKmsKeys:
               type: array
-              description: The list of kms keys that this catalog and its clients are allowed to use for reading s3 data
+              description: The list of kms keys that this catalog and its clients are allowed to use for encrypting and decrypting s3 data
+              items:
+                type: string
+              example: ["arn:aws:kms::123456789001:key/01234578"]
+            legacyKmsKeys:
+              type: array
+              description: The list of historical kms keys that this catalog and its clients are allowed to use only for decrypting s3 data. Keys must not also be configured in currentKmsKey or allowedKmsKeys.
               items:
                 type: string
               example: ["arn:aws:kms::123456789001:key/01234578"]

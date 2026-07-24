@@ -20,8 +20,10 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
+import java.util.List;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -136,6 +138,22 @@ public class AwsStorageConfigurationInfoTest {
     assertThat(newBuilder().kmsUnavailable(null).build().getKmsUnavailable()).isNull();
     assertThat(newBuilder().kmsUnavailable(false).build().getKmsUnavailable()).isFalse();
     assertThat(newBuilder().kmsUnavailable(true).build().getKmsUnavailable()).isTrue();
+  }
+
+  @Test
+  public void testLegacyKmsKeysMustNotOverlapEncryptCapableKeys() {
+    String keyArn = "arn:aws:kms:us-east-1:012345678901:key/overlapping-key";
+
+    assertThatThrownBy(
+            () -> newBuilder().currentKmsKey(keyArn).legacyKmsKeys(List.of(keyArn)).build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("currentKmsKey must not also be configured in legacyKmsKeys");
+
+    assertThatThrownBy(
+            () ->
+                newBuilder().allowedKmsKeys(List.of(keyArn)).legacyKmsKeys(List.of(keyArn)).build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("allowedKmsKeys and legacyKmsKeys must not overlap");
   }
 
   @ParameterizedTest

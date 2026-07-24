@@ -329,6 +329,7 @@ public class AwsCredentialsStorageIntegration
     String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
     String currentKmsKey = storageConfigurationInfo.getCurrentKmsKey();
     List<String> allowedKmsKeys = storageConfigurationInfo.getAllowedKmsKeys();
+    List<String> legacyKmsKeys = storageConfigurationInfo.getLegacyKmsKeys();
 
     readLocations.forEach(
         location -> {
@@ -396,6 +397,7 @@ public class AwsCredentialsStorageIntegration
       if (addKmsKeyPolicy(
           currentKmsKey,
           allowedKmsKeys,
+          legacyKmsKeys,
           policyBuilder,
           canWrite,
           region,
@@ -429,45 +431,59 @@ public class AwsCredentialsStorageIntegration
   }
 
   private static boolean addKmsKeyPolicy(
-      String kmsKeyArn,
+      String currentKmsKey,
       List<String> allowedKmsKeys,
+      List<String> legacyKmsKeys,
       IamPolicy.Builder policyBuilder,
       boolean canWrite,
       String region,
       String accountId) {
 
-    boolean hasCurrentKey = kmsKeyArn != null;
-    boolean hasAllowedKeys = hasAllowedKmsKeys(allowedKmsKeys);
+    boolean hasCurrentKey = currentKmsKey != null;
+    boolean hasAllowedKeys = hasKmsKeys(allowedKmsKeys);
+    boolean hasLegacyKeys = hasKmsKeys(legacyKmsKeys);
     boolean isAwsS3 = region != null && accountId != null;
 
     // Nothing to do if no keys are configured and not AWS S3
-    if (!hasCurrentKey && !hasAllowedKeys && !isAwsS3) {
+    if (!hasCurrentKey && !hasAllowedKeys && !hasLegacyKeys && !isAwsS3) {
       return false;
     }
 
-    IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
+    boolean statementAdded = false;
+    if (hasCurrentKey || hasAllowedKeys) {
+      IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
 
-    if (hasCurrentKey) {
-      addKmsKeyResource(kmsKeyArn, allowKms);
+      if (hasCurrentKey) {
+        addKmsKeyResource(currentKmsKey, allowKms, "current");
+      }
+
+      if (hasAllowedKeys) {
+        addKmsKeyResources(allowedKmsKeys, allowKms, "allowed");
+      }
+
+      policyBuilder.addStatement(allowKms.build());
+      statementAdded = true;
     }
 
-    if (hasAllowedKeys) {
-      addAllowedKmsKeyResources(allowedKmsKeys, allowKms);
+    if (hasLegacyKeys) {
+      IamStatement.Builder allowLegacyKms = buildBaseKmsStatement(false);
+      addKmsKeyResources(legacyKmsKeys, allowLegacyKms, "legacy");
+      policyBuilder.addStatement(allowLegacyKms.build());
+      statementAdded = true;
     }
 
     // Only add wildcard KMS access for read-only operations on AWS S3 when no specific keys are
     // configured. This does not apply to services like Minio where region and accountId are not
     // available.
-    boolean shouldAddWildcard = !hasCurrentKey && !hasAllowedKeys && !canWrite && isAwsS3;
+    boolean shouldAddWildcard =
+        !hasCurrentKey && !hasAllowedKeys && !hasLegacyKeys && !canWrite && isAwsS3;
     if (shouldAddWildcard) {
+      IamStatement.Builder allowKms = buildBaseKmsStatement(false);
       addAllKeysResource(region, accountId, allowKms);
-    }
-
-    if (hasCurrentKey || hasAllowedKeys || shouldAddWildcard) {
       policyBuilder.addStatement(allowKms.build());
-      return true;
+      statementAdded = true;
     }
-    return false;
+    return statementAdded;
   }
 
   private static IamStatement.Builder buildBaseKmsStatement(boolean canEncrypt) {
@@ -487,24 +503,21 @@ public class AwsCredentialsStorageIntegration
     return allowKms;
   }
 
-  private static void addKmsKeyResource(String kmsKeyArn, IamStatement.Builder allowKms) {
+  private static void addKmsKeyResource(
+      String kmsKeyArn, IamStatement.Builder allowKms, String keyType) {
     if (kmsKeyArn != null) {
-      LOGGER.debug("Adding KMS key policy for key {}", kmsKeyArn);
+      LOGGER.debug("Adding {} KMS key policy for key {}", keyType, kmsKeyArn);
       allowKms.addResource(IamResource.create(kmsKeyArn));
     }
   }
 
-  private static boolean hasAllowedKmsKeys(List<String> allowedKmsKeys) {
-    return allowedKmsKeys != null && !allowedKmsKeys.isEmpty();
+  private static boolean hasKmsKeys(List<String> kmsKeys) {
+    return kmsKeys != null && !kmsKeys.isEmpty();
   }
 
-  private static void addAllowedKmsKeyResources(
-      List<String> allowedKmsKeys, IamStatement.Builder allowKms) {
-    allowedKmsKeys.forEach(
-        keyArn -> {
-          LOGGER.debug("Adding allowed KMS key policy for key {}", keyArn);
-          allowKms.addResource(IamResource.create(keyArn));
-        });
+  private static void addKmsKeyResources(
+      List<String> kmsKeys, IamStatement.Builder allowKms, String keyType) {
+    kmsKeys.forEach(keyArn -> addKmsKeyResource(keyArn, allowKms, keyType));
   }
 
   private static void addAllKeysResource(

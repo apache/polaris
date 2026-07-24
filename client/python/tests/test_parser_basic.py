@@ -166,6 +166,15 @@ class TestParserBasic(CLITestBase):
         Parser.parse(["catalogs", "create", "catalog_name"])
         Parser.parse(["catalogs", "create", "catalog_name", "--type", "internal"])
         Parser.parse(["catalogs", "create", "catalog_name", "--type", "INTERNAL"])
+        Parser.parse(
+            [
+                "catalogs",
+                "create",
+                "catalog_name",
+                "--legacy-kms-key",
+                "arn:aws:kms:us-east-1:012345678901:key/legacy-key",
+            ]
+        )
         Parser.parse(["catalogs", "list"])
         Parser.parse(["catalogs", "get", "catalog_name"])
         Parser.parse(["principals", "list"])
