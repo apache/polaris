@@ -29,14 +29,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.RetryableValidationException;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -51,7 +55,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-public class CommitTransactionEventTest {
+public class CommitTransactionTest {
   private static final String namespace = "ns";
   private static final String catalog = "test-catalog";
   private static final String propertyName = "custom-property-1";
@@ -125,6 +129,50 @@ public class CommitTransactionEventTest {
     assertThatThrownBy(
             () -> testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_UPDATE_TABLE))
         .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void commitTransactionSurfacesRetryableValidationFailureAsRetryableCommitConflict() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+    String tableName = "retryable-conflict-table";
+    createTable(testServices, tableName, catalogLocation);
+
+    // Stands in for the RetryableValidationException addSnapshot raises under a concurrent commit.
+    MetadataUpdate retryableUpdate =
+        new MetadataUpdate() {
+          @Override
+          public void applyTo(TableMetadata.Builder metadataBuilder) {
+            throw new RetryableValidationException(
+                "Cannot add snapshot with sequence number 6 older than last sequence number 6");
+          }
+
+          @Override
+          public void applyTo(ViewMetadata.Builder viewMetadataBuilder) {
+            throw new UnsupportedOperationException();
+          }
+        };
+    CommitTransactionRequest request =
+        new CommitTransactionRequest(
+            List.of(
+                UpdateTableRequest.create(
+                    TableIdentifier.of(namespace, tableName),
+                    List.of(),
+                    List.of(retryableUpdate))));
+
+    assertThatThrownBy(
+            () ->
+                testServices
+                    .restApi()
+                    .commitTransaction(
+                        catalog,
+                        request,
+                        IDEMPOTENCY_KEY,
+                        testServices.realmContext(),
+                        testServices.securityContext()))
+        .isInstanceOf(CommitFailedException.class)
+        .isNotInstanceOf(ValidationException.class)
+        .hasMessageContaining("Validation failed, please retry");
   }
 
   @Test

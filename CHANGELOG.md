@@ -64,6 +64,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Polaris does not include the `expiration-time` property anymore when vending credentials. This 
   property is not consumed by any known client and duplicates the properties specific to each
   storage provider, such as `s3.session-token-expires-at-ms` for S3.
+- Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
 
 ### New Features
 - Added Kafka PolarisEventListener for publishing events to Kafka.
