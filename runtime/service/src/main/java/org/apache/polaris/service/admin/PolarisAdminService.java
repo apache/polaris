@@ -932,7 +932,10 @@ public class PolarisAdminService {
 
     // at least some handling of error
     if (!dropEntityResult.isSuccess()) {
-      if (dropEntityResult.failedBecauseNotEmpty()) {
+      if (dropEntityResult.alreadyExists()) {
+        throw new CommitConflictException(
+            "Concurrent cleanup task creation while dropping catalog '%s'", entity.getName());
+      } else if (dropEntityResult.failedBecauseNotEmpty()) {
         throw new BadRequestException(
             "Catalog '%s' cannot be dropped, it is not empty", entity.getName());
       } else {
@@ -1380,7 +1383,10 @@ public class PolarisAdminService {
 
     // at least some handling of error
     if (!dropEntityResult.isSuccess()) {
-      if (dropEntityResult.isEntityUnDroppable()) {
+      if (dropEntityResult.alreadyExists()) {
+        throw new CommitConflictException(
+            "Concurrent cleanup task creation while dropping principal role '%s'", name);
+      } else if (dropEntityResult.isEntityUnDroppable()) {
         throw new BadRequestException("Polaris service admin principal role cannot be dropped");
       } else {
         throw new BadRequestException(
@@ -1500,7 +1506,10 @@ public class PolarisAdminService {
 
     // at least some handling of error
     if (!dropEntityResult.isSuccess()) {
-      if (dropEntityResult.isEntityUnDroppable()) {
+      if (dropEntityResult.alreadyExists()) {
+        throw new CommitConflictException(
+            "Concurrent cleanup task creation while dropping catalog role '%s'", name);
+      } else if (dropEntityResult.isEntityUnDroppable()) {
         throw new BadRequestException("Catalog admin role cannot be dropped");
       } else {
         throw new BadRequestException(

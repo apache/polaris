@@ -598,6 +598,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               "Table %s cannot be dropped: %s",
               tableIdentifier, dropEntityResult.getExtraInformation());
 
+        case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
+          throw new CommitConflictException(
+              "Concurrent cleanup task creation while dropping table %s", tableIdentifier);
+
         default:
           throw new ServiceFailureException(
               "Failed to drop table %s, status=%s, extraInfo=%s",
@@ -848,6 +852,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               namespace,
               dropEntityResult.getExtraInformation());
           return false;
+
+        case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
+          throw new CommitConflictException(
+              "Concurrent cleanup task creation while dropping namespace %s", namespace);
 
         default:
           throw new ServiceFailureException(
@@ -1148,6 +1156,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
           throw new ForbiddenException(
               "View %s cannot be dropped: %s", identifier, dropEntityResult.getExtraInformation());
+
+        case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
+          throw new CommitConflictException(
+              "Concurrent cleanup task creation while dropping view %s", identifier);
 
         default:
           throw new ServiceFailureException(
