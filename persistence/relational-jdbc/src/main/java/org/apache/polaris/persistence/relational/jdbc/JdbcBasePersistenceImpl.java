@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -93,6 +94,21 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
 
+  // Converter for SELECT 1 existence probes: only the presence of a row matters, so every row maps
+  // to 1 and toMap is never used (existence queries are read-only).
+  private static final Converter<Integer> ROW_EXISTS_CONVERTER =
+      new Converter<>() {
+        @Override
+        public Integer fromResultSet(ResultSet rs) {
+          return 1;
+        }
+
+        @Override
+        public Map<String, Object> toMap(DatabaseType databaseType) {
+          throw new UnsupportedOperationException();
+        }
+      };
+
   public JdbcBasePersistenceImpl(
       PolarisDiagnostics diagnostics,
       DatasourceOperations databaseOperations,
@@ -143,15 +159,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               PolarisBaseEntity entity = entities.get(i);
               PolarisBaseEntity originalEntity =
                   originalEntities != null ? originalEntities.get(i) : null;
-              // first, check if the entity has already been created, in which case we will simply
-              // return it.
-              PolarisBaseEntity entityFound =
-                  lookupEntity(
-                      callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
-              if (entityFound != null && originalEntity == null) {
-                // probably the client retried, simply return it
-                // TODO: Check correctness of returning entityFound vs entity here. It may have
-                // already been updated after the creation.
+              if (originalEntity == null && entityExists(connection, entity.getId())) {
                 continue;
               }
               persistEntity(
@@ -165,6 +173,25 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               "Error executing the transaction for writing entities due to %s", e.getMessage()),
           e);
     }
+  }
+
+  /**
+   * Returns whether an entity row already exists, using a {@code SELECT 1 ... LIMIT 1} on the
+   * supplied transaction connection. Only existence is needed by {@link #writeEntities} on the
+   * create path, so this avoids fetching the full entity row (including the large JSON property
+   * blobs).
+   */
+  private boolean entityExists(@NonNull Connection connection, long entityId) throws SQLException {
+    AtomicBoolean exists = new AtomicBoolean(false);
+    datasourceOperations.executeSelectOverStream(
+        connection,
+        QueryGenerator.generateExistsQuery(
+            ModelEntity.getAllColumnNames(schemaVersion),
+            ModelEntity.TABLE_NAME,
+            entityKeyParams(entityId)),
+        ROW_EXISTS_CONVERTER,
+        stream -> exists.set(stream.findAny().isPresent()));
+    return exists.get();
   }
 
   private void persistEntity(
@@ -420,6 +447,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     return getPolarisBaseEntity(
         QueryGenerator.generateSelectQuery(
             ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+  }
+
+  private Map<String, Object> entityKeyParams(long entityId) {
+    return Map.of("id", entityId, "realm_id", realmId);
   }
 
   @Override
@@ -740,17 +771,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           datasourceOperations.executeSelect(
               QueryGenerator.generateExistsQuery(
                   ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params),
-              new Converter<Integer>() {
-                @Override
-                public Integer fromResultSet(ResultSet rs) {
-                  return 1;
-                }
-
-                @Override
-                public Map<String, Object> toMap(DatabaseType databaseType) {
-                  throw new UnsupportedOperationException();
-                }
-              });
+              ROW_EXISTS_CONVERTER);
       return results != null && !results.isEmpty();
     } catch (SQLException e) {
       throw new RuntimeException(
