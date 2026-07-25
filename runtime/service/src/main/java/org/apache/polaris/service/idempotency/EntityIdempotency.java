@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.apache.iceberg.exceptions.ServiceUnavailableException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,8 +116,8 @@ public final class EntityIdempotency {
    * and reintroduce the corruption failure mode (a retry would re-run and could 409), so under a
    * high write rate we accept a larger window rather than dropping keys that could still be
    * retried. A large safety ceiling ({@link #MAX_LIVE_KEYS}) still bounds the window: when it is
-   * reached the write fails with a retryable {@link ServiceUnavailableException} (HTTP 503) instead
-   * of dropping a key.
+   * reached the write fails with a retryable {@link PolarisServiceUnavailableException} (HTTP 503
+   * with a {@code Retry-After}) instead of dropping a key.
    */
   public static Map<String, String> recordKey(
       Map<String, String> internalProperties, UUID key, Instant expiry, Instant now) {
@@ -150,9 +150,12 @@ public final class EntityIdempotency {
     }
 
     // Fail rather than evict a live key: dropping one would silently disable idempotency for it.
-    // 503 (retryable) is apt: once some of the live keys expire the write can succeed.
+    // The window is sorted by expiry, so its first entry expires soonest; a slot frees (and the
+    // write can succeed) once it does, so advertise that as the Retry-After on the 503.
     if (window.size() >= maxLiveKeys) {
-      throw new ServiceUnavailableException(
+      long retryAfterSeconds = Math.max(1, (window.get(0).expiryMillis - nowMillis + 999) / 1000);
+      throw new PolarisServiceUnavailableException(
+          (int) retryAfterSeconds,
           "Idempotency key window for this entity is full (%d live keys); refusing to record "
               + "another to bound entity size. This indicates an abnormally high rate of "
               + "idempotent writes to a single table within the key TTL.",

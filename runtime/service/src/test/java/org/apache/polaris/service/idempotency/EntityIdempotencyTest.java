@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-import org.apache.iceberg.exceptions.ServiceUnavailableException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -137,7 +137,7 @@ public class EntityIdempotencyTest {
     Map<String, String> full = internal;
     assertThatThrownBy(
             () -> EntityIdempotency.recordKey(full, UUID.randomUUID(), LATER, NOW, ceiling))
-        .isInstanceOf(ServiceUnavailableException.class)
+        .isInstanceOf(PolarisServiceUnavailableException.class)
         .hasMessageContaining("full");
   }
 
