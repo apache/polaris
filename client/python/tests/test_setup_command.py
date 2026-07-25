@@ -290,3 +290,31 @@ class TestSetupCommand(CLITestBase):
         mock_client.list_catalogs.assert_called()
         mock_client.list_catalog_roles.assert_called_with("my_catalog")
         mock_client.get_catalog.assert_called_with("my_catalog")
+
+    @patch("apache_polaris.cli.command.setup.os.path.isfile")
+    def test_setup_apply_treats_null_type_as_internal(
+        self, mock_isfile: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_isfile.return_value = True
+        mock_client.list_principals.side_effect = RuntimeError("listing unavailable")
+        setup_yaml = (
+            "catalogs:\n"
+            "  - name: my_catalog\n"
+            "    type: null\n"
+            "    storage_type: file\n"
+            "    default_base_location: file:///path"
+        )
+
+        with (
+            patch(
+                "apache_polaris.cli.command.setup.open",
+                mock_open(read_data=setup_yaml),
+            ),
+        ):
+            self.mock_execute(
+                mock_client,
+                ["setup", "apply", "config.yaml"]
+            )
+        call_args = mock_client.create_catalog.call_args[0][0]
+        self.assertEqual(call_args.catalog.type, "INTERNAL")
