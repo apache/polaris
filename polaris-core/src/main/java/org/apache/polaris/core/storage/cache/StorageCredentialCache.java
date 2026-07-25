@@ -52,11 +52,9 @@ public class StorageCredentialCache {
             .expireAfter(
                 Expiry.creating(
                     (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
-                      long remainingMs =
-                          entry.getExpirationTime() - System.currentTimeMillis();
+                      long remainingMs = entry.getExpirationTime() - System.currentTimeMillis();
                       long bufferMs = entry.refreshBufferMs();
-                      long effectiveTtl =
-                          bufferMs > 0 ? remainingMs - bufferMs : remainingMs / 2;
+                      long effectiveTtl = bufferMs > 0 ? remainingMs - bufferMs : remainingMs / 2;
                       long expireAfterMillis =
                           Math.max(0, Math.min(effectiveTtl, entry.maxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
