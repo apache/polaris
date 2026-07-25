@@ -313,10 +313,7 @@ class TestSetupCommand(CLITestBase):
                 mock_open(read_data=setup_yaml),
             ),
         ):
-            self.mock_execute(
-                mock_client,
-                ["setup", "apply", "config.yaml"]
-            )
+            self.mock_execute(mock_client, ["setup", "apply", "config.yaml"])
         call_args = mock_client.create_catalog.call_args[0][0]
         self.assertEqual(call_args.catalog.type, "INTERNAL")
 
@@ -363,13 +360,30 @@ class TestSetupCommand(CLITestBase):
             setup_subcommand=Subcommands.EXPORT,
             _catalog_api=MagicMock(),
         )
-
-        self.assertEqual(
-            command._export_namespaces_for_catalog(MagicMock(), "catalog"),
-            ["parent", "parent.child"],
+        mock_client = MagicMock()
+        mock_client.list_catalogs.return_value = SimpleNamespace(
+            catalogs=[SimpleNamespace(name="catalog")]
         )
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="file:///path",
+                additional_properties={},
+            ),
+            storage_config_info=FileStorageConfigInfo(
+                storage_type="FILE",
+                allowed_locations=["file:///path"],
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
+
+        catalog = command._export_catalogs(mock_client)[0]
+
+        self.assertEqual(catalog["namespaces"], ["parent", "parent.child"])
         self.assertEqual(
-            command._export_policies_for_catalog(MagicMock(), "catalog"),
+            catalog["policies"],
             {
                 "child-policy": {
                     "namespace": "parent.child",
@@ -377,6 +391,17 @@ class TestSetupCommand(CLITestBase):
                     "content": '{"max-age":7}',
                 }
             },
+        )
+        self.assertEqual(
+            catalog_api.list_namespaces.call_args_list,
+            [
+                call(prefix="catalog"),
+                call(prefix="catalog", parent="parent"),
+                call(
+                    prefix="catalog",
+                    parent=f"parent{UNIT_SEPARATOR}child",
+                ),
+            ],
         )
         policy_api.list_policies.assert_has_calls(
             [

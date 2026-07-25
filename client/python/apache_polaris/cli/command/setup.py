@@ -348,14 +348,16 @@ class SetupCommand(Command):
                         self._serialize_connection_info(c.connection_config_info)
                     )
                 # Add nested entities
+                catalog_api = IcebergCatalogAPI(self._get_catalog_api(api))
+                namespaces = self._list_namespaces_recursively(catalog_api, c.name)
                 catalog_info["roles"] = self._export_catalog_roles_for_catalog(
                     api, c.name
                 )
                 catalog_info["namespaces"] = self._export_namespaces_for_catalog(
-                    api, c.name
+                    api, c.name, namespaces
                 )
                 catalog_info["policies"] = self._export_policies_for_catalog(
-                    api, c.name
+                    api, c.name, namespaces
                 )
                 # remove empty sections
                 if not catalog_info.get("roles"):
@@ -437,14 +439,16 @@ class SetupCommand(Command):
         )
 
     def _export_namespaces_for_catalog(
-        self, api: PolarisDefaultApi, catalog_name: str
+        self,
+        api: PolarisDefaultApi,
+        catalog_name: str,
+        namespaces: List[List[str]],
     ) -> List[Any]:
         """Export all namespaces for a given catalog."""
         namespaces_list: List[Any] = []
         catalog_api_client = self._get_catalog_api(api)
         catalog_api = IcebergCatalogAPI(catalog_api_client)
         try:
-            namespaces = self._list_namespaces_recursively(catalog_api, catalog_name)
             for ns in namespaces:
                 ns_name = ".".join(ns)
                 ns_details = catalog_api.load_namespace_metadata(
@@ -466,15 +470,16 @@ class SetupCommand(Command):
         return namespaces_list
 
     def _export_policies_for_catalog(
-        self, api: PolarisDefaultApi, catalog_name: str
+        self,
+        api: PolarisDefaultApi,
+        catalog_name: str,
+        namespaces: List[List[str]],
     ) -> Dict[str, Any]:
         """Export all policies for a given catalog."""
         policies_map: Dict[str, Any] = {}
         catalog_api_client = self._get_catalog_api(api)
-        catalog_api = IcebergCatalogAPI(catalog_api_client)
         try:
             policy_api = PolicyAPI(catalog_api_client)
-            namespaces = self._list_namespaces_recursively(catalog_api, catalog_name)
             for ns in namespaces:
                 ns_name = ".".join(ns)
                 namespace_str = ns_name.replace(".", UNIT_SEPARATOR)
