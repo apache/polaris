@@ -30,13 +30,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -452,9 +452,7 @@ public class StorageCredentialCacheTest {
         StorageAccessConfig.builder()
             .put(StorageAccessProperty.AWS_KEY_ID, "key")
             .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
-            .put(
-                StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                String.valueOf(expiresAt))
+            .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expiresAt))
             .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt))
             .build();
 
@@ -491,9 +489,7 @@ public class StorageCredentialCacheTest {
         StorageAccessConfig.builder()
             .put(StorageAccessProperty.AWS_KEY_ID, "key")
             .put(StorageAccessProperty.AWS_SECRET_KEY, "secret")
-            .put(
-                StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                String.valueOf(expiresAt))
+            .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expiresAt))
             .put(StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt))
             .build();
 
