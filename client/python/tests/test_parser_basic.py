@@ -73,7 +73,7 @@ class TestParserBasic(CLITestBase):
                     "gone",
                 ]
             )  # remote-url deprecated
-            self.assertEqual(cm.exception.code, INVALID_ARGS)
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
 
         with self.assertRaises(SystemExit) as cm:
             Parser.parse(["principals", "create", "name", "--type", "bad"])
