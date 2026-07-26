@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.nosql.metastore.maintenance;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import jakarta.validation.constraints.Min;
+import java.time.Duration;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 import tools.jackson.databind.annotation.JsonDeserialize;
@@ -30,8 +31,10 @@ import tools.jackson.databind.annotation.JsonSerialize;
  * No SQL persistence implementation of Polaris stores a history of changes per kind of object
  * (principals, principal roles, grants, immediate tasks, catalog roles and catalog state).
  *
- * <p>Each configuration property controls how many of the latest commits are retained for one kind
- * of history. All properties default to retaining only the latest commit.
+ * <p>Each {@code *-retain} configuration property controls how many of the latest commits are
+ * retained for one kind of history. All properties default to retaining only the latest commit.
+ * {@link #paginationTokenRetention()} additionally keeps superseded snapshots available for
+ * snapshot-based pagination.
  */
 @ConfigMapping(prefix = "polaris.persistence.nosql.maintenance.catalog")
 @JsonSerialize(as = ImmutableBuildableCatalogsMaintenanceConfig.class)
@@ -39,6 +42,16 @@ import tools.jackson.databind.annotation.JsonSerialize;
 public interface CatalogsMaintenanceConfig {
 
   int DEFAULT_RETAIN_COMMITS = 1;
+  String DEFAULT_PAGINATION_TOKEN_RETENTION = "P30D";
+
+  /**
+   * Minimum time to retain a container snapshot after it is superseded, so pagination tokens that
+   * reference that snapshot can continue to be used.
+   *
+   * <p>A zero duration disables time-based retention.
+   */
+  @WithDefault(DEFAULT_PAGINATION_TOKEN_RETENTION)
+  Duration paginationTokenRetention();
 
   /** Number of latest principal commits to retain. */
   @WithDefault("" + DEFAULT_RETAIN_COMMITS)
@@ -84,6 +97,12 @@ public interface CatalogsMaintenanceConfig {
   interface BuildableCatalogsMaintenanceConfig extends CatalogsMaintenanceConfig {
     static ImmutableBuildableCatalogsMaintenanceConfig.Builder builder() {
       return ImmutableBuildableCatalogsMaintenanceConfig.builder();
+    }
+
+    @Override
+    @Value.Default
+    default Duration paginationTokenRetention() {
+      return Duration.parse(DEFAULT_PAGINATION_TOKEN_RETENTION);
     }
 
     @Override
