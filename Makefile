@@ -143,13 +143,8 @@ client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist o
 .PHONY: client-cleanup
 client-cleanup: ## Cleanup virtual environment, build artifacts, and generated files
 	@echo "--- Cleaning up client environment and generated files ---"
-	@echo "Removing virtual environment directory: $(VENV_DIR)..."
-	@if [ -n "$(VENV_DIR)" ] && [ -d "$(VENV_DIR)" ]; then \
-		rm -rf "$(VENV_DIR)"; \
-		echo "Virtual environment removed."; \
-	else \
-		echo "Virtual environment directory '$(VENV_DIR)' not found or VENV_DIR is empty. No action taken."; \
-	fi
+	@echo "Removing virtual environment..."
+	@rm -rf "$(VENV_DIR)"
 	@echo "Removing build artifacts..."
 	@rm -rf $(PYTHON_CLIENT_DIR)/dist
 	@echo "Removing copied spec files..."
