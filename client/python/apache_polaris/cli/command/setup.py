@@ -891,8 +891,8 @@ class SetupCommand(Command):
                     command_args = {
                         "catalogs_subcommand": Subcommands.CREATE,
                         "catalog_name": catalog_name,
-                        "catalog_type": catalog_data.get(
-                            "type", CatalogType.INTERNAL.value
+                        "catalog_type": (
+                            catalog_data.get("type") or CatalogType.INTERNAL.value
                         ).lower(),
                     }
                     command_args.update(self._map_storage_properties(catalog_data))
