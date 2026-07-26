@@ -38,7 +38,6 @@ import org.apache.polaris.service.auth.DefaultAuthenticator;
 import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,22 +115,18 @@ public class JWTBroker implements TokenBroker {
   }
 
   /**
-   * Rejects tokens that were minted against a credentials generation that is no longer current.
-   * Accepts the main or secondary generation fingerprint so dual-secret rotate grace matches
-   * client-secret matching. Tokens minted before credentials binding (no claim) are accepted so
+   * Loads the principal's secrets and rejects tokens that were minted against a credentials
+   * generation that is no longer current. If the secrets cannot be loaded, the principal is
+   * effectively gone and the token is rejected - this applies to legacy tokens too. Accepts the
+   * main or secondary generation fingerprint so dual-secret rotate grace matches client-secret
+   * matching. Tokens minted before credentials binding (no claim) skip the generation check so
    * existing clients are not broken on upgrade; they remain unbound until expiry.
    *
-   * @return the loaded principal secrets when the claim was checked, or {@code null} for legacy
-   *     tokens without the claim (callers can reuse the secrets to avoid a second load)
+   * @return the loaded principal secrets (callers can reuse them to avoid a second load)
    */
-  @Nullable
   private PolarisPrincipalSecrets assertCredentialsVersionCurrent(
       String clientId, String credentialsVersion) {
-    if (credentialsVersion == null) {
-      // Legacy token minted before credentials binding existed.
-      return null;
-    }
-    if (clientId == null || clientId.isBlank() || credentialsVersion.isBlank()) {
+    if (clientId == null || clientId.isBlank()) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
     PrincipalSecretsResult secretsResult =
@@ -139,7 +134,8 @@ public class JWTBroker implements TokenBroker {
     if (!secretsResult.isSuccess() || secretsResult.getPrincipalSecrets() == null) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
-    if (!secretsResult.getPrincipalSecrets().matchesCredentialsVersion(credentialsVersion)) {
+    if (credentialsVersion != null
+        && !secretsResult.getPrincipalSecrets().matchesCredentialsVersion(credentialsVersion)) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
     return secretsResult.getPrincipalSecrets();
@@ -189,20 +185,10 @@ public class JWTBroker implements TokenBroker {
       }
       tokenScope = scope;
     }
-    String credentialsVersion;
-    if (verified.principalSecrets() != null) {
-      // Secrets were already loaded during verify; reuse them instead of a second read.
-      credentialsVersion = verified.principalSecrets().getCredentialsVersion();
-      if (credentialsVersion == null) {
-        return TokenResponse.of(OAuthError.unauthorized_client);
-      }
-    } else {
-      // Legacy token without the claim: load once to bind the re-minted token.
-      Optional<String> loaded = loadCurrentCredentialsVersion(decodedToken.getClientId());
-      if (loaded.isEmpty()) {
-        return TokenResponse.of(OAuthError.unauthorized_client);
-      }
-      credentialsVersion = loaded.get();
+    // Secrets were already loaded during verify; reuse them instead of a second read.
+    String credentialsVersion = verified.principalSecrets().getCredentialsVersion();
+    if (credentialsVersion == null) {
+      return TokenResponse.of(OAuthError.unauthorized_client);
     }
     String tokenString =
         generateTokenString(
@@ -285,15 +271,6 @@ public class JWTBroker implements TokenBroker {
     return scope == null || scope.isBlank() ? DefaultAuthenticator.PRINCIPAL_ROLE_ALL : scope;
   }
 
-  private Optional<String> loadCurrentCredentialsVersion(String clientId) {
-    PrincipalSecretsResult principalSecrets =
-        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
-    if (!principalSecrets.isSuccess() || principalSecrets.getPrincipalSecrets() == null) {
-      return Optional.empty();
-    }
-    return Optional.ofNullable(principalSecrets.getPrincipalSecrets().getCredentialsVersion());
-  }
-
   private Optional<AuthenticatedPrincipal> authenticateWithClientSecrets(
       String clientId, String clientSecret) {
     PrincipalSecretsResult principalSecrets =
@@ -319,9 +296,9 @@ public class JWTBroker implements TokenBroker {
   private record AuthenticatedPrincipal(PrincipalEntity entity, String credentialsVersion) {}
 
   /**
-   * Result of token verification. {@code principalSecrets} carries the secrets loaded while
-   * checking the credentials-version claim, or {@code null} for legacy tokens without the claim.
+   * Result of token verification. {@code principalSecrets} carries the secrets loaded during
+   * verify, which always happens (even for legacy tokens), so callers can reuse them.
    */
   private record VerifiedToken(
-      InternalPolarisToken token, @Nullable PolarisPrincipalSecrets principalSecrets) {}
+      InternalPolarisToken token, PolarisPrincipalSecrets principalSecrets) {}
 }
