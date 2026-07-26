@@ -142,7 +142,6 @@ class TestCatalogRolesCommand(CLITestBase):
                 "baz",
             ],
         )
-        print(mock_client)
         call_args = mock_client.assign_catalog_role_to_principal_role.call_args[0]
         self.assertEqual(call_args[0], "foo")
         self.assertEqual(call_args[1], "bar")
@@ -162,7 +161,6 @@ class TestCatalogRolesCommand(CLITestBase):
                 "baz",
             ],
         )
-        print(mock_client)
         call_args = mock_client.revoke_catalog_role_from_principal_role.call_args[0]
         self.assertEqual(call_args[0], "foo")
         self.assertEqual(call_args[1], "bar")
