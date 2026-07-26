@@ -25,10 +25,11 @@ build:
 
 No SQL persistence implementation of Polaris stores a history of changes per kind of object  (principals, principal roles, grants, immediate tasks, catalog roles and catalog state).  
 
-Each configuration property controls how many of the latest commits are retained for one kind  of history. All properties default to retaining only the latest commit.
+Each `*-retain` configuration property controls how many of the latest commits are  retained for one kind of history. All properties default to retaining only the latest commit.  (`#paginationTokenRetention()`) additionally keeps superseded snapshots available for  snapshot-based pagination.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
+| `polaris.persistence.nosql.maintenance.catalog.pagination-token-retention` | `P30D` | `duration` | Minimum time to retain a container snapshot after it is superseded, so pagination tokens that  reference that snapshot can continue to be used.  <br><br>A zero duration disables time-based retention. |
 | `polaris.persistence.nosql.maintenance.catalog.principals-retain` | `1` | `int` | Number of latest principal commits to retain.  |
 | `polaris.persistence.nosql.maintenance.catalog.principal-roles-retain` | `1` | `int` | Number of latest principal-role commits to retain.  |
 | `polaris.persistence.nosql.maintenance.catalog.grants-retain` | `1` | `int` | Number of latest realm-grant commits to retain.  |
