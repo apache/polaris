@@ -32,6 +32,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
@@ -275,6 +276,16 @@ public class JWTBrokerCredentialsBindingTest {
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenReturn(new PrincipalSecretsResult(secrets));
     assertThatThrownBy(() -> broker.verify(response.getAccessToken()))
+        .isInstanceOf(NotAuthorizedException.class)
+        .hasMessageContaining("Failed to verify the token");
+  }
+
+  @Test
+  void verifyFailsForLegacyTokenWhenSecretsNotLoadable() {
+    // The principal is effectively gone: even a legacy (claim-less) token must be rejected.
+    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
+        .thenReturn(new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null));
+    assertThatThrownBy(() -> broker.verify(legacyToken()))
         .isInstanceOf(NotAuthorizedException.class)
         .hasMessageContaining("Failed to verify the token");
   }
