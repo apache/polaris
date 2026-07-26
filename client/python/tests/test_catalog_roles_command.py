@@ -21,7 +21,7 @@ from cli_test_utils import CLITestBase
 from apache_polaris.sdk.management import CatalogRole
 
 
-class TestCatalogRolessCommand(CLITestBase):
+class TestCatalogRolesCommand(CLITestBase):
     def test_catalog_role_commands_validation(self) -> None:
         mock_client = self.build_mock_client()
         # Missing --catalog flag
