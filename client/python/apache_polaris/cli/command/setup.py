@@ -340,9 +340,7 @@ class SetupCommand(Command):
                         if hasattr(c.storage_config_info, "allowed_kms_keys")
                         and c.storage_config_info.allowed_kms_keys
                         else [],
-                        "legacy_kms_keys": sorted(
-                            c.storage_config_info.legacy_kms_keys
-                        )
+                        "legacy_kms_keys": sorted(c.storage_config_info.legacy_kms_keys)
                         if hasattr(c.storage_config_info, "legacy_kms_keys")
                         and c.storage_config_info.legacy_kms_keys
                         else [],
