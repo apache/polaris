@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.maintenance;
 
+import java.time.Duration;
+
 public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConfig {
 
   private static CatalogsMaintenanceConfig current =
@@ -25,6 +27,11 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
 
   public static void setCurrent(CatalogsMaintenanceConfig config) {
     current = config;
+  }
+
+  @Override
+  public Duration paginationTokenRetention() {
+    return current.paginationTokenRetention();
   }
 
   @Override

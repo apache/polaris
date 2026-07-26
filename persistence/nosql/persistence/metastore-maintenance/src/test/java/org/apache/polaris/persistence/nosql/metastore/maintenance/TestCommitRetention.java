@@ -21,17 +21,22 @@ package org.apache.polaris.persistence.nosql.metastore.maintenance;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 class TestCommitRetention {
 
   @Test
   void stopsAfterConfiguredNumberOfCommits() {
-    var continueAfterCommit = CatalogRetainedIdentifier.<Object>continueWhileMoreCommitsRemain(1);
+    var continueAfterCommit =
+        CatalogRetainedIdentifier.<Object>historyContinuePredicate(
+            1, Duration.ZERO, ignored -> Duration.ZERO);
     // The current commit has already been retained, so no second commit is needed.
     assertThat(continueAfterCommit.test(new Object())).isFalse();
 
-    continueAfterCommit = CatalogRetainedIdentifier.continueWhileMoreCommitsRemain(3);
+    continueAfterCommit =
+        CatalogRetainedIdentifier.historyContinuePredicate(
+            3, Duration.ZERO, ignored -> Duration.ZERO);
     assertThat(continueAfterCommit.test(new Object())).isTrue();
     assertThat(continueAfterCommit.test(new Object())).isTrue();
     // The third commit has already been retained, so traversal stops here.
@@ -43,7 +48,30 @@ class TestCommitRetention {
   @Test
   void rejectsInvalidCommitCount() {
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> CatalogRetainedIdentifier.continueWhileMoreCommitsRemain(0))
+        .isThrownBy(
+            () ->
+                CatalogRetainedIdentifier.historyContinuePredicate(
+                    0, Duration.ZERO, ignored -> Duration.ZERO))
         .withMessage("commitsToRetain must be at least 1");
+  }
+
+  @Test
+  void continuesWhileNextCommitIsWithinRetentionDuration() {
+    var continueAfterCommit =
+        CatalogRetainedIdentifier.<Duration>historyContinuePredicate(
+            1, Duration.ofDays(30), age -> age);
+
+    assertThat(continueAfterCommit.test(Duration.ofDays(29))).isTrue();
+    assertThat(continueAfterCommit.test(Duration.ofDays(30))).isFalse();
+  }
+
+  @Test
+  void rejectsNegativeRetentionDuration() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                CatalogRetainedIdentifier.historyContinuePredicate(
+                    1, Duration.ofSeconds(-1), ignored -> Duration.ZERO))
+        .withMessage("minimumRetention must not be negative");
   }
 }

@@ -232,10 +232,12 @@ It is recommended to run the `nosql maintenance-run` command regulary, for examp
 
 {{< alert important >}}
 The catalog-history `*-retain` settings now accept a positive integer number of latest commits
-instead of a CEL expression. When upgrading, replace `*-retain=false` with `*-retain=1`.
-CEL values such as `true` and expressions using `ageDays`, `ageHours`, or `ageMinutes` are no
-longer supported. There is no unbounded or time-based equivalent; choose an explicit commit count
-appropriate for the deployment.
+instead of a CEL expression. When upgrading, replace `*-retain=false` with `*-retain=1`,
+`commits < N` with `N`, and `commits <= N` with `N + 1`. CEL values such as `true` have no exact
+unbounded equivalent. Expressions using `ageDays`, `ageHours`, or `ageMinutes` must be replaced
+with an explicit commit count. The
+`polaris.persistence.nosql.maintenance.catalog.pagination-token-retention` duration (default
+`P30D`) separately protects superseded snapshots referenced by pagination tokens.
 {{< /alert >}}
 
 The output shows a bunch of configuration options, most of which are automatically determined by the tool.

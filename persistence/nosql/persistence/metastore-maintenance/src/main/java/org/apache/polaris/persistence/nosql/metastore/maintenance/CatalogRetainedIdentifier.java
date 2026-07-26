@@ -36,6 +36,7 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -162,8 +163,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(
         () -> {
           var policyMappingsContinue =
-              CatalogRetainedIdentifier.<PolicyMappingsObj>continueWhileMoreCommitsRemain(
-                  catalogsMaintenanceConfig.catalogPoliciesRetain());
+              this.<PolicyMappingsObj>historyContinuePredicate(
+                  catalogsMaintenanceConfig.catalogPoliciesRetain(), persistence);
           // PolicyMappings are stored _INLINE_
           collector.refRetain(
               POLICY_MAPPINGS_REF_NAME,
@@ -186,8 +187,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(
         () -> {
           var catalogsHistoryContinue =
-              CatalogRetainedIdentifier.<CatalogsObj>continueWhileMoreCommitsRemain(
-                  catalogsMaintenanceConfig.catalogsHistoryRetain());
+              this.<CatalogsObj>historyContinuePredicate(
+                  catalogsMaintenanceConfig.catalogsHistoryRetain(), persistence);
           var currentCatalogs = new ConcurrentHashMap<IndexKey, ObjRef>();
           collector.refRetain(
               CATALOGS_REF_NAME,
@@ -228,8 +229,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                   var catalogStateRefName =
                       format(CATALOG_STATE_REF_NAME_PATTERN, catalogObj.stableId());
                   var catalogStateContinue =
-                      CatalogRetainedIdentifier.<CatalogStateObj>continueWhileMoreCommitsRemain(
-                          catalogsMaintenanceConfig.catalogStateRetain());
+                      this.<CatalogStateObj>historyContinuePredicate(
+                          catalogsMaintenanceConfig.catalogStateRetain(), persistence);
                   collector.refRetainIndexToSingleObj(
                       catalogStateRefName,
                       CatalogStateObj.class,
@@ -291,8 +292,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     LOGGER.info("Identifying {}...", what);
     ignoreReferenceNotFound(
         () -> {
-          var historyContinue =
-              CatalogRetainedIdentifier.<O>continueWhileMoreCommitsRemain(commitsToRetain);
+          var persistence = collector.realmPersistence();
+          var historyContinue = this.<O>historyContinuePredicate(commitsToRetain, persistence);
           collector.refRetainIndexToSingleObj(
               refName, objClazz, historyContinue, indexContainerFunction);
         });
@@ -309,8 +310,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     LOGGER.info("Identifying {}...", what);
     ignoreReferenceNotFound(
         () -> {
-          var historyContinue =
-              CatalogRetainedIdentifier.<O>continueWhileMoreCommitsRemain(commitsToRetain);
+          var persistence = collector.realmPersistence();
+          var historyContinue = this.<O>historyContinuePredicate(commitsToRetain, persistence);
           collector.refRetainIndexToSingleObj(
               refName,
               objClazz,
@@ -332,11 +333,11 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
         catalogObj.stableId());
     ignoreReferenceNotFound(
         () -> {
+          var persistence = collector.realmPersistence();
           var refName =
               format(CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN, catalogObj.stableId());
           var historyContinue =
-              CatalogRetainedIdentifier.<CatalogRolesObj>continueWhileMoreCommitsRemain(
-                  commitsToRetain);
+              this.<CatalogRolesObj>historyContinuePredicate(commitsToRetain, persistence);
           collector.refRetainIndexToSingleObj(
               refName,
               CatalogRolesObj.class,
@@ -703,26 +704,37 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
   private record RefIndexKey(String refName, Class<? extends ContainerObj> containerClass) {}
 
+  private <O extends BaseCommitObj> Predicate<O> historyContinuePredicate(
+      int commitsToRetain, Persistence persistence) {
+    return historyContinuePredicate(
+        commitsToRetain, catalogsMaintenanceConfig.paginationTokenRetention(), persistence::objAge);
+  }
+
   /**
-   * Returns a predicate that continues traversal while more commits need to be retained.
+   * Returns a predicate that continues traversal while the next historic commit must be retained by
+   * either the configured count or retention duration.
    *
-   * <p>{@link RetainedCollector} invokes this predicate after retaining the current commit, so it
-   * returns {@code false} when the configured number of commits has been reached.
+   * <p>{@link RetainedCollector} invokes this predicate after retaining the current commit. The
+   * current commit's age represents how long the next, older commit has been superseded.
    */
-  static <O> Predicate<O> continueWhileMoreCommitsRemain(int commitsToRetain) {
+  static <O> Predicate<O> historyContinuePredicate(
+      int commitsToRetain, Duration minimumRetention, Function<O, Duration> objectAge) {
     if (commitsToRetain < 1) {
       throw new IllegalArgumentException("commitsToRetain must be at least 1");
+    }
+    if (minimumRetention.isNegative()) {
+      throw new IllegalArgumentException("minimumRetention must not be negative");
     }
     return new Predicate<>() {
       private int remaining = commitsToRetain;
 
       @Override
-      public boolean test(O ignored) {
-        if (remaining <= 1) {
-          return false;
+      public boolean test(O current) {
+        var continueByCount = remaining > 1;
+        if (continueByCount) {
+          remaining--;
         }
-        remaining--;
-        return true;
+        return continueByCount || objectAge.apply(current).compareTo(minimumRetention) < 0;
       }
     };
   }
