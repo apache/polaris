@@ -92,7 +92,7 @@ public class DefaultEventSanitizer implements EventSanitizer {
               }
             });
     extractDerivedAttributes(event, filtered);
-    return new PolarisEvent(event.type(), event.metadata(), filtered.toImmutableAttributeMap());
+    return new PolarisEvent(event.type(), event.metadata(), filtered);
   }
 
   public static Set<AttributeKey<?>> resolveAdditionalDenylist(Set<String> configuredNames) {
