@@ -282,6 +282,14 @@ class CatalogsCommand(Command):
     def _has_gcs_storage_info(self) -> bool:
         return bool(self.service_account)
 
+    @staticmethod
+    def _require_s3(storage_info: StorageConfigInfo, flag: str) -> None:
+        # Note: We have to lowercase the returned value because the server enum
+        # is uppercase but we defined the StorageType enums as lowercase.
+        storage_type = storage_info.storage_type
+        if storage_type.lower() != StorageType.S3.value:
+            raise CliError(f"{flag} requires S3 storage_type, got: {storage_type}")
+
     def _build_storage_config_info(self) -> Optional[StorageConfigInfo]:
         config = None
         if self.storage_type == StorageType.S3.value:
@@ -503,29 +511,15 @@ class CatalogsCommand(Command):
                     )
 
                 if self.region:
-                    # Note: We have to lowercase the returned value because the server enum
-                    # is uppercase but we defined the StorageType enums as lowercase.
-                    storage_type = updated_storage_info.storage_type
-                    if storage_type.lower() != StorageType.S3.value:
-                        raise CliError(
-                            f"--region requires S3 storage_type, got: {storage_type}"
-                        )
+                    self._require_s3(updated_storage_info, "--region")
                     updated_storage_info.region = self.region
 
                 if self.sts_unavailable:
-                    storage_type = updated_storage_info.storage_type
-                    if storage_type.lower() != StorageType.S3.value:
-                        raise CliError(
-                            f"--no-sts requires S3 storage_type, got: {storage_type}"
-                        )
+                    self._require_s3(updated_storage_info, "--no-sts")
                     updated_storage_info.sts_unavailable = self.sts_unavailable
 
                 if self.kms_unavailable:
-                    storage_type = updated_storage_info.storage_type
-                    if storage_type.lower() != StorageType.S3.value:
-                        raise CliError(
-                            f"--no-kms requires S3 storage_type, got: {storage_type}"
-                        )
+                    self._require_s3(updated_storage_info, "--no-kms")
                     updated_storage_info.kms_unavailable = self.kms_unavailable
 
                 request = UpdateCatalogRequest(
