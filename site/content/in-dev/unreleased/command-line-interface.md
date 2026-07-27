@@ -351,6 +351,8 @@ Command Options:
 
 AWS S3 Storage Options:
   --region REGION                                The region to use when connecting to S3
+  --no-sts                                       Indicates that Polaris should not use STS (e.g. if STS is not available)
+  --no-kms                                       Indicates that Polaris should not use KMS (e.g. if KMS is not available)
 ```
 
 ##### Examples
@@ -359,6 +361,8 @@ AWS S3 Storage Options:
 polaris catalogs update --set-property tag=new_value my_catalog
 
 polaris catalogs update --default-base-location s3://new-bucket/my_data my_catalog
+
+polaris catalogs update --no-kms my_catalog
 ```
 
 ### Principals

@@ -267,6 +267,8 @@ class CatalogsCommand(Command):
             or self.current_kms_key
             or self.allowed_kms_keys
             or self.path_style_access
+            or self.sts_unavailable
+            or self.kms_unavailable
         )
 
     def _has_azure_storage_info(self) -> bool:
@@ -509,6 +511,22 @@ class CatalogsCommand(Command):
                             f"--region requires S3 storage_type, got: {storage_type}"
                         )
                     updated_storage_info.region = self.region
+
+                if self.sts_unavailable:
+                    storage_type = updated_storage_info.storage_type
+                    if storage_type.lower() != StorageType.S3.value:
+                        raise CliError(
+                            f"--no-sts requires S3 storage_type, got: {storage_type}"
+                        )
+                    updated_storage_info.sts_unavailable = self.sts_unavailable
+
+                if self.kms_unavailable:
+                    storage_type = updated_storage_info.storage_type
+                    if storage_type.lower() != StorageType.S3.value:
+                        raise CliError(
+                            f"--no-kms requires S3 storage_type, got: {storage_type}"
+                        )
+                    updated_storage_info.kms_unavailable = self.kms_unavailable
 
                 request = UpdateCatalogRequest(
                     current_entity_version=catalog.entity_version,
