@@ -31,6 +31,8 @@ We have bi-weekly community meeting using https://meet.google.com/pii-faxn-woh[G
 
 Join https://groups.google.com/u/0/g/polaris-community-sync[Polaris Community Sync invite].
 
+Subscribe to the https://calendar.google.com/calendar/u/0?cid=NzMyZmQ5Y2QxMzMzMWFmOWNkNjcyZGY1YTViMWYwMzMwZjAyMDJjMjhiZmVhM2FiNGE3YTcyNzk0NmQ5OGY3NEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t[Apache Polaris Community Calendar].
+
 == Scheduled Meetings
 
 https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/[Agenda for upcoming Community Meetings]
