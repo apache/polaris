@@ -499,6 +499,7 @@ public class ServiceProducers {
 
   @Produces
   @RequestScoped
+  @Identifier("event-attribute-map")
   public MutableAttributeMap eventAttributeMap() {
     return new MutableAttributeMap();
   }

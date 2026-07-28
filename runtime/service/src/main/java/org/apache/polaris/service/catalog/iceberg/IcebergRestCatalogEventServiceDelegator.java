@@ -20,6 +20,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
@@ -45,8 +46,8 @@ import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
-import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
@@ -70,7 +71,10 @@ public class IcebergRestCatalogEventServiceDelegator
   @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
-  @Inject MutableAttributeMap eventAttributeMap;
+
+  @Inject
+  @Identifier("event-attribute-map")
+  AttributeMap eventAttributeMap;
 
   // Constructor for testing - allows manual dependency injection
   @VisibleForTesting
@@ -79,7 +83,7 @@ public class IcebergRestCatalogEventServiceDelegator
       PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory,
       CatalogPrefixParser prefixParser,
-      MutableAttributeMap eventAttributeMap) {
+      AttributeMap eventAttributeMap) {
     this.delegate = delegate;
     this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;

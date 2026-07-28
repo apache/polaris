@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -57,11 +58,14 @@ public class IcebergCatalogHandlerFactory {
   @Inject CatalogHandlerUtils catalogHandlerUtils;
   @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
-  @Inject MutableAttributeMap eventAttributeMap;
   @Inject IcebergMetricsReporter metricsReporter;
   @Inject Clock clock;
   @Inject AccessDelegationModeResolver accessDelegationModeResolver;
   @Inject IdempotencyRequestContext idempotencyRequestContext;
+
+  @Inject
+  @Identifier("event-attribute-map")
+  MutableAttributeMap eventAttributeMap;
 
   public IcebergCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutableIcebergCatalogHandler.builder()
