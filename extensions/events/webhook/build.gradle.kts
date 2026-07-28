@@ -29,12 +29,11 @@ dependencies {
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
 
-  implementation(platform(libs.jackson.bom))
-  implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation(platform(libs.jackson3.bom))
+  implementation("tools.jackson.core:jackson-databind")
 
   implementation(platform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-core")
-  implementation("io.quarkus:quarkus-jackson")
   implementation("io.micrometer:micrometer-core")
   implementation(libs.guava)
 
