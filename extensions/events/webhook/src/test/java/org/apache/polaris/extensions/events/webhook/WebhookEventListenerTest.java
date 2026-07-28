@@ -22,12 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.quarkus.runtime.configuration.MemorySize;
-import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpHeaders;
@@ -46,7 +42,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
@@ -58,6 +53,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 class WebhookEventListenerTest {
 
@@ -70,12 +67,7 @@ class WebhookEventListenerTest {
       PolarisPrincipal.of(TEST_USER, Map.of(), Set.of("role1", "role2"));
   private static final Clock CLOCK = Clock.systemUTC();
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-  static {
-    new PolarisIcebergObjectMapperCustomizer(new MemorySize(BigInteger.valueOf(1024 * 1024)))
-        .customize(OBJECT_MAPPER);
-  }
+  private static final JsonMapper OBJECT_MAPPER = JsonMapper.shared();
 
   @Mock private WebhookEventListenerConfiguration config;
 
@@ -150,8 +142,7 @@ class WebhookEventListenerTest {
   }
 
   private WebhookEventListener createListener() {
-    WebhookEventListener listener =
-        new WebhookEventListener(config, OBJECT_MAPPER, CLOCK, meterRegistry);
+    WebhookEventListener listener = new WebhookEventListener(config, CLOCK, meterRegistry);
     listener.start();
     return listener;
   }
@@ -182,16 +173,17 @@ class WebhookEventListenerTest {
 
       RecordedRequest request = recordedRequests.getFirst();
       JsonNode json = OBJECT_MAPPER.readTree(request.body());
-      assertThat(json.get("specversion").asText()).isEqualTo(WebhookEventListener.SPEC_VERSION);
-      assertThat(json.get("id").asText()).isEqualTo(EVENT_ID.toString());
-      assertThat(json.get("time").asText()).isEqualTo(EVENT_TIME.toString());
-      assertThat(json.get("deliverytime").asText()).isNotBlank();
-      assertThat(json.get("source").asText()).isEqualTo(WebhookEventListener.EVENT_SOURCE);
-      assertThat(json.get("type").asText()).isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
-      assertThat(json.get("realmid").asText()).isEqualTo(REALM);
-      assertThat(json.get("principal").asText()).isEqualTo(TEST_USER);
+      assertThat(json.get("specversion").asString()).isEqualTo(WebhookEventListener.SPEC_VERSION);
+      assertThat(json.get("id").asString()).isEqualTo(EVENT_ID.toString());
+      assertThat(json.get("time").asString()).isEqualTo(EVENT_TIME.toString());
+      assertThat(json.get("deliverytime").asString()).isNotBlank();
+      assertThat(json.get("source").asString()).isEqualTo(WebhookEventListener.EVENT_SOURCE);
+      assertThat(json.get("type").asString())
+          .isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
+      assertThat(json.get("realmid").asString()).isEqualTo(REALM);
+      assertThat(json.get("principal").asString()).isEqualTo(TEST_USER);
       assertThat(json.get("activatedroles")).hasSize(2);
-      assertThat(json.get("tableidentifier").asText()).isEqualTo("test_ns.test_table");
+      assertThat(json.get("tableidentifier").asString()).isEqualTo("test_ns.test_table");
       assertThat(request.eventType()).isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
       assertThat(request.signature())
           .isEqualTo("sha256=" + WebhookEventListener.sign(request.body(), SECRET));
@@ -256,8 +248,7 @@ class WebhookEventListenerTest {
   @Test
   void failsFastWhenEndpointNotConfigured() {
     when(config.endpoint()).thenReturn(Optional.empty());
-    WebhookEventListener listener =
-        new WebhookEventListener(config, OBJECT_MAPPER, CLOCK, meterRegistry);
+    WebhookEventListener listener = new WebhookEventListener(config, CLOCK, meterRegistry);
     assertThatThrownBy(listener::start)
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("polaris.event-listener.webhook.endpoint");
@@ -266,8 +257,7 @@ class WebhookEventListenerTest {
   @Test
   void failsFastWhenHttpsRequiredButHttpConfigured() {
     when(config.requireHttps()).thenReturn(true);
-    WebhookEventListener listener =
-        new WebhookEventListener(config, OBJECT_MAPPER, CLOCK, meterRegistry);
+    WebhookEventListener listener = new WebhookEventListener(config, CLOCK, meterRegistry);
     assertThatThrownBy(listener::start)
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("https");

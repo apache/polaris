@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.extensions.events.webhook;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
@@ -44,7 +42,6 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -62,6 +59,10 @@ import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Delivers Polaris events to an HTTP(S) endpoint as JSON POSTs, optionally signed with HMAC-SHA256.
@@ -84,6 +85,8 @@ public class WebhookEventListener implements PolarisEventListener {
   /** CloudEvents {@code source} attribute identifying Polaris as the event producer. */
   static final String EVENT_SOURCE = "org.apache.polaris";
 
+  private static final ObjectMapper MAPPER = JsonMapper.shared();
+
   private static final Set<String> RESERVED_HEADERS =
       Set.of(
           "content-type",
@@ -102,7 +105,6 @@ public class WebhookEventListener implements PolarisEventListener {
   private final int maxConcurrent;
   private final int maxPending;
   private final boolean requireHttps;
-  private final ObjectMapper objectMapper;
   private final Clock clock;
   private final MeterRegistry meterRegistry;
   private final SecureRandom random = new SecureRandom();
@@ -122,10 +124,7 @@ public class WebhookEventListener implements PolarisEventListener {
 
   @Inject
   public WebhookEventListener(
-      WebhookEventListenerConfiguration config,
-      ObjectMapper objectMapper,
-      Clock clock,
-      MeterRegistry meterRegistry) {
+      WebhookEventListenerConfiguration config, Clock clock, MeterRegistry meterRegistry) {
     this.endpoint = config.endpoint().orElse(null);
     this.secret = config.secret().orElse(null);
     this.headers = Map.copyOf(config.headers());
@@ -136,7 +135,6 @@ public class WebhookEventListener implements PolarisEventListener {
     this.maxConcurrent = Math.max(1, config.maxConcurrent());
     this.maxPending = Math.max(1, config.maxPending());
     this.requireHttps = config.requireHttps();
-    this.objectMapper = objectMapper;
     this.clock = clock;
     this.meterRegistry = meterRegistry;
   }
@@ -480,36 +478,36 @@ public class WebhookEventListener implements PolarisEventListener {
 
   @VisibleForTesting
   String toJson(PolarisEvent event) {
-    // LinkedHashMap for deterministic field order: core CloudEvents attributes first, then
-    // extension attributes (compliant names: lowercase alphanumerics).
-    Map<String, Object> properties = new LinkedHashMap<>();
-    properties.put("specversion", SPEC_VERSION);
-    properties.put("id", event.metadata().eventId().toString());
-    properties.put("type", event.type().name());
-    properties.put("source", EVENT_SOURCE);
+    // ObjectNode preserves insertion order: core CloudEvents attributes first, then extension
+    // attributes (compliant names: lowercase alphanumerics).
+    ObjectNode root = MAPPER.createObjectNode();
+    root.put("specversion", SPEC_VERSION);
+    root.put("id", event.metadata().eventId().toString());
+    root.put("type", event.type().name());
+    root.put("source", EVENT_SOURCE);
     // Original event time from metadata (not delivery time), RFC 3339 per CloudEvents.
-    properties.put("time", event.metadata().timestamp().toString());
-    properties.put("deliverytime", clock.instant().toString());
-    properties.put("realmid", event.metadata().realmId());
+    root.put("time", event.metadata().timestamp().toString());
+    root.put("deliverytime", clock.instant().toString());
+    root.put("realmid", event.metadata().realmId());
     event
         .attributes()
         .get(EventAttributes.TABLE_IDENTIFIER)
         .map(TableIdentifier::toString)
-        .ifPresent(id -> properties.put("tableidentifier", id));
+        .ifPresent(id -> root.put("tableidentifier", id));
     event
         .metadata()
         .user()
         .ifPresent(
             p -> {
-              properties.put("principal", p.getName());
-              properties.put("activatedroles", p.getRoles());
+              root.put("principal", p.getName());
+              root.set("activatedroles", MAPPER.valueToTree(p.getRoles()));
             });
-    event.metadata().requestId().ifPresent(id -> properties.put("requestid", id));
+    event.metadata().requestId().ifPresent(id -> root.put("requestid", id));
     try {
-      return objectMapper.writeValueAsString(properties);
-    } catch (JsonProcessingException e) {
+      return MAPPER.writeValueAsString(root);
+    } catch (JacksonException e) {
       LOGGER.error("Error processing event into JSON string: ", e);
-      LOGGER.debug("Failed to convert the following object into JSON string: {}", properties);
+      LOGGER.debug("Failed to convert the following object into JSON string: {}", root);
       return null;
     }
   }
