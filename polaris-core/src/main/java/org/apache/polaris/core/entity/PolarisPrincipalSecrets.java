@@ -21,6 +21,7 @@ package org.apache.polaris.core.entity;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.security.SecureRandom;
+import java.util.Optional;
 import org.apache.polaris.core.DigestUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -167,27 +168,35 @@ public class PolarisPrincipalSecrets {
     return principalClientId;
   }
 
+  /**
+   * @deprecated no longer used for authentication; kept for compatibility and will be removed in a
+   *     future release. Use {@link #getCredentialsVersionForSecret(String)} instead.
+   */
+  @Deprecated
   public boolean matchesSecret(String potentialSecret) {
-    return getCredentialsVersionForSecret(potentialSecret) != null;
+    return getCredentialsVersionForSecret(potentialSecret).isPresent();
   }
 
   /**
    * Credentials-generation fingerprint corresponding to the secret that matches {@code
    * potentialSecret}: the main generation when it matches the main secret hash, the secondary
-   * generation when it matches the secondary secret hash, or {@code null} when it matches neither.
-   * Tokens minted from these credentials are bound to the matching generation, so their validity
-   * cannot outlive the validity of the credentials that produced them.
+   * generation when it matches the secondary secret hash, or empty when it matches neither. Tokens
+   * minted from these credentials are bound to the matching generation, so their validity cannot
+   * outlive the validity of the credentials that produced them.
+   *
+   * <p>Comparisons are constant-time, as in {@link #matchesCredentialsVersion(String)}.
    */
-  @Nullable
-  public String getCredentialsVersionForSecret(String potentialSecret) {
+  public Optional<String> getCredentialsVersionForSecret(String potentialSecret) {
     String potentialSecretHash = hashSecret(potentialSecret);
-    if (potentialSecretHash.equals(this.mainSecretHash)) {
-      return credentialsVersionForHash(mainSecretHash);
+    if (mainSecretHash != null
+        && DigestUtils.constantTimeEquals(potentialSecretHash, mainSecretHash)) {
+      return Optional.of(credentialsVersionForHash(mainSecretHash));
     }
-    if (potentialSecretHash.equals(this.secondarySecretHash)) {
-      return credentialsVersionForHash(secondarySecretHash);
+    if (secondarySecretHash != null
+        && DigestUtils.constantTimeEquals(potentialSecretHash, secondarySecretHash)) {
+      return Optional.of(credentialsVersionForHash(secondarySecretHash));
     }
-    return null;
+    return Optional.empty();
   }
 
   public String getMainSecret() {
@@ -207,11 +216,11 @@ public class PolarisPrincipalSecrets {
    * Derived from existing fields with the principal's secret salt, so no schema change is required.
    * The value is not itself a credential and is safe to embed in signed (but not encrypted) JWTs.
    *
-   * @return the main credentials version, or {@code null} when no main secret hash is set
+   * @return the main credentials version; never {@code null} since the main secret hash is always
+   *     set by the constructors
    */
-  @Nullable
   public String getCredentialsVersion() {
-    return credentialsVersionForHash(mainSecretHash);
+    return DigestUtils.sha256Hex(mainSecretHash + ":" + secretSalt);
   }
 
   /**

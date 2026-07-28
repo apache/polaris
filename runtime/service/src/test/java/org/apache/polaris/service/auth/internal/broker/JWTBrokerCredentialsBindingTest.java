@@ -197,14 +197,43 @@ public class JWTBrokerCredentialsBindingTest {
             SCOPE,
             TokenType.ACCESS_TOKEN);
     assertThat(exchanged.getError()).isNull();
-    // Re-minted token is bound to the *current* main generation.
+    // No base credentials are re-checked on exchange, so the re-minted token keeps the subject
+    // token's (previous) generation instead of being upgraded to the current main generation.
+    String originalClaim =
+        JWT.decode(original.getAccessToken())
+            .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
+            .asString();
+    assertThat(
+            JWT.decode(exchanged.getAccessToken())
+                .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
+                .asString())
+        .isEqualTo(originalClaim);
+    assertThat(
+            JWT.decode(exchanged.getAccessToken())
+                .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
+                .asString())
+        .isNotEqualTo(secrets.getCredentialsVersion());
+    // The secrets loaded during verify are reused for re-minting: no second metastore read.
+    Mockito.verify(metaStore, Mockito.times(1)).loadPrincipalSecrets(callContext, CLIENT_ID);
+  }
+
+  @Test
+  void legacyTokenExchangeBindsToCurrentMainGeneration() {
+    TokenResponse exchanged =
+        broker.generateFromToken(
+            TokenType.ACCESS_TOKEN,
+            legacyToken(),
+            TokenRequestValidator.TOKEN_EXCHANGE,
+            SCOPE,
+            TokenType.ACCESS_TOKEN);
+    assertThat(exchanged.getError()).isNull();
+    // Legacy tokens carry no claim, so the re-minted token is bound to the current main
+    // generation (one-time upgrade transition).
     assertThat(
             JWT.decode(exchanged.getAccessToken())
                 .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
                 .asString())
         .isEqualTo(secrets.getCredentialsVersion());
-    // The secrets loaded during verify are reused for re-minting: no second metastore read.
-    Mockito.verify(metaStore, Mockito.times(1)).loadPrincipalSecrets(callContext, CLIENT_ID);
   }
 
   @Test

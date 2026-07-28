@@ -38,6 +38,7 @@ import org.apache.polaris.service.auth.DefaultAuthenticator;
 import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,7 +105,8 @@ public class JWTBroker implements TokenBroker {
               decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
               clientId,
               decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString()),
-          secrets);
+          secrets,
+          credentialsVersion);
 
     } catch (NotAuthorizedException e) {
       throw e;
@@ -185,11 +187,14 @@ public class JWTBroker implements TokenBroker {
       }
       tokenScope = scope;
     }
-    // Secrets were already loaded during verify; reuse them instead of a second read.
-    String credentialsVersion = verified.principalSecrets().getCredentialsVersion();
-    if (credentialsVersion == null) {
-      return TokenResponse.of(OAuthError.unauthorized_client);
-    }
+    // Secrets were already loaded during verify; reuse them instead of a second read. Keep the
+    // subject token's credentials generation: no base credentials are re-checked on this path, so
+    // the re-minted token must not outlive the generation it was verified against. Only legacy
+    // tokens (no claim) are bound to the current main generation (one-time upgrade transition).
+    String credentialsVersion =
+        verified.subjectCredentialsVersion() != null
+            ? verified.subjectCredentialsVersion()
+            : verified.principalSecrets().getCredentialsVersion();
     String tokenString =
         generateTokenString(
             decodedToken.getPrincipalName(),
@@ -250,10 +255,8 @@ public class JWTBroker implements TokenBroker {
             .withClaim(CLAIM_KEY_ACTIVE, true)
             .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
             .withClaim(CLAIM_KEY_PRINCIPAL_ID, principalId)
-            .withClaim(CLAIM_KEY_SCOPE, scopes(scope));
-    if (credentialsVersion != null) {
-      builder.withClaim(CLAIM_KEY_CREDENTIALS_VERSION, credentialsVersion);
-    }
+            .withClaim(CLAIM_KEY_SCOPE, scopes(scope))
+            .withClaim(CLAIM_KEY_CREDENTIALS_VERSION, credentialsVersion);
     return builder.sign(algorithm);
   }
 
@@ -281,24 +284,25 @@ public class JWTBroker implements TokenBroker {
     PolarisPrincipalSecrets secrets = principalSecrets.getPrincipalSecrets();
     // Bind the token to the generation of the secret that actually matched, so a token minted
     // with the secondary (pre-rotation) secret expires with that generation.
-    String credentialsVersion = secrets.getCredentialsVersionForSecret(clientSecret);
-    if (credentialsVersion == null) {
+    Optional<String> credentialsVersion = secrets.getCredentialsVersionForSecret(clientSecret);
+    if (credentialsVersion.isEmpty()) {
       return Optional.empty();
     }
     Optional<PrincipalEntity> principal =
         metaStoreManager.findPrincipalById(polarisCallContext, secrets.getPrincipalId());
-    if (principal.isEmpty()) {
-      return Optional.empty();
-    }
-    return Optional.of(new AuthenticatedPrincipal(principal.get(), credentialsVersion));
+    return principal.map(p -> new AuthenticatedPrincipal(p, credentialsVersion.get()));
   }
 
   private record AuthenticatedPrincipal(PrincipalEntity entity, String credentialsVersion) {}
 
   /**
    * Result of token verification. {@code principalSecrets} carries the secrets loaded during
-   * verify, which always happens (even for legacy tokens), so callers can reuse them.
+   * verify, which always happens (even for legacy tokens), so callers can reuse them. {@code
+   * subjectCredentialsVersion} is the token's credentials-generation claim, or {@code null} for
+   * legacy tokens without it.
    */
   private record VerifiedToken(
-      InternalPolarisToken token, PolarisPrincipalSecrets principalSecrets) {}
+      InternalPolarisToken token,
+      PolarisPrincipalSecrets principalSecrets,
+      @Nullable String subjectCredentialsVersion) {}
 }
