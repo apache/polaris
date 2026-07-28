@@ -944,7 +944,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             listEntitiesBuildPagePart(
                 access, fetchBuffer, mapper, filter, transformer, result, limit);
         fetchBuffer.clear();
-        if (nextToken != null || result.size() == limit) {
+        if (nextToken != null) {
           break;
         }
       }
