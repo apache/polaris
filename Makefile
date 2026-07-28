@@ -141,19 +141,21 @@ client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist o
 	@echo "--- Client distribution build complete ---"
 
 .PHONY: client-cleanup
-client-cleanup: ## Cleanup virtual environment and Python cache files
-	@echo "--- Cleaning up virtual environment and Python cache files ---"
-	@echo "Attempting to remove virtual environment directory: $(VENV_DIR)..."
-	@if [ -n "$(VENV_DIR)" ] && [ -d "$(VENV_DIR)" ]; then \
-		rm -rf "$(VENV_DIR)"; \
-		echo "Virtual environment removed."; \
-	else \
-		echo "Virtual environment directory '$(VENV_DIR)' not found or VENV_DIR is empty. No action taken."; \
-	fi
-	@echo "Cleaning up Python cache files..."
-	@find $(PYTHON_CLIENT_DIR) -type f -name "*.pyc" -delete
+client-cleanup: ## Cleanup virtual environment, build artifacts, and generated files
+	@echo "--- Cleaning up client environment and generated files ---"
+	@echo "Removing virtual environment..."
+	@rm -rf "$(VENV_DIR)"
+	@echo "Removing build artifacts..."
+	@rm -rf $(PYTHON_CLIENT_DIR)/dist
+	@echo "Removing copied spec files..."
+	@rm -rf $(PYTHON_CLIENT_DIR)/spec
+	@echo "Removing pytest cache..."
+	@rm -rf $(PYTHON_CLIENT_DIR)/.pytest_cache
+	@echo "Removing OpenAPI generator cache..."
+	@rm -rf $(PYTHON_CLIENT_DIR)/.openapi-generator
+	@echo "Removing Python cache files..."
 	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -delete
-	@echo "--- Virtual environment and Python cache cleanup complete ---"
+	@echo "--- Client cleanup complete ---"
 
 .PHONY: client-setup-env
 client-setup-env: $(VENV_DIR) ## Set up Python client environment (venv + dependencies)
