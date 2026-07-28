@@ -100,7 +100,7 @@ class OidcPolarisCredentialAugmentorTest {
   }
 
   @Test
-  public void testAugmentOidcPrincipalWithToken() {
+  public void testAugmentOidcPrincipal() {
     // Given
     JsonWebToken oidcPrincipal = mock(JsonWebToken.class);
     SecurityIdentity identity =
@@ -109,7 +109,6 @@ class OidcPolarisCredentialAugmentorTest {
             .addRole("ROLE1")
             .addAttribute(TENANT_CONFIG_ATTRIBUTE, config)
             .build();
-    when(oidcPrincipal.getRawToken()).thenReturn("this_is_a_token");
     when(principalMapper.mapPrincipalId(identity)).thenReturn(OptionalLong.of(123L));
     when(principalMapper.mapPrincipalName(identity)).thenReturn(Optional.of("root"));
     when(principalRolesMapper.mapPrincipalRoles(identity)).thenReturn(Set.of("MAPPED_ROLE1"));
@@ -122,35 +121,7 @@ class OidcPolarisCredentialAugmentorTest {
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
     assertThat(result.getCredential(PolarisCredential.class))
-        .isEqualTo(PolarisCredential.of(123L, "root", Set.of("MAPPED_ROLE1"), "this_is_a_token"));
-    // the identity roles should not change, since this is done by the ActiveRolesAugmentor
-    assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
-  }
-
-  @Test
-  public void testAugmentOidcPrincipalWithNoToken() {
-    // Given
-    JsonWebToken oidcPrincipal = mock(JsonWebToken.class);
-    SecurityIdentity identity =
-        QuarkusSecurityIdentity.builder()
-            .setPrincipal(oidcPrincipal)
-            .addRole("ROLE1")
-            .addAttribute(TENANT_CONFIG_ATTRIBUTE, config)
-            .build();
-    when(oidcPrincipal.getRawToken()).thenReturn(null);
-    when(principalMapper.mapPrincipalId(identity)).thenReturn(OptionalLong.of(123L));
-    when(principalMapper.mapPrincipalName(identity)).thenReturn(Optional.of("root"));
-    when(principalRolesMapper.mapPrincipalRoles(identity)).thenReturn(Set.of("MAPPED_ROLE1"));
-
-    // When
-    SecurityIdentity result =
-        augmentor.augment(identity, Uni.createFrom()::item).await().indefinitely();
-
-    // Then
-    assertThat(result).isNotNull();
-    assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
-    assertThat(result.getCredential(PolarisCredential.class))
-        .isEqualTo(PolarisCredential.of(123L, "root", Set.of("MAPPED_ROLE1"), null));
+        .isEqualTo(PolarisCredential.of(123L, "root", Set.of("MAPPED_ROLE1")));
     // the identity roles should not change, since this is done by the ActiveRolesAugmentor
     assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
   }

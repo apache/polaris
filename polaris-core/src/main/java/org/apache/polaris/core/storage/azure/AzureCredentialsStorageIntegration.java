@@ -263,8 +263,7 @@ public class AzureCredentialsStorageIntegration
       Optional<String> refreshCredentialsEndpoint) {
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
     handleAzureCredential(accessConfig, sasToken, location, expiresAt);
-    accessConfig.put(
-        StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
+    accessConfig.expiresAt(expiresAt);
     refreshCredentialsEndpoint.ifPresent(
         endpoint -> {
           accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
@@ -281,9 +280,11 @@ public class AzureCredentialsStorageIntegration
     String accountName = location.getStorageAccount();
 
     config.putCredential(
-        StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + storageDnsName, sasToken);
+        StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_HOST.getPropertyName() + "." + storageDnsName,
+        sasToken);
     config.putCredential(
-        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX.getPropertyName()
+        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS.getPropertyName()
+            + "."
             + storageDnsName,
         String.valueOf(expiresAt.toEpochMilli()));
 
@@ -291,12 +292,14 @@ public class AzureCredentialsStorageIntegration
     // Use accountName (from location) for the stripped variant.
     if (location.isAdls()) {
       config.putCredential(
-          StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + accountName, sasToken);
+          StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_NAME.getPropertyName() + "." + accountName,
+          sasToken);
     }
 
     if (location.isBlob()) {
       config.putCredential(
-          StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + accountName, sasToken);
+          StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_NAME.getPropertyName() + "." + accountName,
+          sasToken);
     }
 
     // PyIceberg and other clients need bare adls.sas-token and adls.account-name for compatibility

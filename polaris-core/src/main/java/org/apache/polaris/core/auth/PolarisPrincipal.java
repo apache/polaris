@@ -22,7 +22,6 @@ import java.security.Principal;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
@@ -31,69 +30,66 @@ import org.immutables.value.Value;
 public interface PolarisPrincipal extends Principal {
 
   /**
-   * Creates a new instance of {@link PolarisPrincipal} from the given {@link PrincipalEntity} and
-   * roles.
+   * Attribute key for the principal entity attribute, of type {@link
+   * org.apache.polaris.core.entity.PrincipalEntity}.
    *
-   * <p>The created principal will have the same ID and name as the {@link PrincipalEntity}, and its
-   * properties will be derived from the internal properties of the entity.
-   *
-   * @param principalEntity the principal entity representing the user or service
-   * @param roles the set of roles associated with the principal
+   * <p>Note: callers must never assume that this attribute is present.
    */
-  static PolarisPrincipal of(PrincipalEntity principalEntity, Set<String> roles) {
-    return of(
-        principalEntity.getName(),
-        principalEntity.getInternalPropertiesAsMap(),
-        roles,
-        Optional.empty());
-  }
+  String PRINCIPAL_ENTITY_ATTRIBUTE_KEY = "org.apache.polaris.core.auth.PRINCIPAL_ENTITY";
 
   /**
-   * Creates a new instance of {@link PolarisPrincipal} from the given {@link PrincipalEntity} and
-   * roles.
+   * Attribute key, of type {@link Boolean}, used to determine how authorizers should resolve
+   * principal roles.
    *
-   * <p>The created principal will have the same ID and name as the {@link PrincipalEntity}, and its
-   * properties will be derived from the internal properties of the entity.
+   * <p>When absent or false, authorizers should resolve only the roles returned by {@link
+   * #getRoles()}; if an empty set is returned, then no principal roles should be resolved.
    *
-   * @param principalEntity the principal entity representing the user or service
-   * @param roles the set of roles associated with the principal
-   * @param token the access token of the current user
+   * <p>When present and true, authorizers should resolve all roles granted to the principal at the
+   * time of check, ignoring roles returned by {@link #getRoles()} (even if an empty set is
+   * returned).
+   *
+   * <p>This attribute is generally present and true when the principal presented a credential
+   * including the pseudo-role {@code PRINCIPAL_ROLE:ALL}.
+   *
+   * <p>Note: Callers must not assume that this attribute is always present.
    */
-  static PolarisPrincipal of(
-      PrincipalEntity principalEntity, Set<String> roles, Optional<String> token) {
-    return of(
-        principalEntity.getName(), principalEntity.getInternalPropertiesAsMap(), roles, token);
-  }
+  String PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY = "org.apache.polaris.core.auth.PRINCIPAL_ROLE:ALL";
 
   /**
-   * Creates a new instance of {@link PolarisPrincipal} with the specified ID, name, roles, and
-   * properties.
+   * Attribute key used to store or retrieve a JSON Web Token (JWT) associated with the {@link
+   * PolarisPrincipal}, of type {@link String}.
+   *
+   * <p>The associated value is expected to represent the JWT provided during authentication and may
+   * be used for further validation or for deriving additional claims.
+   *
+   * <p>Note: callers must never assume that this attribute is present.
+   */
+  String JWT_ATTRIBUTE_KEY = "org.apache.polaris.core.auth.JWT";
+
+  /**
+   * Creates a new instance of {@link PolarisPrincipal} with the specified name, roles, and
+   * attributes.
    *
    * @param name the name of the principal
-   * @param properties additional properties associated with the principal
+   * @param attributes the attributes of the principal
    * @param roles the set of roles associated with the principal
    */
-  static PolarisPrincipal of(String name, Map<String, String> properties, Set<String> roles) {
-    return of(name, properties, roles, Optional.empty());
-  }
-
-  /**
-   * Creates a new instance of {@link PolarisPrincipal} with the specified ID, name, roles, and
-   * properties.
-   *
-   * @param name the name of the principal
-   * @param properties additional properties associated with the principal
-   * @param roles the set of roles associated with the principal
-   * @param token the access token of the current user
-   */
-  static PolarisPrincipal of(
-      String name, Map<String, String> properties, Set<String> roles, Optional<String> token) {
+  static PolarisPrincipal of(String name, Map<String, Object> attributes, Set<String> roles) {
     return ImmutablePolarisPrincipal.builder()
         .name(name)
-        .properties(properties)
-        .token(token)
+        .attributes(attributes)
         .roles(roles)
         .build();
+  }
+
+  /** Returns the principal attributes. */
+  @Value.Redacted
+  Map<String, Object> getAttributes();
+
+  /** Returns the attribute value associated with the given key, if any. */
+  default <T> Optional<T> getAttribute(String key, Class<T> type) {
+    Object value = getAttributes().get(key);
+    return type.isInstance(value) ? Optional.of(type.cast(value)) : Optional.empty();
   }
 
   /**
@@ -104,16 +100,4 @@ public interface PolarisPrincipal extends Principal {
    * principal has in the system.
    */
   Set<String> getRoles();
-
-  /**
-   * Returns the properties of this principal.
-   *
-   * <p>Properties are key-value pairs that provide additional information about the principal, such
-   * as permissions, preferences, or other metadata.
-   */
-  Map<String, String> getProperties();
-
-  /** Optionally returns the access token of the current user. */
-  @Value.Redacted
-  Optional<String> getToken();
 }

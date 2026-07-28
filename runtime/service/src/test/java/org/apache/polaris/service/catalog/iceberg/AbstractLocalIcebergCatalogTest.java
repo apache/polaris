@@ -102,6 +102,10 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
 import org.apache.iceberg.util.LocationUtil;
+import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
+import org.apache.iceberg.view.ImmutableViewVersion;
+import org.apache.iceberg.view.ViewMetadata;
+import org.apache.iceberg.view.ViewMetadataParser;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -122,6 +126,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -2253,6 +2258,29 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     return TableMetadata.newTableMetadata(schema, partitionSpec, tableLocation, ImmutableMap.of());
   }
 
+  private ViewMetadata createSampleViewMetadata(String viewLocation) {
+    return ViewMetadata.builder()
+        .setLocation(viewLocation)
+        .addSchema(
+            new Schema(
+                Types.NestedField.required(1, "intType", Types.IntegerType.get()),
+                Types.NestedField.required(2, "stringType", Types.StringType.get())))
+        .addVersion(
+            ImmutableViewVersion.builder()
+                .versionId(1)
+                .schemaId(0)
+                .timestampMillis(0)
+                .defaultNamespace(Namespace.empty())
+                .addRepresentations(
+                    ImmutableSQLViewRepresentation.builder()
+                        .sql("SELECT 1")
+                        .dialect("spark")
+                        .build())
+                .build())
+        .setCurrentVersionId(1)
+        .build();
+  }
+
   private void createNonExistingNamespaces(Namespace namespace) {
     // Pre-create namespaces if they don't exist
     for (int i = 1; i <= namespace.length(); i++) {
@@ -2547,6 +2575,224 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .hasMessageContaining("View with same name already exists");
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testRegisterTableRejectsMetadataFileOutsideAllowedLocations(boolean overwrite) {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_disallowed_metadata");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    String forbiddenMetadataLocation = "s3://forbidden-bucket/table/metadata/v1.metadata.json";
+
+    Assertions.assertThatThrownBy(
+            () -> catalog.registerTable(table, forbiddenMetadataLocation, overwrite))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid location");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testRegisterTableRejectsTableLocationOutsideAllowedLocations(boolean overwrite) {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_disallowed_table_location");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    // Metadata file is at an allowed location, but the table location embedded inside it is not.
+    String metadataLocation =
+        STORAGE_LOCATION + "/register_disallowed_table_location/table/metadata/v1.metadata.json";
+
+    fileIO.addFile(
+        metadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata("s3://forbidden-bucket/table/"))
+            .getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(table, metadataLocation, overwrite))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid location");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testRegisterTableRejectsMetadataFileOutsideTableLocation(boolean overwrite) {
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false"));
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_metadata_outside_table_location");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    if (overwrite) {
+      catalog.buildTable(table, SCHEMA).create();
+    }
+
+    // The table's base location and the metadata file location arg are both within STORAGE_LOCATION
+    // (allowed), but the metadata file arg is in a different directory than the table location
+    // embedded in the metadata content.
+    String tableLocation = STORAGE_LOCATION + "/register_metadata_outside_table_location/table/";
+    // Metadata file sits outside the table's directory tree
+    String metadataLocation =
+        STORAGE_LOCATION + "/register_metadata_outside_table_location/other_dir/v1.metadata.json";
+    TableMetadata tableMetadata = createSampleTableMetadata(tableLocation);
+    fileIO.addFile(metadataLocation, TableMetadataParser.toJson(tableMetadata).getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(table, metadataLocation, overwrite))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("is not allowed outside of table location");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testRegisterTableAllowsMetadataFileOutsideTableLocationWhenFlagEnabled(
+      boolean overwrite) {
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "true"));
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_metadata_outside_table_location_allowed");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    if (overwrite) {
+      catalog.buildTable(table, SCHEMA).create();
+    }
+
+    String tableLocation =
+        STORAGE_LOCATION + "/register_metadata_outside_table_location_allowed/table/";
+    String metadataLocation =
+        STORAGE_LOCATION
+            + "/register_metadata_outside_table_location_allowed/other_dir/v1.metadata.json";
+    fileIO.addFile(
+        metadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+
+    Assertions.assertThat(catalog.registerTable(table, metadataLocation, overwrite)).isNotNull();
+  }
+
+  @Test
+  public void testRegisterViewRejectsMetadataFileOutsideAllowedLocations() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_view_disallowed_metadata");
+    TableIdentifier view = TableIdentifier.of(namespace, "view");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    String forbiddenMetadataLocation = "s3://forbidden-bucket/view/metadata/v1.metadata.json";
+
+    Assertions.assertThatThrownBy(() -> catalog.registerView(view, forbiddenMetadataLocation))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid location");
+  }
+
+  @Test
+  public void testRegisterViewRejectsViewLocationOutsideAllowedLocations() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_view_disallowed_view_location");
+    TableIdentifier view = TableIdentifier.of(namespace, "view");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+    // Metadata file is at an allowed location, but the view location inside it is forbidden.
+    String metadataLocation =
+        STORAGE_LOCATION + "/register_view_disallowed_view_location/view/metadata/v1.metadata.json";
+    fileIO.addFile(
+        metadataLocation,
+        ViewMetadataParser.toJson(createSampleViewMetadata("s3://forbidden-bucket/view/"))
+            .getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(() -> catalog.registerView(view, metadataLocation))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid location");
+  }
+
+  @Test
+  public void testRegisterViewRejectsMetadataFileOutsideViewLocation() {
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "false"));
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_view_metadata_outside_view_location");
+    TableIdentifier view = TableIdentifier.of(namespace, "view");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    String viewLocation =
+        STORAGE_LOCATION + "/register_view_metadata_outside_view_location/other_view/";
+    String metadataLocation =
+        STORAGE_LOCATION
+            + "/register_view_metadata_outside_view_location/view/metadata/v1.metadata.json";
+    fileIO.addFile(
+        metadataLocation,
+        ViewMetadataParser.toJson(createSampleViewMetadata(viewLocation)).getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(() -> catalog.registerView(view, metadataLocation))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("is not allowed outside of table location");
+  }
+
+  @Test
+  public void testRegisterViewAllowsMetadataFileOutsideViewLocationWhenFlagEnabled() {
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(), "true"));
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_view_metadata_outside_view_location_allowed");
+    TableIdentifier view = TableIdentifier.of(namespace, "view");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    String viewLocation =
+        STORAGE_LOCATION + "/register_view_metadata_outside_view_location_allowed/other_view/";
+    String metadataLocation =
+        STORAGE_LOCATION
+            + "/register_view_metadata_outside_view_location_allowed/view/metadata/v1.metadata.json";
+    fileIO.addFile(
+        metadataLocation,
+        ViewMetadataParser.toJson(createSampleViewMetadata(viewLocation)).getBytes(UTF_8));
+
+    Assertions.assertThat(catalog.registerView(view, metadataLocation)).isNotNull();
+  }
+
+  @Test
+  public void testRegisterTableRejectsMetadataLocationOutsideAllowedLocations() {
+    FileIOFactory fileIOFactorySpy = spy(fileIOFactory);
+    LocalIcebergCatalog testCatalog =
+        newIcebergCatalog(catalog().name(), metaStoreManager, fileIOFactorySpy);
+    testCatalog.setCatalogFileIo(new InMemoryFileIO());
+    testCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(TABLE_PREFIXES)
+            .buildKeepingLast());
+
+    testCatalog.createNamespace(TABLE.namespace());
+
+    Assertions.assertThatThrownBy(
+            () ->
+                testCatalog.registerTable(
+                    TABLE, "s3://other-bucket/path/to/table/metadata/v1.metadata.json"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+
+    Mockito.verify(fileIOFactorySpy, Mockito.never()).loadFileIO(any(), any(), anyMap());
+  }
+
   @Test
   public void testConcurrencyConflictCreateTableUpdatedDuringFinalTransaction() {
     Assumptions.assumeTrue(
@@ -2621,6 +2867,57 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitConflictException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  static Stream<Arguments> renameFailureStatuses() {
+    return Stream.of(
+        // Transient conflict: entity present but concurrently modified -> 503, retryable.
+        Arguments.of(
+            BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+            PolarisServiceUnavailableException.class),
+        // Source path could not be resolved (e.g. concurrently dropped) -> 404, not retryable.
+        Arguments.of(
+            BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, NoSuchNamespaceException.class),
+        // Target path could not be resolved (e.g. concurrently dropped) -> 404, not retryable.
+        Arguments.of(
+            BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED,
+            NoSuchNamespaceException.class));
+  }
+
+  @ParameterizedTest
+  @MethodSource("renameFailureStatuses")
+  public void testConcurrencyConflictRenameTable(
+      BaseResult.ReturnStatus renameStatus, Class<? extends Throwable> expectedException) {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    // Use a spy so that resolution succeeds normally, but the final rename reports the given
+    // failure status. The mapping must distinguish a transient conflict
+    // (TARGET_ENTITY_CONCURRENTLY_MODIFIED -> 503, retryable) from resolution failures
+    // (ENTITY_CANNOT_BE_RESOLVED / CATALOG_PATH_CANNOT_BE_RESOLVED -> 404), rather than failing
+    // with an opaque 500.
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    final LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("rename_conflict_ns");
+    catalog.createNamespace(namespace);
+
+    final TableIdentifier from = TableIdentifier.of(namespace, "rename_from");
+    final TableIdentifier to = TableIdentifier.of(namespace, "rename_to");
+    catalog.buildTable(from, SCHEMA).create();
+
+    doReturn(new EntityResult(renameStatus, null))
+        .when(spyMetaStore)
+        .renameEntity(any(), any(), any(), any(), any());
+
+    Assertions.assertThatThrownBy(() -> catalog.renameTable(from, to))
+        .isInstanceOf(expectedException)
+        .hasMessageContaining("rename_from");
   }
 
   @Test

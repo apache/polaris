@@ -122,7 +122,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
   protected IcebergCatalogHandler newHandler() {
-    return newHandler(Set.of());
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of());
+    return icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
   }
 
   private IcebergCatalogHandler newHandler(Set<String> activatedPrincipalRoles) {
@@ -132,7 +141,10 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   private IcebergCatalogHandler newHandler(
       Set<String> activatedPrincipalRoles, String catalogName, LocalCatalogFactory factory) {
     PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            activatedPrincipalRoles);
     IcebergCatalogHandler handler =
         icebergCatalogHandlerFactory.createHandler(catalogName, authenticatedPrincipal);
     ImmutableIcebergCatalogHandler.Builder builder =
@@ -171,8 +183,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     newRootAdminService().assignPrincipalRole(principalName, PRINCIPAL_ROLE1);
     newRootAdminService().assignPrincipalRole(principalName, PRINCIPAL_ROLE2);
 
+    PrincipalEntity principalEntity = newPrincipal.getPrincipal();
     PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(newPrincipal.getPrincipal(), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
 
     Supplier<IcebergCatalogHandler> handler =
         () ->
@@ -218,7 +234,10 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         rotateAndRefreshPrincipal(
             metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
     PolarisPrincipal authenticatedPrincipal1 =
-        PolarisPrincipal.of(refreshPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
+        PolarisPrincipal.of(
+            refreshPrincipal.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, refreshPrincipal),
+            Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
 
     Supplier<IcebergCatalogHandler> refreshedWrapper =
         () ->
@@ -1165,7 +1184,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
    * behavior to coarse-grained authorization.
    */
   private IcebergCatalogHandler newHandlerWithFineGrainedAuthzDisabled() {
-    PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of());
 
     // Create a custom CallContext that returns a custom RealmConfig
     CallContext mockCallContext = Mockito.mock(CallContext.class);

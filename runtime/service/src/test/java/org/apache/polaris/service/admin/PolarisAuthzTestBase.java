@@ -219,7 +219,15 @@ public abstract class PolarisAuthzTestBase {
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    this.authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    this.authenticatedRoot =
+        PolarisPrincipal.of(
+            rootPrincipal.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                rootPrincipal,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of());
     QuarkusMock.installMockForType(authenticatedRoot, PolarisPrincipal.class);
 
     this.adminService =

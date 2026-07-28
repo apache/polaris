@@ -32,11 +32,10 @@ dependencies {
     api(project(":polaris-api-management-service"))
 
     api(project(":polaris-container-spec-helper"))
-    api(project(":polaris-azurite-testcontainer"))
     api(project(":polaris-floci-aws-testcontainer"))
     api(project(":polaris-floci-az-testcontainer"))
     api(project(":polaris-floci-gcp-testcontainer"))
-    api(project(":polaris-gcs-testcontainer"))
+    api(project(":polaris-keycloak-testcontainer"))
     api(project(":polaris-minio-testcontainer"))
     api(project(":polaris-rustfs-testcontainer"))
     api(project(":polaris-immutables"))
@@ -99,9 +98,12 @@ dependencies {
 
     api(project(":polaris-extensions-auth-opa"))
     api(project(":polaris-extensions-auth-ranger"))
+    api(project(":polaris-extensions-events-kafka"))
     api(project(":polaris-extensions-federation-bigquery"))
     api(project(":polaris-extensions-federation-hadoop"))
     api(project(":polaris-extensions-federation-hive"))
+    api(project(":polaris-extensions-metrics-reports"))
+    api(project(":polaris-extensions-metrics-reports-jdbc"))
     api(project(":polaris-extensions-semantic-models"))
     api(project(":polaris-hms-testcontainer"))
 

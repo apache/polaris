@@ -667,6 +667,71 @@ public class PolarisAdminServiceTest {
   }
 
   @Test
+  void testGrantPrivilegeOnViewLikeToRole_PassthroughFacade() throws Exception {
+    String catalogName = "test-catalog";
+    String catalogRoleName = "test-role";
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier = TableIdentifier.of(namespace, "test-view");
+    PolarisPrivilege privilege = PolarisPrivilege.VIEW_WRITE_PROPERTIES;
+
+    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
+    when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
+
+    PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisEntity catalogRoleEntity = createEntity(catalogRoleName, PolarisEntityType.CATALOG_ROLE);
+    when(catalogRoleWrapper.getRawLeafEntity()).thenReturn(catalogRoleEntity);
+    when(resolutionManifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE))))
+        .thenReturn(catalogRoleWrapper);
+
+    PolarisEntity nsEntity = createNamespaceEntity(namespace, 2L, 1L);
+
+    // The view is not yet resolved as a table-like entity, so the pre-existing path stops at the
+    // namespace (leaf subtype is not ICEBERG_VIEW). This forces the synthetic-creation branch.
+    PolarisResolvedPathWrapper existingPathWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(existingPathWrapper.getRawFullPath()).thenReturn(List.of(catalogEntity, nsEntity));
+    when(existingPathWrapper.getRawLeafEntity()).thenReturn(nsEntity);
+    when(resolutionManifest.getResolvedPath(
+            eq(ResolvedPathKey.ofTableLike(identifier)), eq(PolarisEntitySubType.ANY_SUBTYPE)))
+        .thenReturn(existingPathWrapper);
+
+    // The single-level namespace already exists, so no synthetic namespace is created.
+    PolarisResolvedPathWrapper nsWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(nsWrapper.getRawFullPath()).thenReturn(List.of(catalogEntity, nsEntity));
+    when(nsWrapper.getRawLeafEntity()).thenReturn(nsEntity);
+    when(nsWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace))).thenReturn(true);
+    when(resolutionManifest.getPassthroughResolvedPath(eq(ResolvedPathKey.ofNamespace(namespace))))
+        .thenReturn(nsWrapper);
+
+    GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
+    when(idResult.getId()).thenReturn(6L);
+    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    EntityResult createResult = mock(EntityResult.class);
+    when(createResult.isSuccess()).thenReturn(true);
+    when(metaStoreManager.createEntityIfNotExists(any(), any(), any())).thenReturn(createResult);
+
+    // After creation, the synthetic leaf re-resolves as an ICEBERG_VIEW (via selectEntitySubType).
+    PolarisEntity viewEntity =
+        createTableEntity(identifier, PolarisEntitySubType.ICEBERG_VIEW, 6L, 2L);
+    PolarisResolvedPathWrapper viewPathWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(viewPathWrapper.getRawLeafEntity()).thenReturn(viewEntity);
+    when(viewPathWrapper.getRawParentPath()).thenReturn(List.of(catalogEntity, nsEntity));
+    when(resolutionManifest.getPassthroughResolvedPath(eq(ResolvedPathKey.ofTableLike(identifier))))
+        .thenReturn(viewPathWrapper);
+
+    PrivilegeResult successResult = mock(PrivilegeResult.class);
+    when(successResult.isSuccess()).thenReturn(true);
+    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any(), any()))
+        .thenReturn(successResult);
+
+    PrivilegeResult result =
+        adminService.grantPrivilegeOnViewToRole(
+            catalogName, catalogRoleName, identifier, privilege);
+    assertThat(result.isSuccess()).isTrue();
+  }
+
+  @Test
   void testGrantPrivilegeOnTableLikeToRole_PassthroughFacade_FeatureDisabled() throws Exception {
     String catalogName = "test-catalog";
     String catalogRoleName = "test-role";

@@ -113,7 +113,6 @@ import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.reporting.DefaultMetricsReporter;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -296,7 +295,13 @@ public record TestServices(
                   .setCreateTimestamp(Instant.now().toEpochMilli())
                   .setCredentialRotationRequiredState()
                   .build());
-      PolarisPrincipal principal = PolarisPrincipal.of(createdPrincipal.getPrincipal(), Set.of());
+
+      PrincipalEntity principalEntity = createdPrincipal.getPrincipal();
+      PolarisPrincipal principal =
+          PolarisPrincipal.of(
+              principalEntity.getName(),
+              Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+              Set.of());
 
       SecurityContext securityContext =
           new SecurityContext() {
@@ -431,7 +436,10 @@ public record TestServices(
                             endpointContributorHandle(
                                 IcebergViewConfigEndpoints.class, icebergViewEndpoints)));
             return new CatalogConfigHandler(
-                new DefaultCatalogPrefixParser(), resolverFactory, configEndpointContributors);
+                new DefaultCatalogPrefixParser(),
+                resolverFactory,
+                configEndpointContributors,
+                idempotencyConfiguration);
           };
 
       Supplier<IcebergCatalogAdapter> catalogAdapterSupplier =
@@ -458,7 +466,7 @@ public record TestServices(
                         .federatedCatalogFactories(federatedCatalogFactory)
                         .storageAccessConfigProvider(storageAccessConfigProvider)
                         .eventAttributeMap(eventAttributeMap)
-                        .metricsReporter(new DefaultMetricsReporter())
+                        .metricsReporter(envelope -> {})
                         .clock(clock)
                         .accessDelegationModeResolver(
                             new DefaultAccessDelegationModeResolver(realmConfig))

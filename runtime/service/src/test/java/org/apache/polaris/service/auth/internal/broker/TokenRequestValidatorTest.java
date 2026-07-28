@@ -69,7 +69,20 @@ public class TokenRequestValidatorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"null", "", ",", "ALL", "PRINCIPAL_ROLE:", "PRINCIPAL_ROLE"})
+  @ValueSource(
+      strings = {
+        "null",
+        "",
+        " ",
+        "  ",
+        ",",
+        "ALL",
+        "PRINCIPAL_ROLE:",
+        "PRINCIPAL_ROLE",
+        " PRINCIPAL_ROLE:ALL",
+        "\tPRINCIPAL_ROLE:ALL\t",
+        "PRINCIPAL_ROLE:ONE  PRINCIPAL_ROLE:TWO"
+      })
   public void testValidateForClientCredentialsFlowInvalidScope(String scope) {
     Assertions.assertThat(
             new TokenRequestValidator()
@@ -79,12 +92,18 @@ public class TokenRequestValidatorTest {
         .isEqualTo(OAuthError.invalid_scope);
   }
 
-  @Test
-  public void testValidateForClientCredentialsFlowAllValid() {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "PRINCIPAL_ROLE:ALL",
+        "PRINCIPAL_ROLE:ONE PRINCIPAL_ROLE:TWO",
+        "PRINCIPAL_ROLE:ONE PRINCIPAL_ROLE:ONE"
+      })
+  public void testValidateForClientCredentialsFlowValidScope(String scope) {
     Assertions.assertThat(
             new TokenRequestValidator()
                 .validateForClientCredentialsFlow(
-                    "client-id", "client-secret", "client_credentials", "PRINCIPAL_ROLE:ALL"))
+                    "client-id", "client-secret", "client_credentials", scope))
         .isEmpty();
   }
 }

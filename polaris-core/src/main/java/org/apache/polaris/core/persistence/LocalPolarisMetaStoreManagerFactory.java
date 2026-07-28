@@ -33,7 +33,6 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.jspecify.annotations.NonNull;
@@ -122,7 +121,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
-  public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
+  public synchronized Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
     Map<String, BaseResult> results = new HashMap<>();
 
     for (String realm : realms) {
@@ -136,6 +135,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
       sessionSupplierMap.remove(realm);
       metaStoreManagerMap.remove(realm);
+      entityCacheMap.remove(realm);
     }
 
     return Map.copyOf(results);
@@ -158,11 +158,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     }
     checkPolarisServiceBootstrappedForRealm(realmContext);
     return sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-  }
-
-  @Override
-  public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
-    return getOrCreateSession(realmContext);
   }
 
   @Override

@@ -35,7 +35,8 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 @ApplicationScoped
 public class OidcTenantResolvingAugmentor implements SecurityIdentityAugmentor {
 
-  public static final String TENANT_CONFIG_ATTRIBUTE = "polaris-tenant-config";
+  public static final String TENANT_CONFIG_ATTRIBUTE =
+      "org.apache.polaris.service.auth.TENANT_CONFIG";
 
   // must run before OidcPolarisCredentialAugmentor
   public static final int PRIORITY = OidcPolarisCredentialAugmentor.PRIORITY + 100;

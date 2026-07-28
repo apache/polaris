@@ -200,7 +200,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             storageAccessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN),
             new Date(
                 Long.parseLong(
-                    storageAccessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT))));
+                    storageAccessConfig.get(
+                        StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT_MS))));
     return StorageOptions.newBuilder()
         .setCredentials(GoogleCredentials.create(accessToken))
         .build()

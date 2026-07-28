@@ -41,7 +41,7 @@ public class AzureCredentialsStorageIntegrationTest {
     // ADLS location without refresh credentials endpoint.
     StorageAccessConfig adlsNoRefreshResult =
         toAccessConfig("sasToken", adlsLocation, expiresAt, Optional.empty());
-    Assertions.assertThat(adlsNoRefreshResult.credentials()).hasSize(6);
+    Assertions.assertThat(adlsNoRefreshResult.credentials()).hasSize(5);
     Assertions.assertThat(adlsNoRefreshResult.credentials())
         .containsKey("adls.sas-token.myaccount." + AzureLocation.ADLS_ENDPOINT);
     Assertions.assertThat(adlsNoRefreshResult.credentials())
@@ -61,7 +61,7 @@ public class AzureCredentialsStorageIntegrationTest {
     // ADLS location with refresh credentials endpoint.
     StorageAccessConfig adlsWithRefreshResult =
         toAccessConfig("sasToken", adlsLocation, expiresAt, Optional.of("endpoint/credentials"));
-    Assertions.assertThat(adlsWithRefreshResult.credentials()).hasSize(6);
+    Assertions.assertThat(adlsWithRefreshResult.credentials()).hasSize(5);
     Assertions.assertThat(adlsWithRefreshResult.credentials())
         .containsKey("adls.sas-token.myaccount");
     Assertions.assertThat(adlsWithRefreshResult.credentials())
@@ -81,7 +81,7 @@ public class AzureCredentialsStorageIntegrationTest {
     // Blob location.
     StorageAccessConfig blobResult =
         toAccessConfig("sasToken", blobLocation, expiresAt, Optional.empty());
-    Assertions.assertThat(blobResult.credentials()).hasSize(6);
+    Assertions.assertThat(blobResult.credentials()).hasSize(5);
     Assertions.assertThat(blobResult.credentials()).containsKey("adls.sas-token.myaccount");
     Assertions.assertThat(blobResult.credentials())
         .containsKey("adls.sas-token.myaccount." + AzureLocation.BLOB_ENDPOINT);

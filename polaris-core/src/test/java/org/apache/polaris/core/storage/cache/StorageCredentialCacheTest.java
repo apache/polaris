@@ -424,19 +424,18 @@ public class StorageCredentialCacheTest {
               .put(StorageAccessProperty.AWS_KEY_ID, "key_id_" + finalI)
               .put(StorageAccessProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
               .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
-              .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
               .build());
       if (res.size() == number) return res;
       res.add(
           StorageAccessConfig.builder()
-              .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
-              .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
+              .put(StorageAccessProperty.AZURE_SAS_TOKEN_BARE, "sas_token_" + finalI)
+              .put(StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS, expireTime)
               .build());
       if (res.size() == number) return res;
       res.add(
           StorageAccessConfig.builder()
               .put(StorageAccessProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
-              .put(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
+              .put(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT_MS, expireTime)
               .build());
     }
     return res;

@@ -19,7 +19,6 @@
 
 package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
-import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
@@ -30,9 +29,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
@@ -41,17 +38,16 @@ import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventType;
+import org.apache.polaris.test.floci.aws.FlociAws;
+import org.apache.polaris.test.floci.aws.FlociAwsAccess;
+import org.apache.polaris.test.floci.aws.FlociAwsExtension;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.localstack.LocalStackContainer;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsAsyncClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
@@ -63,18 +59,9 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsRe
 import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsResponse;
 
+@ExtendWith(FlociAwsExtension.class)
 class AwsCloudWatchEventListenerTest {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AwsCloudWatchEventListenerTest.class);
-
-  private static final LocalStackContainer LOCAL_STACK =
-      new LocalStackContainer(
-              containerSpecHelper("localstack", AwsCloudWatchEventListenerTest.class)
-                  .dockerImageName(null))
-          .withServices("logs");
-
-  private static final String LOG_GROUP = "test-log-group";
-  private static final String LOG_STREAM = "test-log-stream";
+  private static final String REGION = "us-east-1";
   private static final String REALM = "test-realm";
   private static final String TEST_USER = "test-user";
   private static final PolarisPrincipal PRINCIPAL =
@@ -90,18 +77,23 @@ class AwsCloudWatchEventListenerTest {
 
   @Mock private AwsCloudWatchConfiguration config;
 
-  private ExecutorService executorService;
+  @FlociAws(bucket = "cloudwatch-test-bucket", region = REGION)
+  private static FlociAwsAccess flociAws;
+
   private AutoCloseable mockitoContext;
+  private String logGroup;
+  private String logStream;
 
   @BeforeEach
   void setUp() {
     mockitoContext = MockitoAnnotations.openMocks(this);
-    executorService = Executors.newSingleThreadExecutor();
+    logGroup = "test-log-group-" + UUID.randomUUID();
+    logStream = "test-log-stream-" + UUID.randomUUID();
 
     // Configure the mocks
-    when(config.awsCloudWatchLogGroup()).thenReturn(LOG_GROUP);
-    when(config.awsCloudWatchLogStream()).thenReturn(LOG_STREAM);
-    when(config.awsCloudWatchRegion()).thenReturn("us-east-1");
+    when(config.awsCloudWatchLogGroup()).thenReturn(logGroup);
+    when(config.awsCloudWatchLogStream()).thenReturn(logStream);
+    when(config.awsCloudWatchRegion()).thenReturn(REGION);
     when(config.synchronousMode()).thenReturn(false); // Default to async mode
   }
 
@@ -110,27 +102,13 @@ class AwsCloudWatchEventListenerTest {
     if (mockitoContext != null) {
       mockitoContext.close();
     }
-    if (executorService != null) {
-      executorService.shutdownNow();
-      if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-        LOGGER.warn("ExecutorService did not terminate in time");
-      }
-    }
-    if (LOCAL_STACK.isRunning()) {
-      LOCAL_STACK.stop();
-    }
   }
 
   private CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
-    if (!LOCAL_STACK.isRunning()) {
-      LOCAL_STACK.start();
-    }
     return CloudWatchLogsAsyncClient.builder()
-        .endpointOverride(LOCAL_STACK.getEndpoint())
-        .credentialsProvider(
-            StaticCredentialsProvider.create(
-                AwsBasicCredentials.create(LOCAL_STACK.getAccessKey(), LOCAL_STACK.getSecretKey())))
-        .region(Region.of(LOCAL_STACK.getRegion()))
+        .endpointOverride(flociAws.endpoint())
+        .credentialsProvider(flociAws.credentialsProvider())
+        .region(Region.of(flociAws.region().orElse(REGION)))
         .build();
   }
 
@@ -162,12 +140,12 @@ class AwsCloudWatchEventListenerTest {
   @Test
   void shouldAcceptPreviouslyCreatedLogGroupAndStream() {
     CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
-    client.createLogGroup(CreateLogGroupRequest.builder().logGroupName(LOG_GROUP).build()).join();
+    client.createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroup).build()).join();
     client
         .createLogStream(
             CreateLogStreamRequest.builder()
-                .logGroupName(LOG_GROUP)
-                .logStreamName(LOG_STREAM)
+                .logGroupName(logGroup)
+                .logStreamName(logStream)
                 .build())
         .join();
     verifyLogGroupAndStreamExist(client);
@@ -208,8 +186,8 @@ class AwsCloudWatchEventListenerTest {
                     client
                         .getLogEvents(
                             GetLogEventsRequest.builder()
-                                .logGroupName(LOG_GROUP)
-                                .logStreamName(LOG_STREAM)
+                                .logGroupName(logGroup)
+                                .logStreamName(logStream)
                                 .build())
                         .join();
                 assertThat(resp.events().size()).isGreaterThan(0);
@@ -218,8 +196,8 @@ class AwsCloudWatchEventListenerTest {
           client
               .getLogEvents(
                   GetLogEventsRequest.builder()
-                      .logGroupName(LOG_GROUP)
-                      .logStreamName(LOG_STREAM)
+                      .logGroupName(logGroup)
+                      .logStreamName(logStream)
                       .build())
               .join();
 
@@ -270,8 +248,8 @@ class AwsCloudWatchEventListenerTest {
                     client
                         .getLogEvents(
                             GetLogEventsRequest.builder()
-                                .logGroupName(LOG_GROUP)
-                                .logStreamName(LOG_STREAM)
+                                .logGroupName(logGroup)
+                                .logStreamName(logStream)
                                 .build())
                         .join();
                 assertThat(resp.events().size()).isGreaterThan(0);
@@ -281,8 +259,8 @@ class AwsCloudWatchEventListenerTest {
           client
               .getLogEvents(
                   GetLogEventsRequest.builder()
-                      .logGroupName(LOG_GROUP)
-                      .logStreamName(LOG_STREAM)
+                      .logGroupName(logGroup)
+                      .logStreamName(logStream)
                       .build())
               .join();
 
@@ -308,25 +286,25 @@ class AwsCloudWatchEventListenerTest {
     DescribeLogGroupsResponse groups =
         client
             .describeLogGroups(
-                DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
+                DescribeLogGroupsRequest.builder().logGroupNamePrefix(logGroup).build())
             .join();
     assertThat(groups.logGroups())
         .hasSize(1)
         .first()
-        .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(LOG_GROUP));
+        .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(logGroup));
 
     // Verify log stream exists
     DescribeLogStreamsResponse streams =
         client
             .describeLogStreams(
                 DescribeLogStreamsRequest.builder()
-                    .logGroupName(LOG_GROUP)
-                    .logStreamNamePrefix(LOG_STREAM)
+                    .logGroupName(logGroup)
+                    .logStreamNamePrefix(logStream)
                     .build())
             .join();
     assertThat(streams.logStreams())
         .hasSize(1)
         .first()
-        .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
+        .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(logStream));
   }
 }

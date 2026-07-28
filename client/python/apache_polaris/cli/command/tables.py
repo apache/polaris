@@ -77,39 +77,27 @@ class TableCommand(Command):
         ns_str = UNIT_SEPARATOR.join(namespace_list)
 
         if self.table_subcommand == Subcommands.LIST:
-            try:
-                result = catalog_api.list_tables(prefix=catalog_name, namespace=ns_str)
-                for table_identifier in result.identifiers:
-                    print(table_identifier.to_json())
-            except Exception as e:
-                handle_api_exception(
-                    f"Table Listing ({'.'.join(namespace_list)})",
-                    e,
-                )
+            result = catalog_api.list_tables(prefix=catalog_name, namespace=ns_str)
+            for table_identifier in result.identifiers:
+                print(table_identifier.to_json())
         elif self.table_subcommand == Subcommands.GET:
-            try:
-                print(
-                    catalog_api.load_table(
-                        prefix=catalog_name,
-                        namespace=ns_str,
-                        table=table_name,
-                    ).to_json()
-                )
-            except Exception as e:
-                handle_api_exception(f"Table Load ({table_name})", e)
-        elif self.table_subcommand == Subcommands.DELETE:
-            namespace_dot = ".".join(namespace_list)
-            print(f"De-registering table {namespace_dot}.{table_name}...")
-            try:
-                catalog_api.drop_table(
+            print(
+                catalog_api.load_table(
                     prefix=catalog_name,
                     namespace=ns_str,
                     table=table_name,
-                    purge_requested=False,
-                )
-                print(f"De-registering table {namespace_dot}.{table_name} completed")
-            except Exception as e:
-                handle_api_exception(f"Table De-registration ({table_name})", e)
+                ).to_json()
+            )
+        elif self.table_subcommand == Subcommands.DELETE:
+            namespace_dot = ".".join(namespace_list)
+            print(f"De-registering table {namespace_dot}.{table_name}...")
+            catalog_api.drop_table(
+                prefix=catalog_name,
+                namespace=ns_str,
+                table=table_name,
+                purge_requested=False,
+            )
+            print(f"De-registering table {namespace_dot}.{table_name} completed")
         elif self.table_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api, catalog_api, ns_str)
 

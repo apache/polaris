@@ -96,8 +96,6 @@ class FindCommand(Command):
                     )
             elif self.catalog_name:
                 print("No catalogs found to search.")
-        else:
-            catalogs_to_search = []
 
         # Summary
         total_results = sum(self._type_counts.values())
