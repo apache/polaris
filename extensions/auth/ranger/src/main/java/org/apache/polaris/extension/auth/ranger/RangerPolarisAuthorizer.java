@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
+import org.apache.polaris.core.auth.AuthorizationIntentResolver;
 import org.apache.polaris.core.auth.AuthorizationPreConditions;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -34,6 +36,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
@@ -90,7 +93,32 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   @Override
   public @NonNull AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    throw new UnsupportedOperationException("authorize is not implemented yet");
+    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
+    Set<PolarisBaseEntity> activatedEntities =
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles();
+    for (AuthorizationIntent intent : request.intents()) {
+      AuthorizationIntentResolver.ResolvedIntent resolvedIntent =
+          AuthorizationIntentResolver.resolve(resolutionManifest, intent);
+      try {
+        // Reuse the existing resolved-path authorization logic (Ranger policy evaluation,
+        // credential-rotation precondition, semantics lookup) by driving it with the targets
+        // resolved from the request intent, then translate its ForbiddenException into a decision.
+        authorizeOrThrow(
+            request.principal(),
+            activatedEntities,
+            intent.getOperation(),
+            resolvedIntent.targets(),
+            resolvedIntent.secondaries());
+      } catch (ForbiddenException e) {
+        LOG.debug(
+            "Authorization denied for principal {} intent {}",
+            request.principal().getName(),
+            intent,
+            e);
+        return AuthorizationDecision.deny(e.getMessage());
+      }
+    }
+    return AuthorizationDecision.allow();
   }
 
   @Override

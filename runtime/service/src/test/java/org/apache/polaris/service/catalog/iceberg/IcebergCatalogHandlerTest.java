@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doThrow;
@@ -219,6 +220,18 @@ class IcebergCatalogHandlerTest {
     assertThat(actionsCaptor.getValue()).containsExactlyInAnyOrder(actions);
   }
 
+  /**
+   * Matches an {@link AuthorizationRequest} whose first intent targets the given operation. Used to
+   * stub/verify the decision-native {@code authorizeOrThrow(state, request)} path per operation.
+   */
+  private static AuthorizationRequest requestWithOperation(PolarisAuthorizableOperation op) {
+    return argThat(
+        request ->
+            request != null
+                && !request.intents().isEmpty()
+                && request.intents().getFirst().getOperation() == op);
+  }
+
   @Test
   void registerTableWithVendedCredentialsVendsReadWriteActionsWhenWriteDelegationAuthorized() {
     Catalog catalog = mockRegisterTableCatalog(false);
@@ -323,39 +336,37 @@ class IcebergCatalogHandlerTest {
     when(catalog.loadTable(TABLE2)).thenReturn(table);
     when(accessDelegationModeResolver.resolve(any(), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    // The write-delegation probe now routes through the decision-native
+    // authorizeOrThrow(state, request) path rather than the legacy resolved-path overload, so deny
+    // it by matching the request whose intent is the write-delegation operation.
     doThrow(new ForbiddenException("write delegation denied"))
         .when(authorizer)
         .authorizeOrThrow(
-            any(),
-            any(),
-            eq(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<AuthorizationRequest> requestCaptor =
+            any(AuthorizationState.class),
+            requestWithOperation(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION));
+    ArgumentCaptor<AuthorizationRequest> resolveRequestCaptor =
         ArgumentCaptor.forClass(AuthorizationRequest.class);
     ArgumentCaptor<AuthorizationState> stateCaptor =
         ArgumentCaptor.forClass(AuthorizationState.class);
-    ArgumentCaptor<PolarisAuthorizableOperation> operationCaptor =
-        ArgumentCaptor.forClass(PolarisAuthorizableOperation.class);
+    ArgumentCaptor<AuthorizationRequest> authorizeRequestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
     handler.loadCredentials(TABLE2, Optional.empty());
 
-    verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
+    verify(authorizer)
+        .resolveAuthorizationInputs(stateCaptor.capture(), resolveRequestCaptor.capture());
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
-    assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
+    assertThat(resolveRequestCaptor.getValue().intents().getFirst().getOperation())
         .isEqualTo(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION);
     verify(authorizer, org.mockito.Mockito.times(2))
-        .authorizeOrThrow(
-            any(),
-            any(),
-            operationCaptor.capture(),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
-    assertThat(operationCaptor.getAllValues())
+        .authorizeOrThrow(any(AuthorizationState.class), authorizeRequestCaptor.capture());
+    assertThat(
+            authorizeRequestCaptor.getAllValues().stream()
+                .map(request -> request.intents().getFirst().getOperation())
+                .toList())
         .containsExactly(
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION,
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION);
