@@ -385,13 +385,20 @@ public abstract class CatalogHandler {
       throw notFoundExceptionForTableLikeEntity(identifier, subType);
     }
 
-    authorizer()
-        .authorizeOrThrow(
+    // Route through the decision-native authorize(state, request) path (via the throwing
+    // convenience wrapper) instead of the legacy resolved-path authorizeOrThrow overload. The
+    // resolution manifest was already populated by resolveBasicTableLikeTargetOrThrow, so the
+    // authorizer re-resolves the same table-like securable from the request intent. The null-check
+    // above is retained so a missing entity still surfaces as a not-found (404) response rather
+    // than a server error from the authorizer's re-resolution.
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    AuthorizationRequest request =
+        new AuthorizationRequest(
             polarisPrincipal(),
-            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-            op,
-            target,
-            null /* secondary */);
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    op, PolarisSecurableMapper.tableLike(catalogName(), identifier))));
+    authorizer().authorizeOrThrow(authorizationState, request);
 
     initializeCatalog();
   }
