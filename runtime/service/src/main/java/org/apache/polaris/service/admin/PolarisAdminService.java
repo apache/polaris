@@ -1032,6 +1032,9 @@ public class PolarisAdminService {
       updateBuilder.setStorageConfigurationInfo(
           realmConfig, updateRequest.getStorageConfigInfo(), defaultBaseLocation);
     }
+    if (updateRequest.getKmsConfigInfo() != null) {
+      updateBuilder.setKmsConfigurationInfo(updateRequest.getKmsConfigInfo());
+    }
     CatalogEntity updatedEntity = updateBuilder.build();
 
     validateUpdateCatalogDiffOrThrow(currentCatalogEntity, updatedEntity);

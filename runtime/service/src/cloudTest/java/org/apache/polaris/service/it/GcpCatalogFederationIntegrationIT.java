@@ -193,7 +193,8 @@ public class GcpCatalogFederationIntegrationIT {
                 .setGcsServiceAccount(SERVICE_ACCOUNT)
                 .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
                 .setAllowedLocations(List.of(BASE_LOCATION))
-                .build());
+                .build(),
+            null);
 
     managementApi.createCatalog(catalog);
   }

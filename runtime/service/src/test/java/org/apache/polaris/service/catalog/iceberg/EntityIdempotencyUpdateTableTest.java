@@ -202,7 +202,8 @@ public class EntityIdempotencyUpdateTableTest {
             1725487592064L,
             1725487592064L,
             1,
-            storageConfig);
+            storageConfig,
+            null);
     try (Response response =
         services
             .catalogsApi()
