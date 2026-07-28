@@ -30,6 +30,23 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
+
+### Breaking changes
+
+### New Features
+
+### Changes
+
+### Deprecations
+
+### Fixes
+
+### Commits
+
+## [1.7.0]
+
+### Upgrade notes
+
 - Relational JDBC: a new schema version 5 makes the `events.catalog_id` column nullable. Events that
   are not scoped to a catalog (principal, policy, rate-limiting, etc.) now persist `NULL` instead of
   the placeholder string `__realm__` (which only ever existed in 1.6.0 release candidates). Fresh
@@ -44,6 +61,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   See the Relational JDBC metastore documentation for details.
 
 ### Breaking changes
+
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms
   are now always bootstrapped with the latest available schema version.
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
@@ -66,6 +84,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   storage provider, such as `s3.session-token-expires-at-ms` for S3.
 
 ### New Features
+
 - Added Kafka PolarisEventListener for publishing events to Kafka.
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
 - Added the `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` feature flag (off by default). When enabled, a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix.
@@ -79,6 +98,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added opt-in idempotency for `createTable` and `updateTable` in the Iceberg REST catalog. When enabled via `polaris.idempotency.enabled=true` (default `false`), a client-supplied `Idempotency-Key` header is embedded into the table entity and committed in the same transaction as the operation; a retry carrying the same key within the TTL window (`polaris.idempotency.ttl`, default `PT5M`) replays the original success instead of failing — with `AlreadyExists` for `createTable`, or with `CommitFailedException` for `updateTable` when the request's requirements no longer match the already-advanced table. When idempotency is enabled, the reuse window is advertised to clients through the `idempotency-key-lifetime` field of the `GET /v1/config` response.
 
 ### Changes
+
 - The admin tool's `bootstrap` command is now idempotent: bootstrapping a realm that is already
   bootstrapped is reported as "Realm '<realm>' is already bootstrapped; skipping." and no longer
   fails the command, making automated bootstrap jobs safe to re-run. Correspondingly,
@@ -89,9 +109,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The field `clientSecret` of the Polaris management API type `ResetPrincipalRequest` is now using `format: password`. This does not change the wire format, but code generated from the OpenAPI may require downstream changes.
 
 ### Deprecations
+
 - Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
 ### Fixes
+
 - The NoSQL persistence commit log (`Commits.commitLog`) no longer stops early when a commit's recent-ancestor tail is shorter than the internal fetch page size. With a `polaris.persistence.reference-previous-head-count` smaller than the page size, the natural-order commit log previously truncated at the first short tail because trailing null entries in the fetch page were treated as end-of-history, which could also drop still-referenced objects during maintenance.
 - Python CLI REPL now shows a clear "Syntax error" message for malformed input instead of a generic "unexpected error" message.
 - Python CLI `setup apply` now exits with an error after any setup operation fails, while still attempting the remaining operations. Previously, individual failures were logged but the command reported success and exited with status 0.
@@ -141,6 +163,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The token broker now builds the JWT `Algorithm` and `JWTVerifier` once per realm in the `TokenBrokerFactory` and reuses them across requests, instead of rebuilding them on every `verify()`/`sign()` call on the request-scoped broker. For deployments using file-based symmetric secrets, the secret is now read once per realm (at first use) rather than on every JWT operation; rotating the on-disk secret requires a restart.
 
 ### Fixes
+
 - `polaris.storage.max-http-connections` (and related read/connect/acquisition/idle timeouts) now take effect for Iceberg S3FileIO clients used in table operations (previously only affected the STS client pool).
 - Fixed a boundary condition in GCS downscoped credential generation (`GcpCredentialsStorageIntegration`). Locations without a trailing slash could previously grant access to sibling object prefixes via the generated CEL conditions for `resource.name` and list prefixes. Granted paths are now normalized to a directory prefix (with a trailing slash) before the CEL conditions are built, so sibling prefixes can no longer satisfy the `startsWith` checks.
 - Fixed `NullPointerException` during `dropEntity` when an entity referenced by a grant had been concurrently removed (or purged). `lookupEntities` can return null entries for dropped entities; these are now skipped safely.
@@ -155,16 +178,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ## [1.5.0]
 
-### Highlights
-
-### Upgrade notes
-
 ### Breaking changes
+
 - The `ConnectionCredentials.of()` method now throws an exception when more than one expiration timestamp property is present in the credentials map. Only a single expiration timestamp is allowed per credentials bundle.
 - Entity names (namespaces, tables, views, generic tables) submitted to the REST layer are now rejected with HTTP 400 if they are empty, contain a `/`, or have leading/trailing whitespace. Clients that were previously able to create such entities must rename them before upgrading.
 - Fixed `renameTable` to return HTTP 204 (No Content) instead of 200, as per the Iceberg REST Catalog spec.
 
 ### New Features
+
 - Added `envFrom` support in Helm chart.
 - Added summarize subcommand to Polaris CLI.
 - Added find and tables options to Polaris CLI.
@@ -173,6 +194,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for **Apache Ranger** as an external authorizer (Beta).
 
 ### Changes
+
 - Improved Python CLI error messages and exit codes for invalid arguments and configuration errors.
 - Removed unused `PolarisAuthorizableOperation` values: `REVOKE_PRINCIPAL_GRANT_FROM_PRINCIPAL_ROLE`, `REVOKE_PRINCIPAL_ROLE_GRANT_FROM_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_ROOT`, `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL`, `ADD_PRINCIPAL_ROLE_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL_ROLE`, `ADD_CATALOG_ROLE_GRANT_TO_CATALOG_ROLE`, `REVOKE_CATALOG_ROLE_GRANT_FROM_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG`, `LIST_GRANTS_ON_NAMESPACE`, `LIST_GRANTS_ON_TABLE`, `LIST_GRANTS_ON_VIEW`.
 - Changed deprecated APIs in JUnit 5. This change will force downstream projects that pull in the Polaris test packages to adopt JUnit 6.
@@ -180,9 +202,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The ExternalCatalogFactory interface has been renamed to FederatedCatalogFactory. Its createCatalog() and createGenericCatalog() method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
 
 ### Deprecations
+
 - The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
 
 ### Fixes
+
 - Fixed native catalog credential vending paths (`loadCredentials` and `loadTable` with delegation) to re-validate locations against the *current* catalog `allowedLocations`. Previously these paths trusted persisted table entity locations, allowing stale credentials after an admin tightened allowed locations on a native catalog. (The federated path had a partial check.)
 
 ## [1.4.0]
@@ -192,7 +216,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.
 - The Helm chart now includes a JSON schema file for easy validation of values files. Because types 
   are now validated, existing values files may need to be updated to match the new schema.
-  
 
 ### Breaking changes
 
@@ -237,6 +260,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `PolarisConfigurationStore` has been deprecated for removal.
 
 ### Fixes
+
 - Fixed error propagation in drop operations (`dropTable`, `dropView`, `dropNamespace`). Server errors now return appropriate HTTP status codes based on persistence result instead of always returning NotFound
 - Enable non-AWS STS role ARNs
 - Helm chart: fixed a bug that prevented CORS settings to be properly applied. A new setting `cors.enabled` has been introduced in the chart as part of the fix.
@@ -314,6 +338,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   endpoints at `/q/metrics` and `/q/health` instead.
 
 ### Fixes
+
 - Fixed incorrect Azure expires at field for the credentials refresh response, leading to client failure via #2633
 
 ## [1.1.0-incubating]
@@ -419,7 +444,9 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
-[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.5.0...HEAD
+[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.7.0...HEAD
+[1.7.0]: https://github.com/apache/polaris/compare/apache-polaris-1.6.0...apache-polaris-1.7.0
+[1.6.0]: https://github.com/apache/polaris/compare/apache-polaris-1.5.0...apache-polaris-1.6.0
 [1.5.0]: https://github.com/apache/polaris/compare/apache-polaris-1.4.0...apache-polaris-1.5.0
 [1.4.0]: https://github.com/apache/polaris/compare/apache-polaris-1.3.0-incubating...apache-polaris-1.4.0
 [1.3.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.2.0-incubating...apache-polaris-1.3.0-incubating
