@@ -157,6 +157,8 @@ dependencies {
 
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation(project(":polaris-floci-aws-testcontainer"))
+  testImplementation(project(":polaris-floci-az-testcontainer"))
+  testImplementation(project(":polaris-floci-gcp-testcontainer"))
   testImplementation(project(":polaris-keycloak-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))
