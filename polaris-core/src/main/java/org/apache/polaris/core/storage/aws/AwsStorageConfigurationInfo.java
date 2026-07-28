@@ -50,6 +50,13 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @JsonIgnore public static final String ROLE_ARN_PATTERN = "^.+:(.*):.+:.*:(.*):.+$";
 
   private static final Pattern ROLE_ARN_PATTERN_COMPILED = Pattern.compile(ROLE_ARN_PATTERN);
+  private static final Pattern KMS_KEY_ARN_PATTERN =
+      Pattern.compile(
+          "^arn:[a-z0-9-]+:kms:[a-z0-9-]+:[0-9]{12}:key/"
+              + "(?:"
+              + "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+              + "|mrk-[0-9a-f]{32}"
+              + ")$");
 
   @Override
   public StorageType getStorageType() {
@@ -65,6 +72,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   public abstract String getRoleARN();
 
   /** Deprecated KMS Key ARN, retained for compatibility and treated as an allowed KMS key. */
+  @Deprecated
   @Nullable
   public abstract String getCurrentKmsKey();
 
@@ -172,17 +180,38 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     }
 
     List<String> legacyKmsKeys = getLegacyKmsKeys();
-    if (legacyKmsKeys != null) {
+    if (legacyKmsKeys != null && !legacyKmsKeys.isEmpty()) {
       String currentKmsKey = getCurrentKmsKey();
+      if (currentKmsKey != null) {
+        validateKmsKeyArn("currentKmsKey", currentKmsKey);
+      }
+
+      List<String> allowedKmsKeys = getAllowedKmsKeys();
+      validateKmsKeyArns("allowedKmsKeys", allowedKmsKeys);
+      validateKmsKeyArns("legacyKmsKeys", legacyKmsKeys);
+
       checkArgument(
           currentKmsKey == null || !legacyKmsKeys.contains(currentKmsKey),
           "currentKmsKey must not also be configured in legacyKmsKeys");
 
-      List<String> allowedKmsKeys = getAllowedKmsKeys();
       checkArgument(
           allowedKmsKeys == null || allowedKmsKeys.stream().noneMatch(legacyKmsKeys::contains),
           "allowedKmsKeys and legacyKmsKeys must not overlap");
     }
+  }
+
+  private static void validateKmsKeyArns(String propertyName, @Nullable List<String> keyArns) {
+    if (keyArns != null) {
+      keyArns.forEach(keyArn -> validateKmsKeyArn(propertyName, keyArn));
+    }
+  }
+
+  private static void validateKmsKeyArn(String propertyName, @Nullable String keyArn) {
+    checkArgument(
+        keyArn != null && KMS_KEY_ARN_PATTERN.matcher(keyArn).matches(),
+        "%s must contain concrete AWS KMS key ARNs, but found: %s",
+        propertyName,
+        keyArn);
   }
 
   public static void validateArn(String arn) {

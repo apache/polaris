@@ -1143,20 +1143,20 @@ components:
             currentKmsKey:
               type: string
               deprecated: true
-              description: Deprecated. Use allowedKmsKeys instead. The aws kms key arn used to encrypt and decrypt s3 data.
-              example: "arn:aws:kms::123456789001:key/01234578"
+              description: Deprecated. Use allowedKmsKeys instead. The AWS KMS key ARN used to encrypt and decrypt S3 data. When legacyKmsKeys is configured, aliases and wildcard patterns are not supported.
+              example: "arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"
             allowedKmsKeys:
               type: array
-              description: The list of kms keys that this catalog and its clients are allowed to use for encrypting and decrypting s3 data
+              description: The list of concrete KMS key ARNs that this catalog and its clients are allowed to use for encrypting and decrypting S3 data. When legacyKmsKeys is configured, aliases and wildcard patterns are not supported.
               items:
                 type: string
-              example: ["arn:aws:kms::123456789001:key/01234578"]
+              example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
             legacyKmsKeys:
               type: array
-              description: The list of historical kms keys that this catalog and its clients are allowed to use only for decrypting s3 data. Keys must not also be configured in currentKmsKey or allowedKmsKeys.
+              description: The list of historical concrete KMS key ARNs that this catalog and its clients are allowed to use only for decrypting S3 data. Aliases and wildcard patterns are not supported. Keys must not also be configured in currentKmsKey or allowedKmsKeys.
               items:
                 type: string
-              example: ["arn:aws:kms::123456789001:key/01234578"]
+              example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
             region:
               type: string
               description: the aws region where data is stored

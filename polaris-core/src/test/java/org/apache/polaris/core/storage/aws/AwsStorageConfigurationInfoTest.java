@@ -33,6 +33,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class AwsStorageConfigurationInfoTest {
 
+  private static final String ALLOWED_KMS_KEY_ARN =
+      "arn:aws:kms:us-east-1:012345678901:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  private static final String LEGACY_KMS_KEY_ARN =
+      "arn:aws:kms:us-east-1:012345678901:key/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
   @Test
   public void testStsEndpoint() {
     assertThat(newBuilder().build())
@@ -142,7 +147,7 @@ public class AwsStorageConfigurationInfoTest {
 
   @Test
   public void testLegacyKmsKeysMustNotOverlapEncryptCapableKeys() {
-    String keyArn = "arn:aws:kms:us-east-1:012345678901:key/overlapping-key";
+    String keyArn = "arn:aws:kms:us-east-1:012345678901:key/cccccccc-cccc-cccc-cccc-cccccccccccc";
 
     assertThatThrownBy(
             () -> newBuilder().currentKmsKey(keyArn).legacyKmsKeys(List.of(keyArn)).build())
@@ -154,6 +159,63 @@ public class AwsStorageConfigurationInfoTest {
                 newBuilder().allowedKmsKeys(List.of(keyArn)).legacyKmsKeys(List.of(keyArn)).build())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("allowedKmsKeys and legacyKmsKeys must not overlap");
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidKmsKeyArns")
+  public void testLegacyKmsKeysRejectNonCanonicalKeyArns(String description, String invalidKeyArn) {
+    assertThatThrownBy(() -> newBuilder().legacyKmsKeys(List.of(invalidKeyArn)).build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("legacyKmsKeys must contain concrete AWS KMS key ARNs");
+
+    assertThatThrownBy(
+            () ->
+                newBuilder()
+                    .allowedKmsKeys(List.of(invalidKeyArn))
+                    .legacyKmsKeys(List.of(LEGACY_KMS_KEY_ARN))
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("allowedKmsKeys must contain concrete AWS KMS key ARNs");
+
+    assertThatThrownBy(
+            () ->
+                newBuilder()
+                    .currentKmsKey(invalidKeyArn)
+                    .legacyKmsKeys(List.of(LEGACY_KMS_KEY_ARN))
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("currentKmsKey must contain concrete AWS KMS key ARNs");
+  }
+
+  static Stream<Arguments> invalidKmsKeyArns() {
+    return Stream.of(
+        Arguments.of("alias ARN", "arn:aws:kms:us-east-1:012345678901:alias/example-key"),
+        Arguments.of("wildcard key ARN", "arn:aws:kms:us-east-1:012345678901:key/*"),
+        Arguments.of(
+            "partial wildcard key ARN", "arn:aws:kms:us-east-1:012345678901:key/1234abcd-*"),
+        Arguments.of("bare key ID", "1234abcd-12ab-34cd-56ef-1234567890ab"),
+        Arguments.of(
+            "missing region",
+            "arn:aws:kms::012345678901:key/1234abcd-12ab-34cd-56ef-1234567890ab"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("validKmsKeyArns")
+  public void testLegacyKmsKeysAcceptConcreteKeyArns(String keyArn) {
+    assertThat(
+            newBuilder()
+                .allowedKmsKeys(List.of(ALLOWED_KMS_KEY_ARN))
+                .legacyKmsKeys(List.of(keyArn))
+                .build()
+                .getLegacyKmsKeys())
+        .containsExactly(keyArn);
+  }
+
+  static Stream<String> validKmsKeyArns() {
+    return Stream.of(
+        LEGACY_KMS_KEY_ARN,
+        "arn:aws:kms:us-east-1:012345678901:key/mrk-1234abcd12ab34cd56ef1234567890ab",
+        "arn:aws-us-gov:kms:us-gov-west-1:012345678901:key/1234abcd-12ab-34cd-56ef-1234567890ab");
   }
 
   @ParameterizedTest
