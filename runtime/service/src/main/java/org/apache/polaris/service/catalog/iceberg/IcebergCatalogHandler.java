@@ -50,6 +50,7 @@ import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.RetryableValidationException;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -1531,7 +1532,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               }
 
               // Apply updates to builder
-              singleUpdate.applyTo(metadataBuilder);
+              try {
+                singleUpdate.applyTo(metadataBuilder);
+              } catch (RetryableValidationException e) {
+                // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
+                throw new CommitFailedException(
+                    e, "Validation failed, please retry: %s", e.getMessage());
+              }
             }
 
             // Update currentMetadata to reflect this change for subsequent requirement validation

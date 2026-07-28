@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Fail.fail;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +32,7 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -73,6 +75,7 @@ import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.NullOrder;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.RetryableValidationException;
 import org.apache.iceberg.RowDelta;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
@@ -95,6 +98,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
@@ -674,6 +678,41 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
+  }
+
+  @Test
+  public void commitSurfacesRetryableValidationFailureAsRetryableCommitConflict() {
+    Schema schema = new Schema(Types.NestedField.required(1, "id", Types.LongType.get()));
+    TableMetadata base =
+        TableMetadata.newTableMetadata(
+            schema, PartitionSpec.unpartitioned(), "file:///tmp/t", Map.of());
+    TableOperations ops = mock(TableOperations.class);
+    when(ops.current()).thenReturn(base);
+
+    // Stands in for the RetryableValidationException addSnapshot raises under a concurrent commit.
+    MetadataUpdate retryableUpdate =
+        new MetadataUpdate() {
+          @Override
+          public void applyTo(TableMetadata.Builder metadataBuilder) {
+            throw new RetryableValidationException(
+                "Cannot add snapshot with sequence number 6 older than last sequence number 6");
+          }
+
+          @Override
+          public void applyTo(ViewMetadata.Builder viewMetadataBuilder) {
+            throw new UnsupportedOperationException();
+          }
+        };
+
+    UpdateTableRequest request = new UpdateTableRequest(List.of(), List.of(retryableUpdate));
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, false);
+
+    assertThatThrownBy(() -> catalogHandlerUtils.commit(ops, request))
+        .isInstanceOf(CommitFailedException.class)
+        // RetryableValidationException must not leak: it is a ValidationException, which maps to
+        // 400.
+        .isNotInstanceOf(ValidationException.class)
+        .hasMessageContaining("Validation failed, please retry");
   }
 
   @Test
