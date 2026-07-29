@@ -1,0 +1,204 @@
+{
+  "format-version": 3,
+  "table-uuid": "11111111-2222-3333-4444-555555555555",
+  "location": "s3://bucket/table",
+  "last-sequence-number": 2,
+  "last-updated-ms": 1700000002000,
+  "last-column-id": 3,
+  "next-row-id": 15,
+  "current-schema-id": 1,
+  "schemas": [
+    {
+      "type": "struct",
+      "schema-id": 0,
+      "fields": [
+        {
+          "id": 1,
+          "name": "x",
+          "required": true,
+          "type": "long"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "schema-id": 1,
+      "identifier-field-ids": [
+        1
+      ],
+      "fields": [
+        {
+          "id": 1,
+          "name": "x",
+          "required": true,
+          "type": "long"
+        },
+        {
+          "id": 2,
+          "name": "y",
+          "required": false,
+          "type": "string",
+          "doc": "comment"
+        },
+        {
+          "id": 3,
+          "name": "z",
+          "required": true,
+          "type": "int"
+        }
+      ]
+    }
+  ],
+  "default-spec-id": 0,
+  "partition-specs": [
+    {
+      "spec-id": 0,
+      "fields": [
+        {
+          "name": "x",
+          "transform": "identity",
+          "source-id": 1,
+          "field-id": 1000
+        }
+      ]
+    }
+  ],
+  "last-partition-id": 1000,
+  "default-sort-order-id": 3,
+  "sort-orders": [
+    {
+      "order-id": 3,
+      "fields": [
+        {
+          "transform": "identity",
+          "source-id": 2,
+          "direction": "asc",
+          "null-order": "nulls-first"
+        },
+        {
+          "transform": "bucket[4]",
+          "source-id": 3,
+          "direction": "desc",
+          "null-order": "nulls-last"
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "encryption.key-id": "test-key",
+    "write.metadata.previous-versions-max": "10"
+  },
+  "current-snapshot-id": 102,
+  "refs": {
+    "main": {
+      "snapshot-id": 102,
+      "type": "branch",
+      "min-snapshots-to-keep": 2,
+      "max-snapshot-age-ms": 86400000,
+      "max-ref-age-ms": 604800000
+    },
+    "audit": {
+      "snapshot-id": 101,
+      "type": "tag",
+      "max-ref-age-ms": 604800000
+    }
+  },
+  "snapshots": [
+    {
+      "sequence-number": 1,
+      "snapshot-id": 101,
+      "timestamp-ms": 1700000001000,
+      "summary": {
+        "operation": "append",
+        "added-data-files": "1"
+      },
+      "manifest-list": "s3://bucket/table/metadata/snap-101.avro",
+      "schema-id": 1,
+      "first-row-id": 0,
+      "added-rows": 10,
+      "key-id": "data-key-1"
+    },
+    {
+      "sequence-number": 2,
+      "snapshot-id": 102,
+      "parent-snapshot-id": 101,
+      "timestamp-ms": 1700000002000,
+      "summary": {
+        "operation": "append",
+        "added-data-files": "1"
+      },
+      "manifest-list": "s3://bucket/table/metadata/snap-102.avro",
+      "schema-id": 1,
+      "first-row-id": 10,
+      "added-rows": 5,
+      "key-id": "data-key-2"
+    }
+  ],
+  "statistics": [
+    {
+      "snapshot-id": 102,
+      "statistics-path": "s3://bucket/table/metadata/stats-102.puffin",
+      "file-size-in-bytes": 128,
+      "file-footer-size-in-bytes": 16,
+      "blob-metadata": [
+        {
+          "type": "ndv",
+          "snapshot-id": 102,
+          "sequence-number": 2,
+          "fields": [
+            1,
+            2
+          ],
+          "properties": {
+            "algorithm": "theta"
+          }
+        }
+      ]
+    }
+  ],
+  "partition-statistics": [
+    {
+      "snapshot-id": 102,
+      "statistics-path": "s3://bucket/table/metadata/partition-stats-102.parquet",
+      "file-size-in-bytes": 256
+    }
+  ],
+  "encryption-keys": [
+    {
+      "key-id": "data-key-1",
+      "encrypted-key-metadata": "AQID",
+      "encrypted-by-id": "test-key",
+      "properties": {
+        "algorithm": "AES-GCM"
+      }
+    },
+    {
+      "key-id": "data-key-2",
+      "encrypted-key-metadata": "BAUG",
+      "encrypted-by-id": "test-key",
+      "properties": {
+        "algorithm": "AES-GCM"
+      }
+    }
+  ],
+  "snapshot-log": [
+    {
+      "snapshot-id": 101,
+      "timestamp-ms": 1700000001000
+    },
+    {
+      "snapshot-id": 102,
+      "timestamp-ms": 1700000002000
+    }
+  ],
+  "metadata-log": [
+    {
+      "timestamp-ms": 1699999999000,
+      "metadata-file": "s3://bucket/table/metadata/v0.metadata.json"
+    },
+    {
+      "timestamp-ms": 1700000001000,
+      "metadata-file": "s3://bucket/table/metadata/v1.metadata.json"
+    }
+  ]
+}

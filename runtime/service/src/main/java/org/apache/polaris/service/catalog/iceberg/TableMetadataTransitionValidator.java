@@ -56,7 +56,7 @@ final class TableMetadataTransitionValidator {
       return;
     }
     if (!keyIdMatches(trustedProperties, metadataFromStorage)) {
-      throw new IllegalStateException(
+      throw new TableMetadataIntegrityException(
           "Iceberg table metadata integrity check failed for "
               + metadataFromStorage.metadataFileLocation()
               + ": encryption key ID does not match trusted catalog state");

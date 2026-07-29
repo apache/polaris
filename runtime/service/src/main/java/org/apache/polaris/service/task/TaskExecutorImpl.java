@@ -69,6 +69,7 @@ import org.slf4j.LoggerFactory;
 public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
   private static final long TASK_RETRY_DELAY = 1000;
+  private static final int MAX_TASK_ATTEMPTS = 3;
 
   private final Executor executor;
   private final Clock clock;
@@ -159,7 +160,16 @@ public class TaskExecutorImpl implements TaskExecutor {
 
     // Capture the metadata now in order to capture the principal and request ID, if any.
     PolarisEventMetadata eventMetadata = eventMetadataFactory.create();
-    tryHandleTask(taskEntityId, clone, eventMetadata, null, 1);
+    tryHandleTask(taskEntityId, clone, eventMetadata, null, 1)
+        .exceptionally(
+            t -> {
+              LOGGER
+                  .atError()
+                  .addKeyValue("taskEntityId", taskEntityId)
+                  .setCause(t)
+                  .log("Task execution reached a terminal failure");
+              return null;
+            });
   }
 
   private @NonNull CompletableFuture<Void> tryHandleTask(
@@ -168,9 +178,6 @@ public class TaskExecutorImpl implements TaskExecutor {
       PolarisEventMetadata eventMetadata,
       Throwable previousError,
       int attempt) {
-    if (attempt > 3) {
-      return CompletableFuture.failedFuture(previousError);
-    }
     String realmId = callContext.getRealmContext().getRealmIdentifier();
 
     PolarisPrincipal principalClone =
@@ -183,17 +190,33 @@ public class TaskExecutorImpl implements TaskExecutor {
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, null));
             },
             executor)
-        .exceptionallyComposeAsync(
+        .exceptionallyCompose(
             (t) -> {
               if (previousError != null) {
                 t.addSuppressed(previousError);
               }
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
-              return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
-            },
-            CompletableFuture.delayedExecutor(
-                TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
+              if (isNonRetryable(t) || attempt >= MAX_TASK_ATTEMPTS) {
+                return CompletableFuture.failedFuture(t);
+              }
+              return CompletableFuture.runAsync(
+                      () -> {},
+                      CompletableFuture.delayedExecutor(
+                          TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor))
+                  .thenCompose(
+                      ignored ->
+                          tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1));
+            });
+  }
+
+  private static boolean isNonRetryable(Throwable failure) {
+    for (Throwable current = failure; current != null; current = current.getCause()) {
+      if (current instanceof NonRetryableTaskException) {
+        return true;
+      }
+    }
+    return false;
   }
 
   protected void handleTask(

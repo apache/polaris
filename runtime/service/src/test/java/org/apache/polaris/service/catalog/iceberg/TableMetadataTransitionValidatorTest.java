@@ -88,7 +88,7 @@ class TableMetadataTransitionValidatorTest {
             () ->
                 TableMetadataTransitionValidator.validateLoaded(
                     pinned(pinnedKeyId), metadata(loadedProperties)))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(TableMetadataIntegrityException.class)
         .hasMessage(
             "Iceberg table metadata integrity check failed for test.metadata.json: encryption key "
                 + "ID does not match trusted catalog state");

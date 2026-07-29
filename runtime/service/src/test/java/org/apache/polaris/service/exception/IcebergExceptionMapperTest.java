@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
+import org.apache.polaris.service.catalog.iceberg.TableMetadataIntegrityException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -70,6 +71,7 @@ public class IcebergExceptionMapperTest {
                     "mybucket.blob.core.windows.net: Name or service not known",
                     new RuntimeException(new UnknownHostException())),
                 404),
+            Arguments.of(new TableMetadataIntegrityException("metadata digest mismatch"), 422),
             Arguments.of(new RuntimeException("Error persisting entity"), 500)),
         cloudCodeMappings.entrySet().stream()
             .flatMap(

@@ -81,6 +81,7 @@ import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.LocationProvider;
@@ -478,6 +479,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         .containsKey(TableMetadataTransitionValidator.KEY_ID_PINNED_PROPERTY)) {
       TableMetadataTransitionValidator.pin(storedProperties, metadata);
     }
+    TableMetadataIntegrity.pin(storedProperties, metadata);
     IcebergTableLikeEntity updatedEntity =
         new IcebergTableLikeEntity.Builder(existingEntity)
             .setInternalProperties(storedProperties)
@@ -1848,8 +1850,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                       new HashMap<>(tableDefaultProperties),
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
               TableMetadata metadata = TableMetadataParser.read(fileIO, metadataLocation);
-              TableMetadataTransitionValidator.validateLoaded(
-                  currentEntity.getInternalPropertiesAsMap(), metadata);
+              TableMetadataIntegrity.validate(currentEntity, metadata);
               return metadata;
             });
         if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_REFRESH_TABLE)) {
@@ -1991,6 +1992,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                 .containsKey(TableMetadataTransitionValidator.KEY_ID_PINNED_PROPERTY)) {
           TableMetadataTransitionValidator.pin(storedProperties, metadata);
         }
+        TableMetadataIntegrity.pin(storedProperties, metadata);
         String existingLocation;
         if (null == entity) {
           existingLocation = null;
@@ -3116,13 +3118,19 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       if (existingLocation != null) {
         TableMetadataTransitionValidator.validate(
             entity.getInternalPropertiesAsMap(), tableMetadata);
+        if (entity
+            .getInternalPropertiesAsMap()
+            .containsKey(TableMetadataTransitionValidator.KEY_ID_PROPERTY)) {
+          throw new ValidationException(
+              "Cannot update a protected table by notification without an authenticated expected "
+                  + "metadata digest");
+        }
       }
       Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
-      if (existingLocation == null
-          || internalProperties.containsKey(
-              TableMetadataTransitionValidator.KEY_ID_PINNED_PROPERTY)) {
+      if (existingLocation == null) {
         TableMetadataTransitionValidator.pin(internalProperties, tableMetadata);
       }
+      TableMetadataIntegrity.pin(internalProperties, tableMetadata);
       entity =
           new IcebergTableLikeEntity.Builder(entity)
               .setInternalProperties(internalProperties)

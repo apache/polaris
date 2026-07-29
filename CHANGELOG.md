@@ -100,6 +100,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   before this pin was recorded continue to use legacy behavior and are not automatically enrolled
   into the new invariant from metadata stored outside the catalog. Metadata with Iceberg encryption
   table properties is rejected before entering protected state when its format version is below 3.
+- Encrypted Iceberg tables now pin a canonical metadata SHA-256 in catalog state. Table loads and
+  asynchronous purge verify the digest before using metadata read from storage.
 - Python CLI REPL now shows a clear "Syntax error" message for malformed input instead of a generic "unexpected error" message.
 - Python CLI `setup export` now includes nested namespaces and policy definitions from those
   namespaces. Previously, only top-level namespaces and their policies were exported.
