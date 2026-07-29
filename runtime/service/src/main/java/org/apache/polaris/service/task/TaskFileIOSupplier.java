@@ -34,8 +34,8 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.service.catalog.io.CleanupTaskEncryption;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.catalog.io.PolarisEncryptionUtil;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 
 @RequestScoped
@@ -74,7 +74,7 @@ public class TaskFileIOSupplier {
 
     FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImpl, fileIOProperties);
     try {
-      return PolarisEncryptionUtil.encryptTaskFileIO(fileIO, taskProperties);
+      return CleanupTaskEncryption.encryptTaskFileIO(fileIO, taskProperties);
     } catch (RuntimeException e) {
       try {
         fileIO.close();

@@ -134,8 +134,8 @@ import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.LocationUtils;
+import org.apache.polaris.service.catalog.io.CleanupTaskEncryption;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.catalog.io.PolarisEncryptionUtil;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.events.EventAttributeMap;
@@ -575,7 +575,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   // Polaris does not write encrypted manifests here. Preserve the encryption
                   // context only so the asynchronous server-side purge can read manifest lists
                   // and manifests that were written by the engine and enumerate files to delete.
-                  PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
+                  CleanupTaskEncryption.setupCleanupTaskEncryptionProperties(
                       clone, catalogProperties, lastMetadata);
                   return clone;
                 })

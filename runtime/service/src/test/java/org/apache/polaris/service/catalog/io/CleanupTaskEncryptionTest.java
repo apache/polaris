@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.EncryptedKeyParser;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableProperties;
@@ -45,11 +46,10 @@ import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.iceberg.io.SeekableInputStream;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-class PolarisEncryptionUtilTest {
+class CleanupTaskEncryptionTest {
   private static final String TABLE_KEY = PolarisTestKms.MASTER_KEY_NAME;
 
   @AfterEach
@@ -65,17 +65,17 @@ class PolarisEncryptionUtilTest {
     TableMetadata metadata = encryptedMetadata(key);
     Map<String, String> taskProperties = new HashMap<>(metadata.properties());
 
-    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
+    CleanupTaskEncryption.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()),
         metadata);
 
-    assertThat(taskProperties).containsKey(PolarisTaskConstants.ENCRYPTION_CONTEXT);
-    PolarisEncryptionUtil.CleanupTaskEncryptionContext context = encryptionContext(taskProperties);
+    assertThat(taskProperties.get(PolarisTaskConstants.ENCRYPTION_CONTEXT)).startsWith("EC1");
+    CleanupTaskEncryption.CleanupTaskEncryptionContext context = encryptionContext(taskProperties);
     assertThat(context.kmsProperties())
         .containsExactlyEntriesOf(
             Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()));
-    assertThat(context.encryptedKeys()).hasSize(1);
+    assertThat(context.encryptedKeys()).containsExactly(EncryptedKeyParser.toJson(key));
   }
 
   @Test
@@ -87,7 +87,7 @@ class PolarisEncryptionUtilTest {
     taskProperties.put("storage.region", "restricted-region");
     taskProperties.put(PolarisTaskConstants.ENCRYPTION_CONTEXT, "untrusted-value");
 
-    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
+    CleanupTaskEncryption.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(
             CatalogProperties.FILE_IO_IMPL,
@@ -104,7 +104,7 @@ class PolarisEncryptionUtilTest {
         .containsEntry(CatalogProperties.FILE_IO_IMPL, "restricted.FileIO")
         .containsEntry(CatalogProperties.ENCRYPTION_KMS_IMPL, "untrusted.Kms")
         .containsEntry("storage.region", "restricted-region");
-    PolarisEncryptionUtil.CleanupTaskEncryptionContext context = encryptionContext(taskProperties);
+    CleanupTaskEncryption.CleanupTaskEncryptionContext context = encryptionContext(taskProperties);
     assertThat(context.kmsProperties())
         .containsEntry(CatalogProperties.FILE_IO_IMPL, "catalog.FileIO")
         .containsEntry(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName())
@@ -113,7 +113,7 @@ class PolarisEncryptionUtilTest {
         .doesNotContainKey("table-controlled-option");
 
     try (FileIO fileIO =
-        PolarisEncryptionUtil.encryptTaskFileIO(new InMemoryFileIO(), taskProperties)) {
+        CleanupTaskEncryption.encryptTaskFileIO(new InMemoryFileIO(), taskProperties)) {
       assertThat(fileIO).isInstanceOf(EncryptingFileIO.class);
     }
   }
@@ -125,13 +125,13 @@ class PolarisEncryptionUtilTest {
             "data-key", ByteBuffer.wrap(new byte[] {1, 2, 3}), TABLE_KEY, Map.of());
     TableMetadata metadata = encryptedMetadata(key);
     Map<String, String> taskProperties = new HashMap<>(metadata.properties());
-    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
+    CleanupTaskEncryption.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()),
         metadata);
 
     try (var fileIO =
-        PolarisEncryptionUtil.encryptTaskFileIO(new InMemoryFileIO(), taskProperties)) {
+        CleanupTaskEncryption.encryptTaskFileIO(new InMemoryFileIO(), taskProperties)) {
       assertThat(fileIO).isInstanceOf(EncryptingFileIO.class);
     }
 
@@ -142,19 +142,19 @@ class PolarisEncryptionUtilTest {
   void encryptedTaskFileIoClosesKmsClientWhenTaskKeyIsInvalid() {
     TableMetadata metadata = encryptedMetadata();
     Map<String, String> taskProperties = new HashMap<>(metadata.properties());
-    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
+    CleanupTaskEncryption.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()),
         metadata);
-    PolarisEncryptionUtil.CleanupTaskEncryptionContext context = encryptionContext(taskProperties);
+    CleanupTaskEncryption.CleanupTaskEncryptionContext context = encryptionContext(taskProperties);
     taskProperties.put(
         PolarisTaskConstants.ENCRYPTION_CONTEXT,
-        PolarisObjectMapperUtil.serialize(
-            new PolarisEncryptionUtil.CleanupTaskEncryptionContext(
+        CleanupTaskEncryption.serializeContext(
+            new CleanupTaskEncryption.CleanupTaskEncryptionContext(
                 context.kmsProperties(), List.of("not-an-encrypted-key"))));
 
     assertThatThrownBy(
-            () -> PolarisEncryptionUtil.encryptTaskFileIO(new InMemoryFileIO(), taskProperties))
+            () -> CleanupTaskEncryption.encryptTaskFileIO(new InMemoryFileIO(), taskProperties))
         .isInstanceOf(RuntimeException.class);
 
     assertThat(PolarisTestKms.wasClosed()).isTrue();
@@ -178,12 +178,12 @@ class PolarisEncryptionUtilTest {
 
     TableMetadata metadataWithKeys = addEncryptionKeys(metadata, writerManager);
     Map<String, String> taskProperties = new HashMap<>(metadataWithKeys.properties());
-    PolarisEncryptionUtil.setupCleanupTaskEncryptionProperties(
+    CleanupTaskEncryption.setupCleanupTaskEncryptionProperties(
         taskProperties,
         Map.of(CatalogProperties.ENCRYPTION_KMS_IMPL, PolarisTestKms.class.getName()),
         metadataWithKeys);
 
-    try (FileIO taskFileIO = PolarisEncryptionUtil.encryptTaskFileIO(rawFileIO, taskProperties)) {
+    try (FileIO taskFileIO = CleanupTaskEncryption.encryptTaskFileIO(rawFileIO, taskProperties)) {
       EncryptingFileIO encryptedTaskFileIO = (EncryptingFileIO) taskFileIO;
       assertThat(encryptedTaskFileIO.encryptionManager())
           .isInstanceOf(StandardEncryptionManager.class);
@@ -208,11 +208,10 @@ class PolarisEncryptionUtilTest {
     assertThat(PolarisTestKms.wasClosed()).isTrue();
   }
 
-  private static PolarisEncryptionUtil.CleanupTaskEncryptionContext encryptionContext(
+  private static CleanupTaskEncryption.CleanupTaskEncryptionContext encryptionContext(
       Map<String, String> taskProperties) {
-    return PolarisObjectMapperUtil.deserialize(
-        taskProperties.get(PolarisTaskConstants.ENCRYPTION_CONTEXT),
-        PolarisEncryptionUtil.CleanupTaskEncryptionContext.class);
+    return CleanupTaskEncryption.deserializeContext(
+        taskProperties.get(PolarisTaskConstants.ENCRYPTION_CONTEXT));
   }
 
   private static TableMetadata encryptedMetadata() {

@@ -18,8 +18,12 @@
  */
 package org.apache.polaris.service.catalog.io;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
@@ -35,12 +39,14 @@ import org.apache.iceberg.encryption.StandardEncryptionManager;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 
-/** Utilities for connecting Polaris file operations to Iceberg table encryption. */
-public final class PolarisEncryptionUtil {
+/** Prepares and applies the encryption context used by Iceberg cleanup tasks. */
+public final class CleanupTaskEncryption {
 
-  private PolarisEncryptionUtil() {}
+  private static final String CONTEXT_FORMAT_SMILE_V1 = "EC1";
+  private static final ObjectMapper SMILE_MAPPER = SmileMapper.builder().build();
+
+  private CleanupTaskEncryption() {}
 
   /**
    * Copies the catalog KMS configuration and the table's wrapped encryption keys into a cleanup
@@ -67,8 +73,7 @@ public final class PolarisEncryptionUtil {
         new CleanupTaskEncryptionContext(
             catalogProperties,
             metadata.encryptionKeys().stream().map(EncryptedKeyParser::toJson).toList());
-    taskProperties.put(
-        PolarisTaskConstants.ENCRYPTION_CONTEXT, PolarisObjectMapperUtil.serialize(context));
+    taskProperties.put(PolarisTaskConstants.ENCRYPTION_CONTEXT, serializeContext(context));
   }
 
   /**
@@ -119,17 +124,48 @@ public final class PolarisEncryptionUtil {
 
   private static CleanupTaskEncryptionContext cleanupTaskEncryptionContext(
       Map<String, String> taskProperties) {
-    String contextJson = taskProperties.get(PolarisTaskConstants.ENCRYPTION_CONTEXT);
-    if (contextJson == null) {
+    String serializedContext = taskProperties.get(PolarisTaskConstants.ENCRYPTION_CONTEXT);
+    if (serializedContext == null) {
       throw new IllegalArgumentException("Missing encryption context in cleanup task properties");
     }
-    return PolarisObjectMapperUtil.deserialize(contextJson, CleanupTaskEncryptionContext.class);
+    return deserializeContext(serializedContext);
+  }
+
+  static String serializeContext(CleanupTaskEncryptionContext context) {
+    try {
+      byte[] smile = SMILE_MAPPER.writeValueAsBytes(context);
+      return CONTEXT_FORMAT_SMILE_V1
+          + Base64.getUrlEncoder().withoutPadding().encodeToString(smile);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("Failed to serialize cleanup task encryption context", e);
+    }
+  }
+
+  static CleanupTaskEncryptionContext deserializeContext(String serializedContext) {
+    if (!serializedContext.startsWith(CONTEXT_FORMAT_SMILE_V1)) {
+      throw new IllegalArgumentException("Unrecognized cleanup task encryption context format");
+    }
+
+    byte[] smile =
+        Base64.getUrlDecoder()
+            .decode(serializedContext.substring(CONTEXT_FORMAT_SMILE_V1.length()));
+    try {
+      return SMILE_MAPPER.readValue(smile, CleanupTaskEncryptionContext.class);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to deserialize cleanup task encryption context", e);
+    }
   }
 
   private static List<EncryptedKey> encryptedKeys(CleanupTaskEncryptionContext context) {
     return context.encryptedKeys().stream().map(EncryptedKeyParser::fromJson).toList();
   }
 
+  /**
+   * Persisted encryption context for a cleanup task.
+   *
+   * <p>The component names are part of the persisted serialization contract. They must not be
+   * changed without introducing a new format version and a compatible decoder.
+   */
   record CleanupTaskEncryptionContext(
       Map<String, String> kmsProperties, List<String> encryptedKeys) {
     CleanupTaskEncryptionContext {
