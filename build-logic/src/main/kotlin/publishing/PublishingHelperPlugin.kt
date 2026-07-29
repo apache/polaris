@@ -149,14 +149,12 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
                   val sourceSets = project.extensions.getByType<SourceSetContainer>()
                   from(sourceSets.named("testFixtures").map { it.allSource })
                   archiveClassifier.set("test-fixtures-sources")
-                  addJarLicenseAndNotice(project, this)
                 }
               tasks.named<Javadoc>("testFixturesJavadoc") { isFailOnError = false }
               val testFixturesJavadocJar =
                 tasks.register<Jar>("testFixturesJavadocJar") {
                   from(tasks.named("testFixturesJavadoc"))
                   archiveClassifier.set("test-fixtures-javadoc")
-                  addJarLicenseAndNotice(project, this)
                 }
 
               artifact(testFixturesSourcesJar)
