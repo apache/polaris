@@ -38,11 +38,11 @@ import org.apache.polaris.service.catalog.spi.CatalogConfigEndpointContributor;
  */
 @ApplicationScoped
 @Priority(600)
-public class OpenLineageConfigEndpoints implements CatalogConfigEndpointContributor {
+public class OpenLineageEndpointContributor implements CatalogConfigEndpointContributor {
   private final RealmConfig realmConfig;
 
   @Inject
-  public OpenLineageConfigEndpoints(RealmConfig realmConfig) {
+  public OpenLineageEndpointContributor(RealmConfig realmConfig) {
     this.realmConfig = realmConfig;
   }
 

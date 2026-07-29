@@ -71,8 +71,9 @@ testing {
     register<JvmTestSuite>("intTest") {
       dependencies {
         implementation(platform(libs.quarkus.bom))
-        // Shared integration-test harness: PolarisIntegrationTestExtension, PolarisClient, the
-        // OpenLineage client helper, and the PolarisOpenLineageServiceIntegrationTest base class.
+        // Shared integration-test harness: PolarisIntegrationTestExtension, PolarisClient, and the
+        // OpenLineage client helper. The OpenLineage ingest contract itself lives in this module's
+        // intTest source set (OpenLineageServiceIT), since the endpoint is an optional extension.
         implementation(project(":polaris-tests"))
         implementation(project(":polaris-runtime-test-common"))
         implementation(libs.jakarta.ws.rs.api)
