@@ -108,3 +108,33 @@ fun addAdditionalJarContent(project: Project): Unit = project.run {
     }
   }
 }
+
+/**
+ * Adds the `LICENSE` and `NOTICE` files to `META-INF` of the given jar, mirroring the handling for
+ * the main/sources/javadoc jars in the `polaris-java` convention plugin.
+ *
+ * This is needed for jars that are registered directly in [PublishingHelperPlugin] (the
+ * test-fixtures sources and javadoc jars): they are created after the `polaris-java`
+ * `Jar.configureEach` block has already run, so that block does not add the license files to them.
+ */
+fun addJarLicenseAndNotice(project: Project, jar: Jar) {
+  if (project.file("src/main/no-license-notice-marker").exists()) {
+    return
+  }
+  if (!project.file("src/main/resources/META-INF/LICENSE").exists()) {
+    jar.from(project.rootProject.rootDir) {
+      include("gradle/jar-licenses/LICENSE")
+      eachFile { path = "META-INF/$sourceName" }
+    }
+  } else {
+    jar.from("src/main/resources") { include("META-INF/LICENSE") }
+  }
+  if (!project.file("src/main/resources/META-INF/NOTICE").exists()) {
+    jar.from(project.rootProject.rootDir) {
+      include("gradle/jar-licenses/NOTICE")
+      eachFile { path = "META-INF/$sourceName" }
+    }
+  } else {
+    jar.from("src/main/resources") { include("META-INF/NOTICE") }
+  }
+}
