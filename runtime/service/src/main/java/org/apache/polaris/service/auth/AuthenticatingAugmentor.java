@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.auth;
 
-import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.SecurityIdentityAugmentor;
@@ -26,13 +25,14 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 
 /**
  * A custom {@link SecurityIdentityAugmentor} that, after Quarkus OIDC or Internal Auth extracted
  * and validated the principal credentials, augments the {@link SecurityIdentity} by authenticating
- * the principal and setting a {@link PolarisPrincipal} as the identity's principal.
+ * the principal.
+ *
+ * @see Authenticator
  */
 @ApplicationScoped
 public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
@@ -54,42 +54,18 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
   @Override
   public Uni<SecurityIdentity> augment(
       SecurityIdentity identity, AuthenticationRequestContext context) {
-    if (identity.isAnonymous()) {
-      return Uni.createFrom().item(identity);
-    }
-    PolarisCredential authInfo = extractPolarisCredential(identity);
-    return context.runBlocking(() -> authenticatePolarisPrincipal(identity, authInfo));
+    return identity.isAnonymous()
+        ? Uni.createFrom().item(identity)
+        : context.runBlocking(() -> authenticatePolarisPrincipal(identity));
   }
 
-  private PolarisCredential extractPolarisCredential(SecurityIdentity identity) {
-    PolarisCredential credential = identity.getCredential(PolarisCredential.class);
-    if (credential == null) {
-      throw new AuthenticationFailedException("No token credential available");
-    }
-    return credential;
-  }
-
-  private SecurityIdentity authenticatePolarisPrincipal(
-      SecurityIdentity identity, PolarisCredential polarisCredential) {
-    try {
-      PolarisPrincipal polarisPrincipal = authenticator.authenticate(polarisCredential);
-      QuarkusSecurityIdentity.Builder builder =
-          QuarkusSecurityIdentity.builder()
-              .setAnonymous(false)
-              .setPrincipal(polarisPrincipal)
-              .addRoles(polarisPrincipal.getRoles())
-              .addCredentials(identity.getCredentials())
-              .addAttributes(identity.getAttributes())
-              .addPermissionChecker(identity::checkPermission);
-      // Also include the Polaris principal properties as attributes of the identity
-      polarisPrincipal.getProperties().forEach(builder::addAttribute);
-      return builder.build();
-    } catch (ServiceFailureException e) {
-      // Let ServiceFailureException bubble up to be handled by IcebergExceptionMapper
-      // This will result in 503 Service Unavailable instead of 401 Unauthorized
-      throw e;
-    } catch (RuntimeException e) {
-      throw new AuthenticationFailedException(e);
-    }
+  private SecurityIdentity authenticatePolarisPrincipal(SecurityIdentity identity) {
+    PolarisPrincipal polarisPrincipal = authenticator.authenticate(identity);
+    return QuarkusSecurityIdentity.builder(identity)
+        .setAnonymous(false)
+        .setPrincipal(polarisPrincipal)
+        .addRoles(polarisPrincipal.getRoles())
+        .addAttributes(polarisPrincipal.getAttributes())
+        .build();
   }
 }

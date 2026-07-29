@@ -46,6 +46,7 @@ import org.apache.iceberg.BaseTransaction;
 import org.apache.iceberg.DataOperations;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.MetadataUpdate.UpgradeFormatVersion;
+import org.apache.iceberg.RetryableValidationException;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SnapshotRef;
@@ -513,7 +514,17 @@ public class CatalogHandlerUtils {
                 }
 
                 TableMetadata.Builder newMetadataBuilder = TableMetadata.buildFrom(newBase);
-                request.updates().forEach((update) -> update.applyTo(newMetadataBuilder));
+                try {
+                  request.updates().forEach((update) -> update.applyTo(newMetadataBuilder));
+                } catch (RetryableValidationException e) {
+                  // Validation failed because the commit includes stale values (e.g. sequence
+                  // number or first-row-id behind the current table state). This is not a conflict.
+                  // Server-side retry won't help since the stale values are in the request itself.
+                  // Wrap as CommitFailedException so the client can retry with refreshed metadata.
+                  throw new ValidationFailureException(
+                      new CommitFailedException(
+                          e, "Validation failed, please retry: %s", e.getMessage()));
+                }
                 TableMetadata updated = newMetadataBuilder.build();
                 if (updated.changes().isEmpty()) {
                   // do not commit if the metadata has not changed

@@ -371,11 +371,14 @@ public class ManagementServiceTest {
 
   private PolarisAdminService setupPolarisAdminService(
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
+    PrincipalEntity rootPrincipal =
+        new PrincipalEntity.Builder()
+            .setName(PolarisEntityConstants.getRootPrincipalName())
+            .build();
     PolarisPrincipal principal =
         PolarisPrincipal.of(
-            new PrincipalEntity.Builder()
-                .setName(PolarisEntityConstants.getRootPrincipalName())
-                .build(),
+            rootPrincipal.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal),
             Set.of(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()));
     return new PolarisAdminService(
         callContext,

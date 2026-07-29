@@ -22,6 +22,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PrincipalEntity;
 
 /**
  * Common pre-condition checks shared across authorizer implementations for credential-related
@@ -48,12 +49,21 @@ public final class AuthorizationPreConditions {
     if (realmConfig.getConfig(
             FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING)
         && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS
-        && polarisPrincipal
-            .getProperties()
-            .containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
+        && mustRotateCredentials(polarisPrincipal)) {
       throw new ForbiddenException(
-          "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE",
+          "Principal '%s' is not authorized for op %s because it must rotate credentials first",
           polarisPrincipal.getName(), authzOp);
     }
+  }
+
+  private static boolean mustRotateCredentials(PolarisPrincipal principal) {
+    return principal
+        .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
+        .map(PrincipalEntity::getInternalPropertiesAsMap)
+        .map(
+            map ->
+                map.containsKey(
+                    PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE))
+        .orElse(false);
   }
 }

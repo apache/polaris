@@ -20,11 +20,11 @@ import os
 import logging
 import yaml
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Optional, List, Any, Set
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.exceptions import CliError
+from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.constants import (
     PrincipalType,
     Subcommands,
@@ -76,6 +76,7 @@ class SetupCommand(Command):
     _existing_catalogs: Optional[Set[str]] = None
     _existing_principals: Optional[Set[str]] = None
     _catalog_api: Optional[Any] = None
+    _failure_count: int = field(default=0, init=False, repr=False)
 
     def _get_catalog_api(self, api: PolarisDefaultApi) -> Any:
         """Get or create and cache the IcebergCatalogAPI client."""
@@ -91,7 +92,7 @@ class SetupCommand(Command):
                     p.name for p in api.list_principals().principals
                 }
             except Exception:
-                logger.exception("Failed to fetch existing principals")
+                self._record_failure("Failed to fetch existing principals")
                 self._existing_principals = set()
         return self._existing_principals
 
@@ -103,7 +104,7 @@ class SetupCommand(Command):
                     role.name for role in api.list_principal_roles().roles
                 }
             except Exception:
-                logger.exception("Failed to fetch existing principal roles")
+                self._record_failure("Failed to fetch existing principal roles")
                 self._existing_principal_roles = set()
         return self._existing_principal_roles
 
@@ -125,8 +126,8 @@ class SetupCommand(Command):
                     # In dry-run, a 404 is expected if the catalog doesn't exist yet
                     is_404 = getattr(e, "status", None) == 404 or "(404)" in str(e)
                     if not (self.dry_run and is_404):
-                        logger.warning(
-                            f"Failed to fetch catalog roles for catalog '{catalog_name}': {e}"
+                        self._record_failure(
+                            f"Failed to fetch catalog roles for catalog '{catalog_name}'"
                         )
                     self._existing_catalog_roles[catalog_name] = set()
             return self._existing_catalog_roles[catalog_name]
@@ -138,7 +139,7 @@ class SetupCommand(Command):
             try:
                 self._existing_catalogs = {c.name for c in api.list_catalogs().catalogs}
             except Exception:
-                logger.exception("Failed to fetch existing catalogs")
+                self._record_failure("Failed to fetch existing catalogs")
                 self._existing_catalogs = set()
         return self._existing_catalogs
 
@@ -572,7 +573,12 @@ class SetupCommand(Command):
                     dry_run=self.dry_run,
                 )
                 logger.info(f"--- Finished processing catalog: {catalog_name} ---")
-            if self.dry_run:
+            if self._failure_count:
+                raise CliError(
+                    f"Setup apply failed; setup errors: {self._failure_count}",
+                    exit_code=CLI_ERROR_EXIT_CODE,
+                )
+            elif self.dry_run:
                 logger.info("=== Dry-Run Finished ===")
             else:
                 logger.info("=== Setup Apply Process Completed Successfully ===")
@@ -601,6 +607,10 @@ class SetupCommand(Command):
                 message += f" with details:\n{details_str}"
         logger.info(message)
 
+    def _record_failure(self, message: str) -> None:
+        self._failure_count += 1
+        logger.exception(message)
+
     def _create_principals(
         self,
         api: PolarisDefaultApi,
@@ -609,6 +619,9 @@ class SetupCommand(Command):
     ) -> None:
         """Create principals and assign them to principal roles."""
         logger.info("--- Processing principals ---")
+        if not principals_config:
+            logger.info("--- Finished processing principals ---")
+            return
         existing_principals = self._get_existing_principals(api)
         for principal_name, principal_data in principals_config.items():
             if principal_name in existing_principals:
@@ -640,7 +653,7 @@ class SetupCommand(Command):
                         )
                         existing_principals.add(principal_name)
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to create principal '{principal_name}'"
                         )
             # Assign roles
@@ -657,6 +670,7 @@ class SetupCommand(Command):
                     logger.warning(
                         f"Skipping assignment for non-existing principal role '{role_name}' for principal '{principal_name}'"
                     )
+                    self._failure_count += 1
                     continue
 
                 if dry_run:
@@ -681,7 +695,7 @@ class SetupCommand(Command):
                             f"Assigned principal '{principal_name}' to role '{role_name}' successfully."
                         )
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to assign principal '{principal_name}' to role '{role_name}'"
                         )
         logger.info("--- Finished processing principals ---")
@@ -694,6 +708,9 @@ class SetupCommand(Command):
     ) -> None:
         """Create principal roles."""
         logger.info("--- Processing principal roles ---")
+        if not principal_roles_config:
+            logger.info("--- Finished processing principal roles ---")
+            return
         self._get_existing_principal_roles(api)
 
         for role_name in principal_roles_config:
@@ -722,7 +739,9 @@ class SetupCommand(Command):
                     if self._existing_principal_roles is not None:
                         self._existing_principal_roles.add(role_name)
                 except Exception:
-                    logger.exception(f"Failed to create principal role '{role_name}'")
+                    self._record_failure(
+                        f"Failed to create principal role '{role_name}'"
+                    )
         logger.info("--- Finished processing principal roles ---")
 
     def _map_storage_properties(self, catalog_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -872,8 +891,8 @@ class SetupCommand(Command):
                     command_args = {
                         "catalogs_subcommand": Subcommands.CREATE,
                         "catalog_name": catalog_name,
-                        "catalog_type": catalog_data.get(
-                            "type", CatalogType.INTERNAL.value
+                        "catalog_type": (
+                            catalog_data.get("type") or CatalogType.INTERNAL.value
                         ).lower(),
                     }
                     command_args.update(self._map_storage_properties(catalog_data))
@@ -883,6 +902,7 @@ class SetupCommand(Command):
                             logger.warning(
                                 f"External catalog '{catalog_name}' is missing the required 'connection' info block."
                             )
+                            self._failure_count += 1
                             overall_success = False
                             continue
                         command_args.update(conn_args)
@@ -954,7 +974,7 @@ class SetupCommand(Command):
                     logger.info(f"Catalog '{catalog_name}' created successfully.")
                     existing_catalogs.add(catalog_name)
                 except Exception:
-                    logger.exception(f"Failed to create catalog '{catalog_name}'")
+                    self._record_failure(f"Failed to create catalog '{catalog_name}'")
                     overall_success = False
         logger.info("--- Finished processing catalogs ---")
         return overall_success
@@ -968,8 +988,14 @@ class SetupCommand(Command):
     ) -> None:
         """Create catalog roles, assign them to principal roles, and grant privileges."""
         logger.info(f"--- Processing catalog roles for catalog: {catalog_name} ---")
+        if not roles_config:
+            logger.info(
+                f"--- Finished processing catalog roles for catalog: {catalog_name} ---"
+            )
+            return
         existing_roles_in_catalog = self._get_existing_catalog_roles(api, catalog_name)
-        self._get_existing_principal_roles(api)
+        if any(role_data.get("assign_to") for role_data in roles_config.values()):
+            self._get_existing_principal_roles(api)
         for role_name, role_data in roles_config.items():
             if role_name in existing_roles_in_catalog:
                 logger.info(
@@ -1001,7 +1027,7 @@ class SetupCommand(Command):
                         # Update the cache with the newly created role
                         existing_roles_in_catalog.add(role_name)
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to create catalog role '{role_name}' in catalog '{catalog_name}'"
                         )
                         continue
@@ -1015,6 +1041,7 @@ class SetupCommand(Command):
                     logger.warning(
                         f"Skipping assignment of catalog role '{role_name}' to non-existing principal role '{principal_role_name}'"
                     )
+                    self._failure_count += 1
                     continue
                 if dry_run:
                     self._log_dry_run(
@@ -1040,7 +1067,7 @@ class SetupCommand(Command):
                             f"Assigned catalog role '{role_name}' to principal role '{principal_role_name}' successfully."
                         )
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to assign catalog role '{role_name}' to principal role '{principal_role_name}'"
                         )
             # Grant privileges
@@ -1115,7 +1142,7 @@ class SetupCommand(Command):
             cmd.execute(api)
             logger.info(f"Successfully granted {log_message}")
         except Exception:
-            logger.exception(f"Failed to grant {log_message}")
+            self._record_failure(f"Failed to grant {log_message}")
 
     def _create_namespaces(
         self,
@@ -1176,7 +1203,7 @@ class SetupCommand(Command):
                             existing_namespaces.add(".".join(ns))
                             listed_parents.add(parent_ns)
                     except Exception:
-                        logger.exception(
+                        self._record_failure(
                             f"Failed to list sub-namespaces for '{parent_ns}'"
                         )
 
@@ -1216,7 +1243,7 @@ class SetupCommand(Command):
                     )
                     existing_namespaces.add(ns_name)
                 except Exception:
-                    logger.exception(
+                    self._record_failure(
                         f"Failed to create namespace '{ns_name}' in catalog '{catalog_name}'"
                     )
         logger.info(
@@ -1254,9 +1281,16 @@ class SetupCommand(Command):
             except NotFoundException:
                 policy_exists = False
             except Exception:
-                logger.warning(
-                    f"Could not verify existence of policy '{policy_name}', attempting creation."
-                )
+                # A real apply's create attempt determines whether this failure is terminal.
+                if dry_run:
+                    self._record_failure(
+                        f"Could not verify existence of policy '{policy_name}'"
+                    )
+                else:
+                    logger.warning(
+                        f"Could not verify existence of policy '{policy_name}', attempting creation.",
+                        exc_info=True,
+                    )
                 policy_exists = False
             if policy_exists:
                 logger.info(
@@ -1314,7 +1348,7 @@ class SetupCommand(Command):
                         )
                         logger.info(f"Policy '{policy_name}' created successfully.")
                     except Exception:
-                        logger.exception(f"Failed to create policy '{policy_name}'")
+                        self._record_failure(f"Failed to create policy '{policy_name}'")
                         continue
             # Attachments
             attachments = policy_data.get("attach", [])
@@ -1355,7 +1389,7 @@ class SetupCommand(Command):
                         cmd.execute(api)
                         logger.info(f"Successfully attached policy '{policy_name}'")
                     except Exception:
-                        logger.exception(f"Failed to attach policy '{policy_name}'")
+                        self._record_failure(f"Failed to attach policy '{policy_name}'")
         logger.info(f"--- Finished processing policies for catalog: {catalog_name} ---")
 
     def _validate_entity(

@@ -53,10 +53,9 @@ import org.jspecify.annotations.Nullable;
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
  *
- * <p>Metrics-related persistence is intentionally decoupled and lives in {@code
- * MetricsPersistence}. A concrete backend may implement both SPIs on the same class, but callers
- * that only need metrics persistence should depend on {@code MetricsPersistence} directly rather
- * than on {@link BasePersistence}.
+ * <p>Metrics-related persistence is intentionally decoupled from this SPI and lives in the {@code
+ * polaris-extensions-metrics-reports-jdbc} extension module, which provides its own {@code
+ * MetricsPersistence} implementation independently of {@link BasePersistence}.
  */
 public interface BasePersistence extends PolicyMappingPersistence {
   /**

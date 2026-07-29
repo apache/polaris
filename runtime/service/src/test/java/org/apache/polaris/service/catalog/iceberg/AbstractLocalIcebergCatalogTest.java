@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Fail.fail;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +32,7 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -73,6 +75,7 @@ import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.NullOrder;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.RetryableValidationException;
 import org.apache.iceberg.RowDelta;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
@@ -95,6 +98,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
@@ -126,6 +130,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -673,6 +678,41 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
+  }
+
+  @Test
+  public void commitSurfacesRetryableValidationFailureAsRetryableCommitConflict() {
+    Schema schema = new Schema(Types.NestedField.required(1, "id", Types.LongType.get()));
+    TableMetadata base =
+        TableMetadata.newTableMetadata(
+            schema, PartitionSpec.unpartitioned(), "file:///tmp/t", Map.of());
+    TableOperations ops = mock(TableOperations.class);
+    when(ops.current()).thenReturn(base);
+
+    // Stands in for the RetryableValidationException addSnapshot raises under a concurrent commit.
+    MetadataUpdate retryableUpdate =
+        new MetadataUpdate() {
+          @Override
+          public void applyTo(TableMetadata.Builder metadataBuilder) {
+            throw new RetryableValidationException(
+                "Cannot add snapshot with sequence number 6 older than last sequence number 6");
+          }
+
+          @Override
+          public void applyTo(ViewMetadata.Builder viewMetadataBuilder) {
+            throw new UnsupportedOperationException();
+          }
+        };
+
+    UpdateTableRequest request = new UpdateTableRequest(List.of(), List.of(retryableUpdate));
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, false);
+
+    assertThatThrownBy(() -> catalogHandlerUtils.commit(ops, request))
+        .isInstanceOf(CommitFailedException.class)
+        // RetryableValidationException must not leak: it is a ValidationException, which maps to
+        // 400.
+        .isNotInstanceOf(ValidationException.class)
+        .hasMessageContaining("Validation failed, please retry");
   }
 
   @Test
@@ -2866,6 +2906,57 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitConflictException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  static Stream<Arguments> renameFailureStatuses() {
+    return Stream.of(
+        // Transient conflict: entity present but concurrently modified -> 503, retryable.
+        Arguments.of(
+            BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+            PolarisServiceUnavailableException.class),
+        // Source path could not be resolved (e.g. concurrently dropped) -> 404, not retryable.
+        Arguments.of(
+            BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, NoSuchNamespaceException.class),
+        // Target path could not be resolved (e.g. concurrently dropped) -> 404, not retryable.
+        Arguments.of(
+            BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED,
+            NoSuchNamespaceException.class));
+  }
+
+  @ParameterizedTest
+  @MethodSource("renameFailureStatuses")
+  public void testConcurrencyConflictRenameTable(
+      BaseResult.ReturnStatus renameStatus, Class<? extends Throwable> expectedException) {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    // Use a spy so that resolution succeeds normally, but the final rename reports the given
+    // failure status. The mapping must distinguish a transient conflict
+    // (TARGET_ENTITY_CONCURRENTLY_MODIFIED -> 503, retryable) from resolution failures
+    // (ENTITY_CANNOT_BE_RESOLVED / CATALOG_PATH_CANNOT_BE_RESOLVED -> 404), rather than failing
+    // with an opaque 500.
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    final LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("rename_conflict_ns");
+    catalog.createNamespace(namespace);
+
+    final TableIdentifier from = TableIdentifier.of(namespace, "rename_from");
+    final TableIdentifier to = TableIdentifier.of(namespace, "rename_to");
+    catalog.buildTable(from, SCHEMA).create();
+
+    doReturn(new EntityResult(renameStatus, null))
+        .when(spyMetaStore)
+        .renameEntity(any(), any(), any(), any(), any());
+
+    Assertions.assertThatThrownBy(() -> catalog.renameTable(from, to))
+        .isInstanceOf(expectedException)
+        .hasMessageContaining("rename_from");
   }
 
   @Test

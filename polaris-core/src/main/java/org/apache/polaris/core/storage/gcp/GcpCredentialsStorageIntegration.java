@@ -337,7 +337,7 @@ public class GcpCredentialsStorageIntegration
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
     accessConfig.put(StorageAccessProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
     accessConfig.put(
-        StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
+        StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT_MS,
         String.valueOf(token.getExpirationTime().getTime()));
 
     key.refreshCredentialsEndpoint()

@@ -25,6 +25,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import io.smallrye.common.annotation.Identifier;
@@ -44,13 +45,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
-import org.apache.iceberg.SnapshotRef;
+import org.apache.iceberg.RetryableValidationException;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -131,7 +131,9 @@ import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.idempotency.EntityIdempotency;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
+import org.apache.polaris.service.metrics.IcebergMetricsReporter;
+import org.apache.polaris.service.metrics.MetricType;
+import org.apache.polaris.service.metrics.MetricsReportEnvelope;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -178,7 +180,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract EventAttributeMap eventAttributeMap();
 
-  protected abstract PolarisMetricsReporter metricsReporter();
+  protected abstract IcebergMetricsReporter metricsReporter();
 
   protected abstract Clock clock();
 
@@ -828,9 +830,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
     long tableId = tableEntity.getId();
 
+    MetricType metricType =
+        request.report() instanceof ScanReport ? MetricType.SCAN : MetricType.COMMIT;
     metricsReporter()
         .reportMetric(
-            catalogName(), catalogId, identifier, tableId, request.report(), clock().instant());
+            new MetricsReportEnvelope(
+                catalogName(),
+                catalogId,
+                identifier,
+                tableId,
+                metricType,
+                request.report(),
+                clock().instant()));
   }
 
   /**
@@ -1521,7 +1532,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               }
 
               // Apply updates to builder
-              singleUpdate.applyTo(metadataBuilder);
+              try {
+                singleUpdate.applyTo(metadataBuilder);
+              } catch (RetryableValidationException e) {
+                // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
+                throw new CommitFailedException(
+                    e, "Validation failed, please retry: %s", e.getMessage());
+              }
             }
 
             // Update currentMetadata to reflect this change for subsequent requirement validation
@@ -1693,20 +1710,21 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     catalogHandlerUtils().renameView(viewCatalog, request);
   }
 
-  private @NonNull LoadTableResponse filterResponseToSnapshots(
+  @VisibleForTesting
+  @NonNull LoadTableResponse filterResponseToSnapshots(
       LoadTableResponse loadTableResponse, String snapshots) {
     if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
       return loadTableResponse;
     } else if (snapshots.equalsIgnoreCase(SNAPSHOTS_REFS)) {
       TableMetadata metadata = loadTableResponse.tableMetadata();
 
-      Set<Long> referencedSnapshotIds =
-          metadata.refs().values().stream()
-              .map(SnapshotRef::snapshotId)
-              .collect(Collectors.toSet());
-
+      // suppressHistoricalSnapshots() preserves metadataLocation() while dropping unreferenced
+      // snapshots, matching org.apache.iceberg.rest.CatalogHandlers#loadTable's REFS case.
       TableMetadata filteredMetadata =
-          metadata.removeSnapshotsIf(s -> !referencedSnapshotIds.contains(s.snapshotId()));
+          TableMetadata.buildFrom(metadata)
+              .withMetadataLocation(metadata.metadataFileLocation())
+              .suppressHistoricalSnapshots()
+              .build();
 
       return LoadTableResponse.builder()
           .withTableMetadata(filteredMetadata)

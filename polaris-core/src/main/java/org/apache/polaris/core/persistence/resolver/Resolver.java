@@ -792,12 +792,15 @@ public class Resolver {
 
     // activate all principal roles specified in the authenticated principal
     if (resolvePrincipalRoles) {
-      resolvedCallerPrincipalRoles =
-          switch (this.polarisPrincipal.getRoleSelection()) {
-            case ALL_ROLES -> resolveAllPrincipalRoles(toValidate, resolvedCallerPrincipal);
-            case SELECTED_ROLES ->
-                resolvePrincipalRolesByName(toValidate, this.polarisPrincipal.getRoles());
-          };
+      if (this.polarisPrincipal
+          .getAttribute(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, Boolean.class)
+          .orElse(false)) {
+        resolvedCallerPrincipalRoles =
+            resolveAllPrincipalRoles(toValidate, resolvedCallerPrincipal);
+      } else {
+        resolvedCallerPrincipalRoles =
+            resolvePrincipalRolesByName(toValidate, this.polarisPrincipal.getRoles());
+      }
     } else {
       resolvedCallerPrincipalRoles = new ArrayList<>();
     }

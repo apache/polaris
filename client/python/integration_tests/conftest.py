@@ -175,7 +175,7 @@ def test_principal_token(
         CatalogApiClientConfiguration(
             host=polaris_catalog_url,
             username=test_principal.principal.client_id,
-            password=test_principal.credentials.client_secret,
+            password=test_principal.credentials.client_secret.get_secret_value(),
         )
     )
     oauth_api = IcebergOAuth2API(client)
