@@ -79,6 +79,13 @@ testing {
         // PrincipalWithCredentials, surfaced transitively through PolarisClient.obtainToken().
         implementation(project(":polaris-api-management-model"))
         implementation(libs.jakarta.ws.rs.api)
+        // Standalone JAX-RS client runtime + JSON provider for PolarisClient (this is a plain-JVM
+        // suite talking to an externally-spawned server, so it needs its own client, unlike the
+        // in-Quarkus runtime tests). RESTEasy, matching the repo convention of excluding Jersey.
+        implementation("org.jboss.resteasy:resteasy-client")
+        implementation("org.jboss.resteasy:resteasy-core")
+        implementation(platform(libs.jackson.bom))
+        implementation("com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider")
       }
       targets {
         all {

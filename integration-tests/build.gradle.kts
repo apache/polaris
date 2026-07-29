@@ -23,7 +23,6 @@ dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-catalog-service"))
-  implementation(project(":polaris-api-openlineage-service"))
 
   implementation(libs.jakarta.annotation.api)
   implementation(libs.jakarta.ws.rs.api)
