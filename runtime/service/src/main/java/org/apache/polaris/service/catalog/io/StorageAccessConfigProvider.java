@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
@@ -44,7 +45,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /**
  * Request-scoped entry point for vending scoped storage credentials. Resolves the storage
  * integration for the given entity path via {@link PolarisStorageIntegrationProvider}, builds a

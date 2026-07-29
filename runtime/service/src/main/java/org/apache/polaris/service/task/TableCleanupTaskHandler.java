@@ -36,6 +36,7 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -47,7 +48,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /**
  * Table cleanup handler resolves the latest {@link TableMetadata} file for a dropped table and
  * schedules a deletion task for <i>each</i> Snapshot found in the {@link TableMetadata}. Manifest
@@ -224,7 +225,8 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .atDebug()
                   .addKeyValue(StructuredLogKeys.TASK_NAME, taskName)
                   .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableEntity.getTableIdentifier())
-                  .addKeyValue(StructuredLogKeys.METADATA_LOCATION, tableEntity.getMetadataLocation())
+                  .addKeyValue(
+                      StructuredLogKeys.METADATA_LOCATION, tableEntity.getMetadataLocation())
                   .addKeyValue(StructuredLogKeys.MANIFEST_FILE, mf.path())
                   .log("Queueing task to delete manifest file");
               return new TaskEntity.Builder()

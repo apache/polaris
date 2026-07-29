@@ -45,6 +45,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -137,7 +138,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /**
  * Just as an Iceberg Catalog represents the logical model of Iceberg business logic to manage
  * Namespaces, Tables and Views, abstracted away from Iceberg REST objects, this class represents

@@ -38,6 +38,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.function.TriConsumer;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
@@ -60,7 +61,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /**
  * Given a list of registered {@link TaskHandler}s, execute tasks asynchronously with the provided
  * {@link CallContext}.
@@ -259,7 +260,8 @@ public class TaskExecutorImpl implements TaskExecutor {
         LOGGER
             .atWarn()
             .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
-            .addKeyValue(StructuredLogKeys.TASK_ENTITY_NAME, taskEntity != null ? taskEntity.getName() : "")
+            .addKeyValue(
+                StructuredLogKeys.TASK_ENTITY_NAME, taskEntity != null ? taskEntity.getName() : "")
             .log("Unable to execute async task");
       }
       throw e;

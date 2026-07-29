@@ -29,12 +29,13 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTSerializers;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /** A mapper to serialize/deserialize polaris objects. */
 public final class PolarisObjectMapperUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisObjectMapperUtil.class);

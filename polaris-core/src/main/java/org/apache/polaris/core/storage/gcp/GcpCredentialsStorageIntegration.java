@@ -45,6 +45,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
@@ -63,7 +64,7 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /**
  * GCS implementation of {@link PolarisStorageIntegration} with support for scoping credentials for
  * input read/write locations

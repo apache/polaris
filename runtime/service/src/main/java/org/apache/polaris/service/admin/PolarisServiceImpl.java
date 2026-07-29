@@ -29,6 +29,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -81,7 +82,7 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /** Concrete implementation of the Polaris API services */
 @RequestScoped
 public class PolarisServiceImpl

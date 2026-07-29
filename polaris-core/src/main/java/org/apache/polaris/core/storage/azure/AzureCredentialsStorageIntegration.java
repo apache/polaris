@@ -56,6 +56,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -69,7 +70,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /** Azure credential vendor that supports generating SAS token */
 public class AzureCredentialsStorageIntegration
     extends CachingStorageIntegration<AzureStorageConfigurationInfo> {

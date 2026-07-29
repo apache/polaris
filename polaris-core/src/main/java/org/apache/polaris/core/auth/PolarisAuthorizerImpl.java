@@ -132,6 +132,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -146,7 +147,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /**
  * Performs hierarchical resolution logic by matching the transively expanded set of grants to a
  * calling principal against the cascading permissions over the parent hierarchy of a target

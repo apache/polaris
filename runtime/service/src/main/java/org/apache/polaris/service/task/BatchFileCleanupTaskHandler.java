@@ -25,12 +25,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /**
  * {@link BatchFileCleanupTaskHandler} responsible for batch file cleanup by processing multiple
  * file deletions in a single task handler. Valid files are deleted asynchronously with retries for

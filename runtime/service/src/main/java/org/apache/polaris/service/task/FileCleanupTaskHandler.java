@@ -25,11 +25,12 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.StructuredLogKeys;
+
 /**
  * Abstract base class for handling file cleanup tasks within Apache Polaris.
  *
