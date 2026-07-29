@@ -375,6 +375,10 @@ class TestCatalogsCommand(CLITestBase):
             call_args.catalog.connection_config_info.authentication_parameters.bearer_token.get_secret_value(),
             "b",
         )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.authentication_type,
+            "BEARER",
+        )
 
     def test_catalog_storage_type_exclusivity(self) -> None:
         mock_client = self.build_mock_client()
@@ -657,6 +661,56 @@ class TestCatalogsCommand(CLITestBase):
         )
         self.assertEqual(call_args.catalog.storage_config_info.storage_type, "GCS")
         self.assertEqual(call_args.catalog.properties.default_base_location, "dbl")
+
+    def test_external_catalog_gcp(self) -> None:
+        mock_client = self.build_mock_client()
+        self.mock_execute(
+            mock_client,
+            [
+                "catalogs",
+                "create",
+                "my-catalog",
+                "--type",
+                "external",
+                "--storage-type",
+                "gcs",
+                "--default-base-location",
+                "dbl",
+                "--catalog-connection-type",
+                "iceberg-rest",
+                "--iceberg-remote-catalog-name",
+                "biglake",
+                "--catalog-uri",
+                "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                "--catalog-authentication-type",
+                "gcp",
+                "--property",
+                "header.x-goog-user-project=my-billing-project",
+            ],
+        )
+        call_args = mock_client.create_catalog.call_args[0][0]
+        self.assertEqual(call_args.catalog.name, "my-catalog")
+        self.assertEqual(call_args.catalog.type, "EXTERNAL")
+        self.assertEqual(
+            call_args.catalog.connection_config_info.connection_type, "ICEBERG_REST"
+        )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.remote_catalog_name, "biglake"
+        )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.uri,
+            "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+        )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.authentication_type,
+            "GCP",
+        )
+        self.assertEqual(call_args.catalog.storage_config_info.storage_type, "GCS")
+        self.assertEqual(call_args.catalog.properties.default_base_location, "dbl")
+        self.assertEqual(
+            call_args.catalog.properties.additional_properties,
+            {"header.x-goog-user-project": "my-billing-project"},
+        )
 
     def test_external_catalog_hadoop(self) -> None:
         mock_client = self.build_mock_client()

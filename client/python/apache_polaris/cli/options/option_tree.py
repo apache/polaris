@@ -121,7 +121,7 @@ class OptionTree:
         Argument(
             Arguments.CATALOG_AUTHENTICATION_TYPE,
             str,
-            "Authentication type [OAUTH, BEARER, SIGV4, IMPLICIT]",
+            "Authentication type [OAUTH, BEARER, GCP, SIGV4, IMPLICIT]",
             lower=True,
             choices=[at.value for at in AuthenticationType],
             group="External Catalog Federation: General Options",

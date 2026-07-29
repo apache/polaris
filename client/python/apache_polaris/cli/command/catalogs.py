@@ -47,6 +47,7 @@ from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     BearerAuthenticationParameters,
+    GcpAuthenticationParameters,
     ImplicitAuthenticationParameters,
     OAuthClientCredentialsParameters,
     SigV4AuthenticationParameters,
@@ -356,6 +357,10 @@ class CatalogsCommand(Command):
             auth_params = BearerAuthenticationParameters(
                 authentication_type=self.catalog_authentication_type.upper(),
                 bearer_token=SecretStr(self.catalog_bearer_token),
+            )
+        elif self.catalog_authentication_type == AuthenticationType.GCP.value:
+            auth_params = GcpAuthenticationParameters(
+                authentication_type=self.catalog_authentication_type.upper()
             )
         elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
             auth_params = SigV4AuthenticationParameters(

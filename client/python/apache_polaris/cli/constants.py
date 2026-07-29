@@ -65,6 +65,7 @@ class AuthenticationType(Enum):
 
     OAUTH = "oauth"
     BEARER = "bearer"
+    GCP = "gcp"
     SIGV4 = "sigv4"
     IMPLICIT = "implicit"
 
