@@ -71,8 +71,12 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract String getRoleARN();
 
-  /** Deprecated KMS Key ARN, retained for compatibility and treated as an allowed KMS key. */
-  @Deprecated
+  /**
+   * Deprecated KMS Key ARN, retained for compatibility and treated as an allowed KMS key.
+   *
+   * @deprecated since 1.8.0. Use {@link #getAllowedKmsKeys()} instead.
+   */
+  @Deprecated(since = "1.8.0")
   @Nullable
   public abstract String getCurrentKmsKey();
 
