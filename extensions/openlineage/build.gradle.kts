@@ -76,6 +76,8 @@ testing {
         // intTest source set (OpenLineageServiceIT), since the endpoint is an optional extension.
         implementation(project(":polaris-tests"))
         implementation(project(":polaris-runtime-test-common"))
+        // PrincipalWithCredentials, surfaced transitively through PolarisClient.obtainToken().
+        implementation(project(":polaris-api-management-model"))
         implementation(libs.jakarta.ws.rs.api)
       }
       targets {

@@ -218,6 +218,15 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
+This product bundles OpenLineage.
+
+* Maven group:artifact IDs: io.openlineage:openlineage-java
+
+Home page: https://openlineage.io/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
 This product bundles and includes code from Netty.
 
 * Maven group:artifact IDs: io.netty:netty-buffer
@@ -536,6 +545,7 @@ This product bundles Jackson.
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-guava
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jdk8
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jsr310
+* Maven group:artifact IDs: com.fasterxml.jackson.module:jackson-module-blackbird
 * Maven group:artifact IDs: com.fasterxml.jackson.module:jackson-module-parameter-names
 * Maven group:artifact IDs: tools.jackson.core:jackson-core
 * Maven group:artifact IDs: tools.jackson.core:jackson-databind
