@@ -264,7 +264,7 @@ tasks.named("build") { dependsOn(createPolarisSparkJar) }
 // NOTICE under META-INF, so add them back explicitly for those jars (the bundle jar is left as-is).
 listOf("jar", "sourcesJar", "javadocJar").forEach { jarTask ->
   tasks.named<Jar>(jarTask) {
-    from(rootProject.rootDir) {
+    from(layout.settingsDirectory) {
       include("gradle/jar-licenses/LICENSE", "gradle/jar-licenses/NOTICE")
       eachFile { path = "META-INF/$sourceName" }
     }
