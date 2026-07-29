@@ -399,6 +399,18 @@ class OptionTree:
                             group="AWS S3 Storage Options",
                         ),
                         Argument(
+                            Arguments.STS_UNAVAILABLE,
+                            bool,
+                            Hints.S3_STS_UNAVAILABLE,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_UNAVAILABLE,
+                            bool,
+                            Hints.S3_KMS_UNAVAILABLE,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
                             Arguments.SET_PROPERTY,
                             str,
                             Hints.CATALOG_SET_PROPERTY,

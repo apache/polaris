@@ -25,6 +25,7 @@ from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     AwsStorageConfigInfo,
+    StorageConfigInfo,
 )
 
 
@@ -463,6 +464,66 @@ class TestCatalogsCommand(CLITestBase):
         mock_client.get_catalog.assert_called_with("foo")
         self.mock_execute(mock_client, ["catalogs", "get", "foo"])
         mock_client.get_catalog.assert_called_with("foo")
+
+    def test_catalog_update_s3_options(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="s3-catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path", additional_properties={}
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3", allowed_locations=[]
+            ),
+        )
+        self.mock_execute(
+            mock_client,
+            ["catalogs", "update", "s3-catalog", "--no-sts", "--no-kms"],
+        )
+        call_args = mock_client.update_catalog.call_args[0][1]
+        self.assertTrue(call_args.storage_config_info.sts_unavailable)
+        self.assertTrue(call_args.storage_config_info.kms_unavailable)
+
+        # --no-kms alone (without any other AWS storage option) must still be applied
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="s3-catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path", additional_properties={}
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3", allowed_locations=[]
+            ),
+        )
+        self.mock_execute(
+            mock_client,
+            ["catalogs", "update", "s3-catalog", "--no-kms"],
+        )
+        call_args = mock_client.update_catalog.call_args[0][1]
+        self.assertTrue(call_args.storage_config_info.kms_unavailable)
+
+        # --no-kms against a non-S3 catalog should raise
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="gcs-catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="gs://bucket/path", additional_properties={}
+            ),
+            storage_config_info=StorageConfigInfo(
+                storage_type="GCS", allowed_locations=[]
+            ),
+        )
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                ["catalogs", "update", "gcs-catalog", "--no-kms"],
+            ),
+            "--no-kms requires S3 storage_type",
+        )
 
     def test_catalog_list(self) -> None:
         mock_client = self.build_mock_client()
