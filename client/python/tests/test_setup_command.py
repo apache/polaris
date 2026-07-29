@@ -18,10 +18,11 @@
 #
 
 import io
-from unittest.mock import patch, MagicMock, mock_open
+from types import SimpleNamespace
+from unittest.mock import call, patch, MagicMock, mock_open
 from cli_test_utils import CLITestBase, INVALID_ARGS
 from apache_polaris.cli.command.setup import SetupCommand
-from apache_polaris.cli.constants import Subcommands
+from apache_polaris.cli.constants import Subcommands, UNIT_SEPARATOR
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.sdk.management import (
     PolarisCatalog,
@@ -312,9 +313,102 @@ class TestSetupCommand(CLITestBase):
                 mock_open(read_data=setup_yaml),
             ),
         ):
-            self.mock_execute(
-                mock_client,
-                ["setup", "apply", "config.yaml"]
-            )
+            self.mock_execute(mock_client, ["setup", "apply", "config.yaml"])
         call_args = mock_client.create_catalog.call_args[0][0]
         self.assertEqual(call_args.catalog.type, "INTERNAL")
+
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_includes_nested_namespaces_and_policies(
+        self,
+        mock_catalog_api_class: MagicMock,
+        mock_policy_api_class: MagicMock,
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+
+        def list_namespaces(prefix: str, parent: str | None = None) -> SimpleNamespace:
+            self.assertEqual(prefix, "catalog")
+            namespaces = {
+                None: [["parent"]],
+                "parent": [["parent", "child"]],
+                f"parent{UNIT_SEPARATOR}child": [],
+            }
+            return SimpleNamespace(namespaces=namespaces[parent])
+
+        catalog_api.list_namespaces.side_effect = list_namespaces
+        catalog_api.load_namespace_metadata.return_value = object()
+
+        policy_api = mock_policy_api_class.return_value
+        policy_api.list_policies.side_effect = (
+            lambda prefix, namespace: SimpleNamespace(
+                identifiers=(
+                    [SimpleNamespace(name="child-policy")]
+                    if namespace == f"parent{UNIT_SEPARATOR}child"
+                    else []
+                )
+            )
+        )
+        policy_api.load_policy.return_value = SimpleNamespace(
+            policy=SimpleNamespace(
+                content='{"max-age": 7}',
+                policy_type="data-compaction",
+                description=None,
+            )
+        )
+
+        command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        mock_client = MagicMock()
+        mock_client.list_catalogs.return_value = SimpleNamespace(
+            catalogs=[SimpleNamespace(name="catalog")]
+        )
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="file:///path",
+                additional_properties={},
+            ),
+            storage_config_info=FileStorageConfigInfo(
+                storage_type="FILE",
+                allowed_locations=["file:///path"],
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
+
+        catalog = command._export_catalogs(mock_client)[0]
+
+        self.assertEqual(catalog["namespaces"], ["parent", "parent.child"])
+        self.assertEqual(
+            catalog["policies"],
+            {
+                "child-policy": {
+                    "namespace": "parent.child",
+                    "type": "data-compaction",
+                    "content": '{"max-age":7}',
+                }
+            },
+        )
+        self.assertEqual(
+            catalog_api.list_namespaces.call_args_list,
+            [
+                call(prefix="catalog"),
+                call(prefix="catalog", parent="parent"),
+                call(
+                    prefix="catalog",
+                    parent=f"parent{UNIT_SEPARATOR}child",
+                ),
+            ],
+        )
+        policy_api.list_policies.assert_has_calls(
+            [
+                call(prefix="catalog", namespace="parent"),
+                call(
+                    prefix="catalog",
+                    namespace=f"parent{UNIT_SEPARATOR}child",
+                ),
+            ]
+        )
