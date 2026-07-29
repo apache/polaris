@@ -21,6 +21,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "python-dateutil" },
     { name = "pyyaml" },
+    { name = "rich" },
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
@@ -45,6 +46,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13.0,<2.14.0" },
     { name = "python-dateutil", specifier = ">=2.8.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "rich", specifier = ">=14.2.0" },
     { name = "typing-extensions", specifier = ">=4.7.1" },
     { name = "urllib3", specifier = ">=1.25.3,<3.0.0" },
 ]
