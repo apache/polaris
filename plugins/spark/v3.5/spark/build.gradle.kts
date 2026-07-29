@@ -260,9 +260,9 @@ tasks.named("build") { dependsOn(createPolarisSparkJar) }
 
 // The `src/main/no-license-notice-marker` file disables the standard META-INF/LICENSE+NOTICE
 // injection for this module, because the shadow bundle jar carries its own root-level
-// BUNDLE-LICENSE/BUNDLE-NOTICE. The sources and javadoc jars still need the ASF LICENSE and NOTICE
-// under META-INF, so add them back explicitly for those two jars only.
-listOf("sourcesJar", "javadocJar").forEach { jarTask ->
+// BUNDLE-LICENSE/BUNDLE-NOTICE. The main, sources and javadoc jars still need the ASF LICENSE and
+// NOTICE under META-INF, so add them back explicitly for those jars (the bundle jar is left as-is).
+listOf("jar", "sourcesJar", "javadocJar").forEach { jarTask ->
   tasks.named<Jar>(jarTask) {
     from(rootProject.rootDir) {
       include("gradle/jar-licenses/LICENSE", "gradle/jar-licenses/NOTICE")
