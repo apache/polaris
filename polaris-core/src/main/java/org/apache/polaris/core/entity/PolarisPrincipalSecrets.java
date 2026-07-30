@@ -188,13 +188,21 @@ public class PolarisPrincipalSecrets {
    */
   public Optional<String> getCredentialsVersionForSecret(String potentialSecret) {
     String potentialSecretHash = hashSecret(potentialSecret);
-    if (mainSecretHash != null
-        && DigestUtils.constantTimeEquals(potentialSecretHash, mainSecretHash)) {
-      return Optional.of(credentialsVersionForHash(mainSecretHash));
+    Optional<String> mainVersion = credentialsVersionForHash(mainSecretHash);
+    Optional<String> secondaryVersion = credentialsVersionForHash(secondarySecretHash);
+    // Always compare against both hashes and combine the flags, so the amount of comparison work
+    // does not reveal which generation matched.
+    boolean matchesMain =
+        mainSecretHash != null
+            && DigestUtils.constantTimeEquals(potentialSecretHash, mainSecretHash);
+    boolean matchesSecondary =
+        secondarySecretHash != null
+            && DigestUtils.constantTimeEquals(potentialSecretHash, secondarySecretHash);
+    if (matchesMain) {
+      return mainVersion;
     }
-    if (secondarySecretHash != null
-        && DigestUtils.constantTimeEquals(potentialSecretHash, secondarySecretHash)) {
-      return Optional.of(credentialsVersionForHash(secondarySecretHash));
+    if (matchesSecondary) {
+      return secondaryVersion;
     }
     return Optional.empty();
   }
@@ -220,7 +228,7 @@ public class PolarisPrincipalSecrets {
    *     set by the constructors
    */
   public String getCredentialsVersion() {
-    return DigestUtils.sha256Hex(mainSecretHash + ":" + secretSalt);
+    return credentialsVersionForHash(mainSecretHash).orElseThrow();
   }
 
   /**
@@ -236,13 +244,13 @@ public class PolarisPrincipalSecrets {
       return false;
     }
     boolean matches = false;
-    String mainVersion = credentialsVersionForHash(mainSecretHash);
-    if (mainVersion != null) {
-      matches |= DigestUtils.constantTimeEquals(credentialsVersion, mainVersion);
+    Optional<String> mainVersion = credentialsVersionForHash(mainSecretHash);
+    if (mainVersion.isPresent()) {
+      matches |= DigestUtils.constantTimeEquals(credentialsVersion, mainVersion.get());
     }
-    String secondaryVersion = credentialsVersionForHash(secondarySecretHash);
-    if (secondaryVersion != null) {
-      matches |= DigestUtils.constantTimeEquals(credentialsVersion, secondaryVersion);
+    Optional<String> secondaryVersion = credentialsVersionForHash(secondarySecretHash);
+    if (secondaryVersion.isPresent()) {
+      matches |= DigestUtils.constantTimeEquals(credentialsVersion, secondaryVersion.get());
     }
     return matches;
   }
@@ -252,12 +260,11 @@ public class PolarisPrincipalSecrets {
    * the same per-principal {@link #secretSalt} already stored for secret hashing, which is always
    * set by the constructors.
    */
-  @Nullable
-  private String credentialsVersionForHash(@Nullable String secretHash) {
+  private Optional<String> credentialsVersionForHash(@Nullable String secretHash) {
     if (secretHash == null || secretHash.isEmpty()) {
-      return null;
+      return Optional.empty();
     }
-    return DigestUtils.sha256Hex(secretHash + ":" + secretSalt);
+    return Optional.of(DigestUtils.sha256Hex(secretHash + ":" + secretSalt));
   }
 
   public String getSecondarySecretHash() {

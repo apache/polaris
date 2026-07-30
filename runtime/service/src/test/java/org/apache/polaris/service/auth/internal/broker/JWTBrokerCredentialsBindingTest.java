@@ -207,11 +207,7 @@ public class JWTBrokerCredentialsBindingTest {
             JWT.decode(exchanged.getAccessToken())
                 .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
                 .asString())
-        .isEqualTo(originalClaim);
-    assertThat(
-            JWT.decode(exchanged.getAccessToken())
-                .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
-                .asString())
+        .isEqualTo(originalClaim)
         .isNotEqualTo(secrets.getCredentialsVersion());
     // The secrets loaded during verify are reused for re-minting: no second metastore read.
     Mockito.verify(metaStore, Mockito.times(1)).loadPrincipalSecrets(callContext, CLIENT_ID);
