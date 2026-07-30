@@ -113,6 +113,17 @@ config-doc-generate: check-dependencies ## Generate configuration reference docu
 	@./gradlew :polaris-config-docs-site:copyConfigSectionsToSite
 	@echo "--- Configuration reference documentation generated ---"
 
+config-doc-verify: DEPENDENCIES := java21 git
+.PHONY: config-doc-verify
+config-doc-verify: config-doc-generate ## Verify configuration reference documentation is up to date
+	@echo "--- Verifying configuration reference documentation is up to date ---"
+	@if ! git diff --exit-code site/content/in-dev/unreleased/configuration/config-sections/ || \
+		[ -n "$$(git ls-files --others --exclude-standard site/content/in-dev/unreleased/configuration/config-sections/)" ]; then \
+		echo "ERROR: Configuration reference is out of date. Please run 'make config-doc-generate' and commit the changes."; \
+		exit 1; \
+	fi
+	@echo "--- Configuration reference documentation is up to date ---"
+
 spotless-apply: DEPENDENCIES := java21
 .PHONY: spotless-apply
 spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradle plugin.
