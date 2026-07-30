@@ -28,6 +28,7 @@ import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.named
 import org.gradle.process.CommandLineArgumentProvider
 import org.kordamp.gradle.plugin.jandex.JandexExtension
