@@ -285,7 +285,11 @@ class TestSetupCommand(CLITestBase):
             ),
         )
         mock_client.list_catalog_roles.return_value = MagicMock(roles=[])
-        self.mock_execute(mock_client, ["setup", "export"])
+        with patch(
+            "apache_polaris.cli.command.setup.IcebergCatalogAPI"
+        ) as mock_catalog_api:
+            mock_catalog_api.return_value.list_namespaces.return_value.namespaces = []
+            self.mock_execute(mock_client, ["setup", "export"])
         mock_client.list_principals.assert_called()
         mock_client.list_principal_roles.assert_called()
         mock_client.list_catalogs.assert_called()
@@ -339,8 +343,8 @@ class TestSetupCommand(CLITestBase):
         catalog_api.load_namespace_metadata.return_value = object()
 
         policy_api = mock_policy_api_class.return_value
-        policy_api.list_policies.side_effect = (
-            lambda prefix, namespace: SimpleNamespace(
+        policy_api.list_policies.side_effect = lambda prefix, namespace: (
+            SimpleNamespace(
                 identifiers=(
                     [SimpleNamespace(name="child-policy")]
                     if namespace == f"parent{UNIT_SEPARATOR}child"
@@ -364,6 +368,7 @@ class TestSetupCommand(CLITestBase):
         mock_client.list_catalogs.return_value = SimpleNamespace(
             catalogs=[SimpleNamespace(name="catalog")]
         )
+
         mock_client.get_catalog.return_value = PolarisCatalog(
             type="INTERNAL",
             name="catalog",
@@ -412,3 +417,76 @@ class TestSetupCommand(CLITestBase):
                 ),
             ]
         )
+
+    def test_setup_export_reports_top_level_read_failures(self) -> None:
+        for method_name in (
+            "list_principals",
+            "list_principal_roles",
+            "list_catalogs",
+        ):
+            with self.subTest(method_name=method_name):
+                mock_client = self.build_mock_client()
+                mock_client.list_principals.return_value.principals = []
+                mock_client.list_principal_roles.return_value.roles = []
+                mock_client.list_catalogs.return_value.catalogs = []
+                getattr(mock_client, method_name).side_effect = RuntimeError(
+                    "backend unavailable"
+                )
+                command = SetupCommand(setup_subcommand=Subcommands.EXPORT)
+
+                with (
+                    patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+                    self.assertRaises(CliError) as cm,
+                ):
+                    command.execute(mock_client)
+
+                self.assertEqual(cm.exception.exit_code, CLI_ERROR_EXIT_CODE)
+                self.assertIn("export errors: 1", str(cm.exception))
+                self.assertEqual(mock_stdout.getvalue(), "")
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_reports_nested_read_failures(
+        self, mock_catalog_api: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_principal = MagicMock()
+        mock_principal.name = "principal"
+        mock_client.list_principals.return_value.principals = [mock_principal]
+        mock_client.list_principal_roles_assigned.side_effect = RuntimeError(
+            "backend unavailable"
+        )
+        mock_client.list_principal_roles.return_value.roles = []
+        mock_catalog = MagicMock()
+        mock_catalog.name = "catalog"
+        mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="file:///path",
+                additional_properties={},
+            ),
+            storage_config_info=FileStorageConfigInfo(
+                storage_type="FILE",
+                allowed_locations=["file:///path"],
+            ),
+        )
+        mock_client.list_catalog_roles.side_effect = RuntimeError("backend unavailable")
+        mock_catalog_api.return_value.list_namespaces.side_effect = RuntimeError(
+            "backend unavailable"
+        )
+        command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+
+        with (
+            patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+            self.assertRaises(CliError) as cm,
+        ):
+            command.execute(mock_client)
+
+        self.assertEqual(cm.exception.exit_code, CLI_ERROR_EXIT_CODE)
+        self.assertIn("export errors: 3", str(cm.exception))
+        self.assertEqual(mock_stdout.getvalue(), "")

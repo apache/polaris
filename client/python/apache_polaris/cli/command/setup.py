@@ -156,6 +156,11 @@ class SetupCommand(Command):
             "principal_roles": self._export_principal_roles(api),
             "catalogs": self._export_catalogs(api),
         }
+        if self._failure_count:
+            raise CliError(
+                f"Setup export failed; export errors: {self._failure_count}",
+                exit_code=CLI_ERROR_EXIT_CODE,
+            )
         print(yaml.safe_dump(config, sort_keys=False, indent=2).rstrip())
         logger.info("--- Finished Exporting Polaris Configuration ---")
 
@@ -173,10 +178,12 @@ class SetupCommand(Command):
                             [r.name for r in assigned_roles]
                         )
                 except Exception:
-                    logger.warning(f"Failed to export roles for principal '{p.name}'")
+                    self._record_failure(
+                        f"Failed to export roles for principal '{p.name}'"
+                    )
                 principals_map[p.name] = principal_info
         except Exception:
-            logger.exception("Failed to export principals")
+            self._record_failure("Failed to export principals")
         return principals_map
 
     def _export_principal_roles(self, api: PolarisDefaultApi) -> List[str]:
@@ -184,7 +191,7 @@ class SetupCommand(Command):
         try:
             return sorted([role.name for role in api.list_principal_roles().roles])
         except Exception:
-            logger.exception("Failed to export principal roles")
+            self._record_failure("Failed to export principal roles")
             return []
 
     def _serialize_authentication_info(self, auth_params: Any) -> Dict[str, Any]:
@@ -370,7 +377,7 @@ class SetupCommand(Command):
                     del catalog_info["properties"]
                 catalogs_list.append(catalog_info)
         except Exception:
-            logger.exception("Failed to export catalogs")
+            self._record_failure("Failed to export catalogs")
         return catalogs_list
 
     def _export_catalog_roles_for_catalog(
@@ -418,7 +425,7 @@ class SetupCommand(Command):
                         role_info["privileges"] = privileges
                 roles_map[r.name] = role_info
         except Exception:
-            logger.exception(
+            self._record_failure(
                 f"Failed to export catalog roles for catalog '{catalog_name}'"
             )
         return roles_map
@@ -431,8 +438,8 @@ class SetupCommand(Command):
             for _, namespace in crawl_namespace(
                 catalog_api=catalog_api,
                 catalog_name=catalog_name,
-                on_error=lambda label, _: logger.exception(
-                    "Failed to export %s", label
+                on_error=lambda label, _: self._record_failure(
+                    f"Failed to export {label}"
                 ),
                 entity_type_filter=EntityType.NAMESPACE.value,
             )
@@ -464,7 +471,7 @@ class SetupCommand(Command):
                 else:
                     namespaces_list.append(ns_name)
         except Exception:
-            logger.exception(
+            self._record_failure(
                 f"Failed to export namespaces for catalog '{catalog_name}'"
             )
         return namespaces_list
@@ -511,7 +518,9 @@ class SetupCommand(Command):
                         policy_info["description"] = policy_obj.description
                     policies_map[p.name] = policy_info
         except Exception:
-            logger.exception(f"Failed to export policies for catalog '{catalog_name}'")
+            self._record_failure(
+                f"Failed to export policies for catalog '{catalog_name}'"
+            )
         return policies_map
 
     def _load_setup_config(self) -> Dict[str, Any]:
