@@ -41,8 +41,8 @@ dependencies {
   // CatalogAdapter and other shared catalog service abstractions.
   implementation(project(":polaris-runtime-service"))
 
-  // Dependencies required by the generated OSI semantic-model REST API code (mirrors the set used
-  // by the polaris-api-catalog-service generated code).
+  // Dependencies required by the generated Ossie semantic-model REST API code (mirrors the set
+  // used by the polaris-api-catalog-service generated code).
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")

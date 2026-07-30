@@ -30,19 +30,19 @@ import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A Polaris entity that stores an Open Semantic Interchange (OSI) semantic-model document.
+ * A Polaris entity that stores an Apache Ossie semantic-model document.
  *
  * <p>Following the precedent set by {@link org.apache.polaris.core.policy.PolicyEntity}, the full
- * document body is stored inside the entity {@code properties} map: the declared OSI spec version
- * under {@link #SPEC_VERSION_KEY} and the OSI document (as a JSON string) under {@link
+ * document body is stored inside the entity {@code properties} map: the declared Ossie spec version
+ * under {@link #SPEC_VERSION_KEY} and the Ossie document (as a JSON string) under {@link
  * #CONTENT_KEY}.
  */
 public class SemanticModelEntity extends PolarisEntity {
 
-  /** The declared OSI spec version of the stored document (e.g. {@code 0.1.1}). */
+  /** The declared Ossie spec version of the stored document (e.g. {@code 0.1.1}). */
   public static final String SPEC_VERSION_KEY = "semantic-model.spec-version";
 
-  /** The OSI document serialized as a JSON string. */
+  /** The Ossie document serialized as a JSON string. */
   public static final String CONTENT_KEY = "semantic-model.content";
 
   public SemanticModelEntity(PolarisBaseEntity sourceEntity) {
@@ -62,13 +62,13 @@ public class SemanticModelEntity extends PolarisEntity {
     return null;
   }
 
-  /** The declared OSI spec version of the stored document. */
+  /** The declared Ossie spec version of the stored document. */
   @JsonIgnore
   public String getSpecVersion() {
     return getPropertiesAsMap().get(SPEC_VERSION_KEY);
   }
 
-  /** The OSI document body, serialized as a JSON string. */
+  /** The Ossie document body, serialized as a JSON string. */
   @JsonIgnore
   public String getContent() {
     return getPropertiesAsMap().get(CONTENT_KEY);

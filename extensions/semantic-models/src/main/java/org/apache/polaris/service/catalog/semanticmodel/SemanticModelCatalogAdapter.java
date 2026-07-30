@@ -38,7 +38,7 @@ import org.apache.polaris.service.catalog.semanticmodel.types.SemanticModelIdent
 import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticModelRequest;
 
 /**
- * Adapter for the OSI semantic-model API. The endpoints are gated by {@link
+ * Adapter for the Apache Ossie semantic-model API. The endpoints are gated by {@link
  * FeatureConfiguration#ENABLE_SEMANTIC_MODELS} and dispatch to {@link SemanticModelCatalogHandler}
  * for authorization, validation, source resolution, and persistence.
  */

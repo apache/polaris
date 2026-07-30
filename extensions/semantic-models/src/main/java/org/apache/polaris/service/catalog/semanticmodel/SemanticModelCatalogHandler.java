@@ -20,7 +20,10 @@ package org.apache.polaris.service.catalog.semanticmodel;
 
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -32,6 +35,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.semanticmodel.types.CreateSemanticModelRequest;
 import org.apache.polaris.service.catalog.semanticmodel.types.ListSemanticModelsResponse;
 import org.apache.polaris.service.catalog.semanticmodel.types.LoadSemanticModelResponse;
@@ -39,8 +43,8 @@ import org.apache.polaris.service.catalog.semanticmodel.types.SemanticModelIdent
 import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticModelRequest;
 
 /**
- * Authorizes and delegates OSI semantic-model operations to {@link SemanticModelCatalog}. Mirrors
- * {@link org.apache.polaris.service.catalog.policy.PolicyCatalogHandler}.
+ * Authorizes and delegates Apache Ossie semantic-model operations to {@link SemanticModelCatalog}.
+ * Mirrors {@link org.apache.polaris.service.catalog.policy.PolicyCatalogHandler}.
  *
  * <p>Authorization is intentionally minimal in this phase: operations are gated by the coarse
  * {@code CATALOG_MANAGE_CONTENT} privilege (see {@code RbacOperationSemantics}). The dedicated
@@ -122,7 +126,17 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
             PolarisCatalogHelpers.identifierToList(namespace, identifier.getName()),
             PolarisEntityType.SEMANTIC_MODEL,
             true /* optional */));
-    resolutionManifest.resolveAll();
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    authorizer()
+        .resolveAuthorizationInputs(
+            authorizationState,
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        op,
+                        PolarisSecurableMapper.semanticModel(
+                            catalogName(), namespace, identifier.getName())))));
 
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(

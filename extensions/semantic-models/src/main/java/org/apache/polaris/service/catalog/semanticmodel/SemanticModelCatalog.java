@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -60,9 +61,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Core create/list/load/update/drop logic for OSI semantic models. Mirrors {@link
- * org.apache.polaris.service.catalog.policy.PolicyCatalog}: the OSI document body is stored inside
- * the entity {@code properties} map, writes resolve every {@code dataset.source} to a {@code
+ * Core create/list/load/update/drop logic for Apache Ossie semantic models.
+ *
+ * <p>Following the storage pattern used by {@link
+ * org.apache.polaris.service.catalog.policy.PolicyCatalog}, the Ossie document body is stored
+ * inside the entity {@code properties} map. Writes resolve every {@code dataset.source} to a {@code
  * TABLE_LIKE} entity in the current catalog, and updates use optimistic concurrency on the entity
  * version. Document schema validation is a separate concern (see {@link
  * SemanticDocumentValidator}).
@@ -72,8 +75,8 @@ public class SemanticModelCatalog {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   /**
-   * Separator between the namespace path and the name in an OSI {@code dataset.source}, per the IRC
-   * catalog object-identifier scheme (e.g. {@code sales.store_sales}).
+   * Separator between the namespace path and the name in an Ossie {@code dataset.source}, per the
+   * IRC catalog object-identifier scheme (e.g. {@code sales.store_sales}).
    */
   private static final char SOURCE_SEPARATOR = '.';
 
@@ -112,10 +115,10 @@ public class SemanticModelCatalog {
     }
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
-    // Validate the document schema, then resolve its source tables before persisting. Duplicate
-    // names are caught by createEntityIfNotExists below (ENTITY_ALREADY_EXISTS), so there is no
-    // separate existence pre-check: the semantic-model path is not registered on this request's
-    // resolution manifest, and probing it there would fail.
+    // Parse the document, then resolve its source tables before persisting. Duplicate names are
+    // caught by createEntityIfNotExists below (ENTITY_ALREADY_EXISTS), so there is no separate
+    // existence pre-check: the semantic-model path is not registered on this request's resolution
+    // manifest, and probing it there would fail.
     JsonNode semanticModel = validateDocument(document);
     resolveAndValidateSources(semanticModel);
 
@@ -245,7 +248,7 @@ public class SemanticModelCatalog {
             callContext.getPolarisCallContext(),
             PolarisEntity.toCoreList(catalogPath),
             entity,
-            java.util.Map.of(),
+            Map.of(),
             false);
     if (!result.isSuccess()) {
       throw new IllegalStateException(
@@ -273,9 +276,9 @@ public class SemanticModelCatalog {
   }
 
   /**
-   * Validates the OSI document against the Ossie JSON schema and returns the parsed {@code
-   * semantic_model} body. Currently only checks that the required body is present and well-formed
-   * JSON; full schema validation is deferred to a {@link SemanticDocumentValidator} implementation.
+   * Parses the Ossie document and returns the {@code semantic_model} body. Currently only checks
+   * that the required body is present and well-formed JSON; full schema validation is deferred to a
+   * {@link SemanticDocumentValidator} implementation.
    *
    * @return the parsed {@code semantic_model} node
    * @throws BadRequestException if the body is missing/blank or not valid JSON
@@ -295,10 +298,12 @@ public class SemanticModelCatalog {
   }
 
   /**
-   * Resolves and validates every {@code dataset.source} in the parsed OSI document against the
-   * current catalog. Every dataset must define a string {@code source}; a missing or non-string
-   * source, or one that does not resolve to a {@code TABLE_LIKE} entity, fails with 400 and a
-   * JSON-Pointer to the offending dataset. Column-level checks are deferred (F5).
+   * Resolves and validates every {@code dataset.source} in the parsed Ossie document against the
+   * current catalog. Unlike engine-specific view SQL, {@code dataset.source} is a structured
+   * catalog identifier, so validating it here prevents every client from persisting dangling
+   * references. Every dataset must define a string {@code source}; a missing or non-string source,
+   * or one that does not resolve to a {@code TABLE_LIKE} entity, fails with 400 and a JSON-Pointer
+   * to the offending dataset. Column-level checks are deferred (F5).
    */
   private void resolveAndValidateSources(JsonNode semanticModel) {
     if (!semanticModel.isArray()) {

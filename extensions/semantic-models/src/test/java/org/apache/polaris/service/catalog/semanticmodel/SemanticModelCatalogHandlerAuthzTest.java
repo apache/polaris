@@ -18,14 +18,26 @@
  */
 package org.apache.polaris.service.catalog.semanticmodel;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticModelRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * Verifies that {@link SemanticModelCatalogHandler} enforces authorization: the five operations are
@@ -85,6 +97,35 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   void dropDeniedWithoutManageContent() {
     assertThatThrownBy(() -> enforcingHandler().dropSemanticModel(identifier("m1")))
         .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  void loadResolvesAuthorizationInputsForSemanticModel() {
+    PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
+    doAnswer(
+            invocation -> {
+              AuthorizationState authorizationState = invocation.getArgument(0);
+              authorizationState.getResolutionManifest().resolveAll();
+              return null;
+            })
+        .when(authorizer)
+        .resolveAuthorizationInputs(any(), any());
+
+    handler(authorizer).loadSemanticModel(identifier("m1"));
+
+    ArgumentCaptor<AuthorizationRequest> requestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
+    verify(authorizer).resolveAuthorizationInputs(any(), requestCaptor.capture());
+    assertThat(requestCaptor.getValue().intents())
+        .singleElement()
+        .isInstanceOfSatisfying(
+            SingleTargetAuthorizationIntent.class,
+            intent -> {
+              assertThat(intent.operation())
+                  .isEqualTo(PolarisAuthorizableOperation.LOAD_SEMANTIC_MODEL);
+              assertThat(intent.target())
+                  .isEqualTo(PolarisSecurableMapper.semanticModel(CATALOG_NAME, NS, "m1"));
+            });
   }
 
   /** Handler that actually enforces authorization for the unprivileged {@code test-principal}. */
