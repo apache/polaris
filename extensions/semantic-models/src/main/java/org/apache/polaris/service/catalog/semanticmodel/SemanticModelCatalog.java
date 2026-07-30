@@ -63,12 +63,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Core create/list/load/update/drop logic for Apache Ossie semantic models.
  *
- * <p>Following the storage pattern used by {@link
- * org.apache.polaris.service.catalog.policy.PolicyCatalog}, the Ossie document body is stored
- * inside the entity {@code properties} map. Writes resolve every {@code dataset.source} to a {@code
- * TABLE_LIKE} entity in the current catalog, and updates use optimistic concurrency on the entity
- * version. Document schema validation is a separate concern (see {@link
- * SemanticDocumentValidator}).
+ * <p>The Ossie document body is stored inside the entity {@code properties} map. Writes resolve
+ * every {@code dataset.source} to a {@code TABLE_LIKE} entity in the current catalog, and updates
+ * use optimistic concurrency on the entity version. Document schema validation is a separate
+ * concern (see {@link SemanticDocumentValidator}).
  */
 public class SemanticModelCatalog {
   private static final Logger LOGGER = LoggerFactory.getLogger(SemanticModelCatalog.class);
