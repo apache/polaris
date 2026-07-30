@@ -1355,7 +1355,12 @@ class SetupCommand(Command):
                             "content" in policy_data
                             and policy_data["content"] is not None
                         ):
-                            policy_content_str = json.dumps(policy_data["content"])
+                            policy_content = policy_data["content"]
+                            policy_content_str = (
+                                policy_content
+                                if isinstance(policy_content, str)
+                                else json.dumps(policy_content)
+                            )
                         elif "file" in policy_data:
                             if self.setup_config is None:
                                 logger.error(
