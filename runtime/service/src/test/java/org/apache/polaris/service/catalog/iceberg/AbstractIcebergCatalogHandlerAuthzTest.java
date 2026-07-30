@@ -1475,7 +1475,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testListViewsPrivileges() {
     return authzTestsBuilder("listViews")
-        .action(() -> newHandler().listViews(NS1A))
+        .action(() -> newHandler().listViews(NS1A, null, null))
         .shouldPassWith(PolarisPrivilege.VIEW_LIST)
         .shouldPassWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
