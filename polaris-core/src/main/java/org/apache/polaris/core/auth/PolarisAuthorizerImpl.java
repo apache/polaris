@@ -834,7 +834,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       } else {
         throw new IllegalStateException("Unsupported authorization intent: " + intent.getClass());
       }
-      authorizeOrThrow(
+      authorizeRbacOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
           intent.getOperation(),
@@ -856,13 +856,15 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       PolarisSecurable securable,
       boolean prependRootContainer) {
     PolarisResolvedPathWrapper resolvedSecurable =
-        securable.getLeaf().entityType().isTopLevel()
-            ? resolutionManifest.getResolvedTopLevelEntity(
-                securable.getLeaf().name(), securable.getLeaf().entityType())
-            : resolutionManifest.getResolvedPath(
-                ResolvedPathKey.of(
-                    getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
-                prependRootContainer);
+        securable.getLeaf().entityType() == org.apache.polaris.core.entity.PolarisEntityType.CATALOG
+            ? resolutionManifest.getResolvedReferenceCatalogEntity(prependRootContainer)
+            : securable.getLeaf().entityType().isTopLevel()
+                ? resolutionManifest.getResolvedTopLevelEntity(
+                    securable.getLeaf().name(), securable.getLeaf().entityType())
+                : resolutionManifest.getResolvedPath(
+                    ResolvedPathKey.of(
+                        getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
+                    prependRootContainer);
     Preconditions.checkState(
         resolvedSecurable != null,
         "Resolved path for securable is null for entityType=%s leaf=%s parents=%s",
@@ -902,23 +904,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     return false;
   }
 
-  @Override
-  public void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary) {
-    authorizeOrThrow(
-        polarisPrincipal,
-        activatedEntities,
-        authzOp,
-        target == null ? null : List.of(target),
-        secondary == null ? null : List.of(secondary));
-  }
-
-  @Override
-  public void authorizeOrThrow(
+  private void authorizeRbacOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
       @NonNull PolarisAuthorizableOperation authzOp,
@@ -953,6 +939,39 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             authzOp);
       }
     }
+  }
+
+  /**
+   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
+   */
+  @Deprecated(since = "1.2.0")
+  @Override
+  public void authorizeOrThrow(
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
+      @Nullable PolarisResolvedPathWrapper target,
+      @Nullable PolarisResolvedPathWrapper secondary) {
+    authorizeOrThrow(
+        polarisPrincipal,
+        activatedEntities,
+        authzOp,
+        target == null ? null : List.of(target),
+        secondary == null ? null : List.of(secondary));
+  }
+
+  /**
+   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
+   */
+  @Deprecated(since = "1.2.0")
+  @Override
+  public void authorizeOrThrow(
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
+      @Nullable List<PolarisResolvedPathWrapper> targets,
+      @Nullable List<PolarisResolvedPathWrapper> secondaries) {
+    authorizeRbacOrThrow(polarisPrincipal, activatedEntities, authzOp, targets, secondaries);
   }
 
   /**

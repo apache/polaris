@@ -23,9 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -48,7 +47,6 @@ import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
@@ -57,6 +55,7 @@ import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -144,6 +143,7 @@ class IcebergCatalogHandlerTest {
     when(resolutionManifest.getResolvedPath(any(), any())).thenReturn(resolvedPath);
     when(resolutionManifest.getResolvedPath(any())).thenReturn(resolvedPath);
     when(resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
 
     // initializeCatalog() reads the resolved catalog entity to decide federated vs. local.
     // Return a CatalogEntity without a connection config so we take the local-catalog path.
@@ -208,6 +208,11 @@ class IcebergCatalogHandlerTest {
     return table;
   }
 
+  private static boolean hasOperation(
+      AuthorizationRequest request, PolarisAuthorizableOperation operation) {
+    return request != null && request.intents().getFirst().getOperation().equals(operation);
+  }
+
   @SuppressWarnings({"unchecked", "rawtypes"})
   private void assertVendedActions(PolarisStorageActions... actions) {
     ArgumentCaptor<Set<PolarisStorageActions>> actionsCaptor =
@@ -243,17 +248,17 @@ class IcebergCatalogHandlerTest {
     Catalog catalog = mockRegisterTableCatalog(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
-    doThrow(new ForbiddenException("write delegation denied"))
-        .when(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            eq(PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
+    when(authorizer.authorize(
+            any(),
+            argThat(
+                request ->
+                    hasOperation(
+                        request,
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
+        .thenReturn(AuthorizationDecision.deny("write delegation denied"));
 
     LoadTableResponse response =
         handler.registerTable(
@@ -290,17 +295,17 @@ class IcebergCatalogHandlerTest {
     when(catalogEntity.isExternal()).thenReturn(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
-    doThrow(new ForbiddenException("write delegation denied"))
-        .when(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            eq(PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
+    when(authorizer.authorize(
+            any(),
+            argThat(
+                request ->
+                    hasOperation(
+                        request,
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
+        .thenReturn(AuthorizationDecision.deny("write delegation denied"));
     when(resolutionManifest.getResolvedPath(
             eq(ResolvedPathKey.ofTableLike(TABLE2)),
             eq(PolarisEntitySubType.ICEBERG_TABLE),
@@ -323,24 +328,23 @@ class IcebergCatalogHandlerTest {
     when(catalog.loadTable(TABLE2)).thenReturn(table);
     when(accessDelegationModeResolver.resolve(any(), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
-    doThrow(new ForbiddenException("write delegation denied"))
-        .when(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            eq(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
     @SuppressWarnings("unchecked")
     ArgumentCaptor<AuthorizationRequest> requestCaptor =
         ArgumentCaptor.forClass(AuthorizationRequest.class);
     ArgumentCaptor<AuthorizationState> stateCaptor =
         ArgumentCaptor.forClass(AuthorizationState.class);
-    ArgumentCaptor<PolarisAuthorizableOperation> operationCaptor =
-        ArgumentCaptor.forClass(PolarisAuthorizableOperation.class);
+    ArgumentCaptor<AuthorizationRequest> authorizeRequestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
+    when(authorizer.authorize(
+            any(),
+            argThat(
+                request ->
+                    hasOperation(
+                        request, PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION))))
+        .thenReturn(AuthorizationDecision.deny("write delegation denied"));
 
     handler.loadCredentials(TABLE2, Optional.empty());
 
@@ -349,13 +353,11 @@ class IcebergCatalogHandlerTest {
     assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
         .isEqualTo(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION);
     verify(authorizer, org.mockito.Mockito.times(2))
-        .authorizeOrThrow(
-            any(),
-            any(),
-            operationCaptor.capture(),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
-    assertThat(operationCaptor.getAllValues())
+        .authorize(any(), authorizeRequestCaptor.capture());
+    assertThat(
+            authorizeRequestCaptor.getAllValues().stream()
+                .map(request -> request.intents().getFirst().getOperation())
+                .toList())
         .containsExactly(
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION,
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION);
@@ -379,8 +381,8 @@ class IcebergCatalogHandlerTest {
         ArgumentCaptor.forClass(AuthorizationRequest.class);
     ArgumentCaptor<AuthorizationState> stateCaptor =
         ArgumentCaptor.forClass(AuthorizationState.class);
-    ArgumentCaptor<PolarisAuthorizableOperation> operationCaptor =
-        ArgumentCaptor.forClass(PolarisAuthorizableOperation.class);
+    ArgumentCaptor<AuthorizationRequest> authorizeRequestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -391,14 +393,8 @@ class IcebergCatalogHandlerTest {
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
     assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
         .isEqualTo(PolarisAuthorizableOperation.UPDATE_TABLE);
-    verify(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            operationCaptor.capture(),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
-    assertThat(operationCaptor.getValue())
+    verify(authorizer).authorize(any(), authorizeRequestCaptor.capture());
+    assertThat(authorizeRequestCaptor.getValue().intents().getFirst().getOperation())
         .isEqualTo(PolarisAuthorizableOperation.SET_TABLE_PROPERTIES);
   }
 

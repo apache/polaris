@@ -192,13 +192,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *
    * <p>Delegates to the multi-target version for consistency.
    *
-   * @param polarisPrincipal the principal requesting authorization
-   * @param activatedEntities the set of activated entities (roles, etc.)
-   * @param authzOp the operation to authorize
-   * @param target the main target entity
-   * @param secondary the secondary entity (if any)
-   * @throws ForbiddenException if authorization is denied by OPA
+   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
    */
+  @Deprecated(since = "1.2.0")
   @Override
   public void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
@@ -219,13 +215,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *
    * <p>Sends the authorization context to OPA and throws if not allowed.
    *
-   * @param polarisPrincipal the principal requesting authorization
-   * @param activatedEntities the set of activated entities (roles, etc.)
-   * @param authzOp the operation to authorize
-   * @param targets the list of main target entities
-   * @param secondaries the list of secondary entities (if any)
-   * @throws ForbiddenException if authorization is denied by OPA
+   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
    */
+  @Deprecated(since = "1.2.0")
   @Override
   public void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
@@ -382,9 +374,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   private ResourceEntity buildResourceEntity(PolarisResolvedPathWrapper path) {
-    // Currently, authorizeOrThrow still evaluate through resolved paths, including
-    // root-scoped operations that may surface a resolved ROOT leaf. Preserve that legacy
-    // behavior for compatibility until those callers migrate to the intent-based flow.
+    // Legacy authorizeOrThrow calls evaluate resolved paths, including root-scoped operations that
+    // may surface a resolved ROOT leaf. Preserve that behavior for compatibility while callers
+    // migrate to the intent-based flow.
     ResolvedPolarisEntity resolvedLeaf = path.getResolvedLeafEntity();
     PathSegment leaf =
         new PathSegment(resolvedLeaf.getEntity().getType(), resolvedLeaf.getEntity().getName());

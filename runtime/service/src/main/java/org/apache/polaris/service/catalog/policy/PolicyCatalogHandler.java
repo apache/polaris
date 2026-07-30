@@ -149,15 +149,14 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
             PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
             PolarisEntityType.POLICY,
             true /* optional */));
+    AuthorizationRequest authorizationRequest =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    op, PolarisSecurableMapper.policy(catalogName(), identifier))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer()
-        .resolveAuthorizationInputs(
-            authorizationState,
-            new AuthorizationRequest(
-                polarisPrincipal(),
-                List.of(
-                    new SingleTargetAuthorizationIntent(
-                        op, PolarisSecurableMapper.policy(catalogName(), identifier)))));
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
 
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(
@@ -166,13 +165,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
 
-    authorizer()
-        .authorizeOrThrow(
-            polarisPrincipal(),
-            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-            op,
-            target,
-            null /* secondary */);
+    authorizer().authorize(authorizationState, authorizationRequest).throwIfDenied();
 
     initializeCatalog();
   }
@@ -202,28 +195,21 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
   private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest = newResolutionManifest();
+    AuthorizationRequest authorizationRequest =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    op, PolarisSecurableMapper.catalog(catalogName()))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer()
-        .resolveAuthorizationInputs(
-            authorizationState,
-            new AuthorizationRequest(
-                polarisPrincipal(),
-                List.of(
-                    new SingleTargetAuthorizationIntent(
-                        op, PolarisSecurableMapper.catalog(catalogName())))));
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
 
     PolarisResolvedPathWrapper targetCatalog =
         resolutionManifest.getResolvedReferenceCatalogEntity();
     if (targetCatalog == null) {
       throw new NotFoundException("Catalog not found");
     }
-    authorizer()
-        .authorizeOrThrow(
-            polarisPrincipal(),
-            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-            op,
-            targetCatalog,
-            null);
+    authorizer().authorize(authorizationState, authorizationRequest).throwIfDenied();
 
     initializeCatalog();
   }
@@ -287,12 +273,16 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         determinePolicyMappingOperation(target, targetWrapper, isAttach);
 
     authorizer()
-        .authorizeOrThrow(
-            polarisPrincipal(),
-            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-            op,
-            policyWrapper,
-            targetWrapper);
+        .authorize(
+            authorizationState,
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new PolicyAttachmentAuthorizationIntent(
+                        op,
+                        PolarisSecurableMapper.policy(catalogName(), identifier),
+                        PolarisSecurableMapper.policyAttachmentTarget(catalogName(), target)))))
+        .throwIfDenied();
 
     initializeCatalog();
   }
