@@ -45,6 +45,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -286,7 +287,7 @@ public class PolarisAdminService {
     if (isSelfEntity(entity) && isSelfOperation(op)) {
       LOGGER
           .atDebug()
-          .addKeyValue("principalName", topLevelEntityName)
+          .addKeyValue(StructuredLogKeys.PRINCIPAL_NAME, topLevelEntityName)
           .log("Allowing rotate own credentials");
     } else {
       authorizer.authorizeOrThrow(
@@ -800,7 +801,7 @@ public class PolarisAdminService {
                 LOGGER
                     .atWarn()
                     .setCause(e)
-                    .addKeyValue("secretReference", secretReference.urn())
+                    .addKeyValue(StructuredLogKeys.SECRET_REFERENCE, secretReference.urn())
                     .log(
                         "Failed to clean up secret {} after catalog creation failure",
                         secretReference.urn());
@@ -848,7 +849,7 @@ public class PolarisAdminService {
         if (connectionConfigInfo != null) {
           LOGGER
               .atDebug()
-              .addKeyValue("catalogName", entity.getName())
+              .addKeyValue(StructuredLogKeys.CATALOG_NAME, entity.getName())
               .log("Creating a federated catalog");
           FeatureConfiguration.enforceFeatureEnabledOrThrow(
               realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);

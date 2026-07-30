@@ -99,6 +99,7 @@ import org.apache.iceberg.view.ViewProperties;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
@@ -1803,7 +1804,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
-              .addKeyValue("tableIdentifier", tableIdentifier)
+              .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
               .log("Stored table identifier mismatches requested identifier");
         }
       }
@@ -2290,7 +2291,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
-              .addKeyValue("identifier", identifier)
+              .addKeyValue(StructuredLogKeys.IDENTIFIER, identifier)
               .log("Stored view identifier mismatches requested identifier");
         }
       }
@@ -3136,7 +3137,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atInfo()
               .setCause(aee)
-              .addKeyValue("namespace", namespace)
+              .addKeyValue(StructuredLogKeys.NAMESPACE, namespace)
               .log("Namespace already exists in createNonExistingNamespace");
         }
       }

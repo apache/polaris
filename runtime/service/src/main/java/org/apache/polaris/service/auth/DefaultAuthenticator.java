@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -145,8 +146,8 @@ public class DefaultAuthenticator implements Authenticator {
     } catch (Exception e) {
       LOGGER
           .atError()
-          .addKeyValue("errMsg", e.getMessage())
-          .addKeyValue("stackTrace", Throwables.getStackTraceAsString(e))
+          .addKeyValue(StructuredLogKeys.ERR_MSG, e.getMessage())
+          .addKeyValue(StructuredLogKeys.STACK_TRACE, Throwables.getStackTraceAsString(e))
           .log("Unable to resolve principal entity from credentials");
       throw new ServiceUnavailableException("Unable to fetch principal entity");
     }
@@ -206,9 +207,9 @@ public class DefaultAuthenticator implements Authenticator {
     if (!requestedRoles.allRolesRequested() && !activeRoles.containsAll(requestedRoles.roles())) {
       LOGGER
           .atWarn()
-          .addKeyValue("principal", principal.getName())
-          .addKeyValue("credentials", credentials)
-          .addKeyValue("roles", activeRoles)
+          .addKeyValue(StructuredLogKeys.PRINCIPAL, principal.getName())
+          .addKeyValue(StructuredLogKeys.CREDENTIALS, credentials)
+          .addKeyValue(StructuredLogKeys.ROLES, activeRoles)
           .log("Some principal roles were not found in the principal's grants");
       throw new AuthenticationFailedException("Unable to authenticate");
     }
@@ -233,8 +234,8 @@ public class DefaultAuthenticator implements Authenticator {
     if (credentialsRoles.stream().anyMatch(s -> !s.startsWith(PRINCIPAL_ROLE_PREFIX))) {
       LOGGER
           .atWarn()
-          .addKeyValue("credentials", credentials)
-          .addKeyValue("roles", credentialsRoles)
+          .addKeyValue(StructuredLogKeys.CREDENTIALS, credentials)
+          .addKeyValue(StructuredLogKeys.ROLES, credentialsRoles)
           .log(
               "Credentials contain roles that do not start with expected prefix '{}'. "
                   + "These roles will be ignored during authentication.",

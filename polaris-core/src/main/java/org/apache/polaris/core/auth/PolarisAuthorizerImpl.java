@@ -132,6 +132,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -932,7 +933,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       }
       LOGGER
           .atDebug()
-          .addKeyValue("principalName", polarisPrincipal.getName())
+          .addKeyValue(StructuredLogKeys.PRINCIPAL_NAME, polarisPrincipal.getName())
           .log("Root principal allowed to reset credentials");
     } else {
       List<MissingPrivilege> missing =

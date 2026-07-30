@@ -29,6 +29,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -142,7 +143,7 @@ public class PolarisServiceImpl
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
-          .addKeyValue("storageConfig", storageConfigInfo)
+          .addKeyValue(StructuredLogKeys.STORAGE_CONFIG, storageConfigInfo)
           .log("Disallowed storage type in catalog");
       throw new IllegalArgumentException(
           "Unsupported storage type: " + storageConfigInfo.getStorageType());
@@ -693,8 +694,8 @@ public class PolarisServiceImpl
       default:
         LOGGER
             .atWarn()
-            .addKeyValue("catalog", catalogName)
-            .addKeyValue("role", catalogRoleName)
+            .addKeyValue(StructuredLogKeys.CATALOG, catalogName)
+            .addKeyValue(StructuredLogKeys.ROLE, catalogRoleName)
             .log(
                 "Don't know how to handle privilege {}: {}",
                 direction == GrantDirection.GRANT ? "grant" : "revocation",
