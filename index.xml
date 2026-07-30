@@ -5980,8 +5980,8 @@ REST implementation), enabling a Polaris service to access table and view entiti
 &lt;li&gt;&lt;strong&gt;REST endpoint:&lt;/strong&gt; The remote service must expose the Iceberg REST specification. Configure
 firewalls so Polaris can reach the base URI you provide in the connection config.&lt;/li&gt;
 &lt;li&gt;&lt;strong&gt;Authentication:&lt;/strong&gt; Polaris forwards requests using the credentials defined in
-&lt;code&gt;ConnectionConfigInfo.AuthenticationParameters&lt;/code&gt;. OAuth2 client credentials, bearer tokens, and AWS
-SigV4 are supported; choose the scheme the remote service expects.&lt;/li&gt;
+&lt;code&gt;ConnectionConfigInfo.AuthenticationParameters&lt;/code&gt;. OAuth2 client credentials, bearer tokens, GCP,
+and AWS SigV4 are supported; choose the scheme the remote service expects.&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h2 id="feature-configuration" id="feature-configuration"&gt;Feature configuration&lt;a class="heading-anchor" href="#feature-configuration" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
