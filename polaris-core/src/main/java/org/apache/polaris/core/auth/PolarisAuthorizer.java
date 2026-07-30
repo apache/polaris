@@ -56,8 +56,10 @@ public interface PolarisAuthorizer {
   /**
    * Convenience method that throws a {@link ForbiddenException} when authorization is denied.
    *
-   * <p>Implementations should provide allow/deny decisions via {@link #authorize}.
+   * @deprecated Use {@link #authorize(AuthorizationState, AuthorizationRequest)} and handle the
+   *     returned {@link AuthorizationDecision}.
    */
+  @Deprecated(since = "1.2.0")
   default void authorizeOrThrow(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     AuthorizationDecision decision = authorize(authzState, request);
@@ -67,6 +69,12 @@ public interface PolarisAuthorizer {
     }
   }
 
+  /**
+   * Authorizes a single resolved target and secondary.
+   *
+   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
+   */
+  @Deprecated(since = "1.2.0")
   void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
@@ -74,6 +82,12 @@ public interface PolarisAuthorizer {
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary);
 
+  /**
+   * Authorizes one or more resolved targets and secondaries.
+   *
+   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
+   */
+  @Deprecated(since = "1.2.0")
   void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
