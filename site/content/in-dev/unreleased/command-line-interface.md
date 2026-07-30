@@ -199,7 +199,7 @@ External Catalog Federation: General Options:
   --iceberg-remote-catalog-name ICEBERG_REMOTE_CATALOG_NAME            The remote catalog name when federating to an Iceberg REST catalog
   --hadoop-warehouse HADOOP_WAREHOUSE                                  The warehouse to use when federating to a HADOOP catalog
   --hive-warehouse HIVE_WAREHOUSE                                      The warehouse to use when federating to a HIVE catalog
-  --catalog-authentication-type {oauth,bearer,sigv4,implicit}          Authentication type [OAUTH, BEARER, SIGV4, IMPLICIT]
+  --catalog-authentication-type {oauth,bearer,gcp,sigv4,implicit}      Authentication type [OAUTH, BEARER, GCP, SIGV4, IMPLICIT]
   --catalog-service-identity-type {aws_iam}                            Service identity type [AWS_IAM]
   --catalog-uri CATALOG_URI                                            The URI of the external catalog
 

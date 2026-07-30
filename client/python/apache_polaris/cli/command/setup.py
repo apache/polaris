@@ -217,6 +217,9 @@ class SetupCommand(Command):
                 if auth_params.bearer_token
                 else None
             )
+        elif auth_type == AuthenticationType.GCP.value:
+            # No extra flags are required for GCP external-catalog authentication.
+            pass
         elif auth_type == AuthenticationType.SIGV4.value:
             auth_data.update(
                 {
@@ -820,6 +823,9 @@ class SetupCommand(Command):
             )
         elif auth_type == AuthenticationType.BEARER.value:
             auth_args["catalog_bearer_token"] = auth_data.get("token")
+        elif auth_type == AuthenticationType.GCP.value:
+            # GCP external-catalog auth is server-side/ambient and carries no client secrets.
+            pass
         elif auth_type == AuthenticationType.SIGV4.value:
             auth_args.update(
                 {
