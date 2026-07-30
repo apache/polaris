@@ -199,6 +199,8 @@ jobs:
             "$HELM_VALUES_FILE" \
             "$HELM_VALUES_SCHEMA_FILE" \
             "$HELM_REFERENCE_DOC_FILE" \
+            "$PYTHON_PYPROJECT_FILE" \
+            "$PYTHON_UV_LOCK_FILE" \
             "$CHANGELOG_FILE"
           exec_process git commit -m "[chore] Bump version to ${version_without_rc}"
 
