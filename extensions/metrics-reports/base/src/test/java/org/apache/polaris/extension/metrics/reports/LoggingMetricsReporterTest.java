@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.metrics;
+package org.apache.polaris.extension.metrics.reports;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -26,6 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
+import org.apache.polaris.core.metrics.MetricType;
+import org.apache.polaris.core.metrics.MetricsReportEnvelope;
 import org.junit.jupiter.api.Test;
 
 class LoggingMetricsReporterTest {
