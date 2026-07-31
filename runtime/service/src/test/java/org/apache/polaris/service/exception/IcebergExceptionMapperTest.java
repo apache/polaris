@@ -28,7 +28,11 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.CommitStateUnknownException;
 import org.apache.iceberg.exceptions.RuntimeIOException;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -100,6 +104,26 @@ public class IcebergExceptionMapperTest {
   @ParameterizedTest
   @MethodSource
   void fileIOExceptionMapping(RuntimeException ex, int statusCode) {
+    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
+    try (Response response = mapper.toResponse(ex)) {
+      assertThat(response.getStatus()).isEqualTo(statusCode);
+      assertThat(response.getEntity()).extracting("message").isEqualTo(ex.getMessage());
+    }
+  }
+
+  static Stream<Arguments> coreExceptionMapping() {
+    return Stream.of(
+        // Commit state unknown means the commit may or may not have been applied; per the Iceberg
+        // REST spec it must be a 5xx so clients do not mistake it for a rejected request.
+        Arguments.of(new CommitStateUnknownException(new RuntimeException("db timeout")), 500),
+        Arguments.of(new CommitFailedException("commit failed"), 409),
+        Arguments.of(new AlreadyExistsException("already exists"), 409),
+        Arguments.of(new ValidationException("invalid"), 400));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void coreExceptionMapping(RuntimeException ex, int statusCode) {
     IcebergExceptionMapper mapper = new IcebergExceptionMapper();
     try (Response response = mapper.toResponse(ex)) {
       assertThat(response.getStatus()).isEqualTo(statusCode);
