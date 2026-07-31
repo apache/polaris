@@ -32,10 +32,7 @@ import org.slf4j.LoggerFactory;
  * Implementation of {@link IcebergMetricsReporter} that logs metrics to the configured logger.
  *
  * <p>This implementation is selected when {@code polaris.iceberg-metrics.reporting.type} is set to
- * {@code "logging"}.
- *
- * <p>By default, logging is disabled. To enable metrics logging, set the logger level for {@code
- * org.apache.polaris.extension.metrics.reports} to {@code INFO} in your logging configuration.
+ * {@code "logging"}. Each report is logged at {@code INFO}.
  *
  * @see IcebergMetricsReporter
  */
