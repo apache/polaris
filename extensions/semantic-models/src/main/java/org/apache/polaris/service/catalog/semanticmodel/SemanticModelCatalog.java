@@ -301,7 +301,7 @@ public class SemanticModelCatalog {
    * catalog identifier, so validating it here prevents every client from persisting dangling
    * references. Every dataset must define a string {@code source}; a missing or non-string source,
    * or one that does not resolve to a {@code TABLE_LIKE} entity, fails with 400 and a JSON-Pointer
-   * to the offending dataset. Column-level checks are deferred (F5).
+   * to the offending dataset.
    */
   private void resolveAndValidateSources(JsonNode semanticModel) {
     if (!semanticModel.isArray()) {
