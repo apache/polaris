@@ -42,6 +42,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   UPDATE polaris_schema.version SET version_value = 5 WHERE version_key = 'version';
   ```
   See the Relational JDBC metastore documentation for details.
+- `polaris.iceberg-metrics.reporting.type` still defaults to `default`, but that value now resolves
+  to a no-op reporter rather than the logging one, so Iceberg scan and commit reports posted to the
+  metrics endpoint are discarded out of the box. Set the property to `logging` to keep the previous
+  behavior.
 
 ### Breaking changes
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms

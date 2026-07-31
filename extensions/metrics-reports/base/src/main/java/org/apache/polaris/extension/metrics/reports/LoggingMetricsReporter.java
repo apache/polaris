@@ -29,11 +29,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default implementation of {@link IcebergMetricsReporter} that logs metrics to the configured
- * logger.
+ * Implementation of {@link IcebergMetricsReporter} that logs metrics to the configured logger.
  *
  * <p>This implementation is selected when {@code polaris.iceberg-metrics.reporting.type} is set to
- * {@code "default"} (the default value).
+ * {@code "logging"}.
  *
  * <p>By default, logging is disabled. To enable metrics logging, set the logger level for {@code
  * org.apache.polaris.extension.metrics.reports} to {@code INFO} in your logging configuration.
@@ -41,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * @see IcebergMetricsReporter
  */
 @ApplicationScoped
-@Identifier("default")
+@Identifier("logging")
 public class LoggingMetricsReporter implements IcebergMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoggingMetricsReporter.class);
 
