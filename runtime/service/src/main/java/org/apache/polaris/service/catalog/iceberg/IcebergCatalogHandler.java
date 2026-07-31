@@ -396,11 +396,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * @param request the table creation request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
-  public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
-    return createTableDirect(
-        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
-  }
-
   public void authorizeCreateTableDirect(
       Namespace namespace, CreateTableRequest request, boolean delegationRequested) {
     if (delegationRequested) {
