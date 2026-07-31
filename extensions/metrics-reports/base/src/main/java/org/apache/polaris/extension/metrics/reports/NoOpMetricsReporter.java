@@ -20,8 +20,8 @@ package org.apache.polaris.extension.metrics.reports;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.service.metrics.IcebergMetricsReporter;
-import org.apache.polaris.service.metrics.MetricsReportEnvelope;
+import org.apache.polaris.spi.substrate.metrics.IcebergMetricsReporter;
+import org.apache.polaris.spi.substrate.metrics.MetricsReportEnvelope;
 import org.jspecify.annotations.NonNull;
 
 /**
