@@ -45,7 +45,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `polaris.iceberg-metrics.reporting.type` still defaults to `default`, but that value now resolves
   to a no-op reporter rather than the logging one, so Iceberg scan and commit reports posted to the
   metrics endpoint are discarded out of the box. Set the property to `logging` to keep the previous
-  behavior.
+  behavior; it emits at INFO on its own, with no logger-category configuration needed. The
+  `quarkus.log.category."org.apache.polaris.service.reporting".level=OFF` line that shipped in
+  application.properties has been removed, since it named a package that contains no logger.
 
 ### Breaking changes
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms
