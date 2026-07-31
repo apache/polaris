@@ -27,10 +27,11 @@ import org.jspecify.annotations.NonNull;
 /**
  * No-op implementation of {@link IcebergMetricsReporter} that silently discards all metrics.
  *
- * <p>Selected when {@code polaris.iceberg-metrics.reporting.type} is set to {@code "no-op"}.
+ * <p>Selected by default, or when {@code polaris.iceberg-metrics.reporting.type} is explicitly set
+ * to {@code "default"}.
  */
 @ApplicationScoped
-@Identifier("no-op")
+@Identifier("default")
 public class NoOpMetricsReporter implements IcebergMetricsReporter {
 
   @Override
