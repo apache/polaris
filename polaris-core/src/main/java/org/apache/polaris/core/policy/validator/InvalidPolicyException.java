@@ -33,4 +33,9 @@ public class InvalidPolicyException extends PolarisException {
   public InvalidPolicyException(Throwable cause) {
     super("Invalid policy", cause);
   }
+
+  @Override
+  public int httpStatusCode() {
+    return 400;
+  }
 }

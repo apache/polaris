@@ -28,4 +28,9 @@ public class PolicyVersionMismatchException extends PolarisException {
   public PolicyVersionMismatchException(String message, Throwable cause) {
     super(message, cause);
   }
+
+  @Override
+  public int httpStatusCode() {
+    return 409;
+  }
 }

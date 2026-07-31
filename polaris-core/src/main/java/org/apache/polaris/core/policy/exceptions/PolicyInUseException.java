@@ -31,4 +31,9 @@ public class PolicyInUseException extends PolarisException {
   public PolicyInUseException(Throwable cause, String message, Object... args) {
     super(String.format(message, args), cause);
   }
+
+  @Override
+  public int httpStatusCode() {
+    return 400;
+  }
 }
