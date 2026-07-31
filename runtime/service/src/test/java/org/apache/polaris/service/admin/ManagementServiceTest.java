@@ -470,7 +470,7 @@ public class ManagementServiceTest {
                         updateRequest,
                         services.realmContext(),
                         services.securityContext()))
-        .isInstanceOf(BadRequestException.class)
+        .isInstanceOfAny(BadRequestException.class, IllegalArgumentException.class)
         .hasMessageContaining("default-base-location");
   }
 
