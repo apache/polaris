@@ -30,4 +30,9 @@ public class AlreadyExistsException extends PolarisException {
   public AlreadyExistsException(String message, Throwable cause) {
     super(message, cause);
   }
+
+  @Override
+  public int httpStatusCode() {
+    return 409;
+  }
 }

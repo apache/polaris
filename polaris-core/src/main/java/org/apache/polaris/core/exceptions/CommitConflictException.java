@@ -39,4 +39,9 @@ public class CommitConflictException extends PolarisException {
   public CommitConflictException(String message, Throwable cause) {
     super(message, cause);
   }
+
+  @Override
+  public int httpStatusCode() {
+    return 409;
+  }
 }

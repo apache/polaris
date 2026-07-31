@@ -37,4 +37,9 @@ public class PolarisServiceUnavailableException extends PolarisException {
   public int getRetryAfterSeconds() {
     return retryAfterSeconds;
   }
+
+  @Override
+  public int httpStatusCode() {
+    return 503;
+  }
 }

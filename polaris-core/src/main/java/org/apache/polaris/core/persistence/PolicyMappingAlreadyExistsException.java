@@ -45,4 +45,9 @@ public class PolicyMappingAlreadyExistsException extends PolarisException {
   public PolarisPolicyMappingRecord getExistingRecord() {
     return this.existingRecord;
   }
+
+  @Override
+  public int httpStatusCode() {
+    return 409;
+  }
 }

@@ -29,4 +29,9 @@ public class NoSuchPolicyException extends PolarisException {
   public NoSuchPolicyException(String message, Throwable cause) {
     super(message, cause);
   }
+
+  @Override
+  public int httpStatusCode() {
+    return 404;
+  }
 }
