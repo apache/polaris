@@ -20,10 +20,14 @@
 import io
 from types import SimpleNamespace
 from unittest.mock import call, patch, MagicMock, mock_open
+
+import yaml
+
 from cli_test_utils import CLITestBase, INVALID_ARGS
 from apache_polaris.cli.command.setup import SetupCommand
 from apache_polaris.cli.constants import Subcommands, UNIT_SEPARATOR
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
+from apache_polaris.sdk.catalog.exceptions import NotFoundException
 from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
@@ -192,6 +196,10 @@ class TestSetupCommand(CLITestBase):
 
         self.assertEqual(command._failure_count, 0)
         mock_policy_api.return_value.create_policy.assert_called_once()
+        request = mock_policy_api.return_value.create_policy.call_args.kwargs[
+            "create_policy_request"
+        ]
+        self.assertEqual(request.content, "{}")
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_s3_optional_fields(self, mock_isfile: MagicMock) -> None:
@@ -417,6 +425,48 @@ class TestSetupCommand(CLITestBase):
                 ),
             ]
         )
+
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    def test_setup_exported_policy_content_round_trips_through_apply(
+        self, mock_policy_api_class: MagicMock
+    ) -> None:
+        policy_content = '{"version":"2025-02-03","enable":true}'
+        policy_api = mock_policy_api_class.return_value
+        policy_api.list_policies.return_value = SimpleNamespace(
+            identifiers=[SimpleNamespace(name="compaction")]
+        )
+        policy_api.load_policy.side_effect = [
+            SimpleNamespace(
+                policy=SimpleNamespace(
+                    content=policy_content,
+                    policy_type="system.data-compaction",
+                    description=None,
+                )
+            ),
+            NotFoundException(),
+        ]
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported_policies = export_command._export_policies_for_catalog(
+            MagicMock(), "catalog", [["namespace"]]
+        )
+        loaded_config = yaml.safe_load(yaml.safe_dump({"policies": exported_policies}))
+
+        apply_command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        apply_command._create_policies_and_attachments(
+            MagicMock(),
+            "catalog",
+            loaded_config["policies"],
+        )
+
+        request = policy_api.create_policy.call_args.kwargs["create_policy_request"]
+        self.assertEqual(request.content, policy_content)
 
     def test_setup_export_reports_top_level_read_failures(self) -> None:
         for method_name in (

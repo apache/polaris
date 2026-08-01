@@ -96,6 +96,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Fixes
 - The NoSQL persistence commit log (`Commits.commitLog`) no longer stops early when a commit's recent-ancestor tail is shorter than the internal fetch page size. With a `polaris.persistence.reference-previous-head-count` smaller than the page size, the natural-order commit log previously truncated at the first short tail because trailing null entries in the fetch page were treated as end-of-history, which could also drop still-referenced objects during maintenance.
 - Python CLI REPL now shows a clear "Syntax error" message for malformed input instead of a generic "unexpected error" message.
+- Python CLI `setup apply` no longer double-encodes policy content emitted by `setup export`, so
+  exported configurations containing policies can be restored.
 - Python CLI `setup export` now includes nested namespaces and policy definitions from those
   namespaces. Previously, only top-level namespaces and their policies were exported.
 - Python CLI `setup export` now exits with an error without emitting partial YAML if any required
