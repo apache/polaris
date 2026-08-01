@@ -45,12 +45,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Breaking changes
 - NoSQL maintenance catalog `*-retain` settings now accept positive integer commit counts instead
-  of CEL expressions. Before upgrading, replace `*-retain=false` with `*-retain=1`, `commits < N`
-  with `N`, and `commits <= N` with `N + 1`. CEL values such as `true` have no exact unbounded
-  equivalent. Expressions using `ageDays`, `ageHours`, or `ageMinutes` must be replaced with an
-  explicit commit count. The new
+  of CEL expressions. Each history also has new `*-retain-duration` and `*-retain-all` settings,
+  and count and duration are combined as minimums. Before upgrading, replace `*-retain=false` with
+  `*-retain=1`, `commits < N` with `N`, `commits <= N` with `N + 1`, `ageDays < N` with
+  `*-retain-duration=P<N>D`, and `true` with `*-retain-all=true`. The new
   `polaris.persistence.nosql.maintenance.catalog.pagination-token-retention` duration (default
-  `P30D`) keeps superseded snapshots available for existing pagination tokens.
+  `P30D`) is an additional global minimum for container histories that back paginated entity
+  listings, keeping their superseded snapshots available for existing pagination tokens.
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms
   are now always bootstrapped with the latest available schema version.
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.

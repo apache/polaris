@@ -232,12 +232,17 @@ It is recommended to run the `nosql maintenance-run` command regulary, for examp
 
 {{< alert important >}}
 The catalog-history `*-retain` settings now accept a positive integer number of latest commits
-instead of a CEL expression. When upgrading, replace `*-retain=false` with `*-retain=1`,
-`commits < N` with `N`, and `commits <= N` with `N + 1`. CEL values such as `true` have no exact
-unbounded equivalent. Expressions using `ageDays`, `ageHours`, or `ageMinutes` must be replaced
-with an explicit commit count. The
+instead of a CEL expression. Each history also has `*-retain-duration` and `*-retain-all`
+settings. Count and duration are combined, retaining commits required by either setting. When
+upgrading, replace `*-retain=false` with `*-retain=1`, `commits < N` with `N`, `commits <= N` with
+`N + 1`, `ageDays < N` with `*-retain-duration=P<N>D`, `ageHours < N` with
+`*-retain-duration=PT<N>H`, `ageMinutes < N` with `*-retain-duration=PT<N>M`, and `true` with
+`*-retain-all=true`. Count and age conditions joined by `||` map to the corresponding count and
+duration settings. The
 `polaris.persistence.nosql.maintenance.catalog.pagination-token-retention` duration (default
-`P30D`) separately protects superseded snapshots referenced by pagination tokens.
+`P30D`) is a separate global minimum for container histories that back paginated entity listings.
+It protects their superseded snapshots when referenced by pagination tokens, without extending
+non-pagination histories such as grants and policy mappings.
 {{< /alert >}}
 
 The output shows a bunch of configuration options, most of which are automatically determined by the tool.

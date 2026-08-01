@@ -40,8 +40,28 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
   }
 
   @Override
+  public Duration principalsRetainDuration() {
+    return current.principalsRetainDuration();
+  }
+
+  @Override
+  public boolean principalsRetainAll() {
+    return current.principalsRetainAll();
+  }
+
+  @Override
   public int principalRolesRetain() {
     return current.principalRolesRetain();
+  }
+
+  @Override
+  public Duration principalRolesRetainDuration() {
+    return current.principalRolesRetainDuration();
+  }
+
+  @Override
+  public boolean principalRolesRetainAll() {
+    return current.principalRolesRetainAll();
   }
 
   @Override
@@ -50,8 +70,28 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
   }
 
   @Override
+  public Duration grantsRetainDuration() {
+    return current.grantsRetainDuration();
+  }
+
+  @Override
+  public boolean grantsRetainAll() {
+    return current.grantsRetainAll();
+  }
+
+  @Override
   public int immediateTasksRetain() {
     return current.immediateTasksRetain();
+  }
+
+  @Override
+  public Duration immediateTasksRetainDuration() {
+    return current.immediateTasksRetainDuration();
+  }
+
+  @Override
+  public boolean immediateTasksRetainAll() {
+    return current.immediateTasksRetainAll();
   }
 
   @Override
@@ -60,8 +100,28 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
   }
 
   @Override
+  public Duration catalogsHistoryRetainDuration() {
+    return current.catalogsHistoryRetainDuration();
+  }
+
+  @Override
+  public boolean catalogsHistoryRetainAll() {
+    return current.catalogsHistoryRetainAll();
+  }
+
+  @Override
   public int catalogRolesRetain() {
     return current.catalogRolesRetain();
+  }
+
+  @Override
+  public Duration catalogRolesRetainDuration() {
+    return current.catalogRolesRetainDuration();
+  }
+
+  @Override
+  public boolean catalogRolesRetainAll() {
+    return current.catalogRolesRetainAll();
   }
 
   @Override
@@ -70,7 +130,27 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
   }
 
   @Override
+  public Duration catalogStateRetainDuration() {
+    return current.catalogStateRetainDuration();
+  }
+
+  @Override
+  public boolean catalogStateRetainAll() {
+    return current.catalogStateRetainAll();
+  }
+
+  @Override
   public int catalogPoliciesRetain() {
     return current.catalogPoliciesRetain();
+  }
+
+  @Override
+  public Duration catalogPoliciesRetainDuration() {
+    return current.catalogPoliciesRetainDuration();
+  }
+
+  @Override
+  public boolean catalogPoliciesRetainAll() {
+    return current.catalogPoliciesRetainAll();
   }
 }

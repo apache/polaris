@@ -30,13 +30,13 @@ class TestCommitRetention {
   void stopsAfterConfiguredNumberOfCommits() {
     var continueAfterCommit =
         CatalogRetainedIdentifier.<Object>historyContinuePredicate(
-            1, Duration.ZERO, ignored -> Duration.ZERO);
+            1, Duration.ZERO, false, ignored -> Duration.ZERO);
     // The current commit has already been retained, so no second commit is needed.
     assertThat(continueAfterCommit.test(new Object())).isFalse();
 
     continueAfterCommit =
         CatalogRetainedIdentifier.historyContinuePredicate(
-            3, Duration.ZERO, ignored -> Duration.ZERO);
+            3, Duration.ZERO, false, ignored -> Duration.ZERO);
     assertThat(continueAfterCommit.test(new Object())).isTrue();
     assertThat(continueAfterCommit.test(new Object())).isTrue();
     // The third commit has already been retained, so traversal stops here.
@@ -51,7 +51,7 @@ class TestCommitRetention {
         .isThrownBy(
             () ->
                 CatalogRetainedIdentifier.historyContinuePredicate(
-                    0, Duration.ZERO, ignored -> Duration.ZERO))
+                    0, Duration.ZERO, false, ignored -> Duration.ZERO))
         .withMessage("commitsToRetain must be at least 1");
   }
 
@@ -59,10 +59,55 @@ class TestCommitRetention {
   void continuesWhileNextCommitIsWithinRetentionDuration() {
     var continueAfterCommit =
         CatalogRetainedIdentifier.<Duration>historyContinuePredicate(
-            1, Duration.ofDays(30), age -> age);
+            1, Duration.ofDays(30), false, age -> age);
 
     assertThat(continueAfterCommit.test(Duration.ofDays(29))).isTrue();
     assertThat(continueAfterCommit.test(Duration.ofDays(30))).isFalse();
+  }
+
+  @Test
+  void combinesCountAndRetentionDuration() {
+    var continueAfterCommit =
+        CatalogRetainedIdentifier.<Duration>historyContinuePredicate(
+            3, Duration.ofDays(30), false, age -> age);
+
+    assertThat(continueAfterCommit.test(Duration.ofDays(40))).isTrue();
+    assertThat(continueAfterCommit.test(Duration.ofDays(40))).isTrue();
+    assertThat(continueAfterCommit.test(Duration.ofDays(29))).isTrue();
+    assertThat(continueAfterCommit.test(Duration.ofDays(30))).isFalse();
+  }
+
+  @Test
+  void usesLongerOfHistoryAndPaginationRetention() {
+    var continueAfterCommit =
+        CatalogRetainedIdentifier.<Duration>paginatedHistoryContinuePredicate(
+            1, Duration.ofDays(3), false, Duration.ofDays(30), age -> age);
+
+    assertThat(continueAfterCommit.test(Duration.ofDays(29))).isTrue();
+    assertThat(continueAfterCommit.test(Duration.ofDays(30))).isFalse();
+  }
+
+  @Test
+  void doesNotApplyPaginationRetentionToNonPaginatedHistory() {
+    var nonPaginatedHistory =
+        CatalogRetainedIdentifier.<Duration>historyContinuePredicate(
+            1, Duration.ofDays(7), false, age -> age);
+    var paginatedHistory =
+        CatalogRetainedIdentifier.<Duration>paginatedHistoryContinuePredicate(
+            1, Duration.ofDays(7), false, Duration.ofDays(30), age -> age);
+
+    assertThat(nonPaginatedHistory.test(Duration.ofDays(8))).isFalse();
+    assertThat(paginatedHistory.test(Duration.ofDays(8))).isTrue();
+  }
+
+  @Test
+  void retainsAllCommits() {
+    var continueAfterCommit =
+        CatalogRetainedIdentifier.<Object>historyContinuePredicate(
+            1, Duration.ZERO, true, ignored -> Duration.ZERO);
+
+    assertThat(continueAfterCommit.test(new Object())).isTrue();
+    assertThat(continueAfterCommit.test(new Object())).isTrue();
   }
 
   @Test
@@ -71,7 +116,17 @@ class TestCommitRetention {
         .isThrownBy(
             () ->
                 CatalogRetainedIdentifier.historyContinuePredicate(
-                    1, Duration.ofSeconds(-1), ignored -> Duration.ZERO))
+                    1, Duration.ofSeconds(-1), false, ignored -> Duration.ZERO))
         .withMessage("minimumRetention must not be negative");
+  }
+
+  @Test
+  void rejectsNegativePaginationTokenRetention() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                CatalogRetainedIdentifier.paginatedHistoryContinuePredicate(
+                    1, Duration.ZERO, false, Duration.ofSeconds(-1), ignored -> Duration.ZERO))
+        .withMessage("paginationTokenRetention must not be negative");
   }
 }
