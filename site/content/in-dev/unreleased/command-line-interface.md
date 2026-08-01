@@ -1688,6 +1688,8 @@ polaris setup apply setup-config.yaml
 
 The `export` subcommand retrieves the current Polaris configuration and outputs it in a YAML format. This output is compatible with the apply subcommand, allowing you to easily back up, migrate, or recreate your Polaris environment.
 
+Exported policies are represented as a list with explicit `name` and `namespace` fields so policies with the same name in different namespaces are preserved. The `apply` subcommand also accepts the legacy policy mapping keyed by name, but that format cannot represent duplicate policy names because YAML mapping keys must be unique.
+
 ```
 usage: polaris setup export [-h] [options]
 

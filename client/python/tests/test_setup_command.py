@@ -481,13 +481,14 @@ class TestSetupCommand(CLITestBase):
         )
         self.assertEqual(
             catalog["policies"],
-            {
-                "child-policy": {
+            [
+                {
+                    "name": "child-policy",
                     "namespace": "parent.child",
                     "type": "data-compaction",
                     "content": '{"max-age":7}',
                 }
-            },
+            ],
         )
         self.assertEqual(
             catalog_api.list_namespaces.call_args_list,
@@ -516,8 +517,12 @@ class TestSetupCommand(CLITestBase):
     ) -> None:
         policy_content = '{"version":"2025-02-03","enable":true}'
         policy_api = mock_policy_api_class.return_value
-        policy_api.list_policies.return_value = SimpleNamespace(
-            identifiers=[SimpleNamespace(name="compaction")]
+        policy_api.list_policies.side_effect = lambda prefix, namespace: SimpleNamespace(
+            identifiers=(
+                [SimpleNamespace(name="compaction")]
+                if namespace == "namespace"
+                else []
+            )
         )
         policy_api.load_policy.side_effect = [
             SimpleNamespace(
@@ -551,6 +556,71 @@ class TestSetupCommand(CLITestBase):
 
         request = policy_api.create_policy.call_args.kwargs["create_policy_request"]
         self.assertEqual(request.content, policy_content)
+
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    def test_setup_export_preserves_same_named_policies_across_namespaces(
+        self, mock_policy_api_class: MagicMock
+    ) -> None:
+        policy_api = mock_policy_api_class.return_value
+        policy_api.list_policies.side_effect = lambda prefix, namespace: SimpleNamespace(
+            identifiers=(
+                [SimpleNamespace(name="retention")]
+                if namespace in {"finance", "science"}
+                else []
+            )
+        )
+        policy_api.load_policy.side_effect = [
+            SimpleNamespace(
+                policy=SimpleNamespace(
+                    content='{"max-age":7}',
+                    policy_type="system.snapshot-expiry",
+                    description=None,
+                )
+            ),
+            SimpleNamespace(
+                policy=SimpleNamespace(
+                    content='{"max-age":30}',
+                    policy_type="system.snapshot-expiry",
+                    description=None,
+                )
+            ),
+            NotFoundException(),
+            NotFoundException(),
+        ]
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported_policies = export_command._export_policies_for_catalog(
+            MagicMock(), "catalog", [["finance"], ["science"]]
+        )
+        loaded_config = yaml.safe_load(yaml.safe_dump({"policies": exported_policies}))
+
+        apply_command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        apply_command._create_policies_and_attachments(
+            MagicMock(),
+            "catalog",
+            loaded_config["policies"],
+        )
+
+        self.assertEqual(
+            [
+                (
+                    create_call.kwargs["namespace"],
+                    create_call.kwargs["create_policy_request"].name,
+                    create_call.kwargs["create_policy_request"].content,
+                )
+                for create_call in policy_api.create_policy.call_args_list
+            ],
+            [
+                ("finance", "retention", '{"max-age":7}'),
+                ("science", "retention", '{"max-age":30}'),
+            ],
+        )
 
     def test_setup_export_reports_top_level_read_failures(self) -> None:
         for method_name in (
