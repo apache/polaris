@@ -227,6 +227,47 @@ public class TestCatalogMaintenance {
   }
 
   @Test
+  public void paginationRetentionDoesNotExtendNonPaginatedHistory() {
+    var policyMappingsRetention = GRACE_TIME;
+    var paginationTokenRetention = GRACE_TIME.plusMinutes(5);
+    var persistence = bootstrapRealm().persistence();
+
+    var oldPolicyMappings =
+        persistence
+            .fetchReferenceHead(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class)
+            .orElseThrow();
+    var currentPolicyMappings =
+        persistence.write(
+            PolicyMappingsObj.builder()
+                .from(oldPolicyMappings)
+                .id(persistence.generateId())
+                .createdAtMicros(persistence.currentTimeMicros())
+                .seq(oldPolicyMappings.seq() + 1)
+                .tail(oldPolicyMappings.id())
+                .build(),
+            PolicyMappingsObj.class);
+    assertThat(
+            persistence.updateReferencePointer(
+                persistence.fetchReference(POLICY_MAPPINGS_REF_NAME),
+                objRef(currentPolicyMappings)))
+        .isPresent();
+
+    MutableCatalogsMaintenanceConfig.setCurrent(
+        CatalogsMaintenanceConfig.BuildableCatalogsMaintenanceConfig.builder()
+            .paginationTokenRetention(paginationTokenRetention)
+            .catalogPoliciesRetainDuration(policyMappingsRetention)
+            .build());
+
+    mutableMonotonicClock.advanceBoth(policyMappingsRetention);
+    assertThat(runMaintenance().success()).isTrue();
+    purgeBackendCache("after policy-mapping retention");
+
+    assertThat(persistence.fetch(objRef(oldPolicyMappings), PolicyMappingsObj.class)).isNull();
+    assertThat(persistence.fetch(objRef(currentPolicyMappings), PolicyMappingsObj.class))
+        .isEqualTo(currentPolicyMappings);
+  }
+
+  @Test
   public void catalogMaintenance() {
     var testSetup = bootstrapRealm();
     var manager = testSetup.manager();
