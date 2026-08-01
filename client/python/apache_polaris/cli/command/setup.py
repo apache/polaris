@@ -21,7 +21,7 @@ import logging
 import yaml
 import json
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Any, Set
+from typing import Dict, Optional, List, Any, Set, Union
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
@@ -481,9 +481,9 @@ class SetupCommand(Command):
         api: PolarisDefaultApi,
         catalog_name: str,
         namespaces: List[List[str]],
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """Export all policies for a given catalog."""
-        policies_map: Dict[str, Any] = {}
+        policies_list: List[Dict[str, Any]] = []
         catalog_api_client = self._get_catalog_api(api)
         try:
             policy_api = PolicyAPI(catalog_api_client)
@@ -510,18 +510,19 @@ class SetupCommand(Command):
                         except json.JSONDecodeError:
                             compact_content = policy_obj.content
                     policy_info = {
+                        "name": p.name,
                         "namespace": ns_name,
                         "type": policy_obj.policy_type,
                         "content": compact_content,
                     }
                     if policy_obj.description:
                         policy_info["description"] = policy_obj.description
-                    policies_map[p.name] = policy_info
+                    policies_list.append(policy_info)
         except Exception:
             self._record_failure(
                 f"Failed to export policies for catalog '{catalog_name}'"
             )
-        return policies_map
+        return policies_list
 
     def _load_setup_config(self) -> Dict[str, Any]:
         """Load and cache the setup configuration from a YAML file."""
@@ -1283,14 +1284,22 @@ class SetupCommand(Command):
         self,
         api: PolarisDefaultApi,
         catalog_name: str,
-        policies_config: Dict[str, Any],
+        policies_config: Union[Dict[str, Any], List[Dict[str, Any]]],
         dry_run: bool = False,
     ) -> None:
         """Create policies and attach them."""
         logger.info(f"--- Processing policies for catalog: {catalog_name} ---")
         catalog_api_client = self._get_catalog_api(api)
         policy_api = PolicyAPI(catalog_api_client)
-        for policy_name, policy_data in policies_config.items():
+        policy_entries = (
+            policies_config.items()
+            if isinstance(policies_config, dict)
+            else ((policy.get("name"), policy) for policy in policies_config)
+        )
+        for policy_name, policy_data in policy_entries:
+            if not policy_name:
+                logger.warning("Skipping policy due to missing name.")
+                continue
             ns_name = policy_data.get("namespace")
             if not ns_name:
                 logger.warning(
