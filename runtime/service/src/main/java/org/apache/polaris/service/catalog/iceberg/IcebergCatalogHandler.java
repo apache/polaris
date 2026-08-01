@@ -885,66 +885,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return IcebergTableLikeEntity.of(leaf);
   }
 
-  public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
-    return loadTableIfStale(tableIdentifier, null, snapshots).get();
-  }
-
-  /**
-   * Attempt to perform a loadTable operation only when the specified set of eTags do not match the
-   * current state of the table metadata.
-   *
-   * @param tableIdentifier The identifier of the table to load
-   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
-   * @param snapshots
-   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
-   *     load table response, otherwise
-   */
-  public Optional<LoadTableResponse> loadTableIfStale(
-      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
-    return loadTable(
-        tableIdentifier,
-        snapshots,
-        ifNoneMatch,
-        EnumSet.noneOf(AccessDelegationMode.class),
-        Optional.empty());
-  }
-
-  public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier,
-      String snapshots,
-      Optional<String> refreshCredentialsEndpoint) {
-    return loadTableWithAccessDelegationIfStale(
-            tableIdentifier, null, snapshots, refreshCredentialsEndpoint)
-        .get();
-  }
-
-  /**
-   * Attempt to perform a loadTable operation with access delegation only when the if none of the
-   * provided eTags match the current state of the table metadata.
-   *
-   * @param tableIdentifier The identifier of the table to load
-   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
-   * @param snapshots
-   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
-   *     load table response, otherwise
-   */
-  public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
-      TableIdentifier tableIdentifier,
-      IfNoneMatch ifNoneMatch,
-      String snapshots,
-      Optional<String> refreshCredentialsEndpoint) {
-    return loadTable(
-        tableIdentifier,
-        snapshots,
-        ifNoneMatch,
-        EnumSet.of(VENDED_CREDENTIALS),
-        refreshCredentialsEndpoint);
-  }
-
   /**
    * Vend credentials for a table using location data from entity internal properties, avoiding a
-   * full table metadata read from object storage. Falls back to the standard
-   * loadTableWithAccessDelegation path if the entity lacks the required location properties.
+   * full table metadata read from object storage. Falls back to the full loadTable path if the
+   * entity lacks the required location properties.
    */
   public ImmutableLoadCredentialsResponse loadCredentials(
       TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
