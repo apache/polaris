@@ -224,7 +224,7 @@ jobs:
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
           DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }} # zizmor: ignore[secrets-outside-env]
         run: |
-          echo "${DOCKERHUB_TOKEN}" | docker login ghcr.io -u "${DOCKERHUB_USER}" --password-stdin
+          echo "${DOCKERHUB_TOKEN}" | docker login docker.io -u "${DOCKERHUB_USER}" --password-stdin
 
       - name: Publish Polaris Server Docker image to Docker Hub
         run: |
@@ -435,9 +435,19 @@ jobs:
           persist-credentials: false
 
       - name: Set up environment variables
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+          # exec_process defaults to dry-run when DRY_RUN is unset, so it must be
+          # set explicitly here or the wheel download below would silently no-op.
+          if [[ "${DRY_RUN_INPUT}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+          fi
 
       - name: Install Subversion
         run: |
@@ -462,6 +472,7 @@ jobs:
             "${dev_python_client_url}" dist/
 
       - name: Publish Python client release to PyPI
+        if: env.DRY_RUN == '0'
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
         with:
           packages-dir: dist/
