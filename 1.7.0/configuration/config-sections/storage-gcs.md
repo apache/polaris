@@ -17,17 +17,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.7.0/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: storage-gcs
+build:
+  list: never
+  render: never
 ---
+
+| Property | Type | Kind | Description |
+|----------|------|------|-------------|
+| `gcs.oauth2.token` | `String` | credential | Downscoped OAuth2 access token |
+| `gcs.oauth2.token-expires-at` | `String` | credential | Expiration time of the access token, in milliseconds since the Unix epoch |
+| `gcs.oauth2.refresh-credentials-endpoint` | `String` | config | Catalog endpoint the client can call to refresh vended credentials before they expire |
+
