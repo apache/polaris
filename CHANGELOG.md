@@ -126,6 +126,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Notification UPDATE requests for external tables now retry on concurrent entity modifications instead of failing immediately. The retry re-reads the latest entity from the metastore, re-validates the notification timestamp, and retries the update up to 3 times before giving up.
 - NoSQL commits resend unresolved object writes on retry, preventing successful commits from
   referencing objects left unwritten by a previous attempt.
 - Maintenance policy content now rejects non-boolean values for the `enable` field again. The
