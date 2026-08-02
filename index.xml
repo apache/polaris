@@ -1,4 +1,64 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Apache Polaris</title><link>https://polaris.apache.org/</link><description>Recent content on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><lastBuildDate>Sat, 04 Apr 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://polaris.apache.org/index.xml" rel="self" type="application/rss+xml"/><item><title>Apache Polaris 1.6.0</title><link>https://polaris.apache.org/downloads/1.6.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/downloads/1.6.0/</guid><description>&lt;p&gt;Released on July 8th, 2026.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Apache Polaris</title><link>https://polaris.apache.org/</link><description>Recent content on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><lastBuildDate>Sat, 04 Apr 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://polaris.apache.org/index.xml" rel="self" type="application/rss+xml"/><item><title>Apache Polaris 1.7.0</title><link>https://polaris.apache.org/downloads/1.7.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/downloads/1.7.0/</guid><description>&lt;p&gt;Released on August 2nd, 2026.&lt;/p&gt;
+&lt;h3 id="downloads" id="downloads"&gt;Downloads&lt;a class="heading-anchor" href="#downloads" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;table&gt;
+ &lt;thead&gt;
+ &lt;tr&gt;
+ &lt;th&gt;Artifact&lt;/th&gt;
+ &lt;th&gt;PGP Sig&lt;/th&gt;
+ &lt;th&gt;SHA-512&lt;/th&gt;
+ &lt;/tr&gt;
+ &lt;/thead&gt;
+ &lt;tbody&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.7.0/apache-polaris-1.7.0.tar.gz"&gt;source tar.gz&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.7.0/apache-polaris-1.7.0.tar.gz.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.7.0/apache-polaris-1.7.0.tar.gz.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.7.0/polaris-bin-1.7.0.tgz"&gt;binary tgz&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.7.0/polaris-bin-1.7.0.tgz.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.7.0/polaris-bin-1.7.0.tgz.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.7.0/polaris-bin-1.7.0.zip"&gt;binary zip&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.7.0/polaris-bin-1.7.0.zip.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://dlcdn.apache.org/polaris/1.7.0/polaris-bin-1.7.0.zip.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.7.0/polaris-spark-3.5_2.12-1.7.0-bundle.jar"&gt;Spark 3.5 with Scala 2.12 Client Jar&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.7.0/polaris-spark-3.5_2.12-1.7.0-bundle.jar.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.7.0/polaris-spark-3.5_2.12-1.7.0-bundle.jar.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.7.0/polaris-spark-3.5_2.13-1.7.0-bundle.jar"&gt;Spark 3.5 with Scala 2.13 Client Jar&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.7.0/polaris-spark-3.5_2.13-1.7.0-bundle.jar.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.7.0/polaris-spark-3.5_2.13-1.7.0-bundle.jar.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id="release-notes" id="release-notes"&gt;Release Notes&lt;a class="heading-anchor" href="#release-notes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;h3 id="upgrade-notes" id="upgrade-notes"&gt;Upgrade notes&lt;a class="heading-anchor" href="#upgrade-notes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;Relational JDBC: a new schema version 5 makes the &lt;code&gt;events.catalog_id&lt;/code&gt; column nullable. Events that
+are not scoped to a catalog (principal, policy, rate-limiting, etc.) now persist &lt;code&gt;NULL&lt;/code&gt; instead of
+the placeholder string &lt;code&gt;__realm__&lt;/code&gt; (which only ever existed in 1.6.0 release candidates). Fresh
+bootstraps use schema v5 automatically. Existing deployments on schema v3/v4 keep working — the
+server detects the older schema version and continues writing the legacy placeholder — but
+operators are encouraged to upgrade manually, since Polaris has no automated schema migrations:
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-sql" data-lang="sql"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;ALTER&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;TABLE&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#000"&gt;polaris_schema&lt;/span&gt;&lt;span style="color:#000;font-weight:bold"&gt;.&lt;/span&gt;&lt;span style="color:#000"&gt;events&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;ALTER&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;COLUMN&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#000"&gt;catalog_id&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;DROP&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;NOT&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;NULL&lt;/span&gt;&lt;span style="color:#000;font-weight:bold"&gt;;&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;UPDATE&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#000"&gt;polaris_schema&lt;/span&gt;&lt;span style="color:#000;font-weight:bold"&gt;.&lt;/span&gt;&lt;span style="color:#000"&gt;events&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;SET&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#000"&gt;catalog_id&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;NULL&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;WHERE&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#000"&gt;catalog_id&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#4e9a06"&gt;&amp;#39;__realm__&amp;#39;&lt;/span&gt;&lt;span style="color:#000;font-weight:bold"&gt;;&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;UPDATE&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#000"&gt;polaris_schema&lt;/span&gt;&lt;span style="color:#000;font-weight:bold"&gt;.&lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;version&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;SET&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#000"&gt;version_value&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#0000cf;font-weight:bold"&gt;5&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#204a87;font-weight:bold"&gt;WHERE&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#000"&gt;version_key&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#ce5c00;font-weight:bold"&gt;=&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt; &lt;/span&gt;&lt;span style="color:#4e9a06"&gt;&amp;#39;version&amp;#39;&lt;/span&gt;&lt;span style="color:#000;font-weight:bold"&gt;;&lt;/span&gt;&lt;span style="color:#f8f8f8"&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;See the Relational JDBC metastore documentation for details.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="breaking-changes" id="breaking-changes"&gt;Breaking changes&lt;a class="heading-anchor" href="#breaking-changes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Removed the &lt;code&gt;--schema-version&lt;/code&gt; (&lt;code&gt;-v&lt;/code&gt;) option from the admin tool&amp;rsquo;s &lt;code&gt;bootstrap&lt;/code&gt; command. New realms
+are now always bootstrapped with the latest available schema version.&lt;/p&gt;</description></item><item><title>Apache Polaris 1.6.0</title><link>https://polaris.apache.org/downloads/1.6.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/downloads/1.6.0/</guid><description>&lt;p&gt;Released on July 8th, 2026.&lt;/p&gt;
 &lt;h3 id="downloads" id="downloads"&gt;Downloads&lt;a class="heading-anchor" href="#downloads" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
 &lt;table&gt;
