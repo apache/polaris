@@ -278,6 +278,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - JDBC optimized location-overlap queries no longer include the lone `/` prefix term produced by
   scheme stripping (e.g. `s3://bucket/path` → `//bucket/path`). `//` and `///` are retained so
   scheme-root ancestors remain visible to the overlap check.
+- Notification UPDATE requests for external tables now retry on concurrent entity modifications instead of failing immediately. The retry re-reads the latest entity from the metastore, re-validates the notification timestamp, and retries the update up to 3 times before giving up.
 
 ### Commits
 
