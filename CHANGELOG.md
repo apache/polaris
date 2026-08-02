@@ -114,6 +114,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Management API delete operations for principals, principal roles, catalog roles, and catalogs now return error messages that match the actual failure reason (for example, concurrent modification no longer reports a misleading protected-entity message).
 - Python CLI `setup apply` now defaults to an `INTERNAL` catalog type when the `type` field is left blank or null in the setup config, instead of crashing with `AttributeError`
 - Ptyhon CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
+- Notification UPDATE requests for external tables now retry on concurrent entity modifications instead of failing immediately. The retry re-reads the latest entity from the metastore, re-validates the notification timestamp, and retries the update up to 3 times before giving up.
 
 ## [1.6.0]
 
