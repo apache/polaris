@@ -210,11 +210,11 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
       params.add(timestampTo);
     }
 
+    if (pageToken.value().isPresent() && pageToken.valueAs(MetricsReportToken.class).isEmpty()) {
+      throw new IllegalArgumentException(
+          "pageToken contains a cursor of an unexpected type; expected MetricsReportToken");
+    }
     if (pageToken.paginationRequested()) {
-      if (pageToken.value().isPresent() && pageToken.valueAs(MetricsReportToken.class).isEmpty()) {
-        throw new IllegalArgumentException(
-            "pageToken contains a cursor of an unexpected type; expected MetricsReportToken");
-      }
       pageToken
           .valueAs(MetricsReportToken.class)
           .ifPresent(
