@@ -32,12 +32,12 @@ import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.extension.metrics.jdbc.pagination.MetricsReportToken;
 import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
-import org.apache.polaris.persistence.relational.jdbc.pagination.MetricsReportToken;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
