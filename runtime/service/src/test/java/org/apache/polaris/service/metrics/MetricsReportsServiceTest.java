@@ -40,6 +40,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -91,7 +92,11 @@ class MetricsReportsServiceTest {
     realmContext = mock(RealmContext.class);
     securityContext = mock(SecurityContext.class);
 
+    CatalogEntity catalogEntity = mock(CatalogEntity.class);
+    when(catalogEntity.getId()).thenReturn(7L);
+
     when(manifest.resolveAll()).thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
+    when(manifest.getResolvedCatalogEntity()).thenReturn(catalogEntity);
     when(manifest.getResolvedPath(
             any(ResolvedPathKey.class), eq(PolarisEntitySubType.ANY_SUBTYPE), eq(true)))
         .thenReturn(tableWrapper);
@@ -245,6 +250,27 @@ class MetricsReportsServiceTest {
                     realmContext,
                     securityContext))
         .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void invalidMetricTypeThrowsIllegalArgumentException() {
+    assertThatThrownBy(
+            () ->
+                service.listTableMetrics(
+                    CATALOG,
+                    NAMESPACE,
+                    TABLE,
+                    "bogus",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("bogus");
   }
 
   @Test
