@@ -63,6 +63,11 @@ dependencies {
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)
+  testImplementation(libs.mockito.core)
+  // OpenLineageAdapter builds jakarta.ws.rs Response objects; a JAX-RS runtime (RESTEasy, matching
+  // the repo convention) must be on the unit-test classpath to supply the RuntimeDelegate.
+  testRuntimeOnly(platform(libs.quarkus.bom))
+  testRuntimeOnly("org.jboss.resteasy:resteasy-core")
 }
 
 testing {

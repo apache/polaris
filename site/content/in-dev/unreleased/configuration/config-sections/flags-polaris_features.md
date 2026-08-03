@@ -321,7 +321,7 @@ If true, the generic-tables endpoints are enabled
 
 ##### `polaris.features."ENABLE_OPENLINEAGE_INGEST"`
 
-If true, the OpenLineage ingest endpoint is advertised in the catalog configuration response. The endpoint itself is mounted whenever the OpenLineage extension is assembled into the server; this flag only controls whether it is advertised to clients during endpoint discovery.
+If true, the OpenLineage ingest feature is enabled: its endpoints are advertised to clients in the catalog configuration response during endpoint discovery. The routes are always mounted when the OpenLineage extension is assembled into the server, so this flag is the switch that turns the feature on or off for clients.
 
 - **Type:** `Boolean`
 - **Default:** `true`

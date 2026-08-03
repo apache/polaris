@@ -61,8 +61,11 @@ servers:
         description: The host address for the specified server
         default: localhost
 
+# OpenLineage ingest uses the same authentication as every other Polaris REST
+# API: OAuth2 client-credentials against the Polaris token endpoint, or a Bearer
+# JWT. These are the same schemes declared by the catalog and management specs.
 security:
-  - OAuth2: []
+  - OAuth2: [catalog]
   - BearerAuth: []
 
 paths:
@@ -191,17 +194,32 @@ paths:
 
 components:
   securitySchemes:
+    # This scheme mirrors the OAuth2 definition in iceberg-rest-catalog-open-api.yaml
+    # and polaris-catalog-service.yaml so that the OpenLineage ingest API accepts the
+    # same credentials as the rest of Polaris. The same client-id/secret used for
+    # catalog access is used here.
+    #
+    # TODO: a dedicated LINEAGE_INGEST privilege grant will be required once privilege
+    # enforcement is implemented; the endpoint currently uses @RolesAllowed("**").
     OAuth2:
       type: oauth2
       description:
-        OAuth2 client-credentials flow against the Polaris token endpoint.
-        The same client-id/secret used for catalog access is used here.
-        # TODO: a dedicated LINEAGE_INGEST privilege grant will be required once
-        # privilege enforcement is implemented; the endpoint currently uses @RolesAllowed("**").
+        This scheme is used for OAuth2 authorization.
+
+
+        For unauthorized requests, services should return an appropriate 401 or
+        403 response. Implementations must not return altered success (200)
+        responses when a request is unauthenticated or unauthorized.
+
+
+        If a separate authorization server is used, substitute the tokenUrl with
+        the full token path of the external authorization server, and use the
+        resulting token to access the resources defined in the spec.
       flows:
         clientCredentials:
           tokenUrl: /v1/oauth/tokens
-          scopes: {}
+          scopes:
+            catalog: Allows interacting with the Config and Catalog APIs
     BearerAuth:
       type: http
       scheme: bearer

@@ -48,16 +48,8 @@ public class OpenLineageEndpointContributor implements CatalogConfigEndpointCont
 
   @Override
   public Set<Endpoint> endpoints() {
-    return getSupportedOpenLineageEndpoints(realmConfig);
-  }
-
-  /**
-   * Returns {@link OpenLineageEndpoints#OPENLINEAGE_ENDPOINTS} if {@code ENABLE_OPENLINEAGE_INGEST}
-   * is true, otherwise an empty set.
-   */
-  public static Set<Endpoint> getSupportedOpenLineageEndpoints(RealmConfig realmConfig) {
-    boolean openLineageEnabled =
-        realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST);
-    return openLineageEnabled ? OpenLineageEndpoints.OPENLINEAGE_ENDPOINTS : ImmutableSet.of();
+    return realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST)
+        ? OpenLineageEndpoints.OPENLINEAGE_ENDPOINTS
+        : ImmutableSet.of();
   }
 }
