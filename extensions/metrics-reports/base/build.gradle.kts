@@ -43,4 +43,5 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
+  testImplementation(testFixtures(project(":polaris-extensions-metrics-reports-spi")))
 }
