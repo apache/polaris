@@ -65,7 +65,7 @@ servers:
 # API: OAuth2 client-credentials against the Polaris token endpoint, or a Bearer
 # JWT. These are the same schemes declared by the catalog and management specs.
 security:
-  - OAuth2: [catalog]
+  - OAuth2: []
   - BearerAuth: []
 
 paths:
@@ -218,8 +218,10 @@ components:
       flows:
         clientCredentials:
           tokenUrl: /v1/oauth/tokens
-          scopes:
-            catalog: Allows interacting with the Config and Catalog APIs
+          # No scope is required: ingest is authorized per-realm by the Polaris auth
+          # filter (@RolesAllowed), not by OAuth2 scope. Any valid Polaris token works,
+          # the same as it does for the other Polaris REST APIs.
+          scopes: {}
     BearerAuth:
       type: http
       scheme: bearer
