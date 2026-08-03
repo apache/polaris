@@ -17,4 +17,4 @@
 # under the License.
 #
 
-org.apache.polaris.persistence.relational.jdbc.pagination.MetricsReportToken$MetricsReportTokenType
+org.apache.polaris.extension.metrics.jdbc.pagination.MetricsReportToken$MetricsReportTokenType
