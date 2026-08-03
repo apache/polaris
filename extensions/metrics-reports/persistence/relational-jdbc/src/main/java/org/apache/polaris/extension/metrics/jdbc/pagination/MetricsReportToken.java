@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc.pagination;
+package org.apache.polaris.extension.metrics.jdbc.pagination;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -36,6 +36,8 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableMetricsReportToken.class)
 @JsonDeserialize(as = ImmutableMetricsReportToken.class)
+@tools.jackson.databind.annotation.JsonSerialize(as = ImmutableMetricsReportToken.class)
+@tools.jackson.databind.annotation.JsonDeserialize(as = ImmutableMetricsReportToken.class)
 public interface MetricsReportToken extends Token {
   // Registered token type IDs:  "e" = EntityIdToken, "m" = MetricsReportToken
   String ID = "m";
