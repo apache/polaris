@@ -58,4 +58,5 @@ dependencies {
   testImplementation(libs.mockito.core)
   testImplementation(libs.h2)
   testImplementation(libs.postgresql)
+  testImplementation(testFixtures(project(":polaris-extensions-metrics-reports-spi")))
 }
