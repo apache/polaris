@@ -40,8 +40,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 /**
- * Unit tests for {@link OpenLineageAdapter}, which maps provider {@link OpenLineageIngestResult}s to
- * HTTP responses and aggregates a batch of per-event outcomes into an {@link
+ * Unit tests for {@link OpenLineageAdapter}, which maps provider {@link OpenLineageIngestResult}s
+ * to HTTP responses and aggregates a batch of per-event outcomes into an {@link
  * OpenLineageBatchIngestResponse}.
  *
  * <p>The provider is mocked so every outcome branch — including {@code REJECTED} and {@code
@@ -90,8 +90,7 @@ class OpenLineageAdapterTest {
   void unavailableMapsTo503() {
     when(provider.ingest(any())).thenReturn(OpenLineageIngestResult.UNAVAILABLE);
     Response response = adapter.sendLineageEvent(event(), realmContext, null);
-    assertThat(response.getStatus())
-        .isEqualTo(Response.Status.SERVICE_UNAVAILABLE.getStatusCode());
+    assertThat(response.getStatus()).isEqualTo(Response.Status.SERVICE_UNAVAILABLE.getStatusCode());
   }
 
   @Test

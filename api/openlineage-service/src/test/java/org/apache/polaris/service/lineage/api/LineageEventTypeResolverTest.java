@@ -30,11 +30,11 @@ import org.junit.jupiter.api.Test;
  * LineageEventTypeResolver} when Jackson deserializes a {@link PolarisLineageEvent}.
  *
  * <p>This is the only real logic in the ingest path: the resolver inspects the trailing segment of
- * {@code schemaURL} to decide which wrapper (and therefore which {@link OpenLineage} event type) the
- * body deserializes into. The no-op integration tests return {@code 201} for every well-formed
+ * {@code schemaURL} to decide which wrapper (and therefore which {@link OpenLineage} event type)
+ * the body deserializes into. The no-op integration tests return {@code 201} for every well-formed
  * event and so cannot distinguish a correct dispatch from a silent fallback; these tests pin the
- * dispatch itself so a follow-up PR that starts consuming {@link PolarisLineageEvent#event()} cannot
- * regress it unnoticed.
+ * dispatch itself so a follow-up PR that starts consuming {@link PolarisLineageEvent#event()}
+ * cannot regress it unnoticed.
  */
 class LineageEventTypeResolverTest {
 
