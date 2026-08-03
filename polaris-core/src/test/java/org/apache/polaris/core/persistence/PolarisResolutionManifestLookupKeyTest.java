@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -32,6 +34,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -70,6 +73,38 @@ public class PolarisResolutionManifestLookupKeyTest {
 
     var byKey = manifest.getResolvedPath(ResolvedPathKey.of(tablePath), false);
     assertThat(byKey.getResolvedFullPath()).containsExactly(referenceCatalog, resolvedLeaf);
+  }
+
+  @Test
+  void passthroughResolvedPathResolvesOnlyRequestedPathsNotFullGraph() {
+    Resolver resolver = Mockito.mock(Resolver.class);
+    ResolverFactory resolverFactory = Mockito.mock(ResolverFactory.class);
+    RealmContext realmContext = Mockito.mock(RealmContext.class);
+    when(resolverFactory.createResolver(any(), anyString())).thenReturn(resolver);
+    when(resolver.resolveSelections(Set.of(Resolvable.REQUESTED_PATHS)))
+        .thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
+
+    ResolvedPolarisEntity referenceCatalog = Mockito.mock(ResolvedPolarisEntity.class);
+    ResolvedPolarisEntity resolvedLeaf = Mockito.mock(ResolvedPolarisEntity.class);
+    when(resolver.getResolvedReferenceCatalog()).thenReturn(referenceCatalog);
+    when(resolver.getResolvedPath()).thenReturn(List.of(resolvedLeaf));
+
+    PolarisResolutionManifest manifest =
+        new PolarisResolutionManifest(
+            new PolarisDefaultDiagServiceImpl(),
+            realmContext,
+            resolverFactory,
+            PolarisPrincipal.of("p", Map.of(), Set.of()),
+            "catalog");
+
+    ResolverPath tablePath = new ResolverPath(List.of("ns1", "tbl1"), PolarisEntityType.TABLE_LIKE);
+    manifest.addPassthroughPath(tablePath);
+
+    var resolved = manifest.getPassthroughResolvedPath(ResolvedPathKey.of(tablePath));
+
+    assertThat(resolved.getResolvedFullPath()).containsExactly(referenceCatalog, resolvedLeaf);
+    verify(resolver).resolveSelections(Set.of(Resolvable.REQUESTED_PATHS));
+    verify(resolver, never()).resolveAll();
   }
 
   @Test

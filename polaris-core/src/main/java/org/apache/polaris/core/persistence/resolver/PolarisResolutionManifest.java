@@ -198,7 +198,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     // Run a single-use Resolver for this path.
     Resolver passthroughResolver = resolverFactory.createResolver(principal, catalogName);
     passthroughResolver.addPath(requestedPath);
-    ResolverStatus status = passthroughResolver.resolveAll();
+    ResolverStatus status =
+        passthroughResolver.resolveSelections(Set.of(Resolvable.REQUESTED_PATHS));
 
     if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
       LOGGER.debug(
