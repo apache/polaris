@@ -19,6 +19,7 @@
 package org.apache.polaris.service.metrics;
 
 import com.google.common.annotations.Beta;
+import com.google.common.base.Preconditions;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -113,7 +114,8 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     PolarisResolutionManifest manifest = resolveAndAuthorizeTableMetrics(catalogName, identifier);
 
     CatalogEntity catalogEntity = manifest.getResolvedCatalogEntity();
-    long catalogId = catalogEntity != null ? catalogEntity.getId() : -1L;
+    Preconditions.checkNotNull(catalogEntity, "No catalog available");
+    long catalogId = catalogEntity.getId();
     PolarisResolvedPathWrapper tableWrapper =
         manifest.getResolvedPath(
             ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE, true);
@@ -134,6 +136,11 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
                   ListCommitMetricsResponse.MetricTypeEnum.COMMIT,
                   reports))
           .build();
+    }
+
+    if (!"scan".equalsIgnoreCase(metricType)) {
+      throw new IllegalArgumentException(
+          "metricType must be one of [scan, commit], got: " + metricType);
     }
 
     Page<ScanMetricsRecord> page =
