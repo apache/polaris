@@ -28,4 +28,6 @@ dependencies {
   implementation(libs.guava)
 
   compileOnly(libs.jspecify)
+
+  testFixturesImplementation(project(":polaris-core"))
 }
