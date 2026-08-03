@@ -27,6 +27,8 @@ import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
 import java.util.List;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.lineage.api.OpenLineageBatchIngestResponse;
 import org.apache.polaris.service.lineage.api.OpenLineageIngestProvider;
@@ -50,13 +52,16 @@ import org.mockito.ArgumentCaptor;
 class OpenLineageAdapterTest {
 
   private OpenLineageIngestProvider provider;
+  private RealmConfig realmConfig;
   private OpenLineageAdapter adapter;
   private RealmContext realmContext;
 
   @BeforeEach
   void setUp() {
     provider = mock(OpenLineageIngestProvider.class);
-    adapter = new OpenLineageAdapter(provider);
+    realmConfig = mock(RealmConfig.class);
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST)).thenReturn(true);
+    adapter = new OpenLineageAdapter(provider, realmConfig);
     realmContext = mock(RealmContext.class);
     when(realmContext.getRealmIdentifier()).thenReturn("test-realm");
   }
@@ -174,6 +179,27 @@ class OpenLineageAdapterTest {
     assertThat(body.summary().successful()).isZero();
     assertThat(body.summary().failed()).isZero();
     assertThat(body.failedEvents()).isEmpty();
+    verify(provider, never()).ingest(any());
+  }
+
+  @Test
+  void disabledFlagReturns404AndDoesNotCallProvider() {
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST)).thenReturn(false);
+
+    Response response = adapter.sendLineageEvent(event(), realmContext, null);
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+    verify(provider, never()).ingest(any());
+  }
+
+  @Test
+  void disabledFlagBatchReturns404AndDoesNotCallProvider() {
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST)).thenReturn(false);
+
+    Response response =
+        adapter.sendLineageEventBatch(List.of(event(), event()), realmContext, null);
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
     verify(provider, never()).ingest(any());
   }
 }

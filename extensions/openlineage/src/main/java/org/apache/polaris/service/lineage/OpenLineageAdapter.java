@@ -24,6 +24,8 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.lineage.api.OpenLineageBatchIngestResponse;
 import org.apache.polaris.service.lineage.api.OpenLineageIngestProvider;
@@ -43,20 +45,30 @@ import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
  * into per-event {@link OpenLineageIngestProvider#ingest} calls and assembles the per-event
  * outcomes into an {@link OpenLineageBatchIngestResponse}. This keeps the provider contract a
  * single event in / single result out.
+ *
+ * <p>When {@link FeatureConfiguration#ENABLE_OPENLINEAGE_INGEST} is disabled for the realm, both
+ * endpoints return {@code 404 Not Found} without invoking the provider. The routes stay mounted
+ * whenever the extension is assembled, so this flag is the runtime switch that turns ingest on or
+ * off (and it also gates whether the endpoints are advertised during discovery).
  */
 @RequestScoped
 public class OpenLineageAdapter implements PolarisOpenLineageApiService {
 
   private final OpenLineageIngestProvider provider;
+  private final RealmConfig realmConfig;
 
   @Inject
-  public OpenLineageAdapter(OpenLineageIngestProvider provider) {
+  public OpenLineageAdapter(OpenLineageIngestProvider provider, RealmConfig realmConfig) {
     this.provider = provider;
+    this.realmConfig = realmConfig;
   }
 
   @Override
   public Response sendLineageEvent(
       PolarisLineageEvent event, RealmContext realmContext, SecurityContext securityContext) {
+    if (!openLineageEnabled()) {
+      return Response.status(Response.Status.NOT_FOUND).build();
+    }
     OpenLineageIngestResult result = ingestOne(event, realmContext);
     return toResponse(result);
   }
@@ -66,6 +78,9 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
       List<PolarisLineageEvent> events,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    if (!openLineageEnabled()) {
+      return Response.status(Response.Status.NOT_FOUND).build();
+    }
     int successful = 0;
     List<OpenLineageBatchIngestResponse.FailedEvent> failed = new ArrayList<>();
 
@@ -97,6 +112,10 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
             new OpenLineageBatchIngestResponse.Summary(events.size(), successful, failed.size()),
             failed);
     return Response.status(Response.Status.OK).entity(body).build();
+  }
+
+  private boolean openLineageEnabled() {
+    return realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST);
   }
 
   private OpenLineageIngestResult ingestOne(PolarisLineageEvent event, RealmContext realmContext) {
