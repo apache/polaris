@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.exceptions;
 
+import jakarta.ws.rs.core.Response;
+
 /**
  * Base class for Polaris-specific runtime exceptions.
  *
@@ -40,6 +42,6 @@ public abstract class PolarisException extends RuntimeException {
    * return a more specific status code.
    */
   public int httpStatusCode() {
-    return 500;
+    return Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.policy.validator;
 
+import jakarta.ws.rs.core.Response;
 import org.apache.polaris.core.exceptions.PolarisException;
 
 /** Exception thrown when a policy is invalid or violates defined rules. */
@@ -36,6 +37,6 @@ public class InvalidPolicyException extends PolarisException {
 
   @Override
   public int httpStatusCode() {
-    return 400;
+    return Response.Status.BAD_REQUEST.getStatusCode();
   }
 }

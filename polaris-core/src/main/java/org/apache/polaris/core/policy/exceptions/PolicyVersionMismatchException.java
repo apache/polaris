@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.policy.exceptions;
 
+import jakarta.ws.rs.core.Response;
 import org.apache.polaris.core.exceptions.PolarisException;
 
 public class PolicyVersionMismatchException extends PolarisException {
@@ -31,6 +32,6 @@ public class PolicyVersionMismatchException extends PolarisException {
 
   @Override
   public int httpStatusCode() {
-    return 409;
+    return Response.Status.CONFLICT.getStatusCode();
   }
 }

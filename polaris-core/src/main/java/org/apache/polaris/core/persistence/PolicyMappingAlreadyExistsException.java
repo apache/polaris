@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import com.google.errorprone.annotations.FormatMethod;
+import jakarta.ws.rs.core.Response;
 import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 
@@ -48,6 +49,6 @@ public class PolicyMappingAlreadyExistsException extends PolarisException {
 
   @Override
   public int httpStatusCode() {
-    return 409;
+    return Response.Status.CONFLICT.getStatusCode();
   }
 }

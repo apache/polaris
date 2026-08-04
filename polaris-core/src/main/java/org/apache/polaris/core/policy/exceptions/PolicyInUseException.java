@@ -19,6 +19,7 @@
 package org.apache.polaris.core.policy.exceptions;
 
 import com.google.errorprone.annotations.FormatMethod;
+import jakarta.ws.rs.core.Response;
 import org.apache.polaris.core.exceptions.PolarisException;
 
 public class PolicyInUseException extends PolarisException {
@@ -34,6 +35,6 @@ public class PolicyInUseException extends PolarisException {
 
   @Override
   public int httpStatusCode() {
-    return 400;
+    return Response.Status.BAD_REQUEST.getStatusCode();
   }
 }

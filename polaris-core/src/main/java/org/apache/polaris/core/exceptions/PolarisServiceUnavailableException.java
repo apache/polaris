@@ -19,6 +19,7 @@
 package org.apache.polaris.core.exceptions;
 
 import com.google.errorprone.annotations.FormatMethod;
+import jakarta.ws.rs.core.Response;
 
 /**
  * Signals a transient failure that the client may resolve by retrying. Mapped to HTTP 503 (Service
@@ -40,6 +41,6 @@ public class PolarisServiceUnavailableException extends PolarisException {
 
   @Override
   public int httpStatusCode() {
-    return 503;
+    return Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
   }
 }
