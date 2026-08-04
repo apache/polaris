@@ -184,6 +184,9 @@ class TestCatalogsCommand(CLITestBase):
         )
         self.assertTrue(call_args.catalog.storage_config_info.sts_unavailable)
         self.assertTrue(call_args.catalog.storage_config_info.kms_unavailable)
+        self.assertIsNone(call_args.catalog.storage_config_info.endpoint)
+        self.assertIsNone(call_args.catalog.storage_config_info.endpoint_internal)
+        self.assertIsNone(call_args.catalog.storage_config_info.sts_endpoint)
 
         self.mock_execute(
             mock_client,
@@ -239,6 +242,41 @@ class TestCatalogsCommand(CLITestBase):
         self.assertEqual(call_args.catalog.properties.default_base_location, "x")
         self.assertEqual(call_args.catalog.storage_config_info.allowed_locations, ["a"])
         self.assertEqual(call_args.catalog.storage_config_info.region, "us-west-2")
+
+    def test_catalog_create_s3_endpoints(self) -> None:
+        mock_client = self.build_mock_client()
+        self.mock_execute(
+            mock_client,
+            [
+                "catalogs",
+                "create",
+                "s3-catalog",
+                "--storage-type",
+                "s3",
+                "--default-base-location",
+                "s3://bucket/path",
+                "--endpoint",
+                "https://s3.us-west-2.amazonaws.com",
+                "--endpoint-internal",
+                "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
+                "--sts-endpoint",
+                "https://sts.amazonaws.com",
+            ],
+        )
+        call_args = mock_client.create_catalog.call_args[0][0]
+        self.assertEqual(call_args.catalog.name, "s3-catalog")
+        self.assertEqual(call_args.catalog.storage_config_info.storage_type, "S3")
+        self.assertEqual(
+            call_args.catalog.storage_config_info.endpoint, "https://s3.us-west-2.amazonaws.com"
+        )
+        self.assertEqual(
+            call_args.catalog.storage_config_info.endpoint_internal,
+            "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
+        )
+        self.assertEqual(
+            call_args.catalog.storage_config_info.sts_endpoint,
+            "https://sts.amazonaws.com",
+        )
 
     def test_catalog_create_gcs_options(self) -> None:
         mock_client = self.build_mock_client()

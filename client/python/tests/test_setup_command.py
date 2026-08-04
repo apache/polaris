@@ -32,6 +32,7 @@ from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     FileStorageConfigInfo,
+    AwsStorageConfigInfo,
 )
 
 
@@ -540,3 +541,61 @@ class TestSetupCommand(CLITestBase):
         self.assertEqual(cm.exception.exit_code, CLI_ERROR_EXIT_CODE)
         self.assertIn("export errors: 3", str(cm.exception))
         self.assertEqual(mock_stdout.getvalue(), "")
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_s3_catalog_round_trips_sts_and_internal_endpoints(
+        self, mock_catalog_api: MagicMock
+    ) -> None:
+        mock_catalog_api.return_value.list_namespaces.return_value = []
+        mock_catalog = MagicMock()
+        mock_catalog.name = "my_catalog"
+        mock_client = self.build_mock_client()
+        mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="my_catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path",
+                additional_properties={},
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3",
+                allowed_locations=["s3://bucket/path"],
+                role_arn="arn:aws:iam::123456789012:user/QuickstartUser",
+                endpoint="https://s3.us-west-2.amazonaws.com",
+                endpoint_internal="https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
+                sts_endpoint="https://sts.amazonaws.com",
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = MagicMock(roles=[])
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported = export_command._export_catalogs(mock_client)
+
+        self.assertEqual(len(exported), 1)
+        self.assertEqual(
+            exported[0]["endpoint_internal"], "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com"
+        )
+        self.assertEqual(exported[0]["sts_endpoint"], "https://sts.amazonaws.com")
+
+        loaded = yaml.safe_load(yaml.safe_dump({"catalogs": exported}))
+
+        apply_client = self.build_mock_client()
+        apply_client.list_catalogs.return_value.catalogs = []
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+        apply_command._create_catalogs(apply_client, loaded["catalogs"])
+
+        apply_client.create_catalog.assert_called_once()
+        created = apply_client.create_catalog.call_args[0][0].catalog
+        self.assertEqual(
+            created.storage_config_info.endpoint_internal,
+            "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
+        )
+        self.assertEqual(
+            created.storage_config_info.sts_endpoint, "https://sts.amazonaws.com"
+        )
+
