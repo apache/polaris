@@ -667,19 +667,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return metadata;
   }
 
-  public LoadTableResponse createTableStaged(Namespace namespace, CreateTableRequest request) {
-    return createTableStaged(
-        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
-  }
-
-  public LoadTableResponse createTableStagedWithWriteDelegation(
-      Namespace namespace,
-      CreateTableRequest request,
-      Optional<String> refreshCredentialsEndpoint) {
-    return createTableStaged(
-        namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
-  }
-
   private void authorizeCreateTableStaged(
       Namespace namespace, CreateTableRequest request, boolean delegationRequested) {
     if (delegationRequested) {

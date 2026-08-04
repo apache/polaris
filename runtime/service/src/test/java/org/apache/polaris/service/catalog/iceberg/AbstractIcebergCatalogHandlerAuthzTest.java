@@ -558,7 +558,13 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
     return authzTestsBuilder("createTableStaged")
         .action(
-            () -> newHandler(Set.of(PRINCIPAL_ROLE1)).createTableStaged(NS2, createStagedRequest))
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .createTableStaged(
+                        NS2,
+                        createStagedRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -584,8 +590,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE1))
-                    .createTableStagedWithWriteDelegation(
-                        NS2, createStagedWithWriteDelegationRequest, Optional.empty()))
+                    .createTableStaged(
+                        NS2,
+                        createStagedWithWriteDelegationRequest,
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
