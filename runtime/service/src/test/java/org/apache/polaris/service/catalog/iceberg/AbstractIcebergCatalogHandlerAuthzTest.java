@@ -493,7 +493,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
     return authzTestsBuilder("createTableDirect")
-        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).createTableDirect(NS2, createRequest))
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .createTableDirect(
+                        NS2,
+                        createRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
@@ -653,7 +660,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     }
     CreateTableRequest createSourceRequest =
         CreateTableRequest.builder().withName(sourceTable.name()).withSchema(SCHEMA).build();
-    newHandler(Set.of(PRINCIPAL_ROLE2)).createTableDirect(NS2, createSourceRequest);
+    newHandler(Set.of(PRINCIPAL_ROLE2))
+        .createTableDirect(
+            NS2, createSourceRequest, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
 
     final String metadataLocation =
         newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(sourceTable, "all").metadataLocation();
@@ -1271,7 +1280,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .cleanupAction(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE2))
-                    .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
+                    .createTableDirect(
+                        TABLE_NS1_1.namespace(),
+                        createRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1295,7 +1308,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .cleanupAction(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE2))
-                    .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
+                    .createTableDirect(
+                        TABLE_NS1_1.namespace(),
+                        createRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
