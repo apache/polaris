@@ -2291,7 +2291,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
-              .addKeyValue(StructuredLogKeys.IDENTIFIER, identifier)
+              .addKeyValue(StructuredLogKeys.VIEW_IDENTIFIER, identifier)
               .log("Stored view identifier mismatches requested identifier");
         }
       }
