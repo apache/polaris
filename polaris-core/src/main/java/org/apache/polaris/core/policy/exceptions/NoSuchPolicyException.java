@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.policy.exceptions;
 
+import jakarta.ws.rs.core.Response;
 import org.apache.polaris.core.exceptions.PolarisException;
 
 public class NoSuchPolicyException extends PolarisException {
@@ -32,6 +33,6 @@ public class NoSuchPolicyException extends PolarisException {
 
   @Override
   public int httpStatusCode() {
-    return 404;
+    return Response.Status.NOT_FOUND.getStatusCode();
   }
 }

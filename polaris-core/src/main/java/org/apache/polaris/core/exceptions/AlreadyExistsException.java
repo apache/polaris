@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.exceptions;
 
+import jakarta.ws.rs.core.Response;
+
 /**
  * A {@link PolarisException} implementation for when Polaris is unable to create an entity that
  * already exists.
@@ -33,6 +35,6 @@ public class AlreadyExistsException extends PolarisException {
 
   @Override
   public int httpStatusCode() {
-    return 409;
+    return Response.Status.CONFLICT.getStatusCode();
   }
 }
