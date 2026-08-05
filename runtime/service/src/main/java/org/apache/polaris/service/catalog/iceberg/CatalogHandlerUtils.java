@@ -261,11 +261,6 @@ public class CatalogHandlerUtils {
         .build();
   }
 
-  public ListTablesResponse listTables(Catalog catalog, Namespace namespace) {
-    List<TableIdentifier> idents = catalog.listTables(namespace);
-    return ListTablesResponse.builder().addAll(idents).build();
-  }
-
   public ListTablesResponse listTables(
       Catalog catalog, Namespace namespace, String pageToken, Integer pageSize) {
     List<TableIdentifier> results = catalog.listTables(namespace);
