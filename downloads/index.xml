@@ -35,6 +35,11 @@
  &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.7.0/polaris-spark-3.5_2.13-1.7.0-bundle.jar.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
  &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.7.0/polaris-spark-3.5_2.13-1.7.0-bundle.jar.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
  &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-4.0_2.13/1.7.0/polaris-spark-4.0_2.13-1.7.0-bundle.jar"&gt;Spark 4.0 with Scala 2.13 Client Jar&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-4.0_2.13/1.7.0/polaris-spark-4.0_2.13-1.7.0-bundle.jar.asc"&gt;.asc&lt;/a&gt;&lt;/td&gt;
+ &lt;td&gt;&lt;a href="https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-4.0_2.13/1.7.0/polaris-spark-4.0_2.13-1.7.0-bundle.jar.sha512"&gt;.sha512&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
  &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;h3 id="release-notes" id="release-notes"&gt;Release Notes&lt;a class="heading-anchor" href="#release-notes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
