@@ -62,6 +62,54 @@ class BigLakeCatalogValidatorTest {
   }
 
   @Test
+  void validBigLakeBlCatalogIdentifierPasses() {
+    assertThatCode(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "bl://projects/123456789/catalogs/my-biglake-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void validBigLakeWarehouseIdentifierPasses() {
+    assertThatCode(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "gs://bucket/path/to/warehouse",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void skipsValidationForNonBigLakeGcpRestEndpoint() {
+    assertThatCode(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://catalog-gateway.example.com/iceberg/v1",
+                        null,
+                        Map.of(),
+                        true,
+                        "s3://bucket/path/to/data",
+                        null)))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   void rejectsNonHttpsEndpoint() {
     assertThatThrownBy(
             () ->
@@ -93,6 +141,57 @@ class BigLakeCatalogValidatorTest {
                         validGcsStorage("gs://bucket/path/to/data"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("unsupported path");
+  }
+
+  @Test
+  void rejectsEndpointWithQueryString() {
+    assertThatThrownBy(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog?warehouse=test",
+                        "my-remote-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("query, fragment, and custom port components are not supported");
+  }
+
+  @Test
+  void rejectsEndpointWithFragment() {
+    assertThatThrownBy(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog#fragment",
+                        "my-remote-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("query, fragment, and custom port components are not supported");
+  }
+
+  @Test
+  void rejectsEndpointWithCustomPort() {
+    assertThatThrownBy(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com:8443/iceberg/v1/restcatalog",
+                        "my-remote-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("query, fragment, and custom port components are not supported");
   }
 
   @Test

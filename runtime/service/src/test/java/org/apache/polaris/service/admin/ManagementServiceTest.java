@@ -430,6 +430,60 @@ public class ManagementServiceTest {
   }
 
   @Test
+  public void testCreateAndUpdateNonBigLakeGcpRestCatalogSkipsBigLakeValidation() {
+    String catalogName = "generic-gcp-rest-catalog";
+    String initialBaseLocation = "s3://bucket/path/to/data";
+    String updatedBaseLocation = "s3://bucket/path/to/updated-data";
+    Catalog catalog =
+        createGenericGcpRestCatalog(
+            catalogName, initialBaseLocation, createGenericS3StorageConfig(initialBaseLocation));
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = (Catalog) response.getEntity();
+      assertThat(fetchedCatalog.getProperties().getDefaultBaseLocation())
+          .isEqualTo(initialBaseLocation);
+    }
+
+    UpdateCatalogRequest updateRequest =
+        UpdateCatalogRequest.builder()
+            .setCurrentEntityVersion(fetchedCatalog.getEntityVersion())
+            .setProperties(
+                Map.of(
+                    "default-base-location",
+                    updatedBaseLocation,
+                    "enable.credential.vending",
+                    "true"))
+            .setStorageConfigInfo(createGenericS3StorageConfig(updatedBaseLocation))
+            .build();
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalogName, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updatedCatalog = (Catalog) response.getEntity();
+      assertThat(updatedCatalog.getProperties().getDefaultBaseLocation())
+          .isEqualTo(updatedBaseLocation);
+    }
+  }
+
+  @Test
   public void testUpdateBigLakeCatalogRejectsInvalidMergedConfiguration() {
     String catalogName = "biglake-catalog";
     String initialBaseLocation = "gs://bucket/path/to/data";
@@ -528,10 +582,42 @@ public class ManagementServiceTest {
         .build();
   }
 
+  private Catalog createGenericGcpRestCatalog(
+      String catalogName, String defaultBaseLocation, StorageConfigInfo storageConfigInfo) {
+    CatalogProperties catalogProperties = CatalogProperties.builder(defaultBaseLocation).build();
+    catalogProperties.put("enable.credential.vending", "true");
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName(catalogName)
+        .setProperties(catalogProperties)
+        .setStorageConfigInfo(storageConfigInfo)
+        .setConnectionConfigInfo(
+            IcebergRestConnectionConfigInfo.builder(
+                    ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+                .setUri("https://catalog-gateway.example.com/iceberg/v1")
+                .setRemoteCatalogName("my-remote-catalog")
+                .setAuthenticationParameters(
+                    GcpAuthenticationParameters.builder()
+                        .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.GCP)
+                        .build())
+                .build())
+        .build();
+  }
+
   private StorageConfigInfo createBigLakeStorageConfig(String allowedLocation) {
     return GcpStorageConfigInfo.builder()
         .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
         .setGcsServiceAccount("test-sa@my-project.iam.gserviceaccount.com")
+        .setAllowedLocations(List.of(allowedLocation))
+        .build();
+  }
+
+  private StorageConfigInfo createGenericS3StorageConfig(String allowedLocation) {
+    return AwsStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+        .setExternalId("externalId")
+        .setUserArn("userArn")
         .setAllowedLocations(List.of(allowedLocation))
         .build();
   }
@@ -895,3 +981,4 @@ public class ManagementServiceTest {
                 resultWithError.getExtraInformation()));
   }
 }
+
