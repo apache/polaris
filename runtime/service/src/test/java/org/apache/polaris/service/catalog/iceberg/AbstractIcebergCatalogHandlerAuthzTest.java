@@ -613,7 +613,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // To get a handy metadata file we can use one from another table.
     // to avoid overlapping directories, drop the original table and recreate it via registerTable
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     RegisterTableRequest registerRequest =
@@ -674,7 +683,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             NS2, createSourceRequest, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
 
     final String metadataLocation =
-        newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(sourceTable, "all").metadataLocation();
+        newHandler(Set.of(PRINCIPAL_ROLE2))
+            .loadTable(
+                sourceTable,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(sourceTable);
 
     final RegisterTableRequest registerRequest =
@@ -738,7 +755,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .grantPrivilegeOnCatalogToRole(
                 CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
     final String metadataLocation =
-        newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+        newHandler(Set.of(PRINCIPAL_ROLE2))
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
 
     // Mock RegisterTableRequest with overwrite=true
     final RegisterTableRequest registerRequest = Mockito.mock(RegisterTableRequest.class);
@@ -783,7 +808,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .grantPrivilegeOnCatalogToRole(
                 CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     RegisterTableRequest registerRequest =
@@ -835,7 +869,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .grantPrivilegeOnCatalogToRole(
                 CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
     String metadataLocation =
-        newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+        newHandler(Set.of(PRINCIPAL_ROLE2))
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
 
     RegisterTableRequest registerRequest = Mockito.mock(RegisterTableRequest.class);
     Mockito.when(registerRequest.name()).thenReturn(TABLE_NS1_1.name());
@@ -887,7 +929,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .grantPrivilegeOnCatalogToRole(
                 CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     RegisterTableRequest registerRequest =
@@ -927,7 +978,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .grantPrivilegeOnCatalogToRole(
                 CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
 
     RegisterTableRequest registerRequest =
         ImmutableRegisterTableRequest.builder()
@@ -967,7 +1027,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .grantPrivilegeOnCatalogToRole(
                 CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     RegisterTableRequest registerRequest =
@@ -1009,7 +1078,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .grantPrivilegeOnCatalogToRole(
                 CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
 
     RegisterTableRequest registerRequest =
         ImmutableRegisterTableRequest.builder()
@@ -1050,7 +1128,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testLoadTablePrivileges() {
     return authzTestsBuilder("loadTable")
-        .action(() -> newHandler().loadTable(TABLE_NS1A_2, "all"))
+        .action(
+            () ->
+                newHandler()
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        null,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
@@ -1067,7 +1153,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler()
-                    .loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"))
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
@@ -1082,7 +1173,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   Stream<DynamicNode> testLoadTableWithReadAccessDelegationPrivileges() {
     return authzTestsBuilder("loadTableWithAccessDelegation")
         .action(
-            () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
+            () ->
+                newHandler()
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        null,
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1108,7 +1206,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // to receive a read-only credential.
     return authzTestsBuilder("loadTableWithAccessDelegation (write)")
         .action(
-            () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
+            () ->
+                newHandler()
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        null,
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1121,8 +1226,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler()
-                    .loadTableWithAccessDelegationIfStale(
-                        TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1138,8 +1247,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler()
-                    .loadTableWithAccessDelegationIfStale(
-                        TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -2269,7 +2382,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // Test that TABLE_MANAGE_STRUCTURE is insufficient for operations that require
     // different privilege categories (like read operations)
     return authzTestsBuilder("loadTable (TABLE_MANAGE_STRUCTURE insufficient)")
-        .action(() -> newHandler().loadTable(TABLE_NS1A_2, "all"))
+        .action(
+            () ->
+                newHandler()
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        null,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
