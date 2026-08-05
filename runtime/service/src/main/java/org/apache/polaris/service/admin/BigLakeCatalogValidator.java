@@ -80,7 +80,8 @@ final class BigLakeCatalogValidator {
 
     validateBigLakeEndpoint(connectionConfig.getUri(), uri);
     validateBigLakeRemoteCatalogName(connectionConfig.getRemoteCatalogName());
-    validateBigLakeHeaders(connectionConfig.getProperties());
+    validateBigLakeHeaders(
+        connectionConfig.getProperties(), externalCatalog.getProperties().toMap());
     validateBigLakeStorageConfiguration(realmConfig, externalCatalog);
   }
 
@@ -152,8 +153,10 @@ final class BigLakeCatalogValidator {
             + "': expected a BigLake catalog identifier or gs:// warehouse location.");
   }
 
-  private static void validateBigLakeHeaders(Map<String, String> properties) {
-    Map<String, String> headerProperties = properties != null ? properties : Map.of();
+  private static void validateBigLakeHeaders(
+      Map<String, String> connectionProperties, Map<String, String> catalogProperties) {
+    Map<String, String> headerProperties =
+        connectionProperties != null ? connectionProperties : Map.of();
 
     for (String propertyName : headerProperties.keySet()) {
       if (propertyName == null) {
@@ -182,9 +185,14 @@ final class BigLakeCatalogValidator {
     }
 
     String quotaProject = headerProperties.get(QUOTA_PROJECT_HEADER);
+    if (Strings.isNullOrEmpty(quotaProject) && catalogProperties != null) {
+      // Preserve existing CLI-created catalogs while new CLI requests store this header on the
+      // connection configuration, where it is used for outbound BigLake requests.
+      quotaProject = catalogProperties.get(QUOTA_PROJECT_HEADER);
+    }
     if (Strings.isNullOrEmpty(quotaProject) || quotaProject.trim().isEmpty()) {
       throw new IllegalArgumentException(
-          "Invalid BigLake connectionConfigInfo.properties entry '"
+          "Invalid BigLake connectionConfigInfo.properties entry or catalog.properties entry '"
               + QUOTA_PROJECT_HEADER
               + "': a quota project is required.");
     }
@@ -193,7 +201,7 @@ final class BigLakeCatalogValidator {
     if (!GCP_PROJECT_ID_PATTERN.matcher(trimmedQuotaProject).matches()
         && !GCP_PROJECT_NUMBER_PATTERN.matcher(trimmedQuotaProject).matches()) {
       throw new IllegalArgumentException(
-          "Invalid BigLake connectionConfigInfo.properties entry '"
+          "Invalid BigLake connectionConfigInfo.properties entry or catalog.properties entry '"
               + QUOTA_PROJECT_HEADER
               + "': '"
               + quotaProject

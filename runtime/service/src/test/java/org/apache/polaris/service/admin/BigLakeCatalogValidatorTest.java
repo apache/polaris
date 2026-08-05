@@ -62,6 +62,37 @@ class BigLakeCatalogValidatorTest {
   }
 
   @Test
+  void validBigLakeConfigurationWithLegacyCatalogQuotaProjectPasses() {
+    CatalogProperties catalogProperties =
+        CatalogProperties.builder("gs://bucket/path/to/data").build();
+    catalogProperties.put("enable.credential.vending", "true");
+    catalogProperties.put("header.x-goog-user-project", "my-billing-project");
+
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName("test-biglake-catalog")
+            .setProperties(catalogProperties)
+            .setStorageConfigInfo(validGcsStorage("gs://bucket/path/to/data"))
+            .setConnectionConfigInfo(
+                IcebergRestConnectionConfigInfo.builder()
+                    .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+                    .setUri("https://biglake.googleapis.com/iceberg/v1/restcatalog")
+                    .setRemoteCatalogName("my-remote-catalog")
+                    .setProperties(Map.of())
+                    .setAuthenticationParameters(
+                        GcpAuthenticationParameters.builder()
+                            .setAuthenticationType(
+                                AuthenticationParameters.AuthenticationTypeEnum.GCP)
+                            .build())
+                    .build())
+            .build();
+
+    assertThatCode(() -> BigLakeCatalogValidator.validate(realmConfig, catalog))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   void validBigLakeBlCatalogIdentifierPasses() {
     assertThatCode(
             () ->
