@@ -28,6 +28,8 @@ dependencies {
   implementation(project(":polaris-core"))
 
   compileOnly(libs.smallrye.config.core)
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")

@@ -25,20 +25,17 @@ import java.util.OptionalLong;
 /** Dataset metadata returned in a lineage query response. */
 public record LineageData(
     OptionalLong catalogId,
-    OptionalLong datasetId,
+    long datasetId,
     String namespace,
     String name,
     Optional<String> entitySubType,
-    OptionalLong createdAt,
-    OptionalLong updatedAt) {
+    long createdAt,
+    long updatedAt) {
   public LineageData {
     Objects.requireNonNull(catalogId, "catalogId must be non-null");
-    Objects.requireNonNull(datasetId, "datasetId must be non-null");
     Objects.requireNonNull(namespace, "namespace must be non-null");
     Objects.requireNonNull(name, "name must be non-null");
     Objects.requireNonNull(entitySubType, "entitySubType must be non-null");
-    Objects.requireNonNull(createdAt, "createdAt must be non-null");
-    Objects.requireNonNull(updatedAt, "updatedAt must be non-null");
   }
 
   public LineageData(
@@ -51,11 +48,11 @@ public record LineageData(
       long updatedAt) {
     this(
         OptionalLong.of(catalogId),
-        OptionalLong.of(datasetId),
+        datasetId,
         namespace,
         name,
         Optional.of(entitySubType),
-        OptionalLong.of(createdAt),
-        OptionalLong.of(updatedAt));
+        createdAt,
+        updatedAt);
   }
 }
