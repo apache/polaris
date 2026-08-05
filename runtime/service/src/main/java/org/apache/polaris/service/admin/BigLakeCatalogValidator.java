@@ -44,6 +44,8 @@ final class BigLakeCatalogValidator {
   private static final Pattern GCP_PROJECT_ID_PATTERN =
       Pattern.compile("^[a-z][a-z0-9-]{4,28}[a-z0-9]$");
   private static final Pattern GCP_PROJECT_NUMBER_PATTERN = Pattern.compile("^[1-9][0-9]{5,}$");
+  private static final Pattern BIGLAKE_URI_CATALOG_PATTERN =
+      Pattern.compile("^/[1-9][0-9]{5,}/catalogs/[^/\\s]+$");
   private static final Pattern BIGLAKE_RESOURCE_NAME_PATTERN =
       Pattern.compile("^projects/[^/\\s]+/locations/[^/\\s]+/catalogs/[^/\\s]+$");
   private static final Pattern BIGLAKE_SIMPLE_CATALOG_PATTERN =
@@ -73,24 +75,21 @@ final class BigLakeCatalogValidator {
       return;
     }
 
-    validateBigLakeEndpoint(connectionConfig.getUri());
+    URI uri = parseUri(connectionConfig.getUri());
+    if (!targetsBigLakeHost(uri)) {
+      return;
+    }
+
+    validateBigLakeEndpoint(connectionConfig.getUri(), uri);
     validateBigLakeRemoteCatalogName(connectionConfig.getRemoteCatalogName());
     validateBigLakeHeaders(connectionConfig.getProperties());
     validateBigLakeStorageConfiguration(realmConfig, externalCatalog);
   }
 
-  private static void validateBigLakeEndpoint(String uriString) {
+  private static void validateBigLakeEndpoint(String uriString, URI uri) {
     if (Strings.isNullOrEmpty(uriString)) {
       throw new IllegalArgumentException(
           "Invalid BigLake connectionConfigInfo.uri: an https:// BigLake endpoint is required.");
-    }
-
-    URI uri;
-    try {
-      uri = URI.create(uriString);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException(
-          "Invalid BigLake connectionConfigInfo.uri '" + uriString + "'.", e);
     }
 
     if (!"https".equalsIgnoreCase(uri.getScheme())) {
@@ -143,7 +142,8 @@ final class BigLakeCatalogValidator {
       return;
     }
 
-    if (BIGLAKE_RESOURCE_NAME_PATTERN.matcher(trimmedRemoteCatalogName).matches()
+    if (isBigLakeCatalogUri(trimmedRemoteCatalogName)
+        || BIGLAKE_RESOURCE_NAME_PATTERN.matcher(trimmedRemoteCatalogName).matches()
         || BIGLAKE_SIMPLE_CATALOG_PATTERN.matcher(trimmedRemoteCatalogName).matches()) {
       return;
     }
@@ -276,6 +276,33 @@ final class BigLakeCatalogValidator {
       throw new IllegalArgumentException(
           "Invalid BigLake " + fieldName + " '" + location + "': expected a gs:// location.");
     }
+  }
+
+  private static URI parseUri(String uriString) {
+    if (Strings.isNullOrEmpty(uriString)) {
+      return null;
+    }
+
+    try {
+      return URI.create(uriString);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  private static boolean targetsBigLakeHost(URI uri) {
+    return uri != null && BIGLAKE_HOST.equalsIgnoreCase(uri.getHost());
+  }
+
+  private static boolean isBigLakeCatalogUri(String remoteCatalogName) {
+    URI uri = parseUri(remoteCatalogName);
+    return uri != null
+        && "bl".equalsIgnoreCase(uri.getScheme())
+        && "projects".equalsIgnoreCase(uri.getHost())
+        && uri.getPort() == -1
+        && uri.getRawQuery() == null
+        && uri.getRawFragment() == null
+        && BIGLAKE_URI_CATALOG_PATTERN.matcher(normalizePath(uri.getPath())).matches();
   }
 
   private static String normalizePath(String path) {
