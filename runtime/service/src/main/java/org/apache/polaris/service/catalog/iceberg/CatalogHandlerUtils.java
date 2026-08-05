@@ -183,17 +183,6 @@ public class CatalogHandlerUtils {
     return Pair.of(subList, nextPageToken);
   }
 
-  public ListNamespacesResponse listNamespaces(SupportsNamespaces catalog, Namespace parent) {
-    List<Namespace> results;
-    if (parent.isEmpty()) {
-      results = catalog.listNamespaces();
-    } else {
-      results = catalog.listNamespaces(parent);
-    }
-
-    return ListNamespacesResponse.builder().addAll(results).build();
-  }
-
   public ListNamespacesResponse listNamespaces(
       SupportsNamespaces catalog, Namespace parent, String pageToken, Integer pageSize) {
     List<Namespace> results;
