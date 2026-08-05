@@ -135,6 +135,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.SupportsNotifications;
@@ -2645,8 +2646,23 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider.getStorageAccessConfig(
             identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
-    // Reload fileIO based on table specific context
-    FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, tableProperties);
+    // For S3-compatible storage with stsUnavailable=true the admin sets static credentials
+    // (s3.access-key-id / s3.secret-access-key) as catalog properties. These form the base so
+    // that tableProperties can override them, and DefaultFileIOFactory then further overlays
+    // storageAccessConfig credentials so STS-vended credentials always win when STS is available.
+    // Only the two S3 credential keys are forwarded from catalogProperties to avoid leaking
+    // unrelated catalog configuration into the FileIO property map.
+    Map<String, String> mergedProperties = new HashMap<>();
+    for (StorageAccessProperty credProp :
+        List.of(StorageAccessProperty.AWS_KEY_ID, StorageAccessProperty.AWS_SECRET_KEY)) {
+      String val = catalogProperties.get(credProp.getPropertyName());
+      if (val != null) {
+        mergedProperties.put(credProp.getPropertyName(), val);
+      }
+    }
+    mergedProperties.putAll(tableProperties);
+    FileIO fileIO =
+        fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, mergedProperties);
     // ensure the new fileIO is closed when the catalog is closed
     closeableGroup.addCloseable(fileIO);
     return fileIO;
