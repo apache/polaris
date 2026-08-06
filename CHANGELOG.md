@@ -114,6 +114,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Management API delete operations for principals, principal roles, catalog roles, and catalogs now return error messages that match the actual failure reason (for example, concurrent modification no longer reports a misleading protected-entity message).
 - Python CLI `setup apply` now defaults to an `INTERNAL` catalog type when the `type` field is left blank or null in the setup config, instead of crashing with `AttributeError`
 - Ptyhon CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
+- A metastore failure while resolving a principal's roles during authentication now returns HTTP 503, as it already did when looking up the principal entity. Previously the failure propagated unwrapped and was reported as HTTP 500, so a backend that served the principal lookup but failed on the grant lookups was reported as a server defect.
 
 ## [1.6.0]
 
