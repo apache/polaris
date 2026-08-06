@@ -105,9 +105,9 @@ public class PolarisAuthorizerImplTest {
     when(manifest.getResolvedTopLevelEntity("analytics-admin", PolarisEntityType.PRINCIPAL_ROLE))
         .thenReturn(principalRoleWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
-    doReturn(true)
+    doReturn(List.of())
         .when(authorizer)
-        .isAuthorized(
+        .findMissingPrivileges(
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE),
@@ -127,7 +127,7 @@ public class PolarisAuthorizerImplTest {
 
     assertThat(decision.isAllowed()).isTrue();
     verify(authorizer)
-        .isAuthorized(
+        .findMissingPrivileges(
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE),
@@ -147,9 +147,9 @@ public class PolarisAuthorizerImplTest {
 
     when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(rootWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
-    doReturn(true)
+    doReturn(List.of())
         .when(authorizer)
-        .isAuthorized(
+        .findMissingPrivileges(
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.LIST_CATALOGS),
@@ -165,7 +165,7 @@ public class PolarisAuthorizerImplTest {
 
     assertThat(decision.isAllowed()).isTrue();
     verify(authorizer)
-        .isAuthorized(
+        .findMissingPrivileges(
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.LIST_CATALOGS),
@@ -187,9 +187,9 @@ public class PolarisAuthorizerImplTest {
             ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true))
         .thenReturn(namespaceWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
-    doReturn(true)
+    doReturn(List.of())
         .when(authorizer)
-        .isAuthorized(
+        .findMissingPrivileges(
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
@@ -212,7 +212,7 @@ public class PolarisAuthorizerImplTest {
     verify(manifest)
         .getResolvedPath(ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true);
     verify(authorizer)
-        .isAuthorized(
+        .findMissingPrivileges(
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
@@ -232,9 +232,9 @@ public class PolarisAuthorizerImplTest {
     when(manifest.getResolvedReferenceCatalogEntity(true))
         .thenReturn(firstCatalogWrapper, secondCatalogWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
-    doReturn(true)
+    doReturn(List.of())
         .when(authorizer)
-        .isAuthorized(
+        .findMissingPrivileges(
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.GET_CATALOG),
@@ -258,14 +258,14 @@ public class PolarisAuthorizerImplTest {
 
     assertThat(decision.isAllowed()).isTrue();
     verify(authorizer, times(1))
-        .isAuthorized(
+        .findMissingPrivileges(
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.GET_CATALOG),
             eq(List.of(firstCatalogWrapper)),
             eq(null));
     verify(authorizer, times(1))
-        .isAuthorized(
+        .findMissingPrivileges(
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.GET_CATALOG),
@@ -285,9 +285,9 @@ public class PolarisAuthorizerImplTest {
             ResolvedPathKey.of(List.of("ns", "table"), PolarisEntityType.TABLE_LIKE), true))
         .thenReturn(tableWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
-    doReturn(true)
+    doReturn(List.of())
         .when(authorizer)
-        .isAuthorized(
+        .findMissingPrivileges(
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             any(PolarisAuthorizableOperation.class),
@@ -313,14 +313,14 @@ public class PolarisAuthorizerImplTest {
 
     assertThat(decision.isAllowed()).isTrue();
     verify(authorizer, times(1))
-        .isAuthorized(
+        .findMissingPrivileges(
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES),
             eq(List.of(tableWrapper)),
             eq(null));
     verify(authorizer, times(1))
-        .isAuthorized(
+        .findMissingPrivileges(
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF),
