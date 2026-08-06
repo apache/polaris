@@ -88,6 +88,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `CREATE NAMESPACE` fell back to a realm-wide scan instead of the intended indexed lookup. A new
   schema version 6 creates the index on `(realm_id, catalog_id, location_without_scheme)`; H2 was
   already correct. Existing deployments need a manual index recreation — see Upgrade notes.
+- A metastore failure while resolving a principal's roles during authentication now returns HTTP 503, as it already did when looking up the principal entity. Previously the failure propagated unwrapped and was reported as HTTP 500, so a backend that served the principal lookup but failed on the grant lookups was reported as a server defect.
 
 ### Commits
 

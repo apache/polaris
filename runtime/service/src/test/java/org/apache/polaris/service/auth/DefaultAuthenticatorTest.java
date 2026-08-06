@@ -155,6 +155,53 @@ public class DefaultAuthenticatorTest {
   }
 
   @Test
+  void testLoadGrantsThrowsServiceExceptionOnMetastoreException() {
+    // Given: a metastore that fails while loading the principal's grants
+    PolarisCredential credentials =
+        PolarisCredential.of(
+            principalEntity.getId(), null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+
+    PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
+    Mockito.doThrow(new RuntimeException("Metastore exception"))
+        .when(metaStoreManagerSpy)
+        .loadGrantsToGrantee(any(), any());
+
+    DefaultAuthenticator standaloneAuthenticator = newStandaloneAuthenticator(metaStoreManagerSpy);
+
+    // When/Then: the metastore failure should surface as ServiceUnavailableException
+    assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
+        .isInstanceOf(ServiceUnavailableException.class);
+  }
+
+  @Test
+  void testLoadSecurableEntityThrowsServiceExceptionOnMetastoreException() {
+    // Given: grants without preloaded entities, so role resolution falls back to loadEntity,
+    // and a metastore that fails on that fallback
+    LoadGrantsResult grants =
+        metaStoreManager.loadGrantsToGrantee(callContext.getPolarisCallContext(), principalEntity);
+    LoadGrantsResult grantsWithoutEntities =
+        new LoadGrantsResult(grants.getGrantsVersion(), grants.getGrantRecords(), null);
+
+    PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(grantsWithoutEntities)
+        .when(metaStoreManagerSpy)
+        .loadGrantsToGrantee(
+            any(), Mockito.argThat(p -> p != null && p.getId() == principalEntity.getId()));
+    Mockito.doThrow(new RuntimeException("Metastore exception"))
+        .when(metaStoreManagerSpy)
+        .loadEntity(any(), anyLong(), anyLong(), Mockito.eq(PolarisEntityType.PRINCIPAL_ROLE));
+
+    PolarisCredential credentials =
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+
+    DefaultAuthenticator standaloneAuthenticator = newStandaloneAuthenticator(metaStoreManagerSpy);
+
+    // When/Then: the metastore failure should surface as ServiceUnavailableException
+    assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
+        .isInstanceOf(ServiceUnavailableException.class);
+  }
+
+  @Test
   void testAuthenticationByPrincipalId() {
     // Given: credentials with principal ID instead of name
     PolarisCredential credentials =
