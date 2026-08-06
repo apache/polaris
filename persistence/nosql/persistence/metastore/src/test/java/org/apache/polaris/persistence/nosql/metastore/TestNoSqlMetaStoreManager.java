@@ -28,11 +28,15 @@ import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.PolarisCallContext;
@@ -63,6 +67,7 @@ import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
+import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.assertj.core.api.SoftAssertions;
@@ -92,6 +97,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
 
   @Inject RealmPersistenceFactory realmPersistenceFactory;
   @Inject RealmConfigurationSource configurationSource;
+  @Inject Privileges privileges;
   @Inject MonotonicClock monotonicClock;
 
   String realmId;
@@ -705,4 +711,93 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
           + "because both the creation and modification timestamps are enforced by the implementation and "
           + "cannot be tweaked by call sites")
   protected void testCreatePrincipalReturnedEntitySameAsPersisted() {}
+
+  @Test
+  public void testLoadGrantsToGranteeDoesNotFetchPerGrant() {
+    var few = loadGrantsForGrantee(UUID.randomUUID().toString(), 5);
+    var many = loadGrantsForGrantee(UUID.randomUUID().toString(), 25);
+
+    soft.assertThat(many.fetchMany()).describedAs("grant targets are bulk-fetched").isPositive();
+    soft.assertThat(many)
+        .describedAs("every kind of backend round-trip is independent of the grant count")
+        .isEqualTo(few);
+  }
+
+  private FetchCounts loadGrantsForGrantee(String grantsRealmId, int grantCount) {
+    metaStoreManagerFactory.bootstrapRealms(List.of(grantsRealmId), RootCredentialsSet.EMPTY);
+
+    var counters = new HashMap<String, AtomicInteger>();
+    var persistence =
+        countingPersistence(
+            realmPersistenceFactory.newBuilder().realmId(grantsRealmId).build(), counters);
+
+    RealmContext grantsRealmContext = () -> grantsRealmId;
+    var callCtx =
+        new PolarisCallContext(
+            grantsRealmContext, new NoSqlMetaStore(persistence, privileges), configurationSource);
+    var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(grantsRealmContext);
+
+    var principal =
+        manager
+            .createPrincipal(
+                callCtx,
+                new PrincipalEntity.Builder()
+                    .setId(manager.generateNewEntityId(callCtx).getId())
+                    .setName("principal")
+                    .setCreateTimestamp(1L)
+                    .build())
+            .getPrincipal();
+
+    for (int i = 0; i < grantCount; i++) {
+      var principalRole =
+          new PolarisBaseEntity.Builder()
+              .catalogId(PolarisEntityConstants.getNullId())
+              .id(manager.generateNewEntityId(callCtx).getId())
+              .typeCode(PolarisEntityType.PRINCIPAL_ROLE.getCode())
+              .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+              .parentId(PolarisEntityConstants.getRootEntityId())
+              .name("principalRole_" + i)
+              .createTimestamp(1L)
+              .build();
+      principalRole = manager.createEntityIfNotExists(callCtx, null, principalRole).getEntity();
+      manager.grantUsageOnRoleToGrantee(callCtx, null, principalRole, principal);
+    }
+
+    counters.clear();
+    var grants = manager.loadGrantsToGrantee(callCtx, principal);
+
+    soft.assertThat(grants.getEntities())
+        .describedAs("every granted principal role is resolved")
+        .hasSize(grantCount);
+
+    return new FetchCounts(
+        counterValue(counters, "fetch"),
+        counterValue(counters, "fetchMany"),
+        counterValue(counters, "fetchReference"));
+  }
+
+  private static int counterValue(Map<String, AtomicInteger> counters, String method) {
+    var counter = counters.get(method);
+    return counter == null ? 0 : counter.get();
+  }
+
+  private static Persistence countingPersistence(
+      Persistence delegate, Map<String, AtomicInteger> counters) {
+    return (Persistence)
+        Proxy.newProxyInstance(
+            Persistence.class.getClassLoader(),
+            new Class<?>[] {Persistence.class},
+            (proxy, method, args) -> {
+              counters
+                  .computeIfAbsent(method.getName(), k -> new AtomicInteger())
+                  .incrementAndGet();
+              try {
+                return method.invoke(delegate, args);
+              } catch (InvocationTargetException e) {
+                throw e.getCause();
+              }
+            });
+  }
+
+  private record FetchCounts(int fetch, int fetchMany, int fetchReference) {}
 }

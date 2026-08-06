@@ -1196,6 +1196,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     Predicate<GrantTriplet> entryFilter = GrantTriplet::reverseOrKey;
     entryFilter = onSecurable ? entryFilter.negate() : entryFilter;
 
+    var targets = new ArrayList<GrantTarget>();
     collectGrantRecords(
         catalogId,
         aclName,
@@ -1225,28 +1226,63 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             return;
           }
 
-          var indexedAccess = memoizedIndexedAccess.indexedAccess(targetCatalogId, targetTypeCode);
-          var entityOptional =
-              indexedAccess.byId(targetId).map(o -> mapToEntity(o, targetCatalogId));
-
-          if (entityOptional.isPresent()) {
-            PolarisBaseEntity entity = entityOptional.get();
-            LOGGER.trace(
-                "    Adding entity to load-grants-result: catalog:{}, id:{}, type:{}",
-                entity.getCatalogId(),
-                entity.getId(),
-                entity.getType());
-            collector.handle(securableAndGrantee, granted);
-            if (ids.add(targetId)) {
-              entities.add(entity);
-            }
-          } else {
-            // Missing targets indicate tolerated stale grant references that maintenance will
-            // eventually prune.
-            LOGGER.trace("    Not returning stale entity reference");
-          }
+          targets.add(
+              new GrantTarget(
+                  securableAndGrantee, granted, targetCatalogId, targetId, targetTypeCode));
         },
         entryFilter);
+
+    // byId() resolves the reference before fetching, so collecting the references first defers the
+    // fetches without adding index work.
+    var targetObjs = new ObjBase[targets.size()];
+    var accesses = new HashMap<GrantTargetType, IndexedContainerAccess<?>>();
+    var toFetch = new ArrayList<GrantTargetRef>();
+    for (int i = 0; i < targets.size(); i++) {
+      var target = targets.get(i);
+      var access =
+          accesses.computeIfAbsent(
+              new GrantTargetType(target.catalogId(), target.typeCode()),
+              key -> memoizedIndexedAccess.indexedAccess(key.catalogId(), key.typeCode()));
+      var objRef = access.objRefById(target.id());
+      if (objRef.isPresent()) {
+        toFetch.add(new GrantTargetRef(i, objRef.get()));
+      } else {
+        // The root container is the only access that cannot yield a reference without fetching.
+        targetObjs[i] = access.byId(target.id()).orElse(null);
+      }
+    }
+
+    for (int start = 0; start < toFetch.size(); start += FETCH_PAGE_SIZE) {
+      var batch = toFetch.subList(start, Math.min(start + FETCH_PAGE_SIZE, toFetch.size()));
+      var objs =
+          persistence.fetchMany(
+              ObjBase.class, batch.stream().map(GrantTargetRef::objRef).toArray(ObjRef[]::new));
+      for (int i = 0; i < batch.size(); i++) {
+        targetObjs[batch.get(i).index()] = objs[i];
+      }
+    }
+
+    for (int i = 0; i < targets.size(); i++) {
+      var target = targets.get(i);
+      var obj = targetObjs[i];
+      var entity = obj != null ? mapToEntity(obj, target.catalogId()) : null;
+
+      if (entity != null) {
+        LOGGER.trace(
+            "    Adding entity to load-grants-result: catalog:{}, id:{}, type:{}",
+            entity.getCatalogId(),
+            entity.getId(),
+            entity.getType());
+        collector.handle(target.securableAndGrantee(), target.granted());
+        if (ids.add(target.id())) {
+          entities.add(entity);
+        }
+      } else {
+        // Missing targets indicate tolerated stale grant references that maintenance will
+        // eventually prune.
+        LOGGER.trace("    Not returning stale entity reference");
+      }
+    }
 
     LOGGER.trace(
         "Returning {} grant records for loadGrants for catalog:{}, id:{}, entityType:{}({})",
@@ -1358,6 +1394,17 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                   });
             });
   }
+
+  record GrantTarget(
+      SecurableAndGrantee securableAndGrantee,
+      PrivilegeSet granted,
+      long catalogId,
+      long id,
+      int typeCode) {}
+
+  record GrantTargetType(long catalogId, int typeCode) {}
+
+  record GrantTargetRef(int index, ObjRef objRef) {}
 
   static class GrantRecordsCollector implements AclEntryHandler {
     final List<PolarisGrantRecord> grantRecords = new ArrayList<>();
