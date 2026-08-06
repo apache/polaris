@@ -26,7 +26,9 @@ import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.http.HttpHeaders;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -142,9 +144,60 @@ class WebhookEventListenerTest {
   }
 
   private WebhookEventListener createListener() {
-    WebhookEventListener listener = new WebhookEventListener(config, CLOCK, meterRegistry);
+    WebhookEventListener listener =
+        new WebhookEventListener(config, CLOCK, meterRegistry) {
+          @Override
+          protected WebhookTransport createTransport() {
+            return new JdkTransport(endpoint(), config.timeout(), config.headers());
+          }
+        };
     listener.start();
     return listener;
+  }
+
+  /**
+   * JDK-HttpClient-based transport for tests: the Quarkus REST client used in production needs a
+   * ServiceLoader-provided builder implementation that only exists inside a running Quarkus app.
+   */
+  private static final class JdkTransport implements WebhookEventListener.WebhookTransport {
+    private final HttpClient client;
+    private final URI endpoint;
+    private final Duration timeout;
+    private final Map<String, String> headers;
+
+    private JdkTransport(URI endpoint, Duration timeout, Map<String, String> headers) {
+      this.client =
+          HttpClient.newBuilder()
+              .connectTimeout(timeout)
+              .followRedirects(HttpClient.Redirect.NEVER)
+              .build();
+      this.endpoint = endpoint;
+      this.timeout = timeout;
+      this.headers = headers;
+    }
+
+    @Override
+    public Result post(String eventType, String signature, String payload) throws Exception {
+      HttpRequest.Builder requestBuilder =
+          HttpRequest.newBuilder(endpoint)
+              .timeout(timeout)
+              .header("Content-Type", "application/json")
+              .header(WebhookEventListener.EVENT_TYPE_HEADER, eventType)
+              .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8));
+      if (signature != null) {
+        requestBuilder.header(WebhookEventListener.SIGNATURE_HEADER, signature);
+      }
+      headers.forEach(
+          (name, value) -> {
+            if (!WebhookEventListener.isReservedHeader(name)) {
+              requestBuilder.header(name, value);
+            }
+          });
+      HttpResponse<Void> response =
+          client.send(requestBuilder.build(), HttpResponse.BodyHandlers.discarding());
+      return new Result(
+          response.statusCode(), response.headers().firstValue("Retry-After").orElse(null));
+    }
   }
 
   private static PolarisEvent testEvent() {
@@ -382,26 +435,21 @@ class WebhookEventListenerTest {
 
   @Test
   void parseRetryAfterSeconds() {
-    HttpHeaders headers = HttpHeaders.of(Map.of("Retry-After", List.of("3")), (a, b) -> true);
-    assertThat(WebhookEventListener.parseRetryAfterMillis(headers, CLOCK)).contains(3000L);
+    assertThat(WebhookEventListener.parseRetryAfterMillis("3", CLOCK)).contains(3000L);
   }
 
   @Test
   void parseRetryAfterHttpDate() {
     Clock fixed = Clock.fixed(EVENT_TIME, ZoneOffset.UTC);
-    HttpHeaders future =
-        HttpHeaders.of(
-            Map.of("Retry-After", List.of("Thu, 15 Jan 2026 12:00:30 GMT")), (a, b) -> true);
-    assertThat(WebhookEventListener.parseRetryAfterMillis(future, fixed)).contains(30000L);
+    assertThat(WebhookEventListener.parseRetryAfterMillis("Thu, 15 Jan 2026 12:00:30 GMT", fixed))
+        .contains(30000L);
     // Dates in the past clamp to zero delay.
-    HttpHeaders past =
-        HttpHeaders.of(
-            Map.of("Retry-After", List.of("Thu, 15 Jan 2026 11:59:00 GMT")), (a, b) -> true);
-    assertThat(WebhookEventListener.parseRetryAfterMillis(past, fixed)).contains(0L);
+    assertThat(WebhookEventListener.parseRetryAfterMillis("Thu, 15 Jan 2026 11:59:00 GMT", fixed))
+        .contains(0L);
     // Malformed values are ignored so computed backoff applies.
-    HttpHeaders malformed =
-        HttpHeaders.of(Map.of("Retry-After", List.of("not-a-date")), (a, b) -> true);
-    assertThat(WebhookEventListener.parseRetryAfterMillis(malformed, fixed)).isEmpty();
+    assertThat(WebhookEventListener.parseRetryAfterMillis("not-a-date", fixed)).isEmpty();
+    // Absent header is ignored as well.
+    assertThat(WebhookEventListener.parseRetryAfterMillis(null, fixed)).isEmpty();
   }
 
   @Test

@@ -28,11 +28,10 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.client.ClientRequestContext;
+import jakarta.ws.rs.client.ClientRequestFilter;
+import jakarta.ws.rs.core.Response;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpHeaders;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -57,6 +56,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
+import org.eclipse.microprofile.rest.client.ext.ResponseExceptionMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
@@ -112,7 +113,7 @@ public class WebhookEventListener implements PolarisEventListener {
   private final AtomicInteger pending = new AtomicInteger();
   private final AtomicInteger inFlight = new AtomicInteger();
 
-  private HttpClient client;
+  private WebhookTransport transport;
   private ExecutorService deliveryExecutor;
   private ScheduledExecutorService retryExecutor;
 
@@ -147,7 +148,7 @@ public class WebhookEventListener implements PolarisEventListener {
               + " not set");
     }
     validateEndpoint(endpoint, requireHttps);
-    this.client = createHttpClient();
+    this.transport = createTransport();
     this.deliveryExecutor =
         Executors.newFixedThreadPool(
             maxConcurrent,
@@ -220,15 +221,94 @@ public class WebhookEventListener implements PolarisEventListener {
     }
   }
 
-  protected HttpClient createHttpClient() {
-    return HttpClient.newBuilder()
-        .connectTimeout(timeout)
-        .followRedirects(HttpClient.Redirect.NEVER)
-        .build();
+  /**
+   * Minimal transport seam over the webhook endpoint. Production uses a Quarkus REST client; tests
+   * can substitute a lightweight implementation.
+   */
+  interface WebhookTransport extends AutoCloseable {
+    record Result(int status, String retryAfter) {}
+
+    Result post(String eventType, String signature, String payload) throws Exception;
+
+    @Override
+    default void close() throws Exception {}
+  }
+
+  protected WebhookTransport createTransport() {
+    WebhookHttpClient client =
+        RestClientBuilder.newBuilder()
+            .baseUri(endpoint)
+            .connectTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+            .readTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+            .register(new CustomHeadersFilter(headers))
+            .register(new NoopResponseExceptionMapper())
+            .build(WebhookHttpClient.class);
+    return new RestClientTransport(client);
+  }
+
+  private static final class RestClientTransport implements WebhookTransport {
+    private final WebhookHttpClient client;
+
+    private RestClientTransport(WebhookHttpClient client) {
+      this.client = client;
+    }
+
+    @Override
+    public Result post(String eventType, String signature, String payload) {
+      try (Response response = client.post(eventType, signature, payload)) {
+        return new Result(response.getStatus(), response.getHeaderString("Retry-After"));
+      }
+    }
+
+    @Override
+    public void close() throws Exception {
+      ((AutoCloseable) client).close();
+    }
+  }
+
+  /** Adds the configured custom headers to every request, skipping reserved header names. */
+  private static final class CustomHeadersFilter implements ClientRequestFilter {
+    private final Map<String, String> customHeaders;
+
+    private CustomHeadersFilter(Map<String, String> customHeaders) {
+      this.customHeaders = customHeaders;
+    }
+
+    @Override
+    public void filter(ClientRequestContext requestContext) {
+      customHeaders.forEach(
+          (name, value) -> {
+            if (name != null && !isReservedHeader(name)) {
+              requestContext.getHeaders().putSingle(name, value);
+            } else if (name != null) {
+              LOGGER.debug("Ignoring reserved custom webhook header '{}'", name);
+            }
+          });
+    }
+  }
+
+  /**
+   * Prevents the REST client from turning non-2xx responses into exceptions; the listener
+   * classifies status codes itself for retry decisions.
+   */
+  private static final class NoopResponseExceptionMapper
+      implements ResponseExceptionMapper<RuntimeException> {
+    @Override
+    public RuntimeException toThrowable(Response response) {
+      return null;
+    }
   }
 
   @PreDestroy
   void shutdown() {
+    if (transport != null) {
+      try {
+        transport.close();
+      } catch (Exception e) {
+        LOGGER.debug("Failed to close webhook transport", e);
+      }
+      transport = null;
+    }
     if (retryExecutor != null) {
       retryExecutor.shutdownNow();
       retryExecutor = null;
@@ -327,22 +407,21 @@ public class WebhookEventListener implements PolarisEventListener {
   private void deliverWithConcurrency(String payload, String eventType, int attempt) {
     inFlight.incrementAndGet();
     long startNanos = System.nanoTime();
+    String signature = secret != null ? "sha256=" + sign(payload, secret) : null;
     try {
-      HttpRequest request = buildRequest(payload, eventType);
-      HttpResponse<Void> response = client.send(request, HttpResponse.BodyHandlers.discarding());
+      WebhookTransport.Result result = transport.post(eventType, signature, payload);
       deliveryTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
-      int status = response.statusCode();
+      int status = result.status();
       if (status >= 200 && status < 300) {
         successCounter.increment();
         releaseAccepted();
         return;
       }
-      handleFailure(payload, eventType, attempt, status, response.headers(), null);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      deliveryTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
-      handleFailure(payload, eventType, attempt, null, null, e);
+      handleFailure(payload, eventType, attempt, status, result.retryAfter(), null);
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       deliveryTimer.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
       handleFailure(payload, eventType, attempt, null, null, e);
     } finally {
@@ -355,11 +434,11 @@ public class WebhookEventListener implements PolarisEventListener {
       String eventType,
       int attempt,
       Integer status,
-      HttpHeaders headers,
+      String retryAfter,
       Throwable error) {
     boolean transientFailure = isTransient(status, error);
     if (transientFailure && attempt < maxAttempts) {
-      long delayMs = computeRetryDelayMillis(attempt, headers);
+      long delayMs = computeRetryDelayMillis(attempt, retryAfter);
       retryCounter.increment();
       LOGGER.debug(
           "Webhook delivery to {} failed (attempt {}/{}, status: {}); retrying in {} ms",
@@ -399,10 +478,10 @@ public class WebhookEventListener implements PolarisEventListener {
   }
 
   @VisibleForTesting
-  long computeRetryDelayMillis(int attempt, HttpHeaders headers) {
-    Optional<Long> retryAfter = parseRetryAfterMillis(headers, clock);
-    if (retryAfter.isPresent()) {
-      return Math.min(retryAfter.get(), maxRetryBackoff.toMillis());
+  long computeRetryDelayMillis(int attempt, String retryAfter) {
+    Optional<Long> retryAfterDelay = parseRetryAfterMillis(retryAfter, clock);
+    if (retryAfterDelay.isPresent()) {
+      return Math.min(retryAfterDelay.get(), maxRetryBackoff.toMillis());
     }
     long exp = retryBackoff.toMillis() << Math.min(attempt - 1, 16);
     long capped = Math.min(exp, maxRetryBackoff.toMillis());
@@ -414,61 +493,35 @@ public class WebhookEventListener implements PolarisEventListener {
   }
 
   /**
-   * Parses the {@code Retry-After} header in either of its two standard forms: delta-seconds or
-   * HTTP-date (RFC 9110). Returns the requested delay in milliseconds, clamped at zero for dates in
-   * the past, or empty when the header is absent or malformed.
+   * Parses the {@code Retry-After} header value in either of its two standard forms: delta-seconds
+   * or HTTP-date (RFC 9110). Returns the requested delay in milliseconds, clamped at zero for dates
+   * in the past, or empty when the header is absent or malformed.
    */
   @VisibleForTesting
-  static Optional<Long> parseRetryAfterMillis(HttpHeaders headers, Clock clock) {
-    if (headers == null) {
+  static Optional<Long> parseRetryAfterMillis(String retryAfter, Clock clock) {
+    if (retryAfter == null) {
       return Optional.empty();
     }
-    return headers
-        .firstValue("Retry-After")
-        .map(String::trim)
-        .flatMap(
-            value -> {
-              try {
-                long seconds = Long.parseLong(value);
-                if (seconds < 0) {
-                  return Optional.empty();
-                }
-                return Optional.of(TimeUnit.SECONDS.toMillis(seconds));
-              } catch (NumberFormatException e) {
-                // Not delta-seconds; try HTTP-date below.
-              }
-              try {
-                long delayMs =
-                    ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME)
-                            .toInstant()
-                            .toEpochMilli()
-                        - clock.millis();
-                return Optional.of(Math.max(delayMs, 0L));
-              } catch (DateTimeParseException e) {
-                return Optional.empty();
-              }
-            });
-  }
-
-  private HttpRequest buildRequest(String payload, String eventType) {
-    HttpRequest.Builder requestBuilder =
-        HttpRequest.newBuilder(endpoint)
-            .timeout(timeout)
-            .header("Content-Type", "application/json")
-            .header(EVENT_TYPE_HEADER, eventType)
-            .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8));
-    headers.forEach(
-        (name, value) -> {
-          if (name != null && !isReservedHeader(name)) {
-            requestBuilder.header(name, value);
-          } else if (name != null) {
-            LOGGER.debug("Ignoring reserved custom webhook header '{}'", name);
-          }
-        });
-    if (secret != null) {
-      requestBuilder.header(SIGNATURE_HEADER, "sha256=" + sign(payload, secret));
+    String value = retryAfter.trim();
+    try {
+      long seconds = Long.parseLong(value);
+      if (seconds < 0) {
+        return Optional.empty();
+      }
+      return Optional.of(TimeUnit.SECONDS.toMillis(seconds));
+    } catch (NumberFormatException e) {
+      // Not delta-seconds; try HTTP-date below.
     }
-    return requestBuilder.build();
+    try {
+      long delayMs =
+          ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME)
+                  .toInstant()
+                  .toEpochMilli()
+              - clock.millis();
+      return Optional.of(Math.max(delayMs, 0L));
+    } catch (DateTimeParseException e) {
+      return Optional.empty();
+    }
   }
 
   @VisibleForTesting
