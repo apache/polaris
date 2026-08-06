@@ -34,6 +34,7 @@ dependencies {
 
   implementation(platform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-core")
+  implementation("io.quarkus:quarkus-rest-client")
   implementation("io.micrometer:micrometer-core")
   implementation(libs.guava)
 
