@@ -16,30 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.metrics;
+package org.apache.polaris.extension.metrics.reports;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.function.Consumer;
+import org.apache.polaris.core.metrics.IcebergMetricsReporter;
+import org.apache.polaris.core.metrics.MetricsReportEnvelope;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default implementation of {@link IcebergMetricsReporter} that logs metrics to the configured
- * logger.
+ * Implementation of {@link IcebergMetricsReporter} that logs metrics to the configured logger.
  *
  * <p>This implementation is selected when {@code polaris.iceberg-metrics.reporting.type} is set to
- * {@code "default"} (the default value).
- *
- * <p>By default, logging is disabled. To enable metrics logging, set the logger level for {@code
- * org.apache.polaris.extension.metrics.reports} to {@code INFO} in your logging configuration.
+ * {@code "logging"}. Each report is logged at {@code INFO}.
  *
  * @see IcebergMetricsReporter
  */
 @ApplicationScoped
-@Identifier("default")
+@Identifier("logging")
 public class LoggingMetricsReporter implements IcebergMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoggingMetricsReporter.class);
 

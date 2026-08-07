@@ -32,6 +32,7 @@ dependencies {
   implementation(project(":polaris-api-catalog-service"))
 
   runtimeOnly(project(":polaris-relational-jdbc"))
+  runtimeOnly(project(":polaris-extensions-metrics-reports"))
 
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
