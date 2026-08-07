@@ -104,9 +104,34 @@ public class QueryGenerator {
       @NonNull Map<String, Object> whereEquals,
       @NonNull Map<String, Object> whereGreater,
       @Nullable String orderByColumn) {
+    return generateSelectQuery(
+        projections, tableName, whereEquals, whereGreater, orderByColumn, null);
+  }
+
+  /**
+   * Generates a SELECT query with projection, filtering, ordering and an optional row limit.
+   *
+   * @param projections List of columns to retrieve.
+   * @param tableName Target table name.
+   * @param whereEquals Column-value pairs used in WHERE filtering.
+   * @param whereGreater Column-value pairs the row must be strictly greater than.
+   * @param orderByColumn Column to order by, or null for no ordering.
+   * @param limit Maximum number of rows to return, or null for no limit.
+   * @return A parameterized SELECT query.
+   * @throws IllegalArgumentException if any whereClause column isn't in projections or if limit is
+   *     not positive.
+   */
+  public static PreparedQuery generateSelectQuery(
+      @NonNull List<String> projections,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereEquals,
+      @NonNull Map<String, Object> whereGreater,
+      @Nullable String orderByColumn,
+      @Nullable Integer limit) {
     QueryFragment where =
         generateWhereClause(new HashSet<>(projections), whereEquals, whereGreater);
-    PreparedQuery query = generateSelectQuery(projections, tableName, where.sql(), orderByColumn);
+    PreparedQuery query =
+        generateSelectQuery(projections, tableName, where.sql(), orderByColumn, limit);
     return new PreparedQuery(query.sql(), where.parameters());
   }
 
