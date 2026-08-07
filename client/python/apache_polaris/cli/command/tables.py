@@ -99,11 +99,9 @@ class TableCommand(Command):
             )
             print(f"De-registering table {namespace_dot}.{table_name} completed")
         elif self.table_subcommand == Subcommands.SUMMARIZE:
-            self._generate_summary(api, catalog_api, ns_str)
+            self._generate_summary(catalog_api, ns_str)
 
-    def _generate_summary(
-        self, api: PolarisDefaultApi, catalog_api: IcebergCatalogAPI, ns_str: str
-    ) -> None:
+    def _generate_summary(self, catalog_api: IcebergCatalogAPI, ns_str: str) -> None:
         catalog_name = cast(str, self.catalog_name)
         namespace_list = cast(List[str], self.namespace)
         table_name = cast(str, self.table_name)
