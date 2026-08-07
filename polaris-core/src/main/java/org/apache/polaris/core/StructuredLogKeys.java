@@ -99,7 +99,6 @@ public final class StructuredLogKeys {
 
   // --- Misc keys ---
   public static final String TYPE = "type";
-  public static final String IDENTIFIER = "identifier";
   public static final String NOTIFICATION = "notification";
   public static final String REMOTE_URL = "remoteUrl";
   public static final String JSON = "json";

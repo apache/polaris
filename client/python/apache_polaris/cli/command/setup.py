@@ -318,6 +318,8 @@ class SetupCommand(Command):
                         "user_arn": c.storage_config_info.user_arn,
                         "region": c.storage_config_info.region,
                         "endpoint": c.storage_config_info.endpoint,
+                        "endpoint_internal": c.storage_config_info.endpoint_internal,
+                        "sts_endpoint": c.storage_config_info.sts_endpoint,
                         "sts_unavailable": c.storage_config_info.sts_unavailable,
                         "kms_unavailable": c.storage_config_info.kms_unavailable,
                         "path_style_access": c.storage_config_info.path_style_access,

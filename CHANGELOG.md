@@ -114,6 +114,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Management API delete operations for principals, principal roles, catalog roles, and catalogs now return error messages that match the actual failure reason (for example, concurrent modification no longer reports a misleading protected-entity message).
 - Python CLI `setup apply` now defaults to an `INTERNAL` catalog type when the `type` field is left blank or null in the setup config, instead of crashing with `AttributeError`
 - Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
+- Ptyhon CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
 
 ## [1.6.0]
 

@@ -878,7 +878,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     PolarisEntity updatedEntity =
         new PolarisEntity.Builder(entity).setProperties(newProperties).build();
 
-    if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+    boolean locationChanged =
+        !Objects.equal(
+            NamespaceEntity.of(entity).getBaseLocation(),
+            NamespaceEntity.of(updatedEntity).getBaseLocation());
+
+    if (locationChanged
+        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(
           NamespaceEntity.of(updatedEntity), resolvedEntities.getRawParentPath());
@@ -2291,7 +2297,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
-              .addKeyValue(StructuredLogKeys.IDENTIFIER, identifier)
+              .addKeyValue(StructuredLogKeys.VIEW_IDENTIFIER, identifier)
               .log("Stored view identifier mismatches requested identifier");
         }
       }
