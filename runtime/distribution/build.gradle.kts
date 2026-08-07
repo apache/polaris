@@ -73,9 +73,11 @@ distributions {
     contents {
       // Copy admin distribution contents
       into("admin") { from(adminDistribution) { exclude("quarkus-app-dependencies.txt") } }
+      into("admin/jdbc-drivers") { from("jdbc-drivers") }
 
       // Copy server distribution contents
       into("server") { from(serverDistribution) { exclude("quarkus-app-dependencies.txt") } }
+      into("server/jdbc-drivers") { from("jdbc-drivers") }
 
       // Copy scripts to bin directory
       into("bin") {

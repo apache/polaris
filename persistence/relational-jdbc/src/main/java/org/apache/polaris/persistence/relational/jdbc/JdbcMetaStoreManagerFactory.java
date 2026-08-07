@@ -22,6 +22,7 @@ import static org.apache.polaris.core.auth.AuthBootstrapUtil.createPolarisPrinci
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
@@ -94,7 +95,35 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @ApplicationScoped
   static DatasourceOperations produceDatasourceOperations(
       Instance<DataSource> dataSource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
-    return new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+    Optional<DataSource> polarisDataSource =
+        JdbcDataSourceFactory.create(relationalJdbcConfiguration);
+    return polarisDataSource
+        .map(ds -> createOwnedDatasourceOperations(ds, relationalJdbcConfiguration))
+        .orElseGet(() -> new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration));
+  }
+
+  static void closeDatasourceOperations(@Disposes DatasourceOperations datasourceOperations) {
+    datasourceOperations.close();
+  }
+
+  private static DatasourceOperations createOwnedDatasourceOperations(
+      DataSource dataSource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
+    try {
+      return new DatasourceOperations(dataSource, relationalJdbcConfiguration, true);
+    } catch (RuntimeException e) {
+      closeDataSource(dataSource, e);
+      throw e;
+    }
+  }
+
+  private static void closeDataSource(DataSource dataSource, RuntimeException originalException) {
+    if (dataSource instanceof AutoCloseable closeable) {
+      try {
+        closeable.close();
+      } catch (Exception closeException) {
+        originalException.addSuppressed(closeException);
+      }
+    }
   }
 
   protected PrincipalSecretsGenerator secretsGenerator(

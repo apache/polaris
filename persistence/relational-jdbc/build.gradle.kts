@@ -26,6 +26,7 @@ dependencies {
   implementation(project(":polaris-core"))
   implementation(libs.slf4j.api)
   implementation(libs.guava)
+  implementation(libs.hikari.cp)
 
   implementation(platform(libs.jackson3.bom))
   implementation("tools.jackson.core:jackson-core")

@@ -36,11 +36,14 @@ public class RelationalJdbcProductionReadinessChecks {
       return ProductionReadinessCheck.OK;
     }
 
-    if (datasourceOperations.get().getDatabaseType().equals(DatabaseType.H2)) {
+    DatasourceOperations operations = datasourceOperations.get();
+    if (operations.getDatabaseType().equals(DatabaseType.H2)) {
       return ProductionReadinessCheck.of(
           ProductionReadinessCheck.Error.of(
               "The current persistence (jdbc:h2) is intended for tests only.",
-              "quarkus.datasource.jdbc.url"));
+              operations.ownsDataSource()
+                  ? "polaris.persistence.relational.jdbc.jdbc-url"
+                  : "quarkus.datasource.jdbc.url"));
     }
     return ProductionReadinessCheck.OK;
   }

@@ -49,7 +49,7 @@ import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DatasourceOperations {
+public class DatasourceOperations implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
@@ -69,14 +69,23 @@ public class DatasourceOperations {
 
   private final DataSource datasource;
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
+  private final boolean closeDataSourceOnClose;
   private final DatabaseType databaseType;
 
   private static final Random random = new Random();
 
   public DatasourceOperations(
       DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
+    this(datasource, relationalJdbcConfiguration, false);
+  }
+
+  DatasourceOperations(
+      DataSource datasource,
+      RelationalJdbcConfiguration relationalJdbcConfiguration,
+      boolean closeDataSourceOnClose) {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
+    this.closeDataSourceOnClose = closeDataSourceOnClose;
     try (Connection connection = this.datasource.getConnection()) {
       // Get explicitly configured database type, if any
       DatabaseType configuredType =
@@ -96,6 +105,21 @@ public class DatasourceOperations {
 
   public DatabaseType getDatabaseType() {
     return databaseType;
+  }
+
+  boolean ownsDataSource() {
+    return closeDataSourceOnClose;
+  }
+
+  @Override
+  public void close() {
+    if (closeDataSourceOnClose && datasource instanceof AutoCloseable closeable) {
+      try {
+        closeable.close();
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to close datasource", e);
+      }
+    }
   }
 
   /**

@@ -78,6 +78,26 @@ class RelationalJdbcProductionReadinessChecksTest {
   }
 
   @Test
+  void jdbcWithPolarisManagedH2ReturnsWarningForPolarisProperty() {
+    JdbcMetaStoreManagerFactory metaStoreManagerFactory = mock(JdbcMetaStoreManagerFactory.class);
+    DatasourceOperations operations = mock(DatasourceOperations.class);
+    when(datasourceOperations.get()).thenReturn(operations);
+    when(operations.getDatabaseType()).thenReturn(DatabaseType.H2);
+    when(operations.ownsDataSource()).thenReturn(true);
+
+    ProductionReadinessCheck result =
+        checks.checkRelationalJdbc(metaStoreManagerFactory, datasourceOperations);
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error ->
+                assertThat(error.offendingProperty())
+                    .isEqualTo("polaris.persistence.relational.jdbc.jdbc-url"));
+  }
+
+  @Test
   void jdbcWithPostgresReturnsOk() {
     JdbcMetaStoreManagerFactory metaStoreManagerFactory = mock(JdbcMetaStoreManagerFactory.class);
     DatasourceOperations operations = mock(DatasourceOperations.class);

@@ -19,7 +19,47 @@
 package org.apache.polaris.quarkus.common.config.jdbc;
 
 import io.smallrye.config.ConfigMapping;
+import java.util.Optional;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
 @ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
-public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}
+public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {
+
+  /**
+   * Optional JDBC URL for a Polaris-managed datasource. When set, Polaris creates the JDBC pool
+   * directly instead of using the Quarkus datasource extension.
+   */
+  @Override
+  Optional<String> jdbcUrl();
+
+  /** Optional JDBC driver class name for the Polaris-managed datasource. */
+  @Override
+  Optional<String> driver();
+
+  /**
+   * Optional directory of JDBC driver jars loaded for the Polaris-managed datasource. When unset,
+   * Polaris looks for {@code jdbc-drivers} beside {@code quarkus-run.jar} in binary distributions.
+   */
+  @Override
+  Optional<String> driverDirectory();
+
+  /** Optional username for the Polaris-managed datasource. */
+  @Override
+  Optional<String> username();
+
+  /** Optional password for the Polaris-managed datasource. */
+  @Override
+  Optional<String> password();
+
+  /** Optional maximum connection pool size for the Polaris-managed datasource. */
+  @Override
+  Optional<Integer> maximumPoolSize();
+
+  /** Optional minimum idle connection count for the Polaris-managed datasource. */
+  @Override
+  Optional<Integer> minimumIdle();
+
+  /** Optional connection timeout in milliseconds for the Polaris-managed datasource. */
+  @Override
+  Optional<Long> connectionTimeoutInMs();
+}

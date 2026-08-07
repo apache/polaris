@@ -140,8 +140,9 @@ when the server is restarted; it is also unusable when multiple Polaris replicas
 {{< /alert >}}
 
 To enable a durable metastore, configure your system to use the Relational JDBC-backed metastore.
-This implementation leverages Quarkus for datasource management and supports configuration through
-environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
+This implementation can use Quarkus datasource management or a Polaris-managed JDBC connection pool
+and supports configuration through environment variables or JVM -D flags at startup. For more
+information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
 
 Configure the metastore by setting the following ENV variables:
 
@@ -154,9 +155,9 @@ QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
 ```
 
 
-The relational JDBC metastore is a Quarkus-managed datasource and only supports Postgres and H2 as of now.
-Please refer to the documentation here:
-[Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
+The relational JDBC metastore supports PostgreSQL and CockroachDB for production use. H2 is available
+for testing and development only. For Quarkus-managed datasource configuration, refer to
+[Configure data sources in Quarkus](https://quarkus.io/guides/datasource).
 
 {{< alert important >}}
 Be sure to secure your metastore backend since it will be storing sensitive data and catalog

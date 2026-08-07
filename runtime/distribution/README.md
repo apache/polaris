@@ -33,10 +33,12 @@ polaris-distribution-@version@/
 ├── NOTICE
 ├── README.md
 ├── admin/           # Admin tool files
+│   └── jdbc-drivers/ # JDBC driver jars for the Polaris-managed datasource
 ├── bin/             # Executable scripts
 │   ├── admin
 │   └── server
 └── server/          # Server files
+    └── jdbc-drivers/ # JDBC driver jars for the Polaris-managed datasource
 ```
 
 ## Usage
