@@ -396,6 +396,38 @@ public abstract class CatalogHandler {
     initializeCatalog();
   }
 
+  /**
+   * Returns {@code true} if the current principal is authorized for the given operation on the
+   * specified table-like entity that has already been resolved, {@code false} otherwise. Unlike
+   * {@link #authorizeResolvedBasicTableLikeOperationOrThrow}, this method does not throw on
+   * authorization failure, making it suitable for control-flow decisions where a denied operation
+   * should fall through to an alternative check rather than immediately failing the request.
+   *
+   * <p>The caller must have already invoked {@link #resolveBasicTableLikeTargetOrThrow} to resolve
+   * the entity before calling this method. If the entity did not resolve (for example, the table
+   * does not exist), this method throws {@link #notFoundExceptionForTableLikeEntity} rather than
+   * delegating to the authorizer, mirroring {@link
+   * #authorizeResolvedBasicTableLikeOperationOrThrow} so that a missing entity surfaces as a
+   * not-found (404) response instead of a server error.
+   */
+  protected boolean isResolvedBasicTableLikeOperationAuthorized(
+      PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier), subType, true);
+    if (target == null) {
+      throw notFoundExceptionForTableLikeEntity(identifier, subType);
+    }
+
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    op, PolarisSecurableMapper.tableLike(catalogName(), identifier))));
+    return authorizer().authorize(authorizationState, request).isAllowed();
+  }
+
   protected void resolveAndAuthorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
     resolveBasicTableLikeTargetOrThrow(op, identifier);
