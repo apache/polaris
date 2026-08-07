@@ -267,13 +267,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
   }
 
-  public ListNamespacesResponse listNamespaces(Namespace parent) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
-    authorizeBasicNamespaceOperationOrThrow(op, parent);
-
-    return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent);
-  }
-
   public ListNamespacesResponse listNamespaces(
       Namespace parent, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
