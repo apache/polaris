@@ -194,8 +194,10 @@ public class CommitTransactionTest {
     // Verify second table's LoadTableResponse
     assertThat(afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_NAME))
         .isEqualTo(table2Name);
-    assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.TABLE_METADATA)).isPresent();
-    assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.TABLE_METADATA)).isNotEmpty();
+    assertThat(afterUpdateTableEvent.attributes().getOptional(EventAttributes.TABLE_METADATA))
+        .isPresent();
+    assertThat(afterUpdateTableEvent.attributes().getOptional(EventAttributes.TABLE_METADATA))
+        .isNotEmpty();
     TableMetadata metadata =
         afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_METADATA);
     assertThat(metadata).isNotNull();

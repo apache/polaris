@@ -46,6 +46,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
@@ -104,7 +105,6 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
 import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -409,7 +409,7 @@ public record TestServices(
       Mockito.when(federatedCatalogFactory.select(any())).thenReturn(federatedCatalogFactory);
       Mockito.when(federatedCatalogFactory.isUnsatisfied()).thenReturn(true);
 
-      EventAttributeMap eventAttributeMap = new EventAttributeMap();
+      MutableAttributeMap eventAttributeMap = new MutableAttributeMap();
 
       Supplier<CatalogConfigHandler> catalogConfigHandlerSupplier =
           () -> {

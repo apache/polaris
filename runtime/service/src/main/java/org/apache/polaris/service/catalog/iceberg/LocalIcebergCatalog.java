@@ -102,6 +102,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -143,7 +144,6 @@ import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -1825,9 +1825,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               new PolarisEvent(
                   PolarisEventType.BEFORE_REFRESH_TABLE,
                   eventMetadataFactory.create(),
-                  new EventAttributeMap()
+                  ImmutableAttributeMap.builder()
                       .put(EventAttributes.CATALOG_NAME, catalogName)
-                      .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
+                      .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)
+                      .build()));
         }
         refreshFromMetadataLocation(
             latestLocation,
@@ -1853,9 +1854,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               new PolarisEvent(
                   PolarisEventType.AFTER_REFRESH_TABLE,
                   eventMetadataFactory.create(),
-                  new EventAttributeMap()
+                  ImmutableAttributeMap.builder()
                       .put(EventAttributes.CATALOG_NAME, catalogName)
-                      .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
+                      .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)
+                      .build()));
         }
       }
     }
@@ -2312,9 +2314,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               new PolarisEvent(
                   PolarisEventType.BEFORE_REFRESH_VIEW,
                   eventMetadataFactory.create(),
-                  new EventAttributeMap()
+                  ImmutableAttributeMap.builder()
                       .put(EventAttributes.CATALOG_NAME, catalogName)
-                      .put(EventAttributes.VIEW_IDENTIFIER, identifier)));
+                      .put(EventAttributes.VIEW_IDENTIFIER, identifier)
+                      .build()));
         }
         refreshFromMetadataLocation(
             latestLocation,
@@ -2342,9 +2345,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               new PolarisEvent(
                   PolarisEventType.AFTER_REFRESH_VIEW,
                   eventMetadataFactory.create(),
-                  new EventAttributeMap()
+                  ImmutableAttributeMap.builder()
                       .put(EventAttributes.CATALOG_NAME, catalogName)
-                      .put(EventAttributes.VIEW_IDENTIFIER, identifier)));
+                      .put(EventAttributes.VIEW_IDENTIFIER, identifier)
+                      .build()));
         }
       }
     }

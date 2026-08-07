@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.RawEventAccess;
 import org.junit.jupiter.api.Test;
@@ -78,12 +79,15 @@ class RawEventAccessTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_CATALOG,
             null,
-            new EventAttributeMap().put(EventAttributes.CATALOG, sensitiveCatalog)));
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG, sensitiveCatalog)
+                .build()));
 
     await().until(() -> testListener.events.size() == 1);
 
     PolarisEvent delivered = testListener.events.getFirst();
-    assertThat(delivered.attributes().contains(EventAttributes.CATALOG)).isTrue();
-    assertThat(delivered.attributes().get(EventAttributes.CATALOG)).hasValue(sensitiveCatalog);
+    assertThat(delivered.attributes().containsKey(EventAttributes.CATALOG)).isTrue();
+    assertThat(delivered.attributes().getOptional(EventAttributes.CATALOG))
+        .hasValue(sensitiveCatalog);
   }
 }
