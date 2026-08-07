@@ -162,15 +162,16 @@ public class DefaultAuthenticator implements Authenticator {
 
   protected Map<String, Object> resolvePrincipalAttributes(
       SecurityIdentity identity, PrincipalEntity principalEntity, boolean allRolesRequested) {
+    // Do not merge the security identity's attributes into the principal attributes:
+    // these must stay separate.
     ImmutableMap.Builder<String, Object> principalAttributes =
         ImmutableMap.<String, Object>builder()
-            .putAll(identity.getAttributes())
             .put(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
             .put(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, allRolesRequested);
     if (identity.getPrincipal() instanceof JsonWebToken jwt) {
       principalAttributes.put(PolarisPrincipal.JWT_ATTRIBUTE_KEY, jwt.getRawToken());
     }
-    return principalAttributes.buildKeepingLast();
+    return principalAttributes.build();
   }
 
   /**
