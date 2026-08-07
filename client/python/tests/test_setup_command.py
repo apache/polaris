@@ -32,6 +32,7 @@ from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     FileStorageConfigInfo,
+    AzureStorageConfigInfo,
     AwsStorageConfigInfo,
 )
 
@@ -599,3 +600,52 @@ class TestSetupCommand(CLITestBase):
             created.storage_config_info.sts_endpoint, "https://sts.amazonaws.com"
         )
 
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_azure_catalog_round_trips_hierarchical(
+        self, mock_catalog_api: MagicMock
+    ) -> None:
+        mock_catalog_api.return_value.list_namespaces.return_value = []
+        mock_catalog = MagicMock()
+        mock_catalog.name = "my_catalog"
+        mock_client = self.build_mock_client()
+        mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="my_catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/",
+                additional_properties={},
+            ),
+            storage_config_info=AzureStorageConfigInfo(
+                storage_type="AZURE",
+                allowed_locations=[
+                    "abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/"
+                ],
+                tenant_id="12345678-1234-1234-1234-123456789abc",
+                multi_tenant_app_name="QuickstartAzureApp",
+                consent_url="https://login.microsoftonline.com/consent",
+                hierarchical=True,
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = MagicMock(roles=[])
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported = export_command._export_catalogs(mock_client)
+
+        self.assertEqual(len(exported), 1)
+        self.assertEqual(exported[0]["hierarchical"], True)
+
+        loaded = yaml.safe_load(yaml.safe_dump({"catalogs": exported}))
+
+        apply_client = self.build_mock_client()
+        apply_client.list_catalogs.return_value.catalogs = []
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+        apply_command._create_catalogs(apply_client, loaded["catalogs"])
+
+        apply_client.create_catalog.assert_called_once()
+        created = apply_client.create_catalog.call_args[0][0].catalog
+        self.assertEqual(created.storage_config_info.hierarchical, True)
