@@ -52,12 +52,11 @@ public class StorageCredentialCache {
             .expireAfter(
                 Expiry.creating(
                     (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
+                      long remainingMs = entry.getExpirationTime() - System.currentTimeMillis();
+                      long bufferMs = entry.refreshBufferMs();
+                      long effectiveTtl = bufferMs > 0 ? remainingMs - bufferMs : remainingMs / 2;
                       long expireAfterMillis =
-                          Math.max(
-                              0,
-                              Math.min(
-                                  (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                  entry.maxCacheDurationMs()));
+                          Math.max(0, Math.min(effectiveTtl, entry.maxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
             .build(
@@ -65,7 +64,9 @@ public class StorageCredentialCache {
                   LOGGER.atDebug().log("StorageCredentialCache::load");
                   StorageAccessConfig accessConfig = key.load();
                   return new StorageCredentialCacheEntry(
-                      accessConfig, maxCacheDurationMs(key.realmConfig()));
+                      accessConfig,
+                      maxCacheDurationMs(key.realmConfig()),
+                      refreshBufferMs(key.realmConfig()));
                 });
   }
 
@@ -84,6 +85,12 @@ public class StorageCredentialCache {
     } else {
       return cacheDurationSeconds * 1000L;
     }
+  }
+
+  /** Minimum buffer to keep between credential expiry and cache eviction. */
+  private long refreshBufferMs(RealmConfig realmConfig) {
+    return realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS)
+        * 1000L;
   }
 
   /**
