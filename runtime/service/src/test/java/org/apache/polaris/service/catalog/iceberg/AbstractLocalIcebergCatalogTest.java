@@ -974,6 +974,85 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testCommitRejectsEncryptionKeyIdChange() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("immutable_key_commit");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, "key-1")
+            .create();
+
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            namespace.toString());
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, namespaceResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            tableId.name());
+    IcebergTableLikeEntity entity = IcebergTableLikeEntity.of(tableResult.getEntity());
+    Assertions.assertThat(entity.getInternalPropertiesAsMap())
+        .containsEntry(TableMetadataTransitionValidator.KEY_ID_PINNED_PROPERTY, "true")
+        .containsEntry(TableMetadataTransitionValidator.KEY_ID_PROPERTY, "key-1");
+    Assertions.assertThat(entity.getPropertiesAsMap())
+        .doesNotContainKeys(
+            TableMetadataTransitionValidator.KEY_ID_PINNED_PROPERTY,
+            TableMetadataTransitionValidator.KEY_ID_PROPERTY);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                table
+                    .updateProperties()
+                    .set(TableProperties.ENCRYPTION_TABLE_KEY, "key-2")
+                    .commit())
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("Cannot add, change, or remove encryption key ID after table creation");
+    Assertions.assertThat(catalog.loadTable(tableId).properties())
+        .containsEntry(TableProperties.ENCRYPTION_TABLE_KEY, "key-1");
+  }
+
+  @Test
+  public void testLoadRejectsEncryptionKeyIdAddedToPinnedPlaintextMetadata() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("immutable_key_load");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    TableMetadata modified =
+        TableMetadata.buildFrom(current)
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "key-1"))
+            .build();
+    fileIO.addFile(
+        current.metadataFileLocation(), TableMetadataParser.toJson(modified).getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(() -> catalog.loadTable(tableId))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Iceberg table metadata integrity check failed for")
+        .hasMessageContaining(": encryption key ID does not match trusted catalog state");
+  }
+
+  @Test
   public void testValidateNotificationWhenTableAndNamespacesDontExist() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
@@ -1650,6 +1729,49 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(catalog.tableExists(table))
         .as("Table should be created on receiving notification")
         .isTrue();
+  }
+
+  @Test
+  public void testUpdateNotificationRejectsEncryptionKeyIdChange() {
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("immutable_key_notification");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, "key-1")
+            .create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    String metadataLocation =
+        current.location() + "/metadata/notification-key-change.metadata.json";
+    TableMetadata candidate =
+        TableMetadata.buildFrom(current)
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "key-2"))
+            .build();
+    TableMetadataParser.write(candidate, fileIO.newOutputFile(metadataLocation));
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(metadataLocation);
+    update.setTableName(tableId.name());
+    update.setTableUuid(current.uuid());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(tableId, request))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("Cannot add, change, or remove encryption key ID after table creation");
+    Assertions.assertThat(catalog.loadTable(tableId).properties())
+        .containsEntry(TableProperties.ENCRYPTION_TABLE_KEY, "key-1");
   }
 
   @Test
@@ -2440,6 +2562,61 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             () -> catalog.registerTable(TABLE, "metadata_location_without_slashes"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid metadata file location");
+  }
+
+  @Test
+  public void testRegisterTableOverwriteRejectsEncryptionKeyIdChange() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("immutable_key_register");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, "key-1")
+            .create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    String metadataLocation = current.location() + "/metadata/register-key-change.metadata.json";
+    TableMetadata candidate =
+        TableMetadata.buildFrom(current)
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "key-2"))
+            .build();
+    TableMetadataParser.write(candidate, fileIO.newOutputFile(metadataLocation));
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(tableId, metadataLocation, true))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("Cannot add, change, or remove encryption key ID after table creation");
+    Assertions.assertThat(catalog.loadTable(tableId).properties())
+        .containsEntry(TableProperties.ENCRYPTION_TABLE_KEY, "key-1");
+  }
+
+  @Test
+  public void testRegisterTableRejectsEncryptionPropertiesInFormatV2Metadata() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("incompatible_encryption_register");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    String tableLocation = STORAGE_LOCATION + "/incompatible-encryption-register/table";
+    String metadataLocation = tableLocation + "/metadata/v1.metadata.json";
+    TableMetadata incompatibleMetadata =
+        TableMetadata.buildFrom(createSampleTableMetadata(tableLocation))
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "key-1"))
+            .build();
+    Assertions.assertThat(incompatibleMetadata.formatVersion()).isEqualTo(2);
+    TableMetadataParser.write(incompatibleMetadata, fileIO.newOutputFile(metadataLocation));
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(tableId, metadataLocation))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid properties for v2")
+        .hasMessageContaining(TableProperties.ENCRYPTION_TABLE_KEY);
+    Assertions.assertThat(catalog.tableExists(tableId)).isFalse();
   }
 
   @Test
