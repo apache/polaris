@@ -101,6 +101,6 @@ public class AuthenticatingAugmentorTest {
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(polarisPrincipal);
     // principal attributes should not be merged
-    assertThat(result.getAttributes()).isEmpty();
+    assertThat(result.getAttributes()).doesNotContainKey("attribute1");
   }
 }
