@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.jspecify.annotations.NonNull;
@@ -393,7 +394,8 @@ public class DatasourceOperations {
           // Handle Exceptions from ResultSet Iterator consumer, as it throws a RTE, ignore RTE from
           // the transactions.
           if (e.getCause() instanceof SQLException
-              && !(e instanceof EntityAlreadyExistsException)) {
+              && !(e instanceof EntityAlreadyExistsException)
+              && !(e instanceof RetryOnConcurrencyException)) {
             sqlException = (SQLException) e.getCause();
           } else {
             throw e;

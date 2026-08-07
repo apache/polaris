@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -140,6 +141,66 @@ class JdbcBasePersistenceImplTest {
         .isThrownBy(() -> basePersistence.writeToGrantRecords(callCtx, grant))
         .withMessageContaining("Failed to write to grant records")
         .withCause(nonUniqueViolation);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2, 3, 4})
+  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException(
+      int schemaVersion) throws SQLException {
+    DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
+    when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
+    doThrow(new SQLException("Unique constraint violation", "23505"))
+        .when(datasourceOperations)
+        .executeUpdate(any(QueryGenerator.PreparedQuery.class));
+    Mockito.<List<?>>when(datasourceOperations.executeSelect(any(), any())).thenReturn(List.of());
+    doCallRealMethod()
+        .when(datasourceOperations)
+        .isUniquenessConstraintViolation(any(SQLException.class));
+
+    JdbcBasePersistenceImpl basePersistence =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            datasourceOperations,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier(),
+            schemaVersion);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
+
+    PolarisBaseEntity entity =
+        new PolarisBaseEntity.Builder()
+            .id(101L)
+            .catalogId(0L)
+            .parentId(0L)
+            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .name("invisible_conflict_entity")
+            .entityVersion(1)
+            .grantRecordsVersion(0)
+            .createTimestamp(System.currentTimeMillis())
+            .build();
+
+    assertThatExceptionOfType(RetryOnConcurrencyException.class)
+        .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, null))
+        .withMessageContaining("not visible");
+  }
+
+  @Test
+  void withRetries_propagatesRetryOnConcurrencyExceptionWithoutUnwrapping() throws SQLException {
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:with_retries_concurrency_" + System.nanoTime(), "sa", "");
+    DatasourceOperations datasourceOperations =
+        new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    RetryOnConcurrencyException expected = new RetryOnConcurrencyException("concurrency conflict");
+
+    assertThatExceptionOfType(RetryOnConcurrencyException.class)
+        .isThrownBy(
+            () ->
+                datasourceOperations.withRetries(
+                    () -> {
+                      throw expected;
+                    }))
+        .isSameAs(expected);
   }
 
   @ParameterizedTest
