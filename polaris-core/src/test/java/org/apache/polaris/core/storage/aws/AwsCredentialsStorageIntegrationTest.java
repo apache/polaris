@@ -1014,8 +1014,12 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String currentKmsKey = "arn:aws:kms:us-east-1:012345678901:key/current-key";
     List<String> allowedKmsKeys =
         List.of(
-            "arn:aws:kms:us-east-1:012345678901:key/allowed-key-1",
-            "arn:aws:kms:us-east-1:012345678901:key/allowed-key-2");
+            "arn:aws:kms:us-east-1:012345678901:key/11111111-1111-1111-1111-111111111111",
+            "arn:aws:kms:us-east-1:012345678901:key/22222222-2222-2222-2222-222222222222");
+    List<String> legacyKmsKeys =
+        List.of(
+            "arn:aws:kms:us-east-1:012345678901:key/33333333-3333-3333-3333-333333333333",
+            "arn:aws:kms:us-east-1:012345678901:key/44444444-4444-4444-4444-444444444444");
 
     // Test with current KMS key and write permissions
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
@@ -1105,6 +1109,60 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of()),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+
+    // Test that legacy KMS keys only receive decrypt permissions for write operations
+    Mockito.reset(stsClient);
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      stmt -> {
+                        assertThat(stmt.resources())
+                            .containsExactlyInAnyOrder(
+                                IamResource.create(allowedKmsKeys.get(0)),
+                                IamResource.create(allowedKmsKeys.get(1)));
+                        assertThat(stmt.actions())
+                            .contains(
+                                IamAction.create("kms:Decrypt"),
+                                IamAction.create("kms:Encrypt"),
+                                IamAction.create("kms:GenerateDataKey"));
+                      })
+                  .anySatisfy(
+                      stmt -> {
+                        assertThat(stmt.resources())
+                            .containsExactlyInAnyOrder(
+                                IamResource.create(legacyKmsKeys.get(0)),
+                                IamResource.create(legacyKmsKeys.get(1)));
+                        assertThat(stmt.actions())
+                            .containsExactlyInAnyOrder(
+                                IamAction.create("kms:DescribeKey"),
+                                IamAction.create("kms:Decrypt"));
+                      });
+
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    AwsStorageConfigurationInfo configWithLegacyKmsKeys =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .allowedKmsKeys(allowedKmsKeys)
+            .legacyKmsKeys(legacyKmsKeys)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient, configWithLegacyKmsKeys, EMPTY_REALM_CONFIG)
+        .getStorageAccessConfig(
+            toGrants(
+                Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+                Set.of(s3Path(bucket, warehouseKeyPrefix + "/table"))),
             Optional.empty(),
             CredentialVendingContext.empty());
 

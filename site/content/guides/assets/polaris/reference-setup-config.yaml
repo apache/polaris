@@ -189,11 +189,12 @@ catalogs:
     kms_unavailable: false
     # Set to true to use path-style access.
     path_style_access: false
-    # The ARN of the default KMS key for server-side encryption.
-    current_kms_key: "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
-    # A list of other KMS keys that are allowed for this catalog.
+    # KMS keys that may be used to encrypt and decrypt data for this catalog.
     allowed_kms_keys:
       - "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
+    # Historical KMS keys that may only be used to decrypt data.
+    legacy_kms_keys:
+      - "arn:aws:kms:us-west-2:123456789012:key/87654321-4321-4321-4321-210987654321"
     properties:
       catalog: quickstart_catalog_s3
 
@@ -227,4 +228,3 @@ catalogs:
   #   service_account: "quickstart-service-account@gcs-project.iam.gserviceaccount.com"
   #   properties:
   #     catalog: quickstart_catalog_gcs
-
