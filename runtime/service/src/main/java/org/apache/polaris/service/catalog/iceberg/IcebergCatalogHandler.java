@@ -1557,13 +1557,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
   }
 
-  public ListTablesResponse listViews(Namespace namespace) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
-    authorizeBasicNamespaceOperationOrThrow(op, namespace);
-
-    return catalogHandlerUtils().listViews(viewCatalog, namespace);
-  }
-
   public LoadViewResponse createView(Namespace namespace, CreateViewRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_VIEW;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
