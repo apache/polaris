@@ -33,17 +33,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -430,5 +434,78 @@ class JdbcBasePersistenceImplTest {
     public Optional<String> databaseType() {
       return Optional.of("h2");
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void listEntitiesBoundsPaginatedQueryByPageSize(int schemaVersion)
+      throws SQLException, IOException {
+    DatasourceOperations real = newH2DatasourceOperations("list_entities_limit_v", schemaVersion);
+    DatasourceOperations spy = Mockito.spy(real);
+    doCallRealMethod().when(spy).executeSelectOverStream(any(), any(), any());
+    TestPersistence tp = newTestPersistence(spy, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    for (int i = 0; i < 5; i++) {
+      impl.writeEntity(callCtx, newTestEntity(300L + i, "e" + i, 1, 1), false, null);
+    }
+
+    Page<EntityNameLookupRecord> page =
+        impl.listEntities(
+            callCtx,
+            0L,
+            0L,
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PageToken.fromLimit(2));
+
+    ArgumentCaptor<QueryGenerator.PreparedQuery> captor =
+        ArgumentCaptor.forClass(QueryGenerator.PreparedQuery.class);
+    verify(spy).executeSelectOverStream(captor.capture(), any(), any());
+    // One more than the page size, so the next-page token can still be produced.
+    assertThat(captor.getValue().sql()).contains("ORDER BY id ASC").contains("LIMIT 3");
+
+    // The bound must not cost the caller a page or its continuation token.
+    assertThat(page.items()).hasSize(2);
+    assertThat(page.encodedResponseToken()).isNotNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void paginatedListEntitiesWalksEveryPageWhenTotalIsAMultipleOfPageSize(int schemaVersion)
+      throws SQLException, IOException {
+    DatasourceOperations datasourceOperations =
+        newH2DatasourceOperations("list_entities_pages_v", schemaVersion);
+    TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    // An exact multiple of the page size is the case a bound of exactly pageSize would break:
+    // the final full page would look like the end of the data and drop the continuation token.
+    for (int i = 0; i < 4; i++) {
+      impl.writeEntity(callCtx, newTestEntity(500L + i, "e" + i, 1, 1), false, null);
+    }
+
+    List<String> seen = new ArrayList<>();
+    PageToken pageToken = PageToken.fromLimit(2);
+    while (true) {
+      Page<EntityNameLookupRecord> page =
+          impl.listEntities(
+              callCtx,
+              0L,
+              0L,
+              PolarisEntityType.PRINCIPAL,
+              PolarisEntitySubType.ANY_SUBTYPE,
+              pageToken);
+      page.items().forEach(item -> seen.add(item.getName()));
+      String next = page.encodedResponseToken();
+      if (next == null) {
+        break;
+      }
+      pageToken = PageToken.build(next, 2, () -> true);
+    }
+
+    assertThat(seen).containsExactly("e0", "e1", "e2", "e3");
   }
 }
