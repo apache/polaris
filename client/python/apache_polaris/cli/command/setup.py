@@ -466,15 +466,10 @@ class SetupCommand(Command):
                 ns_details = catalog_api.load_namespace_metadata(
                     prefix=catalog_name, namespace=UNIT_SEPARATOR.join(ns)
                 )
-                if hasattr(ns_details, "location") or hasattr(ns_details, "properties"):
-                    ns_info = {"name": ns_name}
-                    if hasattr(ns_details, "location") and ns_details.location:
-                        ns_info["location"] = ns_details.location
-                    if hasattr(ns_details, "properties") and ns_details.properties:
-                        ns_info["properties"] = ns_details.properties
-                    namespaces_list.append(ns_info)
-                else:
-                    namespaces_list.append(ns_name)
+                ns_info: Dict[str, Any] = {"name": ns_name}
+                if ns_details.properties:
+                    ns_info["properties"] = ns_details.properties
+                namespaces_list.append(ns_info)
         except Exception:
             self._record_failure(
                 f"Failed to export namespaces for catalog '{catalog_name}'"
