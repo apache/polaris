@@ -311,6 +311,7 @@ public class DefaultAuthenticator implements Authenticator {
       Exception cause, String logMessage, String responseMessage) {
     LOGGER
         .atError()
+        .setCause(cause)
         .addKeyValue(StructuredLogKeys.ERR_MSG, cause.getMessage())
         .addKeyValue(StructuredLogKeys.STACK_TRACE, Throwables.getStackTraceAsString(cause))
         .log(logMessage);
