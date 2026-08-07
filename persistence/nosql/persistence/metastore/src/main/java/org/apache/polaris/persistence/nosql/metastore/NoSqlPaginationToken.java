@@ -32,7 +32,10 @@ import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Pagination token for NoSQL that refers to the next {@link IndexKey}. The next request will refer
- * to the same index, for example, the same catalog state.
+ * to the exact same historic index snapshot, for example, the same catalog state. Maintenance keeps
+ * superseded snapshots available for the configured {@code
+ * polaris.persistence.nosql.maintenance.catalog.pagination-token-retention} duration. Once the
+ * snapshot has been collected, use of the token fails as invalid or expired.
  */
 @PolarisImmutable
 @JsonSerialize(as = ImmutableNoSqlPaginationToken.class)

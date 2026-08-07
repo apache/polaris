@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.maintenance;
 
-import java.util.Optional;
+import java.time.Duration;
 
 public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConfig {
 
@@ -30,42 +30,127 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
   }
 
   @Override
-  public Optional<String> principalsRetain() {
+  public Duration paginationTokenRetention() {
+    return current.paginationTokenRetention();
+  }
+
+  @Override
+  public int principalsRetain() {
     return current.principalsRetain();
   }
 
   @Override
-  public Optional<String> principalRolesRetain() {
+  public Duration principalsRetainDuration() {
+    return current.principalsRetainDuration();
+  }
+
+  @Override
+  public boolean principalsRetainAll() {
+    return current.principalsRetainAll();
+  }
+
+  @Override
+  public int principalRolesRetain() {
     return current.principalRolesRetain();
   }
 
   @Override
-  public Optional<String> grantsRetain() {
+  public Duration principalRolesRetainDuration() {
+    return current.principalRolesRetainDuration();
+  }
+
+  @Override
+  public boolean principalRolesRetainAll() {
+    return current.principalRolesRetainAll();
+  }
+
+  @Override
+  public int grantsRetain() {
     return current.grantsRetain();
   }
 
   @Override
-  public Optional<String> immediateTasksRetain() {
+  public Duration grantsRetainDuration() {
+    return current.grantsRetainDuration();
+  }
+
+  @Override
+  public boolean grantsRetainAll() {
+    return current.grantsRetainAll();
+  }
+
+  @Override
+  public int immediateTasksRetain() {
     return current.immediateTasksRetain();
   }
 
   @Override
-  public Optional<String> catalogsHistoryRetain() {
+  public Duration immediateTasksRetainDuration() {
+    return current.immediateTasksRetainDuration();
+  }
+
+  @Override
+  public boolean immediateTasksRetainAll() {
+    return current.immediateTasksRetainAll();
+  }
+
+  @Override
+  public int catalogsHistoryRetain() {
     return current.catalogsHistoryRetain();
   }
 
   @Override
-  public Optional<String> catalogRolesRetain() {
+  public Duration catalogsHistoryRetainDuration() {
+    return current.catalogsHistoryRetainDuration();
+  }
+
+  @Override
+  public boolean catalogsHistoryRetainAll() {
+    return current.catalogsHistoryRetainAll();
+  }
+
+  @Override
+  public int catalogRolesRetain() {
     return current.catalogRolesRetain();
   }
 
   @Override
-  public Optional<String> catalogStateRetain() {
+  public Duration catalogRolesRetainDuration() {
+    return current.catalogRolesRetainDuration();
+  }
+
+  @Override
+  public boolean catalogRolesRetainAll() {
+    return current.catalogRolesRetainAll();
+  }
+
+  @Override
+  public int catalogStateRetain() {
     return current.catalogStateRetain();
   }
 
   @Override
-  public Optional<String> catalogPoliciesRetain() {
+  public Duration catalogStateRetainDuration() {
+    return current.catalogStateRetainDuration();
+  }
+
+  @Override
+  public boolean catalogStateRetainAll() {
+    return current.catalogStateRetainAll();
+  }
+
+  @Override
+  public int catalogPoliciesRetain() {
     return current.catalogPoliciesRetain();
+  }
+
+  @Override
+  public Duration catalogPoliciesRetainDuration() {
+    return current.catalogPoliciesRetainDuration();
+  }
+
+  @Override
+  public boolean catalogPoliciesRetainAll() {
+    return current.catalogPoliciesRetainAll();
   }
 }
