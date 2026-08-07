@@ -74,6 +74,8 @@ class CatalogsCommand(Command):
         * polaris catalogs list
     """
 
+    _GCP_QUOTA_PROJECT_PROPERTY = "header.x-goog-user-project"
+
     catalogs_subcommand: str
     catalog_type: Optional[str] = None
     default_base_location: Optional[str] = None
@@ -401,12 +403,23 @@ class CatalogsCommand(Command):
                 warehouse=self.hadoop_warehouse,
             )
         elif self.catalog_connection_type == CatalogConnectionType.ICEBERG.value:
+            connection_properties = {}
+            if self.catalog_authentication_type == AuthenticationType.GCP.value:
+                quota_project = (self.properties or {}).get(
+                    self._GCP_QUOTA_PROJECT_PROPERTY
+                )
+                if quota_project is not None:
+                    connection_properties[self._GCP_QUOTA_PROJECT_PROPERTY] = (
+                        quota_project
+                    )
+
             config = IcebergRestConnectionConfigInfo(
                 connection_type=self.catalog_connection_type.upper().replace("-", "_"),
                 uri=self.catalog_uri,
                 authentication_parameters=auth_params,
                 service_identity=service_identity,
                 remote_catalog_name=self.iceberg_remote_catalog_name,
+                properties=connection_properties,
             )
         elif self.catalog_connection_type == CatalogConnectionType.HIVE.value:
             config = HiveConnectionConfigInfo(
@@ -425,6 +438,12 @@ class CatalogsCommand(Command):
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_type = cast(str, self.catalog_type)
         catalog_name = cast(str, self.catalog_name)
+        catalog_properties = dict(self.properties or {})
+        if (
+            self.catalog_connection_type == CatalogConnectionType.ICEBERG.value
+            and self.catalog_authentication_type == AuthenticationType.GCP.value
+        ):
+            catalog_properties.pop(self._GCP_QUOTA_PROJECT_PROPERTY, None)
 
         if self.catalogs_subcommand == Subcommands.CREATE:
             storage_config = self._build_storage_config_info()
@@ -437,7 +456,7 @@ class CatalogsCommand(Command):
                         storage_config_info=storage_config,
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
-                            additional_properties=self.properties,
+                            additional_properties=catalog_properties,
                         ),
                         connection_config_info=connection_config,
                     )
