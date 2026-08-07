@@ -1056,9 +1056,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // persist the entity after change. This will update the lastUpdateTimestamp and bump up the
     // version. Indicate that the nameOrParent changed, so that we also update any by-name
     // lookups if applicable
-    PolarisBaseEntity renamedEntityToReturn =
-        this.persistEntityAfterChange(
-            callCtx, ms, refreshEntityToRenameBuilder.build(), true, refreshEntityToRename);
+    PolarisBaseEntity renamedEntityToReturn;
+    try {
+      renamedEntityToReturn =
+          this.persistEntityAfterChange(
+              callCtx, ms, refreshEntityToRenameBuilder.build(), true, refreshEntityToRename);
+    } catch (RetryOnConcurrencyException e) {
+      return new EntityResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+    }
 
     // TODO: Use post-validation of source and destination parent paths and/or update the
     // BasePersistence interface to support conditions on entities *other* than the main
