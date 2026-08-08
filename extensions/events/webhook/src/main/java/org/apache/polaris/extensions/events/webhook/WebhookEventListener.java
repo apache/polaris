@@ -544,7 +544,7 @@ public class WebhookEventListener implements PolarisEventListener {
     root.put("realmid", event.metadata().realmId());
     event
         .attributes()
-        .get(EventAttributes.TABLE_IDENTIFIER)
+        .getOptional(EventAttributes.TABLE_IDENTIFIER)
         .map(TableIdentifier::toString)
         .ifPresent(id -> root.put("tableidentifier", id));
     event
