@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -546,7 +547,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PolarisEntityType entityType,
       PolarisEntitySubType entitySubType,
       PageToken pageToken,
-      List<String> queryProjections) {
+      List<String> queryProjections,
+      boolean applyPageSizeLimit) {
     Map<String, Object> whereEquals =
         Map.of(
             "catalog_id",
@@ -566,6 +568,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     String orderByColumnName = null;
     Map<String, Object> whereGreater;
+    Integer limit = null;
     if (pageToken.paginationRequested()) {
       orderByColumnName = ModelEntity.ID_COLUMN;
       whereGreater =
@@ -575,12 +578,22 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   entityIdToken ->
                       Map.<String, Object>of(ModelEntity.ID_COLUMN, entityIdToken.entityId()))
               .orElse(Map.of());
+      OptionalInt pageSize = pageToken.pageSize();
+      if (applyPageSizeLimit && pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE) {
+        // One more than the page size, so the caller can still tell whether a next page exists.
+        limit = pageSize.getAsInt() + 1;
+      }
     } else {
       whereGreater = Map.of();
     }
 
     return QueryGenerator.generateSelectQuery(
-        queryProjections, ModelEntity.TABLE_NAME, whereEquals, whereGreater, orderByColumnName);
+        queryProjections,
+        ModelEntity.TABLE_NAME,
+        whereEquals,
+        whereGreater,
+        orderByColumnName,
+        limit);
   }
 
   @NonNull
@@ -600,7 +613,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               entityType,
               entitySubType,
               pageToken,
-              ModelEntity.ENTITY_LOOKUP_COLUMNS);
+              ModelEntity.ENTITY_LOOKUP_COLUMNS,
+              true);
       AtomicReference<Page<EntityNameLookupRecord>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
@@ -635,7 +649,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               entityType,
               entitySubType,
               pageToken,
-              ModelEntity.getAllColumnNames(schemaVersion));
+              ModelEntity.getAllColumnNames(schemaVersion),
+              // entityFilter is applied after the fetch, so a page size limit could under-fill a
+              // page and drop its continuation token
+              false);
       AtomicReference<Page<T>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
