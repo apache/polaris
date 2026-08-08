@@ -34,6 +34,7 @@ from apache_polaris.sdk.management import (
     FileStorageConfigInfo,
     AwsStorageConfigInfo,
 )
+from apache_polaris.sdk.catalog import GetNamespaceResponse
 
 
 class TestSetupCommand(CLITestBase):
@@ -349,7 +350,9 @@ class TestSetupCommand(CLITestBase):
             return SimpleNamespace(namespaces=namespaces[parent])
 
         catalog_api.list_namespaces.side_effect = list_namespaces
-        catalog_api.load_namespace_metadata.return_value = object()
+        catalog_api.load_namespace_metadata.return_value = GetNamespaceResponse(
+            namespace=["parent"], properties={}
+        )
 
         policy_api = mock_policy_api_class.return_value
         policy_api.list_policies.side_effect = lambda prefix, namespace: (
@@ -395,7 +398,9 @@ class TestSetupCommand(CLITestBase):
 
         catalog = command._export_catalogs(mock_client)[0]
 
-        self.assertEqual(catalog["namespaces"], ["parent", "parent.child"])
+        self.assertEqual(
+            catalog["namespaces"], [{"name": "parent"}, {"name": "parent.child"}]
+        )
         self.assertEqual(
             catalog["policies"],
             {
