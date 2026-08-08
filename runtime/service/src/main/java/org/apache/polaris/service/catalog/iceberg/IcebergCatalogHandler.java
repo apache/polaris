@@ -956,18 +956,20 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation write =
         PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 
-    resolveBasicTableLikeTargetOrThrow(write, tableIdentifier);
+    ensureResolutionManifestForTable(tableIdentifier);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    resolveBasicTableLikeTargetOrThrow(authorizationState, write, tableIdentifier);
 
     Set<PolarisStorageActions> actionsRequested =
         new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
     try {
       authorizeResolvedBasicTableLikeOperationOrThrow(
-          write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+          authorizationState, write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
       // Reuse the already-resolved table view for the read-delegation fallback.
       authorizeResolvedBasicTableLikeOperationOrThrow(
-          read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+          authorizationState, read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
     return actionsRequested;
@@ -1023,24 +1025,58 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       try {
         if (overwrite) {
+          AuthorizationRequest overwriteRequest =
+              new AuthorizationRequest(
+                  polarisPrincipal(),
+                  List.of(
+                      new SingleTargetAuthorizationIntent(
+                          PolarisAuthorizableOperation
+                              .REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+                          PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier))));
           authorizeResolvedRegisterTableOverwriteOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+              authorizationState,
+              overwriteRequest,
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
               tableIdentifier);
         } else {
+          AuthorizationRequest createRequest =
+              new AuthorizationRequest(
+                  polarisPrincipal(),
+                  List.of(
+                      new SingleTargetAuthorizationIntent(
+                          PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+                          PolarisSecurableMapper.namespace(
+                              catalogName(), tableIdentifier.namespace()))));
           authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION, tableIdentifier);
+              authorizationState, createRequest, tableIdentifier);
         }
         actionsRequested.add(PolarisStorageActions.WRITE);
       } catch (ForbiddenException e) {
         if (overwrite) {
+          AuthorizationRequest overwriteRequest =
+              new AuthorizationRequest(
+                  polarisPrincipal(),
+                  List.of(
+                      new SingleTargetAuthorizationIntent(
+                          PolarisAuthorizableOperation
+                              .REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+                          PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier))));
           authorizeResolvedRegisterTableOverwriteOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+              authorizationState,
+              overwriteRequest,
               PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
               tableIdentifier);
         } else {
+          AuthorizationRequest createRequest =
+              new AuthorizationRequest(
+                  polarisPrincipal(),
+                  List.of(
+                      new SingleTargetAuthorizationIntent(
+                          PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+                          PolarisSecurableMapper.namespace(
+                              catalogName(), tableIdentifier.namespace()))));
           authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION, tableIdentifier);
+              authorizationState, createRequest, tableIdentifier);
         }
       }
 
@@ -1251,7 +1287,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         getUpdateTableAuthorizableOperations(request, getResolvedCatalogEntity());
 
     authorizeBasicTableLikeOperationsOrThrow(
-        authorizableOperations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+        authorizationState,
+        authorizableOperations,
+        PolarisEntitySubType.ICEBERG_TABLE,
+        tableIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
