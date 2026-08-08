@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.service.events.EventAttributeMap;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
@@ -209,9 +209,10 @@ class WebhookEventListenerTest {
             .realmId(REALM)
             .user(PRINCIPAL)
             .build(),
-        new EventAttributeMap()
+        MutableAttributeMap.builder()
             .put(EventAttributes.CATALOG_NAME, "test_catalog")
-            .put(EventAttributes.TABLE_IDENTIFIER, TableIdentifier.of("test_ns", "test_table")));
+            .put(EventAttributes.TABLE_IDENTIFIER, TableIdentifier.of("test_ns", "test_table"))
+            .build());
   }
 
   @Test
