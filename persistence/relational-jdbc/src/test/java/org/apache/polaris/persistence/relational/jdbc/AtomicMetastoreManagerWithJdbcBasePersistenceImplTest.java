@@ -39,6 +39,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
@@ -156,6 +157,205 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     Assertions.assertThat(
             metaStoreManager.hasOverlappingSiblings(callContext, nonOverlappingNamespace))
         .contains(Optional.empty());
+  }
+
+  @Test
+  void testHasOverlappingSiblingsTrailingSlashVariants() {
+    Assumptions.assumeThat(schemaVersion()).isGreaterThanOrEqualTo(2);
+
+    var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
+    var callContext = polarisTestMetaStoreManager.polarisCallContext();
+    PolarisBaseEntity catalog = createOverlapTestCatalog(metaStoreManager, callContext, "slash");
+
+    PolarisBaseEntity nsWithSlash =
+        buildLocationBasedNamespace(
+            catalog,
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            "ns_slash",
+            "s3://bucket/foo/bar/");
+    metaStoreManager.createEntityIfNotExists(
+        callContext, List.of(PolarisEntity.toCore(catalog)), nsWithSlash);
+
+    // Candidate without trailing slash should still detect overlap
+    TestLocationBasedEntity candidateNoSlash =
+        new TestLocationBasedEntity(
+            buildLocationBasedNamespace(
+                catalog,
+                metaStoreManager.generateNewEntityId(callContext).getId(),
+                "candidate_no_slash",
+                "s3://bucket/foo/bar"));
+
+    Assertions.assertThat(metaStoreManager.hasOverlappingSiblings(callContext, candidateNoSlash))
+        .as("Location without trailing slash must overlap with stored trailing-slash location")
+        .isPresent()
+        .contains(Optional.of("s3://bucket/foo/bar/"));
+  }
+
+  @Test
+  void testHasOverlappingSiblingsParentChildBothDirections() {
+    Assumptions.assumeThat(schemaVersion()).isGreaterThanOrEqualTo(2);
+
+    var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
+    var callContext = polarisTestMetaStoreManager.polarisCallContext();
+    PolarisBaseEntity catalog =
+        createOverlapTestCatalog(metaStoreManager, callContext, "parent_child");
+
+    PolarisBaseEntity parentNs =
+        buildLocationBasedNamespace(
+            catalog,
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            "parent_ns",
+            "s3://bucket/data/");
+    metaStoreManager.createEntityIfNotExists(
+        callContext, List.of(PolarisEntity.toCore(catalog)), parentNs);
+
+    // Child of existing parent must report overlap
+    TestLocationBasedEntity childCandidate =
+        new TestLocationBasedEntity(
+            buildLocationBasedNamespace(
+                catalog,
+                metaStoreManager.generateNewEntityId(callContext).getId(),
+                "child_candidate",
+                "s3://bucket/data/nested/deep/"));
+
+    Assertions.assertThat(metaStoreManager.hasOverlappingSiblings(callContext, childCandidate))
+        .as("Child location must detect parent overlap")
+        .isPresent()
+        .contains(Optional.of("s3://bucket/data/"));
+
+    // Now add a deeply nested entity and verify a broader parent candidate detects it
+    PolarisBaseEntity deepNs =
+        buildLocationBasedNamespace(
+            catalog,
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            "deep_ns",
+            "s3://bucket/warehouse/a/b/c/");
+    metaStoreManager.createEntityIfNotExists(
+        callContext, List.of(PolarisEntity.toCore(catalog)), deepNs);
+
+    TestLocationBasedEntity parentCandidate =
+        new TestLocationBasedEntity(
+            buildLocationBasedNamespace(
+                catalog,
+                metaStoreManager.generateNewEntityId(callContext).getId(),
+                "parent_candidate",
+                "s3://bucket/warehouse/a/"));
+
+    Assertions.assertThat(metaStoreManager.hasOverlappingSiblings(callContext, parentCandidate))
+        .as("Parent location must detect existing child overlap")
+        .isPresent()
+        .contains(Optional.of("s3://bucket/warehouse/a/b/c/"));
+  }
+
+  @Test
+  void testHasOverlappingSiblingsDuplicateLocations() {
+    Assumptions.assumeThat(schemaVersion()).isGreaterThanOrEqualTo(2);
+
+    var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
+    var callContext = polarisTestMetaStoreManager.polarisCallContext();
+    PolarisBaseEntity catalog =
+        createOverlapTestCatalog(metaStoreManager, callContext, "duplicate");
+
+    PolarisBaseEntity ns1 =
+        buildLocationBasedNamespace(
+            catalog,
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            "dup1",
+            "s3://bucket/shared/path/");
+    metaStoreManager.createEntityIfNotExists(
+        callContext, List.of(PolarisEntity.toCore(catalog)), ns1);
+
+    PolarisBaseEntity ns2 =
+        buildLocationBasedNamespace(
+            catalog,
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            "dup2",
+            "s3://bucket/shared/path/");
+    metaStoreManager.createEntityIfNotExists(
+        callContext, List.of(PolarisEntity.toCore(catalog)), ns2);
+
+    // A candidate with the same location must detect the overlap
+    TestLocationBasedEntity sameLocationCandidate =
+        new TestLocationBasedEntity(
+            buildLocationBasedNamespace(
+                catalog,
+                metaStoreManager.generateNewEntityId(callContext).getId(),
+                "same_loc",
+                "s3://bucket/shared/path/"));
+
+    Assertions.assertThat(
+            metaStoreManager.hasOverlappingSiblings(callContext, sameLocationCandidate))
+        .as("Exact duplicate location must report overlap")
+        .isPresent()
+        .contains(Optional.of("s3://bucket/shared/path/"));
+  }
+
+  @Test
+  void testHasOverlappingSiblingsAfterEntityDrop() {
+    Assumptions.assumeThat(schemaVersion()).isGreaterThanOrEqualTo(2);
+
+    var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
+    var callContext = polarisTestMetaStoreManager.polarisCallContext();
+    PolarisBaseEntity catalog = createOverlapTestCatalog(metaStoreManager, callContext, "drop");
+
+    PolarisBaseEntity ns1 =
+        buildLocationBasedNamespace(
+            catalog,
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            "drop_ns1",
+            "s3://bucket/drop/path/");
+    metaStoreManager.createEntityIfNotExists(
+        callContext, List.of(PolarisEntity.toCore(catalog)), ns1);
+
+    PolarisBaseEntity ns2 =
+        buildLocationBasedNamespace(
+            catalog,
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            "drop_ns2",
+            "s3://bucket/drop/path/");
+    metaStoreManager.createEntityIfNotExists(
+        callContext, List.of(PolarisEntity.toCore(catalog)), ns2);
+
+    // Drop the first entity
+    metaStoreManager.dropEntityIfExists(
+        callContext, List.of(PolarisEntity.toCore(catalog)), ns1, null, false);
+
+    // Overlap must still be reported because ns2 remains
+    TestLocationBasedEntity candidate =
+        new TestLocationBasedEntity(
+            buildLocationBasedNamespace(
+                catalog,
+                metaStoreManager.generateNewEntityId(callContext).getId(),
+                "after_drop",
+                "s3://bucket/drop/path/child/"));
+
+    Assertions.assertThat(metaStoreManager.hasOverlappingSiblings(callContext, candidate))
+        .as("Overlap must persist while a duplicate entity remains")
+        .isPresent()
+        .contains(Optional.of("s3://bucket/drop/path/"));
+
+    // Drop the second entity
+    metaStoreManager.dropEntityIfExists(
+        callContext, List.of(PolarisEntity.toCore(catalog)), ns2, null, false);
+
+    // No overlap should be reported now
+    Assertions.assertThat(metaStoreManager.hasOverlappingSiblings(callContext, candidate))
+        .as("No overlap after all matching entities are dropped")
+        .isPresent()
+        .contains(Optional.empty());
+  }
+
+  private PolarisBaseEntity createOverlapTestCatalog(
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext, String suffix) {
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStoreManager.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "overlap_" + suffix);
+    return metaStoreManager.createCatalog(callContext, catalog, List.of()).getCatalog();
   }
 
   private static PolarisBaseEntity buildLocationBasedNamespace(
