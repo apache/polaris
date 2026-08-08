@@ -61,11 +61,14 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
 
   private SecurityIdentity authenticatePolarisPrincipal(SecurityIdentity identity) {
     PolarisPrincipal polarisPrincipal = authenticator.authenticate(identity);
-    return QuarkusSecurityIdentity.builder(identity)
-        .setAnonymous(false)
-        .setPrincipal(polarisPrincipal)
-        .addRoles(polarisPrincipal.getRoles())
-        .addAttributes(polarisPrincipal.getAttributes())
-        .build();
+    QuarkusSecurityIdentity.Builder builder =
+        QuarkusSecurityIdentity.builder(identity)
+            .setAnonymous(false)
+            .setPrincipal(polarisPrincipal)
+            .addRoles(polarisPrincipal.getRoles());
+    polarisPrincipal
+        .getAttributes()
+        .forEach(attribute -> builder.addAttribute(attribute.key().key(), attribute.value()));
+    return builder.build();
   }
 }

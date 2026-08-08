@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
+import java.util.Optional;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -57,8 +58,10 @@ public final class AuthorizationPreConditions {
   }
 
   private static boolean mustRotateCredentials(PolarisPrincipal principal) {
-    return principal
-        .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
+    return Optional.ofNullable(
+            principal
+                .getAttributes()
+                .get(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY))
         .map(PrincipalEntity::getInternalPropertiesAsMap)
         .map(
             map ->
