@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -367,6 +368,10 @@ public class QueryGenerator {
    * a path on one storage type may give a false positive for overlapping with another storage type.
    * This should be combined with a check using `StorageLocation`.
    *
+   * <p>Equality terms are generated for each prefix of the location in both slash-terminated and
+   * non-slash-terminated forms so that ancestors stored with or without a trailing slash are both
+   * matched.
+   *
    * @param realmId A realm to search within
    * @param schemaVersion The schema version of entities table to query
    * @param catalogId A catalog entity to search within
@@ -382,18 +387,35 @@ public class QueryGenerator {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
 
-    String[] components = locationWithoutScheme.split("/");
-    StringBuilder pathBuilder = new StringBuilder();
-
-    for (String component : components) {
-      pathBuilder.append(component).append("/");
-      conditions.add("location_without_scheme = ?");
-      parameters.add(pathBuilder.toString());
+    // Normalize by stripping any trailing slash so the scan below only emits meaningful prefixes.
+    // The slash-terminated form is re-added as the last prefix term below.
+    String normalizedLocation = locationWithoutScheme;
+    if (normalizedLocation.endsWith("/")) {
+      normalizedLocation = normalizedLocation.substring(0, normalizedLocation.length() - 1);
     }
 
-    // Add LIKE condition to match children
+    Set<String> prefixTerms = new LinkedHashSet<>();
+    for (int i = 0; i < normalizedLocation.length(); i++) {
+      if (normalizedLocation.charAt(i) == '/') {
+        if (i > 0) {
+          prefixTerms.add(normalizedLocation.substring(0, i));
+        }
+        prefixTerms.add(normalizedLocation.substring(0, i + 1));
+      }
+    }
+    prefixTerms.add(normalizedLocation);
+    prefixTerms.add(normalizedLocation + "/");
+
+    for (String prefix : prefixTerms) {
+      conditions.add("location_without_scheme = ?");
+      parameters.add(prefix);
+    }
+
+    // Add LIKE condition to match children. Slash-terminate the location so the pattern only
+    // matches true descendants (e.g. //bucket/ns/tA/% matches //bucket/ns/tA/child but not
+    // //bucket/ns/tA_backup).
     conditions.add("location_without_scheme LIKE ?");
-    parameters.add(locationWithoutScheme + "%");
+    parameters.add(StorageLocation.ensureTrailingSlash(locationWithoutScheme) + "%");
 
     String locationClause = String.join(" OR ", conditions);
     String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";
