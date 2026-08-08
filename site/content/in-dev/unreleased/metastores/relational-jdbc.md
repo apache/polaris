@@ -74,6 +74,10 @@ Please refer to the documentation here:
 
 Additionally, the retries can be configured via `polaris.persistence.relational.jdbc.*` properties; please refer to the [Configuring Polaris]({{% ref "../configuration" %}}) section.
 
+By default, Polaris stores its tables in a schema named `POLARIS_SCHEMA`. The schema is selected entirely through the datasource configuration — Polaris ships the default as the JDBC driver's `currentSchema` connection property (`quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema=POLARIS_SCHEMA`), and the persistence code itself is agnostic of the schema name. To use a different schema (for example, to run multiple Polaris deployments in the same database or to comply with a schema-naming policy), override that property or set `currentSchema` directly in the JDBC URL (the URL takes precedence). The name is passed to the driver unquoted, so the database applies its usual identifier case folding (for example, PostgreSQL folds it to lowercase).
+
+The schema must exist before Polaris connects: Polaris does not issue `CREATE SCHEMA`, since that is a privileged operation best performed by a database administrator. Setting up a fresh deployment is therefore a two-step procedure: a DBA first creates the schema (for example `CREATE SCHEMA polaris_schema;`), then the [Admin Tool]({{% ref "../admin-tool" %}}) bootstraps the realm using a datasource configured with the same schema. The database user Polaris runs with needs `USAGE` (and, for bootstrap, `CREATE`) privileges on that schema only.
+
 ## Bootstrapping Polaris
 
 Before using Polaris with the Relational JDBC backend, you must bootstrap the metastore to create the necessary schema and initial realm. This is done using the [Admin Tool]({{% ref "../admin-tool" %}}).

@@ -35,7 +35,7 @@ services:
     depends_on:
       cockroachdb:
         condition: service_healthy
-    entrypoint: ["/bin/bash", "-c", "cockroach sql --insecure --host=cockroachdb -e 'CREATE DATABASE IF NOT EXISTS polaris;'"]
+    entrypoint: ["/bin/bash", "-c", "cockroach sql --insecure --host=cockroachdb -e 'CREATE DATABASE IF NOT EXISTS polaris; CREATE SCHEMA IF NOT EXISTS polaris.polaris_schema;'"]
   polaris-bootstrap:
     depends_on:
       cockroachdb-init:
