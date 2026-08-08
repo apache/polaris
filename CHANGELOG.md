@@ -94,6 +94,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
 ### Fixes
+- Python CLI `setup export` now preserves policies with the same name in different namespaces.
+  Previously, later same-named policies silently replaced earlier policies in the exported
+  configuration.
 - The NoSQL persistence commit log (`Commits.commitLog`) no longer stops early when a commit's recent-ancestor tail is shorter than the internal fetch page size. With a `polaris.persistence.reference-previous-head-count` smaller than the page size, the natural-order commit log previously truncated at the first short tail because trailing null entries in the fetch page were treated as end-of-history, which could also drop still-referenced objects during maintenance.
 - Python CLI REPL now shows a clear "Syntax error" message for malformed input instead of a generic "unexpected error" message.
 - Python CLI `setup apply` no longer double-encodes policy content emitted by `setup export`, so
