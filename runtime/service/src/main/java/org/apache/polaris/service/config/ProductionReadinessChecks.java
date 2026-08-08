@@ -40,6 +40,7 @@ import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
+import org.apache.polaris.service.auth.PrincipalMode;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
@@ -189,6 +190,48 @@ public class ProductionReadinessChecks {
                 }
               }
             });
+    return ProductionReadinessCheck.of(errors);
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkExternalPrincipals(
+      AuthenticationConfiguration configuration) {
+    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
+    configuration
+        .realms()
+        .forEach(
+            (realm, config) -> {
+              if (config.principalMode() == PrincipalMode.EXTERNAL
+                  && config.type() == AuthenticationType.INTERNAL) {
+                errors.add(
+                    Error.ofSevere(
+                        "Setting principal mode to EXTERNAL when the authentication type is INTERNAL is not allowed.",
+                        "polaris.authentication.%sprincipal-mode"
+                            .formatted(authRealmSegment(realm))));
+              }
+            });
+    return ProductionReadinessCheck.of(errors);
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkExternalPrincipalsAuthorizer(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizationConfiguration authorizationConfiguration) {
+    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
+    if (authorizationConfiguration.type().equals("internal")) {
+      authenticationConfiguration
+          .realms()
+          .forEach(
+              (realm, config) -> {
+                if (config.principalMode() == PrincipalMode.EXTERNAL) {
+                  errors.add(
+                      Error.ofSevere(
+                          "Setting principal mode to EXTERNAL when the authorizer is the default (internal) is not allowed.",
+                          "polaris.authentication.%sprincipal-mode"
+                              .formatted(authRealmSegment(realm))));
+                }
+              });
+    }
     return ProductionReadinessCheck.of(errors);
   }
 
