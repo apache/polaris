@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.nosql.metastore.maintenance;
 import static java.lang.String.format;
 import static java.util.function.Function.identity;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
+import static org.apache.polaris.core.entity.PolarisEntitySubType.NULL_SUBTYPE;
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG_ROLE;
 import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
 import static org.apache.polaris.core.entity.PolarisEntityType.POLICY;
@@ -42,10 +43,12 @@ import static org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsOb
 import static org.apache.polaris.persistence.nosql.coretypes.refs.References.realmReferenceNames;
 import static org.apache.polaris.persistence.nosql.maintenance.impl.MutableMaintenanceConfig.GRACE_TIME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.AssertionsForClassTypes.fail;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -70,6 +73,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
@@ -138,15 +142,129 @@ public class TestCatalogMaintenance {
     // tell maintenance to only retain the latest commit
     MutableCatalogsMaintenanceConfig.setCurrent(
         CatalogsMaintenanceConfig.BuildableCatalogsMaintenanceConfig.builder()
-            .catalogRolesRetain("false")
-            .catalogsHistoryRetain("false")
-            .catalogPoliciesRetain("false")
-            .catalogStateRetain("false")
-            .grantsRetain("false")
-            .principalRolesRetain("false")
-            .principalsRetain("false")
-            .immediateTasksRetain("false")
+            .paginationTokenRetention(Duration.ZERO)
+            .catalogRolesRetain(1)
+            .catalogsHistoryRetain(1)
+            .catalogPoliciesRetain(1)
+            .catalogStateRetain(1)
+            .grantsRetain(1)
+            .principalRolesRetain(1)
+            .principalsRetain(1)
+            .immediateTasksRetain(1)
             .build());
+  }
+
+  @Test
+  public void paginationTokenSnapshotRetention() {
+    var paginationTokenRetention = GRACE_TIME.plusMinutes(5);
+    var testSetup = bootstrapRealm();
+    var manager = testSetup.manager();
+    var callCtx = testSetup.callCtx();
+    var persistence = testSetup.persistence();
+
+    var catalog = createCatalog(manager, callCtx, persistence);
+    mandatoryCatalogObjsForTestImpl(persistence, catalog.getId());
+    for (var i = 0; i < 4; i++) {
+      createNamespace(
+          manager, callCtx, catalog, persistence, "pagination-retention-namespace-" + i);
+    }
+    var postTokenNamespaceId = persistence.generateId();
+
+    MutableCatalogsMaintenanceConfig.setCurrent(
+        CatalogsMaintenanceConfig.BuildableCatalogsMaintenanceConfig.builder()
+            .paginationTokenRetention(paginationTokenRetention)
+            .build());
+
+    var firstPage =
+        manager.listFullEntities(
+            callCtx, List.of(catalog), NAMESPACE, NULL_SUBTYPE, PageToken.fromLimit(2));
+    assertThat(firstPage.items()).hasSize(2);
+    assertThat(firstPage.encodedResponseToken()).isNotBlank();
+    var secondPageToken = PageToken.build(firstPage.encodedResponseToken(), null, () -> true);
+
+    // Supersede the exact catalog-state snapshot referenced by the token.
+    assertThat(
+            manager.createEntityIfNotExists(
+                callCtx,
+                List.of(catalog),
+                new PolarisEntity.Builder()
+                    .setType(NAMESPACE)
+                    .setName("created-after-pagination-token")
+                    .setId(postTokenNamespaceId)
+                    .setCatalogId(catalog.getId())
+                    .setCreateTimestamp(System.currentTimeMillis())
+                    .build()))
+        .extracting(BaseResult::isSuccess)
+        .isEqualTo(true);
+
+    // Make the superseded snapshot old enough that the maintenance created-at grace period cannot
+    // protect it. It must therefore be retained specifically for the pagination token.
+    mutableMonotonicClock.advanceBoth(GRACE_TIME);
+    assertThat(runMaintenance().success()).isTrue();
+    purgeBackendCache("within pagination-token retention");
+
+    // Pagination remains snapshot-consistent even though maintenance retains only one commit by
+    // count. The newly created namespace must not appear in the old snapshot.
+    var secondPage =
+        manager.listFullEntities(
+            callCtx, List.of(catalog), NAMESPACE, NULL_SUBTYPE, secondPageToken);
+    assertThat(secondPage.items())
+        .hasSize(2)
+        .noneMatch(entity -> entity.getName().equals("created-after-pagination-token"));
+
+    // At the duration boundary, the superseded snapshot may be collected. Reusing its token must
+    // fail explicitly instead of silently returning an empty page.
+    mutableMonotonicClock.advanceBoth(paginationTokenRetention.minus(GRACE_TIME));
+    assertThat(runMaintenance().success()).isTrue();
+    purgeBackendCache("after pagination-token retention");
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                manager.listFullEntities(
+                    callCtx, List.of(catalog), NAMESPACE, NULL_SUBTYPE, secondPageToken))
+        .withMessage("Invalid or expired NoSQL pagination token");
+  }
+
+  @Test
+  public void paginationRetentionDoesNotExtendNonPaginatedHistory() {
+    var policyMappingsRetention = GRACE_TIME;
+    var paginationTokenRetention = GRACE_TIME.plusMinutes(5);
+    var persistence = bootstrapRealm().persistence();
+
+    var oldPolicyMappings =
+        persistence
+            .fetchReferenceHead(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class)
+            .orElseThrow();
+    var currentPolicyMappings =
+        persistence.write(
+            PolicyMappingsObj.builder()
+                .from(oldPolicyMappings)
+                .id(persistence.generateId())
+                .createdAtMicros(persistence.currentTimeMicros())
+                .seq(oldPolicyMappings.seq() + 1)
+                .tail(oldPolicyMappings.id())
+                .build(),
+            PolicyMappingsObj.class);
+    assertThat(
+            persistence.updateReferencePointer(
+                persistence.fetchReference(POLICY_MAPPINGS_REF_NAME),
+                objRef(currentPolicyMappings)))
+        .isPresent();
+
+    MutableCatalogsMaintenanceConfig.setCurrent(
+        CatalogsMaintenanceConfig.BuildableCatalogsMaintenanceConfig.builder()
+            .paginationTokenRetention(paginationTokenRetention)
+            .catalogPoliciesRetainDuration(policyMappingsRetention)
+            .build());
+
+    mutableMonotonicClock.advanceBoth(policyMappingsRetention);
+    assertThat(runMaintenance().success()).isTrue();
+    purgeBackendCache("after policy-mapping retention");
+
+    assertThat(persistence.fetch(objRef(oldPolicyMappings), PolicyMappingsObj.class)).isNull();
+    assertThat(persistence.fetch(objRef(currentPolicyMappings), PolicyMappingsObj.class))
+        .isEqualTo(currentPolicyMappings);
   }
 
   @Test
