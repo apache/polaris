@@ -388,14 +388,16 @@ public class DatasourceOperations {
     while (attempts < maxAttempts) {
       try {
         return operation.execute();
+      } catch (EntityAlreadyExistsException | RetryOnConcurrencyException e) {
+        // Pass domain exceptions through unchanged. Do not unwrap their SQLException cause into
+        // the retry path (that would rewrap them as a generic SQLException and lose the typed
+        // signal upper layers need, e.g. ENTITY_ALREADY_EXISTS mapping).
+        throw e;
       } catch (SQLException | RuntimeException e) {
         SQLException sqlException;
         if (e instanceof RuntimeException) {
-          // Handle Exceptions from ResultSet Iterator consumer, as it throws a RTE, ignore RTE from
-          // the transactions.
-          if (e.getCause() instanceof SQLException
-              && !(e instanceof EntityAlreadyExistsException)
-              && !(e instanceof RetryOnConcurrencyException)) {
+          // ResultSet consumers and similar paths may wrap SQLException in RuntimeException.
+          if (e.getCause() instanceof SQLException) {
             sqlException = (SQLException) e.getCause();
           } else {
             throw e;

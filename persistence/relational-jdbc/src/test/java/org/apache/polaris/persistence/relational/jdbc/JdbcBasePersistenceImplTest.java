@@ -42,6 +42,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
@@ -192,6 +193,28 @@ class JdbcBasePersistenceImplTest {
     RetryOnConcurrencyException expected = new RetryOnConcurrencyException("concurrency conflict");
 
     assertThatExceptionOfType(RetryOnConcurrencyException.class)
+        .isThrownBy(
+            () ->
+                datasourceOperations.withRetries(
+                    () -> {
+                      throw expected;
+                    }))
+        .isSameAs(expected);
+  }
+
+  @Test
+  void withRetries_propagatesEntityAlreadyExistsExceptionWithoutUnwrapping() throws SQLException {
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:with_retries_already_exists_" + System.nanoTime(), "sa", "");
+    DatasourceOperations datasourceOperations =
+        new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    PolarisBaseEntity existing = Mockito.mock(PolarisBaseEntity.class);
+    when(existing.getName()).thenReturn("existing");
+    when(existing.getId()).thenReturn(1L);
+    EntityAlreadyExistsException expected = new EntityAlreadyExistsException(existing);
+
+    assertThatExceptionOfType(EntityAlreadyExistsException.class)
         .isThrownBy(
             () ->
                 datasourceOperations.withRetries(
