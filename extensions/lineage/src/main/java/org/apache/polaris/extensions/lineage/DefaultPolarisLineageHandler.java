@@ -18,20 +18,17 @@
  */
 package org.apache.polaris.extensions.lineage;
 
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import java.util.Objects;
-import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
 
+@RequestScoped
 public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
   private final LineageConfiguration configuration;
-  private final CallContext callContext;
-  private final PolarisPrincipal polarisPrincipal;
 
-  public DefaultPolarisLineageHandler(
-      LineageConfiguration configuration, CallContext callContext, PolarisPrincipal principal) {
+  @Inject
+  public DefaultPolarisLineageHandler(LineageConfiguration configuration) {
     this.configuration = Objects.requireNonNull(configuration, "configuration must be non-null");
-    this.callContext = Objects.requireNonNull(callContext, "callContext must be non-null");
-    this.polarisPrincipal = Objects.requireNonNull(principal, "principal must be non-null");
   }
 
   @Override
