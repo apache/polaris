@@ -306,6 +306,84 @@ class TestSetupCommand(CLITestBase):
         mock_client.list_catalog_roles.assert_called_with("my_catalog")
         mock_client.get_catalog.assert_called_with("my_catalog")
 
+    def test_setup_exported_entity_properties_round_trip_through_apply(self) -> None:
+        principal_properties = {"owner": "data-platform"}
+        catalog_role_properties = {"purpose": "migration"}
+        export_client = self.build_mock_client()
+        export_client.list_principals.return_value = SimpleNamespace(
+            principals=[
+                SimpleNamespace(
+                    name="service-user",
+                    properties=principal_properties,
+                )
+            ]
+        )
+        export_client.list_principal_roles_assigned.return_value = SimpleNamespace(
+            roles=[]
+        )
+        export_client.list_catalog_roles.return_value = SimpleNamespace(
+            roles=[
+                SimpleNamespace(
+                    name="catalog-reader",
+                    properties=catalog_role_properties,
+                )
+            ]
+        )
+        export_client.list_assignee_principal_roles_for_catalog_role.return_value = (
+            SimpleNamespace(roles=[])
+        )
+        export_client.list_grants_for_catalog_role.return_value = SimpleNamespace(
+            grants=[]
+        )
+        export_command = SetupCommand(setup_subcommand=Subcommands.EXPORT)
+
+        exported = {
+            "principals": export_command._export_principals(export_client),
+            "catalog_roles": export_command._export_catalog_roles_for_catalog(
+                export_client, "catalog"
+            ),
+        }
+        loaded = yaml.safe_load(yaml.safe_dump(exported))
+
+        self.assertEqual(
+            loaded["principals"]["service-user"]["properties"],
+            principal_properties,
+        )
+        self.assertEqual(
+            loaded["catalog_roles"]["catalog-reader"]["properties"],
+            catalog_role_properties,
+        )
+
+        apply_client = self.build_mock_client()
+        apply_client.list_principals.return_value = SimpleNamespace(principals=[])
+        apply_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
+        apply_client.create_principal.return_value = SimpleNamespace(
+            credentials=SimpleNamespace(
+                client_id="client-id",
+                client_secret=SimpleNamespace(get_secret_value=lambda: "secret"),
+            )
+        )
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+
+        with patch("sys.stdout", new_callable=io.StringIO):
+            apply_command._create_principals(apply_client, loaded["principals"])
+        apply_command._create_catalog_roles(
+            apply_client,
+            "catalog",
+            loaded["catalog_roles"],
+        )
+
+        principal_request = apply_client.create_principal.call_args.args[0]
+        catalog_role_request = apply_client.create_catalog_role.call_args.args[1]
+        self.assertEqual(
+            principal_request.principal.properties,
+            principal_properties,
+        )
+        self.assertEqual(
+            catalog_role_request.catalog_role.properties,
+            catalog_role_properties,
+        )
+
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_treats_null_type_as_internal(
         self, mock_isfile: MagicMock
@@ -603,4 +681,3 @@ class TestSetupCommand(CLITestBase):
         self.assertEqual(
             created.storage_config_info.sts_endpoint, "https://sts.amazonaws.com"
         )
-
