@@ -46,8 +46,8 @@ Global Options:
   --host HOST                    Polaris server hostname
   --port PORT                    Polaris server port
   --scheme {http,https}          URL scheme for host/port (default: http)
-  --base-url BASE_URL            Complete base URL (overrides host/port)
-  --catalog-url CATALOG_URL      Base URL for the Iceberg REST Catalog (IRC) API. Use when a proxy or deployment maps a custom path directly to the catalog root (no /api/catalog appended).
+  --base-url BASE_URL            Complete base URL (overrides host/port/scheme)
+  --catalog-url CATALOG_URL      Base URL for the Iceberg REST Catalog (IRC) API. Use when your --base-url or deployment maps directly to the catalog root (no /api/catalog appended).
   --client-id CLIENT_ID          OAuth client ID
   --client-secret CLIENT_SECRET  OAuth client secret
   --access-token ACCESS_TOKEN    OAuth access token
@@ -71,7 +71,9 @@ Global Options:
 10. setup
 11. find
 12. tables
-13. repl
+13. views
+14. generic-tables
+15. repl
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important.
 
@@ -89,6 +91,8 @@ polaris repair
 polaris setup apply setup-config.yaml
 polaris find some_table
 polaris tables list --catalog my_catalog --namespace ns1
+polaris views list --catalog my_catalog --namespace ns1
+polaris generic-tables list --catalog my_catalog --namespace ns1
 polaris repl
 ```
 
@@ -1813,6 +1817,193 @@ Command Options:
 
 ```
 polaris tables delete my_table --catalog my_catalog --namespace ns1
+```
+
+### Views
+
+The `views` command is used to manage Iceberg views within a Polaris Catalog.
+
+`views` supports the following subcommands:
+
+1. list
+2. get
+3. summarize
+4. delete
+
+#### list
+
+The `list` subcommand is used to list views within a namesace from a given catalog.
+
+```
+usage: polaris views list [-h] [options]
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris views list
+```
+
+#### get
+
+The `get` subcommand retrieves the view metadata for a specific view.
+
+```
+usage: polaris views get [-h] [options] VIEW_NAME
+
+positional arguments:
+  VIEW_NAME              view
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris views get my_view --catalog my_catalog --namespace ns1
+```
+
+#### summarize
+
+The `summarize` subcommand provides a detail overview of a view.
+
+```
+usage: polaris views summarize [-h] [options] VIEW_NAME
+
+positional arguments:
+  VIEW_NAME              view
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris view summarize my_view --catalog my_catalog --namespace ns1
+```
+
+#### delete
+
+The `delete` subcommand drop a view from catalog.
+
+```
+usage: polaris views delete [-h] [options] VIEW_NAME
+
+positional arguments:
+  VIEW_NAME              view
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris views delete my_view --catalog my_catalog --namespace ns1
+```
+
+
+
+
+
+### Generic Tables
+
+The `generic-tables` command is used to manage generic tables within a Polaris Catalog.
+
+`generic-tables` supports the following subcommands:
+
+1. list
+2. get
+3. delete
+
+#### list
+
+The `list` subcommand is used to list generic tables within a namesace from a given catalog.
+
+```
+usage: polaris generic-tables list [-h] [options]
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris generic-tables list
+```
+
+#### get
+
+The `get` subcommand retrieves the generic tables metadata for a specific generic table.
+
+```
+usage: polaris generic-tables get [-h] [options] GENERIC_TABLE_NAME
+
+positional arguments:
+  GENERIC_TABLE_NAME     generic-table
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris generic-tables get my_generic_table --catalog my_catalog --namespace ns1
+```
+
+#### delete
+
+The `delete` subcommand drop a generic table from catalog.
+
+```
+usage: polaris generic-tables delete [-h] [options] GENERIC_TABLE_NAME
+
+positional arguments:
+  GENERIC_TABLE_NAME     generic-table
+
+options:
+  -h, --help             show this help message and exit
+
+Command Options:
+  --catalog CATALOG      The name of a catalog
+  --namespace NAMESPACE  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris generic-tables delete my_generic_table --catalog my_catalog --namespace ns1
 ```
 
 ### REPL

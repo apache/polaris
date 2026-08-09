@@ -79,6 +79,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `--scheme` to specify URL scheme
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Added opt-in idempotency for `createTable` and `updateTable` in the Iceberg REST catalog. When enabled via `polaris.idempotency.enabled=true` (default `false`), a client-supplied `Idempotency-Key` header is embedded into the table entity and committed in the same transaction as the operation; a retry carrying the same key within the TTL window (`polaris.idempotency.ttl`, default `PT5M`) replays the original success instead of failing — with `AlreadyExists` for `createTable`, or with `CommitFailedException` for `updateTable` when the request's requirements no longer match the already-advanced table. When idempotency is enabled, the reuse window is advertised to clients through the `idempotency-key-lifetime` field of the `GET /v1/config` response.
+- Python CLI: Added views and generic-tables support.
 
 ### Changes
 - The admin tool's `bootstrap` command is now idempotent: bootstrapping a realm that is already

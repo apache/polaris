@@ -1242,6 +1242,90 @@ class OptionTree:
         )
 
     @staticmethod
+    def _views_option() -> Option:
+        return Option(
+            Commands.VIEWS,
+            hint="manage views",
+            children=[
+                Option(
+                    Subcommands.LIST,
+                    hint="List views",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                ),
+                Option(
+                    Subcommands.GET,
+                    hint="Retrieve metadata for a view",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+                Option(
+                    Subcommands.SUMMARIZE,
+                    hint="Display a summary for a view",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+                Option(
+                    Subcommands.DELETE,
+                    hint="Drop a view from catalog",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+            ],
+        )
+
+    @staticmethod
+    def _generic_tables_option() -> Option:
+        return Option(
+            Commands.GENERIC_TABLES,
+            hint="manage generic tables",
+            children=[
+                Option(
+                    Subcommands.LIST,
+                    hint="List generic tables",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                ),
+                Option(
+                    Subcommands.GET,
+                    hint="Retrieve metadata for a generic table",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.GENERIC_TABLE,
+                    input_metavar="GENERIC_TABLE_NAME",
+                ),
+                Option(
+                    Subcommands.DELETE,
+                    hint="Drop a generic table from catalog",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.GENERIC_TABLE,
+                    input_metavar="GENERIC_TABLE_NAME",
+                ),
+            ],
+        )
+
+    @staticmethod
     def _find_option() -> Option:
         return Option(
             Commands.FIND,
@@ -1282,6 +1366,8 @@ class OptionTree:
             OptionTree._policies_option(),
             OptionTree._setup_option(),
             OptionTree._tables_option(),
+            OptionTree._views_option(),
+            OptionTree._generic_tables_option(),
             OptionTree._find_option(),
             OptionTree._repl_option(),
         ]
