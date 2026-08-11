@@ -30,6 +30,7 @@ val genProjectPaths = listOf(
   ":polaris-core",
   ":polaris-extensions-auth-opa",
   ":polaris-extensions-events-kafka",
+  ":polaris-extensions-events-webhook",
   ":polaris-nodes-api",
   ":polaris-persistence-nosql-api",
   ":polaris-persistence-nosql-impl",

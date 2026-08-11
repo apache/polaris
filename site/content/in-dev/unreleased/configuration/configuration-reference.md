@@ -138,6 +138,50 @@ All properties listed here are **runtime** properties and can be changed without
 
 {{% include-config-section "smallrye-polaris_event_listener_aws_cloudwatch" %}}
 
+### `polaris.event-listener.webhook`
+
+{{% include-config-section "smallrye-polaris_event_listener_webhook" %}}
+
+The webhook listener delivers each (sanitized) event as an HTTP POST with a JSON body shaped after
+the CloudEvents envelope (no CloudEvents SDK required):
+
+```json
+{
+  "specversion": "1.0",
+  "id": "11111111-2222-3333-4444-555555555555",
+  "type": "AFTER_REFRESH_TABLE",
+  "source": "org.apache.polaris",
+  "time": "2026-01-15T12:00:00Z",
+  "deliverytime": "2026-01-15T12:00:01Z",
+  "realmid": "my-realm",
+  "principal": "alice",
+  "activatedroles": ["role1", "role2"],
+  "requestid": "d3b0...",
+  "tableidentifier": "ns.tbl"
+}
+```
+
+`time` is the original event time from Polaris event metadata (RFC 3339); `deliverytime` is when
+the payload was serialized for send. `id` is stable for the event and can be used by receivers
+to detect retry duplicates. Extension attributes use CloudEvents-compliant names (lowercase
+alphanumerics). `principal`, `activatedroles`, `requestid`, and `tableidentifier`
+are omitted when not applicable. Each request carries an `X-Polaris-Event` header with the event
+type. When `polaris.event-listener.webhook.secret` is set, an `X-Polaris-Signature-256` header
+contains `sha256=` followed by the hex-encoded HMAC-SHA256 of the raw request body.
+
+Delivery is **best-effort and bounded**: concurrency and pending work are capped
+(`max-concurrent`, `max-pending`); excess events are dropped. Only transient failures (network
+errors, 408/425/429/5xx) are retried, with exponential backoff, full jitter, honoring
+`Retry-After` (delta-seconds or HTTP-date), and a max backoff. Permanent 4xx responses are not
+retried. Retries
+and in-flight work are in-memory only and lost on restart. This is **not** a durable spool; enabling
+`persistence-in-memory-buffer` does not replay webhook deliveries. Deployments that need durable,
+replayable delivery should instead consume Polaris events from Kafka and run their own webhook
+processor with endpoint-specific retry and dead-letter handling. By default only HTTPS endpoints
+are accepted (`require-https=true`). Redirects are not followed. Metrics include
+`polaris.event.webhook.deliveries`, `retries`, `drops`, `pending`, `in_flight`, and `delivery`
+latency.
+
 ### `opentelemetry` event listener
 
 Set `polaris.event-listener.types=opentelemetry` to emit Polaris events as OpenTelemetry log

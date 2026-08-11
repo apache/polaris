@@ -285,6 +285,7 @@ This product bundles Quarkus.
 
 * Maven group:artifact IDs: io.quarkus.arc:arc
 * Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive
+* Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive-client
 * Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive-common
 * Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive-common-types
 * Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive-jackson
@@ -325,6 +326,9 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-proxy-registry
 * Maven group:artifact IDs: io.quarkus:quarkus-reactive-routes
 * Maven group:artifact IDs: io.quarkus:quarkus-rest
+* Maven group:artifact IDs: io.quarkus:quarkus-rest-client
+* Maven group:artifact IDs: io.quarkus:quarkus-rest-client-config
+* Maven group:artifact IDs: io.quarkus:quarkus-rest-client-jaxrs
 * Maven group:artifact IDs: io.quarkus:quarkus-rest-common
 * Maven group:artifact IDs: io.quarkus:quarkus-rest-jackson
 * Maven group:artifact IDs: io.quarkus:quarkus-rest-jackson-common
@@ -382,6 +386,8 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web-common
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-api
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-mutiny
+* Maven group:artifact IDs: io.smallrye.stork:stork-api
+* Maven group:artifact IDs: io.smallrye:jandex
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-api
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-jta
@@ -1615,6 +1621,7 @@ This product bundles Microprofile.
 * Maven group:artifact IDs: org.eclipse.microprofile.jwt:microprofile-jwt-auth-api
 * Maven group:artifact IDs: org.eclipse.microprofile.reactive-streams-operators:microprofile-reactive-streams-operators-api
 * Maven group:artifact IDs: org.eclipse.microprofile.reactive-streams-operators:microprofile-reactive-streams-operators-core
+* Maven group:artifact IDs: org.eclipse.microprofile.rest.client:microprofile-rest-client-api
 
 Project URL: http://microprofile.io
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
