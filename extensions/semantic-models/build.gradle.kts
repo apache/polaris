@@ -41,8 +41,8 @@ dependencies {
   // CatalogAdapter and other shared catalog service abstractions.
   implementation(project(":polaris-runtime-service"))
 
-  // Dependencies required by the generated OSI semantic-model REST API code (mirrors the set used
-  // by the polaris-api-catalog-service generated code).
+  // Dependencies required by the generated Ossie semantic-model REST API code (mirrors the set
+  // used by the polaris-api-catalog-service generated code).
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
@@ -73,6 +73,17 @@ dependencies {
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)
+
+  // Real-manifest handler tests bootstrap services via the runtime-service test fixtures
+  // (TestServices), which is the only way to reproduce the strict resolution-manifest behavior
+  // that the pure-Mockito unit test cannot.
+  testImplementation(testFixtures(project(":polaris-runtime-service")))
+  testImplementation(project(":polaris-api-management-model"))
+  testImplementation(project(":polaris-api-management-service"))
+  testImplementation(project(":polaris-api-iceberg-service"))
+  testImplementation(project(":polaris-api-catalog-service"))
+  testCompileOnly(project(":polaris-immutables"))
+  testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 }
 
 val rootDir = rootProject.layout.projectDirectory
