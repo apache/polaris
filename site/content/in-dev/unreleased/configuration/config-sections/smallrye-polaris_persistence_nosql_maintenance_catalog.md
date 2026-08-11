@@ -25,31 +25,34 @@ build:
 
 No SQL persistence implementation of Polaris stores a history of changes per kind of object  (principals, principal roles, grants, immediate tasks, catalog roles and catalog state).  
 
-The rules are defined using a [CEL  script ](https://github.com/projectnessie/cel-java/). The default rules for all kinds of objects are to retain the history for 3 days, for  the catalog state for 30 days.   
+Each kind of history has independent controls for the minimum number of commits to retain, the  minimum retention duration, and whether to retain all commits. Count and duration controls are  combined, retaining commits required by either one. The per-history controls default to one  commit, zero duration, and retain-all disabled.   
 
-The scripts have access to the following declared values:   
-
- * `ref` (string) name of the reference    
- * `commits` (64-bit int) number of the currently processed commit, starting at `1` 
- * `ageDays` (64-bit int) age of currently processed commit in days    
- * `ageHours` (64-bit int) age of currently processed commit in hours    
- * `ageMinutes` (64-bit int) age of currently processed commit in minutes  
-
-Scripts _must_ return a `boolean` yielding whether the commit shall be retained.  Note that maintenance-service implementations can keep the first not-to-be-retained commit.   
-
-Example scripts   
-
- * `ageDays < 30 || commits <= 10` retains the reference history with at least 10        commits and commits that are younger than 30 days    
- * `true` retains the whole reference history    
- * `false` retains the most recent commit
+(`#paginationTokenRetention()`) is a separate global minimum that additionally keeps  superseded snapshots available for snapshot-based pagination.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.persistence.nosql.maintenance.catalog.principals-retain` | `false` | `string` |  |
-| `polaris.persistence.nosql.maintenance.catalog.principal-roles-retain` | `false` | `string` |  |
-| `polaris.persistence.nosql.maintenance.catalog.grants-retain` | `false` | `string` |  |
-| `polaris.persistence.nosql.maintenance.catalog.immediate-tasks-retain` | `false` | `string` |  |
-| `polaris.persistence.nosql.maintenance.catalog.catalogs-history-retain` | `false` | `string` |  |
-| `polaris.persistence.nosql.maintenance.catalog.catalog-roles-retain` | `false` | `string` |  |
-| `polaris.persistence.nosql.maintenance.catalog.catalog-policies-retain` | `false` | `string` |  |
-| `polaris.persistence.nosql.maintenance.catalog.catalog-state-retain` | `false` | `string` |  |
+| `polaris.persistence.nosql.maintenance.catalog.pagination-token-retention` | `P30D` | `duration` | Minimum time to retain a container snapshot after it is superseded, so pagination tokens that  reference that snapshot can continue to be used.  This minimum applies only to histories backed  by container snapshots that can be referenced by pagination tokens.   <br><br>A zero duration disables this pagination-token retention minimum. |
+| `polaris.persistence.nosql.maintenance.catalog.principals-retain` | `1` | `int` | Number of latest principal commits to retain.  |
+| `polaris.persistence.nosql.maintenance.catalog.principals-retain-duration` | `PT0S` | `duration` | Minimum duration to retain principal commits after they are superseded.  |
+| `polaris.persistence.nosql.maintenance.catalog.principals-retain-all` | `false` | `boolean` | Whether to retain all principal commits.  |
+| `polaris.persistence.nosql.maintenance.catalog.principal-roles-retain` | `1` | `int` | Number of latest principal-role commits to retain.  |
+| `polaris.persistence.nosql.maintenance.catalog.principal-roles-retain-duration` | `PT0S` | `duration` | Minimum duration to retain principal-role commits after they are superseded.  |
+| `polaris.persistence.nosql.maintenance.catalog.principal-roles-retain-all` | `false` | `boolean` | Whether to retain all principal-role commits.  |
+| `polaris.persistence.nosql.maintenance.catalog.grants-retain` | `1` | `int` | Number of latest realm-grant commits to retain.  |
+| `polaris.persistence.nosql.maintenance.catalog.grants-retain-duration` | `PT0S` | `duration` | Minimum duration to retain realm-grant commits after they are superseded.  |
+| `polaris.persistence.nosql.maintenance.catalog.grants-retain-all` | `false` | `boolean` | Whether to retain all realm-grant commits.  |
+| `polaris.persistence.nosql.maintenance.catalog.immediate-tasks-retain` | `1` | `int` | Number of latest immediate-task commits to retain.  |
+| `polaris.persistence.nosql.maintenance.catalog.immediate-tasks-retain-duration` | `PT0S` | `duration` | Minimum duration to retain immediate-task commits after they are superseded.  |
+| `polaris.persistence.nosql.maintenance.catalog.immediate-tasks-retain-all` | `false` | `boolean` | Whether to retain all immediate-task commits.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalogs-history-retain` | `1` | `int` | Number of latest catalog-list commits to retain.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalogs-history-retain-duration` | `PT0S` | `duration` | Minimum duration to retain catalog-list commits after they are superseded.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalogs-history-retain-all` | `false` | `boolean` | Whether to retain all catalog-list commits.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-roles-retain` | `1` | `int` | Number of latest catalog-role commits to retain.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-roles-retain-duration` | `PT0S` | `duration` | Minimum duration to retain catalog-role commits after they are superseded.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-roles-retain-all` | `false` | `boolean` | Whether to retain all catalog-role commits.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-policies-retain` | `1` | `int` | Number of latest catalog-policy commits to retain.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-policies-retain-duration` | `PT0S` | `duration` | Minimum duration to retain catalog-policy commits after they are superseded.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-policies-retain-all` | `false` | `boolean` | Whether to retain all catalog-policy commits.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-state-retain` | `1` | `int` | Number of latest catalog-state commits to retain.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-state-retain-duration` | `PT0S` | `duration` | Minimum duration to retain catalog-state commits after they are superseded.  |
+| `polaris.persistence.nosql.maintenance.catalog.catalog-state-retain-all` | `false` | `boolean` | Whether to retain all catalog-state commits.  |
