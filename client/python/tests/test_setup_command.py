@@ -517,12 +517,8 @@ class TestSetupCommand(CLITestBase):
     ) -> None:
         policy_content = '{"version":"2025-02-03","enable":true}'
         policy_api = mock_policy_api_class.return_value
-        policy_api.list_policies.side_effect = lambda prefix, namespace: SimpleNamespace(
-            identifiers=(
-                [SimpleNamespace(name="compaction")]
-                if namespace == "namespace"
-                else []
-            )
+        policy_api.list_policies.return_value = SimpleNamespace(
+            identifiers=[SimpleNamespace(name="compaction")]
         )
         policy_api.load_policy.side_effect = [
             SimpleNamespace(
