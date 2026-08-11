@@ -219,7 +219,7 @@ public abstract class AbstractPolicyCatalogTest {
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 

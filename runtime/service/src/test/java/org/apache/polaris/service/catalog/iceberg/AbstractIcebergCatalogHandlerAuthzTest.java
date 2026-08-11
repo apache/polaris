@@ -2083,7 +2083,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 new CatalogEntity.Builder()
                     .setName(externalCatalog)
                     .setDefaultBaseLocation(storageLocation)
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                     .setCatalogType("EXTERNAL")
                     .build()
                     .asCatalog(serviceIdentityProvider)));
