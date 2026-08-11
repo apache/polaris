@@ -25,16 +25,6 @@ build:
 
 Feature configurations for Polaris. These are stable, user-facing settings.
 
-##### `polaris.features."ADD_TRAILING_SLASH_TO_LOCATION"`
-
-When set, the base location for a table or namespace will have `/` added as a suffix if not present
-
-- **Type:** `Boolean`
-- **Default:** `true`
-- **Catalog Config:** `polaris.config.add-trailing-slash-to-location`
-
----
-
 ##### `polaris.features."ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION"`
 
 If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties) explicitly supplied in a create or update request, subject to the usual structured-location, allowed-location, metadata-location, and overlap validation. If set to false, such requests are rejected, regardless of the other location compatibility flags. This setting does not apply to federated catalogs.
@@ -460,7 +450,7 @@ How many times to retry refreshing metadata when the previous error was retryabl
 
 ##### `polaris.features."OPTIMIZED_SIBLING_CHECK"`
 
-When set, Polaris uses an index to perform sibling overlap checks between tables, views, and namespaces. This is not a bypass mode, but enabling or disabling it can change overlap-detection coverage for non-standard location layouts. Only enable it when the required index and backfill state is known to be correct. For correct results, locations should end with a slash; see ADD_TRAILING_SLASH_TO_LOCATION. Supported by the JDBC and NoSQL metastore implementations.
+When set, Polaris uses an index to perform sibling overlap checks between tables, views, and namespaces. This is not a bypass mode, but enabling or disabling it can change overlap-detection coverage for non-standard location layouts. Only enable it when the required index and backfill state is known to be correct. Locations written by Polaris always end with a slash; locations stored by older versions without one are still handled. Supported by the JDBC and NoSQL metastore implementations.
 
 - **Type:** `Boolean`
 - **Default:** `false`

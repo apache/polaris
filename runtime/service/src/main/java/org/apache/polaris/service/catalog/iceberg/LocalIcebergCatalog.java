@@ -674,9 +674,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     String baseLocation = resolveNamespaceLocation(namespace, metadata);
 
     // Set / suffix
-    boolean requireTrailingSlash =
-        realmConfig.getConfig(FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
-    if (requireTrailingSlash && !baseLocation.endsWith("/")) {
+    if (!baseLocation.endsWith("/")) {
       baseLocation += "/";
     }
 
@@ -2818,10 +2816,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       boolean validateMetadataLocation) {
     IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(entity);
     // Set / suffix
-    boolean requireTrailingSlash =
-        realmConfig.getConfig(FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
-    if (requireTrailingSlash
-        && icebergTableLikeEntity.getBaseLocation() != null
+    if (icebergTableLikeEntity.getBaseLocation() != null
         && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
       icebergTableLikeEntity =
           new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
@@ -2887,10 +2882,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     IcebergTableLikeEntity icebergTableLikeEntity = new IcebergTableLikeEntity(entity);
 
     // Set / suffix
-    boolean requireTrailingSlash =
-        realmConfig.getConfig(FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
-    if (requireTrailingSlash
-        && icebergTableLikeEntity.getBaseLocation() != null
+    if (icebergTableLikeEntity.getBaseLocation() != null
         && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
       icebergTableLikeEntity =
           new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)

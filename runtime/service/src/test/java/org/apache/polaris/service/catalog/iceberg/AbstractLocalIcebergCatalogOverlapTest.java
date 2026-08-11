@@ -49,10 +49,15 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -299,9 +304,11 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
 
   @Test
   public void testParentPrefixOverlapWithTrailingSlashMismatch() {
-    // Profiles disable ADD_TRAILING_SLASH_TO_LOCATION so the parent is stored without a trailing
-    // slash. That is the OPTIMIZED_SIBLING_CHECK false-negative for JDBC: ancestor equality terms
-    // used to be slash-terminated only, so location_without_scheme without '/' was missed.
+    // The catalog now always stores locations with a trailing slash
+    // (ADD_TRAILING_SLASH_TO_LOCATION was removed). Simulate legacy slash-less data
+    // by rewriting the stored parent location directly, then verify the optimized sibling check
+    // still detects overlaps against it: ancestor equality terms used to be slash-terminated only,
+    // so a slash-less location_without_scheme was missed.
     Namespace ns = Namespace.of("ns-for-trailing-slash-overlap");
     catalog().createNamespace(ns);
 
@@ -310,9 +317,11 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     assertThat(parentLoc).doesNotEndWith("/");
     catalog().buildTable(parentTable, SCHEMA).withLocation(parentLoc).create();
 
-    // Guardrail: if trailing-slash normalization were still on, this test would not exercise the
-    // slash-less location_without_scheme path that QueryGenerator must handle.
-    assertThat(catalog().loadTable(parentTable).location())
+    stripStoredBaseLocationTrailingSlash(ns, parentTable);
+
+    // Guardrail: the stored location must be slash-less so overlap checks exercise the
+    // non-slash-terminated location_without_scheme path that QueryGenerator must handle.
+    assertThat(storedTableBaseLocation(ns, parentTable))
         .as("parent must remain slash-less so overlap uses non-slash-terminated stored location")
         .isEqualTo(parentLoc)
         .doesNotEndWith("/");
@@ -334,5 +343,55 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Unable to create entity at location")
         .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  private String storedTableBaseLocation(Namespace ns, TableIdentifier table) {
+    return IcebergTableLikeEntity.of(readStoredTableLike(ns, table)).getBaseLocation();
+  }
+
+  /**
+   * Rewrites the stored base location of {@code table} without its trailing slash, simulating data
+   * written before Polaris always appended one.
+   */
+  private void stripStoredBaseLocationTrailingSlash(Namespace ns, TableIdentifier table) {
+    PolarisEntity tableEntity = readStoredTableLike(ns, table);
+    IcebergTableLikeEntity tableLike = IcebergTableLikeEntity.of(tableEntity);
+    String baseLocation = tableLike.getBaseLocation();
+    assertThat(baseLocation).endsWith("/");
+    IcebergTableLikeEntity stripped =
+        new IcebergTableLikeEntity.Builder(tableLike)
+            .setBaseLocation(baseLocation.substring(0, baseLocation.length() - 1))
+            .build();
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext, tableLikeCatalogPath(ns), stripped);
+    assertThat(result.isSuccess()).isTrue();
+  }
+
+  private PolarisEntity readStoredTableLike(Namespace ns, TableIdentifier table) {
+    EntityResult result =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            tableLikeCatalogPath(ns),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            table.name());
+    assertThat(result.isSuccess()).isTrue();
+    return PolarisEntity.of(result.getEntity());
+  }
+
+  private List<PolarisEntityCore> tableLikeCatalogPath(Namespace ns) {
+    assertThat(ns.length()).as("test namespaces must be single-level").isEqualTo(1);
+    EntityResult result =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(PolarisEntity.toCore(catalogEntity)),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            ns.level(0));
+    assertThat(result.isSuccess()).isTrue();
+    return List.of(
+        PolarisEntity.toCore(catalogEntity),
+        PolarisEntity.toCore(PolarisEntity.of(result.getEntity())));
   }
 }

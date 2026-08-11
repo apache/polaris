@@ -62,6 +62,12 @@ public class ProductionReadinessChecks {
       "quarkus.rest.jackson.optimization.enable-reflection-free-serializers";
 
   /**
+   * Key of the removed {@code ADD_TRAILING_SLASH_TO_LOCATION} feature flag, kept only to warn
+   * operators whose configuration still sets it.
+   */
+  private static final String ADD_TRAILING_SLASH_TO_LOCATION_KEY = "ADD_TRAILING_SLASH_TO_LOCATION";
+
+  /**
    * A warning sign ⚠ {@code 26A0} with variant selector {@code FE0F}. The sign is preceded by a
    * null character {@code 0000} to ensure that the warning sign is displayed correctly regardless
    * of the log pattern (some log patterns seem to interfere with non-ASCII characters).
@@ -364,6 +370,39 @@ public class ProductionReadinessChecks {
                         format(
                             "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
                             realmId, optimizedSiblingCheck.key())));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkAddTrailingSlashToLocation(
+      FeaturesConfiguration featureConfiguration) {
+    var message =
+        "ADD_TRAILING_SLASH_TO_LOCATION was removed and is ignored. Polaris always adds a "
+            + "trailing slash to table and namespace base locations. Remove this setting.";
+    var errors = new ArrayList<Error>();
+    if ("false"
+        .equalsIgnoreCase(
+            featureConfiguration.defaults().get(ADD_TRAILING_SLASH_TO_LOCATION_KEY))) {
+      errors.add(
+          Error.of(message, format("polaris.features.\"%s\"", ADD_TRAILING_SLASH_TO_LOCATION_KEY)));
+    }
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              if ("false"
+                  .equalsIgnoreCase(
+                      overrides.overrides().get(ADD_TRAILING_SLASH_TO_LOCATION_KEY))) {
+                errors.add(
+                    Error.of(
+                        message,
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, ADD_TRAILING_SLASH_TO_LOCATION_KEY)));
               }
             });
     return errors.isEmpty()

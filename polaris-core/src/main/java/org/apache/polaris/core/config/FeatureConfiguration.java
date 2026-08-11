@@ -595,15 +595,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> ADD_TRAILING_SLASH_TO_LOCATION =
-      PolarisConfiguration.<Boolean>builder()
-          .key("ADD_TRAILING_SLASH_TO_LOCATION")
-          .catalogConfig("polaris.config.add-trailing-slash-to-location")
-          .description(
-              "When set, the base location for a table or namespace will have `/` added as a suffix if not present")
-          .defaultValue(true)
-          .buildFeatureConfiguration();
-
   public static final FeatureConfiguration<Boolean> ALLOW_OPTIMIZED_SIBLING_CHECK =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_OPTIMIZED_SIBLING_CHECK")
@@ -625,9 +616,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "views, and namespaces. This is not a bypass mode, but enabling or disabling "
                   + "it can change overlap-detection coverage for non-standard location layouts. "
                   + "Only enable it when the required index and backfill state is known to be "
-                  + "correct. For correct results, locations should end with a slash; see "
-                  + "ADD_TRAILING_SLASH_TO_LOCATION. Supported by the JDBC and NoSQL metastore "
-                  + "implementations.")
+                  + "correct. Locations written by Polaris always end with a slash; locations "
+                  + "stored by older versions without one are still handled. Supported by the "
+                  + "JDBC and NoSQL metastore implementations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

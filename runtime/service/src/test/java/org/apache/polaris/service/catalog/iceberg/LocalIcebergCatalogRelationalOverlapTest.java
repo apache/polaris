@@ -45,9 +45,6 @@ public class LocalIcebergCatalogRelationalOverlapTest
       overrides.put("polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"", "false");
       overrides.put("polaris.features.\"OPTIMIZED_SIBLING_CHECK\"", "true");
       overrides.put("polaris.features.\"ALLOW_OPTIMIZED_SIBLING_CHECK\"", "true");
-      // Keep locations as written so JDBC optimized sibling checks exercise slash-less
-      // location_without_scheme values (the false-negative fixed in QueryGenerator).
-      overrides.put("polaris.features.\"ADD_TRAILING_SLASH_TO_LOCATION\"", "false");
       overrides.put("polaris.persistence.type", "relational-jdbc");
       overrides.put("polaris.persistence.auto-bootstrap-types", "relational-jdbc");
       overrides.put("quarkus.datasource.db-kind", "h2");
