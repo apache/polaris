@@ -46,6 +46,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Python CLI `setup export` now preserves user-defined properties on principals and catalog roles,
+  so exported configurations restore that metadata during `setup apply`.
 - Python CLI `setup apply` no longer double-encodes policy content emitted by `setup export`, so
   exported configurations containing policies can be restored.
 - Python CLI `setup export` now includes nested namespaces and policy definitions from those
