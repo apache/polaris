@@ -679,10 +679,6 @@ public class CatalogHandlerUtils {
     return (BaseView) view;
   }
 
-  public ListTablesResponse listViews(ViewCatalog catalog, Namespace namespace) {
-    return ListTablesResponse.builder().addAll(catalog.listViews(namespace)).build();
-  }
-
   public ListTablesResponse listViews(
       ViewCatalog catalog, Namespace namespace, String pageToken, Integer pageSize) {
     List<TableIdentifier> results = catalog.listViews(namespace);
