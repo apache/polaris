@@ -460,7 +460,7 @@ If set to true, pagination for APIs like listTables is enabled.
 
 ##### `polaris.features."LIST_PAGINATION_MAX_PAGE_SIZE"`
 
-The largest page size a client may request for APIs like listTables. Larger requested page sizes are reduced to this value; the Iceberg REST specification treats the requested page size as an upper bound, so a server may return fewer results. Values below 1 are treated as 1.
+The largest page size a client may request for APIs like listTables. Larger requested page sizes are reduced to this value. The Iceberg REST specification treats the requested page size as an upper bound. Values <= 0 mean unlimited (no max page size enforced).
 
 - **Type:** `Integer`
 - **Default:** `100`

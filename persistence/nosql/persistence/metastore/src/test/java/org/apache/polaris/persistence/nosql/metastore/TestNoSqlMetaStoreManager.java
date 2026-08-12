@@ -167,7 +167,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
         NoSqlPaginationToken.paginationToken(
             objRef(CatalogsObj.TYPE, Long.MAX_VALUE), key("catalog"));
     var responsePage = Page.page(PageToken.fromLimit(1), List.of("catalog"), noSqlToken);
-    var pageToken = PageToken.build(responsePage.encodedResponseToken(), null, () -> true);
+    var pageToken = PageToken.build(responsePage.encodedResponseToken(), null, -1, () -> true);
 
     assertThatIllegalArgumentException()
         .isThrownBy(
