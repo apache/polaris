@@ -19,10 +19,13 @@
 package org.apache.polaris.service.task;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -49,53 +52,67 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity task, CallContext callContext) {
+  public void handleTask(TaskEntity task, CallContext callContext) {
     BatchFileCleanupTask cleanupTask = task.readData(BatchFileCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
     List<String> batchFiles = cleanupTask.batchFiles();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId)) {
-      List<String> validFiles =
-          batchFiles.stream().filter(file -> TaskUtils.exists(file, authorizedFileIO)).toList();
+      Map<Boolean, List<String>> partitionedFiles =
+          batchFiles.stream()
+              .collect(Collectors.partitioningBy(file -> TaskUtils.exists(file, authorizedFileIO)));
+      List<String> validFiles = partitionedFiles.get(true);
+      List<String> missingFiles = partitionedFiles.get(false);
       if (validFiles.isEmpty()) {
         LOGGER
             .atWarn()
-            .addKeyValue("batchFiles", batchFiles.toString())
-            .addKeyValue("tableId", tableId)
+            .addKeyValue(StructuredLogKeys.BATCH_FILES, batchFiles.toString())
+            .addKeyValue(StructuredLogKeys.TABLE_ID, tableId)
             .log("File batch cleanup task scheduled, but none of the files in batch exists");
-        return true;
+        return;
       }
-      if (validFiles.size() < batchFiles.size()) {
-        List<String> missingFiles =
-            batchFiles.stream().filter(file -> !TaskUtils.exists(file, authorizedFileIO)).toList();
+      if (!missingFiles.isEmpty()) {
         LOGGER
             .atWarn()
-            .addKeyValue("batchFiles", batchFiles.toString())
-            .addKeyValue("missingFiles", missingFiles.toString())
-            .addKeyValue("tableId", tableId)
+            .addKeyValue(StructuredLogKeys.BATCH_FILES, batchFiles.toString())
+            .addKeyValue(StructuredLogKeys.MISSING_FILES, missingFiles.toString())
+            .addKeyValue(StructuredLogKeys.TABLE_ID, tableId)
             .log(
                 "File batch cleanup task scheduled, but {} files in the batch are missing",
                 missingFiles.size());
       }
 
-      // Schedule the deletion for each file asynchronously
-      List<CompletableFuture<Void>> deleteFutures =
-          validFiles.stream()
-              .map(file -> super.tryDelete(tableId, authorizedFileIO, null, file, null, 1))
-              .toList();
+      CompletableFuture<Void> deleteFutures =
+          tryDelete(
+              tableId, authorizedFileIO, validFiles, cleanupTask.type().getValue(), true, null, 1);
 
       try {
-        // Wait for all delete operations to finish
-        CompletableFuture<Void> allDeletes =
-            CompletableFuture.allOf(deleteFutures.toArray(new CompletableFuture[0]));
-        allDeletes.join();
+        deleteFutures.join();
       } catch (Exception e) {
         LOGGER.error("Exception detected during batch files deletion", e);
-        return false;
+        throw new RuntimeException(e);
       }
-
-      return true;
     }
   }
 
-  public record BatchFileCleanupTask(TableIdentifier tableId, List<String> batchFiles) {}
+  public enum BatchFileType {
+    TABLE_METADATA("table_metadata");
+
+    private final String value;
+
+    BatchFileType(String value) {
+      this.value = value;
+    }
+
+    public String getValue() {
+      return value;
+    }
+
+    @Override
+    public String toString() {
+      return value;
+    }
+  }
+
+  public record BatchFileCleanupTask(
+      TableIdentifier tableId, List<String> batchFiles, BatchFileType type) {}
 }

@@ -17,24 +17,38 @@
 # under the License.
 #
 
-import json
-
-import os
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Any, cast
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import (
     Subcommands,
     Arguments,
     DEFAULT_HEADER,
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
-    CONFIG_DIR,
-    CONFIG_FILE,
+    DEFAULT_SCHEME,
+)
+from apache_polaris.cli.exceptions import CliError
+from apache_polaris.cli.profile_config import (
+    format_profile_for_display,
+    load_profiles,
+    save_profiles,
 )
 from apache_polaris.sdk.management import PolarisDefaultApi
+
+ALLOWED_SCHEMES = ("http", "https")
+
+
+def _prompt_scheme(default: str) -> str:
+    while True:
+        scheme = (input(f"Polaris URL Scheme [{default}]: ") or default).lower()
+        if scheme in ALLOWED_SCHEMES:
+            return scheme
+        else:
+            print(
+                f"Invalid scheme '{scheme}'. Supported one of {list(ALLOWED_SCHEMES)}."
+            )
 
 
 @dataclass
@@ -55,26 +69,14 @@ class ProfilesCommand(Command):
     profiles_subcommand: str
     profile_name: Optional[str] = None
 
-    def _load_profiles(self) -> Dict[str, Dict[str, Any]]:
-        if not os.path.exists(CONFIG_FILE):
-            return {}
-        with open(CONFIG_FILE, "r") as f:
-            print(f"Loading profiles from {CONFIG_FILE}")
-            return json.load(f)
-
-    def _save_profiles(self, profiles: Dict[str, Dict[str, Any]]) -> None:
-        if not os.path.exists(CONFIG_DIR):
-            os.makedirs(CONFIG_DIR)
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(profiles, f, indent=2)
-
     def _create_profile(self, name: str) -> None:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         if name not in profiles:
             client_id = input("Polaris Client ID: ")
             client_secret = input("Polaris Client Secret: ")
             host = input(f"Polaris Host [{DEFAULT_HOSTNAME}]: ") or DEFAULT_HOSTNAME
             port = input(f"Polaris Port [{DEFAULT_PORT}]: ") or DEFAULT_PORT
+            scheme = _prompt_scheme(DEFAULT_SCHEME)
             realm = input("Polaris Context Realm: ")
             header = (
                 input(f"Polaris Context Header Name [{DEFAULT_HEADER}]: ")
@@ -85,34 +87,36 @@ class ProfilesCommand(Command):
                 "client_secret": client_secret,
                 "host": host,
                 "port": port,
+                Arguments.SCHEME: scheme,
                 Arguments.REALM: realm,
                 Arguments.HEADER: header,
             }
-            self._save_profiles(profiles)
+            save_profiles(profiles)
         else:
             raise CliError(f"Profile {name} already exists.")
 
     def _get_profile(self, name: str) -> Optional[Dict[str, Any]]:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         return profiles.get(name)
 
     def _list_profiles(self) -> List[str]:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         return list(profiles.keys())
 
     def _delete_profile(self, name: str) -> None:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         if name in profiles:
             del profiles[name]
-            self._save_profiles(profiles)
+            save_profiles(profiles)
 
     def _update_profile(self, name: str) -> None:
-        profiles = self._load_profiles()
+        profiles = load_profiles()
         if name in profiles:
             current_client_id = profiles[name].get("client_id")
             current_client_secret = profiles[name].get("client_secret")
             current_host = profiles[name].get("host")
             current_port = profiles[name].get("port")
+            current_scheme = profiles[name].get(Arguments.SCHEME) or DEFAULT_SCHEME
             current_realm = profiles[name].get(Arguments.REALM)
             current_header = profiles[name].get(Arguments.HEADER)
 
@@ -120,11 +124,12 @@ class ProfilesCommand(Command):
                 input(f"Polaris Client ID [{current_client_id}]: ") or current_client_id
             )
             client_secret = (
-                input(f"Polaris Client Secret [{current_client_secret}]: ")
+                input("Enter Polaris Client Secret (empty to reuse previous value): ")
                 or current_client_secret
             )
             host = input(f"Polaris Host [{current_host}]: ") or current_host
             port = input(f"Polaris Port [{current_port}]: ") or current_port
+            scheme = _prompt_scheme(current_scheme)
             realm = input(f"Polaris Context Realm [{current_realm}]: ") or current_realm
             header = (
                 input(f"Polaris Context Header Name [{current_header}]: ")
@@ -135,10 +140,11 @@ class ProfilesCommand(Command):
                 "client_secret": client_secret,
                 "host": host,
                 "port": port,
+                Arguments.SCHEME: scheme,
                 Arguments.REALM: realm,
                 Arguments.HEADER: header,
             }
-            self._save_profiles(profiles)
+            save_profiles(profiles)
         else:
             raise CliError(f"Profile {name} does not exist.")
 
@@ -166,7 +172,10 @@ class ProfilesCommand(Command):
             profile_name = cast(str, self.profile_name)
             profile = self._get_profile(profile_name)
             if profile:
-                print(f"Polaris profile {profile_name}: {profile}")
+                print(
+                    f"Polaris profile {profile_name}: "
+                    f"{format_profile_for_display(profile)}"
+                )
             else:
                 print(f"Polaris profile {profile_name} not found.")
         elif self.profiles_subcommand == Subcommands.LIST:

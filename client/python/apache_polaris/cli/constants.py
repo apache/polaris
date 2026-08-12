@@ -65,6 +65,7 @@ class AuthenticationType(Enum):
 
     OAUTH = "oauth"
     BEARER = "bearer"
+    GCP = "gcp"
     SIGV4 = "sigv4"
     IMPLICIT = "implicit"
 
@@ -110,6 +111,8 @@ class Commands:
     POLICIES = "policies"
     SETUP = "setup"
     TABLES = "tables"
+    VIEWS = "views"
+    GENERIC_TABLES = "generic-tables"
     FIND = "find"
     REPL = "repl"
 
@@ -184,6 +187,7 @@ class Arguments:
     NAMESPACE = "namespace"
     TABLE = "table"
     VIEW = "view"
+    GENERIC_TABLE = "generic-table"
     CASCADE = "cascade"
     CLIENT_SECRET = "client_secret"
     NEW_CLIENT_ID = "new_client_id"
@@ -191,7 +195,9 @@ class Arguments:
     ACCESS_TOKEN = "access_token"
     HOST = "host"
     PORT = "port"
+    SCHEME = "scheme"
     BASE_URL = "base_url"
+    CATALOG_URL = "catalog_url"
     PARENT = "parent"
     LOCATION = "location"
     REGION = "region"
@@ -358,6 +364,7 @@ HEADER_ENV = "HEADER"
 DEFAULT_HEADER = "Polaris-Realm"
 DEFAULT_HOSTNAME = "localhost"
 DEFAULT_PORT = 8181
+DEFAULT_SCHEME = "http"
 CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduser(
     "~/.polaris"
 )

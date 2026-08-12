@@ -133,7 +133,7 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final Map<String, String> DEFAULT_CATALOG_PROPERTIES =
       Map.of(
           "polaris.config.allow.unstructured.table.location", "true",
-          "polaris.config.allow.external.table.location", "true");
+          "polaris.config.allow.external.metadata.file.location", "true");
 
   @BeforeAll
   public static void setup(
@@ -170,7 +170,7 @@ public class PolarisPolicyServiceIntegrationTest {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of(catalogBaseLocation))
             .build();
 
     CatalogProperties.Builder catalogPropsBuilder = CatalogProperties.builder(catalogBaseLocation);
@@ -194,7 +194,7 @@ public class PolarisPolicyServiceIntegrationTest {
             .setStorageConfigInfo(
                 s3BucketBase.getScheme().equals("file")
                     ? new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"), null)
+                        StorageConfigInfo.StorageTypeEnum.FILE, List.of(catalogBaseLocation), null)
                     : awsConfigModel)
             .build();
 

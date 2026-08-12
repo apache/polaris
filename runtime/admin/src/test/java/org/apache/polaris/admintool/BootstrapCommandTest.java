@@ -92,4 +92,16 @@ class BootstrapCommandTest {
     assertThat(exitCode).isEqualTo(BaseCommand.EXIT_CODE_USAGE);
     assertThat(err.toString()).contains("Unknown option: '--not-real-arg'").contains("Usage:");
   }
+
+  @Test
+  void testBootstrapSchemaVersionIsRejected() {
+    CommandLine commandLine = new CommandLine(new BootstrapCommand());
+    StringWriter err = new StringWriter();
+    commandLine.setErr(new PrintWriter(err));
+
+    int exitCode = commandLine.execute("--schema-version=1", "-r", "realm1", "--print-credentials");
+
+    assertThat(exitCode).isEqualTo(BaseCommand.EXIT_CODE_USAGE);
+    assertThat(err.toString()).contains("Unknown option: '--schema-version=1'").contains("Usage:");
+  }
 }

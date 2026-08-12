@@ -47,6 +47,7 @@ from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     BearerAuthenticationParameters,
+    GcpAuthenticationParameters,
     ImplicitAuthenticationParameters,
     OAuthClientCredentialsParameters,
     SigV4AuthenticationParameters,
@@ -267,6 +268,8 @@ class CatalogsCommand(Command):
             or self.current_kms_key
             or self.allowed_kms_keys
             or self.path_style_access
+            or self.sts_unavailable
+            or self.kms_unavailable
         )
 
     def _has_azure_storage_info(self) -> bool:
@@ -279,6 +282,14 @@ class CatalogsCommand(Command):
 
     def _has_gcs_storage_info(self) -> bool:
         return bool(self.service_account)
+
+    @staticmethod
+    def _require_s3(storage_info: StorageConfigInfo, flag: str) -> None:
+        # Note: We have to lowercase the returned value because the server enum
+        # is uppercase but we defined the StorageType enums as lowercase.
+        storage_type = storage_info.storage_type
+        if storage_type.lower() != StorageType.S3.value:
+            raise CliError(f"{flag} requires S3 storage_type, got: {storage_type}")
 
     def _build_storage_config_info(self) -> Optional[StorageConfigInfo]:
         config = None
@@ -346,6 +357,10 @@ class CatalogsCommand(Command):
             auth_params = BearerAuthenticationParameters(
                 authentication_type=self.catalog_authentication_type.upper(),
                 bearer_token=SecretStr(self.catalog_bearer_token),
+            )
+        elif self.catalog_authentication_type == AuthenticationType.GCP.value:
+            auth_params = GcpAuthenticationParameters(
+                authentication_type=self.catalog_authentication_type.upper()
             )
         elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
             auth_params = SigV4AuthenticationParameters(
@@ -501,14 +516,16 @@ class CatalogsCommand(Command):
                     )
 
                 if self.region:
-                    # Note: We have to lowercase the returned value because the server enum
-                    # is uppercase but we defined the StorageType enums as lowercase.
-                    storage_type = updated_storage_info.storage_type
-                    if storage_type.lower() != StorageType.S3.value:
-                        raise CliError(
-                            f"--region requires S3 storage_type, got: {storage_type}"
-                        )
+                    self._require_s3(updated_storage_info, "--region")
                     updated_storage_info.region = self.region
+
+                if self.sts_unavailable:
+                    self._require_s3(updated_storage_info, "--no-sts")
+                    updated_storage_info.sts_unavailable = self.sts_unavailable
+
+                if self.kms_unavailable:
+                    self._require_s3(updated_storage_info, "--no-kms")
+                    updated_storage_info.kms_unavailable = self.kms_unavailable
 
                 request = UpdateCatalogRequest(
                     current_entity_version=catalog.entity_version,

@@ -48,7 +48,6 @@ import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.metrics.PolarisMetricsManager;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
@@ -63,20 +62,20 @@ public interface PolarisMetaStoreManager
     extends PolarisSecretsManager,
         PolarisGrantManager,
         PolarisPolicyMappingManager,
-        PolarisEventManager,
-        PolarisMetricsManager {
+        PolarisEventManager {
 
   /**
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
-   * service admin role. Will fail if the service has already been bootstrapped.
+   * service admin role. If the service has already been bootstrapped, this is a no-op that returns
+   * a result with {@link BaseResult.ReturnStatus#ENTITY_ALREADY_EXISTS}.
    *
    * @param callCtx call context
-   * @return the result of the bootstrap attempt
+   * @return the result of the bootstrap attempt; {@code alreadyExists()} is true if the service was
+   *     already bootstrapped
    */
   @NonNull
   default BaseResult bootstrapPolarisService(@NonNull PolarisCallContext callCtx) {
-    AuthBootstrapUtil.createPolarisPrincipalForRealm(this, callCtx);
-    return new BaseResult(BaseResult.ReturnStatus.SUCCESS);
+    return AuthBootstrapUtil.createPolarisPrincipalForRealm(this, callCtx);
   }
 
   /**

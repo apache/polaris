@@ -105,9 +105,8 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
 
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    var metrics = metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
 
-    var callCtx = new PolarisCallContext(realmContext, session, metrics, configurationSource);
+    var callCtx = new PolarisCallContext(realmContext, session, configurationSource);
 
     return new PolarisTestMetaStoreManager(manager, callCtx, startTime, false);
   }
@@ -164,6 +163,19 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
             "ns2",
             Map.of(ENTITY_BASE_LOCATION, "s3://bucket/foo/"));
     assertThat(nsFoo).extracting(EntityResult::isSuccess, BOOLEAN).isTrue();
+
+    // Test parent namespace overlap detection for a new child location.
+    // This case was not detected by the original NoSQL implementation.
+    soft.assertThat(
+            metaStore.hasOverlappingSiblings(
+                callContext,
+                new NamespaceEntity.Builder(Namespace.of("x"))
+                    .setCatalogId(catalog.getId())
+                    .setBaseLocation("s3://bucket/foo/newchild/")
+                    .build()))
+        .isPresent()
+        .contains(Optional.of("s3://bucket/foo/"));
+
     var nsBar =
         createEntity(
             List.of(catalog),
@@ -242,6 +254,10 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
 
     // Drop one of the entities with the duplicate base location
     metaStore.dropEntityIfExists(callContext, List.of(catalog), nsFoobar2.getEntity(), null, false);
+
+    // Drop the parent too so the final "no overlap" check for a bar location is clean.
+    metaStore.dropEntityIfExists(callContext, List.of(catalog), nsFoo.getEntity(), null, false);
+
     // No more overlaps
     soft.assertThat(
             metaStore.hasOverlappingSiblings(

@@ -18,21 +18,29 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.awaitility.Awaitility.await;
+
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.view.BaseView;
 import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
+import org.apache.iceberg.view.ViewMetadata;
+import org.apache.iceberg.view.ViewOperations;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -54,6 +62,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -75,7 +84,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 public abstract class AbstractLocalIcebergCatalogViewTest
@@ -117,6 +125,9 @@ public abstract class AbstractLocalIcebergCatalogViewTest
 
   private String realmName;
   private PolarisCallContext polarisContext;
+  private PolarisPrincipal authenticatedRoot;
+  private PolarisAuthorizer authorizer;
+  private ReservedProperties reservedProperties;
 
   private TestPolarisEventListener testPolarisEventListener;
 
@@ -127,15 +138,19 @@ public abstract class AbstractLocalIcebergCatalogViewTest
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
-  @BeforeEach
-  public void setUpTempDir(@TempDir Path tempDir) throws Exception {
-    // see https://github.com/quarkusio/quarkus/issues/13261
-    Field field = ViewCatalogTests.class.getDeclaredField("tempDir");
-    field.setAccessible(true);
-    field.set(this, tempDir);
-  }
-
   protected void bootstrapRealm(String realmName) {}
+
+  protected PolarisAdminService newAdminService() {
+    return PolarisAdminServiceTestSupport.newAdminService(
+        polarisContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        serviceIdentityProvider,
+        authenticatedRoot,
+        authorizer,
+        reservedProperties);
+  }
 
   @BeforeEach
   public void before(TestInfo testInfo) {
@@ -152,38 +167,42 @@ public abstract class AbstractLocalIcebergCatalogViewTest
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    authenticatedRoot =
+        PolarisPrincipal.of(
+            rootPrincipal.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                rootPrincipal,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of());
 
-    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
-    ReservedProperties reservedProperties = ReservedProperties.NONE;
+    authorizer = new PolarisAuthorizerImpl(realmConfig);
+    reservedProperties = ReservedProperties.NONE;
 
-    PolarisAdminService adminService =
-        new PolarisAdminService(
-            polarisContext,
-            resolutionManifestFactory,
-            metaStoreManager,
-            userSecretsManager,
-            serviceIdentityProvider,
-            authenticatedRoot,
-            authorizer,
-            reservedProperties);
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                .setDefaultBaseLocation("file://tmp")
-                .setStorageConfigurationInfo(
-                    realmConfig,
-                    new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*"), null),
-                    "file://tmp")
-                .build()
-                .asCatalog(serviceIdentityProvider)));
+    newAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(CATALOG_NAME)
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .addProperty(
+                        FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                    .setDefaultBaseLocation("file://tmp")
+                    .setStorageConfigurationInfo(
+                        realmConfig,
+                        new FileStorageConfigInfo(
+                            StorageConfigInfo.StorageTypeEnum.FILE,
+                            List.of("file://tmp", "*"),
+                            null),
+                        "file://tmp")
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -245,11 +264,21 @@ public abstract class AbstractLocalIcebergCatalogViewTest
             .withQuery("a", "b")
             .create();
 
+    // Clear after setup; refresh events are delivered asynchronously via Vert.x.
+    testPolarisEventListener.clear();
+
     String key = "foo";
     String valOld = "bar1";
     String valNew = "bar2";
     view.updateProperties().set(key, valOld).commit();
     view.updateProperties().set(key, valNew).commit();
+
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .until(
+            () ->
+                testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_VIEW)
+                    && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_VIEW));
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);
@@ -262,5 +291,83 @@ public abstract class AbstractLocalIcebergCatalogViewTest
     Assertions.assertThat(
             afterRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
         .isEqualTo(TestData.TABLE);
+  }
+
+  @Test
+  public void testFailedViewCommitDeletesOrphanMetadataFile() {
+    List<String> writtenLocations = new ArrayList<>();
+    List<String> deletedLocations = new ArrayList<>();
+    FileIOFactory spiedFactory = Mockito.spy(fileIOFactory);
+    Mockito.doAnswer(
+            inv -> {
+              FileIO real = (FileIO) inv.callRealMethod();
+              FileIO spy = Mockito.spy(real);
+              Mockito.doAnswer(
+                      out -> {
+                        writtenLocations.add(out.getArgument(0));
+                        return out.callRealMethod();
+                      })
+                  .when(spy)
+                  .newOutputFile(Mockito.anyString());
+              Mockito.doAnswer(
+                      del -> {
+                        deletedLocations.add(del.getArgument(0));
+                        return del.callRealMethod();
+                      })
+                  .when(spy)
+                  .deleteFile(Mockito.anyString());
+              return spy;
+            })
+        .when(spiedFactory)
+        .loadFileIO(Mockito.any(), Mockito.any(), Mockito.any());
+
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
+    LocalIcebergCatalog spiedCatalog =
+        new LocalIcebergCatalog(
+            diagServices,
+            resolverFactory,
+            metaStoreManager,
+            polarisContext,
+            passthroughView,
+            authenticatedRoot,
+            Mockito.mock(),
+            storageAccessConfigProvider,
+            spiedFactory,
+            polarisEventDispatcher,
+            eventMetadataFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(VIEW_PREFIXES)
+            .build());
+
+    spiedCatalog.createNamespace(TestData.NAMESPACE);
+    spiedCatalog
+        .buildView(TestData.TABLE)
+        .withDefaultNamespace(TestData.NAMESPACE)
+        .withSchema(TestData.SCHEMA)
+        .withQuery("a", "b")
+        .create();
+
+    ViewOperations staleOps = ((BaseView) spiedCatalog.loadView(TestData.TABLE)).operations();
+    ViewMetadata staleBase = staleOps.current();
+
+    spiedCatalog.loadView(TestData.TABLE).updateProperties().set("concurrent", "true").commit();
+
+    Set<String> legitimateWrites = new HashSet<>(writtenLocations);
+
+    ViewMetadata attempted =
+        ViewMetadata.buildFrom(staleBase).setProperties(Map.of("orphan-check", "v1")).build();
+
+    Assertions.assertThatThrownBy(() -> staleOps.commit(staleBase, attempted))
+        .isInstanceOf(CommitFailedException.class);
+
+    List<String> orphanCandidates =
+        writtenLocations.stream().filter(loc -> !legitimateWrites.contains(loc)).toList();
+    Assertions.assertThat(orphanCandidates).isNotEmpty();
+    Assertions.assertThat(deletedLocations).containsAll(orphanCandidates);
   }
 }

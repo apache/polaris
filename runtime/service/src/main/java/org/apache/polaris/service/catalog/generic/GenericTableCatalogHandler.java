@@ -24,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
@@ -61,7 +62,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     if (connectionConfigInfoDpo != null) {
       LOGGER
           .atInfo()
-          .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
+          .addKeyValue(StructuredLogKeys.REMOTE_URL, connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
           realmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
@@ -131,14 +132,16 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
 
   public boolean dropGenericTable(TableIdentifier identifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.GENERIC_TABLE, identifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.GENERIC_TABLE, identifier);
 
     return this.genericTableCatalog.dropGenericTable(identifier);
   }
 
   public LoadGenericTableResponse loadGenericTable(TableIdentifier identifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.GENERIC_TABLE, identifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.GENERIC_TABLE, identifier);
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =

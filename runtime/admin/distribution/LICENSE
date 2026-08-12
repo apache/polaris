@@ -338,6 +338,7 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-net
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-os
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-ref
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-search
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-vertx-context
 * Maven group:artifact IDs: io.smallrye.config:smallrye-config
 * Maven group:artifact IDs: io.smallrye.config:smallrye-config-common
@@ -369,6 +370,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Quarkus Amazon Services.
 
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache-client-internal
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache5-client-internal
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common-spi
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-netty-client-internal
@@ -396,6 +398,36 @@ This product bundles Brotli4j.
 
 Project URL: https://github.com/hyperxpro/Brotli4j
 License: Apache License 2.0 - https://github.com/hyperxpro/Brotli4j/blob/v1.16.0/LICENSE
+
+--------------------------------------------------------------------------------
+
+This product bundles Auth0 Java JWT.
+
+* Maven group:artifact IDs: com.auth0:java-jwt
+
+Project URL: https://github.com/auth0/java-jwt
+License: MIT License
+| The MIT License (MIT)
+|
+| Copyright (c) 2015 Auth0, Inc. <support@auth0.com> (http://auth0.com)
+|
+| Permission is hereby granted, free of charge, to any person obtaining a copy
+| of this software and associated documentation files (the "Software"), to deal
+| in the Software without restriction, including without limitation the rights
+| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+| copies of the Software, and to permit persons to whom the Software is
+| furnished to do so, subject to the following conditions:
+|
+| The above copyright notice and this permission notice shall be included in all
+| copies or substantial portions of the Software.
+|
+| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+| SOFTWARE.
 
 --------------------------------------------------------------------------------
 
@@ -448,8 +480,22 @@ This product bundles Jackson.
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-guava
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jdk8
 * Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jsr310
+* Maven group:artifact IDs: tools.jackson.core:jackson-core
+* Maven group:artifact IDs: tools.jackson.core:jackson-databind
+* Maven group:artifact IDs: tools.jackson.dataformat:jackson-dataformat-smile
+* Maven group:artifact IDs: tools.jackson.dataformat:jackson-dataformat-yaml
+* Maven group:artifact IDs: tools.jackson.datatype:jackson-datatype-guava
 
 Project URL: https://github.com/FasterXML/jackson
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles SnakeYAML Engine.
+
+* Maven group:artifact IDs: org.snakeyaml:snakeyaml-engine
+
+Project URL: https://bitbucket.org/snakeyaml/snakeyaml-engine
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
@@ -1291,7 +1337,7 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-This product bundles conscrypt (openjdk-uber).
+This product bundles Conscrypt (openjdk-uber).
 
 * Maven group:artifact IDs: org.conscrypt:conscrypt-openjdk-uber
 
@@ -1598,6 +1644,7 @@ This product bundles AWS SDK for Java.
 
 * Maven group:artifact IDs: software.amazon.awssdk:annotations
 * Maven group:artifact IDs: software.amazon.awssdk:apache-client
+* Maven group:artifact IDs: software.amazon.awssdk:apache5-client
 * Maven group:artifact IDs: software.amazon.awssdk:arns
 * Maven group:artifact IDs: software.amazon.awssdk:auth
 * Maven group:artifact IDs: software.amazon.awssdk:aws-core

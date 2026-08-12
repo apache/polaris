@@ -25,15 +25,17 @@ description = "Apache Polaris - Bill of Materials (BOM)"
 
 dependencies {
   constraints {
-    api(rootProject)
+    api(project(":"))
     api(project(":polaris-api-catalog-service"))
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
 
     api(project(":polaris-container-spec-helper"))
-    api(project(":polaris-azurite-testcontainer"))
-    api(project(":polaris-gcs-testcontainer"))
+    api(project(":polaris-floci-aws-testcontainer"))
+    api(project(":polaris-floci-az-testcontainer"))
+    api(project(":polaris-floci-gcp-testcontainer"))
+    api(project(":polaris-keycloak-testcontainer"))
     api(project(":polaris-minio-testcontainer"))
     api(project(":polaris-rustfs-testcontainer"))
     api(project(":polaris-immutables"))
@@ -95,22 +97,21 @@ dependencies {
     api(project(":polaris-relational-jdbc"))
 
     api(project(":polaris-extensions-auth-opa"))
-    api(project(":polaris-extensions-auth-opa-tests"))
     api(project(":polaris-extensions-auth-ranger"))
-    api(project(":polaris-extensions-auth-ranger-tests"))
+    api(project(":polaris-extensions-events-kafka"))
     api(project(":polaris-extensions-federation-bigquery"))
     api(project(":polaris-extensions-federation-hadoop"))
     api(project(":polaris-extensions-federation-hive"))
+    api(project(":polaris-extensions-metrics-reports"))
+    api(project(":polaris-extensions-metrics-reports-jdbc"))
+    api(project(":polaris-extensions-semantic-models"))
     api(project(":polaris-hms-testcontainer"))
 
     api(project(":polaris-spark-3.5_2.12"))
-    api(project(":polaris-spark-integration-3.5_2.12"))
     val ideaActive = providers.systemProperty("idea.active").getOrElse("false").toBoolean()
     if (!ideaActive) {
       api(project(":polaris-spark-3.5_2.13"))
-      api(project(":polaris-spark-integration-3.5_2.13"))
       api(project(":polaris-spark-4.0_2.13"))
-      api(project(":polaris-spark-integration-4.0_2.13"))
     }
 
     api(project(":polaris-admin"))

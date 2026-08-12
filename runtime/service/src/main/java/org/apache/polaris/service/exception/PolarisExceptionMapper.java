@@ -19,6 +19,7 @@
 package org.apache.polaris.service.exception;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
@@ -27,12 +28,15 @@ import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
+import org.apache.polaris.core.semantic.exceptions.SemanticModelVersionMismatchException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -48,6 +52,8 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
 
   private Response.Status getStatus(PolarisException exception) {
     return switch (exception) {
+      case PolarisServiceUnavailableException polarisServiceUnavailableException ->
+          Response.Status.SERVICE_UNAVAILABLE;
       case AlreadyExistsException alreadyExistsException -> Response.Status.CONFLICT;
       case CommitConflictException commitConflictException -> Response.Status.CONFLICT;
       case InvalidPolicyException invalidPolicyException -> Response.Status.BAD_REQUEST;
@@ -58,6 +64,9 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
       case PolicyMappingAlreadyExistsException policyMappingAlreadyExistsException ->
           Response.Status.CONFLICT;
       case PolicyInUseException policyInUseException -> Response.Status.BAD_REQUEST;
+      case NoSuchSemanticModelException noSuchSemanticModelException -> Response.Status.NOT_FOUND;
+      case SemanticModelVersionMismatchException semanticModelVersionMismatchException ->
+          Response.Status.CONFLICT;
       default -> Response.Status.INTERNAL_SERVER_ERROR;
     };
   }
@@ -77,10 +86,13 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
             .withType(exception.getClass().getSimpleName())
             .withMessage(exception.getMessage())
             .build();
-    return Response.status(status)
-        .entity(errorResponse)
-        .type(MediaType.APPLICATION_JSON_TYPE)
-        .build();
+    Response.ResponseBuilder builder =
+        Response.status(status).entity(errorResponse).type(MediaType.APPLICATION_JSON_TYPE);
+    if (exception instanceof PolarisServiceUnavailableException e
+        && e.getRetryAfterSeconds() != 0) {
+      builder.header(HttpHeaders.RETRY_AFTER, e.getRetryAfterSeconds());
+    }
+    return builder.build();
   }
 
   @VisibleForTesting

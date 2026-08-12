@@ -41,7 +41,21 @@ class Parser(object):
         Argument(Arguments.HOST, str, hint="Polaris server hostname"),
         Argument(Arguments.PORT, int, hint="Polaris server port"),
         Argument(
-            Arguments.BASE_URL, str, hint="Complete base URL (overrides host/port)"
+            Arguments.SCHEME,
+            str,
+            hint="URL scheme for host/port (default: http)",
+            choices=["http", "https"],
+            lower=True,
+        ),
+        Argument(
+            Arguments.BASE_URL,
+            str,
+            hint="Complete base URL (overrides host/port/scheme)",
+        ),
+        Argument(
+            Arguments.CATALOG_URL,
+            str,
+            hint="Base URL for the Iceberg REST Catalog (IRC) API. Use when your --base-url or deployment maps directly to the catalog root (no /api/catalog appended).",
         ),
         Argument(Arguments.CLIENT_ID, str, hint="OAuth client ID"),
         Argument(

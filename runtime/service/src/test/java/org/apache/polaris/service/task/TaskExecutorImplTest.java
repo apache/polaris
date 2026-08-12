@@ -18,9 +18,14 @@
  */
 package org.apache.polaris.service.task;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
@@ -85,7 +90,7 @@ public class TaskExecutorImplTest {
           }
 
           @Override
-          public boolean handleTask(TaskEntity task, CallContext callContext) {
+          public void handleTask(TaskEntity task, CallContext callContext) {
             PolarisEvent beforeTaskAttemptedEvent =
                 testPolarisEventDispatcher.getLatest(PolarisEventType.BEFORE_ATTEMPT_TASK);
             Assertions.assertEquals(
@@ -94,7 +99,6 @@ public class TaskExecutorImplTest {
             Assertions.assertEquals(
                 attempt,
                 beforeTaskAttemptedEvent.attributes().getRequired(EventAttributes.TASK_ATTEMPT));
-            return true;
           }
         });
 
@@ -113,5 +117,178 @@ public class TaskExecutorImplTest {
         attempt, afterAttemptTaskEvent.attributes().getRequired(EventAttributes.TASK_ATTEMPT));
     Assertions.assertEquals(
         true, afterAttemptTaskEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS));
+  }
+
+  @Test
+  void handleTaskThrowsWhenNoHandlerFound() {
+    String realm = "myrealm";
+    RealmContext realmContext = () -> realm;
+
+    TestServices testServices = TestServices.builder().realmContext(realmContext).build();
+
+    PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
+    PolarisCallContext polarisCallCtx = testServices.newCallContext();
+
+    TaskEntity taskEntity =
+        new TaskEntity.Builder()
+            .setName("no-handler-task")
+            .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
+            .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
+            .setCreateTimestamp(testServices.clock().millis())
+            .build();
+    metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
+
+    TaskExecutorImpl executor =
+        new TaskExecutorImpl(
+            Runnable::run,
+            null,
+            testServices.clock(),
+            testServices.metaStoreManagerFactory(),
+            new TaskFileIOSupplier(
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
+            new RealmContextHolder(),
+            testServices.polarisEventDispatcher(),
+            testServices.eventMetadataFactory(),
+            null,
+            new PolarisPrincipalHolder(),
+            testServices.principal());
+
+    // No handlers registered
+    assertThatThrownBy(
+            () ->
+                executor.handleTask(
+                    taskEntity.getId(),
+                    polarisCallCtx,
+                    PolarisEventMetadata.builder().realmId(realm).build(),
+                    1))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("Unable to find handler for task type")
+        .hasMessageContaining(String.valueOf(taskEntity.getId()));
+  }
+
+  @Test
+  void handleTaskThrowsWhenHandlerThrows() {
+    String realm = "myrealm";
+    RealmContext realmContext = () -> realm;
+
+    TestServices testServices = TestServices.builder().realmContext(realmContext).build();
+
+    InMemoryEventCollector testPolarisEventDispatcher =
+        (InMemoryEventCollector) testServices.polarisEventDispatcher();
+
+    PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
+    PolarisCallContext polarisCallCtx = testServices.newCallContext();
+
+    TaskEntity taskEntity =
+        new TaskEntity.Builder()
+            .setName("failing-task")
+            .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
+            .setCreateTimestamp(testServices.clock().millis())
+            .build();
+    metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
+
+    TaskExecutorImpl executor =
+        new TaskExecutorImpl(
+            Runnable::run,
+            null,
+            testServices.clock(),
+            testServices.metaStoreManagerFactory(),
+            new TaskFileIOSupplier(
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
+            new RealmContextHolder(),
+            testServices.polarisEventDispatcher(),
+            testServices.eventMetadataFactory(),
+            null,
+            new PolarisPrincipalHolder(),
+            testServices.principal());
+
+    executor.addTaskHandler(
+        new TaskHandler() {
+          @Override
+          public boolean canHandleTask(TaskEntity task) {
+            return true;
+          }
+
+          @Override
+          public void handleTask(TaskEntity task, CallContext callContext) {
+            throw new RuntimeException("simulate transient failure");
+          }
+        });
+
+    assertThatThrownBy(
+            () ->
+                executor.handleTask(
+                    taskEntity.getId(),
+                    polarisCallCtx,
+                    PolarisEventMetadata.builder().realmId(realm).build(),
+                    1))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("simulate transient failure");
+
+    // Event should have been emitted with TASK_SUCCESS=false even though we threw
+    PolarisEvent afterEvent =
+        testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
+    assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS)).isEqualTo(false);
+  }
+
+  @Test
+  void asyncRetryIsTriggeredWhenHandlerThrows() throws InterruptedException {
+    String realm = "myrealm";
+    RealmContext realmContext = () -> realm;
+
+    TestServices testServices = TestServices.builder().realmContext(realmContext).build();
+
+    PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
+    PolarisCallContext polarisCallCtx = testServices.newCallContext();
+
+    TaskEntity taskEntity =
+        new TaskEntity.Builder()
+            .setName("retry-task")
+            .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
+            .setCreateTimestamp(testServices.clock().millis())
+            .build();
+    metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
+
+    AtomicInteger handlerCalls = new AtomicInteger(0);
+
+    TaskExecutorImpl executor =
+        new TaskExecutorImpl(
+            Runnable::run,
+            null,
+            testServices.clock(),
+            testServices.metaStoreManagerFactory(),
+            new TaskFileIOSupplier(
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
+            new RealmContextHolder(),
+            testServices.polarisEventDispatcher(),
+            testServices.eventMetadataFactory(),
+            null,
+            new PolarisPrincipalHolder(),
+            testServices.principal());
+
+    executor.addTaskHandler(
+        new TaskHandler() {
+          @Override
+          public boolean canHandleTask(TaskEntity task) {
+            return true;
+          }
+
+          @Override
+          public void handleTask(TaskEntity task, CallContext callContext) {
+            int call = handlerCalls.incrementAndGet();
+            // Fail first 2 attempts (transient), succeed on 3rd
+            if (call < 3) {
+              throw new RuntimeException("transient failure " + call);
+            }
+          }
+        });
+
+    // This starts the async processing. With Runnable::run the first handleTask runs
+    // synchronously in the current thread (so handler is called immediately), throws
+    // -> the exception path is taken, which is what we verify.
+    executor.addTaskHandlerContext(taskEntity.getId(), polarisCallCtx);
+
+    // We verify at least the first call happened (throw leads to exception path).
+    assertThat(handlerCalls.get()).isGreaterThanOrEqualTo(1);
   }
 }

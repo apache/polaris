@@ -27,9 +27,10 @@ plugins {
   id("polaris-license-report")
 }
 
-val quarkusRunner by configurations.creating {
-  description = "Used to reference the generated runner-jar"
-}
+val quarkusRunner =
+  configurations.create("quarkusRunner") {
+    description = "Used to reference the generated runner-jar"
+  }
 
 dependencies {
   implementation(project(":polaris-runtime-service"))
@@ -40,6 +41,10 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
   runtimeOnly(project(":polaris-extensions-auth-ranger"))
+  runtimeOnly(project(":polaris-extensions-events-kafka"))
+  runtimeOnly(project(":polaris-extensions-semantic-models"))
+  runtimeOnly(project(":polaris-extensions-metrics-reports"))
+  runtimeOnly(project(":polaris-extensions-metrics-reports-jdbc"))
 
   val nonRestCatalogs = providers.gradleProperty("NonRESTCatalogs").orNull
   if (nonRestCatalogs?.contains("HIVE") == true) {
@@ -72,6 +77,9 @@ quarkus {
         .toMap()
     }
   )
+  buildForkOptions {
+    maxHeapSize = "2G"
+  }
 }
 
 tasks.register("run") {
@@ -85,6 +93,7 @@ tasks.named<QuarkusDev>("quarkusDev") {
     listOf(
       "-Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t",
       "-Dquarkus.console.color=true",
+      "-Dquarkus.observability.lgtm.enabled=false",
       "-Dpolaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"=true",
       "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",
       "-Dpolaris.readiness.ignore-severe-issues=true",
@@ -95,15 +104,17 @@ tasks.named<QuarkusDev>("quarkusDev") {
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 
 // Configuration to expose distribution artifacts
-val distributionElements by configurations.creating {
-  isCanBeConsumed = true
-  isCanBeResolved = false
-}
+val distributionElements =
+  configurations.create("distributionElements") {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
 
-val licenseNoticeElements by configurations.creating {
-  isCanBeConsumed = true
-  isCanBeResolved = false
-}
+val licenseNoticeElements =
+  configurations.create("licenseNoticeElements") {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
 
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.
@@ -111,6 +122,8 @@ artifacts {
   add(quarkusRunner.name, quarkusBuild.map { it.fastJar.resolve("quarkus-run.jar") }) {
     builtBy(quarkusBuild)
   }
-  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
-  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
+  add(distributionElements.name, layout.buildDirectory.dir("quarkus-app")) {
+    builtBy("quarkusBuild")
+  }
+  add(licenseNoticeElements.name, layout.projectDirectory.dir("distribution"))
 }

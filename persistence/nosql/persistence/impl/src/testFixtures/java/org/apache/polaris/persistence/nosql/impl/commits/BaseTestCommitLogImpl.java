@@ -18,15 +18,22 @@
  */
 package org.apache.polaris.persistence.nosql.impl.commits;
 
+import static java.util.function.Function.identity;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.polaris.ids.api.IdGenerator;
+import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.persistence.nosql.api.Persistence;
+import org.apache.polaris.persistence.nosql.api.PersistenceParams;
+import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.testextension.PersistenceTestExtension;
 import org.apache.polaris.persistence.nosql.testextension.PolarisPersistence;
 import org.assertj.core.api.SoftAssertions;
@@ -41,6 +48,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 public abstract class BaseTestCommitLogImpl {
   @InjectSoftAssertions protected SoftAssertions soft;
   @PolarisPersistence protected Persistence persistence;
+  @PolarisPersistence protected Backend backend;
+  @PolarisPersistence protected MonotonicClock clock;
+  @PolarisPersistence protected IdGenerator idGenerator;
 
   @ParameterizedTest
   @ValueSource(ints = {0, 1, 3, 19, 20, 21, 39, 40, 41, 255})
@@ -129,6 +139,66 @@ public abstract class BaseTestCommitLogImpl {
                 commits.commitLogReversed(
                     refName, persistence.generateId(), SimpleCommitTestObj.class)))
         .containsExactlyElementsOf(chronological);
+  }
+
+  /**
+   * When a commit's {@code tail} is shorter than the number of commits fetched per page, the
+   * "natural" commit log must not stop early. This exercises {@code referencePreviousHeadCount}
+   * values below the internal reverse-fetch page size, so pages contain fewer entries than the page
+   * size. That previously caused {@code commitLog} to truncate the history at the first commit of a
+   * short tail.
+   */
+  @ParameterizedTest
+  @ValueSource(ints = {2, 3, 5})
+  public void commitLogShortTail(int referencePreviousHeadCount, TestInfo testInfo)
+      throws Exception {
+    var refName =
+        testInfo.getTestMethod().orElseThrow().getName() + "-" + referencePreviousHeadCount;
+    var numCommits = 50;
+
+    var reducedPersistence =
+        backend.newPersistence(
+            identity(),
+            PersistenceParams.BuildablePersistenceParams.builder()
+                .referencePreviousHeadCount(referencePreviousHeadCount)
+                .build(),
+            UUID.randomUUID().toString(),
+            clock,
+            idGenerator);
+
+    reducedPersistence.createReference(refName, Optional.empty());
+
+    var committer =
+        reducedPersistence.createCommitter(refName, SimpleCommitTestObj.class, String.class);
+    for (int i = 0; i < numCommits; i++) {
+      var payload = "commit #" + i;
+      committer.commit(
+          (state, refObjSupplier) ->
+              state.commitResult(
+                  "foo",
+                  ImmutableSimpleCommitTestObj.builder().payload(payload),
+                  refObjSupplier.get()));
+    }
+
+    var commits = reducedPersistence.commits();
+    var expectedPayloads =
+        IntStream.range(0, numCommits).mapToObj(i -> "commit #" + i).collect(Collectors.toList());
+
+    // "reversed" (most recent commit last) already used a growing page list and returned the full
+    // history; assert it as a baseline.
+    soft.assertThatIterator(commits.commitLogReversed(refName, 0L, SimpleCommitTestObj.class))
+        .toIterable()
+        .extracting(SimpleCommitTestObj::payload)
+        .containsExactlyElementsOf(expectedPayloads);
+
+    // "natural" (most recent commit first) must return every commit, not stop at the first short
+    // tail.
+    Collections.reverse(expectedPayloads);
+    soft.assertThatIterator(
+            commits.commitLog(refName, OptionalLong.empty(), SimpleCommitTestObj.class))
+        .toIterable()
+        .extracting(SimpleCommitTestObj::payload)
+        .containsExactlyElementsOf(expectedPayloads);
   }
 
   private static List<SimpleCommitTestObj> toList(Iterator<SimpleCommitTestObj> iterator) {

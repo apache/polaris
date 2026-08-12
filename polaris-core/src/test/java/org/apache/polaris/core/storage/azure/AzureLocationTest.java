@@ -31,6 +31,8 @@ public class AzureLocationTest {
     Assertions.assertThat(azureLocation.getContainer()).isEqualTo("container");
     Assertions.assertThat(azureLocation.getStorageAccount()).isEqualTo("storageaccount");
     Assertions.assertThat(azureLocation.getEndpoint()).isEqualTo("blob.core.windows.net");
+    Assertions.assertThat(azureLocation.getStorageDnsName())
+        .isEqualTo("storageaccount.blob.core.windows.net");
     Assertions.assertThat(azureLocation.getFilePath()).isEqualTo("myfile");
   }
 

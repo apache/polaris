@@ -53,7 +53,7 @@ services:
       start_period: 10s
 
   polaris-setup:
-    image: alpine/curl:8.20.0
+    image: alpine/curl:8.21.0
     depends_on:
       polaris:
         condition: service_healthy
@@ -68,7 +68,7 @@ services:
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   spark-sql:
-    image: apache/spark:3.5.8-java17-python3
+    image: apache/spark:3.5.9-java17-python3
     depends_on:
       polaris-setup:
         condition: service_completed_successfully
@@ -98,7 +98,7 @@ services:
     ]
 
   trino:
-    image: trinodb/trino:481
+    image: trinodb/trino:483
     depends_on:
       polaris-setup:
         condition: service_completed_successfully

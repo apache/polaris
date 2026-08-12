@@ -39,7 +39,7 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
-import org.apache.polaris.core.rest.PolarisEndpoints;
+import org.apache.polaris.core.rest.GenericTableEndpoints;
 import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.polaris.spark.rest.ListGenericTablesRESTResponse;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
@@ -90,8 +90,8 @@ public class PolarisRESTCatalogTest {
             .withOverrides(ImmutableMap.of())
             .withEndpoints(
                 ImmutableList.of(
-                    PolarisEndpoints.V1_LIST_GENERIC_TABLES,
-                    PolarisEndpoints.V1_CREATE_GENERIC_TABLE))
+                    GenericTableEndpoints.V1_LIST_GENERIC_TABLES,
+                    GenericTableEndpoints.V1_CREATE_GENERIC_TABLE))
             .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))
@@ -328,10 +328,10 @@ public class PolarisRESTCatalogTest {
             .withOverrides(ImmutableMap.of())
             .withEndpoints(
                 ImmutableList.of(
-                    PolarisEndpoints.V1_LIST_GENERIC_TABLES,
-                    PolarisEndpoints.V1_CREATE_GENERIC_TABLE,
-                    PolarisEndpoints.V1_LOAD_GENERIC_TABLE,
-                    PolarisEndpoints.V1_DELETE_GENERIC_TABLE))
+                    GenericTableEndpoints.V1_LIST_GENERIC_TABLES,
+                    GenericTableEndpoints.V1_CREATE_GENERIC_TABLE,
+                    GenericTableEndpoints.V1_LOAD_GENERIC_TABLE,
+                    GenericTableEndpoints.V1_DELETE_GENERIC_TABLE))
             .build();
 
     when(mockClient.get(any(), anyMap(), eq(ConfigResponse.class), anyMap(), any()))

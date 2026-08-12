@@ -255,13 +255,10 @@ public class AwsCredentialsStorageIntegration
       accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
       Optional.ofNullable(response.credentials().expiration())
           .ifPresent(
-              i -> {
-                accessConfig.put(
-                    StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
-                accessConfig.put(
-                    StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                    String.valueOf(i.toEpochMilli()));
-              });
+              i ->
+                  accessConfig.put(
+                      StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                      String.valueOf(i.toEpochMilli())));
     }
 
     if (region != null) {

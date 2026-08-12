@@ -118,7 +118,7 @@ public class ManagementServiceTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"));
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"));
     String catalogName = "test-catalog";
     Supplier<Catalog> catalog =
         () ->
@@ -169,7 +169,7 @@ public class ManagementServiceTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
             .build();
     String catalogName = "mycatalog";
     Catalog catalog =
@@ -232,6 +232,7 @@ public class ManagementServiceTest {
             fetchedCatalog.getEntityVersion(),
             Map.of(),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setEndpoint("http://example.com")
                 .build());
@@ -253,7 +254,7 @@ public class ManagementServiceTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
             .build();
     ConnectionConfigInfo connectionConfigInfo =
         IcebergRestConnectionConfigInfo.builder(
@@ -303,7 +304,7 @@ public class ManagementServiceTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
             .build();
     ConnectionConfigInfo connectionConfigInfo =
         IcebergRestConnectionConfigInfo.builder(
@@ -370,11 +371,14 @@ public class ManagementServiceTest {
 
   private PolarisAdminService setupPolarisAdminService(
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
+    PrincipalEntity rootPrincipal =
+        new PrincipalEntity.Builder()
+            .setName(PolarisEntityConstants.getRootPrincipalName())
+            .build();
     PolarisPrincipal principal =
         PolarisPrincipal.of(
-            new PrincipalEntity.Builder()
-                .setName(PolarisEntityConstants.getRootPrincipalName())
-                .build(),
+            rootPrincipal.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal),
             Set.of(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()));
     return new PolarisAdminService(
         callContext,
@@ -476,7 +480,7 @@ public class ManagementServiceTest {
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
             .build();
     String catalogName = "mycatalog";
     Catalog catalog =
@@ -510,6 +514,7 @@ public class ManagementServiceTest {
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket/path/to/data"),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
                 .build());
     assertThatThrownBy(
@@ -531,7 +536,7 @@ public class ManagementServiceTest {
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
             .build();
     String catalogName = "mycatalog";
     Catalog catalog =
@@ -565,6 +570,7 @@ public class ManagementServiceTest {
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket/path/to/data"),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/other-role")
                 .build());
     try (Response response =
@@ -583,7 +589,7 @@ public class ManagementServiceTest {
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setExternalId("my-external-id")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
             .build();
     String catalogName = "mycatalog";
     Catalog catalog =
@@ -617,6 +623,7 @@ public class ManagementServiceTest {
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket/path/to/data"),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setExternalId("different-external-id")
                 .build());
@@ -650,7 +657,7 @@ public class ManagementServiceTest {
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setExternalId("my-external-id")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
             .build();
     String catalogName = "mycatalog";
     Catalog catalog =
@@ -687,6 +694,7 @@ public class ManagementServiceTest {
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket/path/to/data"),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
                 .setExternalId("different-external-id")
                 .build());
@@ -715,7 +723,7 @@ public class ManagementServiceTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
             .build();
     String catalogName = "mycatalog";
     Catalog catalog =

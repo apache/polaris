@@ -46,9 +46,9 @@
     </repository>
     <release>
       <Version>
-        <name>1.3.0-incubating</name>
-        <created>2026-01-16</created>
-        <revision>1.3.0-incubating</revision>
+        <name>1.6.0</name>
+        <created>2026-07-08</created>
+        <revision>1.6.0</revision>
       </Version>
     </release>
   </Project>

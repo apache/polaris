@@ -31,14 +31,13 @@ dependencies {
   compileOnly(platform(libs.quarkus.bom))
   compileOnly("io.quarkus:quarkus-core")
 
-  compileOnly(platform(libs.jackson.bom))
-  compileOnly("com.fasterxml.jackson.core:jackson-databind")
+  compileOnly(platform(libs.jackson3.bom))
+  compileOnly("tools.jackson.core:jackson-databind")
 
   testImplementation(libs.smallrye.config.core)
 
-  testImplementation(platform(libs.jackson.bom))
-  testImplementation("com.fasterxml.jackson.core:jackson-databind")
-  testRuntimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jdk8")
+  testImplementation(platform(libs.jackson3.bom))
+  testImplementation("tools.jackson.core:jackson-databind")
 
   testCompileOnly(project(":polaris-immutables"))
   testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))

@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.jspecify.annotations.NonNull;
@@ -94,7 +95,7 @@ public class DatasourceOperations {
     }
   }
 
-  DatabaseType getDatabaseType() {
+  public DatabaseType getDatabaseType() {
     return databaseType;
   }
 
@@ -173,20 +174,60 @@ public class DatasourceOperations {
       throws SQLException {
     withRetries(
         () -> {
-          logQuery(query);
-          try (Connection connection = borrowConnection();
-              PreparedStatement statement = connection.prepareStatement(query.sql())) {
-            List<Object> params = query.parameters();
-            for (int i = 0; i < params.size(); i++) {
-              statement.setObject(i + 1, params.get(i));
-            }
-            try (ResultSet resultSet = statement.executeQuery()) {
-              ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
-              consumer.accept(iterator.toStream());
-              return null;
-            }
+          try (Connection connection = borrowConnection()) {
+            executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+            return null;
           }
         });
+  }
+
+  /** Connection-aware version for use inside runWithinTransaction. */
+  public <T> void executeSelectOverStream(
+      @NonNull Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer)
+      throws SQLException {
+    withRetries(
+        () -> {
+          executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
+          return null;
+        });
+  }
+
+  /**
+   * Internal implementation that executes the SELECT on the provided connection. Does not manage
+   * connection lifecycle or retries.
+   */
+  private <T> void executeSelectOverStreamWithConnection(
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance,
+      @NonNull Consumer<Stream<T>> consumer,
+      @NonNull Connection connection)
+      throws SQLException {
+    logQuery(query);
+    try (PreparedStatement statement = connection.prepareStatement(query.sql())) {
+      List<Object> params = query.parameters();
+      for (int i = 0; i < params.size(); i++) {
+        statement.setObject(i + 1, params.get(i));
+      }
+      try (ResultSet resultSet = statement.executeQuery()) {
+        ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+        consumer.accept(iterator.toStream());
+      }
+    }
+  }
+
+  /** Connection-aware version for use inside runWithinTransaction. */
+  public <T> List<T> executeSelect(
+      @NonNull Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance)
+      throws SQLException {
+    ArrayList<T> results = new ArrayList<>();
+    executeSelectOverStream(
+        connection, query, converterInstance, stream -> stream.forEach(results::add));
+    return results;
   }
 
   /**
@@ -347,13 +388,16 @@ public class DatasourceOperations {
     while (attempts < maxAttempts) {
       try {
         return operation.execute();
+      } catch (EntityAlreadyExistsException | RetryOnConcurrencyException e) {
+        // Pass domain exceptions through unchanged. Do not unwrap their SQLException cause into
+        // the retry path (that would rewrap them as a generic SQLException and lose the typed
+        // signal upper layers need, e.g. ENTITY_ALREADY_EXISTS mapping).
+        throw e;
       } catch (SQLException | RuntimeException e) {
         SQLException sqlException;
         if (e instanceof RuntimeException) {
-          // Handle Exceptions from ResultSet Iterator consumer, as it throws a RTE, ignore RTE from
-          // the transactions.
-          if (e.getCause() instanceof SQLException
-              && !(e instanceof EntityAlreadyExistsException)) {
+          // ResultSet consumers and similar paths may wrap SQLException in RuntimeException.
+          if (e.getCause() instanceof SQLException) {
             sqlException = (SQLException) e.getCause();
           } else {
             throw e;

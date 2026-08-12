@@ -90,6 +90,7 @@ function update_version {
   local version="$1"
   update_version_txt "${version}"
   update_helm_version "${version}"
+  update_python_version "${version}"
 }
 
 function update_version_txt {
@@ -121,7 +122,17 @@ function update_helm_version {
   # It's not necessary to update $HELM_VALUES_SCHEMA_FILE or $HELM_REFERENCE_DOC_FILE here, because
   # these files will be generated from $HELM_VALUES_FILE during the release process, and they will
   # automatically reflect the updated version.
-  exec_process sed -E -i~ 's/^(  tag: )"latest".*$/\1"'"${new_version}"'"/' "$HELM_VALUES_FILE"
+  exec_process sed -E -i~ 's/^([[:space:]]+tag: )"latest".*$/\1"'"${new_version}"'"/' "$HELM_VALUES_FILE"
+}
+
+function update_python_version {
+  local new_version="$1"
+  # The Python client version lives in pyproject.toml and is mirrored in the
+  # uv.lock lockfile. In both files the version follows the "apache-polaris"
+  # package name declaration, so we anchor the substitution on that line to
+  # avoid touching unrelated dependency versions.
+  exec_process sed -E -i~ '/^name = "apache-polaris"$/{n;s/^version = ".*"/version = "'"${new_version}"'"/;}' "$PYTHON_PYPROJECT_FILE"
+  exec_process sed -E -i~ '/^name = "apache-polaris"$/{n;s/^version = ".*"/version = "'"${new_version}"'"/;}' "$PYTHON_UV_LOCK_FILE"
 }
 
 function find_next_rc_number {

@@ -28,6 +28,7 @@ import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.named
 import org.gradle.process.CommandLineArgumentProvider
 import org.kordamp.gradle.plugin.jandex.JandexExtension
@@ -155,6 +156,13 @@ testing {
         implementation(testFixtures(project()))
         if (!plugins.hasPlugin("io.quarkus")) {
           implementation(requiredLib("logback-classic"))
+          // Exclude spurious SLF4J providers from all non-Quarkus test suites to prevent
+          // dual SLF4J provider warnings when dependencies such as polaris-runtime-test-common
+          // or Spark (which bundles log4j-slf4j2-impl) are on the classpath.
+          configurations.named(sources.implementationConfigurationName) {
+            exclude(group = "org.jboss.slf4j", module = "slf4j-jboss-logmanager")
+            exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j2-impl")
+          }
         }
         implementation(requiredLib("assertj-core"))
         implementation(requiredLib("mockito-core"))

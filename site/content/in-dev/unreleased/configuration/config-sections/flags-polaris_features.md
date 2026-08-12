@@ -35,6 +35,16 @@ When set, the base location for a table or namespace will have `/` added as a su
 
 ---
 
+##### `polaris.features."ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION"`
+
+If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties) explicitly supplied in a create or update request, subject to the usual structured-location, allowed-location, metadata-location, and overlap validation. If set to false, such requests are rejected, regardless of the other location compatibility flags. This setting does not apply to federated catalogs.
+
+- **Type:** `Boolean`
+- **Default:** `true`
+- **Catalog Config:** `polaris.config.allow.client-specified.table.location`
+
+---
+
 ##### `polaris.features."ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG"`
 
 If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. passthrough-facade catalogs may contain leftover entities when syncing with source catalog.In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.
@@ -61,12 +71,13 @@ If set to true, Polaris allows metadata files to be located outside the table's 
 
 - **Type:** `Boolean`
 - **Default:** `false`
+- **Catalog Config:** `polaris.config.allow.external.metadata.file.location`
 
 ---
 
 ##### `polaris.features."ALLOW_EXTERNAL_TABLE_LOCATION"`
 
-If set to true, Polaris treats table locations as externally managed instead of assuming the default managed structure. Allowed-location validation still applies, but metadata location checks are relaxed, so operators should keep allowed locations narrow and specific. This setting is typically used together with ALLOW_UNSTRUCTURED_TABLE_LOCATION.
+Deprecated. Use ALLOW_EXTERNAL_METADATA_FILE_LOCATION instead. When enabled, this legacy compatibility flag relaxes metadata location checks; it does not control whether table locations may escape the structured namespace layout. Use ALLOW_UNSTRUCTURED_TABLE_LOCATION for that behavior.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -243,11 +254,21 @@ If set to true, clean up data when a namespace is dropped
 
 ##### `polaris.features."DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED"`
 
-When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_EXTERNAL_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog.
+When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog.
 
 - **Type:** `Boolean`
 - **Default:** `false`
 - **Catalog Config:** `polaris.config.default-table-location-object-storage-prefix.enabled`
+
+---
+
+##### `polaris.features."DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED"`
+
+When enabled, a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix. When disabled (the default), the generated location is the legacy `<namespace location>/<table name>` form.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.default-unique-table-location.enabled`
 
 ---
 
@@ -307,6 +328,15 @@ If true, the policy-store endpoints are enabled
 
 ---
 
+##### `polaris.features."ENABLE_SEMANTIC_MODELS"`
+
+If true, the semantic-model (Apache Ossie) endpoints are enabled. This is a beta feature: the API is under active development and may change in a backward-incompatible way. It is disabled by default; enable it with caution and report any issues encountered.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS"`
 
 When enabled, allows RBAC operations to create synthetic entities for entities in federated catalogs that don't exist in the local metastore.
@@ -332,6 +362,51 @@ The maximum weight for the entity cache. This is a heuristic value without any p
 
 - **Type:** `Long`
 - **Default:** `104857600`
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_ENABLED"`
+
+Enables GCS principal attribution via Workload Identity Federation. When true, credential vending chains a catalog-signed JWT through an STS token exchange and service-account impersonation so the Polaris principal appears in GCS Data Access audit logs (serviceAccountDelegationInfo.principalSubject). Requires GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE, GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER, and GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE to also be set; a missing required value is a fatal configuration error. Also requires a gcpServiceAccount on the catalog StorageConfiguration. Default: false (attribution disabled).
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE"`
+
+Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs (RS256). The corresponding public key must be published in the Workload Identity Pool provider's uploaded JWKS. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID"`
+
+Key ID (kid) written into the header of GCS attribution JWTs so the Workload Identity Pool provider can select the right public key from its JWKS during key rotation (when the JWKS holds both the old and new keys). Must match the kid of the JWKS entry for the configured signing key. Empty omits the header (only safe with a single-key JWKS).
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER"`
+
+Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer configured on the Workload Identity Pool OIDC provider. The provider verifies signatures against its uploaded JWKS, so no public discovery endpoint is required. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
+
+---
+
+##### `polaris.features."GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE"`
+
+Full resource name of the Workload Identity Pool provider used for GCS principal attribution, e.g. //iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>. Used as both the attribution JWT 'aud' claim and the STS token-exchange audience. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.
+
+- **Type:** `String`
+- **Default:** ``
 
 ---
 

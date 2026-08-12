@@ -37,6 +37,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
   private final PolarisMetaStoreManager metaStoreManager;
   private final CallContext callContext;
   private final PolarisPrincipal principal;
+  private final IdempotencyRequestContext idempotencyRequestContext;
 
   @Inject
   public PolarisLocalCatalogFactory(
@@ -67,7 +69,8 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
       PolarisEventMetadataFactory eventMetadataFactory,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
-      PolarisPrincipal principal) {
+      PolarisPrincipal principal,
+      IdempotencyRequestContext idempotencyRequestContext) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.taskExecutor = taskExecutor;
@@ -78,6 +81,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
     this.metaStoreManager = metaStoreManager;
     this.callContext = callContext;
     this.principal = principal;
+    this.idempotencyRequestContext = idempotencyRequestContext;
   }
 
   @Override
@@ -101,7 +105,8 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
             storageAccessConfigProvider,
             fileIOFactory,
             polarisEventDispatcher,
-            eventMetadataFactory);
+            eventMetadataFactory,
+            idempotencyRequestContext);
 
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getBaseLocation();

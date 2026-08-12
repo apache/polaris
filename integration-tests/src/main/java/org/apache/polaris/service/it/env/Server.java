@@ -20,6 +20,7 @@ package org.apache.polaris.service.it.env;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * This is a holder for access information to a particular Polaris Server. Test cases may use only
@@ -49,6 +50,18 @@ public interface Server extends AutoCloseable {
    * @see PolarisApiEndpoints
    */
   URI baseUri();
+
+  /**
+   * The base URI for the platform management interface (exposing metrics and health checks). Not to
+   * be confused with the Polaris Management API. This URI includes the management interface root
+   * path, usually {@code /q} on Quarkus platforms.
+   *
+   * <p>The management URI is sometimes unavailable, e.g. in the case of a @QuarkusIntegrationTest;
+   * in such cases this method returns empty.
+   */
+  default Optional<URI> managementUri() {
+    return Optional.empty();
+  }
 
   ClientPrincipal adminCredentials();
 }

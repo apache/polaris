@@ -22,19 +22,18 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
  * Represents a key in an {@link Index}.
@@ -329,17 +328,17 @@ public final class IndexKey implements Comparable<IndexKey> {
     return ByteBuffer.wrap(key);
   }
 
-  public static class IndexKeySerializer extends JsonSerializer<IndexKey> {
+  public static class IndexKeySerializer extends ValueSerializer<IndexKey> {
     @Override
-    public void serialize(IndexKey value, JsonGenerator gen, SerializerProvider serializers)
-        throws IOException {
+    public void serialize(
+        IndexKey value, JsonGenerator gen, SerializationContext serializationContext) {
       gen.writeBinary(value.key);
     }
   }
 
-  public static class IndexKeyDeserializer extends JsonDeserializer<IndexKey> {
+  public static class IndexKeyDeserializer extends ValueDeserializer<IndexKey> {
     @Override
-    public IndexKey deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public IndexKey deserialize(JsonParser p, DeserializationContext ctxt) {
       return new IndexKey(p.getBinaryValue());
     }
   }

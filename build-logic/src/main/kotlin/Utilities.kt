@@ -17,7 +17,7 @@
 import org.gradle.api.Project
 import org.gradle.process.JavaForkOptions
 
-val noSourceCheckProjects = listOf(":polaris-spark-3.5_2.13", ":polaris-spark-integration-3.5_2.13")
+val noSourceCheckProjects = listOf(":polaris-spark-3.5_2.13")
 
 /**
  * Extract the scala version from polaris spark project, and points the build directory to a sub-dir

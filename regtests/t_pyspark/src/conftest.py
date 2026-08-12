@@ -110,7 +110,7 @@ def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aw
 
     storage_conf = AwsStorageConfigInfo(
         storage_type="S3",
-        allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
+        allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog"],
         endpoint=s3_endpoint,
         endpoint_internal=s3_endpoint,
         sts_endpoint=s3_endpoint,
@@ -130,7 +130,7 @@ def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aw
     # AWS mode: use role ARN and credential vending
     storage_conf = AwsStorageConfigInfo(
         storage_type="S3",
-        allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
+        allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog"],
         role_arn=aws_role_arn
     )
     catalog_properties = {
@@ -287,7 +287,7 @@ def file_catalog(root_client, catalog_client):
   from apache_polaris.sdk.management import FileStorageConfigInfo
 
   catalog_name = f'file_catalog_{str(uuid.uuid4())[-10:]}'
-  storage_config = FileStorageConfigInfo(storage_type="FILE", allowed_locations=["file:///tmp"])
+  storage_config = FileStorageConfigInfo(storage_type="FILE", allowed_locations=["file:///tmp/polaris"])
   base_location = "file:///tmp/polaris"
 
   yield from _create_catalog_with_storage(
@@ -306,7 +306,7 @@ def s3_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucke
     catalog_name = f's3_catalog_{str(uuid.uuid4())[-10:]}'
     storage_config = AwsStorageConfigInfo(
       storage_type="S3",
-      allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
+      allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/s3_catalog"],
       role_arn=aws_role_arn
     )
     base_location = f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/s3_catalog"

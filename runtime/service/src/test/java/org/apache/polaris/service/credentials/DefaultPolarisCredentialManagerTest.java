@@ -121,7 +121,7 @@ public class DefaultPolarisCredentialManagerTest {
     // Create SIGV4 auth parameters
     SigV4AuthenticationParametersDpo authParams =
         new SigV4AuthenticationParametersDpo(
-            "arn:aws:iam::123456789012:role/test-role", null, null, "us-west-2", "glue");
+            "arn:aws:iam::123456789012:role/test-role", null, null, "us-west-2", "glue", null);
 
     // Create connection config
     IcebergRestConnectionConfigInfoDpo connectionConfig =

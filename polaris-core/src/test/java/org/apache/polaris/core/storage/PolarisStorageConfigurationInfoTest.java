@@ -21,9 +21,6 @@ package org.apache.polaris.core.storage;
 
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -31,22 +28,16 @@ import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class PolarisStorageConfigurationInfoTest {
   @InjectSoftAssertions protected SoftAssertions soft;
-
-  private static ObjectMapper mapper;
-
-  @BeforeAll
-  public static void setup() {
-    mapper = JsonMapper.builder().build();
-  }
 
   @ParameterizedTest
   @MethodSource
@@ -54,14 +45,16 @@ public class PolarisStorageConfigurationInfoTest {
       throws Exception {
     var jsonStr = configInfo.serialize();
 
-    var asJsonNode = mapper.readValue(jsonStr, JsonNode.class);
-    var serializedJsonNode = mapper.readValue(serialized, JsonNode.class);
+    var asJsonNode = JsonMapper.shared().readValue(jsonStr, JsonNode.class);
+    var serializedJsonNode = JsonMapper.shared().readValue(serialized, JsonNode.class);
     soft.assertThat(asJsonNode).isEqualTo(serializedJsonNode);
 
-    var deserialized = mapper.readValue(serialized, PolarisStorageConfigurationInfo.class);
+    var deserialized =
+        JsonMapper.shared().readValue(serialized, PolarisStorageConfigurationInfo.class);
     soft.assertThat(deserialized).isEqualTo(configInfo);
 
-    var reserialized = mapper.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
+    var reserialized =
+        JsonMapper.shared().readValue(jsonStr, PolarisStorageConfigurationInfo.class);
     soft.assertThat(reserialized).isEqualTo(configInfo);
   }
 

@@ -209,6 +209,67 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(List.<String>of())
               .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> GCS_PRINCIPAL_ATTRIBUTION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_ENABLED")
+          .description(
+              "Enables GCS principal attribution via Workload Identity Federation.\n"
+                  + "When true, credential vending chains a catalog-signed JWT through an STS token\n"
+                  + "exchange and service-account impersonation so the Polaris principal appears in GCS\n"
+                  + "Data Access audit logs (serviceAccountDelegationInfo.principalSubject).\n"
+                  + "Requires GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE, GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER,\n"
+                  + "and GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE to also be set;\n"
+                  + "a missing required value is a fatal configuration error.\n"
+                  + "Also requires a gcpServiceAccount on the catalog StorageConfiguration.\n"
+                  + "Default: false (attribution disabled).")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE")
+          .description(
+              "Full resource name of the Workload Identity Pool provider used for GCS principal\n"
+                  + "attribution, e.g.\n"
+                  + "//iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>.\n"
+                  + "Used as both the attribution JWT 'aud' claim and the STS token-exchange audience.\n"
+                  + "Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER")
+          .description(
+              "Issuer (iss claim) of catalog-minted GCS attribution JWTs; must match the issuer\n"
+                  + "configured on the Workload Identity Pool OIDC provider. The provider verifies\n"
+                  + "signatures against its uploaded JWKS, so no public discovery endpoint is required.\n"
+                  + "Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE")
+          .description(
+              "Filesystem path to the PKCS#8 PEM RSA private key used to sign GCS attribution JWTs\n"
+                  + "(RS256). The corresponding public key must be published in the Workload Identity\n"
+                  + "Pool provider's uploaded JWKS. Required when GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true; ignored otherwise.")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<String> GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID =
+      PolarisConfiguration.<String>builder()
+          .key("GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID")
+          .description(
+              "Key ID (kid) written into the header of GCS attribution JWTs so the Workload Identity\n"
+                  + "Pool provider can select the right public key from its JWKS during key rotation\n"
+                  + "(when the JWKS holds both the old and new keys). Must match the kid of the JWKS\n"
+                  + "entry for the configured signing key. Empty omits the header (only safe with a\n"
+                  + "single-key JWKS).")
+          .defaultValue("")
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")
@@ -244,6 +305,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_METADATA_FILE_LOCATION")
+          .catalogConfig("polaris.config.allow.external.metadata.file.location")
           .description(
               "If set to true, Polaris allows metadata files to be located outside the table's "
                   + "default metadata directory. This relaxes the normal check that metadata "
@@ -273,18 +335,38 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  /**
+   * @deprecated since 1.7.0, will be removed in 1.8.0. Use {@link
+   *     #ALLOW_EXTERNAL_METADATA_FILE_LOCATION} instead. This legacy flag is retained as a
+   *     compatibility alias for external metadata file locations.
+   */
+  @SuppressWarnings("DeprecatedIsStillUsed")
+  @Deprecated(since = "1.7.0", forRemoval = true)
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")
           .catalogConfig("polaris.config.allow.external.table.location")
           .legacyCatalogConfig("allow.external.table.location")
           .description(
-              "If set to true, Polaris treats table locations as externally managed instead of "
-                  + "assuming the default managed structure. Allowed-location validation still "
-                  + "applies, but metadata location checks are relaxed, so operators should keep "
-                  + "allowed locations narrow and specific. This setting is typically used "
-                  + "together with ALLOW_UNSTRUCTURED_TABLE_LOCATION.")
+              "Deprecated. Use ALLOW_EXTERNAL_METADATA_FILE_LOCATION instead. When enabled, this "
+                  + "legacy compatibility flag relaxes metadata location checks; it does not "
+                  + "control whether table locations may escape the structured namespace layout. "
+                  + "Use ALLOW_UNSTRUCTURED_TABLE_LOCATION for that behavior.")
           .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION")
+          .catalogConfig("polaris.config.allow.client-specified.table.location")
+          .description(
+              "If set to true (the default), Polaris honors a `location` (and the "
+                  + "`write.data.path` / `write.metadata.path` properties) explicitly supplied in a "
+                  + "create or update request, subject to the usual structured-location, "
+                  + "allowed-location, metadata-location, and overlap validation. If set to false, "
+                  + "such requests are rejected, regardless of the other location compatibility flags. "
+                  + "This setting does not apply to federated catalogs.")
+          .defaultValue(true)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING =
@@ -456,6 +538,17 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_SEMANTIC_MODELS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_SEMANTIC_MODELS")
+          .description(
+              "If true, the semantic-model (Apache Ossie) endpoints are enabled. This is a beta feature: "
+                  + "the API is under active development and may change in a backward-incompatible "
+                  + "way. It is disabled by default; enable it with caution and report any issues "
+                  + "encountered.")
+          .defaultValue(false) // beta feature, keep it off by default
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_CONNECTION_TYPES")
@@ -557,9 +650,21 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "When enabled, Iceberg tables and views created without a location specified will have a prefix "
                   + "applied to the location within the catalog's base location, rather than a location directly "
-                  + "inside the parent namespace. Note that this requires ALLOW_EXTERNAL_TABLE_LOCATION to be "
+                  + "inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be "
                   + "enabled, but with OPTIMIZED_SIBLING_CHECK enabled "
                   + "it is still possible to enforce the uniqueness of table locations within a catalog.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED")
+          .catalogConfig("polaris.config.default-unique-table-location.enabled")
+          .description(
+              "When enabled, a managed location generated for a table or view created without an "
+                  + "explicit location is given a unique, unpredictable suffix, so that no two "
+                  + "tables share a path prefix. When disabled (the default), the generated "
+                  + "location is the legacy `<namespace location>/<table name>` form.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

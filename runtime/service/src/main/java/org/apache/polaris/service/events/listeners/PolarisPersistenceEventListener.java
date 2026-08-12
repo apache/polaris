@@ -30,13 +30,13 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.core.entity.EventEntity.ResourceType;
-import org.apache.polaris.service.events.AttributeKey;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventType;
+import org.jspecify.annotations.Nullable;
 
 public abstract class PolarisPersistenceEventListener implements PolarisEventListener {
 
@@ -67,8 +67,9 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     processEvent(event.metadata().realmId(), polarisEvent);
   }
 
+  @Nullable
   private static String resolveCatalogName(PolarisEvent event) {
-    return event.attributes().get(EventAttributes.CATALOG_NAME).orElse(EventEntity.REALM_SCOPED);
+    return event.attributes().getOptional(EventAttributes.CATALOG_NAME).orElse(null);
   }
 
   /**
@@ -98,7 +99,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
   }
 
   private static String resolveResourceIdentifier(
-      PolarisEvent event, ResourceType resourceType, String catalogName) {
+      PolarisEvent event, ResourceType resourceType, @Nullable String catalogName) {
     return switch (resourceType) {
       case TABLE -> resolveTableResourceIdentifier(event, catalogName);
       case VIEW -> resolveViewResourceIdentifier(event, catalogName);
@@ -108,11 +109,12 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     };
   }
 
-  private static String resolveTableResourceIdentifier(PolarisEvent event, String catalogName) {
-    EventAttributeMap attributes = event.attributes();
+  private static String resolveTableResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
+    AttributeMap attributes = event.attributes();
 
     Optional<String> identifierFromTableAttribute =
-        attributes.get(EventAttributes.TABLE_IDENTIFIER).map(TableIdentifier::toString);
+        attributes.getOptional(EventAttributes.TABLE_IDENTIFIER).map(TableIdentifier::toString);
     if (identifierFromTableAttribute.isPresent()) {
       return identifierFromTableAttribute.get();
     }
@@ -138,41 +140,42 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     }
 
     Optional<String> namespaceIdentifier =
-        attributes.get(EventAttributes.NAMESPACE).map(Namespace::toString);
+        attributes.getOptional(EventAttributes.NAMESPACE).map(Namespace::toString);
     if (namespaceIdentifier.isPresent()) {
       return namespaceIdentifier.get();
     }
 
     return attributes
-        .get(EventAttributes.TABLE_NAME)
+        .getOptional(EventAttributes.TABLE_NAME)
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
 
-  private static String resolveViewResourceIdentifier(PolarisEvent event, String catalogName) {
-    EventAttributeMap attributes = event.attributes();
+  private static String resolveViewResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
+    AttributeMap attributes = event.attributes();
     return attributes
-        .get(EventAttributes.VIEW_IDENTIFIER)
+        .getOptional(EventAttributes.VIEW_IDENTIFIER)
         .map(TableIdentifier::toString)
         .or(() -> resolveRenameIdentifier(event))
         .or(
             () ->
                 attributes
-                    .get(EventAttributes.NAMESPACE)
+                    .getOptional(EventAttributes.NAMESPACE)
                     .flatMap(
                         namespace ->
                             attributes
-                                .get(EventAttributes.VIEW_NAME)
+                                .getOptional(EventAttributes.VIEW_NAME)
                                 .map(
                                     viewName ->
                                         TableIdentifier.of(namespace, viewName).toString())))
-        .or(() -> attributes.get(EventAttributes.VIEW_NAME))
+        .or(() -> attributes.getOptional(EventAttributes.VIEW_NAME))
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
 
   private static Optional<String> resolveRenameIdentifier(PolarisEvent event) {
     return event
         .attributes()
-        .get(EventAttributes.RENAME_TABLE_REQUEST)
+        .getOptional(EventAttributes.RENAME_TABLE_REQUEST)
         .map(
             request ->
                 event.type().name().startsWith("AFTER_")
@@ -180,52 +183,54 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
                     : request.source().toString());
   }
 
-  private static Optional<String> resolveNamespaceAndTableName(EventAttributeMap attributes) {
+  private static Optional<String> resolveNamespaceAndTableName(AttributeMap attributes) {
     return attributes
-        .get(EventAttributes.NAMESPACE)
+        .getOptional(EventAttributes.NAMESPACE)
         .flatMap(
             namespace ->
                 attributes
-                    .get(EventAttributes.TABLE_NAME)
+                    .getOptional(EventAttributes.TABLE_NAME)
                     .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
   }
 
-  private static Optional<String> resolveCreateTableIdentifier(EventAttributeMap attributes) {
+  private static Optional<String> resolveCreateTableIdentifier(AttributeMap attributes) {
     return attributes
-        .get(EventAttributes.NAMESPACE)
+        .getOptional(EventAttributes.NAMESPACE)
         .flatMap(
             namespace ->
                 attributes
-                    .get(EventAttributes.CREATE_TABLE_REQUEST)
+                    .getOptional(EventAttributes.CREATE_TABLE_REQUEST)
                     .map(CreateTableRequest::name)
                     .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
   }
 
-  private static Optional<String> resolveRegisterTableIdentifier(EventAttributeMap attributes) {
+  private static Optional<String> resolveRegisterTableIdentifier(AttributeMap attributes) {
     return attributes
-        .get(EventAttributes.NAMESPACE)
+        .getOptional(EventAttributes.NAMESPACE)
         .flatMap(
             namespace ->
                 attributes
-                    .get(EventAttributes.REGISTER_TABLE_REQUEST)
+                    .getOptional(EventAttributes.REGISTER_TABLE_REQUEST)
                     .map(RegisterTableRequest::name)
                     .map(tableName -> TableIdentifier.of(namespace, tableName).toString()));
   }
 
-  private static String resolveNamespaceResourceIdentifier(PolarisEvent event, String catalogName) {
-    EventAttributeMap attributes = event.attributes();
+  private static String resolveNamespaceResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
+    AttributeMap attributes = event.attributes();
     return attributes
-        .get(EventAttributes.NAMESPACE)
+        .getOptional(EventAttributes.NAMESPACE)
         .map(Namespace::toString)
-        .or(() -> attributes.get(EventAttributes.NAMESPACE_FQN))
-        .or(() -> attributes.get(EventAttributes.PARENT_NAMESPACE_FQN))
+        .or(() -> attributes.getOptional(EventAttributes.NAMESPACE_FQN))
+        .or(() -> attributes.getOptional(EventAttributes.PARENT_NAMESPACE_FQN))
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
 
-  private static String resolveCatalogResourceIdentifier(PolarisEvent event, String catalogName) {
+  private static String resolveCatalogResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
     return event
         .attributes()
-        .get(EventAttributes.CATALOG_NAME)
+        .getOptional(EventAttributes.CATALOG_NAME)
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
 
@@ -233,17 +238,15 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     return event.type().name();
   }
 
-  private static String fallbackResourceIdentifier(PolarisEvent event, String catalogName) {
-    if (!EventEntity.REALM_SCOPED.equals(catalogName)) {
-      return catalogName;
-    }
-    return event.type().name();
+  private static String fallbackResourceIdentifier(
+      PolarisEvent event, @Nullable String catalogName) {
+    return catalogName != null ? catalogName : event.type().name();
   }
 
   private static Map<String, String> buildAdditionalProperties(PolarisEvent event) {
     Map<String, String> additionalProperties =
         new LinkedHashMap<>(event.metadata().openTelemetryContext());
-    event.attributes().forEach((key, value) -> additionalProperties.putAll(prune(key, value)));
+    event.attributes().forEach(attribute -> additionalProperties.putAll(prune(attribute)));
     return additionalProperties;
   }
 
@@ -253,17 +256,21 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
    * is a serialization concern of this listener only — other listeners are free to render the same
    * value differently.
    */
-  private static Map<String, String> prune(AttributeKey<?> key, Object value) {
+  private static Map<String, String> prune(AttributeMap.Attribute<?> attribute) {
+
+    AttributeMap.AttributeKey<?> key = attribute.key();
+    Object value = attribute.value();
+
     if (value instanceof String || value instanceof Number || value instanceof Boolean) {
-      return Map.of(key.name(), value.toString());
+      return Map.of(key.key(), value.toString());
     }
 
     if (value instanceof Namespace namespace) {
-      return Map.of(key.name(), namespace.toString());
+      return Map.of(key.key(), namespace.toString());
     }
 
     if (value instanceof TableIdentifier tableIdentifier) {
-      return Map.of(key.name(), tableIdentifier.toString());
+      return Map.of(key.key(), tableIdentifier.toString());
     }
 
     if (key.equals(EventAttributes.TABLE_METADATA) && value instanceof TableMetadata metadata) {
@@ -283,7 +290,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
       return result;
     }
 
-    return Map.of(key.name(), value.toString());
+    return Map.of(key.key(), value.toString());
   }
 
   private static Map<String, String> pruneTableMetadata(TableMetadata metadata) {

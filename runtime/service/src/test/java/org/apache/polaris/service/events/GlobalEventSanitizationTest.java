@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.junit.jupiter.api.Test;
 
@@ -78,19 +79,20 @@ class GlobalEventSanitizationTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_NAMESPACE,
             null,
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, "my-catalog")
                 .put(EventAttributes.NAMESPACE, Namespace.of("ns1"))
                 .put(EventAttributes.CATALOG, sensitiveCatalog)
-                .put(EventAttributes.HTTP_METHOD, "POST")));
+                .put(EventAttributes.HTTP_METHOD, "POST")
+                .build()));
 
     await().until(() -> testListener.events.size() == 1);
 
     PolarisEvent delivered = testListener.events.getFirst();
-    assertThat(delivered.attributes().contains(EventAttributes.CATALOG_NAME)).isTrue();
-    assertThat(delivered.attributes().contains(EventAttributes.NAMESPACE)).isTrue();
-    assertThat(delivered.attributes().contains(EventAttributes.HTTP_METHOD)).isTrue();
-    assertThat(delivered.attributes().contains(EventAttributes.CATALOG)).isFalse();
+    assertThat(delivered.attributes().containsKey(EventAttributes.CATALOG_NAME)).isTrue();
+    assertThat(delivered.attributes().containsKey(EventAttributes.NAMESPACE)).isTrue();
+    assertThat(delivered.attributes().containsKey(EventAttributes.HTTP_METHOD)).isTrue();
+    assertThat(delivered.attributes().containsKey(EventAttributes.CATALOG)).isFalse();
   }
 
   @Test
@@ -105,7 +107,7 @@ class GlobalEventSanitizationTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_CATALOG,
             null,
-            new EventAttributeMap().put(EventAttributes.CATALOG, catalog)));
+            ImmutableAttributeMap.builder().put(EventAttributes.CATALOG, catalog).build()));
 
     await().until(() -> testListener.events.size() > beforeCount);
 
@@ -115,8 +117,8 @@ class GlobalEventSanitizationTest {
             .findFirst()
             .orElseThrow();
 
-    assertThat(delivered.attributes().contains(EventAttributes.CATALOG)).isFalse();
-    assertThat(delivered.attributes().get(EventAttributes.CATALOG_NAME))
+    assertThat(delivered.attributes().containsKey(EventAttributes.CATALOG)).isFalse();
+    assertThat(delivered.attributes().getOptional(EventAttributes.CATALOG_NAME))
         .hasValue("derived-catalog");
   }
 }

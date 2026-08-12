@@ -20,6 +20,10 @@
 package org.apache.polaris.service.events.listeners.inmemory;
 
 import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.CONVERTER;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SAMPLED_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_SPAN_ID_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_FLAGS_KEY;
+import static org.apache.polaris.service.events.PolarisEventMetadata.OPEN_TELEMETRY_TRACE_ID_KEY;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -40,6 +44,8 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
@@ -104,7 +110,7 @@ class InMemoryBufferEventListenerIntegrationTest {
         PolarisCatalog.builder()
             .setName(catalogName)
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setProperties(CatalogProperties.builder("file:///tmp/").build())
+            .setProperties(CatalogProperties.builder(baseLocation.toString()).build())
             .setStorageConfigInfo(
                 FileStorageConfigInfo.builder()
                     .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
@@ -147,6 +153,10 @@ class InMemoryBufferEventListenerIntegrationTest {
           .create();
     }
 
+    try (Response response = managementApi.request("v1/principals").get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+
     String query =
         "SELECT * FROM polaris_schema.events WHERE realm_id = '"
             + realm
@@ -168,7 +178,15 @@ class InMemoryBufferEventListenerIntegrationTest {
                   }
                   return e.build();
                 },
-                e -> e.size() >= 2);
+                e ->
+                    e.stream()
+                        .map(EventEntity::getEventType)
+                        .collect(Collectors.toSet())
+                        .containsAll(
+                            Set.of(
+                                "AFTER_CREATE_CATALOG",
+                                "AFTER_CREATE_TABLE",
+                                "AFTER_LIST_PRINCIPALS")));
 
     EventEntity e1 =
         events.stream()
@@ -182,10 +200,12 @@ class InMemoryBufferEventListenerIntegrationTest {
     assertThat(e1.getPrincipalName()).isEqualTo("root");
     assertThat(e1.getRequestId()).isEqualTo("12345");
     assertThat(e1.getAdditionalPropertiesAsMap())
-        .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
-        .containsEntry("otel.sampled", "true")
-        .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
-        .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
+        .containsEntry(OPEN_TELEMETRY_TRACE_FLAGS_KEY, "03") // trace-was-sampled + random-trace-id
+        .containsEntry(OPEN_TELEMETRY_SAMPLED_KEY, "true")
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_TRACE_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{32}"))
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_SPAN_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{16}"));
 
     EventEntity e2 =
         events.stream()
@@ -202,9 +222,20 @@ class InMemoryBufferEventListenerIntegrationTest {
         .containsEntry("catalog_name", catalogName)
         .containsEntry("table_name", "t1")
         .containsKey("namespace")
-        .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
-        .containsEntry("otel.sampled", "true")
-        .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
-        .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
+        .containsEntry(OPEN_TELEMETRY_TRACE_FLAGS_KEY, "03") // trace-was-sampled + random-trace-id
+        .containsEntry(OPEN_TELEMETRY_SAMPLED_KEY, "true")
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_TRACE_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{32}"))
+        .hasEntrySatisfying(
+            OPEN_TELEMETRY_SPAN_ID_KEY, value -> assertThat(value).matches("[0-9a-f]{16}"));
+
+    EventEntity e3 =
+        events.stream()
+            .filter(e -> e.getEventType().equals("AFTER_LIST_PRINCIPALS"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(e3.getCatalogId()).isNull();
+    assertThat(e3.getResourceType()).isEqualTo(EventEntity.ResourceType.REALM);
+    assertThat(e3.getResourceIdentifier()).isEqualTo("AFTER_LIST_PRINCIPALS");
   }
 }

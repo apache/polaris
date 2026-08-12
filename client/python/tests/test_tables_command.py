@@ -20,6 +20,9 @@
 from unittest.mock import patch, MagicMock
 from cli_test_utils import CLITestBase
 from apache_polaris.cli.constants import UNIT_SEPARATOR
+from apache_polaris.cli.exceptions import CLI_ERROR_EXIT_CODE
+from apache_polaris.cli.polaris_cli import PolarisCli
+from apache_polaris.sdk.catalog.exceptions import ApiException
 
 
 class TestTablesCommand(CLITestBase):
@@ -95,6 +98,40 @@ class TestTablesCommand(CLITestBase):
             table="my_table",
             purge_requested=False,
         )
+
+    @patch("apache_polaris.cli.polaris_cli.PolarisCli.print_api_exception")
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    @patch("apache_polaris.cli.polaris_cli.PolarisDefaultApi")
+    @patch("apache_polaris.cli.polaris_cli.ApiClientBuilder.get_api_client")
+    def test_table_api_errors_exit_with_runtime_failure(
+        self,
+        _mock_get_api_client: MagicMock,
+        mock_default_api: MagicMock,
+        mock_iceberg_api_class: MagicMock,
+        mock_print_api_exception: MagicMock,
+    ) -> None:
+        mock_default_api.return_value = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        cases = [
+            ("list_tables", ["tables", "list"]),
+            ("load_table", ["tables", "get", "my_table"]),
+            ("drop_table", ["tables", "delete", "my_table"]),
+        ]
+
+        for api_method, args in cases:
+            with self.subTest(api_method=api_method):
+                method = getattr(mock_iceberg_api, api_method)
+                method.side_effect = ApiException(status=404, reason="Not Found")
+
+                with self.assertRaises(SystemExit) as cm:
+                    PolarisCli.execute(
+                        [*args, "--catalog", "my-catalog", "--namespace", "ns1"]
+                    )
+
+                self.assertEqual(cm.exception.code, CLI_ERROR_EXIT_CODE)
+                mock_print_api_exception.assert_called_once()
+                method.side_effect = None
+                mock_print_api_exception.reset_mock()
 
     @patch("apache_polaris.cli.command.tables.PolicyAPI")
     @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")

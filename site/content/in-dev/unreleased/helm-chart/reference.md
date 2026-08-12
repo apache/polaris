@@ -347,3 +347,32 @@ weight: 900
 |-----|------|---------|-------------|
 | tasks.maxConcurrentTasks | int | `0` | The maximum number of concurrent tasks that can be executed at the same time. If unspecified or zero, defaults to the number of available cores. |
 | tasks.maxQueuedTasks | int | `0` | The maximum number of tasks that can be queued up for execution. If unspecified or zero, defaults to Integer.MAX_VALUE. |
+
+### Maintenance
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| maintenance | object | See sub-fields below. | Configuration for Polaris maintenance tasks running as Kubernetes CronJobs. Maintenance pods inherit the global pod-level scheduling and hardening settings but do NOT inherit env-var or volume settings. The latter must be configured explicitly under maintenance.* to prevent server-specific secrets and configuration from being exposed to maintenance pods. |
+| maintenance.annotations | object | `{}` | Annotations to add to every maintenance CronJob object. |
+| maintenance.podAnnotations | object | `{}` | Annotations to add to every maintenance pod. NOT merged with the global `podAnnotations` as annotations can grant extra access, so maintenance pods receive only what is configured here. |
+| maintenance.podLabels | object | `{}` | Labels to add to every maintenance pod (e.g., team, cost-center). NOT merged with the global `podLabels`. User-supplied labels are rendered after the chart-managed maintenance labels. |
+| maintenance.extraEnv | list | `[]` | Extra environment variables to add to every maintenance CronJob object. NOT merged with the global `extraEnv` as maintenance pods receive only values configured here. |
+| maintenance.envFrom | list | `[]` | Bulk import environment variables from Secrets or ConfigMaps to every maintenance CronJob object. NOT merged with the global `envFrom` as maintenance pods receive only values configured here. |
+| maintenance.extraVolumes | list | `[]` | Extra volumes to add to every maintenance CronJob object. NOT merged with the global `extraVolumes` — see `maintenance.extraEnv` for the rationale. |
+| maintenance.extraVolumeMounts | list | `[]` | Extra volume mounts to add to every maintenance CronJob object. NOT merged with the global `extraVolumeMounts` as maintenance pods receive only values configured here. |
+| maintenance.image | object | `{"pullPolicy":"IfNotPresent","repository":"apache/polaris-admin-tool","tag":"latest"}` | The container image used by every maintenance CronJob object. |
+| maintenance.image.repository | string | `"apache/polaris-admin-tool"` | The image repository to pull from for the Polaris admin tool. |
+| maintenance.image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
+| maintenance.image.tag | string | `"latest"` | The image tag. |
+| maintenance.jobs | object | See sub-fields below. | Define maintenance CronJobs. |
+| maintenance.jobs.nosql-maintenance.enabled | bool | `false` | Enable this maintenance job. |
+| maintenance.jobs.nosql-maintenance.schedule | string | `"0 2 * * *"` | The schedule in Cron format. |
+| maintenance.jobs.nosql-maintenance.args | list | `["nosql","maintenance-run"]` | The arguments to pass to the admin tool. |
+| maintenance.jobs.nosql-maintenance.concurrencyPolicy | string | `"Forbid"` | The concurrency policy. Valid values are: Allow, Forbid, Replace. |
+| maintenance.jobs.nosql-maintenance.resources | object | `{}` | Resource requests and limits for this job's container. Not merged with the global `resources` as server's resource profile is typically not suitable for short-lived maintenance jobs. Configure resources explicitly when needed. Unset by default. |
+| maintenance.jobs.nosql-maintenance.restartPolicy | string | `"Never"` | The pod's restartPolicy. |
+| maintenance.jobs.nosql-maintenance.backoffLimit | int | `6` | Maximum number of retries before marking this Job failed. |
+| maintenance.jobs.nosql-maintenance.activeDeadlineSeconds | string | `nil` | Maximum runtime in seconds for a single job run. Null means no limit. |
+| maintenance.jobs.nosql-maintenance.successfulJobsHistoryLimit | int | `3` | How many successful finished Jobs to retain in history. |
+| maintenance.jobs.nosql-maintenance.failedJobsHistoryLimit | int | `1` | How many failed finished Jobs to retain in history. |
+| maintenance.jobs.nosql-maintenance.serviceAccountName | string | `""` | Per-job ServiceAccount override. Empty means use the global ServiceAccount. |

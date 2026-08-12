@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -57,13 +58,35 @@ public class QueryGenerator {
    * @param tableName Target table name.
    * @param whereClause Column-value pairs used in WHERE filtering.
    * @return A parameterized SELECT query.
-   * @throws IllegalArgumentException if any whereClause column isn't in projections.
+   * @throws IllegalArgumentException if any whereClause column isn't in projections or if limit is
+   *     not positive.
    */
   public static PreparedQuery generateSelectQuery(
       @NonNull List<String> projections,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
     return generateSelectQuery(projections, tableName, whereClause, Map.of(), null);
+  }
+
+  /**
+   * Generates a SELECT query bounded by a row limit. Useful for existence checks that only need to
+   * know whether any matching row exists, avoiding fetching and materializing the full result set.
+   *
+   * @param projections List of columns to retrieve.
+   * @param tableName Target table name.
+   * @param whereClause Column-value pairs used in WHERE filtering.
+   * @param limit Maximum number of rows to return.
+   * @return A parameterized SELECT query with a LIMIT clause.
+   * @throws IllegalArgumentException if any whereClause column isn't in projections.
+   */
+  public static PreparedQuery generateSelectQuery(
+      @NonNull List<String> projections,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereClause,
+      int limit) {
+    QueryFragment where = generateWhereClause(new HashSet<>(projections), whereClause, Map.of());
+    PreparedQuery query = generateSelectQuery(projections, tableName, where.sql(), null, limit);
+    return new PreparedQuery(query.sql(), where.parameters());
   }
 
   /**
@@ -81,9 +104,34 @@ public class QueryGenerator {
       @NonNull Map<String, Object> whereEquals,
       @NonNull Map<String, Object> whereGreater,
       @Nullable String orderByColumn) {
+    return generateSelectQuery(
+        projections, tableName, whereEquals, whereGreater, orderByColumn, null);
+  }
+
+  /**
+   * Generates a SELECT query with projection, filtering, ordering and an optional row limit.
+   *
+   * @param projections List of columns to retrieve.
+   * @param tableName Target table name.
+   * @param whereEquals Column-value pairs used in WHERE filtering.
+   * @param whereGreater Column-value pairs the row must be strictly greater than.
+   * @param orderByColumn Column to order by, or null for no ordering.
+   * @param limit Maximum number of rows to return, or null for no limit.
+   * @return A parameterized SELECT query.
+   * @throws IllegalArgumentException if any whereClause column isn't in projections or if limit is
+   *     not positive.
+   */
+  public static PreparedQuery generateSelectQuery(
+      @NonNull List<String> projections,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereEquals,
+      @NonNull Map<String, Object> whereGreater,
+      @Nullable String orderByColumn,
+      @Nullable Integer limit) {
     QueryFragment where =
         generateWhereClause(new HashSet<>(projections), whereEquals, whereGreater);
-    PreparedQuery query = generateSelectQuery(projections, tableName, where.sql(), orderByColumn);
+    PreparedQuery query =
+        generateSelectQuery(projections, tableName, where.sql(), orderByColumn, limit);
     return new PreparedQuery(query.sql(), where.parameters());
   }
 
@@ -120,6 +168,24 @@ public class QueryGenerator {
    */
   public static PreparedQuery generateSelectQueryWithEntityIds(
       @NonNull String realmId, int schemaVersion, @NonNull List<PolarisEntityId> entityIds) {
+    return generateSelectQueryWithEntityIds(
+        realmId, ModelEntity.getAllColumnNames(schemaVersion), entityIds);
+  }
+
+  /**
+   * Like {@link #generateSelectQueryWithEntityIds(String, int, List)} but selects only {@link
+   * ModelEntity#VERSION_COLUMNS}. Used by {@code lookupEntityVersions} to avoid fetching large JSON
+   * property blobs on the cache-validation hot path.
+   */
+  public static PreparedQuery generateSelectQueryWithEntityIdsVersionOnly(
+      @NonNull String realmId, @NonNull List<PolarisEntityId> entityIds) {
+    return generateSelectQueryWithEntityIds(realmId, ModelEntity.VERSION_COLUMNS, entityIds);
+  }
+
+  private static PreparedQuery generateSelectQueryWithEntityIds(
+      @NonNull String realmId,
+      @NonNull List<String> columns,
+      @NonNull List<PolarisEntityId> entityIds) {
     if (entityIds.isEmpty()) {
       throw new IllegalArgumentException("Empty entity ids");
     }
@@ -132,10 +198,7 @@ public class QueryGenerator {
     params.add(realmId);
     String where = " WHERE (catalog_id, id) IN (" + placeholders + ") AND realm_id = ?";
     return new PreparedQuery(
-        generateSelectQuery(
-                ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, where, null)
-            .sql(),
-        params);
+        generateSelectQuery(columns, ModelEntity.TABLE_NAME, where, null).sql(), params);
   }
 
   /**
@@ -193,60 +256,6 @@ public class QueryGenerator {
   }
 
   /**
-   * Builds an UPDATE query that updates only the specified columns and supports richer WHERE
-   * predicates (equality, greater-than, less-than, IS NULL, IS NOT NULL).
-   *
-   * <p>Callers should prefer passing an ordered map (e.g. {@link java.util.LinkedHashMap}) for the
-   * set clause so generated SQL and parameter order are consistent.
-   *
-   * @param tableColumns List of valid table columns.
-   * @param tableName Target table.
-   * @param setClause Column-value pairs to update.
-   * @param whereEquals Column-value pairs used in WHERE equality filtering.
-   * @param whereGreater Column-value pairs used in WHERE greater-than filtering.
-   * @param whereLess Column-value pairs used in WHERE less-than filtering.
-   * @param whereIsNull Columns that must be NULL.
-   * @param whereIsNotNull Columns that must be NOT NULL.
-   * @return UPDATE query with parameter bindings.
-   */
-  public static PreparedQuery generateUpdateQuery(
-      @NonNull List<String> tableColumns,
-      @NonNull String tableName,
-      @NonNull Map<String, Object> setClause,
-      @NonNull Map<String, Object> whereEquals,
-      @NonNull Map<String, Object> whereGreater,
-      @NonNull Map<String, Object> whereLess,
-      @NonNull Set<String> whereIsNull,
-      @NonNull Set<String> whereIsNotNull) {
-    if (setClause.isEmpty()) {
-      throw new IllegalArgumentException("Empty setClause");
-    }
-
-    Set<String> columns = new HashSet<>(tableColumns);
-    validateColumns(columns, setClause.keySet());
-
-    QueryFragment where =
-        generateWhereClauseExtended(
-            columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
-
-    List<String> setParts = new ArrayList<>();
-    List<Object> params = new ArrayList<>();
-    for (Map.Entry<String, Object> entry : setClause.entrySet()) {
-      setParts.add(entry.getKey() + " = ?");
-      params.add(entry.getValue());
-    }
-    params.addAll(where.parameters());
-
-    String sql =
-        "UPDATE "
-            + getFullyQualifiedTableName(tableName)
-            + " SET "
-            + String.join(", ", setParts)
-            + where.sql();
-    return new PreparedQuery(sql, params);
-  }
-
-  /**
    * Builds a DELETE query with the given conditions.
    *
    * @param tableColumns List of valid table columns.
@@ -263,31 +272,23 @@ public class QueryGenerator {
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
 
-  /**
-   * Builds a DELETE query that supports richer WHERE predicates (equality, greater-than, less-than,
-   * IS NULL, IS NOT NULL).
-   */
-  public static PreparedQuery generateDeleteQuery(
-      @NonNull List<String> tableColumns,
+  private static PreparedQuery generateSelectQuery(
+      @NonNull List<String> columnNames,
       @NonNull String tableName,
-      @NonNull Map<String, Object> whereEquals,
-      @NonNull Map<String, Object> whereGreater,
-      @NonNull Map<String, Object> whereLess,
-      @NonNull Set<String> whereIsNull,
-      @NonNull Set<String> whereIsNotNull) {
-    Set<String> columns = new HashSet<>(tableColumns);
-    QueryFragment where =
-        generateWhereClauseExtended(
-            columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
-    return new PreparedQuery(
-        "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
+      @NonNull String filter,
+      @Nullable String orderByColumn) {
+    return generateSelectQuery(columnNames, tableName, filter, orderByColumn, null);
   }
 
   private static PreparedQuery generateSelectQuery(
       @NonNull List<String> columnNames,
       @NonNull String tableName,
       @NonNull String filter,
-      @Nullable String orderByColumn) {
+      @Nullable String orderByColumn,
+      @Nullable Integer limit) {
+    if (limit != null && limit <= 0) {
+      throw new IllegalArgumentException("Limit must be positive");
+    }
     String sql =
         "SELECT "
             + String.join(", ", columnNames)
@@ -296,6 +297,9 @@ public class QueryGenerator {
             + filter;
     if (orderByColumn != null) {
       sql += " ORDER BY " + orderByColumn + " ASC";
+    }
+    if (limit != null) {
+      sql += " LIMIT " + limit;
     }
     return new PreparedQuery(sql, Collections.emptyList());
   }
@@ -361,6 +365,20 @@ public class QueryGenerator {
     return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
   }
 
+  /**
+   * Generates a {@code SELECT 1 ... WHERE ... LIMIT 1} query to test row existence without fetching
+   * any column data. All filter conditions must be supplied in {@code whereClause}.
+   */
+  public static PreparedQuery generateExistsQuery(
+      @NonNull List<String> tableColumns,
+      @NonNull String tableName,
+      @NonNull Map<String, Object> whereClause) {
+    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
+    String sql =
+        "SELECT 1 FROM " + getFullyQualifiedTableName(tableName) + where.sql() + " LIMIT 1";
+    return new PreparedQuery(sql, where.parameters());
+  }
+
   @VisibleForTesting
   static PreparedQuery generateEntityTableExistQuery() {
     return new PreparedQuery(
@@ -374,6 +392,10 @@ public class QueryGenerator {
    * overlap with a given location. The check is performed without consideration for the scheme, so
    * a path on one storage type may give a false positive for overlapping with another storage type.
    * This should be combined with a check using `StorageLocation`.
+   *
+   * <p>Equality terms are generated for each prefix of the location in both slash-terminated and
+   * non-slash-terminated forms so that ancestors stored with or without a trailing slash are both
+   * matched.
    *
    * @param realmId A realm to search within
    * @param schemaVersion The schema version of entities table to query
@@ -390,18 +412,35 @@ public class QueryGenerator {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
 
-    String[] components = locationWithoutScheme.split("/");
-    StringBuilder pathBuilder = new StringBuilder();
-
-    for (String component : components) {
-      pathBuilder.append(component).append("/");
-      conditions.add("location_without_scheme = ?");
-      parameters.add(pathBuilder.toString());
+    // Normalize by stripping any trailing slash so the scan below only emits meaningful prefixes.
+    // The slash-terminated form is re-added as the last prefix term below.
+    String normalizedLocation = locationWithoutScheme;
+    if (normalizedLocation.endsWith("/")) {
+      normalizedLocation = normalizedLocation.substring(0, normalizedLocation.length() - 1);
     }
 
-    // Add LIKE condition to match children
+    Set<String> prefixTerms = new LinkedHashSet<>();
+    for (int i = 0; i < normalizedLocation.length(); i++) {
+      if (normalizedLocation.charAt(i) == '/') {
+        if (i > 0) {
+          prefixTerms.add(normalizedLocation.substring(0, i));
+        }
+        prefixTerms.add(normalizedLocation.substring(0, i + 1));
+      }
+    }
+    prefixTerms.add(normalizedLocation);
+    prefixTerms.add(normalizedLocation + "/");
+
+    for (String prefix : prefixTerms) {
+      conditions.add("location_without_scheme = ?");
+      parameters.add(prefix);
+    }
+
+    // Add LIKE condition to match children. Slash-terminate the location so the pattern only
+    // matches true descendants (e.g. //bucket/ns/tA/% matches //bucket/ns/tA/child but not
+    // //bucket/ns/tA_backup).
     conditions.add("location_without_scheme LIKE ?");
-    parameters.add(locationWithoutScheme + "%");
+    parameters.add(StorageLocation.ensureTrailingSlash(locationWithoutScheme) + "%");
 
     String locationClause = String.join(" OR ", conditions);
     String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";

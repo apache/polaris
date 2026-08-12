@@ -46,6 +46,7 @@ import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -57,6 +58,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.catalog.config.CatalogConfigHandler;
 import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
@@ -81,17 +83,20 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
+  private final CatalogConfigHandler configHandler;
 
   @Inject
   public IcebergCatalogAdapter(
       CallContext callContext,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      IcebergCatalogHandlerFactory handlerFactory) {
+      IcebergCatalogHandlerFactory handlerFactory,
+      CatalogConfigHandler configHandler) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
+    this.configHandler = configHandler;
   }
 
   /**
@@ -193,8 +198,8 @@ public class IcebergCatalogAdapter
     } else {
       LOGGER
           .atWarn()
-          .addKeyValue("namespace", namespace)
-          .addKeyValue("tableName", tableName)
+          .addKeyValue(StructuredLogKeys.NAMESPACE, namespace)
+          .addKeyValue(StructuredLogKeys.TABLE_NAME, tableName)
           .log("Response has null metadataLocation; omitting etag");
     }
     return builder;
@@ -764,7 +769,7 @@ public class IcebergCatalogAdapter
     if (warehouse == null) {
       throw new BadRequestException("Please specify a warehouse");
     }
-    return withCatalogByName(
-        securityContext, warehouse, catalog -> Response.ok(catalog.getConfig()).build());
+    return Response.ok(configHandler.getConfig(warehouse, validatePrincipal(securityContext)))
+        .build();
   }
 }

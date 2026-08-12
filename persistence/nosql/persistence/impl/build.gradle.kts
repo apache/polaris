@@ -30,7 +30,7 @@ plugins {
 
 description = "Polaris NoSQL persistence core implementation"
 
-val jcstressRuntime by configurations.creating
+val jcstressRuntime = configurations.create("jcstressRuntime")
 val jcstressMode = providers.gradleProperty("jcstressMode").orElse("quick")
 val jcstressSplitPerActor =
   providers.gradleProperty("jcstressSplitPerActor").map(String::toBoolean).orElse(false)
@@ -41,11 +41,11 @@ dependencies {
   implementation(project(":polaris-idgen-api"))
   implementation(project(":polaris-idgen-spi"))
 
-  implementation(platform(libs.jackson.bom))
+  implementation(platform(libs.jackson3.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
-  implementation("com.fasterxml.jackson.core:jackson-core")
-  implementation("com.fasterxml.jackson.core:jackson-databind")
-  implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
+  implementation("tools.jackson.core:jackson-core")
+  implementation("tools.jackson.core:jackson-databind")
+  implementation("tools.jackson.dataformat:jackson-dataformat-smile")
 
   implementation(libs.agrona)
   implementation(libs.guava)
@@ -71,10 +71,10 @@ dependencies {
   testFixturesApi(testFixtures(project(":polaris-persistence-nosql-api")))
   testFixturesApi(project(":polaris-persistence-nosql-testextension"))
 
-  testFixturesCompileOnly(platform(libs.jackson.bom))
+  testFixturesCompileOnly(platform(libs.jackson3.bom))
   testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-core")
-  testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-databind")
+  testFixturesCompileOnly("tools.jackson.core:jackson-core")
+  testFixturesCompileOnly("tools.jackson.core:jackson-databind")
 
   testFixturesCompileOnly(libs.jspecify)
   testFixturesCompileOnly(libs.jakarta.annotation.api)
@@ -83,6 +83,7 @@ dependencies {
   testFixturesCompileOnly(project(":polaris-immutables"))
   testFixturesAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
+  testFixturesImplementation(project(":polaris-idgen-api"))
   testFixturesImplementation(libs.guava)
 
   testFixturesImplementation(libs.junit.pioneer)

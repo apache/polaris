@@ -21,7 +21,10 @@ package org.apache.polaris.service.metrics;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import jakarta.validation.constraints.Min;
+import java.time.Duration;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @ConfigMapping(prefix = "polaris.metrics")
 public interface MetricsConfiguration {
@@ -34,6 +37,9 @@ public interface MetricsConfiguration {
 
   /** Configuration for the user principal metric tag. */
   UserPrincipalTag userPrincipalTag();
+
+  /** Configuration for the HTTP server request metrics. */
+  HttpServerRequests httpServerRequests();
 
   interface RealmIdTag {
 
@@ -67,6 +73,17 @@ public interface MetricsConfiguration {
     @WithDefault("100")
     @Min(1)
     int httpMetricsMaxCardinality();
+  }
+
+  interface HttpServerRequests {
+
+    /**
+     * Service Level Objective (SLO) boundaries for the HTTP server request duration histogram.
+     *
+     * <p>When set, one histogram bucket is published per boundary so backends can compute
+     * percentiles (e.g. p95, p99) at the configured durations.
+     */
+    Optional<List<Duration>> histogramSlos();
   }
 
   interface UserPrincipalTag {

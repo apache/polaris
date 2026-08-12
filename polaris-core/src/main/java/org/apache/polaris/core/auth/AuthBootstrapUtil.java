@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
@@ -54,11 +55,9 @@ public class AuthBootstrapUtil {
 
     Optional<PrincipalEntity> preliminaryRootPrincipal = metaStoreManager.findRootPrincipal(ctx);
     if (preliminaryRootPrincipal.isPresent()) {
-      String overrideMessage =
-          "It appears this metastore manager has already been bootstrapped. "
-              + "To continue bootstrapping, please first purge the metastore with the `purge` command.";
-      LOGGER.error("\n\n {} \n\n", overrideMessage);
-      throw new IllegalArgumentException(overrideMessage);
+      LOGGER.info("Realm is already bootstrapped (root principal exists); nothing to do.");
+      return new PrincipalSecretsResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, "realm is already bootstrapped");
     }
 
     // Create a root container entity that can represent the securable for any top-level grants.

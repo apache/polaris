@@ -18,8 +18,11 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+
 import com.google.common.collect.ImmutableMap;
 import jakarta.inject.Inject;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
@@ -27,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -78,9 +82,12 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.admin.PolarisAuthzTestsFactory;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -106,11 +113,25 @@ import org.mockito.Mockito;
 @SuppressWarnings("resource")
 public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
+  @Override
+  protected PolarisAuthzTestsFactory.Builder authzTestsBuilder(String operationName) {
+    return super.authzTestsBuilder(operationName).useFreshRequestContext(true);
+  }
+
   @Inject LocalCatalogFactory localCatalogFactory;
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
   protected IcebergCatalogHandler newHandler() {
-    return newHandler(Set.of());
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of());
+    return icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
   }
 
   private IcebergCatalogHandler newHandler(Set<String> activatedPrincipalRoles) {
@@ -120,16 +141,18 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   private IcebergCatalogHandler newHandler(
       Set<String> activatedPrincipalRoles, String catalogName, LocalCatalogFactory factory) {
     PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            activatedPrincipalRoles);
     IcebergCatalogHandler handler =
         icebergCatalogHandlerFactory.createHandler(catalogName, authenticatedPrincipal);
-    if (factory == localCatalogFactory) {
-      return handler;
+    ImmutableIcebergCatalogHandler.Builder builder =
+        ImmutableIcebergCatalogHandler.builder().from(handler);
+    if (factory != localCatalogFactory) {
+      builder.localCatalogFactory(factory);
     }
-    return ImmutableIcebergCatalogHandler.builder()
-        .from(handler)
-        .localCatalogFactory(factory)
-        .build();
+    return builder.build();
   }
 
   @TestFactory
@@ -157,14 +180,23 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 .setCreateTimestamp(Instant.now().toEpochMilli())
                 .setCredentialRotationRequiredState()
                 .build());
-    adminService.assignPrincipalRole(principalName, PRINCIPAL_ROLE1);
-    adminService.assignPrincipalRole(principalName, PRINCIPAL_ROLE2);
+    newRootAdminService().assignPrincipalRole(principalName, PRINCIPAL_ROLE1);
+    newRootAdminService().assignPrincipalRole(principalName, PRINCIPAL_ROLE2);
 
+    PrincipalEntity principalEntity = newPrincipal.getPrincipal();
     PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(newPrincipal.getPrincipal(), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
 
-    IcebergCatalogHandler handler =
-        icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
+    Supplier<IcebergCatalogHandler> handler =
+        () ->
+            ImmutableIcebergCatalogHandler.builder()
+                .from(
+                    icebergCatalogHandlerFactory.createHandler(
+                        CATALOG_NAME, authenticatedPrincipal))
+                .build();
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
 
@@ -172,20 +204,22 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     Stream<DynamicNode> beforeRotationTests =
         Stream.of(
                 authzTestsBuilder("listNamespaces (before rotation)")
-                    .action(() -> handler.listNamespaces(Namespace.of()))
+                    .action(() -> handler.get().listNamespaces(Namespace.of()))
                     .principalName(principalName)
                     .shouldFailWithAnyPrivilege()
                     .createTests(),
                 authzTestsBuilder("createNamespace (before rotation)")
                     .action(
                         () ->
-                            handler.createNamespace(
-                                CreateNamespaceRequest.builder().withNamespace(ns3).build()))
+                            handler
+                                .get()
+                                .createNamespace(
+                                    CreateNamespaceRequest.builder().withNamespace(ns3).build()))
                     .principalName(principalName)
                     .shouldFailWithAnyPrivilege()
                     .createTests(),
                 authzTestsBuilder("listTables (before rotation)")
-                    .action(() -> handler.listTables(NS1))
+                    .action(() -> handler.get().listTables(NS1, null, null))
                     .principalName(principalName)
                     .shouldFailWithAnyPrivilege()
                     .createTests())
@@ -200,24 +234,31 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         rotateAndRefreshPrincipal(
             metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
     PolarisPrincipal authenticatedPrincipal1 =
-        PolarisPrincipal.of(refreshPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
+        PolarisPrincipal.of(
+            refreshPrincipal.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, refreshPrincipal),
+            Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
 
-    IcebergCatalogHandler refreshedWrapper =
-        ImmutableIcebergCatalogHandler.builder()
-            .from(handler)
-            .polarisPrincipal(authenticatedPrincipal1)
-            .build();
+    Supplier<IcebergCatalogHandler> refreshedWrapper =
+        () ->
+            ImmutableIcebergCatalogHandler.builder()
+                .from(
+                    icebergCatalogHandlerFactory.createHandler(
+                        CATALOG_NAME, authenticatedPrincipal1))
+                .polarisPrincipal(authenticatedPrincipal1)
+                .build();
 
     // Grant NAMESPACE_DROP to CATALOG_ROLE2 so cleanup can work
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DROP));
 
     // Tests after credential rotation - actions should succeed with proper privileges
     Stream<DynamicNode> afterRotationTests =
         Stream.of(
                 authzTestsBuilder("listNamespaces (after rotation)")
-                    .action(() -> refreshedWrapper.listNamespaces(Namespace.of()))
+                    .action(() -> refreshedWrapper.get().listNamespaces(Namespace.of()))
                     .principalName(principalName)
                     .shouldPassWith(PolarisPrivilege.NAMESPACE_LIST)
                     .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
@@ -230,8 +271,10 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 authzTestsBuilder("createNamespace (after rotation)")
                     .action(
                         () ->
-                            refreshedWrapper.createNamespace(
-                                CreateNamespaceRequest.builder().withNamespace(ns3).build()))
+                            refreshedWrapper
+                                .get()
+                                .createNamespace(
+                                    CreateNamespaceRequest.builder().withNamespace(ns3).build()))
                     .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropNamespace(ns3))
                     .principalName(principalName)
                     .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
@@ -240,7 +283,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                     .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
                     .createTests(),
                 authzTestsBuilder("listTables (after rotation)")
-                    .action(() -> refreshedWrapper.listTables(NS1))
+                    .action(() -> refreshedWrapper.get().listTables(NS1, null, null))
                     .principalName(principalName)
                     .shouldPassWith(PolarisPrivilege.TABLE_LIST)
                     .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
@@ -261,8 +304,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   public void testListNamespacesCatalogLevelWithPrincipalRoleActivation() {
     // Grant catalog-level privilege to CATALOG_ROLE1
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
     Assertions.assertThat(newHandler().listNamespaces(Namespace.of()).namespaces())
         .containsAll(List.of(NS1, NS2));
 
@@ -279,8 +323,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // If we revoke, then it should fail again even with all principal roles activated.
     assertSuccess(
-        adminService.revokePrivilegeOnCatalogFromRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
+        newRootAdminService()
+            .revokePrivilegeOnCatalogFromRole(
+                CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
     Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of()))
         .isInstanceOf(ForbiddenException.class);
   }
@@ -289,8 +334,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   public void testListNamespacesChildOnly() {
     // Grant only NS1-level privilege to CATALOG_ROLE1
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.NAMESPACE_LIST));
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.NAMESPACE_LIST));
 
     // Listing directly on NS1 succeeds
     Assertions.assertThat(newHandler().listNamespaces(NS1).namespaces())
@@ -312,8 +358,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testCreateNamespacePrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DROP));
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
     return authzTestsBuilder("createNamespace")
@@ -376,8 +423,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testDropNamespacePrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_CREATE));
 
     return authzTestsBuilder("dropNamespace")
         .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropNamespace(NS1AA))
@@ -415,7 +463,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testListTablesPrivileges() {
     return authzTestsBuilder("listTables")
-        .action(() -> newHandler().listTables(NS1A))
+        .action(() -> newHandler().listTables(NS1A, null, null))
         .shouldPassWith(PolarisPrivilege.TABLE_LIST)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
@@ -431,11 +479,13 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testCreateTableDirectPrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA));
 
     final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
     final CreateTableRequest createRequest =
@@ -443,7 +493,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
     return authzTestsBuilder("createTableDirect")
-        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).createTableDirect(NS2, createRequest))
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .createTableDirect(
+                        NS2,
+                        createRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
@@ -455,11 +512,13 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testCreateTableDirectWithWriteDelegationPrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA));
 
     final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
     final CreateTableRequest createDirectWithWriteDelegationRequest =
@@ -469,8 +528,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE1))
-                    .createTableDirectWithWriteDelegation(
-                        NS2, createDirectWithWriteDelegationRequest, Optional.empty()))
+                    .createTableDirect(
+                        NS2,
+                        createDirectWithWriteDelegationRequest,
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -482,8 +544,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testCreateTableStagedPrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
 
     final CreateTableRequest createStagedRequest =
         CreateTableRequest.builder()
@@ -495,7 +558,13 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
     return authzTestsBuilder("createTableStaged")
         .action(
-            () -> newHandler(Set.of(PRINCIPAL_ROLE1)).createTableStaged(NS2, createStagedRequest))
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .createTableStaged(
+                        NS2,
+                        createStagedRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -506,8 +575,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testCreateTableStagedWithWriteDelegationPrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
 
     final CreateTableRequest createStagedWithWriteDelegationRequest =
         CreateTableRequest.builder()
@@ -520,8 +590,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE1))
-                    .createTableStagedWithWriteDelegation(
-                        NS2, createStagedWithWriteDelegationRequest, Optional.empty()))
+                    .createTableStaged(
+                        NS2,
+                        createStagedWithWriteDelegationRequest,
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
@@ -530,15 +603,26 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testRegisterTablePrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
     // To get a handy metadata file we can use one from another table.
     // to avoid overlapping directories, drop the original table and recreate it via registerTable
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     RegisterTableRequest registerRequest =
@@ -568,14 +652,17 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testRegisterTableInsufficientPermissions() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
 
     final TableIdentifier sourceTable =
         TableIdentifier.of(NS2, "register_table_insufficient_source");
@@ -591,10 +678,20 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     }
     CreateTableRequest createSourceRequest =
         CreateTableRequest.builder().withName(sourceTable.name()).withSchema(SCHEMA).build();
-    newHandler(Set.of(PRINCIPAL_ROLE2)).createTableDirect(NS2, createSourceRequest);
+    newHandler(Set.of(PRINCIPAL_ROLE2))
+        .createTableDirect(
+            NS2, createSourceRequest, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
 
     final String metadataLocation =
-        newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(sourceTable, "all").metadataLocation();
+        newHandler(Set.of(PRINCIPAL_ROLE2))
+            .loadTable(
+                sourceTable,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(sourceTable);
 
     final RegisterTableRequest registerRequest =
@@ -654,10 +751,19 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // level to the test role, is sufficient to perform a registerTable with overwrite=true.
 
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
     final String metadataLocation =
-        newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+        newHandler(Set.of(PRINCIPAL_ROLE2))
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
 
     // Mock RegisterTableRequest with overwrite=true
     final RegisterTableRequest registerRequest = Mockito.mock(RegisterTableRequest.class);
@@ -694,13 +800,24 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // When overwrite is specified and the table does not exist, the authorization should
     // fall back to a non-overwrite authorization level instead.
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     RegisterTableRequest registerRequest =
@@ -748,10 +865,19 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // REGISTER_TABLE_OVERWRITE authorizes against the table entity, so TABLE_FULL_METADATA
     // granted directly on the target table (not at catalog/namespace level) must suffice.
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
     String metadataLocation =
-        newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+        newHandler(Set.of(PRINCIPAL_ROLE2))
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
 
     RegisterTableRequest registerRequest = Mockito.mock(RegisterTableRequest.class);
     Mockito.when(registerRequest.name()).thenReturn(TABLE_NS1_1.name());
@@ -761,12 +887,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     return authzTestsBuilder("registerTableOverwriteTableLevel")
         .grantAction(
             privilege ->
-                adminService.grantPrivilegeOnTableToRole(
-                    CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
+                newRootAdminService()
+                    .grantPrivilegeOnTableToRole(
+                        CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
         .revokeAction(
             privilege ->
-                adminService.revokePrivilegeOnTableFromRole(
-                    CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
+                newRootAdminService()
+                    .revokePrivilegeOnTableFromRole(
+                        CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
         .action(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE1))
@@ -793,13 +921,24 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testRegisterTableWithWriteDelegation() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     RegisterTableRequest registerRequest =
@@ -831,13 +970,24 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testRegisterTableOverwriteWithWriteDelegation() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
 
     RegisterTableRequest registerRequest =
         ImmutableRegisterTableRequest.builder()
@@ -869,13 +1019,24 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testRegisterTableOverwriteWithWriteDelegationNonExistentTable() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     RegisterTableRequest registerRequest =
@@ -909,13 +1070,24 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testRegisterTableOverwriteWithWriteDelegationTableLevel() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
-    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation =
+        newHandler()
+            .loadTable(
+                TABLE_NS1_1,
+                "all",
+                null,
+                EnumSet.noneOf(AccessDelegationMode.class),
+                Optional.empty())
+            .get()
+            .metadataLocation();
 
     RegisterTableRequest registerRequest =
         ImmutableRegisterTableRequest.builder()
@@ -927,12 +1099,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     return authzTestsBuilder("registerTableOverwriteWithWriteDelegationTableLevel")
         .grantAction(
             privilege ->
-                adminService.grantPrivilegeOnTableToRole(
-                    CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
+                newRootAdminService()
+                    .grantPrivilegeOnTableToRole(
+                        CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
         .revokeAction(
             privilege ->
-                adminService.revokePrivilegeOnTableFromRole(
-                    CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
+                newRootAdminService()
+                    .revokePrivilegeOnTableFromRole(
+                        CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
         .action(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE1))
@@ -954,7 +1128,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testLoadTablePrivileges() {
     return authzTestsBuilder("loadTable")
-        .action(() -> newHandler().loadTable(TABLE_NS1A_2, "all"))
+        .action(
+            () ->
+                newHandler()
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        null,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
@@ -971,7 +1153,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler()
-                    .loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"))
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
@@ -986,7 +1173,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   Stream<DynamicNode> testLoadTableWithReadAccessDelegationPrivileges() {
     return authzTestsBuilder("loadTableWithAccessDelegation")
         .action(
-            () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
+            () ->
+                newHandler()
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        null,
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1012,7 +1206,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // to receive a read-only credential.
     return authzTestsBuilder("loadTableWithAccessDelegation (write)")
         .action(
-            () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
+            () ->
+                newHandler()
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        null,
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1025,8 +1226,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler()
-                    .loadTableWithAccessDelegationIfStale(
-                        TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1042,8 +1247,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(
             () ->
                 newHandler()
-                    .loadTableWithAccessDelegationIfStale(
-                        TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        IfNoneMatch.fromHeader("W/\"0:0\""),
+                        EnumSet.of(VENDED_CREDENTIALS),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1106,7 +1315,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
    * behavior to coarse-grained authorization.
    */
   private IcebergCatalogHandler newHandlerWithFineGrainedAuthzDisabled() {
-    PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of());
 
     // Create a custom CallContext that returns a custom RealmConfig
     CallContext mockCallContext = Mockito.mock(CallContext.class);
@@ -1172,8 +1389,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testDropTableWithoutPurgePrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
 
     final CreateTableRequest createRequest =
         CreateTableRequest.builder().withName(TABLE_NS1_1.name()).withSchema(SCHEMA).build();
@@ -1184,7 +1402,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .cleanupAction(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE2))
-                    .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
+                    .createTableDirect(
+                        TABLE_NS1_1.namespace(),
+                        createRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1195,8 +1417,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testDropTableWithPurgePrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
 
     final CreateTableRequest createRequest =
         CreateTableRequest.builder().withName(TABLE_NS1_1.name()).withSchema(SCHEMA).build();
@@ -1207,7 +1430,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .cleanupAction(
             () ->
                 newHandler(Set.of(PRINCIPAL_ROLE2))
-                    .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
+                    .createTableDirect(
+                        TABLE_NS1_1.namespace(),
+                        createRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -1260,11 +1487,13 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Minimum privileges should succeed -- drop on src, create on dst parent.
     assertSuccess(
-        adminService.grantPrivilegeOnTableToRole(
-            CATALOG_NAME, CATALOG_ROLE1, srcTable, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnTableToRole(
+                CATALOG_NAME, CATALOG_ROLE1, srcTable, PolarisPrivilege.TABLE_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, dstTable.namespace(), PolarisPrivilege.TABLE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, dstTable.namespace(), PolarisPrivilege.TABLE_CREATE));
 
     // Initial rename should succeed
     newHandler().renameTable(rename1);
@@ -1275,8 +1504,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Now grant TABLE_DROP on dst
     assertSuccess(
-        adminService.grantPrivilegeOnTableToRole(
-            CATALOG_NAME, CATALOG_ROLE1, dstTable, PolarisPrivilege.TABLE_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnTableToRole(
+                CATALOG_NAME, CATALOG_ROLE1, dstTable, PolarisPrivilege.TABLE_DROP));
 
     // Still not enough without TABLE_CREATE at source
     Assertions.assertThatThrownBy(() -> newHandler().renameTable(rename2))
@@ -1284,8 +1514,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Even grant CATALOG_MANAGE_CONTENT under all of NS1
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
 
     // Still not enough to rename back to src since src was NS2.
     Assertions.assertThatThrownBy(() -> newHandler().renameTable(rename2))
@@ -1293,8 +1524,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Finally, grant TABLE_CREATE on NS2 and it should succeed to rename back to src.
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS2, PolarisPrivilege.TABLE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, NS2, PolarisPrivilege.TABLE_CREATE));
     newHandler().renameTable(rename2);
   }
 
@@ -1330,36 +1562,41 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Grant TABLE_CREATE for all of NS1
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.TABLE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.TABLE_CREATE));
     Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
     // Grant TABLE_FULL_METADATA directly on TABLE_NS1_1
     assertSuccess(
-        adminService.grantPrivilegeOnTableToRole(
-            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, PolarisPrivilege.TABLE_FULL_METADATA));
+        newRootAdminService()
+            .grantPrivilegeOnTableToRole(
+                CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, PolarisPrivilege.TABLE_FULL_METADATA));
     Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
     // Grant TABLE_WRITE_PROPERTIES on NS1A namespace
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_WRITE_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_WRITE_PROPERTIES));
     Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
     // Grant TABLE_WRITE_DATA directly on TABLE_NS1B_1
     assertSuccess(
-        adminService.grantPrivilegeOnTableToRole(
-            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1B_1, PolarisPrivilege.TABLE_WRITE_DATA));
+        newRootAdminService()
+            .grantPrivilegeOnTableToRole(
+                CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1B_1, PolarisPrivilege.TABLE_WRITE_DATA));
     Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
     // Grant TABLE_WRITE_PROPERTIES directly on TABLE_NS2_1
     assertSuccess(
-        adminService.grantPrivilegeOnTableToRole(
-            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS2_1, PolarisPrivilege.TABLE_WRITE_PROPERTIES));
+        newRootAdminService()
+            .grantPrivilegeOnTableToRole(
+                CATALOG_NAME, CATALOG_ROLE1, TABLE_NS2_1, PolarisPrivilege.TABLE_WRITE_PROPERTIES));
     Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
@@ -1368,15 +1605,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // and update, then this one should only be TABLE_CREATE on the *parent* of this last table
     // and the table shouldn't exist.
     assertSuccess(
-        adminService.grantPrivilegeOnTableToRole(
-            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS2_1, PolarisPrivilege.TABLE_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnTableToRole(
+                CATALOG_NAME, CATALOG_ROLE1, TABLE_NS2_1, PolarisPrivilege.TABLE_CREATE));
     newHandler().commitTransaction(req);
   }
 
   @TestFactory
   Stream<DynamicNode> testListViewsPrivileges() {
     return authzTestsBuilder("listViews")
-        .action(() -> newHandler().listViews(NS1A))
+        .action(() -> newHandler().listViews(NS1A, null, null))
         .shouldPassWith(PolarisPrivilege.VIEW_LIST)
         .shouldPassWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
@@ -1390,8 +1628,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testCreateViewPrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.VIEW_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.VIEW_DROP));
 
     final TableIdentifier newview = TableIdentifier.of(NS2, "newview");
     final CreateViewRequest createRequest =
@@ -1448,8 +1687,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testDropViewPrivileges() {
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.VIEW_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.VIEW_CREATE));
 
     final CreateViewRequest createRequest =
         ImmutableCreateViewRequest.builder()
@@ -1527,11 +1767,13 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Minimum privileges should succeed -- drop on src, create on dst parent.
     assertSuccess(
-        adminService.grantPrivilegeOnViewToRole(
-            CATALOG_NAME, CATALOG_ROLE1, srcView, PolarisPrivilege.VIEW_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnViewToRole(
+                CATALOG_NAME, CATALOG_ROLE1, srcView, PolarisPrivilege.VIEW_DROP));
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, dstView.namespace(), PolarisPrivilege.VIEW_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, dstView.namespace(), PolarisPrivilege.VIEW_CREATE));
 
     // Initial rename should succeed
     newHandler().renameView(rename1);
@@ -1542,8 +1784,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Now grant VIEW_DROP on dst
     assertSuccess(
-        adminService.grantPrivilegeOnViewToRole(
-            CATALOG_NAME, CATALOG_ROLE1, dstView, PolarisPrivilege.VIEW_DROP));
+        newRootAdminService()
+            .grantPrivilegeOnViewToRole(
+                CATALOG_NAME, CATALOG_ROLE1, dstView, PolarisPrivilege.VIEW_DROP));
 
     // Still not enough without VIEW_CREATE at source
     Assertions.assertThatThrownBy(() -> newHandler().renameView(rename2))
@@ -1551,8 +1794,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Even grant CATALOG_MANAGE_CONTENT under all of NS1
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
 
     // Still not enough to rename back to src since src was NS2.
     Assertions.assertThatThrownBy(() -> newHandler().renameView(rename2))
@@ -1560,8 +1804,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Finally, grant VIEW_CREATE on NS2 and it should succeed to rename back to src.
     assertSuccess(
-        adminService.grantPrivilegeOnNamespaceToRole(
-            CATALOG_NAME, CATALOG_ROLE1, NS2, PolarisPrivilege.VIEW_CREATE));
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, NS2, PolarisPrivilege.VIEW_CREATE));
     newHandler().renameView(rename2);
   }
 
@@ -1832,26 +2077,32 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         FileStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
             .build();
-    adminService.createCatalog(
-        new CreateCatalogRequest(
-            new CatalogEntity.Builder()
-                .setName(externalCatalog)
-                .setDefaultBaseLocation(storageLocation)
-                .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
-                .setCatalogType("EXTERNAL")
-                .build()
-                .asCatalog(serviceIdentityProvider)));
-    adminService.createCatalogRole(
-        externalCatalog, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
-    adminService.createCatalogRole(
-        externalCatalog, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
+    newRootAdminService()
+        .createCatalog(
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(externalCatalog)
+                    .setDefaultBaseLocation(storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
+                    .setCatalogType("EXTERNAL")
+                    .build()
+                    .asCatalog(serviceIdentityProvider)));
+    newRootAdminService()
+        .createCatalogRole(
+            externalCatalog, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
+    newRootAdminService()
+        .createCatalogRole(
+            externalCatalog, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
 
-    adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1);
-    adminService.assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE1, externalCatalog, CATALOG_ROLE1);
-    adminService.assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, externalCatalog, CATALOG_ROLE2);
+    newRootAdminService().assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1);
+    newRootAdminService()
+        .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE1, externalCatalog, CATALOG_ROLE1);
+    newRootAdminService()
+        .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, externalCatalog, CATALOG_ROLE2);
     assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            externalCatalog, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(
+                externalCatalog, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
   }
 
   private PolarisLocalCatalogFactory createExternalCatalogFactory(String externalCatalog) {
@@ -1865,7 +2116,19 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         eventMetadataFactory,
         metaStoreManager,
         callContext,
-        authenticatedRoot) {
+        authenticatedRoot,
+        new IdempotencyRequestContext(
+            new IdempotencyConfiguration() {
+              @Override
+              public boolean enabled() {
+                return false;
+              }
+
+              @Override
+              public Duration ttl() {
+                return Duration.ofMinutes(5);
+              }
+            })) {
       @Override
       public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
         Catalog catalog = super.createCatalog(resolvedManifest);
@@ -2119,7 +2382,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // Test that TABLE_MANAGE_STRUCTURE is insufficient for operations that require
     // different privilege categories (like read operations)
     return authzTestsBuilder("loadTable (TABLE_MANAGE_STRUCTURE insufficient)")
-        .action(() -> newHandler().loadTable(TABLE_NS1A_2, "all"))
+        .action(
+            () ->
+                newHandler()
+                    .loadTable(
+                        TABLE_NS1A_2,
+                        "all",
+                        null,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)

@@ -94,6 +94,10 @@ tasks.named<RatTask>("rat").configure {
   excludes.add(".git")
   excludes.add(".github/pull_request_template.md")
 
+  // AI agents
+  excludes.add(".claude/**")
+  excludes.add(".agents/**")
+
   // Misc build artifacts
   excludes.add(".java-version")
   excludes.add("**/.keep")

@@ -38,12 +38,16 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -80,6 +84,19 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void validateBootstrap() {
     // allocate test driver
+    polarisTestMetaStoreManager.validateBootstrap();
+  }
+
+  /** re-bootstrapping an already-bootstrapped service must be a graceful no-op */
+  @Test
+  protected void testBootstrapAgainIsNoOp() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    // the test driver bootstrapped the service already; bootstrap a second time
+    BaseResult secondBootstrap =
+        metaStoreManager.bootstrapPolarisService(polarisTestMetaStoreManager.polarisCallContext);
+    Assertions.assertThat(secondBootstrap.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
+    // the existing realm must be left fully intact
     polarisTestMetaStoreManager.validateBootstrap();
   }
 
@@ -544,5 +561,64 @@ public abstract class BasePolarisMetaStoreManagerTest {
                 metaStoreManager.resetPrincipalSecrets(
                     callCtx, principalB.getId(), principalAClientId, null))
         .isInstanceOf(AlreadyExistsException.class);
+  }
+
+  /**
+   * {@link PolarisEntityConstants#ENTITY_BASE_LOCATION} is an ordinary user-settable property, so
+   * entities that are not catalog content may carry it. Those entities are not location-tracked, so
+   * creating, updating and dropping them must all succeed regardless.
+   */
+  @Test
+  protected void testBaseLocationPropertyOnEntityThatIsNotCatalogContent() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    Map<String, String> properties =
+        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://bucket/path/");
+
+    // creating a principal role that carries a base location must succeed
+    PolarisBaseEntity principalRole =
+        polarisTestMetaStoreManager.createEntity(
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "principalRoleWithLocation",
+            properties);
+    Assertions.assertThat(principalRole.getPropertiesAsMap())
+        .containsEntry(PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://bucket/path/");
+
+    // a catalog that carries one must remain updatable afterwards
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity.Builder()
+            .catalogId(PolarisEntityConstants.getNullId())
+            .id(metaStoreManager.generateNewEntityId(callCtx).getId())
+            .typeCode(PolarisEntityType.CATALOG.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(PolarisEntityConstants.getRootEntityId())
+            .name("catalogWithLocation")
+            .propertiesAsMap(properties)
+            .internalPropertiesAsMap(Map.of())
+            .build();
+    catalog = metaStoreManager.createCatalog(callCtx, catalog, List.of()).getCatalog();
+    Assertions.assertThat(catalog).isNotNull();
+    catalog =
+        metaStoreManager
+            .loadEntity(callCtx, catalog.getCatalogId(), catalog.getId(), catalog.getType())
+            .getEntity();
+
+    PolarisBaseEntity relocatedCatalog =
+        new PolarisBaseEntity.Builder(catalog)
+            .propertiesAsMap(
+                Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://bucket/other/"))
+            .build();
+    EntityResult updated =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, null, relocatedCatalog);
+    Assertions.assertThat(updated.isSuccess()).isTrue();
+    Assertions.assertThat(updated.getEntity().getPropertiesAsMap())
+        .containsEntry(PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://bucket/other/");
+
+    // and dropping a location-carrying entity must succeed too
+    DropEntityResult dropped =
+        metaStoreManager.dropEntityIfExists(callCtx, null, principalRole, null, false);
+    Assertions.assertThat(dropped.isSuccess()).isTrue();
   }
 }
