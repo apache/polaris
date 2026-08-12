@@ -328,6 +328,11 @@ h6:hover .heading-anchor {
       background: rgba(114, 232, 221, 0.1);
       transform: translateY(-2px);
     }
+
+    &:focus-visible {
+      outline: 3px solid #7bf3e8;
+      outline-offset: 3px;
+    }
   }
 }
 
@@ -352,11 +357,6 @@ h6:hover .heading-anchor {
       color: #a1f5ed;
     }
   }
-}
-
-.polaris-landing-community__link {
-  font-size: 0.84rem;
-  font-weight: 700;
 }
 
 @media (max-width: 767.98px) {
