@@ -87,7 +87,7 @@ associated with vended credentials so that accessing both old and new data is po
 
 Keys currently used for encryption should be configured with the repeatable `--allowed-kms-key`
 option. When a key is decommissioned for encryption, move it to the repeatable
-`--legacy-kms-key` option so that clients retain decrypt access without receiving encrypt access.
+`--decrypt-only-kms-key` option so that clients retain decrypt access without receiving encrypt access.
 
 Note: the key material may be automatically rotated by AWS services (if configured) without introducing a new key ARN,
 in that case no catalog changes are necessary.

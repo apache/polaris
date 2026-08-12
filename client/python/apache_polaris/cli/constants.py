@@ -214,7 +214,7 @@ class Arguments:
     KMS_UNAVAILABLE = "no_kms"
     KMS_KEY_CURRENT = "current_kms_key"
     KMS_KEY_ALLOWED = "allowed_kms_key"
-    KMS_KEY_LEGACY = "legacy_kms_key"
+    KMS_KEY_DECRYPT_ONLY = "decrypt_only_kms_key"
     PATH_STYLE_ACCESS = "path_style_access"
     CATALOG_CONNECTION_TYPE = "catalog_connection_type"
     CATALOG_AUTHENTICATION_TYPE = "catalog_authentication_type"
@@ -307,7 +307,7 @@ class Hints:
     S3_PATH_STYLE_ACCESS = "Whether to use path-style-access for S3"
     S3_KMS_KEY_CURRENT = "Deprecated. Use --allowed-kms-key instead"
     S3_KMS_KEY_ALLOWED = "AWS KMS key ARN(s) that this catalog and its clients may use to encrypt and decrypt S3 data (zero or more)"
-    S3_KMS_KEY_LEGACY = "Historical AWS KMS key ARN(s) that this catalog and its clients may use only to decrypt S3 data (zero or more)"
+    S3_KMS_KEY_DECRYPT_ONLY = "AWS KMS key ARN(s) that this catalog and its clients may use only to decrypt S3 data (zero or more)"
     ## Azure
     AZURE_TENANT_ID = "(Required) A tenant ID to use when connecting to Azure Storage"
     AZURE_MULTI_TENANT_APP_NAME = "The app name to use when connecting to Azure Storage"

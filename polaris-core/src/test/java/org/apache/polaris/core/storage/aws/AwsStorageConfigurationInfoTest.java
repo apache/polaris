@@ -35,7 +35,7 @@ public class AwsStorageConfigurationInfoTest {
 
   private static final String ALLOWED_KMS_KEY_ARN =
       "arn:aws:kms:us-east-1:012345678901:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-  private static final String LEGACY_KMS_KEY_ARN =
+  private static final String DECRYPT_ONLY_KMS_KEY_ARN =
       "arn:aws:kms:us-east-1:012345678901:key/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
   @Test
@@ -146,33 +146,37 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
-  public void testLegacyKmsKeysMustNotOverlapEncryptCapableKeys() {
+  public void testDecryptOnlyKmsKeysMustNotOverlapEncryptCapableKeys() {
     String keyArn = "arn:aws:kms:us-east-1:012345678901:key/cccccccc-cccc-cccc-cccc-cccccccccccc";
 
     assertThatThrownBy(
-            () -> newBuilder().currentKmsKey(keyArn).legacyKmsKeys(List.of(keyArn)).build())
+            () -> newBuilder().currentKmsKey(keyArn).decryptOnlyKmsKeys(List.of(keyArn)).build())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("currentKmsKey must not also be configured in legacyKmsKeys");
+        .hasMessage("currentKmsKey must not also be configured in decryptOnlyKmsKeys");
 
     assertThatThrownBy(
             () ->
-                newBuilder().allowedKmsKeys(List.of(keyArn)).legacyKmsKeys(List.of(keyArn)).build())
+                newBuilder()
+                    .allowedKmsKeys(List.of(keyArn))
+                    .decryptOnlyKmsKeys(List.of(keyArn))
+                    .build())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("allowedKmsKeys and legacyKmsKeys must not overlap");
+        .hasMessage("allowedKmsKeys and decryptOnlyKmsKeys must not overlap");
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidKmsKeyArns")
-  public void testLegacyKmsKeysRejectNonCanonicalKeyArns(String description, String invalidKeyArn) {
-    assertThatThrownBy(() -> newBuilder().legacyKmsKeys(List.of(invalidKeyArn)).build())
+  public void testKmsKeysRejectNonCanonicalArnsWhenDecryptOnlyKmsKeysConfigured(
+      String description, String invalidKeyArn) {
+    assertThatThrownBy(() -> newBuilder().decryptOnlyKmsKeys(List.of(invalidKeyArn)).build())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("legacyKmsKeys must contain concrete AWS KMS key ARNs");
+        .hasMessageContaining("decryptOnlyKmsKeys must contain concrete AWS KMS key ARNs");
 
     assertThatThrownBy(
             () ->
                 newBuilder()
                     .allowedKmsKeys(List.of(invalidKeyArn))
-                    .legacyKmsKeys(List.of(LEGACY_KMS_KEY_ARN))
+                    .decryptOnlyKmsKeys(List.of(DECRYPT_ONLY_KMS_KEY_ARN))
                     .build())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("allowedKmsKeys must contain concrete AWS KMS key ARNs");
@@ -181,7 +185,7 @@ public class AwsStorageConfigurationInfoTest {
             () ->
                 newBuilder()
                     .currentKmsKey(invalidKeyArn)
-                    .legacyKmsKeys(List.of(LEGACY_KMS_KEY_ARN))
+                    .decryptOnlyKmsKeys(List.of(DECRYPT_ONLY_KMS_KEY_ARN))
                     .build())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("currentKmsKey must contain concrete AWS KMS key ARNs");
@@ -201,19 +205,19 @@ public class AwsStorageConfigurationInfoTest {
 
   @ParameterizedTest
   @MethodSource("validKmsKeyArns")
-  public void testLegacyKmsKeysAcceptConcreteKeyArns(String keyArn) {
+  public void testDecryptOnlyKmsKeysAcceptConcreteKeyArns(String keyArn) {
     assertThat(
             newBuilder()
                 .allowedKmsKeys(List.of(ALLOWED_KMS_KEY_ARN))
-                .legacyKmsKeys(List.of(keyArn))
+                .decryptOnlyKmsKeys(List.of(keyArn))
                 .build()
-                .getLegacyKmsKeys())
+                .getDecryptOnlyKmsKeys())
         .containsExactly(keyArn);
   }
 
   static Stream<String> validKmsKeyArns() {
     return Stream.of(
-        LEGACY_KMS_KEY_ARN,
+        DECRYPT_ONLY_KMS_KEY_ARN,
         "arn:aws:kms:us-east-1:012345678901:key/mrk-1234abcd12ab34cd56ef1234567890ab",
         "arn:aws-us-gov:kms:us-gov-west-1:012345678901:key/1234abcd-12ab-34cd-56ef-1234567890ab");
   }

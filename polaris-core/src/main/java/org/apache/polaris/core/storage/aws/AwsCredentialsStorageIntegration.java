@@ -329,7 +329,7 @@ public class AwsCredentialsStorageIntegration
     String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
     String currentKmsKey = storageConfigurationInfo.getCurrentKmsKey();
     List<String> allowedKmsKeys = storageConfigurationInfo.getAllowedKmsKeys();
-    List<String> legacyKmsKeys = storageConfigurationInfo.getLegacyKmsKeys();
+    List<String> decryptOnlyKmsKeys = storageConfigurationInfo.getDecryptOnlyKmsKeys();
 
     readLocations.forEach(
         location -> {
@@ -397,7 +397,7 @@ public class AwsCredentialsStorageIntegration
       if (addKmsKeyPolicy(
           currentKmsKey,
           allowedKmsKeys,
-          legacyKmsKeys,
+          decryptOnlyKmsKeys,
           policyBuilder,
           canWrite,
           region,
@@ -433,7 +433,7 @@ public class AwsCredentialsStorageIntegration
   private static boolean addKmsKeyPolicy(
       String currentKmsKey,
       List<String> allowedKmsKeys,
-      List<String> legacyKmsKeys,
+      List<String> decryptOnlyKmsKeys,
       IamPolicy.Builder policyBuilder,
       boolean canWrite,
       String region,
@@ -441,11 +441,11 @@ public class AwsCredentialsStorageIntegration
 
     boolean hasCurrentKey = currentKmsKey != null;
     boolean hasAllowedKeys = hasKmsKeys(allowedKmsKeys);
-    boolean hasLegacyKeys = hasKmsKeys(legacyKmsKeys);
+    boolean hasDecryptOnlyKeys = hasKmsKeys(decryptOnlyKmsKeys);
     boolean isAwsS3 = region != null && accountId != null;
 
     // Nothing to do if no keys are configured and not AWS S3
-    if (!hasCurrentKey && !hasAllowedKeys && !hasLegacyKeys && !isAwsS3) {
+    if (!hasCurrentKey && !hasAllowedKeys && !hasDecryptOnlyKeys && !isAwsS3) {
       return false;
     }
 
@@ -465,10 +465,10 @@ public class AwsCredentialsStorageIntegration
       statementAdded = true;
     }
 
-    if (hasLegacyKeys) {
-      IamStatement.Builder allowLegacyKms = buildBaseKmsStatement(false);
-      addKmsKeyResources(legacyKmsKeys, allowLegacyKms, "legacy");
-      policyBuilder.addStatement(allowLegacyKms.build());
+    if (hasDecryptOnlyKeys) {
+      IamStatement.Builder allowDecryptOnlyKms = buildBaseKmsStatement(false);
+      addKmsKeyResources(decryptOnlyKmsKeys, allowDecryptOnlyKms, "decrypt-only");
+      policyBuilder.addStatement(allowDecryptOnlyKms.build());
       statementAdded = true;
     }
 
@@ -476,7 +476,7 @@ public class AwsCredentialsStorageIntegration
     // configured. This does not apply to services like Minio where region and accountId are not
     // available.
     boolean shouldAddWildcard =
-        !hasCurrentKey && !hasAllowedKeys && !hasLegacyKeys && !canWrite && isAwsS3;
+        !hasCurrentKey && !hasAllowedKeys && !hasDecryptOnlyKeys && !canWrite && isAwsS3;
     if (shouldAddWildcard) {
       IamStatement.Builder allowKms = buildBaseKmsStatement(false);
       addAllKeysResource(region, accountId, allowKms);

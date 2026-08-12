@@ -34,7 +34,7 @@ there are a few s3-only options:
 --role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
 --current-kms-key  (Deprecated; only for AWS S3) Use --allowed-kms-key instead
 --allowed-kms-key  (Only for AWS S3) AWS KMS key ARN(s) that this catalog and its clients may use to encrypt and decrypt S3 data (zero or more)
---legacy-kms-key  (Only for AWS S3) Historical AWS KMS key ARN(s) that this catalog and its clients may use only to decrypt S3 data (zero or more)
+--decrypt-only-kms-key  (Only for AWS S3) AWS KMS key ARN(s) that this catalog and its clients may use only to decrypt S3 data (zero or more)
 --no-sts  (Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)
 --region  (Only for S3) The region to use when connecting to S3
 --external-id  (Only for S3) The external ID to use when connecting to S3

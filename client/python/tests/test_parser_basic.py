@@ -171,8 +171,8 @@ class TestParserBasic(CLITestBase):
                 "catalogs",
                 "create",
                 "catalog_name",
-                "--legacy-kms-key",
-                "arn:aws:kms:us-east-1:012345678901:key/legacy-key",
+                "--decrypt-only-kms-key",
+                "arn:aws:kms:us-east-1:012345678901:key/decrypt-only-key",
             ]
         )
         Parser.parse(["catalogs", "list"])
@@ -183,7 +183,14 @@ class TestParserBasic(CLITestBase):
             ["--base-url", "https://customservice.com/subpath", "catalogs", "list"]
         )
         Parser.parse(
-            ["--catalog-url", "http://localhost:8181/server1", "namespaces", "list", "--catalog", "polaris"]
+            [
+                "--catalog-url",
+                "http://localhost:8181/server1",
+                "namespaces",
+                "list",
+                "--catalog",
+                "polaris",
+            ]
         )
         Parser.parse(
             [

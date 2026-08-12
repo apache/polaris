@@ -84,9 +84,9 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract List<String> getAllowedKmsKeys();
 
-  /** List of historical KMS Key ARNs allowed only for decryption, optional. */
+  /** List of KMS Key ARNs allowed only for decryption, optional. */
   @Nullable
-  public abstract List<String> getLegacyKmsKeys();
+  public abstract List<String> getDecryptOnlyKmsKeys();
 
   /** AWS external ID, optional */
   @Nullable
@@ -183,8 +183,8 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
       }
     }
 
-    List<String> legacyKmsKeys = getLegacyKmsKeys();
-    if (legacyKmsKeys != null && !legacyKmsKeys.isEmpty()) {
+    List<String> decryptOnlyKmsKeys = getDecryptOnlyKmsKeys();
+    if (decryptOnlyKmsKeys != null && !decryptOnlyKmsKeys.isEmpty()) {
       String currentKmsKey = getCurrentKmsKey();
       if (currentKmsKey != null) {
         validateKmsKeyArn("currentKmsKey", currentKmsKey);
@@ -192,15 +192,15 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
 
       List<String> allowedKmsKeys = getAllowedKmsKeys();
       validateKmsKeyArns("allowedKmsKeys", allowedKmsKeys);
-      validateKmsKeyArns("legacyKmsKeys", legacyKmsKeys);
+      validateKmsKeyArns("decryptOnlyKmsKeys", decryptOnlyKmsKeys);
 
       checkArgument(
-          currentKmsKey == null || !legacyKmsKeys.contains(currentKmsKey),
-          "currentKmsKey must not also be configured in legacyKmsKeys");
+          currentKmsKey == null || !decryptOnlyKmsKeys.contains(currentKmsKey),
+          "currentKmsKey must not also be configured in decryptOnlyKmsKeys");
 
       checkArgument(
-          allowedKmsKeys == null || allowedKmsKeys.stream().noneMatch(legacyKmsKeys::contains),
-          "allowedKmsKeys and legacyKmsKeys must not overlap");
+          allowedKmsKeys == null || allowedKmsKeys.stream().noneMatch(decryptOnlyKmsKeys::contains),
+          "allowedKmsKeys and decryptOnlyKmsKeys must not overlap");
     }
   }
 
