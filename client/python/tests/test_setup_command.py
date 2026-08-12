@@ -308,6 +308,7 @@ class TestSetupCommand(CLITestBase):
 
     def test_setup_exported_entity_properties_round_trip_through_apply(self) -> None:
         principal_properties = {"owner": "data-platform"}
+        principal_role_properties = {"team": "analytics"}
         catalog_role_properties = {"purpose": "migration"}
         export_client = self.build_mock_client()
         export_client.list_principals.return_value = SimpleNamespace(
@@ -320,6 +321,14 @@ class TestSetupCommand(CLITestBase):
         )
         export_client.list_principal_roles_assigned.return_value = SimpleNamespace(
             roles=[]
+        )
+        export_client.list_principal_roles.return_value = SimpleNamespace(
+            roles=[
+                SimpleNamespace(
+                    name="analytics-role",
+                    properties=principal_role_properties,
+                )
+            ]
         )
         export_client.list_catalog_roles.return_value = SimpleNamespace(
             roles=[
@@ -339,6 +348,7 @@ class TestSetupCommand(CLITestBase):
 
         exported = {
             "principals": export_command._export_principals(export_client),
+            "principal_roles": export_command._export_principal_roles(export_client),
             "catalog_roles": export_command._export_catalog_roles_for_catalog(
                 export_client, "catalog"
             ),
@@ -350,12 +360,17 @@ class TestSetupCommand(CLITestBase):
             principal_properties,
         )
         self.assertEqual(
+            loaded["principal_roles"][0]["properties"],
+            principal_role_properties,
+        )
+        self.assertEqual(
             loaded["catalog_roles"]["catalog-reader"]["properties"],
             catalog_role_properties,
         )
 
         apply_client = self.build_mock_client()
         apply_client.list_principals.return_value = SimpleNamespace(principals=[])
+        apply_client.list_principal_roles.return_value = SimpleNamespace(roles=[])
         apply_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
         apply_client.create_principal.return_value = SimpleNamespace(
             credentials=SimpleNamespace(
@@ -367,6 +382,10 @@ class TestSetupCommand(CLITestBase):
 
         with patch("sys.stdout", new_callable=io.StringIO):
             apply_command._create_principals(apply_client, loaded["principals"])
+        apply_command._create_principal_roles(
+            apply_client,
+            loaded["principal_roles"],
+        )
         apply_command._create_catalog_roles(
             apply_client,
             "catalog",
@@ -374,10 +393,15 @@ class TestSetupCommand(CLITestBase):
         )
 
         principal_request = apply_client.create_principal.call_args.args[0]
+        principal_role_request = apply_client.create_principal_role.call_args.args[0]
         catalog_role_request = apply_client.create_catalog_role.call_args.args[1]
         self.assertEqual(
             principal_request.principal.properties,
             principal_properties,
+        )
+        self.assertEqual(
+            principal_role_request.principal_role.properties,
+            principal_role_properties,
         )
         self.assertEqual(
             catalog_role_request.catalog_role.properties,
@@ -727,7 +751,8 @@ class TestSetupCommand(CLITestBase):
 
         self.assertEqual(len(exported), 1)
         self.assertEqual(
-            exported[0]["endpoint_internal"], "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com"
+            exported[0]["endpoint_internal"],
+            "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
         )
         self.assertEqual(exported[0]["sts_endpoint"], "https://sts.amazonaws.com")
 

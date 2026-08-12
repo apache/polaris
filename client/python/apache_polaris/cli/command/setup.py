@@ -188,10 +188,16 @@ class SetupCommand(Command):
             self._record_failure("Failed to export principals")
         return principals_map
 
-    def _export_principal_roles(self, api: PolarisDefaultApi) -> List[str]:
-        """Export all principal role names."""
+    def _export_principal_roles(self, api: PolarisDefaultApi) -> List[Any]:
+        """Export all principal roles."""
         try:
-            return sorted([role.name for role in api.list_principal_roles().roles])
+            roles = sorted(api.list_principal_roles().roles, key=lambda role: role.name)
+            return [
+                {"name": role.name, "properties": role.properties}
+                if role.properties
+                else role.name
+                for role in roles
+            ]
         except Exception:
             self._record_failure("Failed to export principal roles")
             return []
@@ -734,7 +740,7 @@ class SetupCommand(Command):
     def _create_principal_roles(
         self,
         api: PolarisDefaultApi,
-        principal_roles_config: List[str],
+        principal_roles_config: List[Any],
         dry_run: bool = False,
     ) -> None:
         """Create principal roles."""
@@ -744,7 +750,21 @@ class SetupCommand(Command):
             return
         self._get_existing_principal_roles(api)
 
-        for role_name in principal_roles_config:
+        for role_item in principal_roles_config:
+            role_name: Optional[str]
+            role_data: Dict[str, Any]
+            if isinstance(role_item, str):
+                role_name = role_item
+                role_data = {}
+            elif isinstance(role_item, dict):
+                role_name = role_item.get("name")
+                role_data = role_item
+            else:
+                logger.warning(f"Skipping invalid principal role entry: {role_item}")
+                continue
+            if not role_name:
+                logger.warning("Skipping principal role with no name")
+                continue
             if (
                 self._existing_principal_roles is not None
                 and role_name in self._existing_principal_roles
@@ -754,7 +774,12 @@ class SetupCommand(Command):
                 )
                 continue
             if dry_run:
-                self._log_dry_run("create", "principal role", role_name)
+                self._log_dry_run(
+                    "create",
+                    "principal role",
+                    role_name,
+                    {"properties": role_data.get("properties")},
+                )
                 if self._existing_principal_roles is not None:
                     self._existing_principal_roles.add(role_name)
             else:
@@ -763,6 +788,7 @@ class SetupCommand(Command):
                     cmd = PrincipalRolesCommand(
                         principal_roles_subcommand=Subcommands.CREATE,
                         principal_role_name=role_name,
+                        properties=role_data.get("properties"),
                     )
                     cmd.validate()
                     cmd.execute(api)
