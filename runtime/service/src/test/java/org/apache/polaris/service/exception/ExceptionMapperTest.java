@@ -47,6 +47,8 @@ import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
+import org.apache.polaris.core.semantic.exceptions.SemanticModelVersionMismatchException;
 import org.jboss.logmanager.Level;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -140,6 +142,8 @@ public class ExceptionMapperTest {
         Arguments.of(new NoSuchPolicyException("msg"), 404),
         Arguments.of(new PolicyVersionMismatchException("msg"), 409),
         Arguments.of(new PolicyMappingAlreadyExistsException("msg"), 409),
+        Arguments.of(new NoSuchSemanticModelException("msg"), 404),
+        Arguments.of(new SemanticModelVersionMismatchException("msg"), 409),
         Arguments.of(new FileIOUnknownHostException("msg", new RuntimeException()), 500));
   }
 
