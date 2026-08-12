@@ -41,6 +41,7 @@ import org.apache.commons.lang3.function.TriConsumer;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -49,7 +50,6 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -204,9 +204,10 @@ public class TaskExecutorImpl implements TaskExecutor {
           new PolarisEvent(
               PolarisEventType.BEFORE_ATTEMPT_TASK,
               eventMetadataFactory.copy(eventMetadata),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                  .put(EventAttributes.TASK_ATTEMPT, attempt)));
+                  .put(EventAttributes.TASK_ATTEMPT, attempt)
+                  .build()));
     }
 
     boolean success = false;
@@ -271,10 +272,11 @@ public class TaskExecutorImpl implements TaskExecutor {
             new PolarisEvent(
                 PolarisEventType.AFTER_ATTEMPT_TASK,
                 eventMetadataFactory.copy(eventMetadata),
-                new EventAttributeMap()
+                ImmutableAttributeMap.builder()
                     .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
                     .put(EventAttributes.TASK_ATTEMPT, attempt)
-                    .put(EventAttributes.TASK_SUCCESS, success)));
+                    .put(EventAttributes.TASK_SUCCESS, success)
+                    .build()));
       }
     }
   }

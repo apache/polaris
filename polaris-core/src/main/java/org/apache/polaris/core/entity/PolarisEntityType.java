@@ -34,7 +34,8 @@ public enum PolarisEntityType {
   TABLE_LIKE(7, NAMESPACE, false, false),
   TASK(8, ROOT, false, false),
   FILE(9, TABLE_LIKE, false, false),
-  POLICY(10, NAMESPACE, false, false);
+  POLICY(10, NAMESPACE, false, false),
+  SEMANTIC_MODEL(11, NAMESPACE, false, false);
 
   // to efficiently map a code to its corresponding entity type, use a reverse array which
   // is initialized below

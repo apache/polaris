@@ -171,6 +171,8 @@ class SetupCommand(Command):
             principals = sorted(api.list_principals().principals, key=lambda p: p.name)
             for p in principals:
                 principal_info: Dict[str, Any] = {"type": PrincipalType.SERVICE.value}
+                if p.properties:
+                    principal_info["properties"] = p.properties
                 try:
                     assigned_roles = api.list_principal_roles_assigned(p.name).roles
                     if assigned_roles:
@@ -397,6 +399,8 @@ class SetupCommand(Command):
             )
             for r in roles:
                 role_info: Dict[str, Any] = {}
+                if r.properties:
+                    role_info["properties"] = r.properties
                 # Assignments
                 assigned_roles_resp = (
                     api.list_assignee_principal_roles_for_catalog_role(
@@ -467,15 +471,10 @@ class SetupCommand(Command):
                 ns_details = catalog_api.load_namespace_metadata(
                     prefix=catalog_name, namespace=UNIT_SEPARATOR.join(ns)
                 )
-                if hasattr(ns_details, "location") or hasattr(ns_details, "properties"):
-                    ns_info = {"name": ns_name}
-                    if hasattr(ns_details, "location") and ns_details.location:
-                        ns_info["location"] = ns_details.location
-                    if hasattr(ns_details, "properties") and ns_details.properties:
-                        ns_info["properties"] = ns_details.properties
-                    namespaces_list.append(ns_info)
-                else:
-                    namespaces_list.append(ns_name)
+                ns_info: Dict[str, Any] = {"name": ns_name}
+                if ns_details.properties:
+                    ns_info["properties"] = ns_details.properties
+                namespaces_list.append(ns_info)
         except Exception:
             self._record_failure(
                 f"Failed to export namespaces for catalog '{catalog_name}'"

@@ -219,7 +219,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                     .shouldFailWithAnyPrivilege()
                     .createTests(),
                 authzTestsBuilder("listTables (before rotation)")
-                    .action(() -> handler.get().listTables(NS1))
+                    .action(() -> handler.get().listTables(NS1, null, null))
                     .principalName(principalName)
                     .shouldFailWithAnyPrivilege()
                     .createTests())
@@ -283,7 +283,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                     .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
                     .createTests(),
                 authzTestsBuilder("listTables (after rotation)")
-                    .action(() -> refreshedWrapper.get().listTables(NS1))
+                    .action(() -> refreshedWrapper.get().listTables(NS1, null, null))
                     .principalName(principalName)
                     .shouldPassWith(PolarisPrivilege.TABLE_LIST)
                     .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
@@ -463,7 +463,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testListTablesPrivileges() {
     return authzTestsBuilder("listTables")
-        .action(() -> newHandler().listTables(NS1A))
+        .action(() -> newHandler().listTables(NS1A, null, null))
         .shouldPassWith(PolarisPrivilege.TABLE_LIST)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
@@ -1614,7 +1614,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testListViewsPrivileges() {
     return authzTestsBuilder("listViews")
-        .action(() -> newHandler().listViews(NS1A))
+        .action(() -> newHandler().listViews(NS1A, null, null))
         .shouldPassWith(PolarisPrivilege.VIEW_LIST)
         .shouldPassWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)

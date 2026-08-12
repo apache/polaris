@@ -33,6 +33,9 @@ principals:
   # A principal for a quickstart user
   quickstart_user:
     type: service
+    # Optional properties persisted with the principal.
+    properties:
+      owner: data-platform
     roles:
       - quickstart_user_role
   # A principal for a readonly user
@@ -75,6 +78,9 @@ catalogs:
     # Catalog roles are scoped to this specific catalog.
     roles:
       quickstart_catalog_role:
+        # Optional properties persisted with the catalog role.
+        properties:
+          purpose: catalog-administration
         # Assigns this catalog role to one or more principal roles.
         assign_to:
           - quickstart_user_role
@@ -230,4 +236,3 @@ catalogs:
   #   service_account: "quickstart-service-account@gcs-project.iam.gserviceaccount.com"
   #   properties:
   #     catalog: quickstart_catalog_gcs
-

@@ -18,14 +18,14 @@
 #
 
 [versions]
-checkstyle = "13.9.0"
+checkstyle = "13.10.0"
 hadoop = "3.5.0"
 iceberg = "1.11.0" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
 immutables = "2.12.2"
 jmh = "1.37"
 picocli = "4.7.7"
 quarkus = "3.38.1"
-ranger = "2.8.0"
+ranger = "2.9.0"
 ranger-graalvm = "25.2.4"
 scala212 = "2.12.21"
 scala213 = "2.13.18"
@@ -95,7 +95,7 @@ micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.17.0" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.23.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.23.0" }
-mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5.9.1" }
+mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5.9.2" }
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
