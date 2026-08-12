@@ -83,3 +83,327 @@ h6:hover .heading-anchor {
 .-bg-primary {
   background-color: #30638e;
 }
+
+// Homepage
+.td-home {
+  background: #f6f8f7;
+
+  .td-navbar {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(3, 36, 45, 0.96);
+    backdrop-filter: blur(14px);
+  }
+
+  .td-outer {
+    overflow: hidden;
+  }
+
+  .td-main {
+    padding-top: 0;
+  }
+}
+
+.polaris-landing {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  color: #0b333d;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}
+
+.polaris-landing-shell {
+  width: calc(100% - 2rem);
+  max-width: 72rem;
+  margin-inline: auto;
+}
+
+.polaris-landing-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  min-height: clamp(39rem, 48vw, 51rem);
+  place-items: center;
+  overflow: hidden;
+  color: #fff;
+  background: #031f27 url("/img/Polaris-Catalog-hero-background.jpg") no-repeat center center;
+  background-size: cover;
+
+  &::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background:
+      linear-gradient(to bottom, rgba(1, 19, 25, 0.22), rgba(1, 19, 25, 0.02) 45%, rgba(1, 19, 25, 0.18)),
+      radial-gradient(circle at center 35%, rgba(0, 0, 0, 0.06), rgba(0, 18, 24, 0.2));
+    content: "";
+  }
+}
+
+.polaris-landing-hero__content {
+  width: calc(100% - 2rem);
+  max-width: 72rem;
+  padding: 6rem 1rem 10rem;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  text-align: center;
+  text-shadow: 0 0.2rem 1rem rgba(0, 0, 0, 0.58);
+
+  h1 {
+    display: flex;
+    gap: 0.25em;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    color: #fff;
+    font-size: clamp(4rem, 8vw, 7.8rem);
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1;
+
+    > img {
+      width: 0.9em;
+      height: 0.9em;
+      flex: 0 0 auto;
+      filter: drop-shadow(0 0.2rem 1rem rgba(0, 0, 0, 0.25));
+    }
+
+    > span {
+      min-width: 0;
+    }
+  }
+
+  > p {
+    margin: 1.5rem 0 0;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+
+  hr {
+    width: 70vw;
+    max-width: 25rem;
+    margin: 2rem auto;
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.82);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+    opacity: 1;
+  }
+}
+
+.polaris-landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: center;
+}
+
+.polaris-landing-button {
+  display: inline-flex;
+  min-height: 3.25rem;
+  gap: 0.65rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 0.4rem;
+  color: #fff;
+  background: rgba(1, 22, 28, 0.5);
+  box-shadow: 0 0.5rem 1.4rem rgba(0, 0, 0, 0.16);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  text-shadow: none;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+
+  &:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.14);
+    transform: translateY(-2px);
+  }
+
+  &:focus-visible {
+    outline: 3px solid #7bf3e8;
+    outline-offset: 3px;
+  }
+}
+
+.polaris-landing-button--primary {
+  color: #052f39;
+  border-color: #72e8dd;
+  background: #72e8dd;
+
+  &:hover {
+    color: #052f39;
+    border-color: #a1f5ed;
+    background: #a1f5ed;
+  }
+}
+
+.polaris-landing-about {
+  padding: 7rem 0;
+  background: #f7faf9;
+  text-align: center;
+
+  h2 {
+    margin: 0 0 2rem;
+    color: #0b333d;
+    font-size: clamp(2.5rem, 5vw, 4.25rem);
+    font-weight: 620;
+    letter-spacing: -0.05em;
+    line-height: 1;
+  }
+
+  p {
+    max-width: 53rem;
+    margin: 0 auto 1.2rem;
+    color: #49666d;
+    font-size: clamp(1.05rem, 1.5vw, 1.2rem);
+    line-height: 1.75;
+  }
+}
+
+.polaris-landing-community {
+  padding: 5.5rem 0;
+  background: #073b47;
+}
+
+.polaris-landing-community__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+
+  > a,
+  > article {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    align-items: start;
+    padding: 1.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.6rem;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.055);
+
+    > i {
+      display: flex;
+      width: 2.6rem;
+      height: 2.6rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: #72e8dd;
+      background: rgba(114, 232, 221, 0.1);
+      font-size: 1.1rem;
+    }
+
+    span {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    strong {
+      font-size: 1rem;
+    }
+
+    small {
+      color: rgba(255, 255, 255, 0.62);
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+  }
+
+  > a {
+    text-decoration: none;
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+
+    &:hover {
+      color: #fff;
+      border-color: rgba(114, 232, 221, 0.58);
+      background: rgba(114, 232, 221, 0.1);
+      transform: translateY(-2px);
+    }
+  }
+}
+
+.polaris-landing-community__contribute {
+  h3 {
+    margin: 0 0 0.45rem;
+    color: #fff;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0 0 0.65rem;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+
+  a {
+    color: #72e8dd;
+
+    &:hover {
+      color: #a1f5ed;
+    }
+  }
+}
+
+.polaris-landing-community__link {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+@media (max-width: 767.98px) {
+  .polaris-landing-hero {
+    min-height: 43rem;
+    background-position: center bottom;
+  }
+
+  .polaris-landing-hero__content {
+    padding-top: 5rem;
+    padding-bottom: 11rem;
+
+    h1 {
+      gap: 0.2em;
+      font-size: clamp(1.75rem, 8.75vw, 4.25rem);
+
+      > img {
+        width: 0.82em;
+        height: 0.82em;
+      }
+
+      > span {
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .polaris-landing-actions {
+    display: grid;
+    width: 100%;
+    max-width: 21rem;
+    margin-inline: auto;
+  }
+
+  .polaris-landing-community__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .polaris-landing-about {
+    padding: 5rem 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .polaris-landing *,
+  .polaris-landing *::before,
+  .polaris-landing *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
