@@ -704,17 +704,17 @@ class IcebergCatalogHandlerTest {
     assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(100);
   }
 
-  /** A misconfigured non-positive maximum must not produce empty, non-advancing pages. */
+  /** A non-positive maximum means unlimited, so a requested size passes through untouched. */
   @ParameterizedTest
   @CsvSource({"0", "-1"})
-  void listTablesClampsNonPositiveConfiguredMaximum(int misconfiguredMax) {
+  void listTablesTreatsNonPositiveConfiguredMaximumAsUnlimited(int unlimitedMax) {
     LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
     when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
     when(catalog.listTables(eq(NS1), any(PageToken.class)))
         .thenReturn(Page.fromItems(new ArrayList<>(List.of(TABLE2))));
     when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
     when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity))
-        .thenReturn(misconfiguredMax);
+        .thenReturn(unlimitedMax);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -722,7 +722,7 @@ class IcebergCatalogHandlerTest {
 
     ArgumentCaptor<PageToken> pageTokenCaptor = ArgumentCaptor.forClass(PageToken.class);
     verify(catalog).listTables(eq(NS1), pageTokenCaptor.capture());
-    assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(1);
+    assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(50);
   }
 
   /**

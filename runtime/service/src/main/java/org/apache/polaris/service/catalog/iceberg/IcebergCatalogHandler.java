@@ -111,7 +111,6 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
-import org.apache.polaris.core.persistence.pagination.ImmutablePageToken;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -220,33 +219,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return realmConfig().getConfig(LIST_PAGINATION_ENABLED, getResolvedCatalogEntity());
   }
 
-  /** The page size ceiling, never below one so a misconfiguration cannot stall pagination. */
+  /** The configured page size ceiling; zero or less means unlimited. */
   private int maxPageSize() {
-    return Math.max(
-        1, realmConfig().getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, getResolvedCatalogEntity()));
+    return realmConfig().getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, getResolvedCatalogEntity());
   }
 
-  /**
-   * Reduces a client-requested page size to the configured maximum. The Iceberg REST specification
-   * treats the requested page size as an upper bound, so a larger request is bounded, not rejected.
-   */
+  /** Reduces a client-requested page size to the configured maximum, if one is configured. */
   private @Nullable Integer boundedPageSize(@Nullable Integer requestedPageSize) {
-    return requestedPageSize == null ? null : Math.min(requestedPageSize, maxPageSize());
-  }
-
-  /**
-   * Builds the page request, bounding the page size the client actually gets. A page token carries
-   * the page size it was minted with, so the bound is applied after decoding as well: otherwise a
-   * token issued before the limit was configured, or a hand-crafted one, would escape it.
-   */
-  private PageToken boundedPageRequest(String pageToken, @Nullable Integer pageSize) {
     int maxPageSize = maxPageSize();
-    Integer boundedPageSize = pageSize == null ? null : Math.min(pageSize, maxPageSize);
-    PageToken pageRequest = PageToken.build(pageToken, boundedPageSize, this::shouldDecodeToken);
-    if (pageRequest.pageSize().orElse(0) > maxPageSize) {
-      return ImmutablePageToken.copyOf(pageRequest).withPageSize(maxPageSize);
+    if (requestedPageSize == null || maxPageSize <= 0) {
+      return requestedPageSize;
     }
-    return pageRequest;
+    return Math.min(requestedPageSize, maxPageSize);
   }
 
   @Override
@@ -307,7 +291,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return catalogHandlerUtils()
           .listNamespaces(namespaceCatalog, parent, pageToken, boundedPageSize(pageSize));
     } else {
-      PageToken pageRequest = boundedPageRequest(pageToken, pageSize);
+      PageToken pageRequest =
+          PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
       return ListNamespacesResponse.builder()
           .addAll(results.items())
@@ -399,7 +384,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return catalogHandlerUtils()
           .listTables(baseCatalog, namespace, pageToken, boundedPageSize(pageSize));
     } else {
-      PageToken pageRequest = boundedPageRequest(pageToken, pageSize);
+      PageToken pageRequest =
+          PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
@@ -1561,7 +1547,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           "Unsupported operation: listViews with baseCatalog type: %s",
           baseCatalog.getClass().getName());
     } else {
-      PageToken pageRequest = boundedPageRequest(pageToken, pageSize);
+      PageToken pageRequest =
+          PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())

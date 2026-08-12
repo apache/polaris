@@ -91,8 +91,9 @@ public interface PageToken {
   static PageToken build(
       @Nullable String serializedPageToken,
       @Nullable Integer requestedPageSize,
+      int maxPageSize,
       BooleanSupplier shouldDecodeToken) {
     return PageTokenUtil.decodePageRequest(
-        serializedPageToken, requestedPageSize, shouldDecodeToken);
+        serializedPageToken, requestedPageSize, maxPageSize, shouldDecodeToken);
   }
 }
