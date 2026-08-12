@@ -103,6 +103,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `TokenBroker.verify` now returns `null` for tokens not recognized by the internal broker
   (instead of failing auth), so MIXED mode can delegate to other mechanisms. Exceptions from
   `verify` are forwarded as-is rather than mapped to auth failure or MIXED fallback.
+- Client-requested list page sizes are now bounded by a server-side maximum, configured with
+  `LIST_PAGINATION_MAX_PAGE_SIZE` (default `100`, overridable per catalog via
+  `polaris.config.list-pagination-max-page-size`). A request for a larger page is reduced to the
+  maximum rather than rejected, since the Iceberg REST specification treats the requested page size
+  as an upper bound.
 
 ### Deprecations
 
