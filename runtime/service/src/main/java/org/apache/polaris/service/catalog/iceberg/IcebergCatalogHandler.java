@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
+import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
@@ -110,6 +111,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
+import org.apache.polaris.core.persistence.pagination.ImmutablePageToken;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -218,6 +220,35 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return realmConfig().getConfig(LIST_PAGINATION_ENABLED, getResolvedCatalogEntity());
   }
 
+  /** The page size ceiling, never below one so a misconfiguration cannot stall pagination. */
+  private int maxPageSize() {
+    return Math.max(
+        1, realmConfig().getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, getResolvedCatalogEntity()));
+  }
+
+  /**
+   * Reduces a client-requested page size to the configured maximum. The Iceberg REST specification
+   * treats the requested page size as an upper bound, so a larger request is bounded, not rejected.
+   */
+  private @Nullable Integer boundedPageSize(@Nullable Integer requestedPageSize) {
+    return requestedPageSize == null ? null : Math.min(requestedPageSize, maxPageSize());
+  }
+
+  /**
+   * Builds the page request, bounding the page size the client actually gets. A page token carries
+   * the page size it was minted with, so the bound is applied after decoding as well: otherwise a
+   * token issued before the limit was configured, or a hand-crafted one, would escape it.
+   */
+  private PageToken boundedPageRequest(String pageToken, @Nullable Integer pageSize) {
+    int maxPageSize = maxPageSize();
+    Integer boundedPageSize = pageSize == null ? null : Math.min(pageSize, maxPageSize);
+    PageToken pageRequest = PageToken.build(pageToken, boundedPageSize, this::shouldDecodeToken);
+    if (pageRequest.pageSize().orElse(0) > maxPageSize) {
+      return ImmutablePageToken.copyOf(pageRequest).withPageSize(maxPageSize);
+    }
+    return pageRequest;
+  }
+
   @Override
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity = getResolvedCatalogEntity();
@@ -273,9 +304,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
     if (isFederated) {
-      return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
+      return catalogHandlerUtils()
+          .listNamespaces(namespaceCatalog, parent, pageToken, boundedPageSize(pageSize));
     } else {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      PageToken pageRequest = boundedPageRequest(pageToken, pageSize);
       var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
       return ListNamespacesResponse.builder()
           .addAll(results.items())
@@ -364,9 +396,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
     if (isFederated) {
-      return catalogHandlerUtils().listTables(baseCatalog, namespace, pageToken, pageSize);
+      return catalogHandlerUtils()
+          .listTables(baseCatalog, namespace, pageToken, boundedPageSize(pageSize));
     } else {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      PageToken pageRequest = boundedPageRequest(pageToken, pageSize);
       var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
@@ -1521,13 +1554,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     if (isFederated) {
       if (baseCatalog instanceof ViewCatalog viewCatalog) {
-        return catalogHandlerUtils().listViews(viewCatalog, namespace, pageToken, pageSize);
+        return catalogHandlerUtils()
+            .listViews(viewCatalog, namespace, pageToken, boundedPageSize(pageSize));
       }
       throw new BadRequestException(
           "Unsupported operation: listViews with baseCatalog type: %s",
           baseCatalog.getClass().getName());
     } else {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      PageToken pageRequest = boundedPageRequest(pageToken, pageSize);
       var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())

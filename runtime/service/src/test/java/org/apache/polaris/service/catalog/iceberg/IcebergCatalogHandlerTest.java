@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
+import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,6 +35,7 @@ import static org.mockito.Mockito.when;
 
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +80,9 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.pagination.EntityIdToken;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
@@ -92,6 +98,8 @@ import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.metrics.IcebergMetricsReporter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 class IcebergCatalogHandlerTest {
@@ -664,5 +672,87 @@ class IcebergCatalogHandlerTest {
     assertThat(handler.filterResponseToSnapshots(response, null))
         .as("no snapshots param must be a pure passthrough, same as snapshots=all")
         .isSameAs(response);
+  }
+
+  /**
+   * A page token carries the page size it was minted with, so a token issued before the limit was
+   * configured (or a hand-crafted one) must not be able to escape the bound.
+   */
+  @Test
+  void listTablesBoundsPageSizeEncodedInThePageToken() {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.listTables(eq(NS1), any(PageToken.class)))
+        .thenReturn(Page.fromItems(new ArrayList<>(List.of(TABLE2))));
+    when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity)).thenReturn(100);
+
+    // A token minted with a page size well above the configured maximum, and no explicit pageSize
+    String oversizedToken =
+        Page.page(
+                PageToken.fromLimit(5000),
+                new ArrayList<>(List.of(TABLE2)),
+                EntityIdToken.fromEntityId(1L))
+            .encodedResponseToken();
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    handler.listTables(NS1, oversizedToken, null);
+
+    ArgumentCaptor<PageToken> pageTokenCaptor = ArgumentCaptor.forClass(PageToken.class);
+    verify(catalog).listTables(eq(NS1), pageTokenCaptor.capture());
+    assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(100);
+  }
+
+  /** A misconfigured non-positive maximum must not produce empty, non-advancing pages. */
+  @ParameterizedTest
+  @CsvSource({"0", "-1"})
+  void listTablesClampsNonPositiveConfiguredMaximum(int misconfiguredMax) {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.listTables(eq(NS1), any(PageToken.class)))
+        .thenReturn(Page.fromItems(new ArrayList<>(List.of(TABLE2))));
+    when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity))
+        .thenReturn(misconfiguredMax);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    handler.listTables(NS1, null, 50);
+
+    ArgumentCaptor<PageToken> pageTokenCaptor = ArgumentCaptor.forClass(PageToken.class);
+    verify(catalog).listTables(eq(NS1), pageTokenCaptor.capture());
+    assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(1);
+  }
+
+  /**
+   * A client may ask for any page size, but the Iceberg REST specification treats it as an upper
+   * bound, so requests above the configured maximum must be reduced rather than rejected.
+   */
+  @ParameterizedTest
+  @CsvSource({
+    // requested, configured maximum, expected page size reaching the catalog
+    "5000, 100, 100",
+    "100, 100, 100",
+    "10, 100, 10",
+    "0, 100, 0",
+  })
+  void listTablesBoundsRequestedPageSizeByConfiguredMaximum(
+      int requestedPageSize, int maxPageSize, int expectedPageSize) {
+    LocalIcebergCatalog catalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(catalog);
+    when(catalog.listTables(eq(NS1), any(PageToken.class)))
+        .thenReturn(Page.fromItems(new ArrayList<>(List.of(TABLE2))));
+    when(realmConfig.getConfig(LIST_PAGINATION_ENABLED, catalogEntity)).thenReturn(true);
+    when(realmConfig.getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, catalogEntity))
+        .thenReturn(maxPageSize);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    handler.listTables(NS1, null, requestedPageSize);
+
+    ArgumentCaptor<PageToken> pageTokenCaptor = ArgumentCaptor.forClass(PageToken.class);
+    verify(catalog).listTables(eq(NS1), pageTokenCaptor.capture());
+    assertThat(pageTokenCaptor.getValue().pageSize()).hasValue(expectedPageSize);
   }
 }

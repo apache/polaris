@@ -296,6 +296,77 @@ public class IcebergCatalogAdapterTest {
     return mapper.readValue(json, RenameTableRequest.class);
   }
 
+  /**
+   * A federated listing is paginated by Polaris itself, so a client asking for more than the
+   * configured maximum must be reduced to it rather than served an unbounded page.
+   */
+  @Test
+  void testFederatedListingsAreBoundedByMaxPageSize() throws IOException {
+    try (InMemoryCatalog inMemoryCatalog = new InMemoryCatalog()) {
+      inMemoryCatalog.initialize("inMemory", Map.of());
+      mockCatalogAdapter(inMemoryCatalog);
+
+      // One more entity than the default LIST_PAGINATION_MAX_PAGE_SIZE of 100
+      int entityCount = 101;
+      for (int i = 0; i < entityCount; ++i) {
+        inMemoryCatalog.createNamespace(Namespace.of("ns" + i));
+        inMemoryCatalog.createTable(TableIdentifier.of("ns0", "table" + i), new Schema());
+        inMemoryCatalog
+            .buildView(TableIdentifier.of("ns0", "view" + i))
+            .withSchema(new Schema())
+            .withDefaultNamespace(Namespace.of("ns0"))
+            .withQuery("a", "SELECT * FROM ns0.table" + i)
+            .create();
+      }
+
+      // An initial page token is required for the requested page size to be applied at all
+      int requestedPageSize = 1000;
+      int expectedPageSize = 100;
+
+      ListNamespacesResponse namespaces =
+          (ListNamespacesResponse)
+              catalogAdapter
+                  .listNamespaces(
+                      FEDERATED_CATALOG_NAME,
+                      "",
+                      requestedPageSize,
+                      null,
+                      testServices.realmContext(),
+                      testServices.securityContext())
+                  .getEntity();
+      Assertions.assertThat(namespaces.namespaces()).hasSize(expectedPageSize);
+      Assertions.assertThat(namespaces.nextPageToken()).isNotNull();
+
+      ListTablesResponse tables =
+          (ListTablesResponse)
+              catalogAdapter
+                  .listTables(
+                      FEDERATED_CATALOG_NAME,
+                      "ns0",
+                      "",
+                      requestedPageSize,
+                      testServices.realmContext(),
+                      testServices.securityContext())
+                  .getEntity();
+      Assertions.assertThat(tables.identifiers()).hasSize(expectedPageSize);
+      Assertions.assertThat(tables.nextPageToken()).isNotNull();
+
+      ListTablesResponse views =
+          (ListTablesResponse)
+              catalogAdapter
+                  .listViews(
+                      FEDERATED_CATALOG_NAME,
+                      "ns0",
+                      "",
+                      requestedPageSize,
+                      testServices.realmContext(),
+                      testServices.securityContext())
+                  .getEntity();
+      Assertions.assertThat(views.identifiers()).hasSize(expectedPageSize);
+      Assertions.assertThat(views.nextPageToken()).isNotNull();
+    }
+  }
+
   private void mockCatalogAdapter(org.apache.iceberg.catalog.Catalog catalog) {
     // Override handler creation to inject in-memory catalog and suppress actual close()
     Mockito.doAnswer(

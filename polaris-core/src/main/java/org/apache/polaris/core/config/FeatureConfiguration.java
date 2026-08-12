@@ -484,6 +484,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final PolarisConfiguration<Integer> LIST_PAGINATION_MAX_PAGE_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("LIST_PAGINATION_MAX_PAGE_SIZE")
+          .catalogConfig("polaris.config.list-pagination-max-page-size")
+          .description(
+              "The largest page size a client may request for APIs like listTables. Larger requested"
+                  + " page sizes are reduced to this value; the Iceberg REST specification treats the"
+                  + " requested page size as an upper bound, so a server may return fewer results."
+                  + " Values below 1 are treated as 1.")
+          .defaultValue(100)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_GENERIC_TABLES")
