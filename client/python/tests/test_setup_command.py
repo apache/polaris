@@ -325,6 +325,10 @@ class TestSetupCommand(CLITestBase):
         export_client.list_principal_roles.return_value = SimpleNamespace(
             roles=[
                 SimpleNamespace(
+                    name="viewer-role",
+                    properties=None,
+                ),
+                SimpleNamespace(
                     name="analytics-role",
                     properties=principal_role_properties,
                 )
@@ -360,8 +364,14 @@ class TestSetupCommand(CLITestBase):
             principal_properties,
         )
         self.assertEqual(
-            loaded["principal_roles"][0]["properties"],
-            principal_role_properties,
+            loaded["principal_roles"],
+            [
+                {
+                    "name": "analytics-role",
+                    "properties": principal_role_properties,
+                },
+                "viewer-role",
+            ],
         )
         self.assertEqual(
             loaded["catalog_roles"]["catalog-reader"]["properties"],
@@ -393,16 +403,20 @@ class TestSetupCommand(CLITestBase):
         )
 
         principal_request = apply_client.create_principal.call_args.args[0]
-        principal_role_request = apply_client.create_principal_role.call_args.args[0]
+        principal_role_requests = [
+            call.args[0] for call in apply_client.create_principal_role.call_args_list
+        ]
         catalog_role_request = apply_client.create_catalog_role.call_args.args[1]
         self.assertEqual(
             principal_request.principal.properties,
             principal_properties,
         )
         self.assertEqual(
-            principal_role_request.principal_role.properties,
+            principal_role_requests[0].principal_role.properties,
             principal_role_properties,
         )
+        self.assertEqual(principal_role_requests[1].principal_role.name, "viewer-role")
+        self.assertEqual(principal_role_requests[1].principal_role.properties, {})
         self.assertEqual(
             catalog_role_request.catalog_role.properties,
             catalog_role_properties,
