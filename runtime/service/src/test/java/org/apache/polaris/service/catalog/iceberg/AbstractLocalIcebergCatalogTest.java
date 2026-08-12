@@ -3508,7 +3508,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   private static PageToken nextRequest(Page<?> previousPage) {
-    return PageToken.build(previousPage.encodedResponseToken(), null, () -> true);
+    return PageToken.build(previousPage.encodedResponseToken(), null, -1, () -> true);
   }
 
   @Test

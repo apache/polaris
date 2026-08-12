@@ -587,7 +587,7 @@ class JdbcBasePersistenceImplTest {
       if (next == null) {
         break;
       }
-      pageToken = PageToken.build(next, 2, () -> true);
+      pageToken = PageToken.build(next, 2, -1, () -> true);
     }
 
     assertThat(seen).containsExactly("e0", "e1", "e2", "e3");
