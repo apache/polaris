@@ -53,6 +53,7 @@ import org.apache.polaris.core.metrics.api.model.ScanPayload;
 import org.apache.polaris.core.metrics.api.model.ScanPayloadData;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -121,15 +122,17 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
             ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE, true);
     long tableId = tableWrapper.getRawLeafEntity().getId();
 
+    MetricsQuerySpi.MetricType type = parseMetricType(metricType);
     PageToken pt = PageToken.build(pageToken, pageSize, () -> true);
     MetricsQuerySpi provider = queryProvider.get();
 
-    if ("commit".equalsIgnoreCase(metricType)) {
-      Page<CommitMetricsRecord> page =
-          provider.listCommitReports(
-              catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, pt);
+    Page<? extends MetricsRecordIdentity> page =
+        provider.listReports(
+            type, catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, pt);
+
+    if (type == MetricsQuerySpi.MetricType.COMMIT) {
       List<CommitMetricsReport> reports =
-          page.items().stream().map(MetricsReportsService::toCommitReport).toList();
+          page.items().stream().map(r -> toCommitReport((CommitMetricsRecord) r)).toList();
       return Response.ok(
               new ListCommitMetricsResponse(
                   page.encodedResponseToken(),
@@ -138,20 +141,23 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
           .build();
     }
 
-    if (!"scan".equalsIgnoreCase(metricType)) {
-      throw new IllegalArgumentException(
-          "metricType must be one of [scan, commit], got: " + metricType);
-    }
-
-    Page<ScanMetricsRecord> page =
-        provider.listScanReports(
-            catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, pt);
     List<ScanMetricsReport> reports =
-        page.items().stream().map(MetricsReportsService::toScanReport).toList();
+        page.items().stream().map(r -> toScanReport((ScanMetricsRecord) r)).toList();
     return Response.ok(
             new ListScanMetricsResponse(
                 page.encodedResponseToken(), ListScanMetricsResponse.MetricTypeEnum.SCAN, reports))
         .build();
+  }
+
+  private static MetricsQuerySpi.MetricType parseMetricType(String metricType) {
+    if ("scan".equalsIgnoreCase(metricType)) {
+      return MetricsQuerySpi.MetricType.SCAN;
+    }
+    if ("commit".equalsIgnoreCase(metricType)) {
+      return MetricsQuerySpi.MetricType.COMMIT;
+    }
+    throw new IllegalArgumentException(
+        "metricType must be one of [scan, commit], got: " + metricType);
   }
 
   private PolarisResolutionManifest resolveAndAuthorizeTableMetrics(

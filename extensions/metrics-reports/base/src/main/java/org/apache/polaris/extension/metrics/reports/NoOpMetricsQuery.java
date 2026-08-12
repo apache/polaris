@@ -21,8 +21,7 @@ package org.apache.polaris.extension.metrics.reports;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
-import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
@@ -42,19 +41,8 @@ import org.jspecify.annotations.Nullable;
 public class NoOpMetricsQuery implements MetricsQuerySpi {
 
   @Override
-  public Page<ScanMetricsRecord> listScanReports(
-      long catalogId,
-      long tableId,
-      @Nullable Long snapshotId,
-      @Nullable String principalName,
-      @Nullable Long timestampFrom,
-      @Nullable Long timestampTo,
-      @NonNull PageToken pageToken) {
-    return Page.fromItems(List.of());
-  }
-
-  @Override
-  public Page<CommitMetricsRecord> listCommitReports(
+  public Page<? extends MetricsRecordIdentity> listReports(
+      @NonNull MetricType metricType,
       long catalogId,
       long tableId,
       @Nullable Long snapshotId,

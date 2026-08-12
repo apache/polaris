@@ -115,11 +115,15 @@ class MetricsReportsServiceTest {
     // empty pages, mirroring the @DefaultBean NoOpMetricsQuery in
     // polaris-extensions-metrics-reports.
     MetricsQuerySpi noOp = mock(MetricsQuerySpi.class);
-    when(noOp.listScanReports(
-            anyLong(), anyLong(), any(), any(), any(), any(), any(PageToken.class)))
-        .thenReturn(Page.fromItems(List.of()));
-    when(noOp.listCommitReports(
-            anyLong(), anyLong(), any(), any(), any(), any(), any(PageToken.class)))
+    when(noOp.listReports(
+            any(MetricsQuerySpi.MetricType.class),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(PageToken.class)))
         .thenReturn(Page.fromItems(List.of()));
     @SuppressWarnings("unchecked")
     Instance<MetricsQuerySpi> noOpProvider = mock(Instance.class);

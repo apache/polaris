@@ -19,8 +19,7 @@
 package org.apache.polaris.extension.metrics.spi;
 
 import com.google.common.annotations.Beta;
-import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.jspecify.annotations.NonNull;
@@ -39,24 +38,23 @@ import org.jspecify.annotations.Nullable;
 @Beta
 public interface MetricsQuerySpi {
 
-  /**
-   * Lists persisted scan metrics reports for the given table, applying the supplied filters and
-   * returning at most one page of results.
-   */
-  Page<ScanMetricsRecord> listScanReports(
-      long catalogId,
-      long tableId,
-      @Nullable Long snapshotId,
-      @Nullable String principalName,
-      @Nullable Long timestampFrom,
-      @Nullable Long timestampTo,
-      @NonNull PageToken pageToken);
+  /** Discriminates which kind of metrics report {@link #listReports} should query. */
+  enum MetricType {
+    SCAN,
+    COMMIT
+  }
 
   /**
-   * Lists persisted commit metrics reports for the given table, applying the supplied filters and
-   * returning at most one page of results.
+   * Lists persisted metrics reports of the given {@link MetricType} for the given table, applying
+   * the supplied filters and returning at most one page of results.
+   *
+   * <p>Callers must only rely on the record subtype corresponding to {@code metricType}: {@code
+   * SCAN} yields {@link org.apache.polaris.core.persistence.metrics.ScanMetricsRecord} instances
+   * and {@code COMMIT} yields {@link
+   * org.apache.polaris.core.persistence.metrics.CommitMetricsRecord} instances.
    */
-  Page<CommitMetricsRecord> listCommitReports(
+  Page<? extends MetricsRecordIdentity> listReports(
+      @NonNull MetricType metricType,
       long catalogId,
       long tableId,
       @Nullable Long snapshotId,
