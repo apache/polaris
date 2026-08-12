@@ -87,7 +87,7 @@ jspecify = { module = "org.jspecify:jspecify", version = "1.0.0" }
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
-junit-bom = { module = "org.junit:junit-bom", version = "6.1.2" }
+junit-bom = { module = "org.junit:junit-bom", version = "6.1.3" }
 junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version = "2.3.0" }
 kafka-clients = { module = "org.apache.kafka:kafka-clients", version = "4.3.1" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.6.1" }
