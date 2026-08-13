@@ -45,6 +45,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.BaseMetadataTable;
@@ -114,6 +115,7 @@ import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PageTokenUtil;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -226,13 +228,28 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return realmConfig().getConfig(LIST_PAGINATION_MAX_PAGE_SIZE, getResolvedCatalogEntity());
   }
 
-  /** Reduces a client-requested page size to the configured maximum, if one is configured. */
+  /**
+   * Bounds the page size forwarded to a federated catalog, using the same rule as {@link
+   * PageTokenUtil#boundPageSize}. An absent page size becomes the maximum, so the remote result set
+   * is not returned whole.
+   */
   private @Nullable Integer boundedPageSize(@Nullable Integer requestedPageSize) {
-    int maxPageSize = maxPageSize();
-    if (requestedPageSize == null || maxPageSize <= 0) {
-      return requestedPageSize;
-    }
-    return Math.min(requestedPageSize, maxPageSize);
+    OptionalInt requested =
+        requestedPageSize == null ? OptionalInt.empty() : OptionalInt.of(requestedPageSize);
+    OptionalInt bounded = PageTokenUtil.boundPageSize(requested, maxPageSize());
+    return bounded.isPresent() ? bounded.getAsInt() : null;
+  }
+
+  /**
+   * The page token forwarded to a federated catalog. {@code CatalogHandlerUtils} returns the whole
+   * result set when no token is given, so when a maximum is configured the specification's initial
+   * page token is supplied instead, making the listing paginate from the first request as it does
+   * for a local catalog.
+   */
+  private @Nullable String boundedPageToken(@Nullable String pageToken) {
+    return pageToken == null && maxPageSize() > 0
+        ? CatalogHandlerUtils.INITIAL_PAGE_TOKEN
+        : pageToken;
   }
 
   @Override
@@ -291,7 +308,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     if (isFederated) {
       return catalogHandlerUtils()
-          .listNamespaces(namespaceCatalog, parent, pageToken, boundedPageSize(pageSize));
+          .listNamespaces(
+              namespaceCatalog, parent, boundedPageToken(pageToken), boundedPageSize(pageSize));
     } else {
       PageToken pageRequest =
           PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
@@ -390,7 +408,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     if (isFederated) {
       return catalogHandlerUtils()
-          .listTables(baseCatalog, namespace, pageToken, boundedPageSize(pageSize));
+          .listTables(
+              baseCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
     } else {
       PageToken pageRequest =
           PageToken.build(pageToken, pageSize, maxPageSize(), this::shouldDecodeToken);
@@ -1626,7 +1645,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (isFederated) {
       if (baseCatalog instanceof ViewCatalog viewCatalog) {
         return catalogHandlerUtils()
-            .listViews(viewCatalog, namespace, pageToken, boundedPageSize(pageSize));
+            .listViews(
+                viewCatalog, namespace, boundedPageToken(pageToken), boundedPageSize(pageSize));
       }
       throw new BadRequestException(
           "Unsupported operation: listViews with baseCatalog type: %s",
