@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.semantic.exceptions;
 
+import jakarta.ws.rs.core.Response;
 import org.apache.polaris.core.exceptions.PolarisException;
 
 /** Thrown when a semantic model cannot be found. Maps to HTTP 404. */
@@ -28,5 +29,10 @@ public class NoSuchSemanticModelException extends PolarisException {
 
   public NoSuchSemanticModelException(String message, Throwable cause) {
     super(message, cause);
+  }
+
+  @Override
+  public int httpStatusCode() {
+    return Response.Status.NOT_FOUND.getStatusCode();
   }
 }

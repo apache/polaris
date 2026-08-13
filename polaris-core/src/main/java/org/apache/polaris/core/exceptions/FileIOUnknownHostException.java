@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.exceptions;
 
+import jakarta.ws.rs.core.Response;
+
 /**
  * A {@link PolarisException} implementation for when an UnknownHostException happens during File IO
  * to S3, GCS, or Azure.
@@ -25,5 +27,10 @@ package org.apache.polaris.core.exceptions;
 public class FileIOUnknownHostException extends PolarisException {
   public FileIOUnknownHostException(String message, Throwable cause) {
     super(message, cause);
+  }
+
+  @Override
+  public int httpStatusCode() {
+    return Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
   }
 }
