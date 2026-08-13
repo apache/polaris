@@ -40,7 +40,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.jsontype.impl.TypeIdResolverBase;
 import tools.jackson.dataformat.smile.SmileMapper;
 
-final class PageTokenUtil {
+public final class PageTokenUtil {
 
   private static final ObjectMapper SMILE_MAPPER =
       SmileMapper.builder().findAndAddModules().build();
@@ -112,6 +112,18 @@ final class PageTokenUtil {
   private PageTokenUtil() {}
 
   /**
+   * Reduces a requested page size to {@code maxPageSize}, defaulting an absent request to it, so
+   * that a listing cannot return an unbounded response. A {@code maxPageSize} of zero or less means
+   * unlimited and leaves the request untouched.
+   */
+  public static OptionalInt boundPageSize(OptionalInt requestedPageSize, int maxPageSize) {
+    if (maxPageSize <= 0) {
+      return requestedPageSize;
+    }
+    return OptionalInt.of(Math.min(requestedPageSize.orElse(maxPageSize), maxPageSize));
+  }
+
+  /**
    * Decodes a {@link PageToken} from API request parameters for the page-size and a serialized page
    * token.
    */
@@ -147,17 +159,6 @@ final class PageTokenUtil {
     // requires. With one configured, pagination is applied instead so that no single listing can
     // return an unbounded response.
     return pageSize.isPresent() ? fromLimit(pageSize.getAsInt()) : READ_EVERYTHING;
-  }
-
-  /**
-   * Reduces a requested page size to {@code maxPageSize}, defaulting an absent request to it. A
-   * {@code maxPageSize} of zero or less means unlimited, leaving the request untouched.
-   */
-  private static OptionalInt boundPageSize(OptionalInt requestedPageSize, int maxPageSize) {
-    if (maxPageSize <= 0) {
-      return requestedPageSize;
-    }
-    return OptionalInt.of(Math.min(requestedPageSize.orElse(maxPageSize), maxPageSize));
   }
 
   /**
