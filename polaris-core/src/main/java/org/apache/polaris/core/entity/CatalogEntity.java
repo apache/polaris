@@ -279,6 +279,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<CatalogEntity, Builder> {
+    private RealmConfig realmConfig;
+    private StorageConfigInfo storageConfigModel;
+
     public Builder() {
       super();
       setType(PolarisEntityType.CATALOG);
@@ -324,6 +327,14 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     public Builder setStorageConfigurationInfo(
         RealmConfig realmConfig, StorageConfigInfo storageConfigModel) {
+      Preconditions.checkNotNull(
+          realmConfig, "realmConfig must be provided when setting StorageConfigInfo");
+      this.realmConfig = realmConfig;
+      this.storageConfigModel = storageConfigModel;
+      return this;
+    }
+
+    private void processStorageConfigurationInfo() {
       if (storageConfigModel != null) {
         String defaultBaseLocation = properties.get(DEFAULT_BASE_LOCATION_KEY);
         if (defaultBaseLocation == null) {
@@ -395,7 +406,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         internalProperties.put(
             PolarisEntityConstants.getStorageConfigInfoPropertyName(), config.serialize());
       }
-      return this;
     }
 
     /** Validate the number of allowed locations not exceeding the max value. */
@@ -436,6 +446,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     @Override
     public CatalogEntity build() {
+      processStorageConfigurationInfo();
       validateDefaultBaseLocation();
       return new CatalogEntity(buildBase());
     }
