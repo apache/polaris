@@ -46,9 +46,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
-- Python CLI `setup export` now preserves policies with the same name in different namespaces.
-  Previously, later same-named policies silently replaced earlier policies in the exported
-  configuration.
+- Python CLI `setup export` now writes each catalog's `policies` as a list of
+  `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
+  with the same name in different namespaces. The new export format cannot be applied by older CLI
+  versions; use the exporting CLI version or newer for `setup apply`.
 - Python CLI `setup export` now preserves user-defined properties on principals and catalog roles,
   so exported configurations restore that metadata during `setup apply`.
 - Python CLI `setup apply` no longer double-encodes policy content emitted by `setup export`, so
