@@ -327,8 +327,7 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
     String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
-    String currentKmsKey = storageConfigurationInfo.getCurrentKmsKey();
-    List<String> allowedKmsKeys = storageConfigurationInfo.getAllowedKmsKeys();
+    List<String> allowedKmsKeys = storageConfigurationInfo.getEffectiveAllowedKmsKeys();
     List<String> decryptOnlyKmsKeys = storageConfigurationInfo.getDecryptOnlyKmsKeys();
 
     readLocations.forEach(
@@ -395,7 +394,6 @@ public class AwsCredentialsStorageIntegration
     }
     if (shouldUseKms(storageConfigurationInfo)) {
       if (addKmsKeyPolicy(
-          currentKmsKey,
           allowedKmsKeys,
           decryptOnlyKmsKeys,
           policyBuilder,
@@ -431,7 +429,6 @@ public class AwsCredentialsStorageIntegration
   }
 
   private static boolean addKmsKeyPolicy(
-      String currentKmsKey,
       List<String> allowedKmsKeys,
       List<String> decryptOnlyKmsKeys,
       IamPolicy.Builder policyBuilder,
@@ -439,27 +436,19 @@ public class AwsCredentialsStorageIntegration
       String region,
       String accountId) {
 
-    boolean hasCurrentKey = currentKmsKey != null;
     boolean hasAllowedKeys = hasKmsKeys(allowedKmsKeys);
     boolean hasDecryptOnlyKeys = hasKmsKeys(decryptOnlyKmsKeys);
     boolean isAwsS3 = region != null && accountId != null;
 
     // Nothing to do if no keys are configured and not AWS S3
-    if (!hasCurrentKey && !hasAllowedKeys && !hasDecryptOnlyKeys && !isAwsS3) {
+    if (!hasAllowedKeys && !hasDecryptOnlyKeys && !isAwsS3) {
       return false;
     }
 
     boolean statementAdded = false;
-    if (hasCurrentKey || hasAllowedKeys) {
+    if (hasAllowedKeys) {
       IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
-
-      if (hasCurrentKey) {
-        addKmsKeyResource(currentKmsKey, allowKms, "current");
-      }
-
-      if (hasAllowedKeys) {
-        addKmsKeyResources(allowedKmsKeys, allowKms, "allowed");
-      }
+      addKmsKeyResources(allowedKmsKeys, allowKms, "allowed");
 
       policyBuilder.addStatement(allowKms.build());
       statementAdded = true;
@@ -475,8 +464,7 @@ public class AwsCredentialsStorageIntegration
     // Only add wildcard KMS access for read-only operations on AWS S3 when no specific keys are
     // configured. This does not apply to services like Minio where region and accountId are not
     // available.
-    boolean shouldAddWildcard =
-        !hasCurrentKey && !hasAllowedKeys && !hasDecryptOnlyKeys && !canWrite && isAwsS3;
+    boolean shouldAddWildcard = !hasAllowedKeys && !hasDecryptOnlyKeys && !canWrite && isAwsS3;
     if (shouldAddWildcard) {
       IamStatement.Builder allowKms = buildBaseKmsStatement(false);
       addAllKeysResource(region, accountId, allowKms);

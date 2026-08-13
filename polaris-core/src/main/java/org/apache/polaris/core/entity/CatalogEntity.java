@@ -21,6 +21,7 @@ package org.apache.polaris.core.entity;
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
 import com.google.common.base.Preconditions;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -147,8 +148,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setRoleArn(awsConfig.getRoleARN())
             .setExternalId(awsConfig.getExternalId())
             .setUserArn(awsConfig.getUserARN())
-            .setCurrentKmsKey(awsConfig.getCurrentKmsKey())
-            .setAllowedKmsKeys(awsConfig.getAllowedKmsKeys())
+            .setAllowedKmsKeys(awsConfig.getEffectiveAllowedKmsKeys())
             .setDecryptOnlyKmsKeys(awsConfig.getDecryptOnlyKmsKeys())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
@@ -354,13 +354,17 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
+            List<String> allowedKmsKeys = new ArrayList<>(awsConfigModel.getAllowedKmsKeys());
+            String currentKmsKey = awsConfigModel.getCurrentKmsKey();
+            if (currentKmsKey != null && !allowedKmsKeys.contains(currentKmsKey)) {
+              allowedKmsKeys.add(currentKmsKey);
+            }
             AwsStorageConfigurationInfo awsConfig =
                 AwsStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
                     .storageName(storageConfigModel.getStorageName())
                     .roleARN(awsConfigModel.getRoleArn())
-                    .currentKmsKey(awsConfigModel.getCurrentKmsKey())
-                    .allowedKmsKeys(awsConfigModel.getAllowedKmsKeys())
+                    .allowedKmsKeys(allowedKmsKeys)
                     .decryptOnlyKmsKeys(awsConfigModel.getDecryptOnlyKmsKeys())
                     .externalId(awsConfigModel.getExternalId())
                     .region(awsConfigModel.getRegion())

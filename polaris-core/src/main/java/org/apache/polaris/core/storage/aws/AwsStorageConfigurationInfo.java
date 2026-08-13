@@ -26,6 +26,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -83,6 +84,20 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   /** List of KMS Key ARNs allowed for encryption and decryption, optional. */
   @Nullable
   public abstract List<String> getAllowedKmsKeys();
+
+  /** Returns the encrypt-capable KMS keys, including the deprecated current KMS key. */
+  @JsonIgnore
+  public List<String> getEffectiveAllowedKmsKeys() {
+    List<String> effectiveAllowedKmsKeys = new ArrayList<>();
+    if (getAllowedKmsKeys() != null) {
+      effectiveAllowedKmsKeys.addAll(getAllowedKmsKeys());
+    }
+    String currentKmsKey = getCurrentKmsKey();
+    if (currentKmsKey != null && !effectiveAllowedKmsKeys.contains(currentKmsKey)) {
+      effectiveAllowedKmsKeys.add(currentKmsKey);
+    }
+    return List.copyOf(effectiveAllowedKmsKeys);
+  }
 
   /** List of KMS Key ARNs allowed only for decryption, optional. */
   @Nullable
@@ -213,7 +228,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   private static void validateKmsKeyArn(String propertyName, @Nullable String keyArn) {
     checkArgument(
         keyArn != null && KMS_KEY_ARN_PATTERN.matcher(keyArn).matches(),
-        "%s must contain concrete AWS KMS key ARNs, but found: %s",
+        "When decryptOnlyKmsKeys is configured, %s must contain concrete AWS KMS key ARNs, but found: %s",
         propertyName,
         keyArn);
   }

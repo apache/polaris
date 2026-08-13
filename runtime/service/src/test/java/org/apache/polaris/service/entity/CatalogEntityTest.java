@@ -282,6 +282,33 @@ public class CatalogEntityTest {
   }
 
   @Test
+  public void testDeprecatedCurrentKmsKeyMigratedToAllowedKmsKeys() {
+    String baseLocation = "s3://my-bucket/data/";
+    String currentKmsKey =
+        "arn:aws:kms:us-east-1:012345678901:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    AwsStorageConfigInfo awsStorageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setCurrentKmsKey(currentKmsKey)
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .build();
+    Catalog awsCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("name")
+            .setProperties(new CatalogProperties(baseLocation))
+            .setStorageConfigInfo(awsStorageConfigModel)
+            .build();
+
+    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, awsCatalog);
+    AwsStorageConfigInfo response =
+        (AwsStorageConfigInfo) entity.asCatalog().getStorageConfigInfo();
+
+    assertThat(response.getCurrentKmsKey()).isNull();
+    assertThat(response.getAllowedKmsKeys()).containsExactly(currentKmsKey);
+  }
+
+  @Test
   public void testExplicitAllowedLocationsWithBaseInside_storedAsIs() {
     // User supplied explicit allowed-locations containing the default-base-location: store the
     // list as-is. No silent additions to the user-supplied perimeter.
@@ -404,8 +431,10 @@ public class CatalogEntityTest {
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
-    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getCurrentKmsKey())
-        .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
+    AwsStorageConfigInfo response = (AwsStorageConfigInfo) catalog.getStorageConfigInfo();
+    assertThat(response.getCurrentKmsKey()).isNull();
+    assertThat(response.getAllowedKmsKeys())
+        .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test
@@ -430,8 +459,10 @@ public class CatalogEntityTest {
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
-    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getCurrentKmsKey())
-        .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
+    AwsStorageConfigInfo response = (AwsStorageConfigInfo) catalog.getStorageConfigInfo();
+    assertThat(response.getCurrentKmsKey()).isNull();
+    assertThat(response.getAllowedKmsKeys())
+        .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test

@@ -146,6 +146,17 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
+  public void testEffectiveAllowedKmsKeysIncludesDeprecatedCurrentKmsKey() {
+    assertThat(
+            newBuilder()
+                .currentKmsKey(ALLOWED_KMS_KEY_ARN)
+                .allowedKmsKeys(List.of(DECRYPT_ONLY_KMS_KEY_ARN))
+                .build()
+                .getEffectiveAllowedKmsKeys())
+        .containsExactly(DECRYPT_ONLY_KMS_KEY_ARN, ALLOWED_KMS_KEY_ARN);
+  }
+
+  @Test
   public void testDecryptOnlyKmsKeysMustNotOverlapEncryptCapableKeys() {
     String keyArn = "arn:aws:kms:us-east-1:012345678901:key/cccccccc-cccc-cccc-cccc-cccccccccccc";
 
@@ -170,7 +181,8 @@ public class AwsStorageConfigurationInfoTest {
       String description, String invalidKeyArn) {
     assertThatThrownBy(() -> newBuilder().decryptOnlyKmsKeys(List.of(invalidKeyArn)).build())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("decryptOnlyKmsKeys must contain concrete AWS KMS key ARNs");
+        .hasMessageContaining(
+            "When decryptOnlyKmsKeys is configured, decryptOnlyKmsKeys must contain concrete AWS KMS key ARNs");
 
     assertThatThrownBy(
             () ->
@@ -179,7 +191,8 @@ public class AwsStorageConfigurationInfoTest {
                     .decryptOnlyKmsKeys(List.of(DECRYPT_ONLY_KMS_KEY_ARN))
                     .build())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("allowedKmsKeys must contain concrete AWS KMS key ARNs");
+        .hasMessageContaining(
+            "When decryptOnlyKmsKeys is configured, allowedKmsKeys must contain concrete AWS KMS key ARNs");
 
     assertThatThrownBy(
             () ->
@@ -188,7 +201,8 @@ public class AwsStorageConfigurationInfoTest {
                     .decryptOnlyKmsKeys(List.of(DECRYPT_ONLY_KMS_KEY_ARN))
                     .build())
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("currentKmsKey must contain concrete AWS KMS key ARNs");
+        .hasMessageContaining(
+            "When decryptOnlyKmsKeys is configured, currentKmsKey must contain concrete AWS KMS key ARNs");
   }
 
   static Stream<Arguments> invalidKmsKeyArns() {
