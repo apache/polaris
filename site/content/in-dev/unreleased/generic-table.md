@@ -151,7 +151,7 @@ The drop generic table REST endpoint is `DELETE /polaris/v1/{prefix}/namespaces/
 
 The following curl call drops the table `delta_table`:
 ```shell
-curl -X DELETE http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/{generic-table}
+curl -X DELETE http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/delta_table
 ```
 
 ### API Reference

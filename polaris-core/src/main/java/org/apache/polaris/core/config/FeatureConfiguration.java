@@ -454,7 +454,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "The duration of time that vended storage credentials are valid for. Support for"
                   + " longer (or shorter) durations is dependent on the storage provider. GCS"
-                  + " current does not respect this value.")
+                  + " currently does not respect this value.")
           .defaultValue(60 * 60) // 1 hour
           .buildFeatureConfiguration();
 
@@ -671,7 +671,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .key("ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS")
               .description(
                   "If set to true (default), Polaris will allow setting or changing "
-                      + "catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs."
+                      + "catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs. "
                       + "If set to false, Polaris will disallow setting or changing the above catalog property")
               .defaultValue(true)
               .buildFeatureConfiguration();
@@ -682,7 +682,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .key("ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG")
               .description(
                   "If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. "
-                      + "passthrough-facade catalogs may contain leftover entities when syncing with source catalog."
+                      + "passthrough-facade catalogs may contain leftover entities when syncing with source catalog. "
                       + "In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.")
               .catalogConfig("polaris.config.allow-dropping-non-empty-passthrough-facade-catalog")
               .defaultValue(false)
@@ -740,7 +740,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. "
                   + "The jitter is applied as a random percentage of the computed exponential backoff delay. "
-                  + "For example, 0.5 means up to 50%% random jitter will be added to each retry delay. "
+                  + "For example, 0.5 means up to 50% random jitter will be added to each retry delay. "
                   + "Helps prevent thundering herd when multiple requests fail simultaneously.")
           .defaultValue(0.5)
           .buildFeatureConfiguration();
