@@ -137,6 +137,7 @@ import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -856,7 +857,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       PolarisSecurable securable,
       boolean prependRootContainer) {
     PolarisResolvedPathWrapper resolvedSecurable =
-        securable.getLeaf().entityType() == org.apache.polaris.core.entity.PolarisEntityType.CATALOG
+        securable.getLeaf().entityType() == PolarisEntityType.CATALOG
             ? resolutionManifest.getResolvedReferenceCatalogEntity(prependRootContainer)
             : securable.getLeaf().entityType().isTopLevel()
                 ? resolutionManifest.getResolvedTopLevelEntity(
@@ -878,9 +879,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     // Resolver path keys are scoped within the reference catalog, so the explicit catalog
     // path segment is omitted from the PolarisSecurable path before lookup.
     return securable.getPathSegments().stream()
-        .filter(
-            segment ->
-                segment.entityType() != org.apache.polaris.core.entity.PolarisEntityType.CATALOG)
+        .filter(segment -> segment.entityType() != PolarisEntityType.CATALOG)
         .map(PathSegment::name)
         .toList();
   }
@@ -944,7 +943,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   /**
    * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
    */
-  @Deprecated(since = "1.2.0")
+  @Deprecated(since = "1.2.0", forRemoval = true)
   @Override
   public void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
@@ -963,7 +962,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   /**
    * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
    */
-  @Deprecated(since = "1.2.0")
+  @Deprecated(since = "1.2.0", forRemoval = true)
   @Override
   public void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,

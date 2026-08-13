@@ -59,7 +59,7 @@ public interface PolarisAuthorizer {
    * @deprecated Use {@link #authorize(AuthorizationState, AuthorizationRequest)} and handle the
    *     returned {@link AuthorizationDecision}.
    */
-  @Deprecated(since = "1.2.0")
+  @Deprecated(since = "1.2.0", forRemoval = true)
   default void authorizeOrThrow(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     AuthorizationDecision decision = authorize(authzState, request);
@@ -74,7 +74,7 @@ public interface PolarisAuthorizer {
    *
    * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
    */
-  @Deprecated(since = "1.2.0")
+  @Deprecated(since = "1.2.0", forRemoval = true)
   void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
@@ -87,7 +87,7 @@ public interface PolarisAuthorizer {
    *
    * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
    */
-  @Deprecated(since = "1.2.0")
+  @Deprecated(since = "1.2.0", forRemoval = true)
   void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,

@@ -194,7 +194,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *
    * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
    */
-  @Deprecated(since = "1.2.0")
+  @Deprecated(since = "1.2.0", forRemoval = true)
   @Override
   public void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
@@ -217,7 +217,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *
    * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
    */
-  @Deprecated(since = "1.2.0")
+  @Deprecated(since = "1.2.0", forRemoval = true)
   @Override
   public void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,

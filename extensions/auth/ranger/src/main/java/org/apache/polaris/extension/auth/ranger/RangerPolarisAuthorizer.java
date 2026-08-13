@@ -231,7 +231,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   @Override
-  @Deprecated(since = "1.2.0")
+  @Deprecated(since = "1.2.0", forRemoval = true)
   public void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
@@ -247,7 +247,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   @Override
-  @Deprecated(since = "1.2.0")
+  @Deprecated(since = "1.2.0", forRemoval = true)
   public void authorizeOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
