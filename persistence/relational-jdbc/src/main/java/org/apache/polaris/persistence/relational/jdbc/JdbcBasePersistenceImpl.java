@@ -1177,16 +1177,27 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public void deleteFromPolicyMappingRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
-    var modelPolicyMappingRecord = ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
     try {
-      Map<String, Object> objectMap =
-          modelPolicyMappingRecord.toMap(datasourceOperations.getDatabaseType());
-      objectMap.put("realm_id", realmId);
+      // The mapping is identified by the target and policy ids plus the policy type. Keeping
+      // parameters out of the WHERE clause means a concurrent update of the parameters cannot
+      // turn this delete into a no-op.
+      Map<String, Object> params =
+          Map.of(
+              "target_catalog_id",
+              record.getTargetCatalogId(),
+              "target_id",
+              record.getTargetId(),
+              "policy_type_code",
+              record.getPolicyTypeCode(),
+              "policy_id",
+              record.getPolicyId(),
+              "policy_catalog_id",
+              record.getPolicyCatalogId(),
+              "realm_id",
+              realmId);
       datasourceOperations.executeUpdate(
           QueryGenerator.generateDeleteQuery(
-              ModelPolicyMappingRecord.ALL_COLUMNS,
-              ModelPolicyMappingRecord.TABLE_NAME,
-              objectMap));
+              ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to policy records due to %s", e.getMessage()), e);

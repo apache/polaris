@@ -35,6 +35,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -50,6 +51,8 @@ import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -66,6 +69,10 @@ class JdbcBasePersistenceImplTest {
   private static final long GRANTEE_CATALOG_ID = 3L;
   private static final long GRANTEE_ID = 4L;
   private static final int PRIVILEGE_CODE = 21;
+  private static final long POLICY_TARGET_CATALOG_ID = 11L;
+  private static final long POLICY_TARGET_ID = 12L;
+  private static final long POLICY_CATALOG_ID = 13L;
+  private static final long POLICY_ID = 14L;
 
   @ParameterizedTest
   @ValueSource(ints = {1, 2, 3, 4, 5})
@@ -329,6 +336,56 @@ class JdbcBasePersistenceImplTest {
     assertThat(impl.lookupEntityGrantRecordsVersion(callCtx, 0L, 201L)).isEqualTo(5);
     assertThat(impl.lookupEntityGrantRecordsVersion(callCtx, 0L, 202L)).isEqualTo(9);
     assertThat(impl.lookupEntityGrantRecordsVersion(callCtx, 0L, 999L)).isEqualTo(0);
+  }
+
+  /**
+   * A mapping is identified by its target and policy ids plus the policy type, not by its
+   * parameters. Detach reads the mapping record and then deletes it in a separate round-trip, so a
+   * re-attach that rewrites the parameters in between leaves the caller holding a record whose
+   * parameters no longer match the stored row. The delete must still remove that row.
+   */
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2, 3, 4, 5})
+  void deleteFromPolicyMappingRecordsIgnoresConcurrentParametersUpdate(int schemaVersion)
+      throws SQLException, IOException {
+    DatasourceOperations datasourceOperations =
+        newH2DatasourceOperations("policy_mapping_delete_v", schemaVersion);
+    TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    int policyTypeCode = PredefinedPolicyTypes.DATA_COMPACTION.getCode();
+    PolarisPolicyMappingRecord attached =
+        newTestPolicyMappingRecord(policyTypeCode, Map.of("version", "1"));
+    impl.writeToPolicyMappingRecords(callCtx, attached);
+
+    // A re-attach of the same policy updates the parameters of the existing row in place.
+    impl.writeToPolicyMappingRecords(
+        callCtx, newTestPolicyMappingRecord(policyTypeCode, Map.of("version", "2")));
+
+    // Detach deletes the record it looked up before that update, so its parameters are stale.
+    impl.deleteFromPolicyMappingRecords(callCtx, attached);
+
+    assertThat(
+            impl.lookupPolicyMappingRecord(
+                callCtx,
+                POLICY_TARGET_CATALOG_ID,
+                POLICY_TARGET_ID,
+                policyTypeCode,
+                POLICY_CATALOG_ID,
+                POLICY_ID))
+        .isNull();
+  }
+
+  private static PolarisPolicyMappingRecord newTestPolicyMappingRecord(
+      int policyTypeCode, Map<String, String> parameters) {
+    return new PolarisPolicyMappingRecord(
+        POLICY_TARGET_CATALOG_ID,
+        POLICY_TARGET_ID,
+        POLICY_CATALOG_ID,
+        POLICY_ID,
+        policyTypeCode,
+        parameters);
   }
 
   private static DatasourceOperations newH2DatasourceOperations(
