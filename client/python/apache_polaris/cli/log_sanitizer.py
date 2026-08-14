@@ -49,7 +49,10 @@ SENSITIVE_BODY_KEYS = frozenset(
 
 
 def _is_sensitive_key(key: Any) -> bool:
-    return isinstance(key, str) and key.replace("_", "").replace("-", "").lower() in SENSITIVE_BODY_KEYS
+    return (
+        isinstance(key, str)
+        and key.replace("_", "").replace("-", "").lower() in SENSITIVE_BODY_KEYS
+    )
 
 
 def sanitize_data(data: Any) -> Any:
