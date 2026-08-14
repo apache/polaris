@@ -60,6 +60,14 @@ public class DatasourceOperations {
   private static final String UNIQUENESS_CONSTRAINT_VIOLATION_SQL_CODE = "23505";
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
 
+  // SQLSTATE codes treated as ambiguous commit outcomes (the write may already have committed).
+  // Class 08 (connection exception) is SQL-standard and portable across databases.
+  private static final String CONNECTION_EXCEPTION_SQL_STATE_CLASS = "08";
+  // POSTGRES: query_canceled, e.g. statement_timeout (also CockroachDB via PG compatibility)
+  private static final String POSTGRES_QUERY_CANCELED_SQL_STATE = "57014";
+  // ODBC: timeout expired (used by some drivers, e.g. jTDS and older MySQL connectors)
+  private static final String ODBC_TIMEOUT_SQL_STATE = "HYT00";
+
   // H2 STATUS CODES
   // 90079 = Schema not found, 42S02 = Table or view not found
   private static final String H2_SCHEMA_DOES_NOT_EXIST = "90079";
@@ -178,7 +186,8 @@ public class DatasourceOperations {
             executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
             return null;
           }
-        });
+        },
+        false);
   }
 
   /** Connection-aware version for use inside runWithinTransaction. */
@@ -192,7 +201,8 @@ public class DatasourceOperations {
         () -> {
           executeSelectOverStreamWithConnection(query, converterInstance, consumer, connection);
           return null;
-        });
+        },
+        false);
   }
 
   /**
@@ -358,7 +368,67 @@ public class DatasourceOperations {
     }
   }
 
-  private boolean isRetryable(SQLException e) {
+  /**
+   * Whether a SQLException indicates the statement may already have been applied on the server
+   * while the client cannot confirm the outcome (connection loss, timeout, cancellation).
+   *
+   * <p>Callers must not treat these as definite failures for cleanup or safe retry of CAS writes.
+   */
+  public boolean isAmbiguousCommitOutcome(SQLException e) {
+    if (e == null) {
+      return false;
+    }
+    if (e instanceof java.sql.SQLTimeoutException) {
+      return true;
+    }
+    if (e instanceof java.sql.SQLTransientConnectionException
+        || e instanceof java.sql.SQLNonTransientConnectionException) {
+      return true;
+    }
+    String sqlState = e.getSQLState();
+    if (sqlState != null) {
+      if (sqlState.startsWith(CONNECTION_EXCEPTION_SQL_STATE_CLASS)
+          || sqlState.equals(POSTGRES_QUERY_CANCELED_SQL_STATE)
+          || sqlState.equals(ODBC_TIMEOUT_SQL_STATE)) {
+        return true;
+      }
+    }
+    return messageContainsAny(
+        e,
+        "connection reset",
+        "connection refused",
+        "connection is closed",
+        "broken pipe",
+        "query canceled",
+        "canceling statement due to statement timeout");
+  }
+
+  /**
+   * Whether the exception message contains any of the given lowercase needles. The message is
+   * lowercased once; a null message matches nothing.
+   */
+  private static boolean messageContainsAny(SQLException e, String... needles) {
+    String message = e.getMessage();
+    if (message == null) {
+      return false;
+    }
+    String lower = message.toLowerCase(Locale.ROOT);
+    for (String needle : needles) {
+      if (lower.contains(needle)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean isRetryable(SQLException e, boolean mutating) {
+    // For mutating operations an ambiguous outcome (connection loss, timeout, cancellation) may
+    // mean the write already committed under auto-commit, so retrying risks a double-apply or a
+    // misreported result. Reads have no commit outcome to protect, so they stay retryable.
+    if (mutating && isAmbiguousCommitOutcome(e)) {
+      return false;
+    }
+
     String sqlState = e.getSQLState();
 
     if (sqlState != null) {
@@ -366,14 +436,20 @@ public class DatasourceOperations {
     }
 
     // Additionally, one might check for specific error messages or other conditions
-    return e.getMessage().toLowerCase(Locale.ROOT).contains("connection refused")
-        || e.getMessage().toLowerCase(Locale.ROOT).contains("connection reset");
+    return messageContainsAny(e, "connection refused", "connection reset");
   }
 
   // TODO: consider refactoring to use a retry library, inorder to have fair retries
   // and more knobs for tuning retry pattern.
   @VisibleForTesting
   <T> T withRetries(Operation<T> operation) throws SQLException {
+    // Default to the mutating policy: it is the safe choice when the caller does not state whether
+    // the operation writes.
+    return withRetries(operation, true);
+  }
+
+  @VisibleForTesting
+  <T> T withRetries(Operation<T> operation, boolean mutating) throws SQLException {
     int attempts = 0;
     // maximum number of retries.
     int maxAttempts = relationalJdbcConfiguration.maxRetries().orElse(1);
@@ -409,7 +485,7 @@ public class DatasourceOperations {
         attempts++;
         long timeLeft =
             Math.max((maxRetryTime - TimeUnit.NANOSECONDS.toMillis(System.nanoTime())), 0L);
-        if (timeLeft == 0 || attempts >= maxAttempts || !isRetryable(sqlException)) {
+        if (timeLeft == 0 || attempts >= maxAttempts || !isRetryable(sqlException, mutating)) {
           String exceptionMessage =
               String.format(
                   "Failed due to '%s' (error code %d, sql-state '%s'), after %s attempts and %s milliseconds",

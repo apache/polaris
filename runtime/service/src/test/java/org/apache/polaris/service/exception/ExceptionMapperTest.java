@@ -41,6 +41,7 @@ import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
+import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
@@ -110,6 +111,16 @@ public class ExceptionMapperTest {
     PolarisExceptionMapper mapper = new PolarisExceptionMapper();
     Response response = mapper.toResponse(new CommitConflictException("test"));
     assertThat(response.getStatus()).isEqualTo(409);
+  }
+
+  @Test
+  public void testCommitStateUnknownExceptionIsInternalServerError() {
+    PolarisExceptionMapper mapper = new PolarisExceptionMapper();
+    Response response =
+        mapper.toResponse(
+            new PersistenceCommitStateUnknownException(
+                "commit outcome unknown", new RuntimeException("connection reset")));
+    assertThat(response.getStatus()).isEqualTo(500);
   }
 
   @Test

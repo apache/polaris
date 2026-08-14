@@ -72,6 +72,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.CleanableFailure;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
@@ -119,6 +120,7 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
+import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -1705,6 +1707,32 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
+   * Whether newly written metadata files may be deleted after a table/view commit failure.
+   *
+   * <p>Follows Iceberg's rule: cleanup is only safe when the commit outcome is a known failure
+   * ({@link CleanableFailure} and related definite-failure types). When the outcome is unknown —
+   * connection loss after the metastore may already have applied the pointer update — the metadata
+   * file must be retained so a published pointer cannot dangle.
+   */
+  @VisibleForTesting
+  static boolean shouldCleanupMetadataOnCommitFailure(Throwable failure) {
+    if (failure == null) {
+      return false;
+    }
+    // Never delete metadata when the commit may already have been applied.
+    if (failure instanceof PersistenceCommitStateUnknownException) {
+      return false;
+    }
+    if (failure instanceof CleanableFailure) {
+      return true;
+    }
+    // Definite pre- or post-CAS failures that do not implement CleanableFailure.
+    return failure instanceof AlreadyExistsException
+        || failure instanceof NotFoundException
+        || failure instanceof CommitConflictException;
+  }
+
+  /**
    * An implementation of {@link TableOperations} that integrates with {@link LocalIcebergCatalog}.
    * Much of this code was originally copied from {@link
    * org.apache.iceberg.BaseMetastoreTableOperations}. CODE_COPIED_TO_POLARIS From Apache Iceberg
@@ -1967,6 +1995,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       String newLocation = writeResult.location();
       String oldLocation = base == null ? null : base.metadataFileLocation();
       boolean writeSucceeded = false;
+      boolean persistenceAttempted = false;
+      RuntimeException commitFailure = null;
       try {
         // TODO: Consider using the entity from doRefresh() directly to do the conflict detection
         // instead of a two-layer CAS (checking metadataLocation to detect concurrent modification
@@ -2032,6 +2062,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               tableIdentifier, oldLocation, newLocation, existingLocation);
         }
 
+        persistenceAttempted = true;
         if (null == existingLocation) {
           createTableLike(tableIdentifier, entity, false);
         } else {
@@ -2039,8 +2070,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         }
         // We diverge from `BaseMetastoreTableOperations`: only update the in-memory state after
         // the metastore persistence succeeds. If we updated it before and persistence threw,
-        // the finally-block cleanup would delete newLocation while this ops instance still
-        // pointed at it — leaving a dangling reference until the caller refreshes.
+        // cleanup could delete newLocation while this ops instance still pointed at it.
         if (makeMetadataCurrentOnCommit) {
           currentMetadata =
               TableMetadata.buildFrom(metadata)
@@ -2050,10 +2080,21 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           currentMetadataLocation = newLocation;
         }
         writeSucceeded = true;
+      } catch (RuntimeException e) {
+        commitFailure = e;
+        throw e;
       } finally {
+        // Pre-write failures leave a definite orphan and are always cleaned up. Once the
+        // persistence call has been attempted, only delete on known failures: an ambiguous outcome
+        // (connection drop after the pointer may already have been applied) must leave the file in
+        // place — see Iceberg SnapshotProducer / TableOperations commit contract.
         if (!writeSucceeded && writeResult.written()) {
-          IcebergCatalogHandler.cleanupWrittenMetadataFiles(
-              List.of(new IcebergCatalogHandler.FileToDelete(io(), newLocation)));
+          boolean cleanup =
+              !persistenceAttempted || shouldCleanupMetadataOnCommitFailure(commitFailure);
+          if (cleanup) {
+            IcebergCatalogHandler.cleanupWrittenMetadataFiles(
+                List.of(new IcebergCatalogHandler.FileToDelete(io(), newLocation)));
+          }
         }
       }
     }
@@ -2430,6 +2471,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       String newLocation = writeResult.location();
       String oldLocation = base == null ? null : currentMetadataLocation;
       boolean writeSucceeded = false;
+      boolean persistenceAttempted = false;
+      RuntimeException commitFailure = null;
       try {
         IcebergTableLikeEntity entity =
             IcebergTableLikeEntity.of(
@@ -2465,6 +2508,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   + "because it has been concurrently modified to %s",
               identifier, oldLocation, newLocation, existingLocation);
         }
+        persistenceAttempted = true;
         if (null == existingLocation) {
           createTableLike(identifier, entity, true);
         } else {
@@ -2476,10 +2520,20 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           currentMetadataLocation = newLocation;
         }
         writeSucceeded = true;
+      } catch (RuntimeException e) {
+        commitFailure = e;
+        throw e;
       } finally {
+        // Pre-write failures leave a definite orphan and are always cleaned up. Once the
+        // persistence call has been attempted, only delete on known failures (not unknown/ambiguous
+        // outcomes) so a possibly-published pointer cannot be left dangling.
         if (!writeSucceeded && writeResult.written()) {
-          IcebergCatalogHandler.cleanupWrittenMetadataFiles(
-              List.of(new IcebergCatalogHandler.FileToDelete(io(), newLocation)));
+          boolean cleanup =
+              !persistenceAttempted || shouldCleanupMetadataOnCommitFailure(commitFailure);
+          if (cleanup) {
+            IcebergCatalogHandler.cleanupWrittenMetadataFiles(
+                List.of(new IcebergCatalogHandler.FileToDelete(io(), newLocation)));
+          }
         }
       }
     }

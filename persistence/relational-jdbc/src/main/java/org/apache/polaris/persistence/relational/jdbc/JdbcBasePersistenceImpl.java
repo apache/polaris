@@ -56,6 +56,7 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
@@ -144,7 +145,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             return datasourceOperations.executeUpdate(preparedQuery);
           });
     } catch (SQLException e) {
-      throw new RuntimeException("Error persisting entity", e);
+      throw wrapEntityWriteFailure(e);
     }
   }
 
@@ -169,10 +170,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             return true;
           });
     } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format(
-              "Error executing the transaction for writing entities due to %s", e.getMessage()),
-          e);
+      throw wrapEntityWriteFailure(e, "Error executing the transaction for writing entities");
     }
   }
 
@@ -236,8 +234,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           throw new RetryOnConcurrencyException(
               e, "Conflicting entity is not visible in the current transaction snapshot; retry");
         }
-        throw new RuntimeException(
-            String.format("Failed to write entity due to %s", e.getMessage()), e);
+        throw wrapEntityWriteFailure(e);
       }
     } else {
       // CAS on both entity_version and grant_records_version because grant operations only
@@ -274,10 +271,21 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               originalEntity.getGrantRecordsVersion());
         }
       } catch (SQLException e) {
-        throw new RuntimeException(
-            String.format("Failed to write entity due to %s", e.getMessage()), e);
+        throw wrapEntityWriteFailure(e);
       }
     }
+  }
+
+  private RuntimeException wrapEntityWriteFailure(SQLException e) {
+    return wrapEntityWriteFailure(e, "Failed to write entity");
+  }
+
+  private RuntimeException wrapEntityWriteFailure(SQLException e, String context) {
+    if (datasourceOperations.isAmbiguousCommitOutcome(e)) {
+      return new PersistenceCommitStateUnknownException(
+          String.format("%s due to %s; commit outcome is unknown", context, e.getMessage()), e);
+    }
+    return new RuntimeException(String.format("%s due to %s", context, e.getMessage()), e);
   }
 
   @Override
