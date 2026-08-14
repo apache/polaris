@@ -267,8 +267,8 @@ h6:hover .heading-anchor {
   }
 }
 
-.polaris-landing-community {
-  padding: 5.5rem 0;
+.polaris-landing .polaris-landing-community {
+  padding: 3.75rem 0;
   background: #073b47;
 }
 
@@ -283,24 +283,23 @@ h6:hover .heading-anchor {
     flex-direction: column;
     gap: 1.25rem;
     align-items: center;
-    justify-content: center;
-    padding: 2rem 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    justify-content: flex-start;
+    padding: 0.75rem 1rem;
+    border: 0;
     border-radius: 0.75rem;
     color: #fff;
-    background: rgba(255, 255, 255, 0.025);
+    background: transparent;
     text-align: center;
 
     > i {
       display: flex;
-      width: 4rem;
-      height: 4rem;
+      width: 3.5rem;
+      height: 3.5rem;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
       color: #72e8dd;
-      background: rgba(114, 232, 221, 0.1);
-      font-size: 1.5rem;
+      font-size: 2.25rem;
+      transition: color 160ms ease;
     }
 
     span,
@@ -314,7 +313,7 @@ h6:hover .heading-anchor {
     }
 
     strong {
-      font-size: 1.25rem;
+      font-size: clamp(1.25rem, 2vw, 1.5rem);
     }
 
     small {
@@ -326,13 +325,15 @@ h6:hover .heading-anchor {
 
   > a {
     text-decoration: none;
-    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+    transition: color 160ms ease, transform 160ms ease;
 
     &:hover {
       color: #fff;
-      border-color: rgba(114, 232, 221, 0.38);
-      background: rgba(114, 232, 221, 0.075);
       transform: translateY(-2px);
+
+      > i {
+        color: #a1f5ed;
+      }
     }
 
     &:focus-visible {
@@ -346,7 +347,7 @@ h6:hover .heading-anchor {
   h3 {
     margin: 0;
     color: #fff;
-    font-size: 1.25rem;
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
   }
 
   p {
