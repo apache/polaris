@@ -382,13 +382,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
   }
 
-  /**
-   * Create a table.
-   *
-   * @param namespace the namespace to create the table in
-   * @param request the table creation request
-   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
-   */
   public void authorizeCreateTableDirect(
       Namespace namespace, CreateTableRequest request, boolean delegationRequested) {
     if (delegationRequested) {
