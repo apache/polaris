@@ -24,8 +24,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -110,6 +112,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
             })
         .when(authorizer)
         .resolveAuthorizationInputs(any(), any());
+    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
 
     handler(authorizer).loadSemanticModel(identifier("m1"));
 
