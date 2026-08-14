@@ -671,12 +671,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       Namespace namespace,
       Map<String, String> metadata,
       PolarisResolvedPathWrapper resolvedParent) {
-    String baseLocation = resolveNamespaceLocation(namespace, metadata);
-
-    // Set / suffix
-    if (!baseLocation.endsWith("/")) {
-      baseLocation += "/";
-    }
+    String baseLocation =
+        StorageLocation.ensureTrailingSlash(resolveNamespaceLocation(namespace, metadata));
 
     NamespaceEntity entity =
         new NamespaceEntity.Builder(namespace)
@@ -2815,12 +2811,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedParent,
       boolean validateMetadataLocation) {
     IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(entity);
-    // Set / suffix
-    if (icebergTableLikeEntity.getBaseLocation() != null
-        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+    if (icebergTableLikeEntity.getBaseLocation() != null) {
       icebergTableLikeEntity =
           new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
-              .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")
+              .setBaseLocation(
+                  StorageLocation.ensureTrailingSlash(icebergTableLikeEntity.getBaseLocation()))
               .build();
     }
 
@@ -2881,12 +2876,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     IcebergTableLikeEntity icebergTableLikeEntity = new IcebergTableLikeEntity(entity);
 
-    // Set / suffix
-    if (icebergTableLikeEntity.getBaseLocation() != null
-        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+    if (icebergTableLikeEntity.getBaseLocation() != null) {
       icebergTableLikeEntity =
           new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
-              .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")
+              .setBaseLocation(
+                  StorageLocation.ensureTrailingSlash(icebergTableLikeEntity.getBaseLocation()))
               .build();
     }
 

@@ -34,12 +34,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Breaking changes
 
 - Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
-- Removed the `ADD_TRAILING_SLASH_TO_LOCATION` feature flag (catalog config
-  `polaris.config.add-trailing-slash-to-location`). Polaris now always appends a trailing slash to
-  table and namespace base locations. A leftover key in configuration is harmless and ignored; a
-  production-readiness warning is emitted at startup if it is explicitly set to `false`. Locations
-  stored without a trailing slash by older versions continue to be handled correctly by
-  location-overlap checks.
 
 ### New Features
 
@@ -47,6 +41,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 
 ### Changes
+
+- Removed the `ADD_TRAILING_SLASH_TO_LOCATION` feature flag (catalog config `polaris.config.add-trailing-slash-to-location`). Polaris now always appends a trailing slash to table and namespace base locations. A leftover config value is ignored, with a startup warning if it is set to `false`.
 
 ### Deprecations
 
