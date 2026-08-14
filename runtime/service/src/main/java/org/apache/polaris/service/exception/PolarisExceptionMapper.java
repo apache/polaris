@@ -57,7 +57,7 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
     Response.ResponseBuilder builder =
         Response.status(statusCode).entity(errorResponse).type(MediaType.APPLICATION_JSON_TYPE);
     if (exception instanceof PolarisServiceUnavailableException e
-        && e.getRetryAfterSeconds() != 0) {
+        && e.getRetryAfterSeconds() >= 0) {
       builder.header(HttpHeaders.RETRY_AFTER, e.getRetryAfterSeconds());
     }
     return builder.build();
