@@ -17,12 +17,65 @@
 # under the License.
 #
 
+import io
 from unittest.mock import patch, MagicMock
 from cli_test_utils import CLITestBase
 from apache_polaris.cli.constants import UNIT_SEPARATOR
 from apache_polaris.cli.exceptions import CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.polaris_cli import PolarisCli
 from apache_polaris.sdk.catalog.exceptions import ApiException
+from apache_polaris.sdk.catalog.models import (
+    LoadViewResult,
+    ModelSchema,
+    SQLViewRepresentation,
+    StructField,
+    Type,
+    ViewHistoryEntry,
+    ViewMetadata,
+    ViewRepresentation,
+    ViewVersion,
+)
+
+
+def _build_load_view_result(current_version_id: int = 1) -> LoadViewResult:
+    schema = ModelSchema(
+        type="struct",
+        schema_id=0,
+        fields=[
+            StructField(
+                id=1, name="id", type=Type("long"), required=True, doc="primary key"
+            ),
+            StructField(id=2, name="name", type=Type("string"), required=False),
+        ],
+    )
+    version = ViewVersion(
+        version_id=1,
+        timestamp_ms=1700000000000,
+        schema_id=0,
+        summary={},
+        default_namespace=["ns1"],
+        representations=[
+            ViewRepresentation(
+                SQLViewRepresentation(
+                    type="sql", sql="SELECT id FROM t", dialect="spark"
+                )
+            )
+        ],
+    )
+    metadata = ViewMetadata(
+        view_uuid="deadbeef-dead-beef-dead-beefdeadbeef",
+        format_version=1,
+        location="s3://bucket/ns1.db/my_view",
+        current_version_id=current_version_id,
+        versions=[version],
+        version_log=[ViewHistoryEntry(version_id=1, timestamp_ms=1700000000000)],
+        schemas=[schema],
+        properties={},
+    )
+    return LoadViewResult(
+        metadata_location="s3://bucket/ns1.db/my_view/v1.metadata.json",
+        metadata=metadata,
+    )
 
 
 class TestViewsCommand(CLITestBase):
@@ -136,19 +189,67 @@ class TestViewsCommand(CLITestBase):
     def test_view_summarize(self, mock_iceberg_api_class: MagicMock) -> None:
         mock_client = self.build_mock_client()
         mock_iceberg_api = mock_iceberg_api_class.return_value
+        mock_iceberg_api.load_view.return_value = _build_load_view_result()
 
-        self.mock_execute(
-            mock_client,
-            [
-                "views",
-                "summarize",
-                "my_view",
-                "--catalog",
-                "my-catalog",
-                "--namespace",
-                "ns1",
-            ],
-        )
-        mock_iceberg_api.load_view.assert_called_with(
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(
+                mock_client,
+                [
+                    "views",
+                    "summarize",
+                    "my_view",
+                    "--catalog",
+                    "my-catalog",
+                    "--namespace",
+                    "ns1",
+                ],
+            )
+        output = mock_stdout.getvalue()
+        mock_iceberg_api.load_view.assert_called_once_with(
             prefix="my-catalog", namespace="ns1", view="my_view"
         )
+        self.assertIn("View: ns1.my_view", output)
+        self.assertIn("Location:", output)
+        self.assertIn("s3://bucket/ns1.db/my_view", output)
+        self.assertIn("Format Version:", output)
+        self.assertIn("Current Version ID:", output)
+        self.assertIn("Last Updated:", output)
+        self.assertIn("2023-11-14 22:13:20 UTC", output)
+        self.assertIn("Dialect:", output)
+        self.assertIn("spark", output)
+        self.assertIn("SELECT id FROM t", output)
+        self.assertIn("id", output)
+        self.assertIn("long", output)
+        self.assertIn("primary key", output)
+        self.assertIn("string", output)
+        self.assertIn("Version History", output)
+        self.assertNotIn("No matching version found", output)
+
+    @patch("apache_polaris.cli.command.views.IcebergCatalogAPI")
+    def test_view_summarize_reports_missing_current_version(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        mock_iceberg_api.load_view.return_value = _build_load_view_result(
+            current_version_id=99
+        )
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(
+                mock_client,
+                [
+                    "views",
+                    "summarize",
+                    "my_view",
+                    "--catalog",
+                    "my-catalog",
+                    "--namespace",
+                    "ns1",
+                ],
+            )
+        output = mock_stdout.getvalue()
+        self.assertIn(
+            "No matching version found for the current version ID", output
+        )
+        self.assertNotIn("Version History", output)

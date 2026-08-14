@@ -20,17 +20,17 @@ from dataclasses import dataclass, field
 from typing import List, Optional, cast
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.command.utils import (
+    format_iceberg_type,
+    format_timestamp,
+    get_catalog_api_client,
+    handle_api_exception,
+)
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.management import PolarisDefaultApi
-from apache_polaris.cli.command.utils import (
-    handle_api_exception,
-    format_timestamp,
-    format_iceberg_type,
-)
 from prettytable import PrettyTable
 
 
@@ -97,11 +97,9 @@ class ViewCommand(Command):
             )
             print(f"Dropping view {namespace_dot}.{view_name} completed")
         elif self.views_subcommand == Subcommands.SUMMARIZE:
-            self._generate_summary(api, catalog_api, ns_str)
+            self._generate_summary(catalog_api, ns_str)
 
-    def _generate_summary(
-        self, api: PolarisDefaultApi, catalog_api: IcebergCatalogAPI, ns_str: str
-    ) -> None:
+    def _generate_summary(self, catalog_api: IcebergCatalogAPI, ns_str: str) -> None:
         catalog_name = cast(str, self.catalog_name)
         namespace_list = cast(List[str], self.namespace)
         view_name = cast(str, self.view_name)
@@ -116,60 +114,74 @@ class ViewCommand(Command):
             # Metadata
             metadata = resp.metadata
             current_version = next(
-                v
-                for v in metadata.versions
-                if v.version_id == metadata.current_version_id
+                (
+                    v
+                    for v in metadata.versions
+                    if v.version_id == metadata.current_version_id
+                ),
+                None,
             )
-            print("Metadata")
-            print(f"  {'Location:':<30} {metadata.location}")
-            print(f"  {'Format Version:':<30} {metadata.format_version}")
-            print(f"  {'Current Version ID:':<30} {metadata.current_version_id}")
-            print(
-                f"  {'Last Updated:':<30} {format_timestamp(current_version.timestamp_ms)}"
-            )
-
-            # SQL representations
-            print("\nRepresentations")
-            for representation in current_version.representations:
-                unwrapped = representation.actual_instance
-                if unwrapped is None:
-                    continue
-                print(f"  {'Dialect:':<30} {unwrapped.dialect}")
-                indented_sql = "\n".join(
-                    " " * 4 + line for line in unwrapped.sql.splitlines()
+            if current_version is None:
+                print("  No matching version found for the current version ID")
+            else:
+                print("Metadata")
+                print(f"  {'Location:':<30} {metadata.location}")
+                print(f"  {'Format Version:':<30} {metadata.format_version}")
+                print(f"  {'Current Version ID:':<30} {metadata.current_version_id}")
+                print(
+                    f"  {'Last Updated:':<30} {format_timestamp(current_version.timestamp_ms)}"
                 )
-                print("  SQL:")
-                print(indented_sql)
 
-            # Schema
-            print("\nSchema")
-            current_schema = next(
-                schema
-                for schema in metadata.schemas
-                if schema.schema_id == current_version.schema_id
-            )
-            table = PrettyTable(
-                field_names=["ID", "Field Name", "Type", "Comment"],
-                align="l",
-            )
-            for field in current_schema.fields:
-                type_str = format_iceberg_type(field.type)
-                column_comment = field.doc or ""
-                table.add_row([field.id, field.name, type_str, column_comment])
-            indented_table = "\n".join(
-                " " * 2 + line for line in table.get_string().splitlines()
-            )
-            print(indented_table)
+                # SQL representations
+                print("\nRepresentations")
+                for representation in current_version.representations:
+                    unwrapped = representation.actual_instance
+                    if unwrapped is None:
+                        continue
+                    print(f"  {'Dialect:':<30} {unwrapped.dialect}")
+                    indented_sql = "\n".join(
+                        " " * 4 + line for line in unwrapped.sql.splitlines()
+                    )
+                    print("  SQL:")
+                    print(indented_sql)
 
-            # Version history
-            print("\nVersion History")
-            table = PrettyTable(field_names=["Version ID", "Timestamp"], align="l")
-            for entry in metadata.version_log:
-                table.add_row([entry.version_id, format_timestamp(entry.timestamp_ms)])
-            indented_table = "\n".join(
-                " " * 2 + line for line in table.get_string().splitlines()
-            )
-            print(indented_table)
+                # Schema
+                print("\nSchema")
+                current_schema = next(
+                    (
+                        schema
+                        for schema in metadata.schemas
+                        if schema.schema_id == current_version.schema_id
+                    ),
+                    None,
+                )
+                if current_schema and current_schema.fields:
+                    table = PrettyTable(
+                        field_names=["ID", "Field Name", "Type", "Comment"],
+                        align="l",
+                    )
+                    for field in current_schema.fields:
+                        type_str = format_iceberg_type(field.type)
+                        column_comment = field.doc or ""
+                        table.add_row([field.id, field.name, type_str, column_comment])
+                    indented_table = "\n".join(
+                        " " * 2 + line for line in table.get_string().splitlines()
+                    )
+                    print(indented_table)
+                else:
+                    print("  No schema information available")
+
+                # Version history
+                print("\nVersion History")
+                table = PrettyTable(field_names=["Version ID", "Timestamp"], align="l")
+                for entry in metadata.version_log:
+                    table.add_row(
+                        [entry.version_id, format_timestamp(entry.timestamp_ms)]
+                    )
+                indented_table = "\n".join(
+                    " " * 2 + line for line in table.get_string().splitlines()
+                )
+                print(indented_table)
         except Exception as e:
             handle_api_exception("View Metadata", e)
         print("-" * 80)
