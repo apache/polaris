@@ -246,13 +246,13 @@ h6:hover .heading-anchor {
 
 .polaris-landing-about {
   padding: 7rem 0;
-  background: #f7faf9;
+  background: #0b333d;
   text-align: center;
 
   h2 {
     margin: 0 0 2rem;
-    color: #0b333d;
-    font-size: clamp(2.5rem, 5vw, 4.25rem);
+    color: #fff;
+    font-size: clamp(2.25rem, 4.5vw, 3.75rem);
     font-weight: 620;
     letter-spacing: -0.05em;
     line-height: 1;
@@ -261,7 +261,7 @@ h6:hover .heading-anchor {
   p {
     max-width: 53rem;
     margin: 0 auto 1.2rem;
-    color: #49666d;
+    color: rgba(255, 255, 255, 0.72);
     font-size: clamp(1.05rem, 1.5vw, 1.2rem);
     line-height: 1.75;
   }
@@ -356,6 +356,20 @@ h6:hover .heading-anchor {
     &:hover {
       color: #a1f5ed;
     }
+  }
+}
+
+.polaris-landing-trademarks {
+  padding: 1.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #052f39;
+
+  p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    text-align: center;
   }
 }
 
