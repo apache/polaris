@@ -28,55 +28,104 @@ import jakarta.enterprise.inject.Instance.Handle;
 import jakarta.inject.Inject;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.responses.ConfigResponse;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.apache.polaris.core.persistence.resolver.Resolver;
-import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.spi.CatalogConfigEndpointContributor;
 import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RequestScoped
 public class CatalogConfigHandler {
+  private static final Logger LOGGER = LoggerFactory.getLogger(CatalogConfigHandler.class);
   private final CatalogPrefixParser prefixParser;
-  private final ResolverFactory resolverFactory;
+  private final ResolutionManifestFactory resolutionManifestFactory;
+  private final PolarisAuthorizer authorizer;
   private final Instance<CatalogConfigEndpointContributor> endpointContributors;
   private final IdempotencyConfiguration idempotencyConfiguration;
+  private final RealmConfig realmConfig;
 
   @Inject
   public CatalogConfigHandler(
       CatalogPrefixParser prefixParser,
-      ResolverFactory resolverFactory,
+      ResolutionManifestFactory resolutionManifestFactory,
+      PolarisAuthorizer authorizer,
       @Any Instance<CatalogConfigEndpointContributor> endpointContributors,
-      IdempotencyConfiguration idempotencyConfiguration) {
+      IdempotencyConfiguration idempotencyConfiguration,
+      RealmConfig realmConfig) {
     this.prefixParser = prefixParser;
-    this.resolverFactory = resolverFactory;
+    this.resolutionManifestFactory = resolutionManifestFactory;
+    this.authorizer = authorizer;
     this.endpointContributors = endpointContributors;
     this.idempotencyConfiguration = idempotencyConfiguration;
+    this.realmConfig = realmConfig;
   }
 
   public ConfigResponse getConfig(String catalogName, PolarisPrincipal principal) {
-    Resolver resolver = resolverFactory.createResolver(principal, catalogName);
-    ResolverStatus resolverStatus = resolver.resolveAll();
+    PolarisResolutionManifest resolutionManifest =
+        resolutionManifestFactory.createResolutionManifest(principal, catalogName);
+    resolutionManifest.addTopLevelName(
+        catalogName, PolarisEntityType.CATALOG, false /* isOptional */);
+    AuthorizationRequest authzRequest =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
+                    PolarisSecurableMapper.catalog(catalogName)),
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES,
+                    PolarisSecurableMapper.catalog(catalogName))));
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    authorizer.resolveAuthorizationInputs(authorizationState, authzRequest);
+
+    ResolverStatus resolverStatus = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", catalogName);
     }
-    ResolvedPolarisEntity resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
-    Map<String, String> properties =
-        PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
+    PolarisResolvedPathWrapper catalogWrapper =
+        resolutionManifest.getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG);
+    Set<PolarisBaseEntity> activatedEntities =
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles();
+
+    // Endpoint hard-gate is opt-in via ENFORCE_CATALOG_CONFIG_AUTHORIZATION (default false) so
+    // operators can grant CATALOG_READ_CONFIG (or rely on subsumption) before enforcement.
+    // GET_CATALOG_CONFIG maps to CATALOG_READ_CONFIG, which is subsumed by catalog-level
+    // content privileges so REST catalog users keep working once enforcement is on.
+    if (realmConfig.getConfig(FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION)) {
+      authorizer.authorizeOrThrow(
+          principal,
+          activatedEntities,
+          PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
+          catalogWrapper,
+          null /* secondary */);
+    }
 
     ConfigResponse.Builder builder =
         ConfigResponse.builder()
-            .withDefaults(properties)
             .withOverrides(
                 ImmutableMap.of(
                     "prefix",
@@ -86,6 +135,25 @@ public class CatalogConfigHandler {
                     RESTCatalogProperties.NAMESPACE_SEPARATOR,
                     NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED))
             .withEndpoints(ImmutableList.copyOf(supportedEndpoints()));
+
+    // Catalog properties are disclosed only to principals holding CATALOG_READ_PROPERTIES (via
+    // GET_CATALOG_CONFIG_PROPERTIES), matching the management-plane getCatalog rule. Other
+    // authorized callers still receive the prefix and endpoints needed to initialize a client.
+    try {
+      authorizer.authorizeOrThrow(
+          principal,
+          activatedEntities,
+          PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES,
+          catalogWrapper,
+          null /* secondary */);
+      PolarisBaseEntity catalogEntity = catalogWrapper.getResolvedLeafEntity().getEntity();
+      builder.withDefaults(PolarisEntity.of(catalogEntity).getPropertiesAsMap());
+    } catch (ForbiddenException e) {
+      LOGGER.debug(
+          "Principal '{}' may read catalog config but not catalog properties of '{}'",
+          principal.getName(),
+          catalogName);
+    }
 
     // Advertise Idempotency-Key support to clients. Per the REST spec, presence of this field
     // signals that mutation endpoints honor Idempotency-Key; its value is the reuse window a
