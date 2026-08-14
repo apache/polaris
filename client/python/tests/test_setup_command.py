@@ -81,6 +81,21 @@ class TestSetupCommand(CLITestBase):
         self.assertEqual(command._failure_count, 0)
         mock_client.create_principal_role.assert_called_once()
 
+    def test_setup_apply_skips_principal_role_without_name(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.list_principal_roles.return_value.roles = []
+        command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+
+        with self.assertLogs(
+            "apache_polaris.cli.command.setup", level="WARNING"
+        ) as logs:
+            command._create_principal_roles(
+                mock_client, [{"properties": {"team": "analytics"}}]
+            )
+
+        mock_client.create_principal_role.assert_not_called()
+        self.assertIn("Skipping principal role with no name", logs.output[0])
+
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_dry_run_reports_lookup_failures(
         self, mock_isfile: MagicMock
@@ -331,7 +346,7 @@ class TestSetupCommand(CLITestBase):
                 SimpleNamespace(
                     name="analytics-role",
                     properties=principal_role_properties,
-                )
+                ),
             ]
         )
         export_client.list_catalog_roles.return_value = SimpleNamespace(
@@ -765,8 +780,7 @@ class TestSetupCommand(CLITestBase):
 
         self.assertEqual(len(exported), 1)
         self.assertEqual(
-            exported[0]["endpoint_internal"],
-            "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
+            exported[0]["endpoint_internal"], "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com"
         )
         self.assertEqual(exported[0]["sts_endpoint"], "https://sts.amazonaws.com")
 

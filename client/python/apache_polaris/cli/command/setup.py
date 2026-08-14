@@ -188,7 +188,9 @@ class SetupCommand(Command):
             self._record_failure("Failed to export principals")
         return principals_map
 
-    def _export_principal_roles(self, api: PolarisDefaultApi) -> List[Any]:
+    def _export_principal_roles(
+        self, api: PolarisDefaultApi
+    ) -> List[Union[str, Dict[str, Any]]]:
         """Export all principal roles."""
         try:
             roles = sorted(api.list_principal_roles().roles, key=lambda role: role.name)
@@ -740,7 +742,7 @@ class SetupCommand(Command):
     def _create_principal_roles(
         self,
         api: PolarisDefaultApi,
-        principal_roles_config: List[Any],
+        principal_roles_config: List[Union[str, Dict[str, Any]]],
         dry_run: bool = False,
     ) -> None:
         """Create principal roles."""
