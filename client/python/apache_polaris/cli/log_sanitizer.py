@@ -32,21 +32,32 @@ REDACTED = "***REDACTED***"
 OAUTH_TOKEN_BODY_REDACTED = "<redacted sensitive authentication payload>"
 SANITIZE_FAILURE_MESSAGE = "<redacted: unable to sanitize payload>"
 
-SENSITIVE_BODY_KEYS = frozenset({"client_secret", "access_token", "refresh_token"})
+# The Polaris management API serializes bodies by alias (camelCase — e.g.
+# ``clientSecret``, ``bearerToken``), while the OAuth token endpoint uses
+# snake_case. Matching on the normalized key covers both.
+SENSITIVE_BODY_KEYS = frozenset(
+    {
+        "clientsecret",
+        "accesstoken",
+        "refreshtoken",
+        "bearertoken",
+        "token",
+        "password",
+        "secret",
+    }
+)
+
+
+def _is_sensitive_key(key: Any) -> bool:
+    return isinstance(key, str) and key.replace("_", "").replace("-", "").lower() in SENSITIVE_BODY_KEYS
 
 
 def sanitize_data(data: Any) -> Any:
     if isinstance(data, dict):
-        sanitized: dict[Any, Any] = {}
-        for key, value in data.items():
-            if key in SENSITIVE_BODY_KEYS:
-                if isinstance(value, (dict, list, tuple)):
-                    sanitized[key] = sanitize_data(value)
-                else:
-                    sanitized[key] = REDACTED
-            else:
-                sanitized[key] = sanitize_data(value)
-        return sanitized
+        return {
+            key: REDACTED if _is_sensitive_key(key) else sanitize_data(value)
+            for key, value in data.items()
+        }
     if isinstance(data, list):
         return [sanitize_data(item) for item in data]
     if isinstance(data, tuple):
@@ -69,7 +80,7 @@ def is_oauth_token_endpoint(url: str) -> bool:
 
 def _sanitize_form_body(body: str) -> str:
     sanitized_pairs = [
-        (key, REDACTED if key in SENSITIVE_BODY_KEYS else value)
+        (key, REDACTED if _is_sensitive_key(key) else value)
         for key, value in parse_qsl(body, keep_blank_values=True)
     ]
     return urlencode(sanitized_pairs, safe="*")
