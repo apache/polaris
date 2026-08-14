@@ -151,7 +151,9 @@ public class DefaultAuthenticatorTest {
     DefaultAuthenticator standaloneAuthenticator = newStandaloneAuthenticator(metaStoreManagerSpy);
 
     assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
-        .isInstanceOf(PolarisServiceUnavailableException.class);
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            e -> assertThat(e.getRetryAfterSeconds()).isZero());
   }
 
   @Test
@@ -170,7 +172,9 @@ public class DefaultAuthenticatorTest {
 
     // When/Then: the metastore failure should surface as PolarisServiceUnavailableException
     assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
-        .isInstanceOf(PolarisServiceUnavailableException.class);
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            e -> assertThat(e.getRetryAfterSeconds()).isZero());
   }
 
   @Test
@@ -198,7 +202,9 @@ public class DefaultAuthenticatorTest {
 
     // When/Then: the metastore failure should surface as PolarisServiceUnavailableException
     assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
-        .isInstanceOf(PolarisServiceUnavailableException.class);
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            e -> assertThat(e.getRetryAfterSeconds()).isZero());
   }
 
   @Test
