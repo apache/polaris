@@ -64,6 +64,29 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(false)
               .buildFeatureConfiguration();
 
+  /**
+   * When false (default), {@code GET /v1/config} does not require {@code CATALOG_READ_CONFIG};
+   * catalog properties in the response are still gated by {@code CATALOG_READ_PROPERTIES}. When
+   * true, callers without {@code CATALOG_READ_CONFIG} (or a privilege that subsumes it) receive
+   * 403. Grant the new privilege (or catalog-level content privileges) before enabling; intended
+   * default flips to true in a future release, after which this flag is removed.
+   */
+  public static final FeatureConfiguration<Boolean> ENFORCE_CATALOG_CONFIG_AUTHORIZATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENFORCE_CATALOG_CONFIG_AUTHORIZATION")
+          .description(
+              "When true, require CATALOG_READ_CONFIG (or a privilege that subsumes it) for Iceberg "
+                  + "REST GET /v1/config. When false (default), the endpoint itself is not hard-gated, "
+                  + "but catalog properties in the response still require CATALOG_READ_PROPERTIES. "
+                  + "Enable after granting CATALOG_READ_CONFIG (or catalog-level content privileges). "
+                  + "Ranger currently maps both GET_CATALOG_CONFIG and GET_CATALOG_CONFIG_PROPERTIES to "
+                  + "the existing catalog-properties-read access type; do not enable this flag for "
+                  + "Ranger deployments until a dedicated catalog-config-read access type exists (or "
+                  + "accept that coarse mapping). This flag is temporary: the default is expected to "
+                  + "flip to true and the flag removed in subsequent releases.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
       PolarisConfiguration.<Boolean>builder()
           .key("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION")
