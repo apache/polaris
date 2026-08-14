@@ -275,46 +275,52 @@ h6:hover .heading-anchor {
 .polaris-landing-community__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: clamp(1.5rem, 3vw, 3rem);
 
   > a,
   > article {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 1rem;
-    align-items: start;
-    padding: 1.6rem;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
     color: #fff;
-    background: rgba(255, 255, 255, 0.055);
+    background: rgba(255, 255, 255, 0.025);
+    text-align: center;
 
     > i {
       display: flex;
-      width: 2.6rem;
-      height: 2.6rem;
+      width: 4rem;
+      height: 4rem;
       align-items: center;
       justify-content: center;
       border-radius: 50%;
       color: #72e8dd;
       background: rgba(114, 232, 221, 0.1);
-      font-size: 1.1rem;
+      font-size: 1.5rem;
     }
 
-    span {
+    span,
+    > div {
       display: flex;
+      width: 100%;
+      max-width: 20rem;
       flex-direction: column;
-      gap: 0.45rem;
+      gap: 0.7rem;
+      align-items: center;
     }
 
     strong {
-      font-size: 1rem;
+      font-size: 1.25rem;
     }
 
     small {
-      color: rgba(255, 255, 255, 0.62);
-      font-size: 0.84rem;
-      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.68);
+      font-size: 0.92rem;
+      line-height: 1.6;
     }
   }
 
@@ -324,8 +330,8 @@ h6:hover .heading-anchor {
 
     &:hover {
       color: #fff;
-      border-color: rgba(114, 232, 221, 0.58);
-      background: rgba(114, 232, 221, 0.1);
+      border-color: rgba(114, 232, 221, 0.38);
+      background: rgba(114, 232, 221, 0.075);
       transform: translateY(-2px);
     }
 
@@ -338,16 +344,16 @@ h6:hover .heading-anchor {
 
 .polaris-landing-community__contribute {
   h3 {
-    margin: 0 0 0.45rem;
+    margin: 0;
     color: #fff;
-    font-size: 1rem;
+    font-size: 1.25rem;
   }
 
   p {
-    margin: 0 0 0.65rem;
-    color: rgba(255, 255, 255, 0.62);
-    font-size: 0.84rem;
-    line-height: 1.5;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.92rem;
+    line-height: 1.6;
   }
 
   a {
