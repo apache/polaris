@@ -30,6 +30,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_ACC
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_CONTENT;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_CONFIG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_DROP;
@@ -495,6 +496,42 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             CATALOG_MANAGE_METADATA,
             CATALOG_READ_PROPERTIES,
             CATALOG_WRITE_PROPERTIES,
+            SERVICE_MANAGE_ACCESS));
+    // CATALOG_READ_CONFIG gates client bootstrap via the Iceberg REST /v1/config endpoint, so it
+    // is subsumed by every privilege that is exercised through that client: the catalog-level
+    // read/manage privileges and all catalog-content privileges. Note the check still evaluates
+    // grants on the catalog path, so content privileges must be granted at catalog level (or
+    // above) to subsume; grants scoped to a single namespace or table are not visible to the
+    // catalog-level check.
+    SUPER_PRIVILEGES.putAll(
+        CATALOG_READ_CONFIG,
+        List.of(
+            CATALOG_FULL_METADATA,
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_READ_CONFIG,
+            CATALOG_READ_PROPERTIES,
+            CATALOG_WRITE_PROPERTIES,
+            NAMESPACE_CREATE,
+            NAMESPACE_DROP,
+            NAMESPACE_FULL_METADATA,
+            NAMESPACE_LIST,
+            NAMESPACE_READ_PROPERTIES,
+            NAMESPACE_WRITE_PROPERTIES,
+            TABLE_CREATE,
+            TABLE_DROP,
+            TABLE_FULL_METADATA,
+            TABLE_LIST,
+            TABLE_READ_DATA,
+            TABLE_READ_PROPERTIES,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            VIEW_CREATE,
+            VIEW_DROP,
+            VIEW_FULL_METADATA,
+            VIEW_LIST,
+            VIEW_READ_PROPERTIES,
+            VIEW_WRITE_PROPERTIES,
             SERVICE_MANAGE_ACCESS));
     SUPER_PRIVILEGES.putAll(
         CATALOG_WRITE_PROPERTIES,

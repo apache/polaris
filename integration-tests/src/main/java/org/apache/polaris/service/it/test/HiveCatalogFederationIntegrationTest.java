@@ -113,6 +113,14 @@ public abstract class HiveCatalogFederationIntegrationTest {
           .setPrivilege(CatalogPrivilege.CATALOG_MANAGE_CONTENT)
           .build();
 
+  // Granted separately from CATALOG_ADMIN_GRANT: RBAC tests revoke CATALOG_ADMIN_GRANT, and the
+  // Spark client still needs GET /v1/config to bootstrap against the federated catalog.
+  private static final CatalogGrant CATALOG_READ_CONFIG_GRANT =
+      CatalogGrant.builder()
+          .setType(GrantResource.TypeEnum.CATALOG)
+          .setPrivilege(CatalogPrivilege.CATALOG_READ_CONFIG)
+          .build();
+
   /**
    * Returns the RustFS instance backing the test. The subclass is also responsible for propagating
    * the endpoint/credentials to the Polaris JVM as system properties so Hadoop's {@code
@@ -211,6 +219,8 @@ public abstract class HiveCatalogFederationIntegrationTest {
     managementApi.createCatalog(externalCatalog);
     managementApi.createCatalogRole(federatedCatalogName, federatedCatalogRoleName);
     managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, CATALOG_ADMIN_GRANT);
+    managementApi.addGrant(
+        federatedCatalogName, federatedCatalogRoleName, CATALOG_READ_CONFIG_GRANT);
     CatalogRole role = managementApi.getCatalogRole(federatedCatalogName, federatedCatalogRoleName);
     managementApi.grantCatalogRoleToPrincipalRole(PRINCIPAL_ROLE_NAME, federatedCatalogName, role);
 

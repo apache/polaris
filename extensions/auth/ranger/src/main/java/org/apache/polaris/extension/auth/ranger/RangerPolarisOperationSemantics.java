@@ -280,6 +280,16 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.GET_CATALOG,
         new RangerPolarisOperationSemantics(
             toSet(CATALOG_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
+    // No dedicated Ranger access type for the catalog config endpoint yet; protect it with the
+    // existing catalog-properties-read access type.
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
+        new RangerPolarisOperationSemantics(
+            toSet(CATALOG_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES,
+        new RangerPolarisOperationSemantics(
+            toSet(CATALOG_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.UPDATE_CATALOG,
         new RangerPolarisOperationSemantics(
