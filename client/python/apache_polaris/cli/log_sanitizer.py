@@ -32,26 +32,37 @@ REDACTED = "***REDACTED***"
 OAUTH_TOKEN_BODY_REDACTED = "<redacted sensitive authentication payload>"
 SANITIZE_FAILURE_MESSAGE = "<redacted: unable to sanitize payload>"
 
-# The Polaris management API serializes bodies by alias (camelCase — e.g.
-# ``clientSecret``, ``bearerToken``), while the OAuth token endpoint uses
-# snake_case. Matching on the normalized key covers both.
+# Explicit list of credential field names that appear on the wire.
+# - OAuth credentials: the Polaris management API serializes bodies by alias
+#   (camelCase); the OAuth token endpoint uses snake_case; Iceberg REST config
+#   uses a bare ``token`` for the bearer.
+# - Iceberg vended-credential storage properties: keys returned in
+#   ``LoadTableResult.config`` (see spec/iceberg-rest-catalog-open-api.yaml).
+#   ``adls.sas-token`` is emitted with a ``.<hostname>`` / ``.<account>``
+#   suffix; the prefix check in ``_is_sensitive_key`` handles those variants.
 SENSITIVE_BODY_KEYS = frozenset(
     {
-        "clientsecret",
-        "accesstoken",
-        "refreshtoken",
-        "bearertoken",
+        "client_secret",
+        "clientSecret",
+        "access_token",
+        "accessToken",
+        "refresh_token",
+        "refreshToken",
+        "bearerToken",
         "token",
         "password",
         "secret",
+        "s3.secret-access-key",
+        "s3.session-token",
+        "gcs.oauth2.token",
+        "adls.sas-token",
     }
 )
 
 
 def _is_sensitive_key(key: Any) -> bool:
-    return (
-        isinstance(key, str)
-        and key.replace("_", "").replace("-", "").lower() in SENSITIVE_BODY_KEYS
+    return key in SENSITIVE_BODY_KEYS or (
+        isinstance(key, str) and key.startswith("adls.sas-token")
     )
 
 

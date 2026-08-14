@@ -136,13 +136,34 @@ class TestLogSanitizer(unittest.TestCase):
 
     def test_credential_key_spellings_are_redacted(self) -> None:
         for key in (
+            # OAuth on the management-API camelCase wire
             "clientSecret",
             "accessToken",
             "refreshToken",
             "bearerToken",
-            "client-secret",
-            "CLIENT_SECRET",
-            "Bearer-Token",
+            # OAuth on the snake_case wire (token endpoint / Iceberg REST config)
+            "client_secret",
+            "access_token",
+            "refresh_token",
+            # Bearer token key in Iceberg REST config
+            "token",
+            # Generic defense in depth
+            "password",
+            "secret",
+            # Iceberg vended-credential storage keys (bare forms)
+            "s3.secret-access-key",
+            "s3.session-token",
+            "gcs.oauth2.token",
+            "adls.sas-token",
+        ):
+            with self.subTest(key=key):
+                self.assertEqual(sanitize_data({key: "s"})[key], REDACTED)
+
+    def test_adls_sas_token_with_suffix_is_redacted(self) -> None:
+        # ``adls.sas-token`` is emitted with a hostname or account suffix.
+        for key in (
+            "adls.sas-token.myaccount.dfs.core.windows.net",
+            "adls.sas-token.myaccount",
         ):
             with self.subTest(key=key):
                 self.assertEqual(sanitize_data({key: "s"})[key], REDACTED)
