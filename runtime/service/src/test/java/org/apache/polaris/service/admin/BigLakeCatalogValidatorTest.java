@@ -36,6 +36,8 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class BigLakeCatalogValidatorTest {
   private RealmConfig realmConfig;
@@ -349,7 +351,36 @@ class BigLakeCatalogValidatorTest {
                             .setAllowedLocations(List.of("gs://bucket/path/to/data"))
                             .build())))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("expected a Google service account email");
+        .hasMessageContaining("expected a syntactically valid service account email");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "test-sa@my-project.iam.gserviceaccount.com",
+        "123456789-compute@developer.gserviceaccount.com",
+        "my-project@appspot.gserviceaccount.com"
+      })
+  void acceptsSupportedGcsServiceAccountEmailForms(String serviceAccount) {
+    StorageConfigInfo storageConfigInfo =
+        GcpStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+            .setGcsServiceAccount(serviceAccount)
+            .setAllowedLocations(List.of("gs://bucket/path/to/data"))
+            .build();
+
+    assertThatCode(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "my-remote-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        storageConfigInfo)))
+        .doesNotThrowAnyException();
   }
 
   private Catalog bigLakeCatalog(

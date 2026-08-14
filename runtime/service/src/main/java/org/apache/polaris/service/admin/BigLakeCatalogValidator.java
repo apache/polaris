@@ -50,8 +50,8 @@ final class BigLakeCatalogValidator {
       Pattern.compile("^projects/[^/\\s]+/locations/[^/\\s]+/catalogs/[^/\\s]+$");
   private static final Pattern BIGLAKE_SIMPLE_CATALOG_PATTERN =
       Pattern.compile("^[A-Za-z0-9._-]+$");
-  private static final Pattern GCS_SERVICE_ACCOUNT_PATTERN =
-      Pattern.compile("^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\\.iam\\.gserviceaccount\\.com$");
+  private static final Pattern SERVICE_ACCOUNT_EMAIL_PATTERN =
+      Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
   private static final Set<String> BLOCKED_HEADER_PROPERTIES =
       Set.of("header.authorization", "header.proxy-authorization");
@@ -247,11 +247,12 @@ final class BigLakeCatalogValidator {
     }
 
     String serviceAccount = gcpStorageConfigInfo.getGcsServiceAccount();
-    if (!Strings.isNullOrEmpty(serviceAccount) && !GCS_SERVICE_ACCOUNT_PATTERN.matcher(serviceAccount).matches()) {
+    if (!Strings.isNullOrEmpty(serviceAccount)
+        && !SERVICE_ACCOUNT_EMAIL_PATTERN.matcher(serviceAccount).matches()) {
       throw new IllegalArgumentException(
           "Invalid BigLake storageConfigInfo.gcsServiceAccount '"
               + serviceAccount
-              + "': expected a Google service account email.");
+              + "': expected a syntactically valid service account email.");
     }
 
     if (credentialVendingEnabled && Strings.isNullOrEmpty(serviceAccount)) {
