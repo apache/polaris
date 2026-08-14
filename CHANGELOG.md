@@ -42,6 +42,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- `PURGE_VIEW_METADATA_ON_DROP` now defaults to `false`, so views can be dropped under the default
+  configuration. Its previous default of `true` required `DROP_WITH_PURGE_ENABLED` to be enabled as
+  well, and dropping any view failed otherwise. Deployments that enable `DROP_WITH_PURGE_ENABLED`
+  and rely on view metadata being purged should now set `PURGE_VIEW_METADATA_ON_DROP` to `true`
+  explicitly.
+
 ### Deprecations
 
 ### Fixes

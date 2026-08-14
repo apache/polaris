@@ -478,10 +478,10 @@ Polaris task expiry timeout (milliseconds). Older unfinished tasks may not be pr
 
 ##### `polaris.features."PURGE_VIEW_METADATA_ON_DROP"`
 
-If set to true, Polaris will attempt to delete view metadata files when a view is dropped.
+If set to true, Polaris will attempt to delete view metadata files when a view is dropped. This requires DROP_WITH_PURGE_ENABLED to be enabled as well.
 
 - **Type:** `Boolean`
-- **Default:** `true`
+- **Default:** `false`
 - **Catalog Config:** `polaris.config.purge-view-metadata-on-drop`
 
 ---
