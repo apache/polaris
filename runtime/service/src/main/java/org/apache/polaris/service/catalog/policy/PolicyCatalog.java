@@ -250,12 +250,10 @@ public class PolicyCatalog {
                         newPolicyEntity)
                     .getEntity())
             .map(PolicyEntity::of)
-            .orElse(null);
-
-    if (newPolicyEntity == null) {
-      throw new CommitConflictException(
-          "Concurrent modification on policy '%s'; retry later", policyIdentifier);
-    }
+            .orElseThrow(
+                () ->
+                    new CommitConflictException(
+                        "Concurrent modification on policy '%s'; retry later", policyIdentifier));
 
     return constructPolicy(newPolicyEntity);
   }
