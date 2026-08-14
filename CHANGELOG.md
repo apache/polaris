@@ -46,6 +46,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Python CLI `setup export` now represents namespace paths as lists of levels in namespace,
+  policy, and namespace-privilege entries. This preserves namespace levels that contain dots during
+  `setup apply`; apply remains compatible with existing dot-delimited configurations. Older CLI
+  versions cannot apply the new export format.
 - Python CLI `setup export` now writes each catalog's `policies` as a list of
   `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
   with the same name in different namespaces. The new export format cannot be applied by older CLI

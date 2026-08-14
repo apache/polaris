@@ -40,7 +40,7 @@ If you already have an Apache Polaris environment, you can export its current st
 polaris setup export --client-id ${CLIENT_ID} --client-secret ${CLIENT_SECRET} > polaris_bootstrap.yaml
 ```
 
-This generates a readable YAML file containing principals, principal roles, catalogs, and their associated namespaces and catalog roles. User-defined properties on principals, principal roles, and catalog roles are preserved in the exported configuration.
+This generates a readable YAML file containing principals, principal roles, catalogs, and their associated namespaces and catalog roles. User-defined properties on principals, principal roles, and catalog roles are preserved in the exported configuration. Namespace paths are exported as lists of levels so that a dot within one level is distinct from a nested namespace. `setup apply` also accepts the legacy dot-delimited form, but use level lists when a namespace level contains a dot.
 
 ## Applying a Configuration
 
