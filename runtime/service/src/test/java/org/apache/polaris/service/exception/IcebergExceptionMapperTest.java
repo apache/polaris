@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
-import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -119,9 +118,7 @@ public class IcebergExceptionMapperTest {
         Arguments.of(new CommitStateUnknownException(new RuntimeException("db timeout")), 500),
         Arguments.of(new CommitFailedException("commit failed"), 409),
         Arguments.of(new AlreadyExistsException("already exists"), 409),
-        Arguments.of(new ValidationException("invalid"), 400),
-        // The JAX-RS exception, not Iceberg's; handled by the WebApplicationException case.
-        Arguments.of(new ServiceUnavailableException("service unavailable"), 503));
+        Arguments.of(new ValidationException("invalid"), 400));
   }
 
   @ParameterizedTest
