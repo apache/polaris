@@ -23,7 +23,7 @@ type: docs
 weight: 200
 ---
 
-This guide provides instructions for configuring the Apache Polaris Helm chart for a production environment. For full list of chart values, see the [Chart Reference]({{% relref "reference" %}}) page.
+This guide provides instructions for configuring the Apache Polaris Helm chart for a production environment. For a full list of chart values, see the [Chart Reference]({{% relref "reference" %}}) page.
 
 ## Prerequisites
 

@@ -420,7 +420,7 @@ public class DefaultAuthenticatorTest {
   }
 
   @Test
-  void testInputIdentityAttributesPassedThrough() {
+  void testInputIdentityAttributesNotMerged() {
     // Given: an identity that already carries a custom attribute
     PolarisCredential credentials =
         PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
@@ -434,8 +434,8 @@ public class DefaultAuthenticatorTest {
     // When: authenticating
     PolarisPrincipal result = authenticator.authenticate(identityWithAttrs);
 
-    // Then: custom attribute must be present alongside the Polaris-specific ones
-    assertThat(result.getAttribute("custom-key", String.class)).hasValue("custom-value");
+    // Then: custom attribute must not be present in the principal's attributes
+    assertThat(result.getAttribute("custom-key", String.class)).isEmpty();
   }
 
   private PrincipalEntity createPrincipal(String name, String... roles) {

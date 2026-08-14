@@ -1023,9 +1023,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
+  public ViewOperations newViewOps(
+      TableIdentifier identifier, boolean makeMetadataCurrentOnCommit) {
+    return new BasePolarisViewOperations(catalogFileIO, identifier, makeMetadataCurrentOnCommit);
+  }
+
   @Override
   protected ViewOperations newViewOps(TableIdentifier identifier) {
-    return new BasePolarisViewOperations(catalogFileIO, identifier);
+    boolean makeMetadataCurrentOnCommit =
+        realmConfig.getConfig(
+            BehaviorChangeConfiguration.VIEW_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT);
+    return newViewOps(identifier, makeMetadataCurrentOnCommit);
   }
 
   /**
@@ -2218,12 +2226,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       implements ViewOperations {
     private final TableIdentifier identifier;
     private final String fullViewName;
+    private final boolean makeMetadataCurrentOnCommit;
     private FileIO viewFileIO;
 
-    BasePolarisViewOperations(FileIO defaultFileIO, TableIdentifier identifier) {
+    BasePolarisViewOperations(
+        FileIO defaultFileIO, TableIdentifier identifier, boolean makeMetadataCurrentOnCommit) {
       this.viewFileIO = defaultFileIO;
       this.identifier = identifier;
       this.fullViewName = ViewUtil.fullViewName(catalogName, identifier);
+      this.makeMetadataCurrentOnCommit = makeMetadataCurrentOnCommit;
     }
 
     @Override
@@ -2458,6 +2469,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           createTableLike(identifier, entity, true);
         } else {
           updateTableLike(identifier, entity, true);
+        }
+        if (makeMetadataCurrentOnCommit) {
+          currentMetadata =
+              ViewMetadata.buildFrom(metadata).setMetadataLocation(newLocation).build();
+          currentMetadataLocation = newLocation;
         }
         writeSucceeded = true;
       } finally {

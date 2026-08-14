@@ -55,8 +55,8 @@ shows the comparison between the two APIs:
 | Operations   | **Iceberg Table API**                                                                                                                                               | **Generic Table API**                                                                                                         |
 |--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
 | Create Table | Create an Iceberg table                                                                                                                                             | Create a generic table                                                                                                        |
-| Load Table   | Load an Iceberg table. If the table to load is a generic table, you need to call the Generic Table loadTable API, otherwise a TableNotFoundException will be thrown | Load a generic table. Similarly, try to load an Iceberg table through Generic Table API will thrown a TableNotFoundException. |
-| Drop Table   | Drop an Iceberg table. Similar as load table, if the table to drop is a Generic table, a tableNotFoundException will be thrown.                                     | Drop a generic table. Drop an Iceberg table through Generic table endpoint will thrown a TableNotFound Exception              |
+| Load Table   | Load an Iceberg table. If the table to load is a generic table, you need to call the Generic Table loadTable API, otherwise a TableNotFoundException will be thrown | Load a generic table. Similarly, trying to load an Iceberg table through the Generic Table API will throw a TableNotFoundException. |
+| Drop Table   | Drop an Iceberg table. Similar as load table, if the table to drop is a Generic table, a TableNotFoundException will be thrown.                                     | Drop a generic table. Dropping an Iceberg table through the Generic Table endpoint will throw a TableNotFoundException.       |
 | List Table   | List all Iceberg tables                                                                                                                                             | List all generic tables                                                                                                       |
 
 Note that generic table shares the same namespace with Iceberg tables, the table name has to be unique under the same namespace.
@@ -149,9 +149,9 @@ Example Response:
 ### Drop a Generic Table
 The drop generic table REST endpoint is `DELETE /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}`
 
-The following curl call drops the table `delat_table`:
+The following curl call drops the table `delta_table`:
 ```shell
-curl -X DELETE http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/{generic-table}
+curl -X DELETE http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namespaces/delta_ns/generic-tables/delta_table
 ```
 
 ### API Reference

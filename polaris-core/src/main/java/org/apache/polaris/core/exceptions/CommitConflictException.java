@@ -20,6 +20,7 @@
 package org.apache.polaris.core.exceptions;
 
 import com.google.errorprone.annotations.FormatMethod;
+import jakarta.ws.rs.core.Response;
 
 public class CommitConflictException extends PolarisException {
   public CommitConflictException(String message) {
@@ -38,5 +39,10 @@ public class CommitConflictException extends PolarisException {
 
   public CommitConflictException(String message, Throwable cause) {
     super(message, cause);
+  }
+
+  @Override
+  public int httpStatusCode() {
+    return Response.Status.CONFLICT.getStatusCode();
   }
 }

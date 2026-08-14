@@ -26,8 +26,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import io.quarkus.jackson.ObjectMapperCustomizer;
 import io.quarkus.runtime.configuration.MemorySize;
-import io.quarkus.runtime.configuration.MemorySizeConverter;
-import io.smallrye.config.WithConverter;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.apache.iceberg.rest.RESTSerializers;
@@ -45,10 +43,8 @@ public class PolarisIcebergObjectMapperCustomizer implements ObjectMapperCustomi
 
   @Inject
   public PolarisIcebergObjectMapperCustomizer(
-      @ConfigProperty(name = "quarkus.http.limits.max-body-size")
-          @WithConverter(MemorySizeConverter.class)
-          MemorySize maxBodySize) {
-    this.maxBodySize = maxBodySize.asLongValue();
+      @ConfigProperty(name = "quarkus.http.limits.max-body-size") String maxBodySize) {
+    this.maxBodySize = MemorySize.of(maxBodySize).asLongValue();
   }
 
   @Override

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.semantic.exceptions;
 
+import jakarta.ws.rs.core.Response;
 import org.apache.polaris.core.exceptions.PolarisException;
 
 /**
@@ -31,5 +32,10 @@ public class SemanticModelVersionMismatchException extends PolarisException {
 
   public SemanticModelVersionMismatchException(String message, Throwable cause) {
     super(message, cause);
+  }
+
+  @Override
+  public int httpStatusCode() {
+    return Response.Status.CONFLICT.getStatusCode();
   }
 }
