@@ -33,17 +33,23 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -140,6 +146,88 @@ class JdbcBasePersistenceImplTest {
         .isThrownBy(() -> basePersistence.writeToGrantRecords(callCtx, grant))
         .withMessageContaining("Failed to write to grant records")
         .withCause(nonUniqueViolation);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2, 3, 4})
+  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException(
+      int schemaVersion) throws SQLException {
+    DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
+    when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
+    doThrow(new SQLException("Unique constraint violation", "23505"))
+        .when(datasourceOperations)
+        .executeUpdate(any(QueryGenerator.PreparedQuery.class));
+    Mockito.<List<?>>when(datasourceOperations.executeSelect(any(), any())).thenReturn(List.of());
+    doCallRealMethod()
+        .when(datasourceOperations)
+        .isUniquenessConstraintViolation(any(SQLException.class));
+
+    JdbcBasePersistenceImpl basePersistence =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            datasourceOperations,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier(),
+            schemaVersion);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
+
+    PolarisBaseEntity entity =
+        new PolarisBaseEntity.Builder()
+            .id(101L)
+            .catalogId(0L)
+            .parentId(0L)
+            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .name("invisible_conflict_entity")
+            .entityVersion(1)
+            .grantRecordsVersion(0)
+            .createTimestamp(System.currentTimeMillis())
+            .build();
+
+    assertThatExceptionOfType(RetryOnConcurrencyException.class)
+        .isThrownBy(() -> basePersistence.writeEntity(callCtx, entity, true, null))
+        .withMessageContaining("not visible");
+  }
+
+  @Test
+  void withRetries_propagatesRetryOnConcurrencyExceptionWithoutUnwrapping() throws SQLException {
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:with_retries_concurrency_" + System.nanoTime(), "sa", "");
+    DatasourceOperations datasourceOperations =
+        new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    RetryOnConcurrencyException expected = new RetryOnConcurrencyException("concurrency conflict");
+
+    assertThatExceptionOfType(RetryOnConcurrencyException.class)
+        .isThrownBy(
+            () ->
+                datasourceOperations.withRetries(
+                    () -> {
+                      throw expected;
+                    }))
+        .isSameAs(expected);
+  }
+
+  @Test
+  void withRetries_propagatesEntityAlreadyExistsExceptionWithoutUnwrapping() throws SQLException {
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:with_retries_already_exists_" + System.nanoTime(), "sa", "");
+    DatasourceOperations datasourceOperations =
+        new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    PolarisBaseEntity existing = Mockito.mock(PolarisBaseEntity.class);
+    when(existing.getName()).thenReturn("existing");
+    when(existing.getId()).thenReturn(1L);
+    EntityAlreadyExistsException expected = new EntityAlreadyExistsException(existing);
+
+    assertThatExceptionOfType(EntityAlreadyExistsException.class)
+        .isThrownBy(
+            () ->
+                datasourceOperations.withRetries(
+                    () -> {
+                      throw expected;
+                    }))
+        .isSameAs(expected);
   }
 
   @ParameterizedTest
@@ -430,5 +518,78 @@ class JdbcBasePersistenceImplTest {
     public Optional<String> databaseType() {
       return Optional.of("h2");
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void listEntitiesBoundsPaginatedQueryByPageSize(int schemaVersion)
+      throws SQLException, IOException {
+    DatasourceOperations real = newH2DatasourceOperations("list_entities_limit_v", schemaVersion);
+    DatasourceOperations spy = Mockito.spy(real);
+    doCallRealMethod().when(spy).executeSelectOverStream(any(), any(), any());
+    TestPersistence tp = newTestPersistence(spy, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    for (int i = 0; i < 5; i++) {
+      impl.writeEntity(callCtx, newTestEntity(300L + i, "e" + i, 1, 1), false, null);
+    }
+
+    Page<EntityNameLookupRecord> page =
+        impl.listEntities(
+            callCtx,
+            0L,
+            0L,
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PageToken.fromLimit(2));
+
+    ArgumentCaptor<QueryGenerator.PreparedQuery> captor =
+        ArgumentCaptor.forClass(QueryGenerator.PreparedQuery.class);
+    verify(spy).executeSelectOverStream(captor.capture(), any(), any());
+    // One more than the page size, so the next-page token can still be produced.
+    assertThat(captor.getValue().sql()).contains("ORDER BY id ASC").contains("LIMIT 3");
+
+    // The bound must not cost the caller a page or its continuation token.
+    assertThat(page.items()).hasSize(2);
+    assertThat(page.encodedResponseToken()).isNotNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void paginatedListEntitiesWalksEveryPageWhenTotalIsAMultipleOfPageSize(int schemaVersion)
+      throws SQLException, IOException {
+    DatasourceOperations datasourceOperations =
+        newH2DatasourceOperations("list_entities_pages_v", schemaVersion);
+    TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    // An exact multiple of the page size is the case a bound of exactly pageSize would break:
+    // the final full page would look like the end of the data and drop the continuation token.
+    for (int i = 0; i < 4; i++) {
+      impl.writeEntity(callCtx, newTestEntity(500L + i, "e" + i, 1, 1), false, null);
+    }
+
+    List<String> seen = new ArrayList<>();
+    PageToken pageToken = PageToken.fromLimit(2);
+    while (true) {
+      Page<EntityNameLookupRecord> page =
+          impl.listEntities(
+              callCtx,
+              0L,
+              0L,
+              PolarisEntityType.PRINCIPAL,
+              PolarisEntitySubType.ANY_SUBTYPE,
+              pageToken);
+      page.items().forEach(item -> seen.add(item.getName()));
+      String next = page.encodedResponseToken();
+      if (next == null) {
+        break;
+      }
+      pageToken = PageToken.build(next, 2, () -> true);
+    }
+
+    assertThat(seen).containsExactly("e0", "e1", "e2", "e3");
   }
 }

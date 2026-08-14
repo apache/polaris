@@ -161,7 +161,7 @@ bin/spark-sql \
 --conf spark.sql.catalog.polaris.client.region=us-west-2
 ```
 
-Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
+Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, be sure to update the configuration appropriately.
 
 Finally, note that we include the `iceberg-aws-bundle` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.
 

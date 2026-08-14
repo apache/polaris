@@ -171,6 +171,8 @@ class SetupCommand(Command):
             principals = sorted(api.list_principals().principals, key=lambda p: p.name)
             for p in principals:
                 principal_info: Dict[str, Any] = {"type": PrincipalType.SERVICE.value}
+                if p.properties:
+                    principal_info["properties"] = p.properties
                 try:
                     assigned_roles = api.list_principal_roles_assigned(p.name).roles
                     if assigned_roles:
@@ -396,6 +398,8 @@ class SetupCommand(Command):
             )
             for r in roles:
                 role_info: Dict[str, Any] = {}
+                if r.properties:
+                    role_info["properties"] = r.properties
                 # Assignments
                 assigned_roles_resp = (
                     api.list_assignee_principal_roles_for_catalog_role(

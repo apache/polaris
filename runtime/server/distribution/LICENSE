@@ -2031,6 +2031,7 @@ This product bundles Apache Ranger libraries.
 * Maven group:artifact IDs: org.apache.ranger:ranger-audit-core
 * Maven group:artifact IDs: org.apache.ranger:ranger-audit-dest-solr
 * Maven group:artifact IDs: org.apache.ranger:ranger-authz-api
+* Maven group:artifact IDs: org.apache.ranger:ranger-common-utils
 * Maven group:artifact IDs: org.apache.ranger:ranger-plugin-classloader
 * Maven group:artifact IDs: org.apache.ranger:ranger-plugins-common
 * Maven group:artifact IDs: org.apache.ranger:ranger-plugins-cred
@@ -2158,18 +2159,10 @@ License: BSD 3-Clause - https://gitlab.ow2.org/asm/asm/-/blob/master/LICENSE.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Gethostname4j library.
-
-* Maven group:artifact IDs: com.kstruct:gethostname4j
-
-Home page: https://github.com/mattsheppard/gethostname4j
-License: MIT License - https://mit-license.org/
-
---------------------------------------------------------------------------------
-
 This product bundles Jersey Bundle library.
 
-* Maven group:artifact IDs: com.sun.jersey:jersey-bundle
+* Maven group:artifact IDs: com.sun.jersey:jersey-core
+* Maven group:artifact IDs: com.sun.jersey:jersey-client
 
 Home page: https://github.com/eclipse-ee4j/jersey
 License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0

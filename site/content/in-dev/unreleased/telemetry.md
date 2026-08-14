@@ -69,7 +69,7 @@ HTTP request metrics will be recorded. This threshold can be changed by setting 
 ### HTTP Request Histogram Buckets
 
 By default, the HTTP server request duration timer exports only the count, sum, and max series.
-These support average and worse-case latency but cannot be used to compute aggregable percentiles
+These support average and worst-case latency but cannot be used to compute aggregable percentiles
 (e.g. p95, p99) across instances.
 
 To publish histogram buckets for HTTP server request duration, configure the Service Level
