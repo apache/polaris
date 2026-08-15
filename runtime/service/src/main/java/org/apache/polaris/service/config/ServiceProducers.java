@@ -40,6 +40,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
@@ -494,5 +495,12 @@ public class ServiceProducers {
     if (executor instanceof ManagedExecutor managedExecutor) {
       managedExecutor.close();
     }
+  }
+
+  @Produces
+  @RequestScoped
+  @Identifier("event-attribute-map")
+  public MutableAttributeMap eventAttributeMap() {
+    return new MutableAttributeMap();
   }
 }

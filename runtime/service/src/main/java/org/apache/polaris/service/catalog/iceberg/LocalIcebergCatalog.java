@@ -99,8 +99,10 @@ import org.apache.iceberg.view.ViewProperties;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -142,7 +144,6 @@ import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -877,7 +878,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     PolarisEntity updatedEntity =
         new PolarisEntity.Builder(entity).setProperties(newProperties).build();
 
-    if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+    boolean locationChanged =
+        !Objects.equal(
+            NamespaceEntity.of(entity).getBaseLocation(),
+            NamespaceEntity.of(updatedEntity).getBaseLocation());
+
+    if (locationChanged
+        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(
           NamespaceEntity.of(updatedEntity), resolvedEntities.getRawParentPath());
@@ -1016,9 +1023,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
+  public ViewOperations newViewOps(
+      TableIdentifier identifier, boolean makeMetadataCurrentOnCommit) {
+    return new BasePolarisViewOperations(catalogFileIO, identifier, makeMetadataCurrentOnCommit);
+  }
+
   @Override
   protected ViewOperations newViewOps(TableIdentifier identifier) {
-    return new BasePolarisViewOperations(catalogFileIO, identifier);
+    boolean makeMetadataCurrentOnCommit =
+        realmConfig.getConfig(
+            BehaviorChangeConfiguration.VIEW_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT);
+    return newViewOps(identifier, makeMetadataCurrentOnCommit);
   }
 
   /**
@@ -1803,7 +1818,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
-              .addKeyValue("tableIdentifier", tableIdentifier)
+              .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
               .log("Stored table identifier mismatches requested identifier");
         }
       }
@@ -1818,9 +1833,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               new PolarisEvent(
                   PolarisEventType.BEFORE_REFRESH_TABLE,
                   eventMetadataFactory.create(),
-                  new EventAttributeMap()
+                  ImmutableAttributeMap.builder()
                       .put(EventAttributes.CATALOG_NAME, catalogName)
-                      .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
+                      .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)
+                      .build()));
         }
         refreshFromMetadataLocation(
             latestLocation,
@@ -1846,9 +1862,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               new PolarisEvent(
                   PolarisEventType.AFTER_REFRESH_TABLE,
                   eventMetadataFactory.create(),
-                  new EventAttributeMap()
+                  ImmutableAttributeMap.builder()
                       .put(EventAttributes.CATALOG_NAME, catalogName)
-                      .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
+                      .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)
+                      .build()));
         }
       }
     }
@@ -2209,12 +2226,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       implements ViewOperations {
     private final TableIdentifier identifier;
     private final String fullViewName;
+    private final boolean makeMetadataCurrentOnCommit;
     private FileIO viewFileIO;
 
-    BasePolarisViewOperations(FileIO defaultFileIO, TableIdentifier identifier) {
+    BasePolarisViewOperations(
+        FileIO defaultFileIO, TableIdentifier identifier, boolean makeMetadataCurrentOnCommit) {
       this.viewFileIO = defaultFileIO;
       this.identifier = identifier;
       this.fullViewName = ViewUtil.fullViewName(catalogName, identifier);
+      this.makeMetadataCurrentOnCommit = makeMetadataCurrentOnCommit;
     }
 
     @Override
@@ -2290,7 +2310,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
-              .addKeyValue("identifier", identifier)
+              .addKeyValue(StructuredLogKeys.VIEW_IDENTIFIER, identifier)
               .log("Stored view identifier mismatches requested identifier");
         }
       }
@@ -2305,9 +2325,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               new PolarisEvent(
                   PolarisEventType.BEFORE_REFRESH_VIEW,
                   eventMetadataFactory.create(),
-                  new EventAttributeMap()
+                  ImmutableAttributeMap.builder()
                       .put(EventAttributes.CATALOG_NAME, catalogName)
-                      .put(EventAttributes.VIEW_IDENTIFIER, identifier)));
+                      .put(EventAttributes.VIEW_IDENTIFIER, identifier)
+                      .build()));
         }
         refreshFromMetadataLocation(
             latestLocation,
@@ -2335,9 +2356,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               new PolarisEvent(
                   PolarisEventType.AFTER_REFRESH_VIEW,
                   eventMetadataFactory.create(),
-                  new EventAttributeMap()
+                  ImmutableAttributeMap.builder()
                       .put(EventAttributes.CATALOG_NAME, catalogName)
-                      .put(EventAttributes.VIEW_IDENTIFIER, identifier)));
+                      .put(EventAttributes.VIEW_IDENTIFIER, identifier)
+                      .build()));
         }
       }
     }
@@ -2447,6 +2469,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           createTableLike(identifier, entity, true);
         } else {
           updateTableLike(identifier, entity, true);
+        }
+        if (makeMetadataCurrentOnCommit) {
+          currentMetadata =
+              ViewMetadata.buildFrom(metadata).setMetadataLocation(newLocation).build();
+          currentMetadataLocation = newLocation;
         }
         writeSucceeded = true;
       } finally {
@@ -3136,7 +3163,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           LOGGER
               .atInfo()
               .setCause(aee)
-              .addKeyValue("namespace", namespace)
+              .addKeyValue(StructuredLogKeys.NAMESPACE, namespace)
               .log("Namespace already exists in createNonExistingNamespace");
         }
       }

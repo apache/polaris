@@ -127,6 +127,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         return new EntityResult(
             BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, e.getExistingEntity().getSubTypeCode());
       }
+    } catch (RetryOnConcurrencyException e) {
+      // The persistence layer saw a unique constraint violation but could not resolve the
+      // conflicting row in the current snapshot (e.g. under SERIALIZABLE isolation). We know
+      // an entity with this name exists, so report it as already-existing.
+      return new EntityResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, entity.getSubTypeCode());
     }
     return new EntityResult(entity);
   }
@@ -899,6 +905,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               e.getExistingEntity().getId(),
               e.getExistingEntity().getTypeCode(),
               e.getExistingEntity().getSubTypeCode()));
+    } catch (RetryOnConcurrencyException e) {
+      // The persistence layer saw a unique constraint violation but could not resolve the
+      // conflicting row in the current snapshot (e.g. under SERIALIZABLE isolation).
+      return new EntitiesResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
+          "Conflicting entity is not visible in the current transaction snapshot; retry");
     }
 
     return new EntitiesResult(Page.fromItems(createdEntities));

@@ -18,16 +18,23 @@
 #
 
 import io
-from unittest.mock import patch, MagicMock, mock_open
+from types import SimpleNamespace
+from unittest.mock import call, patch, MagicMock, mock_open
+
+import yaml
+
 from cli_test_utils import CLITestBase, INVALID_ARGS
 from apache_polaris.cli.command.setup import SetupCommand
-from apache_polaris.cli.constants import Subcommands
+from apache_polaris.cli.constants import Subcommands, UNIT_SEPARATOR
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
+from apache_polaris.sdk.catalog.exceptions import NotFoundException
 from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     FileStorageConfigInfo,
+    AwsStorageConfigInfo,
 )
+from apache_polaris.sdk.catalog import GetNamespaceResponse
 
 
 class TestSetupCommand(CLITestBase):
@@ -191,6 +198,10 @@ class TestSetupCommand(CLITestBase):
 
         self.assertEqual(command._failure_count, 0)
         mock_policy_api.return_value.create_policy.assert_called_once()
+        request = mock_policy_api.return_value.create_policy.call_args.kwargs[
+            "create_policy_request"
+        ]
+        self.assertEqual(request.content, "{}")
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_s3_optional_fields(self, mock_isfile: MagicMock) -> None:
@@ -284,12 +295,94 @@ class TestSetupCommand(CLITestBase):
             ),
         )
         mock_client.list_catalog_roles.return_value = MagicMock(roles=[])
-        self.mock_execute(mock_client, ["setup", "export"])
+        with patch(
+            "apache_polaris.cli.command.setup.IcebergCatalogAPI"
+        ) as mock_catalog_api:
+            mock_catalog_api.return_value.list_namespaces.return_value.namespaces = []
+            self.mock_execute(mock_client, ["setup", "export"])
         mock_client.list_principals.assert_called()
         mock_client.list_principal_roles.assert_called()
         mock_client.list_catalogs.assert_called()
         mock_client.list_catalog_roles.assert_called_with("my_catalog")
         mock_client.get_catalog.assert_called_with("my_catalog")
+
+    def test_setup_exported_entity_properties_round_trip_through_apply(self) -> None:
+        principal_properties = {"owner": "data-platform"}
+        catalog_role_properties = {"purpose": "migration"}
+        export_client = self.build_mock_client()
+        export_client.list_principals.return_value = SimpleNamespace(
+            principals=[
+                SimpleNamespace(
+                    name="service-user",
+                    properties=principal_properties,
+                )
+            ]
+        )
+        export_client.list_principal_roles_assigned.return_value = SimpleNamespace(
+            roles=[]
+        )
+        export_client.list_catalog_roles.return_value = SimpleNamespace(
+            roles=[
+                SimpleNamespace(
+                    name="catalog-reader",
+                    properties=catalog_role_properties,
+                )
+            ]
+        )
+        export_client.list_assignee_principal_roles_for_catalog_role.return_value = (
+            SimpleNamespace(roles=[])
+        )
+        export_client.list_grants_for_catalog_role.return_value = SimpleNamespace(
+            grants=[]
+        )
+        export_command = SetupCommand(setup_subcommand=Subcommands.EXPORT)
+
+        exported = {
+            "principals": export_command._export_principals(export_client),
+            "catalog_roles": export_command._export_catalog_roles_for_catalog(
+                export_client, "catalog"
+            ),
+        }
+        loaded = yaml.safe_load(yaml.safe_dump(exported))
+
+        self.assertEqual(
+            loaded["principals"]["service-user"]["properties"],
+            principal_properties,
+        )
+        self.assertEqual(
+            loaded["catalog_roles"]["catalog-reader"]["properties"],
+            catalog_role_properties,
+        )
+
+        apply_client = self.build_mock_client()
+        apply_client.list_principals.return_value = SimpleNamespace(principals=[])
+        apply_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
+        apply_client.create_principal.return_value = SimpleNamespace(
+            credentials=SimpleNamespace(
+                client_id="client-id",
+                client_secret=SimpleNamespace(get_secret_value=lambda: "secret"),
+            )
+        )
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+
+        with patch("sys.stdout", new_callable=io.StringIO):
+            apply_command._create_principals(apply_client, loaded["principals"])
+        apply_command._create_catalog_roles(
+            apply_client,
+            "catalog",
+            loaded["catalog_roles"],
+        )
+
+        principal_request = apply_client.create_principal.call_args.args[0]
+        catalog_role_request = apply_client.create_catalog_role.call_args.args[1]
+        self.assertEqual(
+            principal_request.principal.properties,
+            principal_properties,
+        )
+        self.assertEqual(
+            catalog_role_request.catalog_role.properties,
+            catalog_role_properties,
+        )
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_treats_null_type_as_internal(
@@ -312,9 +405,345 @@ class TestSetupCommand(CLITestBase):
                 mock_open(read_data=setup_yaml),
             ),
         ):
-            self.mock_execute(
-                mock_client,
-                ["setup", "apply", "config.yaml"]
-            )
+            self.mock_execute(mock_client, ["setup", "apply", "config.yaml"])
         call_args = mock_client.create_catalog.call_args[0][0]
         self.assertEqual(call_args.catalog.type, "INTERNAL")
+
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_includes_nested_namespaces_and_policies(
+        self,
+        mock_catalog_api_class: MagicMock,
+        mock_policy_api_class: MagicMock,
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+
+        def list_namespaces(prefix: str, parent: str | None = None) -> SimpleNamespace:
+            self.assertEqual(prefix, "catalog")
+            namespaces = {
+                None: [["parent"]],
+                "parent": [["parent", "child"]],
+                f"parent{UNIT_SEPARATOR}child": [],
+            }
+            return SimpleNamespace(namespaces=namespaces[parent])
+
+        catalog_api.list_namespaces.side_effect = list_namespaces
+        catalog_api.load_namespace_metadata.return_value = GetNamespaceResponse(
+            namespace=["parent"], properties={}
+        )
+
+        policy_api = mock_policy_api_class.return_value
+        policy_api.list_policies.side_effect = lambda prefix, namespace: (
+            SimpleNamespace(
+                identifiers=(
+                    [SimpleNamespace(name="child-policy")]
+                    if namespace == f"parent{UNIT_SEPARATOR}child"
+                    else []
+                )
+            )
+        )
+        policy_api.load_policy.return_value = SimpleNamespace(
+            policy=SimpleNamespace(
+                content='{"max-age": 7}',
+                policy_type="data-compaction",
+                description=None,
+            )
+        )
+
+        command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        mock_client = MagicMock()
+        mock_client.list_catalogs.return_value = SimpleNamespace(
+            catalogs=[SimpleNamespace(name="catalog")]
+        )
+
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="file:///path",
+                additional_properties={},
+            ),
+            storage_config_info=FileStorageConfigInfo(
+                storage_type="FILE",
+                allowed_locations=["file:///path"],
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
+
+        catalog = command._export_catalogs(mock_client)[0]
+
+        self.assertEqual(
+            catalog["namespaces"], [{"name": "parent"}, {"name": "parent.child"}]
+        )
+        self.assertEqual(
+            catalog["policies"],
+            [
+                {
+                    "name": "child-policy",
+                    "namespace": "parent.child",
+                    "type": "data-compaction",
+                    "content": '{"max-age":7}',
+                }
+            ],
+        )
+        self.assertEqual(
+            catalog_api.list_namespaces.call_args_list,
+            [
+                call(prefix="catalog"),
+                call(prefix="catalog", parent="parent"),
+                call(
+                    prefix="catalog",
+                    parent=f"parent{UNIT_SEPARATOR}child",
+                ),
+            ],
+        )
+        policy_api.list_policies.assert_has_calls(
+            [
+                call(prefix="catalog", namespace="parent"),
+                call(
+                    prefix="catalog",
+                    namespace=f"parent{UNIT_SEPARATOR}child",
+                ),
+            ]
+        )
+
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    def test_setup_exported_policy_content_round_trips_through_apply(
+        self, mock_policy_api_class: MagicMock
+    ) -> None:
+        policy_content = '{"version":"2025-02-03","enable":true}'
+        policy_api = mock_policy_api_class.return_value
+        policy_api.list_policies.return_value = SimpleNamespace(
+            identifiers=[SimpleNamespace(name="compaction")]
+        )
+        policy_api.load_policy.side_effect = [
+            SimpleNamespace(
+                policy=SimpleNamespace(
+                    content=policy_content,
+                    policy_type="system.data-compaction",
+                    description=None,
+                )
+            ),
+            NotFoundException(),
+        ]
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported_policies = export_command._export_policies_for_catalog(
+            MagicMock(), "catalog", [["namespace"]]
+        )
+        loaded_config = yaml.safe_load(yaml.safe_dump({"policies": exported_policies}))
+
+        apply_command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        apply_command._create_policies_and_attachments(
+            MagicMock(),
+            "catalog",
+            loaded_config["policies"],
+        )
+
+        request = policy_api.create_policy.call_args.kwargs["create_policy_request"]
+        self.assertEqual(request.content, policy_content)
+
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    def test_setup_export_preserves_same_named_policies_across_namespaces(
+        self, mock_policy_api_class: MagicMock
+    ) -> None:
+        policy_api = mock_policy_api_class.return_value
+        policy_api.list_policies.side_effect = lambda prefix, namespace: SimpleNamespace(
+            identifiers=(
+                [SimpleNamespace(name="retention")]
+                if namespace in {"finance", "science"}
+                else []
+            )
+        )
+        policy_api.load_policy.side_effect = [
+            SimpleNamespace(
+                policy=SimpleNamespace(
+                    content='{"max-age":7}',
+                    policy_type="system.snapshot-expiry",
+                    description=None,
+                )
+            ),
+            SimpleNamespace(
+                policy=SimpleNamespace(
+                    content='{"max-age":30}',
+                    policy_type="system.snapshot-expiry",
+                    description=None,
+                )
+            ),
+            NotFoundException(),
+            NotFoundException(),
+        ]
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported_policies = export_command._export_policies_for_catalog(
+            MagicMock(), "catalog", [["finance"], ["science"]]
+        )
+        loaded_config = yaml.safe_load(yaml.safe_dump({"policies": exported_policies}))
+
+        apply_command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        apply_command._create_policies_and_attachments(
+            MagicMock(),
+            "catalog",
+            loaded_config["policies"],
+        )
+
+        self.assertEqual(
+            [
+                (
+                    create_call.kwargs["namespace"],
+                    create_call.kwargs["create_policy_request"].name,
+                    create_call.kwargs["create_policy_request"].content,
+                )
+                for create_call in policy_api.create_policy.call_args_list
+            ],
+            [
+                ("finance", "retention", '{"max-age":7}'),
+                ("science", "retention", '{"max-age":30}'),
+            ],
+        )
+
+    def test_setup_export_reports_top_level_read_failures(self) -> None:
+        for method_name in (
+            "list_principals",
+            "list_principal_roles",
+            "list_catalogs",
+        ):
+            with self.subTest(method_name=method_name):
+                mock_client = self.build_mock_client()
+                mock_client.list_principals.return_value.principals = []
+                mock_client.list_principal_roles.return_value.roles = []
+                mock_client.list_catalogs.return_value.catalogs = []
+                getattr(mock_client, method_name).side_effect = RuntimeError(
+                    "backend unavailable"
+                )
+                command = SetupCommand(setup_subcommand=Subcommands.EXPORT)
+
+                with (
+                    patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+                    self.assertRaises(CliError) as cm,
+                ):
+                    command.execute(mock_client)
+
+                self.assertEqual(cm.exception.exit_code, CLI_ERROR_EXIT_CODE)
+                self.assertIn("export errors: 1", str(cm.exception))
+                self.assertEqual(mock_stdout.getvalue(), "")
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_reports_nested_read_failures(
+        self, mock_catalog_api: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_principal = MagicMock()
+        mock_principal.name = "principal"
+        mock_client.list_principals.return_value.principals = [mock_principal]
+        mock_client.list_principal_roles_assigned.side_effect = RuntimeError(
+            "backend unavailable"
+        )
+        mock_client.list_principal_roles.return_value.roles = []
+        mock_catalog = MagicMock()
+        mock_catalog.name = "catalog"
+        mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="file:///path",
+                additional_properties={},
+            ),
+            storage_config_info=FileStorageConfigInfo(
+                storage_type="FILE",
+                allowed_locations=["file:///path"],
+            ),
+        )
+        mock_client.list_catalog_roles.side_effect = RuntimeError("backend unavailable")
+        mock_catalog_api.return_value.list_namespaces.side_effect = RuntimeError(
+            "backend unavailable"
+        )
+        command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+
+        with (
+            patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+            self.assertRaises(CliError) as cm,
+        ):
+            command.execute(mock_client)
+
+        self.assertEqual(cm.exception.exit_code, CLI_ERROR_EXIT_CODE)
+        self.assertIn("export errors: 3", str(cm.exception))
+        self.assertEqual(mock_stdout.getvalue(), "")
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_s3_catalog_round_trips_sts_and_internal_endpoints(
+        self, mock_catalog_api: MagicMock
+    ) -> None:
+        mock_catalog_api.return_value.list_namespaces.return_value = []
+        mock_catalog = MagicMock()
+        mock_catalog.name = "my_catalog"
+        mock_client = self.build_mock_client()
+        mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="my_catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path",
+                additional_properties={},
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3",
+                allowed_locations=["s3://bucket/path"],
+                role_arn="arn:aws:iam::123456789012:user/QuickstartUser",
+                endpoint="https://s3.us-west-2.amazonaws.com",
+                endpoint_internal="https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
+                sts_endpoint="https://sts.amazonaws.com",
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = MagicMock(roles=[])
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported = export_command._export_catalogs(mock_client)
+
+        self.assertEqual(len(exported), 1)
+        self.assertEqual(
+            exported[0]["endpoint_internal"], "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com"
+        )
+        self.assertEqual(exported[0]["sts_endpoint"], "https://sts.amazonaws.com")
+
+        loaded = yaml.safe_load(yaml.safe_dump({"catalogs": exported}))
+
+        apply_client = self.build_mock_client()
+        apply_client.list_catalogs.return_value.catalogs = []
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+        apply_command._create_catalogs(apply_client, loaded["catalogs"])
+
+        apply_client.create_catalog.assert_called_once()
+        created = apply_client.create_catalog.call_args[0][0].catalog
+        self.assertEqual(
+            created.storage_config_info.endpoint_internal,
+            "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
+        )
+        self.assertEqual(
+            created.storage_config_info.sts_endpoint, "https://sts.amazonaws.com"
+        )

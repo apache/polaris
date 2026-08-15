@@ -247,12 +247,15 @@ val createPolarisSparkJar =
       "META-INF/DEPENDENCIES",
     )
 
-    // add polaris customized LICENSE and NOTICE for the bundle jar at top level. Note that the
+    // add polaris customized LICENSE and NOTICE for the bundle jar under META-INF. Note that the
     // customized LICENSE and NOTICE file are called BUNDLE-LICENSE and BUNDLE-NOTICE,
     // and renamed to LICENSE and NOTICE after include, this is to avoid the file
-    // being excluded due to the exclude pattern matching used above.
-    from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
-    from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
+    // being excluded due to the exclude pattern matching used above (which matches on the
+    // source path, so BUNDLE-LICENSE/BUNDLE-NOTICE are not matched).
+    into("META-INF") {
+      from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
+      from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
+    }
   }
 
 // ensure the shadow jar job (which will automatically run license addition) is run for both
@@ -260,6 +263,21 @@ val createPolarisSparkJar =
 tasks.named("assemble") { dependsOn(createPolarisSparkJar) }
 
 tasks.named("build") { dependsOn(createPolarisSparkJar) }
+
+// The `src/main/no-license-notice-marker` file disables the standard META-INF/LICENSE+NOTICE
+// injection for this module. The bundle jar already provides its own customized
+// BUNDLE-LICENSE/BUNDLE-NOTICE under META-INF (see createPolarisSparkJar above), so it must not
+// also receive the standard injection. The main, sources and javadoc jars, however, still need the
+// ASF LICENSE and NOTICE under META-INF, so add them back explicitly for those jars only (the
+// bundle jar is intentionally left untouched here).
+listOf("jar", "sourcesJar", "javadocJar").forEach { jarTask ->
+  tasks.named<Jar>(jarTask) {
+    from(layout.settingsDirectory) {
+      include("gradle/jar-licenses/LICENSE", "gradle/jar-licenses/NOTICE")
+      eachFile { path = "META-INF/$sourceName" }
+    }
+  }
+}
 
 publishing {
   publications.named<MavenPublication>("maven") {

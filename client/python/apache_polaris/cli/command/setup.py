@@ -21,7 +21,7 @@ import logging
 import yaml
 import json
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Any, Set
+from typing import Dict, Optional, List, Any, Set, Union
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
@@ -35,6 +35,7 @@ from apache_polaris.cli.constants import (
     CatalogConnectionType,
     AuthenticationType,
     ServiceIdentityType,
+    EntityType,
 )
 
 from apache_polaris.sdk.management import PolarisDefaultApi
@@ -49,7 +50,7 @@ from apache_polaris.cli.command.catalog_roles import CatalogRolesCommand
 from apache_polaris.cli.command.namespaces import NamespacesCommand
 from apache_polaris.cli.command.privileges import PrivilegesCommand
 from apache_polaris.cli.command.policies import PoliciesCommand
-from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.command.utils import crawl_namespace, get_catalog_api_client
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -155,6 +156,11 @@ class SetupCommand(Command):
             "principal_roles": self._export_principal_roles(api),
             "catalogs": self._export_catalogs(api),
         }
+        if self._failure_count:
+            raise CliError(
+                f"Setup export failed; export errors: {self._failure_count}",
+                exit_code=CLI_ERROR_EXIT_CODE,
+            )
         print(yaml.safe_dump(config, sort_keys=False, indent=2).rstrip())
         logger.info("--- Finished Exporting Polaris Configuration ---")
 
@@ -165,6 +171,8 @@ class SetupCommand(Command):
             principals = sorted(api.list_principals().principals, key=lambda p: p.name)
             for p in principals:
                 principal_info: Dict[str, Any] = {"type": PrincipalType.SERVICE.value}
+                if p.properties:
+                    principal_info["properties"] = p.properties
                 try:
                     assigned_roles = api.list_principal_roles_assigned(p.name).roles
                     if assigned_roles:
@@ -172,10 +180,12 @@ class SetupCommand(Command):
                             [r.name for r in assigned_roles]
                         )
                 except Exception:
-                    logger.warning(f"Failed to export roles for principal '{p.name}'")
+                    self._record_failure(
+                        f"Failed to export roles for principal '{p.name}'"
+                    )
                 principals_map[p.name] = principal_info
         except Exception:
-            logger.exception("Failed to export principals")
+            self._record_failure("Failed to export principals")
         return principals_map
 
     def _export_principal_roles(self, api: PolarisDefaultApi) -> List[str]:
@@ -183,7 +193,7 @@ class SetupCommand(Command):
         try:
             return sorted([role.name for role in api.list_principal_roles().roles])
         except Exception:
-            logger.exception("Failed to export principal roles")
+            self._record_failure("Failed to export principal roles")
             return []
 
     def _serialize_authentication_info(self, auth_params: Any) -> Dict[str, Any]:
@@ -209,6 +219,9 @@ class SetupCommand(Command):
                 if auth_params.bearer_token
                 else None
             )
+        elif auth_type == AuthenticationType.GCP.value:
+            # No extra flags are required for GCP external-catalog authentication.
+            pass
         elif auth_type == AuthenticationType.SIGV4.value:
             auth_data.update(
                 {
@@ -307,6 +320,8 @@ class SetupCommand(Command):
                         "user_arn": c.storage_config_info.user_arn,
                         "region": c.storage_config_info.region,
                         "endpoint": c.storage_config_info.endpoint,
+                        "endpoint_internal": c.storage_config_info.endpoint_internal,
+                        "sts_endpoint": c.storage_config_info.sts_endpoint,
                         "sts_unavailable": c.storage_config_info.sts_unavailable,
                         "kms_unavailable": c.storage_config_info.kms_unavailable,
                         "path_style_access": c.storage_config_info.path_style_access,
@@ -347,14 +362,16 @@ class SetupCommand(Command):
                         self._serialize_connection_info(c.connection_config_info)
                     )
                 # Add nested entities
+                catalog_api = IcebergCatalogAPI(self._get_catalog_api(api))
+                namespaces = self._list_namespaces_recursively(catalog_api, c.name)
                 catalog_info["roles"] = self._export_catalog_roles_for_catalog(
                     api, c.name
                 )
                 catalog_info["namespaces"] = self._export_namespaces_for_catalog(
-                    api, c.name
+                    api, c.name, namespaces
                 )
                 catalog_info["policies"] = self._export_policies_for_catalog(
-                    api, c.name
+                    api, c.name, namespaces
                 )
                 # remove empty sections
                 if not catalog_info.get("roles"):
@@ -367,7 +384,7 @@ class SetupCommand(Command):
                     del catalog_info["properties"]
                 catalogs_list.append(catalog_info)
         except Exception:
-            logger.exception("Failed to export catalogs")
+            self._record_failure("Failed to export catalogs")
         return catalogs_list
 
     def _export_catalog_roles_for_catalog(
@@ -381,6 +398,8 @@ class SetupCommand(Command):
             )
             for r in roles:
                 role_info: Dict[str, Any] = {}
+                if r.properties:
+                    role_info["properties"] = r.properties
                 # Assignments
                 assigned_roles_resp = (
                     api.list_assignee_principal_roles_for_catalog_role(
@@ -415,54 +434,63 @@ class SetupCommand(Command):
                         role_info["privileges"] = privileges
                 roles_map[r.name] = role_info
         except Exception:
-            logger.exception(
+            self._record_failure(
                 f"Failed to export catalog roles for catalog '{catalog_name}'"
             )
         return roles_map
 
+    def _list_namespaces_recursively(
+        self, catalog_api: IcebergCatalogAPI, catalog_name: str
+    ) -> List[List[str]]:
+        return sorted(
+            namespace
+            for _, namespace in crawl_namespace(
+                catalog_api=catalog_api,
+                catalog_name=catalog_name,
+                on_error=lambda label, _: self._record_failure(
+                    f"Failed to export {label}"
+                ),
+                entity_type_filter=EntityType.NAMESPACE.value,
+            )
+        )
+
     def _export_namespaces_for_catalog(
-        self, api: PolarisDefaultApi, catalog_name: str
+        self,
+        api: PolarisDefaultApi,
+        catalog_name: str,
+        namespaces: List[List[str]],
     ) -> List[Any]:
         """Export all namespaces for a given catalog."""
         namespaces_list: List[Any] = []
         catalog_api_client = self._get_catalog_api(api)
         catalog_api = IcebergCatalogAPI(catalog_api_client)
         try:
-            namespaces = sorted(
-                catalog_api.list_namespaces(prefix=catalog_name).namespaces
-            )
             for ns in namespaces:
                 ns_name = ".".join(ns)
                 ns_details = catalog_api.load_namespace_metadata(
                     prefix=catalog_name, namespace=UNIT_SEPARATOR.join(ns)
                 )
-                if hasattr(ns_details, "location") or hasattr(ns_details, "properties"):
-                    ns_info = {"name": ns_name}
-                    if hasattr(ns_details, "location") and ns_details.location:
-                        ns_info["location"] = ns_details.location
-                    if hasattr(ns_details, "properties") and ns_details.properties:
-                        ns_info["properties"] = ns_details.properties
-                    namespaces_list.append(ns_info)
-                else:
-                    namespaces_list.append(ns_name)
+                ns_info: Dict[str, Any] = {"name": ns_name}
+                if ns_details.properties:
+                    ns_info["properties"] = ns_details.properties
+                namespaces_list.append(ns_info)
         except Exception:
-            logger.exception(
+            self._record_failure(
                 f"Failed to export namespaces for catalog '{catalog_name}'"
             )
         return namespaces_list
 
     def _export_policies_for_catalog(
-        self, api: PolarisDefaultApi, catalog_name: str
-    ) -> Dict[str, Any]:
+        self,
+        api: PolarisDefaultApi,
+        catalog_name: str,
+        namespaces: List[List[str]],
+    ) -> List[Dict[str, Any]]:
         """Export all policies for a given catalog."""
-        policies_map: Dict[str, Any] = {}
+        policies_list: List[Dict[str, Any]] = []
         catalog_api_client = self._get_catalog_api(api)
-        catalog_api = IcebergCatalogAPI(catalog_api_client)
         try:
             policy_api = PolicyAPI(catalog_api_client)
-            namespaces = sorted(
-                catalog_api.list_namespaces(prefix=catalog_name).namespaces
-            )
             for ns in namespaces:
                 ns_name = ".".join(ns)
                 namespace_str = ns_name.replace(".", UNIT_SEPARATOR)
@@ -486,16 +514,19 @@ class SetupCommand(Command):
                         except json.JSONDecodeError:
                             compact_content = policy_obj.content
                     policy_info = {
+                        "name": p.name,
                         "namespace": ns_name,
                         "type": policy_obj.policy_type,
                         "content": compact_content,
                     }
                     if policy_obj.description:
                         policy_info["description"] = policy_obj.description
-                    policies_map[p.name] = policy_info
+                    policies_list.append(policy_info)
         except Exception:
-            logger.exception(f"Failed to export policies for catalog '{catalog_name}'")
-        return policies_map
+            self._record_failure(
+                f"Failed to export policies for catalog '{catalog_name}'"
+            )
+        return policies_list
 
     def _load_setup_config(self) -> Dict[str, Any]:
         """Load and cache the setup configuration from a YAML file."""
@@ -794,6 +825,9 @@ class SetupCommand(Command):
             )
         elif auth_type == AuthenticationType.BEARER.value:
             auth_args["catalog_bearer_token"] = auth_data.get("token")
+        elif auth_type == AuthenticationType.GCP.value:
+            # GCP external-catalog auth is server-side/ambient and carries no client secrets.
+            pass
         elif auth_type == AuthenticationType.SIGV4.value:
             auth_args.update(
                 {
@@ -1254,14 +1288,22 @@ class SetupCommand(Command):
         self,
         api: PolarisDefaultApi,
         catalog_name: str,
-        policies_config: Dict[str, Any],
+        policies_config: Union[Dict[str, Any], List[Dict[str, Any]]],
         dry_run: bool = False,
     ) -> None:
         """Create policies and attach them."""
         logger.info(f"--- Processing policies for catalog: {catalog_name} ---")
         catalog_api_client = self._get_catalog_api(api)
         policy_api = PolicyAPI(catalog_api_client)
-        for policy_name, policy_data in policies_config.items():
+        policy_entries = (
+            policies_config.items()
+            if isinstance(policies_config, dict)
+            else ((policy.get("name"), policy) for policy in policies_config)
+        )
+        for policy_name, policy_data in policy_entries:
+            if not policy_name:
+                logger.warning("Skipping policy due to missing name.")
+                continue
             ns_name = policy_data.get("namespace")
             if not ns_name:
                 logger.warning(
@@ -1323,7 +1365,12 @@ class SetupCommand(Command):
                             "content" in policy_data
                             and policy_data["content"] is not None
                         ):
-                            policy_content_str = json.dumps(policy_data["content"])
+                            policy_content = policy_data["content"]
+                            policy_content_str = (
+                                policy_content
+                                if isinstance(policy_content, str)
+                                else json.dumps(policy_content)
+                            )
                         elif "file" in policy_data:
                             if self.setup_config is None:
                                 logger.error(

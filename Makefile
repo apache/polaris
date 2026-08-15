@@ -106,6 +106,24 @@ build-spark-plugin-4.0-2.13: check-dependencies ## Build Spark plugin v4.0 with 
 		:polaris-spark-4.0_2.13:assemble
 	@echo "--- Spark plugin v4.0 with Scala v2.13 build complete ---"
 
+config-doc-generate: DEPENDENCIES := java21
+.PHONY: config-doc-generate
+config-doc-generate: check-dependencies ## Generate configuration reference documentation
+	@echo "--- Generating configuration reference documentation ---"
+	@./gradlew :polaris-config-docs-site:copyConfigSectionsToSite
+	@echo "--- Configuration reference documentation generated ---"
+
+config-doc-verify: DEPENDENCIES := java21 git
+.PHONY: config-doc-verify
+config-doc-verify: config-doc-generate ## Verify configuration reference documentation is up to date
+	@echo "--- Verifying configuration reference documentation is up to date ---"
+	@if ! git diff --exit-code site/content/in-dev/unreleased/configuration/config-sections/ || \
+		[ -n "$$(git ls-files --others --exclude-standard site/content/in-dev/unreleased/configuration/config-sections/)" ]; then \
+		echo "ERROR: Configuration reference is out of date. Please run 'make config-doc-generate' and commit the changes."; \
+		exit 1; \
+	fi
+	@echo "--- Configuration reference documentation is up to date ---"
+
 spotless-apply: DEPENDENCIES := java21
 .PHONY: spotless-apply
 spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradle plugin.
@@ -417,7 +435,7 @@ regtest-cleanup: check-dependencies ## Stop and remove regression test container
 ##@ Pre-commit
 
 .PHONY: pre-commit
-pre-commit: spotless-apply helm-doc-generate client-lint ## Run tasks for pre-commit
+pre-commit: spotless-apply helm-doc-generate config-doc-generate client-lint ## Run tasks for pre-commit
 
 ##@ Dependencies
 

@@ -56,6 +56,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -206,14 +207,14 @@ public class AzureCredentialsStorageIntegration
 
     LOGGER
         .atDebug()
-        .addKeyValue("allowedListAction", allowList)
-        .addKeyValue("locations", locations)
-        .addKeyValue("writeLocations", writeLocations)
-        .addKeyValue("location", loc)
-        .addKeyValue("storageAccount", location.getStorageAccount())
-        .addKeyValue("endpoint", location.getEndpoint())
-        .addKeyValue("container", location.getContainer())
-        .addKeyValue("filePath", filePath)
+        .addKeyValue(StructuredLogKeys.ALLOWED_LIST_ACTION, allowList)
+        .addKeyValue(StructuredLogKeys.LOCATIONS, locations)
+        .addKeyValue(StructuredLogKeys.WRITE_LOCATIONS, writeLocations)
+        .addKeyValue(StructuredLogKeys.LOCATION, loc)
+        .addKeyValue(StructuredLogKeys.STORAGE_ACCOUNT, location.getStorageAccount())
+        .addKeyValue(StructuredLogKeys.ENDPOINT, location.getEndpoint())
+        .addKeyValue(StructuredLogKeys.CONTAINER, location.getContainer())
+        .addKeyValue(StructuredLogKeys.FILE_PATH, filePath)
         .log("Subscope Azure SAS");
     String sasToken;
     if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {

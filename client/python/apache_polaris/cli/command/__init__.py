@@ -232,6 +232,30 @@ class Command(ABC):
                 ),
                 table_name=options_get(Arguments.TABLE),
             )
+        elif options.command == Commands.VIEWS:
+            from apache_polaris.cli.command.views import ViewCommand
+
+            subcommand = options_get(f"{Commands.VIEWS}_subcommand")
+            command = ViewCommand(
+                subcommand,
+                catalog_name=options_get(Arguments.CATALOG),
+                namespace=options_get(
+                    Arguments.NAMESPACE, lambda x: x.split(".") if x else None
+                ),
+                view_name=options_get(Arguments.VIEW),
+            )
+        elif options.command == Commands.GENERIC_TABLES:
+            from apache_polaris.cli.command.generic_tables import GenericTableCommand
+
+            subcommand = options_get(f"{Commands.GENERIC_TABLES}_subcommand")
+            command = GenericTableCommand(
+                subcommand,
+                catalog_name=options_get(Arguments.CATALOG),
+                namespace=options_get(
+                    Arguments.NAMESPACE, lambda x: x.split(".") if x else None
+                ),
+                generic_table_name=options_get(Arguments.GENERIC_TABLE),
+            )
         elif options.command == Commands.FIND:
             from apache_polaris.cli.command.find import FindCommand
 

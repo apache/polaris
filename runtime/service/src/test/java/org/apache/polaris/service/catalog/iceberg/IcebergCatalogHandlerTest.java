@@ -63,6 +63,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -86,7 +87,6 @@ import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.metrics.IcebergMetricsReporter;
@@ -171,7 +171,7 @@ class IcebergCatalogHandlerTest {
         .reservedProperties(mock(ReservedProperties.class))
         .catalogHandlerUtils(catalogHandlerUtils)
         .storageAccessConfigProvider(storageAccessConfigProvider)
-        .eventAttributeMap(mock(EventAttributeMap.class))
+        .eventAttributeMap(mock(MutableAttributeMap.class))
         .metricsReporter(mock(IcebergMetricsReporter.class))
         .clock(mock(Clock.class))
         .accessDelegationModeResolver(accessDelegationModeResolver)

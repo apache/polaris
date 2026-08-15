@@ -88,6 +88,7 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -95,6 +96,7 @@ import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -125,7 +127,6 @@ import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -178,7 +179,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
 
-  protected abstract EventAttributeMap eventAttributeMap();
+  protected abstract MutableAttributeMap eventAttributeMap();
 
   protected abstract IcebergMetricsReporter metricsReporter();
 
@@ -225,7 +226,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (connectionConfigInfoDpo != null) {
       LOGGER
           .atInfo()
-          .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
+          .addKeyValue(StructuredLogKeys.REMOTE_URL, connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
           realmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
@@ -379,25 +380,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
-  }
-
-  public ListTablesResponse listTables(Namespace namespace) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
-    authorizeBasicNamespaceOperationOrThrow(op, namespace);
-
-    return catalogHandlerUtils().listTables(baseCatalog, namespace);
-  }
-
-  /**
-   * Create a table.
-   *
-   * @param namespace the namespace to create the table in
-   * @param request the table creation request
-   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
-   */
-  public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
-    return createTableDirect(
-        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
   }
 
   public void authorizeCreateTableDirect(
@@ -671,19 +653,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return metadata;
   }
 
-  public LoadTableResponse createTableStaged(Namespace namespace, CreateTableRequest request) {
-    return createTableStaged(
-        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
-  }
-
-  public LoadTableResponse createTableStagedWithWriteDelegation(
-      Namespace namespace,
-      CreateTableRequest request,
-      Optional<String> refreshCredentialsEndpoint) {
-    return createTableStaged(
-        namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
-  }
-
   private void authorizeCreateTableStaged(
       Namespace namespace, CreateTableRequest request, boolean delegationRequested) {
     if (delegationRequested) {
@@ -801,8 +770,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.INTERNAL)) {
       LOGGER
           .atWarn()
-          .addKeyValue("catalog", catalog)
-          .addKeyValue("notification", request)
+          .addKeyValue(StructuredLogKeys.CATALOG, catalog)
+          .addKeyValue(StructuredLogKeys.NOTIFICATION, request)
           .log("Attempted notification on internal catalog");
       throw new BadRequestException("Cannot update internal catalog via notifications");
     }
@@ -884,66 +853,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return IcebergTableLikeEntity.of(leaf);
   }
 
-  public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
-    return loadTableIfStale(tableIdentifier, null, snapshots).get();
-  }
-
-  /**
-   * Attempt to perform a loadTable operation only when the specified set of eTags do not match the
-   * current state of the table metadata.
-   *
-   * @param tableIdentifier The identifier of the table to load
-   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
-   * @param snapshots
-   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
-   *     load table response, otherwise
-   */
-  public Optional<LoadTableResponse> loadTableIfStale(
-      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
-    return loadTable(
-        tableIdentifier,
-        snapshots,
-        ifNoneMatch,
-        EnumSet.noneOf(AccessDelegationMode.class),
-        Optional.empty());
-  }
-
-  public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier,
-      String snapshots,
-      Optional<String> refreshCredentialsEndpoint) {
-    return loadTableWithAccessDelegationIfStale(
-            tableIdentifier, null, snapshots, refreshCredentialsEndpoint)
-        .get();
-  }
-
-  /**
-   * Attempt to perform a loadTable operation with access delegation only when the if none of the
-   * provided eTags match the current state of the table metadata.
-   *
-   * @param tableIdentifier The identifier of the table to load
-   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
-   * @param snapshots
-   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
-   *     load table response, otherwise
-   */
-  public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
-      TableIdentifier tableIdentifier,
-      IfNoneMatch ifNoneMatch,
-      String snapshots,
-      Optional<String> refreshCredentialsEndpoint) {
-    return loadTable(
-        tableIdentifier,
-        snapshots,
-        ifNoneMatch,
-        EnumSet.of(VENDED_CREDENTIALS),
-        refreshCredentialsEndpoint);
-  }
-
   /**
    * Vend credentials for a table using location data from entity internal properties, avoiding a
-   * full table metadata read from object storage. Falls back to the standard
-   * loadTableWithAccessDelegation path if the entity lacks the required location properties.
+   * full table metadata read from object storage. Falls back to the full loadTable path if the
+   * entity lacks the required location properties.
    */
   public ImmutableLoadCredentialsResponse loadCredentials(
       TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
@@ -972,7 +885,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (baseLocation == null) {
       LOGGER
           .atDebug()
-          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
           .log(
               "Entity missing location in internal properties, requires backfill "
                   + "as it was likely not updated with stored property changes. "
@@ -1154,8 +1067,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       if (tableEntity == null || tableEntity.getMetadataLocation() == null) {
         LOGGER
             .atWarn()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .addKeyValue("tableEntity", tableEntity)
+            .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+            .addKeyValue(StructuredLogKeys.TABLE_ENTITY, tableEntity)
             .log("Failed to getMetadataLocation to generate ETag when loading table");
       } else {
         // TODO: Refactor null-checking into the helper method once we create a more canonical
@@ -1266,14 +1179,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       LOGGER
           .atInfo()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .addKeyValue("tableLocations", tableLocations)
+          .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+          .addKeyValue(StructuredLogKeys.TABLE_LOCATIONS, tableLocations)
           .log("Validated table locations for credential vending");
     } catch (ForbiddenException e) {
       LOGGER
           .atError()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .addKeyValue("tableLocations", tableLocations)
+          .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+          .addKeyValue(StructuredLogKeys.TABLE_LOCATIONS, tableLocations)
           .log("Table locations validation failed for credential vending");
       throw new ForbiddenException(
           "Table '%s' has locations outside the catalog's current allowed locations: %s",
@@ -1628,13 +1541,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
-  }
-
-  public ListTablesResponse listViews(Namespace namespace) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
-    authorizeBasicNamespaceOperationOrThrow(op, namespace);
-
-    return catalogHandlerUtils().listViews(viewCatalog, namespace);
   }
 
   public LoadViewResponse createView(Namespace namespace, CreateViewRequest request) {

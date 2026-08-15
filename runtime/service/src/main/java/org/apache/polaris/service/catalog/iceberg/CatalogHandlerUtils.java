@@ -261,11 +261,6 @@ public class CatalogHandlerUtils {
         .build();
   }
 
-  public ListTablesResponse listTables(Catalog catalog, Namespace namespace) {
-    List<TableIdentifier> idents = catalog.listTables(namespace);
-    return ListTablesResponse.builder().addAll(idents).build();
-  }
-
   public ListTablesResponse listTables(
       Catalog catalog, Namespace namespace, String pageToken, Integer pageSize) {
     List<TableIdentifier> results = catalog.listTables(namespace);
@@ -677,10 +672,6 @@ public class CatalogHandlerUtils {
     Preconditions.checkState(
         view instanceof BaseView, "Cannot wrap catalog that does not produce BaseView");
     return (BaseView) view;
-  }
-
-  public ListTablesResponse listViews(ViewCatalog catalog, Namespace namespace) {
-    return ListTablesResponse.builder().addAll(catalog.listViews(namespace)).build();
   }
 
   public ListTablesResponse listViews(

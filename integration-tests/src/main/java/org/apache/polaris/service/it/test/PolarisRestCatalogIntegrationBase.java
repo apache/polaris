@@ -2819,13 +2819,13 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     String prefix = "testPaginatedListTables";
     Namespace namespace = Namespace.of(prefix);
     restCatalog.createNamespace(namespace);
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 30; i++) {
       restCatalog.createTable(TableIdentifier.of(namespace, prefix + i), SCHEMA);
     }
 
     try {
-      assertThat(catalogApi.listTables(currentCatalogName, namespace)).hasSize(20);
-      for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 2000)) {
+      assertThat(catalogApi.listTables(currentCatalogName, namespace)).hasSize(30);
+      for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 25, 2000)) {
         int total = 0;
         String pageToken = null;
         do {
@@ -2836,10 +2836,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
           total += response.identifiers().size();
           pageToken = response.nextPageToken();
         } while (pageToken != null);
-        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(20);
+        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(30);
       }
     } finally {
-      for (int i = 0; i < 20; i++) {
+      for (int i = 0; i < 30; i++) {
         restCatalog.dropTable(TableIdentifier.of(namespace, prefix + i));
       }
       restCatalog.dropNamespace(namespace);

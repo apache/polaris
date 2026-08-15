@@ -23,9 +23,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.ws.rs.core.Response;
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.catalog.Namespace;
@@ -40,6 +42,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -147,7 +150,9 @@ public class EntityIdempotencyUpdateTableTest {
     return services
         .catalogAdapter()
         .newHandler(services.securityContext(), CATALOG)
-        .loadTable(tableId, "all")
+        .loadTable(
+            tableId, "all", null, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty())
+        .get()
         .tableMetadata()
         .metadataFileLocation();
   }

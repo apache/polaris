@@ -38,8 +38,10 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.function.TriConsumer;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -48,7 +50,6 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -203,9 +204,10 @@ public class TaskExecutorImpl implements TaskExecutor {
           new PolarisEvent(
               PolarisEventType.BEFORE_ATTEMPT_TASK,
               eventMetadataFactory.copy(eventMetadata),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                  .put(EventAttributes.TASK_ATTEMPT, attempt)));
+                  .put(EventAttributes.TASK_ATTEMPT, attempt)
+                  .build()));
     }
 
     boolean success = false;
@@ -227,8 +229,8 @@ public class TaskExecutorImpl implements TaskExecutor {
       if (handlerOpt.isEmpty()) {
         LOGGER
             .atWarn()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("taskType", task.getTaskType())
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .addKeyValue(StructuredLogKeys.TASK_TYPE, task.getTaskType())
             .log("Unable to find handler for task type");
         throw new TaskHandlerNotFoundException(
             "Unable to find handler for task type "
@@ -244,8 +246,8 @@ public class TaskExecutorImpl implements TaskExecutor {
       success = true;
       LOGGER
           .atInfo()
-          .addKeyValue("taskEntityId", taskEntityId)
-          .addKeyValue("handlerClass", handler.getClass())
+          .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+          .addKeyValue(StructuredLogKeys.HANDLER_CLASS, handler.getClass())
           .log("Task successfully handled");
       metaStoreManager.dropEntityIfExists(
           ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
@@ -258,8 +260,9 @@ public class TaskExecutorImpl implements TaskExecutor {
       if (!success) {
         LOGGER
             .atWarn()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("taskEntityName", taskEntity != null ? taskEntity.getName() : "")
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .addKeyValue(
+                StructuredLogKeys.TASK_ENTITY_NAME, taskEntity != null ? taskEntity.getName() : "")
             .log("Unable to execute async task");
       }
       throw e;
@@ -269,10 +272,11 @@ public class TaskExecutorImpl implements TaskExecutor {
             new PolarisEvent(
                 PolarisEventType.AFTER_ATTEMPT_TASK,
                 eventMetadataFactory.copy(eventMetadata),
-                new EventAttributeMap()
+                ImmutableAttributeMap.builder()
                     .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
                     .put(EventAttributes.TASK_ATTEMPT, attempt)
-                    .put(EventAttributes.TASK_SUCCESS, success)));
+                    .put(EventAttributes.TASK_SUCCESS, success)
+                    .build()));
       }
     }
   }

@@ -40,7 +40,7 @@ If you already have an Apache Polaris environment, you can export its current st
 polaris setup export --client-id ${CLIENT_ID} --client-secret ${CLIENT_SECRET} > polaris_bootstrap.yaml
 ```
 
-This generates a readable YAML file containing principals, principal roles, catalogs, and their associated namespaces and catalog roles.
+This generates a readable YAML file containing principals, principal roles, catalogs, and their associated namespaces and catalog roles. User-defined properties on principals and catalog roles are preserved in the exported configuration.
 
 ## Applying a Configuration
 
@@ -103,5 +103,4 @@ The current implementation focuses on simplifying initial setup, with a few limi
 - **Non-declarative updates**: The command is create-only. If an entity already exists, it will be skipped rather than updated. There is no state reconciliation yet.
 - **Policy attachment export**: Policy attachments are not included in `setup export` due to performance considerations. However, they can still be defined in YAML and applied during `setup apply`.
 - **External catalog testing**: Support for external catalogs (e.g., Hive Metastore) exists, but full end-to-end testing has not yet been completed. It is recommended to validate configurations in a non-production environment first.
-
 

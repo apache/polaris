@@ -23,8 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.quarkus.runtime.configuration.MemorySize;
-import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
@@ -32,8 +30,8 @@ import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
@@ -71,8 +69,7 @@ class AwsCloudWatchEventListenerTest {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   static {
-    new PolarisIcebergObjectMapperCustomizer(new MemorySize(BigInteger.valueOf(1024 * 1024)))
-        .customize(OBJECT_MAPPER);
+    new PolarisIcebergObjectMapperCustomizer("1M").customize(OBJECT_MAPPER);
   }
 
   @Mock private AwsCloudWatchConfiguration config;
@@ -172,9 +169,10 @@ class AwsCloudWatchEventListenerTest {
           new PolarisEvent(
               PolarisEventType.AFTER_REFRESH_TABLE,
               PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
-              new EventAttributeMap()
+              MutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, "test_catalog")
-                  .put(EventAttributes.TABLE_IDENTIFIER, testTable)));
+                  .put(EventAttributes.TABLE_IDENTIFIER, testTable)
+                  .build()));
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))
@@ -234,9 +232,10 @@ class AwsCloudWatchEventListenerTest {
           new PolarisEvent(
               PolarisEventType.AFTER_REFRESH_TABLE,
               PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
-              new EventAttributeMap()
+              MutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, "test_catalog")
-                  .put(EventAttributes.TABLE_IDENTIFIER, syncTestTable)));
+                  .put(EventAttributes.TABLE_IDENTIFIER, syncTestTable)
+                  .build()));
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))

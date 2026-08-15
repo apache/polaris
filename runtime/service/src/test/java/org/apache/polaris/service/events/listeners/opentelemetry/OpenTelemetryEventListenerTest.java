@@ -66,8 +66,8 @@ import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
@@ -88,11 +88,12 @@ class OpenTelemetryEventListenerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_TABLE,
             metadata(),
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, "test_catalog")
                 .put(EventAttributes.NAMESPACE, Namespace.of("test_namespace"))
                 .put(EventAttributes.TABLE_NAME, "test_table")
-                .put(EventAttributes.PURGE_REQUESTED, true)));
+                .put(EventAttributes.PURGE_REQUESTED, true)
+                .build()));
 
     LogRecordData record = singleRecord(exporter);
 
@@ -137,12 +138,13 @@ class OpenTelemetryEventListenerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_TABLE,
             metadata(),
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.NAMESPACE, Namespace.of("test_namespace"))
                 .put(EventAttributes.TABLE_NAME, "test_table")
                 .put(
                     EventAttributes.TABLE_IDENTIFIER,
-                    TableIdentifier.of(Namespace.of("explicit_namespace"), "explicit_table"))));
+                    TableIdentifier.of(Namespace.of("explicit_namespace"), "explicit_table"))
+                .build()));
 
     LogRecordData record = singleRecord(exporter);
 
@@ -159,7 +161,9 @@ class OpenTelemetryEventListenerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_GET_PRINCIPAL,
             metadata(),
-            new EventAttributeMap().put(EventAttributes.PRINCIPAL_NAME, "target_principal")));
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.PRINCIPAL_NAME, "target_principal")
+                .build()));
 
     LogRecordData record = singleRecord(exporter);
 
@@ -184,11 +188,12 @@ class OpenTelemetryEventListenerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_ADD_GRANT_TO_CATALOG_ROLE,
             metadata(),
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, "test_catalog")
                 .put(EventAttributes.CATALOG_ROLE_NAME, "test_catalog_role")
                 .put(EventAttributes.PRIVILEGE, PolarisPrivilege.TABLE_WRITE_DATA)
-                .put(EventAttributes.GRANT_RESOURCE, grant)));
+                .put(EventAttributes.GRANT_RESOURCE, grant)
+                .build()));
 
     LogRecordData record = singleRecord(exporter);
 
@@ -223,12 +228,13 @@ class OpenTelemetryEventListenerTest {
         new PolarisEvent(
             PolarisEventType.BEFORE_ADD_GRANT_TO_CATALOG_ROLE,
             metadata(),
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, "test_catalog")
                 .put(EventAttributes.CATALOG_ROLE_NAME, "test_catalog_role")
                 .put(
                     EventAttributes.ADD_GRANT_REQUEST,
-                    AddGrantRequest.builder().setGrant(grant).build())));
+                    AddGrantRequest.builder().setGrant(grant).build())
+                .build()));
 
     LogRecordData record = singleRecord(exporter);
 
@@ -321,7 +327,9 @@ class OpenTelemetryEventListenerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_GET_PRINCIPAL,
             metadata(openTelemetryContext),
-            new EventAttributeMap().put(EventAttributes.PRINCIPAL_NAME, "target_principal")));
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.PRINCIPAL_NAME, "target_principal")
+                .build()));
 
     return singleRecord(exporter);
   }

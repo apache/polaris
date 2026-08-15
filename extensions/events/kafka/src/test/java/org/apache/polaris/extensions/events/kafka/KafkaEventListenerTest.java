@@ -42,7 +42,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.UUIDDeserializer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.service.events.EventAttributeMap;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.ImmutablePolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEvent;
@@ -99,9 +99,10 @@ class KafkaEventListenerTest {
     return new PolarisEvent(
         PolarisEventType.AFTER_REFRESH_TABLE,
         ImmutablePolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
-        new EventAttributeMap()
+        ImmutableAttributeMap.builder()
             .put(EventAttributes.CATALOG_NAME, TEST_CATALOG)
-            .put(EventAttributes.TABLE_IDENTIFIER, TEST_TABLE_IDENTIFIER));
+            .put(EventAttributes.TABLE_IDENTIFIER, TEST_TABLE_IDENTIFIER)
+            .build());
   }
 
   @Test

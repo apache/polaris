@@ -20,6 +20,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
@@ -45,12 +46,13 @@ import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -69,7 +71,10 @@ public class IcebergRestCatalogEventServiceDelegator
   @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
-  @Inject EventAttributeMap eventAttributeMap;
+
+  @Inject
+  @Identifier("event-attribute-map")
+  AttributeMap eventAttributeMap;
 
   // Constructor for testing - allows manual dependency injection
   @VisibleForTesting
@@ -78,7 +83,7 @@ public class IcebergRestCatalogEventServiceDelegator
       PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory,
       CatalogPrefixParser prefixParser,
-      EventAttributeMap eventAttributeMap) {
+      AttributeMap eventAttributeMap) {
     this.delegate = delegate;
     this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
@@ -102,9 +107,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_CREATE_NAMESPACE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.CREATE_NAMESPACE_REQUEST, createNamespaceRequest)));
+                  .put(EventAttributes.CREATE_NAMESPACE_REQUEST, createNamespaceRequest)
+                  .build()));
     }
     Response resp =
         delegate.createNamespace(
@@ -115,11 +121,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_CREATE_NAMESPACE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, createNamespaceResponse.namespace())
-                  .put(
-                      EventAttributes.NAMESPACE_PROPERTIES, createNamespaceResponse.properties())));
+                  .put(EventAttributes.NAMESPACE_PROPERTIES, createNamespaceResponse.properties())
+                  .build()));
     }
     return resp;
   }
@@ -138,9 +144,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LIST_NAMESPACES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.PARENT_NAMESPACE_FQN, parent)));
+                  .put(EventAttributes.PARENT_NAMESPACE_FQN, parent)
+                  .build()));
     }
     Response resp =
         delegate.listNamespaces(prefix, pageToken, pageSize, parent, realmContext, securityContext);
@@ -149,9 +156,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LIST_NAMESPACES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.PARENT_NAMESPACE_FQN, parent)));
+                  .put(EventAttributes.PARENT_NAMESPACE_FQN, parent)
+                  .build()));
     }
     return resp;
   }
@@ -165,12 +173,13 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LOAD_NAMESPACE_METADATA,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(
                       EventAttributes.NAMESPACE,
                       NamespaceUtils.splitNamespace(
-                          namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR))));
+                          namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR))
+                  .build()));
     }
     Response resp =
         delegate.loadNamespaceMetadata(prefix, namespace, realmContext, securityContext);
@@ -180,10 +189,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LOAD_NAMESPACE_METADATA,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, getNamespaceResponse.namespace())
-                  .put(EventAttributes.NAMESPACE_PROPERTIES, getNamespaceResponse.properties())));
+                  .put(EventAttributes.NAMESPACE_PROPERTIES, getNamespaceResponse.properties())
+                  .build()));
     }
     return resp;
   }
@@ -199,9 +209,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_CHECK_EXISTS_NAMESPACE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE, namespaceObj)));
+                  .put(EventAttributes.NAMESPACE, namespaceObj)
+                  .build()));
     }
     Response resp = delegate.namespaceExists(prefix, namespace, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_CHECK_EXISTS_NAMESPACE)) {
@@ -209,9 +220,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_CHECK_EXISTS_NAMESPACE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE, namespaceObj)));
+                  .put(EventAttributes.NAMESPACE, namespaceObj)
+                  .build()));
     }
     return resp;
   }
@@ -229,12 +241,13 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_DROP_NAMESPACE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(
                       EventAttributes.NAMESPACE,
                       NamespaceUtils.splitNamespace(
-                          namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR))));
+                          namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR))
+                  .build()));
     }
     Response resp =
         delegate.dropNamespace(prefix, namespace, idempotencyKey, realmContext, securityContext);
@@ -243,9 +256,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_DROP_NAMESPACE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE_FQN, namespace)));
+                  .put(EventAttributes.NAMESPACE_FQN, namespace)
+                  .build()));
     }
     return resp;
   }
@@ -266,12 +280,13 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_UPDATE_NAMESPACE_PROPERTIES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(
                       EventAttributes.UPDATE_NAMESPACE_PROPERTIES_REQUEST,
-                      updateNamespacePropertiesRequest)));
+                      updateNamespacePropertiesRequest)
+                  .build()));
     }
     Response resp =
         delegate.updateProperties(
@@ -286,12 +301,13 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_UPDATE_NAMESPACE_PROPERTIES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(
                       EventAttributes.UPDATE_NAMESPACE_PROPERTIES_RESPONSE,
-                      (UpdateNamespacePropertiesResponse) resp.getEntity())));
+                      (UpdateNamespacePropertiesResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -313,11 +329,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_CREATE_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.CREATE_TABLE_REQUEST, createTableRequest)
-                  .put(EventAttributes.ACCESS_DELEGATION_MODE, accessDelegationMode)));
+                  .put(EventAttributes.ACCESS_DELEGATION_MODE, accessDelegationMode)
+                  .build()));
     }
     Response resp =
         delegate.createTable(
@@ -334,11 +351,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_CREATE_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, createTableRequest.name())
-                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -359,9 +377,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LIST_TABLES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE, namespaceObj)));
+                  .put(EventAttributes.NAMESPACE, namespaceObj)
+                  .build()));
     }
     Response resp =
         delegate.listTables(prefix, namespace, pageToken, pageSize, realmContext, securityContext);
@@ -370,9 +389,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LIST_TABLES,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE, namespaceObj)));
+                  .put(EventAttributes.NAMESPACE, namespaceObj)
+                  .build()));
     }
     return resp;
   }
@@ -396,13 +416,14 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LOAD_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
                   .put(EventAttributes.ACCESS_DELEGATION_MODE, accessDelegationMode)
                   .put(EventAttributes.IF_NONE_MATCH_STRING, ifNoneMatchString)
-                  .put(EventAttributes.SNAPSHOTS, snapshots)));
+                  .put(EventAttributes.SNAPSHOTS, snapshots)
+                  .build()));
     }
     Response resp =
         delegate.loadTable(
@@ -420,11 +441,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LOAD_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
-                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -444,10 +466,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_CHECK_EXISTS_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.TABLE_NAME, table)));
+                  .put(EventAttributes.TABLE_NAME, table)
+                  .build()));
     }
     Response resp = delegate.tableExists(prefix, namespace, table, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_CHECK_EXISTS_TABLE)) {
@@ -455,10 +478,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_CHECK_EXISTS_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.TABLE_NAME, table)));
+                  .put(EventAttributes.TABLE_NAME, table)
+                  .build()));
     }
     return resp;
   }
@@ -481,11 +505,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_DROP_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
-                  .put(EventAttributes.PURGE_REQUESTED, purgeRequested)));
+                  .put(EventAttributes.PURGE_REQUESTED, purgeRequested)
+                  .build()));
     }
     Response resp =
         delegate.dropTable(
@@ -501,11 +526,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_DROP_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
-                  .put(EventAttributes.PURGE_REQUESTED, purgeRequested)));
+                  .put(EventAttributes.PURGE_REQUESTED, purgeRequested)
+                  .build()));
     }
     return resp;
   }
@@ -527,10 +553,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_REGISTER_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.REGISTER_TABLE_REQUEST, registerTableRequest)));
+                  .put(EventAttributes.REGISTER_TABLE_REQUEST, registerTableRequest)
+                  .build()));
     }
     Response resp =
         delegate.registerTable(
@@ -546,11 +573,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_REGISTER_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, registerTableRequest.name())
-                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -568,9 +596,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_RENAME_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)));
+                  .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)
+                  .build()));
     }
     Response resp =
         delegate.renameTable(
@@ -580,9 +609,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_RENAME_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)));
+                  .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)
+                  .build()));
     }
     return resp;
   }
@@ -604,11 +634,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_UPDATE_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
-                  .put(EventAttributes.UPDATE_TABLE_REQUEST, commitTableRequest)));
+                  .put(EventAttributes.UPDATE_TABLE_REQUEST, commitTableRequest)
+                  .build()));
     }
     Response resp =
         delegate.updateTable(
@@ -624,14 +655,15 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_UPDATE_TABLE,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
                   .put(EventAttributes.UPDATE_TABLE_REQUEST, commitTableRequest)
                   .put(
                       EventAttributes.TABLE_METADATA,
-                      ((LoadTableResponse) resp.getEntity()).tableMetadata())));
+                      ((LoadTableResponse) resp.getEntity()).tableMetadata())
+                  .build()));
     }
     return resp;
   }
@@ -651,10 +683,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_CREATE_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.CREATE_VIEW_REQUEST, createViewRequest)));
+                  .put(EventAttributes.CREATE_VIEW_REQUEST, createViewRequest)
+                  .build()));
     }
     Response resp =
         delegate.createView(prefix, namespace, createViewRequest, realmContext, securityContext);
@@ -663,11 +696,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_CREATE_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.VIEW_NAME, createViewRequest.name())
-                  .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -688,10 +722,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_REGISTER_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.REGISTER_VIEW_REQUEST, registerViewRequest)));
+                  .put(EventAttributes.REGISTER_VIEW_REQUEST, registerViewRequest)
+                  .build()));
     }
     Response resp =
         delegate.registerView(
@@ -701,11 +736,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_REGISTER_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.VIEW_NAME, registerViewRequest.name())
-                  .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -726,9 +762,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LIST_VIEWS,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE, namespaceObj)));
+                  .put(EventAttributes.NAMESPACE, namespaceObj)
+                  .build()));
     }
     Response resp =
         delegate.listViews(prefix, namespace, pageToken, pageSize, realmContext, securityContext);
@@ -737,9 +774,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LIST_VIEWS,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.NAMESPACE, namespaceObj)));
+                  .put(EventAttributes.NAMESPACE, namespaceObj)
+                  .build()));
     }
     return resp;
   }
@@ -761,10 +799,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LOAD_CREDENTIALS,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.TABLE_NAME, table)));
+                  .put(EventAttributes.TABLE_NAME, table)
+                  .build()));
     }
     Response resp =
         delegate.loadCredentials(
@@ -774,10 +813,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LOAD_CREDENTIALS,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.TABLE_NAME, table)));
+                  .put(EventAttributes.TABLE_NAME, table)
+                  .build()));
     }
     return resp;
   }
@@ -798,10 +838,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_LOAD_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.VIEW_NAME, view)));
+                  .put(EventAttributes.VIEW_NAME, view)
+                  .build()));
     }
     Response resp =
         delegate.loadView(prefix, namespace, view, referencedBy, realmContext, securityContext);
@@ -810,11 +851,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_LOAD_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.VIEW_NAME, view)
-                  .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -834,10 +876,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_CHECK_EXISTS_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.VIEW_NAME, view)));
+                  .put(EventAttributes.VIEW_NAME, view)
+                  .build()));
     }
     Response resp = delegate.viewExists(prefix, namespace, view, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_CHECK_EXISTS_VIEW)) {
@@ -845,10 +888,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_CHECK_EXISTS_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.VIEW_NAME, view)));
+                  .put(EventAttributes.VIEW_NAME, view)
+                  .build()));
     }
     return resp;
   }
@@ -869,10 +913,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_DROP_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.VIEW_NAME, view)));
+                  .put(EventAttributes.VIEW_NAME, view)
+                  .build()));
     }
     Response resp =
         delegate.dropView(prefix, namespace, view, idempotencyKey, realmContext, securityContext);
@@ -881,10 +926,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_DROP_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.VIEW_NAME, view)));
+                  .put(EventAttributes.VIEW_NAME, view)
+                  .build()));
     }
     return resp;
   }
@@ -902,9 +948,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_RENAME_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)));
+                  .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)
+                  .build()));
     }
     Response resp =
         delegate.renameView(
@@ -914,9 +961,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_RENAME_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)));
+                  .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)
+                  .build()));
     }
     return resp;
   }
@@ -938,11 +986,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_REPLACE_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.VIEW_NAME, view)
-                  .put(EventAttributes.COMMIT_VIEW_REQUEST, commitViewRequest)));
+                  .put(EventAttributes.COMMIT_VIEW_REQUEST, commitViewRequest)
+                  .build()));
     }
     Response resp =
         delegate.replaceView(
@@ -958,12 +1007,13 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_REPLACE_VIEW,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.VIEW_NAME, view)
                   .put(EventAttributes.COMMIT_VIEW_REQUEST, commitViewRequest)
-                  .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())));
+                  .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())
+                  .build()));
     }
     return resp;
   }
@@ -981,9 +1031,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_COMMIT_TRANSACTION,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.COMMIT_TRANSACTION_REQUEST, commitTransactionRequest)));
+                  .put(EventAttributes.COMMIT_TRANSACTION_REQUEST, commitTransactionRequest)
+                  .build()));
     }
     if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_UPDATE_TABLE)) {
       for (UpdateTableRequest req : commitTransactionRequest.tableChanges()) {
@@ -991,11 +1042,12 @@ public class IcebergRestCatalogEventServiceDelegator
             new PolarisEvent(
                 PolarisEventType.BEFORE_UPDATE_TABLE,
                 eventMetadataFactory.create(),
-                new EventAttributeMap()
+                ImmutableAttributeMap.builder()
                     .put(EventAttributes.CATALOG_NAME, catalogName)
                     .put(EventAttributes.NAMESPACE, req.identifier().namespace())
                     .put(EventAttributes.TABLE_NAME, req.identifier().name())
-                    .put(EventAttributes.UPDATE_TABLE_REQUEST, req)));
+                    .put(EventAttributes.UPDATE_TABLE_REQUEST, req)
+                    .build()));
       }
     }
     Response resp =
@@ -1006,9 +1058,10 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_COMMIT_TRANSACTION,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.COMMIT_TRANSACTION_REQUEST, commitTransactionRequest)));
+                  .put(EventAttributes.COMMIT_TRANSACTION_REQUEST, commitTransactionRequest)
+                  .build()));
     }
     List<TableMetadata> tableMetadataList =
         eventAttributeMap.getRequired(EventAttributes.TABLE_METADATAS);
@@ -1021,12 +1074,13 @@ public class IcebergRestCatalogEventServiceDelegator
             new PolarisEvent(
                 PolarisEventType.AFTER_UPDATE_TABLE,
                 eventMetadataFactory.create(),
-                new EventAttributeMap()
+                ImmutableAttributeMap.builder()
                     .put(EventAttributes.CATALOG_NAME, catalogName)
                     .put(EventAttributes.NAMESPACE, req.identifier().namespace())
                     .put(EventAttributes.TABLE_NAME, req.identifier().name())
                     .put(EventAttributes.UPDATE_TABLE_REQUEST, req)
-                    .put(EventAttributes.TABLE_METADATA, tableMetadata)));
+                    .put(EventAttributes.TABLE_METADATA, tableMetadata)
+                    .build()));
       }
     }
     return resp;
@@ -1060,11 +1114,12 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.BEFORE_SEND_NOTIFICATION,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, table)
-                  .put(EventAttributes.NOTIFICATION_REQUEST, notificationRequest)));
+                  .put(EventAttributes.NOTIFICATION_REQUEST, notificationRequest)
+                  .build()));
     }
     Response resp =
         delegate.sendNotification(
@@ -1074,10 +1129,11 @@ public class IcebergRestCatalogEventServiceDelegator
           new PolarisEvent(
               PolarisEventType.AFTER_SEND_NOTIFICATION,
               eventMetadataFactory.create(),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
-                  .put(EventAttributes.TABLE_NAME, table)));
+                  .put(EventAttributes.TABLE_NAME, table)
+                  .build()));
     }
     return resp;
   }

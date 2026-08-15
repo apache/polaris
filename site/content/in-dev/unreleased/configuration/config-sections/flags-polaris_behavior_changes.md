@@ -79,3 +79,12 @@ If true, validate that view locations don't overlap when views are created
 - **Default:** `true`
 
 ---
+
+##### `polaris.behavior-changes."VIEW_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT"`
+
+If true, BasePolarisViewOperations should mark the metadata that is passed into `commit` as current, and reuse it to skip a trip to object storage to re-construct the committed metadata again.
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---

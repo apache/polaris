@@ -33,7 +33,7 @@ The default build includes drivers for the PostgreSQL and NoSQL (MongoDB) backen
 
 ## Usage
 
-Please make sure the admin tool and Polaris server are with the same version before using it.
+Please make sure the admin tool and Polaris server are at the same version before using it.
 To run the standalone JAR, use the following command:
 
 If you downloaded the [binary distribution]({{% ref "getting-started/binary-distribution" %}}), you
@@ -227,7 +227,7 @@ NoSQL maintenance is run using the `nosql maintenance-run` command.
 Maintenance covers the deletion of stale database entries.
 
 {{< alert note >}}
-It is recommended to run the `nosql maintenance-run` command regulary, for example, once per day.
+It is recommended to run the `nosql maintenance-run` command regularly, for example, once per day.
 {{< /alert >}}
 
 The output shows a bunch of configuration options, most of which are automatically determined by the tool.

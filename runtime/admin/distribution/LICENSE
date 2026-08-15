@@ -338,6 +338,7 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-net
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-os
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-ref
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-search
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-vertx-context
 * Maven group:artifact IDs: io.smallrye.config:smallrye-config
 * Maven group:artifact IDs: io.smallrye.config:smallrye-config-common
@@ -369,6 +370,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Quarkus Amazon Services.
 
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache-client-internal
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache5-client-internal
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common-spi
 * Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-netty-client-internal
@@ -1642,6 +1644,7 @@ This product bundles AWS SDK for Java.
 
 * Maven group:artifact IDs: software.amazon.awssdk:annotations
 * Maven group:artifact IDs: software.amazon.awssdk:apache-client
+* Maven group:artifact IDs: software.amazon.awssdk:apache5-client
 * Maven group:artifact IDs: software.amazon.awssdk:arns
 * Maven group:artifact IDs: software.amazon.awssdk:auth
 * Maven group:artifact IDs: software.amazon.awssdk:aws-core

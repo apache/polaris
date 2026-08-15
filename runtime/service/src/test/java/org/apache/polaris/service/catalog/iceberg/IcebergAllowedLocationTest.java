@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.GenericStatisticsFile;
 import org.apache.iceberg.ImmutableGenericPartitionStatisticsFile;
@@ -61,6 +63,7 @@ import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
+import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
@@ -70,11 +73,13 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 
 public class IcebergAllowedLocationTest {
   private static final String namespace = "ns";
@@ -728,6 +733,76 @@ public class IcebergAllowedLocationTest {
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
+  }
+
+  private void updateNamespaceProperties(TestServices services, Map<String, String> updates) {
+    UpdateNamespacePropertiesRequest.Builder request = UpdateNamespacePropertiesRequest.builder();
+    updates.forEach(request::update);
+    try (Response response =
+        services
+            .restApi()
+            .updateProperties(
+                catalog,
+                namespace,
+                request.build(),
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  void testNamespacePropertyUpdateValidatesLocationOnlyWhenItChanges(@TempDir Path tmpDir) {
+    AtomicBoolean counting = new AtomicBoolean(false);
+    AtomicInteger listEntitiesCalls = new AtomicInteger();
+
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE"),
+                    "ALLOW_NAMESPACE_CUSTOM_LOCATION",
+                    "true",
+                    OPTIMIZED_SIBLING_CHECK.key(),
+                    "false"))
+            .metaStoreManagerDecorator(
+                msm -> {
+                  PolarisMetaStoreManager spy = Mockito.spy(msm);
+                  Mockito.doAnswer(
+                          invocation -> {
+                            if (counting.get()) {
+                              listEntitiesCalls.incrementAndGet();
+                            }
+                            return invocation.callRealMethod();
+                          })
+                      .when(spy)
+                      .listEntities(
+                          Mockito.any(),
+                          Mockito.any(),
+                          Mockito.any(),
+                          Mockito.any(),
+                          Mockito.any());
+                  return spy;
+                })
+            .build();
+
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    String namespaceLocation = String.format("%s/%s/%s", catalogLocation, catalog, namespace);
+    createNamespace(services, namespaceLocation);
+
+    counting.set(true);
+
+    updateNamespaceProperties(services, Map.of("owner", "bob"));
+    assertThat(listEntitiesCalls.get()).isZero();
+
+    listEntitiesCalls.set(0);
+    updateNamespaceProperties(services, Map.of("location", namespaceLocation + "_moved"));
+    assertThat(listEntitiesCalls.get()).isPositive();
   }
 
   private void updateCatalogAllowedLocations(

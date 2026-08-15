@@ -102,6 +102,7 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
@@ -110,6 +111,7 @@ import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewMetadataParser;
+import org.apache.iceberg.view.ViewOperations;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -3050,6 +3052,52 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           Mockito.times(expectedReads));
     } finally {
       catalog.dropTable(TABLE, true);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testViewOperationsDoesNotRefreshAfterCommit(boolean updateMetadataOnCommit) {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    catalog.createNamespace(NS);
+    catalog
+        .buildView(TABLE)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    ViewOperations ops = catalog.newViewOps(TABLE, updateMetadataOnCommit);
+
+    try (MockedStatic<ViewMetadataParser> mocked =
+        Mockito.mockStatic(ViewMetadataParser.class, Mockito.CALLS_REAL_METHODS)) {
+      ViewMetadata base1 = ops.current();
+      mocked.verify(() -> ViewMetadataParser.read(Mockito.any(InputFile.class)), Mockito.times(1));
+
+      ViewMetadata base2 = ops.refresh();
+      mocked.verify(() -> ViewMetadataParser.read(Mockito.any(InputFile.class)), Mockito.times(1));
+
+      Assertions.assertThat(base1.metadataFileLocation()).isEqualTo(base2.metadataFileLocation());
+
+      ViewMetadata newMetadata =
+          ViewMetadata.buildFrom(base2).setProperties(Map.of("new_prop", "new_value")).build();
+      ops.commit(base2, newMetadata);
+      mocked.verify(() -> ViewMetadataParser.read(Mockito.any(InputFile.class)), Mockito.times(1));
+
+      ops.current();
+      int expectedReads = updateMetadataOnCommit ? 1 : 2;
+      mocked.verify(
+          () -> ViewMetadataParser.read(Mockito.any(InputFile.class)),
+          Mockito.times(expectedReads));
+      ops.refresh();
+      mocked.verify(
+          () -> ViewMetadataParser.read(Mockito.any(InputFile.class)),
+          Mockito.times(expectedReads));
+    } finally {
+      catalog.dropView(TABLE);
     }
   }
 

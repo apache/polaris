@@ -47,7 +47,7 @@ public final class EventToJsonMapper {
     rootNode.put("timestamp", event.metadata().timestamp().toString());
     event
         .attributes()
-        .get(EventAttributes.RENAME_TABLE_REQUEST)
+        .getOptional(EventAttributes.RENAME_TABLE_REQUEST)
         .ifPresent(
             renameTableRequest -> {
               rootNode.set(
@@ -58,34 +58,34 @@ public final class EventToJsonMapper {
             });
     event
         .attributes()
-        .get(EventAttributes.TABLE_NAME)
+        .getOptional(EventAttributes.TABLE_NAME)
         .ifPresent(name -> rootNode.put("table_name", name));
     event
         .attributes()
-        .get(EventAttributes.NAMESPACE)
+        .getOptional(EventAttributes.NAMESPACE)
         .map(Namespace::levels)
         .ifPresent(namespace -> rootNode.set("namespace", MAPPER.valueToTree(namespace)));
     event
         .attributes()
-        .get(EventAttributes.TABLE_IDENTIFIER)
-        .map((id) -> tableIdToList(id))
+        .getOptional(EventAttributes.TABLE_IDENTIFIER)
+        .map(this::tableIdToList)
         .ifPresent(idAsList -> rootNode.set("table_identifier", MAPPER.valueToTree(idAsList)));
     event
         .attributes()
-        .get(EventAttributes.VIEW_IDENTIFIER)
-        .map((id) -> tableIdToList(id))
+        .getOptional(EventAttributes.VIEW_IDENTIFIER)
+        .map(this::tableIdToList)
         .ifPresent(idAsList -> rootNode.set("view_identifier", MAPPER.valueToTree(idAsList)));
     event
         .attributes()
-        .get(EventAttributes.VIEW_NAME)
+        .getOptional(EventAttributes.VIEW_NAME)
         .ifPresent(name -> rootNode.put("view_name", name));
     event
         .attributes()
-        .get(EventAttributes.NAMESPACE_NAME)
+        .getOptional(EventAttributes.NAMESPACE_NAME)
         .ifPresent(id -> rootNode.put("namespace_name", id));
     event
         .attributes()
-        .get(EventAttributes.CATALOG_NAME)
+        .getOptional(EventAttributes.CATALOG_NAME)
         .ifPresent(id -> rootNode.put("catalog_name", id));
     rootNode.put("realm_id", event.metadata().realmId());
     event

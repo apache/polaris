@@ -38,7 +38,17 @@ import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
+import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
+import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
+import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
+import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
+import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
+import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
+import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
+import org.apache.polaris.core.semantic.exceptions.SemanticModelVersionMismatchException;
 import org.jboss.logmanager.Level;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -109,6 +119,32 @@ public class ExceptionMapperTest {
         mapper.toResponse(new PolarisServiceUnavailableException(3, "transient conflict"));
     assertThat(response.getStatus()).isEqualTo(503);
     assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("3");
+  }
+
+  @ParameterizedTest
+  @MethodSource("polarisExceptionStatusCodes")
+  public void testPolarisExceptionStatusCodes(PolarisException exception, int expectedStatus) {
+    assertThat(exception.httpStatusCode()).isEqualTo(expectedStatus);
+
+    PolarisExceptionMapper mapper = new PolarisExceptionMapper();
+    Response response = mapper.toResponse(exception);
+    assertThat(response.getStatus()).isEqualTo(expectedStatus);
+  }
+
+  static Stream<Arguments> polarisExceptionStatusCodes() {
+    return Stream.of(
+        Arguments.of(new AlreadyExistsException("msg"), 409),
+        Arguments.of(new CommitConflictException("msg"), 409),
+        Arguments.of(new PolarisServiceUnavailableException(0, "msg"), 503),
+        Arguments.of(new InvalidPolicyException("msg"), 400),
+        Arguments.of(new PolicyAttachException("msg"), 400),
+        Arguments.of(new PolicyInUseException("msg"), 400),
+        Arguments.of(new NoSuchPolicyException("msg"), 404),
+        Arguments.of(new PolicyVersionMismatchException("msg"), 409),
+        Arguments.of(new PolicyMappingAlreadyExistsException("msg"), 409),
+        Arguments.of(new NoSuchSemanticModelException("msg"), 404),
+        Arguments.of(new SemanticModelVersionMismatchException("msg"), 409),
+        Arguments.of(new FileIOUnknownHostException("msg", new RuntimeException()), 500));
   }
 
   static Stream<Arguments> testFullExceptionIsLogged() {
