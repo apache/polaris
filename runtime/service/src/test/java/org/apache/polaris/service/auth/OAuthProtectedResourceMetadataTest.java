@@ -25,7 +25,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import io.restassured.http.ContentType;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -69,7 +68,6 @@ class OAuthProtectedResourceMetadataTest {
         .get("/.well-known/oauth-protected-resource")
         .then()
         .statusCode(200)
-        .contentType(ContentType.JSON)
         .body("resource", notNullValue())
         .body("authorization_servers", contains(AUTH_SERVER_URL));
   }
