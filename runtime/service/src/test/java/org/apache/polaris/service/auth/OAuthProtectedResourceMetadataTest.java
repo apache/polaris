@@ -54,6 +54,10 @@ class OAuthProtectedResourceMetadataTest {
           // Required by Quarkus when discovery is disabled; not called by the test since
           // /.well-known/oauth-protected-resource is unauthenticated.
           Map.entry("quarkus.oidc.jwks-path", "protocol/openid-connect/certs"),
+          // Defer JWKS loading to first authenticated request so startup does not attempt to
+          // fetch JWKS from the test auth-server-url. Without this the tenant stays "not ready"
+          // and ResourceMetadataHandler never registers the route.
+          Map.entry("quarkus.oidc.jwks.resolve-early", "false"),
           Map.entry("quarkus.oidc.resource-metadata.enabled", "true"),
           Map.entry("quarkus.oidc.resource-metadata.authorization-server", AUTH_SERVER_URL));
     }
