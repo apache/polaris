@@ -19,9 +19,6 @@
 package org.apache.polaris.service.lineage;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.service.lineage.api.OpenLineageIngestProvider;
-import org.apache.polaris.service.lineage.api.OpenLineageIngestRequest;
-import org.apache.polaris.service.lineage.api.OpenLineageIngestResult;
 
 /**
  * Default no-op implementation of {@link OpenLineageIngestProvider}. Accepts and discards every

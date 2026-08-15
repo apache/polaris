@@ -543,9 +543,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If true, the OpenLineage ingest endpoints are enabled and advertised to clients in "
                   + "the catalog configuration response during endpoint discovery. If false, the "
-                  + "endpoints return 404 Not Found and are not advertised. The routes are always "
-                  + "mounted when the OpenLineage extension is assembled into the server; this flag "
-                  + "is the runtime switch that turns the feature on or off.")
+                  + "endpoints return 501 Not Implemented and are not advertised. The routes are "
+                  + "always mounted when the OpenLineage extension is assembled into the server; "
+                  + "this flag is the runtime switch that turns the feature on or off.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 

@@ -45,9 +45,10 @@ import org.eclipse.microprofile.faulttolerance.Timeout;
  * client-side rewriting. Exposes single-event ingest ({@code POST /api/openlineage/v1/lineage}) and
  * batch ingest ({@code POST /api/openlineage/v1/lineage/batch}).
  *
- * <p>The body is parsed into a {@link PolarisLineageEvent} which Jackson resolves to one of {@code
- * OfRunEvent} / {@code OfJobEvent} / {@code OfDatasetEvent} based on the {@code schemaURL} field.
- * Unrecognized {@code schemaURL} values fall back to {@code RunEvent}, matching Marquez behavior.
+ * <p>The body is parsed into a {@link PolarisLineageEvent} whose custom deserializer resolves the
+ * wrapped event to one of {@code RunEvent} / {@code JobEvent} / {@code DatasetEvent} based on the
+ * {@code schemaURL} field. Unrecognized {@code schemaURL} values fall back to {@code RunEvent},
+ * matching Marquez behavior.
  *
  * <p>This resource is hand-written rather than generated from the OpenLineage JSON Schema because
  * the OpenAPI generator's Java template does not faithfully translate the spec's {@code oneOf} over
@@ -75,7 +76,7 @@ public class PolarisOpenLineageApi {
           RealmContext realmContext,
       @Context @MeterTag(key = "principal", expression = "userPrincipal")
           SecurityContext securityContext) {
-    return service.sendLineageEvent(event, realmContext, securityContext);
+    return service.sendLineageEvent(event);
   }
 
   @POST
@@ -90,6 +91,6 @@ public class PolarisOpenLineageApi {
           RealmContext realmContext,
       @Context @MeterTag(key = "principal", expression = "userPrincipal")
           SecurityContext securityContext) {
-    return service.sendLineageEventBatch(events, realmContext, securityContext);
+    return service.sendLineageEventBatch(events);
   }
 }

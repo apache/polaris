@@ -21,16 +21,12 @@ package org.apache.polaris.service.lineage;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.lineage.api.OpenLineageBatchIngestResponse;
-import org.apache.polaris.service.lineage.api.OpenLineageIngestProvider;
-import org.apache.polaris.service.lineage.api.OpenLineageIngestRequest;
-import org.apache.polaris.service.lineage.api.OpenLineageIngestResult;
 import org.apache.polaris.service.lineage.api.PolarisLineageEvent;
 import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
 
@@ -47,45 +43,46 @@ import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
  * single event in / single result out.
  *
  * <p>When {@link FeatureConfiguration#ENABLE_OPENLINEAGE_INGEST} is disabled for the realm, both
- * endpoints return {@code 404 Not Found} without invoking the provider. The routes stay mounted
- * whenever the extension is assembled, so this flag is the runtime switch that turns ingest on or
- * off (and it also gates whether the endpoints are advertised during discovery).
+ * endpoints return {@code 501 Not Implemented} without invoking the provider. The routes stay
+ * mounted whenever the extension is assembled, so this flag is the runtime switch that turns ingest
+ * on or off (and it also gates whether the endpoints are advertised during discovery).
+ *
+ * <p>Request-scoped context is injected via {@link CallContext} rather than threaded through the
+ * {@link PolarisOpenLineageApiService} methods.
  */
 @RequestScoped
 public class OpenLineageAdapter implements PolarisOpenLineageApiService {
 
   private final OpenLineageIngestProvider provider;
+  private final CallContext callContext;
   private final RealmConfig realmConfig;
 
   @Inject
-  public OpenLineageAdapter(OpenLineageIngestProvider provider, RealmConfig realmConfig) {
+  public OpenLineageAdapter(OpenLineageIngestProvider provider, CallContext callContext) {
     this.provider = provider;
-    this.realmConfig = realmConfig;
+    this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
   }
 
   @Override
-  public Response sendLineageEvent(
-      PolarisLineageEvent event, RealmContext realmContext, SecurityContext securityContext) {
+  public Response sendLineageEvent(PolarisLineageEvent event) {
     if (!openLineageEnabled()) {
-      return Response.status(Response.Status.NOT_FOUND).build();
+      return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
-    OpenLineageIngestResult result = ingestOne(event, realmContext);
+    OpenLineageIngestResult result = ingestOne(event);
     return toResponse(result);
   }
 
   @Override
-  public Response sendLineageEventBatch(
-      List<PolarisLineageEvent> events,
-      RealmContext realmContext,
-      SecurityContext securityContext) {
+  public Response sendLineageEventBatch(List<PolarisLineageEvent> events) {
     if (!openLineageEnabled()) {
-      return Response.status(Response.Status.NOT_FOUND).build();
+      return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
     int successful = 0;
     List<OpenLineageBatchIngestResponse.FailedEvent> failed = new ArrayList<>();
 
     for (int i = 0; i < events.size(); i++) {
-      OpenLineageIngestResult result = ingestOne(events.get(i), realmContext);
+      OpenLineageIngestResult result = ingestOne(events.get(i));
       switch (result) {
         case ACCEPTED -> successful++;
         case REJECTED ->
@@ -118,9 +115,10 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
     return realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST);
   }
 
-  private OpenLineageIngestResult ingestOne(PolarisLineageEvent event, RealmContext realmContext) {
+  private OpenLineageIngestResult ingestOne(PolarisLineageEvent event) {
     OpenLineageIngestRequest request =
-        new OpenLineageIngestRequest(event.event(), realmContext.getRealmIdentifier());
+        new OpenLineageIngestRequest(
+            event.event(), callContext.getRealmContext().getRealmIdentifier());
     return provider.ingest(request);
   }
 

@@ -29,11 +29,9 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.lineage.api.OpenLineageBatchIngestResponse;
-import org.apache.polaris.service.lineage.api.OpenLineageIngestProvider;
-import org.apache.polaris.service.lineage.api.OpenLineageIngestRequest;
-import org.apache.polaris.service.lineage.api.OpenLineageIngestResult;
 import org.apache.polaris.service.lineage.api.PolarisLineageEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,49 +52,54 @@ class OpenLineageAdapterTest {
   private OpenLineageIngestProvider provider;
   private RealmConfig realmConfig;
   private OpenLineageAdapter adapter;
-  private RealmContext realmContext;
 
   @BeforeEach
   void setUp() {
     provider = mock(OpenLineageIngestProvider.class);
     realmConfig = mock(RealmConfig.class);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST)).thenReturn(true);
-    adapter = new OpenLineageAdapter(provider, realmConfig);
-    realmContext = mock(RealmContext.class);
+
+    RealmContext realmContext = mock(RealmContext.class);
     when(realmContext.getRealmIdentifier()).thenReturn("test-realm");
+
+    CallContext callContext = mock(CallContext.class);
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
+    when(callContext.getRealmContext()).thenReturn(realmContext);
+
+    adapter = new OpenLineageAdapter(provider, callContext);
   }
 
   // The underlying OpenLineage event is irrelevant to response mapping / aggregation (the provider
   // is mocked), so a wrapper around a null event keeps these tests focused on the adapter logic.
   private static PolarisLineageEvent event() {
-    return new PolarisLineageEvent.OfRunEvent(null);
+    return new PolarisLineageEvent(null);
   }
 
   @Test
   void acceptedMapsTo201() {
     when(provider.ingest(any())).thenReturn(OpenLineageIngestResult.ACCEPTED);
-    Response response = adapter.sendLineageEvent(event(), realmContext, null);
+    Response response = adapter.sendLineageEvent(event());
     assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
   }
 
   @Test
   void rejectedMapsTo400() {
     when(provider.ingest(any())).thenReturn(OpenLineageIngestResult.REJECTED);
-    Response response = adapter.sendLineageEvent(event(), realmContext, null);
+    Response response = adapter.sendLineageEvent(event());
     assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
   }
 
   @Test
   void unavailableMapsTo503() {
     when(provider.ingest(any())).thenReturn(OpenLineageIngestResult.UNAVAILABLE);
-    Response response = adapter.sendLineageEvent(event(), realmContext, null);
+    Response response = adapter.sendLineageEvent(event());
     assertThat(response.getStatus()).isEqualTo(Response.Status.SERVICE_UNAVAILABLE.getStatusCode());
   }
 
   @Test
   void realmIdentifierIsPassedToProvider() {
     when(provider.ingest(any())).thenReturn(OpenLineageIngestResult.ACCEPTED);
-    adapter.sendLineageEvent(event(), realmContext, null);
+    adapter.sendLineageEvent(event());
 
     ArgumentCaptor<OpenLineageIngestRequest> captor =
         ArgumentCaptor.forClass(OpenLineageIngestRequest.class);
@@ -108,8 +111,7 @@ class OpenLineageAdapterTest {
   void batchAllAcceptedIsSuccess() {
     when(provider.ingest(any())).thenReturn(OpenLineageIngestResult.ACCEPTED);
 
-    Response response =
-        adapter.sendLineageEventBatch(List.of(event(), event(), event()), realmContext, null);
+    Response response = adapter.sendLineageEventBatch(List.of(event(), event(), event()));
 
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     OpenLineageBatchIngestResponse body = (OpenLineageBatchIngestResponse) response.getEntity();
@@ -129,8 +131,7 @@ class OpenLineageAdapterTest {
             OpenLineageIngestResult.REJECTED,
             OpenLineageIngestResult.UNAVAILABLE);
 
-    Response response =
-        adapter.sendLineageEventBatch(List.of(event(), event(), event()), realmContext, null);
+    Response response = adapter.sendLineageEventBatch(List.of(event(), event(), event()));
 
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     OpenLineageBatchIngestResponse body = (OpenLineageBatchIngestResponse) response.getEntity();
@@ -156,8 +157,7 @@ class OpenLineageAdapterTest {
     when(provider.ingest(any()))
         .thenReturn(OpenLineageIngestResult.REJECTED, OpenLineageIngestResult.UNAVAILABLE);
 
-    Response response =
-        adapter.sendLineageEventBatch(List.of(event(), event()), realmContext, null);
+    Response response = adapter.sendLineageEventBatch(List.of(event(), event()));
 
     OpenLineageBatchIngestResponse body = (OpenLineageBatchIngestResponse) response.getEntity();
     assertThat(body.status()).isEqualTo(OpenLineageBatchIngestResponse.Status.FAILURE);
@@ -169,7 +169,7 @@ class OpenLineageAdapterTest {
 
   @Test
   void emptyBatchIsSuccessAndDoesNotCallProvider() {
-    Response response = adapter.sendLineageEventBatch(List.of(), realmContext, null);
+    Response response = adapter.sendLineageEventBatch(List.of());
 
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     OpenLineageBatchIngestResponse body = (OpenLineageBatchIngestResponse) response.getEntity();
@@ -182,23 +182,22 @@ class OpenLineageAdapterTest {
   }
 
   @Test
-  void disabledFlagReturns404AndDoesNotCallProvider() {
+  void disabledFlagReturns501AndDoesNotCallProvider() {
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST)).thenReturn(false);
 
-    Response response = adapter.sendLineageEvent(event(), realmContext, null);
+    Response response = adapter.sendLineageEvent(event());
 
-    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_IMPLEMENTED.getStatusCode());
     verify(provider, never()).ingest(any());
   }
 
   @Test
-  void disabledFlagBatchReturns404AndDoesNotCallProvider() {
+  void disabledFlagBatchReturns501AndDoesNotCallProvider() {
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST)).thenReturn(false);
 
-    Response response =
-        adapter.sendLineageEventBatch(List.of(event(), event()), realmContext, null);
+    Response response = adapter.sendLineageEventBatch(List.of(event(), event()));
 
-    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+    assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_IMPLEMENTED.getStatusCode());
     verify(provider, never()).ingest(any());
   }
 }

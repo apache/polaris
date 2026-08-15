@@ -18,10 +18,8 @@
  */
 package org.apache.polaris.service.lineage.api;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.openlineage.server.OpenLineage;
 
 /**
@@ -37,76 +35,33 @@ import io.openlineage.server.OpenLineage;
  * and {@code DatasetEvent}, discriminated by the value of the {@code schemaURL} field. The official
  * {@code openlineage-java} library ships POJOs for these three event types in {@link
  * io.openlineage.server.OpenLineage} but does not annotate them for polymorphic JSON
- * deserialization. This class provides that polymorphism on top.
+ * deserialization. This class wraps the underlying event and delegates the {@code schemaURL}-keyed
+ * dispatch to {@link PolarisLineageEventDeserializer}.
  *
  * <p>Wrappers compose the OpenLineage event by reference rather than extending it because the
  * {@code OpenLineage.*Event} classes are {@code final}. {@link #event()} returns the underlying
  * event for follow-up code that needs typed access to fields (inputs, outputs, columnLineage facet,
- * etc.).
+ * etc.), and is also the JSON value ({@link JsonValue}) so serialization round-trips to the raw
+ * OpenLineage event carrying its {@code schemaURL}.
  *
- * <p>This pattern follows Marquez (the OpenLineage reference server), which uses the same
- * {@code @JsonTypeInfo} + {@code @JsonTypeIdResolver} discrimination on {@code schemaURL}.
+ * <p>This pattern follows Marquez (the OpenLineage reference server), which similarly dispatches on
+ * {@code schemaURL}.
  */
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.CUSTOM,
-    include = JsonTypeInfo.As.EXISTING_PROPERTY,
-    property = "schemaURL",
-    defaultImpl = PolarisLineageEvent.OfRunEvent.class,
-    visible = true)
-@JsonTypeIdResolver(LineageEventTypeResolver.class)
-public abstract sealed class PolarisLineageEvent
-    permits PolarisLineageEvent.OfRunEvent,
-        PolarisLineageEvent.OfJobEvent,
-        PolarisLineageEvent.OfDatasetEvent {
+@JsonDeserialize(using = PolarisLineageEventDeserializer.class)
+public final class PolarisLineageEvent {
 
-  /** Returns the underlying OpenLineage event. */
-  public abstract OpenLineage.BaseEvent event();
+  private final OpenLineage.BaseEvent event;
 
-  /** Wraps an {@link OpenLineage.RunEvent}. */
-  public static final class OfRunEvent extends PolarisLineageEvent {
-    private final OpenLineage.RunEvent event;
-
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public OfRunEvent(OpenLineage.RunEvent event) {
-      this.event = event;
-    }
-
-    @JsonValue
-    @Override
-    public OpenLineage.RunEvent event() {
-      return event;
-    }
+  public PolarisLineageEvent(OpenLineage.BaseEvent event) {
+    this.event = event;
   }
 
-  /** Wraps an {@link OpenLineage.JobEvent}. */
-  public static final class OfJobEvent extends PolarisLineageEvent {
-    private final OpenLineage.JobEvent event;
-
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public OfJobEvent(OpenLineage.JobEvent event) {
-      this.event = event;
-    }
-
-    @JsonValue
-    @Override
-    public OpenLineage.JobEvent event() {
-      return event;
-    }
-  }
-
-  /** Wraps an {@link OpenLineage.DatasetEvent}. */
-  public static final class OfDatasetEvent extends PolarisLineageEvent {
-    private final OpenLineage.DatasetEvent event;
-
-    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-    public OfDatasetEvent(OpenLineage.DatasetEvent event) {
-      this.event = event;
-    }
-
-    @JsonValue
-    @Override
-    public OpenLineage.DatasetEvent event() {
-      return event;
-    }
+  /**
+   * Returns the underlying OpenLineage event ({@code RunEvent}, {@code JobEvent}, or {@code
+   * DatasetEvent}).
+   */
+  @JsonValue
+  public OpenLineage.BaseEvent event() {
+    return event;
   }
 }

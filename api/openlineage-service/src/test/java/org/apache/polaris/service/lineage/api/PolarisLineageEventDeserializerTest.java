@@ -21,22 +21,24 @@ package org.apache.polaris.service.lineage.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.openlineage.server.OpenLineage;
 import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for the {@code schemaURL} → event-variant dispatch performed by {@link
- * LineageEventTypeResolver} when Jackson deserializes a {@link PolarisLineageEvent}.
+ * PolarisLineageEventDeserializer} when Jackson deserializes a {@link PolarisLineageEvent}, plus
+ * the serialization round-trip enabled by {@link PolarisLineageEvent#event()}.
  *
- * <p>This is the only real logic in the ingest path: the resolver inspects the trailing segment of
- * {@code schemaURL} to decide which wrapper (and therefore which {@link OpenLineage} event type)
- * the body deserializes into. The no-op integration tests return {@code 201} for every well-formed
- * event and so cannot distinguish a correct dispatch from a silent fallback; these tests pin the
- * dispatch itself so a follow-up PR that starts consuming {@link PolarisLineageEvent#event()}
- * cannot regress it unnoticed.
+ * <p>Dispatch is the only real logic in the ingest path: the deserializer inspects the trailing
+ * segment of {@code schemaURL} to decide which {@link OpenLineage} event type the body deserializes
+ * into. The no-op integration tests return {@code 201} for every well-formed event and so cannot
+ * distinguish a correct dispatch from a silent fallback; these tests pin the dispatch itself so a
+ * follow-up PR that starts consuming {@link PolarisLineageEvent#event()} cannot regress it
+ * unnoticed. The serialization tests guard the custom Jackson wiring in the other direction.
  */
-class LineageEventTypeResolverTest {
+class PolarisLineageEventDeserializerTest {
 
   private static final String SCHEMA_BASE = "https://openlineage.io/spec/2-0-2/OpenLineage.json";
 
@@ -113,36 +115,51 @@ class LineageEventTypeResolverTest {
 
   @Test
   void runEventSchemaUrlDispatchesToRunEvent() throws Exception {
-    PolarisLineageEvent event = parse(RUN_EVENT);
-    assertThat(event).isInstanceOf(PolarisLineageEvent.OfRunEvent.class);
-    assertThat(event.event()).isInstanceOf(OpenLineage.RunEvent.class);
+    assertThat(parse(RUN_EVENT).event()).isInstanceOf(OpenLineage.RunEvent.class);
   }
 
   @Test
   void jobEventSchemaUrlDispatchesToJobEvent() throws Exception {
-    PolarisLineageEvent event = parse(JOB_EVENT);
-    assertThat(event).isInstanceOf(PolarisLineageEvent.OfJobEvent.class);
-    assertThat(event.event()).isInstanceOf(OpenLineage.JobEvent.class);
+    assertThat(parse(JOB_EVENT).event()).isInstanceOf(OpenLineage.JobEvent.class);
   }
 
   @Test
   void datasetEventSchemaUrlDispatchesToDatasetEvent() throws Exception {
-    PolarisLineageEvent event = parse(DATASET_EVENT);
-    assertThat(event).isInstanceOf(PolarisLineageEvent.OfDatasetEvent.class);
-    assertThat(event.event()).isInstanceOf(OpenLineage.DatasetEvent.class);
+    assertThat(parse(DATASET_EVENT).event()).isInstanceOf(OpenLineage.DatasetEvent.class);
   }
 
   @Test
   void unrecognizedSchemaUrlFallsBackToRunEvent() throws Exception {
-    PolarisLineageEvent event = parse(UNKNOWN_SCHEMA_URL_EVENT);
-    assertThat(event).isInstanceOf(PolarisLineageEvent.OfRunEvent.class);
-    assertThat(event.event()).isInstanceOf(OpenLineage.RunEvent.class);
+    assertThat(parse(UNKNOWN_SCHEMA_URL_EVENT).event()).isInstanceOf(OpenLineage.RunEvent.class);
   }
 
   @Test
   void missingSchemaUrlFallsBackToRunEvent() throws Exception {
-    PolarisLineageEvent event = parse(MISSING_SCHEMA_URL_EVENT);
-    assertThat(event).isInstanceOf(PolarisLineageEvent.OfRunEvent.class);
-    assertThat(event.event()).isInstanceOf(OpenLineage.RunEvent.class);
+    assertThat(parse(MISSING_SCHEMA_URL_EVENT).event()).isInstanceOf(OpenLineage.RunEvent.class);
+  }
+
+  @Test
+  void runEventRoundTripsToJsonCarryingSchemaUrl() throws Exception {
+    PolarisLineageEvent parsed = parse(RUN_EVENT);
+    JsonNode serialized = MAPPER.valueToTree(parsed);
+
+    // @JsonValue means the wrapper serializes as the raw OpenLineage event, not a nested object.
+    assertThat(serialized.path("schemaURL").asText()).endsWith("/RunEvent");
+    assertThat(serialized.path("run").path("runId").asText())
+        .isEqualTo("123e4567-e89b-12d3-a456-426614174000");
+    assertThat(
+            MAPPER.readValue(MAPPER.writeValueAsString(parsed), PolarisLineageEvent.class).event())
+        .isInstanceOf(OpenLineage.RunEvent.class);
+  }
+
+  @Test
+  void datasetEventRoundTripsToJsonCarryingSchemaUrl() throws Exception {
+    PolarisLineageEvent parsed = parse(DATASET_EVENT);
+    JsonNode serialized = MAPPER.valueToTree(parsed);
+
+    assertThat(serialized.path("schemaURL").asText()).endsWith("/DatasetEvent");
+    assertThat(
+            MAPPER.readValue(MAPPER.writeValueAsString(parsed), PolarisLineageEvent.class).event())
+        .isInstanceOf(OpenLineage.DatasetEvent.class);
   }
 }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage.api;
+package org.apache.polaris.service.lineage;
 
 import io.openlineage.server.OpenLineage;
 

@@ -34,7 +34,7 @@ import org.apache.polaris.service.catalog.spi.CatalogConfigEndpointContributor;
  *
  * <p>Discovered as a CDI {@link CatalogConfigEndpointContributor} bean. Advertisement is gated on
  * {@link FeatureConfiguration#ENABLE_OPENLINEAGE_INGEST}. The routes are always mounted while this
- * extension is assembled into the server, but return {@code 404 Not Found} when the flag is
+ * extension is assembled into the server, but return {@code 501 Not Implemented} when the flag is
  * disabled (see {@code OpenLineageAdapter}), so the flag consistently gates both advertisement and
  * request handling.
  */

@@ -16,19 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.lineage.api;
+package org.apache.polaris.service.lineage;
 
 /**
- * Outcome returned by {@link OpenLineageIngestProvider}. The adapter maps this to the appropriate
- * HTTP status; provider implementations do not construct JAX-RS responses.
+ * Replacement point for OpenLineage ingest behavior.
+ *
+ * <p>Downstream deployments that have their own OpenLineage persistence path, forwarding backend,
+ * or custom routing logic implement this interface and register it as a CDI bean. The default
+ * implementation is a no-op that accepts and discards every event.
+ *
+ * <p>Implementations must not return JAX-RS types or accept {@code SecurityContext} — HTTP mapping
+ * is the adapter's responsibility. Realm context is available via {@link
+ * OpenLineageIngestRequest#realmId()}.
  */
-public enum OpenLineageIngestResult {
-  /** Event was accepted. Maps to {@code 201 Created}. */
-  ACCEPTED,
+public interface OpenLineageIngestProvider {
 
-  /** Event was rejected (e.g. validation failure). Maps to {@code 400 Bad Request}. */
-  REJECTED,
-
-  /** Ingest backend is not available. Maps to {@code 503 Service Unavailable}. */
-  UNAVAILABLE
+  OpenLineageIngestResult ingest(OpenLineageIngestRequest request);
 }
