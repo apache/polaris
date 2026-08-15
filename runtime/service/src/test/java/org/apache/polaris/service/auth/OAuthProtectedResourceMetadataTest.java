@@ -44,15 +44,18 @@ class OAuthProtectedResourceMetadataTest {
   public static class ResourceMetadataProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of(
+      return Map.ofEntries(
           // Enable the OIDC tenant so the ResourceMetadataHandler registers the route.
-          "quarkus.oidc.tenant-enabled", "true",
+          Map.entry("quarkus.oidc.tenant-enabled", "true"),
           // Disable OIDC discovery so Quarkus does not attempt to contact the auth server
           // at startup. The well-known endpoint is public and requires no JWT validation.
-          "quarkus.oidc.discovery-enabled", "false",
-          "quarkus.oidc.auth-server-url", "https://auth.example.com/realms/polaris",
-          "quarkus.oidc.resource-metadata.enabled", "true",
-          "quarkus.oidc.resource-metadata.authorization-server", AUTH_SERVER_URL);
+          Map.entry("quarkus.oidc.discovery-enabled", "false"),
+          Map.entry("quarkus.oidc.auth-server-url", "https://auth.example.com/realms/polaris"),
+          // Required by Quarkus when discovery is disabled; not called by the test since
+          // /.well-known/oauth-protected-resource is unauthenticated.
+          Map.entry("quarkus.oidc.jwks-path", "protocol/openid-connect/certs"),
+          Map.entry("quarkus.oidc.resource-metadata.enabled", "true"),
+          Map.entry("quarkus.oidc.resource-metadata.authorization-server", AUTH_SERVER_URL));
     }
   }
 
