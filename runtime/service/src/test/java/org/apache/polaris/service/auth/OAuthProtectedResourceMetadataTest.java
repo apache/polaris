@@ -19,12 +19,12 @@
 package org.apache.polaris.service.auth;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import io.restassured.path.json.JsonPath;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -64,11 +64,18 @@ class OAuthProtectedResourceMetadataTest {
 
   @Test
   void wellKnownEndpointAdvertisesAuthorizationServer() {
-    given()
-        .get("/.well-known/oauth-protected-resource")
-        .then()
-        .statusCode(200)
-        .body("resource", notNullValue())
-        .body("authorization_servers", contains(AUTH_SERVER_URL));
+    String body =
+        given()
+            .get("/.well-known/oauth-protected-resource")
+            .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+    JsonPath json = JsonPath.from(body);
+    assertThat(json.getString("resource")).isNotNull();
+    assertThat(json.getList("authorization_servers", String.class))
+        .containsExactly(AUTH_SERVER_URL);
   }
 }
