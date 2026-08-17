@@ -349,6 +349,7 @@ class SetupCommand(Command):
                         "tenant_id": c.storage_config_info.tenant_id,
                         "multi_tenant_app_name": c.storage_config_info.multi_tenant_app_name,
                         "consent_url": c.storage_config_info.consent_url,
+                        "hierarchical": c.storage_config_info.hierarchical,
                     }
                     catalog_info.update(
                         {
@@ -817,6 +818,7 @@ class SetupCommand(Command):
             "tenant_id",
             "multi_tenant_app_name",
             "consent_url",
+            "hierarchical",
             "service_account",
             "endpoint",
             "endpoint_internal",

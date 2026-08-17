@@ -65,6 +65,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Fixed JDBC persistence under `SERIALIZABLE` isolation (e.g. CockroachDB default) so that a concurrent entity create that loses a unique-name race no longer returns the phantom new entity as a successful create. The conflicting row is now reported as `ENTITY_ALREADY_EXISTS` instead of fabricating the entity that was not persisted.
 - Python CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
 - Fixed a false-negative in the JDBC optimized location-overlap check (`OPTIMIZED_SIBLING_CHECK`). Ancestor locations stored in `location_without_scheme` without a trailing slash were not matched by the generated ancestor equality terms, allowing nested table/namespace locations to be created under existing prefixes. The query now emits both slash-terminated and non-slash-terminated prefix terms and uses a slash-terminated `LIKE` pattern for descendant matching.
+- Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
 
 ### Commits
 

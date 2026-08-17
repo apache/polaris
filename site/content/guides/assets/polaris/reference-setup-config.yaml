@@ -221,6 +221,10 @@ catalogs:
     multi_tenant_app_name: "QuickstartAzureApp"
     # The URL for OAuth consent.
     consent_url: "https://login.microsoftonline.com/consent"
+    # Set to true if the Azure storage account has a hierarchical namespace (HNS) enabled.
+    # This scopes SAS tokens down to the most specific path.
+    # The value must match the storage account's actual HNS setting.
+    hierarchical: false
     properties:
       catalog: quickstart_catalog_azure
 
