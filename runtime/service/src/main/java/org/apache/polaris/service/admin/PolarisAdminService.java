@@ -66,6 +66,7 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -774,8 +775,18 @@ public class PolarisAdminService {
           }
         case SIGV4:
           {
-            // SigV4 authentication is not based on users provided secrets but based on the
-            // service identity managed by Polaris. Nothing to do here.
+            // Only the static-credentials form carries a secret; role assumption uses the
+            // service identity Polaris manages.
+            SigV4AuthenticationParameters sigV4AuthenticationParametersModel =
+                (SigV4AuthenticationParameters) authenticationParameters;
+            String inlineSecretAccessKey = sigV4AuthenticationParametersModel.getSecretAccessKey();
+            if (inlineSecretAccessKey != null) {
+              SecretReference secretReference =
+                  secretsManager.writeSecret(inlineSecretAccessKey, forEntity);
+              secretReferences.put(
+                  AuthenticationParametersDpo.INLINE_SIGV4_SECRET_ACCESS_KEY_REFERENCE_KEY,
+                  secretReference);
+            }
             break;
           }
         case GCP:

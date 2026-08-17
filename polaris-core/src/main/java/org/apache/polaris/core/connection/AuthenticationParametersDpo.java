@@ -49,6 +49,8 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
 
   public static final String INLINE_CLIENT_SECRET_REFERENCE_KEY = "inlineClientSecretReference";
   public static final String INLINE_BEARER_TOKEN_REFERENCE_KEY = "inlineBearerTokenReference";
+  public static final String INLINE_SIGV4_SECRET_ACCESS_KEY_REFERENCE_KEY =
+      "inlineSigV4SecretAccessKeyReference";
 
   @JsonProperty(value = "authenticationTypeCode")
   private final int authenticationTypeCode;
@@ -96,9 +98,13 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
         config = new ImplicitAuthenticationParametersDpo();
         break;
       case SIGV4:
-        // SigV4 authentication is not secret-based
+        // Secret-based only in the static-credentials form; the role-assumption form has no secret
         SigV4AuthenticationParameters sigV4AuthenticationParametersModel =
             (SigV4AuthenticationParameters) authenticationParameters;
+        SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+            sigV4AuthenticationParametersModel.getRoleArn(),
+            sigV4AuthenticationParametersModel.getAccessKeyId(),
+            sigV4AuthenticationParametersModel.getSecretAccessKey());
         config =
             new SigV4AuthenticationParametersDpo(
                 sigV4AuthenticationParametersModel.getRoleArn(),
@@ -106,7 +112,12 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
                 sigV4AuthenticationParametersModel.getExternalId(),
                 sigV4AuthenticationParametersModel.getSigningRegion(),
                 sigV4AuthenticationParametersModel.getSigningName(),
-                sigV4AuthenticationParametersModel.getSessionPolicy());
+                sigV4AuthenticationParametersModel.getSessionPolicy(),
+                sigV4AuthenticationParametersModel.getAccessKeyId(),
+                // The role-assumption form has no secret, and callers pass no map at all for it
+                secretReferences == null
+                    ? null
+                    : secretReferences.get(INLINE_SIGV4_SECRET_ACCESS_KEY_REFERENCE_KEY));
         break;
       default:
         throw new IllegalStateException(

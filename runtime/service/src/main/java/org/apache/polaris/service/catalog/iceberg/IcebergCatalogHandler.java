@@ -67,6 +67,8 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.StorageCredential;
+import org.apache.iceberg.io.SupportsStorageCredentials;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -446,7 +448,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                       PolarisStorageActions.READ,
                       PolarisStorageActions.WRITE,
                       PolarisStorageActions.LIST),
-                  refreshCredentialsEndpoint)
+                  refreshCredentialsEndpoint,
+                  baseTable.io())
               .build();
         }
         throw notFoundExceptionForTableLikeEntity(
@@ -495,7 +498,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                         PolarisStorageActions.READ,
                         PolarisStorageActions.WRITE,
                         PolarisStorageActions.LIST),
-                    refreshCredentialsEndpoint)
+                    refreshCredentialsEndpoint,
+                    baseTable.io())
                 .build();
           }
           throw notFoundExceptionForTableLikeEntity(
@@ -515,7 +519,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
                   PolarisStorageActions.LIST),
-              refreshCredentialsEndpoint)
+              refreshCredentialsEndpoint,
+              baseTable.io())
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -700,7 +705,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             metadata,
             resolvedMode,
             Set.of(PolarisStorageActions.ALL),
-            refreshCredentialsEndpoint)
+            refreshCredentialsEndpoint,
+            // A staged create has no remote table yet, so there is nothing to forward
+            null)
         .build();
   }
 
@@ -745,7 +752,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
       return buildLoadTableResponseWithDelegationCredentials(
-              identifier, tableMetadata, resolvedMode, actionsRequested, refreshCredentialsEndpoint)
+              identifier,
+              tableMetadata,
+              resolvedMode,
+              actionsRequested,
+              refreshCredentialsEndpoint,
+              baseTable.io())
           .build();
     }
 
@@ -1100,7 +1112,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   tableMetadata,
                   resolvedMode,
                   actionsRequested,
-                  refreshCredentialsEndpoint)
+                  refreshCredentialsEndpoint,
+                  baseTable.io())
               .build();
       return Optional.of(filterResponseToSnapshots(response, snapshots));
     } else if (table instanceof BaseMetadataTable) {
@@ -1117,9 +1130,31 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       TableMetadata tableMetadata,
       Optional<AccessDelegationMode> delegationMode,
       Set<PolarisStorageActions> actions,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      @Nullable FileIO remoteTableIo) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
+
+    if (isFederated
+        && realmConfig().getConfig(FeatureConfiguration.FEDERATED_CATALOG_CREDENTIAL_PASSTHROUGH)
+        && realmConfig()
+            .getConfig(ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, getResolvedCatalogEntity())) {
+      // This catalog's storage configuration describes our storage, not the remote's, so the
+      // allowed-locations check does not apply here.
+      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))) {
+        // Forwarded credentials arrive already scoped by the remote, to the identity Polaris
+        // federates with. Polaris cannot narrow them, so handing them to a principal who was
+        // only granted read would silently widen that principal's access.
+        Preconditions.checkArgument(
+            actions.contains(PolarisStorageActions.WRITE),
+            "Credential passthrough cannot subscope the remote catalog's credentials, so it is "
+                + "only available to principals authorized for write delegation on table %s",
+            tableIdentifier);
+        forwardRemoteStorageCredentials(responseBuilder, tableIdentifier, remoteTableIo);
+      }
+      return responseBuilder;
+    }
+
     PolarisResolvedPathWrapper resolvedStoragePath =
         CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
 
@@ -1170,6 +1205,56 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     return responseBuilder;
+  }
+
+  /**
+   * Copies the credentials the remote catalog issued into the response, prefixes intact.
+   *
+   * <p>Iceberg hands a loaded table's vended credentials to its {@link FileIO} rather than leaving
+   * them on the response, so they are read back off the {@link FileIO} here.
+   */
+  private void forwardRemoteStorageCredentials(
+      LoadTableResponse.Builder responseBuilder,
+      TableIdentifier tableIdentifier,
+      @Nullable FileIO remoteTableIo) {
+    if (!(remoteTableIo instanceof SupportsStorageCredentials credentialedIo)) {
+      LOGGER
+          .atDebug()
+          .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+          .log("Remote table FileIO does not carry storage credentials; none to forward");
+      return;
+    }
+
+    List<StorageCredential> remoteCredentials = credentialedIo.credentials();
+    if (remoteCredentials.isEmpty()) {
+      LOGGER
+          .atDebug()
+          .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+          .log("Remote catalog vended no storage credentials for this table");
+      return;
+    }
+
+    remoteCredentials.forEach(
+        credential ->
+            responseBuilder.addCredential(
+                ImmutableCredential.builder()
+                    .prefix(credential.prefix())
+                    .config(credential.config())
+                    .build()));
+
+    // A client configures its FileIO from the response config, and the storage-credentials list
+    // alone omits the endpoint and region that arrive alongside the keys. Flattening is only
+    // unambiguous for a single credential: the config map is flat, so two credentials sharing a
+    // key would silently overwrite each other and leave the client using one prefix's keys
+    // everywhere. With several, the list is all the client gets.
+    if (remoteCredentials.size() == 1) {
+      responseBuilder.addAllConfig(remoteCredentials.getFirst().config());
+    } else {
+      LOGGER
+          .atDebug()
+          .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+          .log("Remote vended several storage credentials; forwarding the list without flattening");
+    }
   }
 
   private void validateTableLocations(

@@ -37,6 +37,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- SigV4 catalog federation now accepts static credentials (`accessKeyId` / `secretAccessKey`) as an alternative to `roleArn`. This makes SigV4-compatible catalogs that are not AWS reachable, since they have no IAM role to assume and no AWS STS endpoint. The two forms are mutually exclusive, and the secret access key is offloaded to the configured secrets manager rather than stored on the catalog.
+- Federated catalogs can now forward the storage credentials the remote catalog vended instead of minting their own, via the new `FEDERATED_CATALOG_CREDENTIAL_PASSTHROUGH` realm-level feature flag (default off, and requires `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING`). This is required when the remote catalog's storage is not one this Polaris deployment is configured for, or is only reachable with credentials the remote issues. Because the forwarded credentials are scoped by the remote catalog rather than by this deployment, the local allowed-locations check does not apply and is skipped on that path, and Polaris cannot narrow them to the requesting principal — so passthrough is only available to principals authorized for write delegation.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 

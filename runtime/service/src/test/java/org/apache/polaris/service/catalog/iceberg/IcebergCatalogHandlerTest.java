@@ -31,6 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
 import java.util.EnumSet;
@@ -49,6 +50,9 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.StorageCredential;
+import org.apache.iceberg.io.SupportsStorageCredentials;
 import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
@@ -62,10 +66,13 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
@@ -114,6 +121,9 @@ class IcebergCatalogHandlerTest {
       mock(StorageAccessConfigProvider.class);
   private final PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
   private final CatalogHandlerUtils catalogHandlerUtils = mock(CatalogHandlerUtils.class);
+
+  @SuppressWarnings("unchecked")
+  private final Instance<FederatedCatalogFactory> federatedCatalogFactories = mock(Instance.class);
 
   @BeforeEach
   void setUp() {
@@ -164,7 +174,7 @@ class IcebergCatalogHandlerTest {
         .authorizer(authorizer)
         .diagnostics(mock(PolarisDiagnostics.class))
         .credentialManager(mock(PolarisCredentialManager.class))
-        .federatedCatalogFactories(mock(Instance.class))
+        .federatedCatalogFactories(federatedCatalogFactories)
         .prefixParser(mock(CatalogPrefixParser.class))
         .resolverFactory(mock(ResolverFactory.class))
         .localCatalogFactory(localCatalogFactory)
@@ -194,6 +204,51 @@ class IcebergCatalogHandlerTest {
         .overwrite(overwrite)
         .build();
   }
+
+  /** Wires the handler onto a federated catalog whose remote is {@code remoteCatalog}. */
+  @SuppressWarnings("unchecked")
+  private IcebergCatalogHandler newFederatedHandler(Catalog remoteCatalog) {
+    // newHandler() stubs the connection config to null for the local-catalog path, so the
+    // federated stubs go after it. initializeCatalog() runs lazily, by which point they are set.
+    IcebergCatalogHandler handler = newHandler();
+
+    ConnectionConfigInfoDpo connectionConfig = mock(ConnectionConfigInfoDpo.class);
+    when(connectionConfig.getConnectionTypeCode())
+        .thenReturn(ConnectionType.ICEBERG_REST.getCode());
+    when(catalogEntity.getConnectionConfigInfoDpo()).thenReturn(connectionConfig);
+    when(catalogEntity.getPropertiesAsMap()).thenReturn(Map.of());
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_CATALOG_FEDERATION)).thenReturn(true);
+
+    FederatedCatalogFactory factory = mock(FederatedCatalogFactory.class);
+    when(factory.createCatalog(any(), any(), any())).thenReturn(remoteCatalog);
+    Instance<FederatedCatalogFactory> selected = mock(Instance.class);
+    when(selected.isResolvable()).thenReturn(true);
+    when(selected.get()).thenReturn(factory);
+    when(federatedCatalogFactories.select(any(Identifier.Literal.class))).thenReturn(selected);
+
+    return handler;
+  }
+
+  private void enablePassthrough(boolean enabled) {
+    when(realmConfig.getConfig(FeatureConfiguration.FEDERATED_CATALOG_CREDENTIAL_PASSTHROUGH))
+        .thenReturn(enabled);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING),
+            any(CatalogEntity.class)))
+        .thenReturn(true);
+  }
+
+  /** A remote table whose FileIO carries the storage credentials the remote catalog vended. */
+  private static BaseTable remoteTableWithVendedCredentials(StorageCredential... credentials) {
+    BaseTable table = baseTable();
+    CredentialedFileIO io = mock(CredentialedFileIO.class);
+    when(io.credentials()).thenReturn(List.of(credentials));
+    when(table.io()).thenReturn(io);
+    return table;
+  }
+
+  /** Stand-in for the S3FileIO an Iceberg REST client builds. */
+  private interface CredentialedFileIO extends FileIO, SupportsStorageCredentials {}
 
   private static BaseTable baseTable() {
     TableMetadata metadata = mock(TableMetadata.class);
@@ -400,6 +455,161 @@ class IcebergCatalogHandlerTest {
             nullable(PolarisResolvedPathWrapper.class));
     assertThat(operationCaptor.getValue())
         .isEqualTo(PolarisAuthorizableOperation.SET_TABLE_PROPERTIES);
+  }
+
+  /**
+   * With passthrough on, the remote's credentials go to the client as-is. Minting from this
+   * deployment's storage configuration would produce credentials for the wrong storage.
+   */
+  @Test
+  void loadTableForwardsRemoteCredentialsWhenPassthroughEnabled() {
+    StorageCredential remoteCredential =
+        StorageCredential.create(
+            "s3", Map.of("s3.access-key-id", "STS.remote", "s3.endpoint", "https://remote"));
+    BaseTable table = remoteTableWithVendedCredentials(remoteCredential);
+
+    Catalog remoteCatalog = mock(Catalog.class);
+    when(remoteCatalog.loadTable(TABLE2)).thenReturn(table);
+
+    when(accessDelegationModeResolver.resolve(any(), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newFederatedHandler(remoteCatalog);
+    enablePassthrough(true);
+
+    Optional<LoadTableResponse> response =
+        handler.loadTable(TABLE2, null, null, EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+
+    assertThat(response).isPresent();
+    assertThat(response.get().credentials())
+        .singleElement()
+        .satisfies(
+            (Credential c) -> {
+              assertThat(c.prefix()).isEqualTo("s3");
+              assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(remoteCredential.config());
+            });
+    // Also flattened into config: a client configures its FileIO from there
+    assertThat(response.get().config()).containsAllEntriesOf(remoteCredential.config());
+    // Nothing minted locally
+    verify(storageAccessConfigProvider, never())
+        .getStorageAccessConfig(any(), any(), any(), any(), any());
+  }
+
+  /**
+   * Forwarded credentials arrive scoped to the identity Polaris federates with, and Polaris cannot
+   * narrow them. Handing them to a principal granted only read would widen that principal's access,
+   * so the request is refused instead.
+   */
+  @Test
+  void loadTableRefusesPassthroughForReadOnlyPrincipal() {
+    BaseTable table =
+        remoteTableWithVendedCredentials(
+            StorageCredential.create("s3", Map.of("s3.access-key-id", "STS.remote")));
+
+    Catalog remoteCatalog = mock(Catalog.class);
+    when(remoteCatalog.loadTable(TABLE2)).thenReturn(table);
+    when(accessDelegationModeResolver.resolve(any(), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    doThrow(new ForbiddenException("write delegation denied"))
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(),
+            any(),
+            eq(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION),
+            nullable(PolarisResolvedPathWrapper.class),
+            nullable(PolarisResolvedPathWrapper.class));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newFederatedHandler(remoteCatalog);
+    enablePassthrough(true);
+
+    assertThatThrownBy(
+            () ->
+                handler.loadTable(
+                    TABLE2, null, null, EnumSet.of(VENDED_CREDENTIALS), Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("cannot subscope");
+  }
+
+  /** Several credentials are forwarded as a list, but not flattened: flat keys would collide. */
+  @Test
+  void loadTableDoesNotFlattenSeveralRemoteCredentials() {
+    BaseTable table =
+        remoteTableWithVendedCredentials(
+            StorageCredential.create("s3", Map.of("s3.access-key-id", "first")),
+            StorageCredential.create("oss", Map.of("s3.access-key-id", "second")));
+
+    Catalog remoteCatalog = mock(Catalog.class);
+    when(remoteCatalog.loadTable(TABLE2)).thenReturn(table);
+    when(accessDelegationModeResolver.resolve(any(), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newFederatedHandler(remoteCatalog);
+    enablePassthrough(true);
+
+    Optional<LoadTableResponse> response =
+        handler.loadTable(TABLE2, null, null, EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+
+    assertThat(response).isPresent();
+    assertThat(response.get().credentials()).hasSize(2);
+    assertThat(response.get().config()).doesNotContainKey("s3.access-key-id");
+  }
+
+  /**
+   * A remote FileIO that carries no credentials is not an error; there is simply nothing to send.
+   */
+  @Test
+  void loadTableToleratesRemoteFileIoWithoutCredentials() {
+    BaseTable table = baseTable();
+    when(table.io()).thenReturn(mock(FileIO.class));
+
+    Catalog remoteCatalog = mock(Catalog.class);
+    when(remoteCatalog.loadTable(TABLE2)).thenReturn(table);
+    when(accessDelegationModeResolver.resolve(any(), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newFederatedHandler(remoteCatalog);
+    enablePassthrough(true);
+
+    Optional<LoadTableResponse> response =
+        handler.loadTable(TABLE2, null, null, EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+
+    assertThat(response).isPresent();
+    assertThat(response.get().credentials()).isEmpty();
+  }
+
+  /** Passthrough is opt-in; without it a federated catalog keeps minting its own credentials. */
+  @Test
+  void loadTableMintsLocallyWhenPassthroughDisabled() {
+    BaseTable table =
+        remoteTableWithVendedCredentials(
+            StorageCredential.create("s3", Map.of("s3.access-key-id", "STS.remote")));
+
+    Catalog remoteCatalog = mock(Catalog.class);
+    when(remoteCatalog.loadTable(TABLE2)).thenReturn(table);
+
+    when(accessDelegationModeResolver.resolve(any(), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newFederatedHandler(remoteCatalog);
+    enablePassthrough(false);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING),
+            any(CatalogEntity.class)))
+        .thenReturn(true);
+
+    Optional<LoadTableResponse> response =
+        handler.loadTable(TABLE2, null, null, EnumSet.of(VENDED_CREDENTIALS), Optional.empty());
+
+    assertThat(response).isPresent();
+    verify(storageAccessConfigProvider).getStorageAccessConfig(any(), any(), any(), any(), any());
+    assertThat(response.get().credentials())
+        .singleElement()
+        .satisfies((Credential c) -> assertThat(c.prefix()).isEqualTo(TABLE_LOCATION));
   }
 
   /**

@@ -33,6 +33,13 @@ REST implementation), enabling a Polaris service to access table and view entiti
   `ConnectionConfigInfo.AuthenticationParameters`. OAuth2 client credentials, bearer tokens, GCP,
   and AWS SigV4 are supported; choose the scheme the remote service expects.
 
+  SigV4 comes in two forms. Supply `roleArn` for AWS services such as Glue: Polaris uses its own
+  AWS IAM service identity to assume that role through AWS STS. Supply `accessKeyId` and
+  `secretAccessKey` instead for SigV4-compatible catalogs that are not AWS, which have no role to
+  assume and no AWS STS endpoint to reach; the keys are used for signing directly. The two forms
+  are mutually exclusive. The secret access key is offloaded to the configured secrets manager and
+  is never returned by the API.
+
 ## Feature configuration
 
 The catalog federation feature is disabled by default. Enable the necessary feature flag in your application.properties
@@ -41,6 +48,48 @@ file (or equivalent configuration mechanism such as environment variables or a K
 ```properties
 # Enables the federation feature itself
 polaris.features."ENABLE_CATALOG_FEDERATION"=true
+```
+
+## Storage credentials
+
+By default a federated catalog vends storage credentials it mints itself, from the
+`storageConfigInfo` on the Polaris catalog. That is the right behaviour when the remote catalog's
+tables live in storage this Polaris deployment is also configured for.
+
+It does not work when the remote catalog owns the storage. In that case Polaris has no
+configuration describing it, the table locations fall outside this catalog's `allowedLocations`, and
+the remote may only accept credentials it issued itself. Turn on passthrough so the credentials the
+remote vended are handed to the client unchanged:
+
+```properties
+polaris.features."FEDERATED_CATALOG_CREDENTIAL_PASSTHROUGH"=true
+```
+
+This is a realm-level setting and cannot be set per catalog, and it additionally requires
+`ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING`.
+
+Each credential is forwarded with its prefix intact, so a client sees what it would have seen
+talking to the remote catalog directly. Clients must understand the `storage-credentials` field of
+the load-table response, which Iceberg clients have supported since 1.7. Where the remote returns
+several credentials they are forwarded as a list only; a single credential is additionally
+flattened into the response config, which two credentials cannot be without colliding.
+
+Two consequences of the credentials being scoped by the remote rather than by this deployment:
+
+- The local allowed-locations check does not apply and is skipped on this path.
+- Polaris cannot narrow the credentials to the requesting principal's grants, so passthrough is
+  only available to principals authorized for write delegation. A read-only principal requesting
+  vended credentials is refused rather than handed credentials wider than its grants.
+- The credentials expire on the remote's schedule. Polaris does not supply a refresh endpoint for
+  them; a client that needs to refresh must use whatever the remote advertised in its own config.
+
+Polaris only vends when the client asks for it, so the client has to send
+`X-Iceberg-Access-Delegation: vended-credentials`. Worth checking first if reads fail against a
+federated catalog that works when addressed directly: a remote that vends unconditionally will have
+been hiding the missing header. With the Iceberg client, set it as a catalog property:
+
+```
+header.X-Iceberg-Access-Delegation=vended-credentials
 ```
 
 ## Creating a federated REST catalog
