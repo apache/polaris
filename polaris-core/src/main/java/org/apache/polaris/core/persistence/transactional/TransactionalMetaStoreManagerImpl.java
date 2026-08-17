@@ -1202,9 +1202,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         .check(
             newCatalogPath == null
                 || newCatalogPath.isEmpty()
-                || catalogPath == null
-                || catalogPath.isEmpty()
-                || newCatalogPath.get(0).getId() == catalogPath.get(0).getId(),
+                || (catalogPath != null
+                    && !catalogPath.isEmpty()
+                    && newCatalogPath.get(0).getId() == catalogPath.get(0).getId()),
             "cross_catalog_rename_not_supported");
 
     // null is shorthand for saying the path isn't changing
