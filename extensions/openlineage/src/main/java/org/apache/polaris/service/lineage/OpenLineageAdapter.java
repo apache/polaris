@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.lineage.api.OpenLineageBatchIngestResponse;
 import org.apache.polaris.service.lineage.api.PolarisLineageEvent;
 import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
@@ -47,21 +46,19 @@ import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
  * mounted whenever the extension is assembled, so this flag is the runtime switch that turns ingest
  * on or off (and it also gates whether the endpoints are advertised during discovery).
  *
- * <p>Request-scoped context is injected via {@link CallContext} rather than threaded through the
+ * <p>Request-scoped context ({@link RealmConfig}) is injected rather than threaded through the
  * {@link PolarisOpenLineageApiService} methods.
  */
 @RequestScoped
 public class OpenLineageAdapter implements PolarisOpenLineageApiService {
 
   private final OpenLineageIngestProvider provider;
-  private final CallContext callContext;
   private final RealmConfig realmConfig;
 
   @Inject
-  public OpenLineageAdapter(OpenLineageIngestProvider provider, CallContext callContext) {
+  public OpenLineageAdapter(OpenLineageIngestProvider provider, RealmConfig realmConfig) {
     this.provider = provider;
-    this.callContext = callContext;
-    this.realmConfig = callContext.getRealmConfig();
+    this.realmConfig = realmConfig;
   }
 
   @Override
@@ -116,10 +113,7 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
   }
 
   private OpenLineageIngestResult ingestOne(PolarisLineageEvent event) {
-    OpenLineageIngestRequest request =
-        new OpenLineageIngestRequest(
-            event.event(), callContext.getRealmContext().getRealmIdentifier());
-    return provider.ingest(request);
+    return provider.ingest(new OpenLineageIngestRequest(event.event()));
   }
 
   private static Response toResponse(OpenLineageIngestResult result) {

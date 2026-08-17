@@ -23,19 +23,19 @@ import io.openlineage.server.OpenLineage;
 /**
  * Polaris-owned request type passed to {@link OpenLineageIngestProvider}.
  *
- * <p>Carries the already-dispatched OpenLineage event and the realm identifier. Provider
- * implementations do not need to know about the JAX-RS binding, {@link PolarisLineageEvent}
- * wrappers, or {@code schemaURL} fallback semantics — those concerns are resolved before this
- * object is constructed.
+ * <p>Carries the already-dispatched OpenLineage event. Provider implementations do not need to know
+ * about the JAX-RS binding, {@link PolarisLineageEvent} wrappers, or {@code schemaURL} fallback
+ * semantics — those concerns are resolved before this object is constructed. The request is
+ * inherently realm-scoped; a provider that needs realm-specific context can be
+ * {@code @RequestScoped} and inject {@code RealmContext}/{@code CallContext} directly rather than
+ * reading it off this request.
  */
 public final class OpenLineageIngestRequest {
 
   private final OpenLineage.BaseEvent event;
-  private final String realmId;
 
-  public OpenLineageIngestRequest(OpenLineage.BaseEvent event, String realmId) {
+  public OpenLineageIngestRequest(OpenLineage.BaseEvent event) {
     this.event = event;
-    this.realmId = realmId;
   }
 
   /**
@@ -43,10 +43,5 @@ public final class OpenLineageIngestRequest {
    */
   public OpenLineage.BaseEvent event() {
     return event;
-  }
-
-  /** The realm identifier from the ingest request context. */
-  public String realmId() {
-    return realmId;
   }
 }

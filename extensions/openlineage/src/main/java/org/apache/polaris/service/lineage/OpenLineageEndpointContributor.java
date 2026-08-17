@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.lineage;
 
-import com.google.common.collect.ImmutableSet;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -52,6 +51,6 @@ public class OpenLineageEndpointContributor implements CatalogConfigEndpointCont
   public Set<Endpoint> endpoints() {
     return realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST)
         ? OpenLineageEndpoints.OPENLINEAGE_ENDPOINTS
-        : ImmutableSet.of();
+        : Set.of();
   }
 }

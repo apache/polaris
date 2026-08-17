@@ -26,8 +26,9 @@ package org.apache.polaris.service.lineage;
  * implementation is a no-op that accepts and discards every event.
  *
  * <p>Implementations must not return JAX-RS types or accept {@code SecurityContext} — HTTP mapping
- * is the adapter's responsibility. Realm context is available via {@link
- * OpenLineageIngestRequest#realmId()}.
+ * is the adapter's responsibility. Each ingest call is inherently realm-scoped; an implementation
+ * that needs realm-specific context can be {@code @RequestScoped} and inject {@code
+ * RealmContext}/{@code CallContext} directly.
  */
 public interface OpenLineageIngestProvider {
 

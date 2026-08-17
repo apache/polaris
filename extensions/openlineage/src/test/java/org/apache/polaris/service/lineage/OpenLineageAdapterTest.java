@@ -29,13 +29,10 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.lineage.api.OpenLineageBatchIngestResponse;
 import org.apache.polaris.service.lineage.api.PolarisLineageEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 /**
  * Unit tests for {@link OpenLineageAdapter}, which maps provider {@link OpenLineageIngestResult}s
@@ -59,14 +56,7 @@ class OpenLineageAdapterTest {
     realmConfig = mock(RealmConfig.class);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_OPENLINEAGE_INGEST)).thenReturn(true);
 
-    RealmContext realmContext = mock(RealmContext.class);
-    when(realmContext.getRealmIdentifier()).thenReturn("test-realm");
-
-    CallContext callContext = mock(CallContext.class);
-    when(callContext.getRealmConfig()).thenReturn(realmConfig);
-    when(callContext.getRealmContext()).thenReturn(realmContext);
-
-    adapter = new OpenLineageAdapter(provider, callContext);
+    adapter = new OpenLineageAdapter(provider, realmConfig);
   }
 
   // The underlying OpenLineage event is irrelevant to response mapping / aggregation (the provider
@@ -94,17 +84,6 @@ class OpenLineageAdapterTest {
     when(provider.ingest(any())).thenReturn(OpenLineageIngestResult.UNAVAILABLE);
     Response response = adapter.sendLineageEvent(event());
     assertThat(response.getStatus()).isEqualTo(Response.Status.SERVICE_UNAVAILABLE.getStatusCode());
-  }
-
-  @Test
-  void realmIdentifierIsPassedToProvider() {
-    when(provider.ingest(any())).thenReturn(OpenLineageIngestResult.ACCEPTED);
-    adapter.sendLineageEvent(event());
-
-    ArgumentCaptor<OpenLineageIngestRequest> captor =
-        ArgumentCaptor.forClass(OpenLineageIngestRequest.class);
-    verify(provider).ingest(captor.capture());
-    assertThat(captor.getValue().realmId()).isEqualTo("test-realm");
   }
 
   @Test

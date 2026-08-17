@@ -104,6 +104,18 @@ class PolarisLineageEventDeserializerTest {
       }
       """;
 
+  // A well-formed JobEvent whose schemaURL ends in "/JobEvent" but does NOT carry the OpenLineage
+  // schema prefix. The discriminator must not be trusted, so this falls back to RunEvent.
+  private static final String SPOOFED_PREFIX_JOB_EVENT =
+      """
+      {
+        "eventTime": "2024-01-01T00:00:00Z",
+        "job": {"namespace": "test", "name": "job"},
+        "producer": "https://example.com",
+        "schemaURL": "https://evil.example.com/spec/2-0-2/OpenLineage.json#/$defs/JobEvent"
+      }
+      """;
+
   private static final ObjectMapper MAPPER =
       new ObjectMapper()
           .findAndRegisterModules()
@@ -136,6 +148,11 @@ class PolarisLineageEventDeserializerTest {
   @Test
   void missingSchemaUrlFallsBackToRunEvent() throws Exception {
     assertThat(parse(MISSING_SCHEMA_URL_EVENT).event()).isInstanceOf(OpenLineage.RunEvent.class);
+  }
+
+  @Test
+  void schemaUrlWithNonOpenLineagePrefixFallsBackToRunEvent() throws Exception {
+    assertThat(parse(SPOOFED_PREFIX_JOB_EVENT).event()).isInstanceOf(OpenLineage.RunEvent.class);
   }
 
   @Test

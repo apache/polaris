@@ -37,14 +37,21 @@ import java.io.IOException;
  * https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunEvent}. The fragment name is the
  * stable discriminator across spec versions.
  *
- * <p>If {@code schemaURL} is missing or unrecognized, the body is parsed as a {@code RunEvent} —
- * the most common variant and the same fallback Marquez (the OpenLineage reference server) uses.
+ * <p>The discriminator is only trusted when {@code schemaURL} actually points at the OpenLineage
+ * schema (its prefix is {@value #OPENLINEAGE_SCHEMA_URL_PREFIX}); this prevents an arbitrary URL
+ * ending in {@code /JobEvent} from steering deserialization. If {@code schemaURL} is missing, does
+ * not carry that prefix, or ends in an unrecognized fragment, the body is parsed as a {@code
+ * RunEvent} — the most common variant and the same fallback Marquez (the OpenLineage reference
+ * server) uses.
  *
  * <p>This replaces the earlier {@code @JsonTypeInfo} + {@code TypeIdResolver} + sealed-wrapper
  * approach: a single deserializer keeps the {@code schemaURL} dispatch in one place and avoids the
  * write-side type-id round-trip that the resolver never actually emitted.
  */
 public class PolarisLineageEventDeserializer extends JsonDeserializer<PolarisLineageEvent> {
+
+  /** Canonical prefix of an OpenLineage schema URL, e.g. {@code .../2-0-2/OpenLineage.json}. */
+  static final String OPENLINEAGE_SCHEMA_URL_PREFIX = "https://openlineage.io/spec/";
 
   @Override
   public PolarisLineageEvent deserialize(JsonParser parser, DeserializationContext context)
@@ -58,7 +65,10 @@ public class PolarisLineageEventDeserializer extends JsonDeserializer<PolarisLin
   }
 
   private static Class<? extends OpenLineage.BaseEvent> variantFor(String schemaUrl) {
-    if (schemaUrl == null) {
+    // Only trust the trailing fragment as a discriminator when the URL is actually an OpenLineage
+    // schema URL; otherwise fall back to RunEvent rather than let an arbitrary URL pick the
+    // variant.
+    if (schemaUrl == null || !schemaUrl.startsWith(OPENLINEAGE_SCHEMA_URL_PREFIX)) {
       return OpenLineage.RunEvent.class;
     }
     String[] segments = schemaUrl.split("/");
