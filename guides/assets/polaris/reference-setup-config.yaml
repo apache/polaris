@@ -51,8 +51,12 @@ principals:
 
 # Principal roles are global roles that group principals.
 principal_roles:
+  # Roles without properties can use the short string form.
   - quickstart_user_role
-  - readonly_user_role
+  # Use the object form to persist optional properties with the role.
+  - name: readonly_user_role
+    properties:
+      owner: security-team
   - dev_user_role
 
 # ==================================
