@@ -30,6 +30,13 @@ import org.jspecify.annotations.Nullable;
 /** Interface for a Polaris entity cache */
 public interface EntityCache {
   /**
+   * Called when this cache is discarded, for example because its realm was purged. Implementations
+   * release the resources they hold here, such as removing the metrics they registered. The cache
+   * must not be used afterwards.
+   */
+  default void close() {}
+
+  /**
    * Remove the specified cache entry from the cache
    *
    * @param cacheEntry cache entry to remove
