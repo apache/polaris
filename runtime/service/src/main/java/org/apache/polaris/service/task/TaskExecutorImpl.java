@@ -220,6 +220,18 @@ public class TaskExecutorImpl implements TaskExecutor {
           metaStoreManager
               .loadEntity(ctx.getPolarisCallContext(), 0L, taskEntityId, PolarisEntityType.TASK)
               .getEntity();
+      if (taskEntity == null) {
+        // The task entity is gone, so an earlier attempt already handled it and dropped the
+        // entity. A retry reaches this point when the handler completed but the subsequent
+        // dropEntityIfExists failed and was rethrown (see below). There is no work left to do,
+        // so report the attempt as successful rather than dereferencing a null entity.
+        success = true;
+        LOGGER
+            .atInfo()
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .log("Task entity no longer exists; treating the task as already completed");
+        return;
+      }
       if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
         throw new IllegalArgumentException("Provided taskId must be a task entity type");
       }
