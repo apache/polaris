@@ -3119,7 +3119,6 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       // finally, validate that the metadata file is within the table directory
       validateMetadataFileInTableDir(tableIdentifier, tableMetadata);
 
-      // TODO: These might fail due to concurrent update; we need to do a retry in those cases.
       if (null == existingLocation) {
         LOGGER.debug(
             "Creating table {} for notification with metadataLocation {}",
@@ -3127,15 +3126,67 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             newLocation);
         createTableLike(tableIdentifier, entity, resolvedParent, false);
       } else {
-        LOGGER.debug(
-            "Updating table {} for notification with metadataLocation {}",
-            tableIdentifier,
-            newLocation);
-
-        updateTableLike(tableIdentifier, entity, false);
+        updateTableLikeForNotification(
+            tableIdentifier, entity, newLocation, request.getPayload().getTimestamp());
       }
     }
     return true;
+  }
+
+  private static final int MAX_NOTIFICATION_UPDATE_ATTEMPTS = 3;
+
+  private void updateTableLikeForNotification(
+      TableIdentifier tableIdentifier,
+      IcebergTableLikeEntity entity,
+      String newLocation,
+      long notificationTimestamp) {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        LOGGER.debug(
+            "Updating table {} for notification with metadataLocation {} (attempt {}/{})",
+            tableIdentifier,
+            newLocation,
+            attempt,
+            MAX_NOTIFICATION_UPDATE_ATTEMPTS);
+        updateTableLike(tableIdentifier, entity, false);
+        return;
+      } catch (CommitConflictException e) {
+        if (attempt >= MAX_NOTIFICATION_UPDATE_ATTEMPTS) {
+          throw e;
+        }
+        LOGGER
+            .atInfo()
+            .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableIdentifier)
+            .addKeyValue("attempt", attempt)
+            .log("Concurrent modification during notification update, retrying");
+
+        EntityResult reloadResult =
+            getMetaStoreManager()
+                .loadEntity(
+                    getCurrentPolarisContext(),
+                    entity.getCatalogId(),
+                    entity.getId(),
+                    PolarisEntityType.TABLE_LIKE);
+        if (!reloadResult.isSuccess()) {
+          throw e;
+        }
+        IcebergTableLikeEntity freshEntity = IcebergTableLikeEntity.of(reloadResult.getEntity());
+        if (freshEntity == null) {
+          throw e;
+        }
+        if (freshEntity.getLastAdmittedNotificationTimestamp().isPresent()
+            && notificationTimestamp <= freshEntity.getLastAdmittedNotificationTimestamp().get()) {
+          throw new AlreadyExistsException(
+              "A notification with a newer timestamp has been processed for table %s",
+              tableIdentifier);
+        }
+        entity =
+            new IcebergTableLikeEntity.Builder(freshEntity)
+                .setMetadataLocation(newLocation)
+                .setLastNotificationTimestamp(notificationTimestamp)
+                .build();
+      }
+    }
   }
 
   private void createNonExistingNamespaces(Namespace namespace) {

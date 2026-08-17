@@ -60,6 +60,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -1217,6 +1218,137 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(catalog.tableExists(table))
         .as("Table should be created on receiving notification")
         .isTrue();
+  }
+
+  @Test
+  public void testNotificationUpdateRetriesOnConcurrentModification() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    final String tableLocation = "s3://externally-owned-bucket/retry-table/";
+    final String createMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+    final String updateMetadataLocation = tableLocation + "metadata/v2.metadata.json";
+
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "retry_table");
+
+    fileIO.addFile(
+        createMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+    fileIO.addFile(
+        updateMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+
+    NotificationRequest createRequest = new NotificationRequest();
+    createRequest.setNotificationType(NotificationType.CREATE);
+    TableUpdateNotification createPayload = new TableUpdateNotification();
+    createPayload.setMetadataLocation(createMetadataLocation);
+    createPayload.setTableName(table.name());
+    createPayload.setTableUuid(UUID.randomUUID().toString());
+    createPayload.setTimestamp(100L);
+    createRequest.setPayload(createPayload);
+
+    catalog.sendNotification(table, createRequest);
+    Assertions.assertThat(catalog.tableExists(table)).isTrue();
+
+    AtomicInteger updateAttempts = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (updateAttempts.incrementAndGet() == 1) {
+                return new EntityResult(
+                    BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    NotificationRequest updateRequest = new NotificationRequest();
+    updateRequest.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification updatePayload = new TableUpdateNotification();
+    updatePayload.setMetadataLocation(updateMetadataLocation);
+    updatePayload.setTableName(table.name());
+    updatePayload.setTableUuid(UUID.randomUUID().toString());
+    updatePayload.setTimestamp(200L);
+    updateRequest.setPayload(updatePayload);
+
+    Assertions.assertThat(catalog.sendNotification(table, updateRequest))
+        .as("Notification should succeed after retry")
+        .isTrue();
+    Assertions.assertThat(updateAttempts.get())
+        .as("Should have retried once after concurrent modification")
+        .isEqualTo(2);
+  }
+
+  @Test
+  public void testNotificationUpdateGivesUpAfterMaxRetries() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    final String tableLocation = "s3://externally-owned-bucket/exhaust-table/";
+    final String createMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+    final String updateMetadataLocation = tableLocation + "metadata/v2.metadata.json";
+
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "exhaust_table");
+
+    fileIO.addFile(
+        createMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+    fileIO.addFile(
+        updateMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+
+    NotificationRequest createRequest = new NotificationRequest();
+    createRequest.setNotificationType(NotificationType.CREATE);
+    TableUpdateNotification createPayload = new TableUpdateNotification();
+    createPayload.setMetadataLocation(createMetadataLocation);
+    createPayload.setTableName(table.name());
+    createPayload.setTableUuid(UUID.randomUUID().toString());
+    createPayload.setTimestamp(100L);
+    createRequest.setPayload(createPayload);
+
+    catalog.sendNotification(table, createRequest);
+
+    doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    NotificationRequest updateRequest = new NotificationRequest();
+    updateRequest.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification updatePayload = new TableUpdateNotification();
+    updatePayload.setMetadataLocation(updateMetadataLocation);
+    updatePayload.setTableName(table.name());
+    updatePayload.setTableUuid(UUID.randomUUID().toString());
+    updatePayload.setTimestamp(200L);
+    updateRequest.setPayload(updatePayload);
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, updateRequest))
+        .isInstanceOf(CommitConflictException.class);
   }
 
   @Test
