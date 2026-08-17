@@ -1730,7 +1730,7 @@ The `tables` command is used to manage Iceberg tables within a Polaris Catalog.
 
 #### list
 
-The `list` subcommand is used to list tables within a namesace from a given catalog.
+The `list` subcommand is used to list tables within a namespace from a given catalog.
 
 ```
 usage: polaris tables list [-h] [options]
@@ -1775,7 +1775,7 @@ polaris tables get my_table --catalog my_catalog --namespace ns1
 
 #### summarize
 
-The `summarize` subcommand provides a detail overview of a table.
+The `summarize` subcommand provides a detailed overview of a table.
 
 ```
 usage: polaris tables summarize [-h] [options] TABLE_NAME
@@ -1834,7 +1834,7 @@ The `views` command is used to manage Iceberg views within a Polaris Catalog.
 
 #### list
 
-The `list` subcommand is used to list views within a namesace from a given catalog.
+The `list` subcommand is used to list views within a namespace from a given catalog.
 
 ```
 usage: polaris views list [-h] [options]
@@ -1879,7 +1879,7 @@ polaris views get my_view --catalog my_catalog --namespace ns1
 
 #### summarize
 
-The `summarize` subcommand provides a detail overview of a view.
+The `summarize` subcommand provides a detailed overview of a view.
 
 ```
 usage: polaris views summarize [-h] [options] VIEW_NAME
@@ -1898,12 +1898,12 @@ Command Options:
 ##### Examples
 
 ```
-polaris view summarize my_view --catalog my_catalog --namespace ns1
+polaris views summarize my_view --catalog my_catalog --namespace ns1
 ```
 
 #### delete
 
-The `delete` subcommand drop a view from catalog.
+The `delete` subcommand drops a view from the catalog.
 
 ```
 usage: polaris views delete [-h] [options] VIEW_NAME
@@ -1925,10 +1925,6 @@ Command Options:
 polaris views delete my_view --catalog my_catalog --namespace ns1
 ```
 
-
-
-
-
 ### Generic Tables
 
 The `generic-tables` command is used to manage generic tables within a Polaris Catalog.
@@ -1941,7 +1937,7 @@ The `generic-tables` command is used to manage generic tables within a Polaris C
 
 #### list
 
-The `list` subcommand is used to list generic tables within a namesace from a given catalog.
+The `list` subcommand is used to list generic tables within a namespace from a given catalog.
 
 ```
 usage: polaris generic-tables list [-h] [options]
@@ -1962,7 +1958,7 @@ polaris generic-tables list
 
 #### get
 
-The `get` subcommand retrieves the generic tables metadata for a specific generic table.
+The `get` subcommand retrieves the generic table metadata for a specific generic table.
 
 ```
 usage: polaris generic-tables get [-h] [options] GENERIC_TABLE_NAME
@@ -1986,7 +1982,7 @@ polaris generic-tables get my_generic_table --catalog my_catalog --namespace ns1
 
 #### delete
 
-The `delete` subcommand drop a generic table from catalog.
+The `delete` subcommand drops a generic table from the catalog.
 
 ```
 usage: polaris generic-tables delete [-h] [options] GENERIC_TABLE_NAME
