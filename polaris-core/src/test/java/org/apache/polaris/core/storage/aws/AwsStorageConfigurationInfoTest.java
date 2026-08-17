@@ -20,7 +20,6 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
 import java.util.List;
@@ -35,7 +34,7 @@ public class AwsStorageConfigurationInfoTest {
 
   private static final String ALLOWED_KMS_KEY_ARN =
       "arn:aws:kms:us-east-1:012345678901:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-  private static final String DECRYPT_ONLY_KMS_KEY_ARN =
+  private static final String DECRYPTION_KEY_ARN =
       "arn:aws:kms:us-east-1:012345678901:key/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
   @Test
@@ -147,96 +146,25 @@ public class AwsStorageConfigurationInfoTest {
 
   @Test
   @SuppressWarnings("deprecation")
-  public void testEffectiveAllowedKmsKeysIncludesDeprecatedCurrentKmsKey() {
+  public void testEffectiveEncryptionKeysIncludeDeprecatedProperties() {
     assertThat(
             newBuilder()
                 .currentKmsKey(ALLOWED_KMS_KEY_ARN)
-                .allowedKmsKeys(List.of(DECRYPT_ONLY_KMS_KEY_ARN))
+                .allowedKmsKeys(List.of(DECRYPTION_KEY_ARN))
                 .build()
-                .getEffectiveAllowedKmsKeys())
-        .containsExactly(DECRYPT_ONLY_KMS_KEY_ARN, ALLOWED_KMS_KEY_ARN);
+                .getEffectiveEncryptionKeys())
+        .containsExactly(DECRYPTION_KEY_ARN, ALLOWED_KMS_KEY_ARN);
   }
 
   @Test
-  @SuppressWarnings("deprecation")
-  public void testDecryptOnlyKmsKeysMustNotOverlapEncryptCapableKeys() {
-    String keyArn = "arn:aws:kms:us-east-1:012345678901:key/cccccccc-cccc-cccc-cccc-cccccccccccc";
-
-    assertThatThrownBy(
-            () -> newBuilder().currentKmsKey(keyArn).decryptOnlyKmsKeys(List.of(keyArn)).build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("currentKmsKey must not also be configured in decryptOnlyKmsKeys");
-
-    assertThatThrownBy(
-            () ->
-                newBuilder()
-                    .allowedKmsKeys(List.of(keyArn))
-                    .decryptOnlyKmsKeys(List.of(keyArn))
-                    .build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("allowedKmsKeys and decryptOnlyKmsKeys must not overlap");
-  }
-
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("invalidKmsKeyArns")
-  @SuppressWarnings("deprecation")
-  public void testKmsKeysRejectNonCanonicalArnsWhenDecryptOnlyKmsKeysConfigured(
-      String description, String invalidKeyArn) {
-    assertThatThrownBy(() -> newBuilder().decryptOnlyKmsKeys(List.of(invalidKeyArn)).build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(
-            "When decryptOnlyKmsKeys is configured, decryptOnlyKmsKeys must contain concrete AWS KMS key ARNs");
-
-    assertThatThrownBy(
-            () ->
-                newBuilder()
-                    .allowedKmsKeys(List.of(invalidKeyArn))
-                    .decryptOnlyKmsKeys(List.of(DECRYPT_ONLY_KMS_KEY_ARN))
-                    .build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(
-            "When decryptOnlyKmsKeys is configured, allowedKmsKeys must contain concrete AWS KMS key ARNs");
-
-    assertThatThrownBy(
-            () ->
-                newBuilder()
-                    .currentKmsKey(invalidKeyArn)
-                    .decryptOnlyKmsKeys(List.of(DECRYPT_ONLY_KMS_KEY_ARN))
-                    .build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(
-            "When decryptOnlyKmsKeys is configured, currentKmsKey must contain concrete AWS KMS key ARNs");
-  }
-
-  static Stream<Arguments> invalidKmsKeyArns() {
-    return Stream.of(
-        Arguments.of("alias ARN", "arn:aws:kms:us-east-1:012345678901:alias/example-key"),
-        Arguments.of("wildcard key ARN", "arn:aws:kms:us-east-1:012345678901:key/*"),
-        Arguments.of(
-            "partial wildcard key ARN", "arn:aws:kms:us-east-1:012345678901:key/1234abcd-*"),
-        Arguments.of("bare key ID", "1234abcd-12ab-34cd-56ef-1234567890ab"),
-        Arguments.of(
-            "missing region",
-            "arn:aws:kms::012345678901:key/1234abcd-12ab-34cd-56ef-1234567890ab"));
-  }
-
-  @ParameterizedTest
-  @MethodSource("validKmsKeyArns")
-  public void testDecryptOnlyKmsKeysAcceptConcreteKeyArns(String keyArn) {
+  public void testDecryptionKeysMayOverlapEncryptionKeys() {
     assertThat(
             newBuilder()
-                .allowedKmsKeys(List.of(ALLOWED_KMS_KEY_ARN))
-                .decryptOnlyKmsKeys(List.of(keyArn))
+                .encryptionKeys(List.of(ALLOWED_KMS_KEY_ARN))
+                .decryptionKeys(List.of(ALLOWED_KMS_KEY_ARN, "provider-specific-key"))
                 .build()
-                .getDecryptOnlyKmsKeys())
-        .containsExactly(keyArn);
-  }
-
-  static Stream<String> validKmsKeyArns() {
-    return Stream.of(
-        DECRYPT_ONLY_KMS_KEY_ARN,
-        "arn:aws:kms:us-east-1:012345678901:key/mrk-1234abcd12ab34cd56ef1234567890ab",
-        "arn:aws-us-gov:kms:us-gov-west-1:012345678901:key/1234abcd-12ab-34cd-56ef-1234567890ab");
+                .getDecryptionKeys())
+        .containsExactly(ALLOWED_KMS_KEY_ARN, "provider-specific-key");
   }
 
   @ParameterizedTest

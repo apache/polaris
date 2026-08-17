@@ -51,13 +51,6 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @JsonIgnore public static final String ROLE_ARN_PATTERN = "^.+:(.*):.+:.*:(.*):.+$";
 
   private static final Pattern ROLE_ARN_PATTERN_COMPILED = Pattern.compile(ROLE_ARN_PATTERN);
-  private static final Pattern KMS_KEY_ARN_PATTERN =
-      Pattern.compile(
-          "^arn:[a-z0-9-]+:kms:[a-z0-9-]+:[0-9]{12}:key/"
-              + "(?:"
-              + "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-              + "|mrk-[0-9a-f]{32}"
-              + ")$");
 
   @Override
   public StorageType getStorageType() {
@@ -73,35 +66,46 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   public abstract String getRoleARN();
 
   /**
-   * Deprecated KMS Key ARN, retained for compatibility and treated as an allowed KMS key.
+   * Deprecated KMS Key ARN, retained for compatibility and treated as an encryption key.
    *
-   * @deprecated since 1.8.0. Use {@link #getAllowedKmsKeys()} instead.
+   * @deprecated since 1.8.0. Use {@link #getEncryptionKeys()} instead.
    */
   @Deprecated(since = "1.8.0")
   @Nullable
   public abstract String getCurrentKmsKey();
 
-  /** List of KMS Key ARNs allowed for encryption and decryption, optional. */
+  /** Deprecated list of KMS keys allowed for encryption and decryption, optional. */
+  @Deprecated(since = "1.8.0")
   @Nullable
   public abstract List<String> getAllowedKmsKeys();
 
-  /** Returns the encrypt-capable KMS keys, including the deprecated current KMS key. */
+  /** List of KMS keys used for encryption, optional. */
+  @Nullable
+  public abstract List<String> getEncryptionKeys();
+
+  /** Returns the encryption keys, including keys from deprecated configuration properties. */
   @JsonIgnore
-  public List<String> getEffectiveAllowedKmsKeys() {
-    List<String> effectiveAllowedKmsKeys = new ArrayList<>();
+  @SuppressWarnings("deprecation")
+  public List<String> getEffectiveEncryptionKeys() {
+    List<String> effectiveEncryptionKeys = new ArrayList<>();
+    if (getEncryptionKeys() != null) {
+      effectiveEncryptionKeys.addAll(getEncryptionKeys());
+    }
     if (getAllowedKmsKeys() != null) {
-      effectiveAllowedKmsKeys.addAll(getAllowedKmsKeys());
+      getAllowedKmsKeys().stream()
+          .filter(key -> !effectiveEncryptionKeys.contains(key))
+          .forEach(effectiveEncryptionKeys::add);
     }
     String currentKmsKey = getCurrentKmsKey();
-    if (currentKmsKey != null && !effectiveAllowedKmsKeys.contains(currentKmsKey)) {
-      effectiveAllowedKmsKeys.add(currentKmsKey);
+    if (currentKmsKey != null && !effectiveEncryptionKeys.contains(currentKmsKey)) {
+      effectiveEncryptionKeys.add(currentKmsKey);
     }
-    return List.copyOf(effectiveAllowedKmsKeys);
+    return List.copyOf(effectiveEncryptionKeys);
   }
 
-  /** List of KMS Key ARNs allowed only for decryption, optional. */
+  /** List of KMS keys used for decryption, optional. */
   @Nullable
-  public abstract List<String> getDecryptOnlyKmsKeys();
+  public abstract List<String> getDecryptionKeys();
 
   /** AWS external ID, optional */
   @Nullable
@@ -197,40 +201,6 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
         throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
       }
     }
-
-    List<String> decryptOnlyKmsKeys = getDecryptOnlyKmsKeys();
-    if (decryptOnlyKmsKeys != null && !decryptOnlyKmsKeys.isEmpty()) {
-      String currentKmsKey = getCurrentKmsKey();
-      if (currentKmsKey != null) {
-        validateKmsKeyArn("currentKmsKey", currentKmsKey);
-      }
-
-      List<String> allowedKmsKeys = getAllowedKmsKeys();
-      validateKmsKeyArns("allowedKmsKeys", allowedKmsKeys);
-      validateKmsKeyArns("decryptOnlyKmsKeys", decryptOnlyKmsKeys);
-
-      checkArgument(
-          currentKmsKey == null || !decryptOnlyKmsKeys.contains(currentKmsKey),
-          "currentKmsKey must not also be configured in decryptOnlyKmsKeys");
-
-      checkArgument(
-          allowedKmsKeys == null || allowedKmsKeys.stream().noneMatch(decryptOnlyKmsKeys::contains),
-          "allowedKmsKeys and decryptOnlyKmsKeys must not overlap");
-    }
-  }
-
-  private static void validateKmsKeyArns(String propertyName, @Nullable List<String> keyArns) {
-    if (keyArns != null) {
-      keyArns.forEach(keyArn -> validateKmsKeyArn(propertyName, keyArn));
-    }
-  }
-
-  private static void validateKmsKeyArn(String propertyName, @Nullable String keyArn) {
-    checkArgument(
-        keyArn != null && KMS_KEY_ARN_PATTERN.matcher(keyArn).matches(),
-        "When decryptOnlyKmsKeys is configured, %s must contain concrete AWS KMS key ARNs, but found: %s",
-        propertyName,
-        keyArn);
   }
 
   public static void validateArn(String arn) {

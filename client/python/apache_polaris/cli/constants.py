@@ -214,7 +214,8 @@ class Arguments:
     KMS_UNAVAILABLE = "no_kms"
     KMS_KEY_CURRENT = "current_kms_key"
     KMS_KEY_ALLOWED = "allowed_kms_key"
-    KMS_KEY_DECRYPT_ONLY = "decrypt_only_kms_key"
+    KMS_KEY_ENCRYPTION = "encryption_key"
+    KMS_KEY_DECRYPTION = "decryption_key"
     PATH_STYLE_ACCESS = "path_style_access"
     CATALOG_CONNECTION_TYPE = "catalog_connection_type"
     CATALOG_AUTHENTICATION_TYPE = "catalog_authentication_type"
@@ -305,9 +306,10 @@ class Hints:
         "Indicates that Polaris should not use KMS (e.g. if KMS is not available)"
     )
     S3_PATH_STYLE_ACCESS = "Whether to use path-style-access for S3"
-    S3_KMS_KEY_CURRENT = "Deprecated. Use --allowed-kms-key instead"
-    S3_KMS_KEY_ALLOWED = "AWS KMS key ARN(s) that this catalog and its clients may use to encrypt and decrypt S3 data (zero or more)"
-    S3_KMS_KEY_DECRYPT_ONLY = "AWS KMS key ARN(s) that this catalog and its clients may use only to decrypt S3 data (zero or more)"
+    S3_KMS_KEY_CURRENT = "Deprecated. Use --encryption-key instead"
+    S3_KMS_KEY_ALLOWED = "Deprecated. Use --encryption-key instead"
+    S3_KMS_KEY_ENCRYPTION = "AWS KMS key identifier(s) that this catalog and its clients may use to encrypt S3 data; these keys are also granted decryption permissions (zero or more)"
+    S3_KMS_KEY_DECRYPTION = "AWS KMS key identifier(s) that this catalog and its clients may use to decrypt S3 data (zero or more)"
     ## Azure
     AZURE_TENANT_ID = "(Required) A tenant ID to use when connecting to Azure Storage"
     AZURE_MULTI_TENANT_APP_NAME = "The app name to use when connecting to Azure Storage"

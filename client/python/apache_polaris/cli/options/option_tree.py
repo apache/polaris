@@ -290,9 +290,16 @@ class OptionTree:
                             group="AWS S3 Storage Options",
                         ),
                         Argument(
-                            Arguments.KMS_KEY_DECRYPT_ONLY,
+                            Arguments.KMS_KEY_ENCRYPTION,
                             str,
-                            Hints.S3_KMS_KEY_DECRYPT_ONLY,
+                            Hints.S3_KMS_KEY_ENCRYPTION,
+                            allow_repeats=True,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_KEY_DECRYPTION,
+                            str,
+                            Hints.S3_KMS_KEY_DECRYPTION,
                             allow_repeats=True,
                             group="AWS S3 Storage Options",
                         ),

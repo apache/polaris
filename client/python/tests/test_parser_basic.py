@@ -171,8 +171,10 @@ class TestParserBasic(CLITestBase):
                 "catalogs",
                 "create",
                 "catalog_name",
-                "--decrypt-only-kms-key",
-                "arn:aws:kms:us-east-1:012345678901:key/decrypt-only-key",
+                "--decryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/decryption-key",
+                "--encryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/encryption-key",
             ]
         )
         Parser.parse(["catalogs", "list"])

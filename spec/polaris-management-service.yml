@@ -1143,17 +1143,24 @@ components:
             currentKmsKey:
               type: string
               deprecated: true
-              description: Deprecated. Use allowedKmsKeys instead. The AWS KMS key ARN used to encrypt and decrypt S3 data. When decryptOnlyKmsKeys is configured, aliases and wildcard patterns are not supported.
+              description: Deprecated. Use encryptionKeys instead. The AWS KMS key ARN used to encrypt and decrypt S3 data.
               example: "arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"
             allowedKmsKeys:
               type: array
-              description: The list of concrete KMS key ARNs that this catalog and its clients are allowed to use for encrypting and decrypting S3 data. When decryptOnlyKmsKeys is configured, aliases and wildcard patterns are not supported.
+              deprecated: true
+              description: Deprecated. Use encryptionKeys instead. The list of KMS keys that this catalog and its clients may use to encrypt and decrypt S3 data.
               items:
                 type: string
               example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
-            decryptOnlyKmsKeys:
+            encryptionKeys:
               type: array
-              description: The list of concrete KMS key ARNs that this catalog and its clients are allowed to use only for decrypting S3 data. Aliases and wildcard patterns are not supported. Keys must not also be configured in currentKmsKey or allowedKmsKeys.
+              description: The list of KMS keys that this catalog and its clients may use to encrypt S3 data. These keys are also granted decryption permissions.
+              items:
+                type: string
+              example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
+            decryptionKeys:
+              type: array
+              description: The list of KMS keys that this catalog and its clients may use to decrypt S3 data. A key may also appear in encryptionKeys.
               items:
                 type: string
               example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]

@@ -282,14 +282,18 @@ public class CatalogEntityTest {
   }
 
   @Test
-  public void testDeprecatedCurrentKmsKeyMigratedToAllowedKmsKeys() {
+  @SuppressWarnings("deprecation")
+  public void testDeprecatedKmsKeysMigratedToEncryptionKeys() {
     String baseLocation = "s3://my-bucket/data/";
     String currentKmsKey =
         "arn:aws:kms:us-east-1:012345678901:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    String allowedKmsKey =
+        "arn:aws:kms:us-east-1:012345678901:key/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
     AwsStorageConfigInfo awsStorageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
             .setCurrentKmsKey(currentKmsKey)
+            .setAllowedKmsKeys(List.of(allowedKmsKey))
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .build();
     Catalog awsCatalog =
@@ -305,7 +309,8 @@ public class CatalogEntityTest {
         (AwsStorageConfigInfo) entity.asCatalog().getStorageConfigInfo();
 
     assertThat(response.getCurrentKmsKey()).isNull();
-    assertThat(response.getAllowedKmsKeys()).containsExactly(currentKmsKey);
+    assertThat(response.getAllowedKmsKeys()).isEmpty();
+    assertThat(response.getEncryptionKeys()).containsExactly(allowedKmsKey, currentKmsKey);
   }
 
   @Test
@@ -433,7 +438,7 @@ public class CatalogEntityTest {
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
     AwsStorageConfigInfo response = (AwsStorageConfigInfo) catalog.getStorageConfigInfo();
     assertThat(response.getCurrentKmsKey()).isNull();
-    assertThat(response.getAllowedKmsKeys())
+    assertThat(response.getEncryptionKeys())
         .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
@@ -461,7 +466,7 @@ public class CatalogEntityTest {
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
     AwsStorageConfigInfo response = (AwsStorageConfigInfo) catalog.getStorageConfigInfo();
     assertThat(response.getCurrentKmsKey()).isNull();
-    assertThat(response.getAllowedKmsKeys())
+    assertThat(response.getEncryptionKeys())
         .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 

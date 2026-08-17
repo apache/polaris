@@ -148,8 +148,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setRoleArn(awsConfig.getRoleARN())
             .setExternalId(awsConfig.getExternalId())
             .setUserArn(awsConfig.getUserARN())
-            .setAllowedKmsKeys(awsConfig.getEffectiveAllowedKmsKeys())
-            .setDecryptOnlyKmsKeys(awsConfig.getDecryptOnlyKmsKeys())
+            .setEncryptionKeys(awsConfig.getEffectiveEncryptionKeys())
+            .setDecryptionKeys(awsConfig.getDecryptionKeys())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
             .setStorageName(awsConfig.getStorageName())
@@ -326,6 +326,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       }
     }
 
+    @SuppressWarnings("deprecation")
     public Builder setStorageConfigurationInfo(
         RealmConfig realmConfig, StorageConfigInfo storageConfigModel) {
       Preconditions.checkNotNull(
@@ -354,18 +355,23 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
-            List<String> allowedKmsKeys = new ArrayList<>(awsConfigModel.getAllowedKmsKeys());
+            List<String> encryptionKeys = new ArrayList<>(awsConfigModel.getEncryptionKeys());
+            for (String allowedKmsKey : awsConfigModel.getAllowedKmsKeys()) {
+              if (!encryptionKeys.contains(allowedKmsKey)) {
+                encryptionKeys.add(allowedKmsKey);
+              }
+            }
             String currentKmsKey = awsConfigModel.getCurrentKmsKey();
-            if (currentKmsKey != null && !allowedKmsKeys.contains(currentKmsKey)) {
-              allowedKmsKeys.add(currentKmsKey);
+            if (currentKmsKey != null && !encryptionKeys.contains(currentKmsKey)) {
+              encryptionKeys.add(currentKmsKey);
             }
             AwsStorageConfigurationInfo awsConfig =
                 AwsStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
                     .storageName(storageConfigModel.getStorageName())
                     .roleARN(awsConfigModel.getRoleArn())
-                    .allowedKmsKeys(allowedKmsKeys)
-                    .decryptOnlyKmsKeys(awsConfigModel.getDecryptOnlyKmsKeys())
+                    .encryptionKeys(encryptionKeys)
+                    .decryptionKeys(awsConfigModel.getDecryptionKeys())
                     .externalId(awsConfigModel.getExternalId())
                     .region(awsConfigModel.getRegion())
                     .endpoint(awsConfigModel.getEndpoint())
