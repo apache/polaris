@@ -146,6 +146,7 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
+  @SuppressWarnings("deprecation")
   public void testEffectiveAllowedKmsKeysIncludesDeprecatedCurrentKmsKey() {
     assertThat(
             newBuilder()
@@ -157,6 +158,7 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
+  @SuppressWarnings("deprecation")
   public void testDecryptOnlyKmsKeysMustNotOverlapEncryptCapableKeys() {
     String keyArn = "arn:aws:kms:us-east-1:012345678901:key/cccccccc-cccc-cccc-cccc-cccccccccccc";
 
@@ -177,6 +179,7 @@ public class AwsStorageConfigurationInfoTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidKmsKeyArns")
+  @SuppressWarnings("deprecation")
   public void testKmsKeysRejectNonCanonicalArnsWhenDecryptOnlyKmsKeysConfigured(
       String description, String invalidKeyArn) {
     assertThatThrownBy(() -> newBuilder().decryptOnlyKmsKeys(List.of(invalidKeyArn)).build())
