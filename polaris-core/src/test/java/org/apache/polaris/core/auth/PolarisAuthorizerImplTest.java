@@ -374,18 +374,28 @@ public class PolarisAuthorizerImplTest {
   // ----- Tests for server-side missing privilege logging -----
 
   @Test
-  void authorizeOrThrowLogsMissingPrivilegeDetailsServerSide() {
+  void authorizeLogsMissingPrivilegeDetailsServerSide() {
     PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfigWithDefaults());
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("reader"));
     PolarisResolvedPathWrapper namespace = resolvedPath(namespaceEntity("ns1"));
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of("ns1"), PolarisEntityType.NAMESPACE)),
+            ArgumentMatchers.anyBoolean()))
+        .thenReturn(namespace);
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.CREATE_TABLE_DIRECT,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns1")))));
 
     assertThatThrownBy(
-            () ->
-                authorizer.authorizeOrThrow(
-                    PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
-                    Set.of(),
-                    PolarisAuthorizableOperation.CREATE_TABLE_DIRECT,
-                    List.of(namespace),
-                    null))
+            () -> authorizer.authorize(new AuthorizationState(manifest), request).throwIfDenied())
         .isInstanceOf(ForbiddenException.class)
         // Client-facing message is generic (no missing privilege details).
         .hasMessage(
@@ -398,21 +408,31 @@ public class PolarisAuthorizerImplTest {
   }
 
   @Test
-  void authorizeOrThrowLogsAllMissingTargetPrivilegesWithoutShortCircuit() {
+  void authorizeLogsAllMissingTargetPrivilegesWithoutShortCircuit() {
     // CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION requires both TABLE_CREATE and TABLE_WRITE_DATA
     // on the target namespace. With no grants at all, both should be logged server-side but NOT
     // exposed in the client-facing exception.
     PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfigWithDefaults());
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("reader"));
     PolarisResolvedPathWrapper namespace = resolvedPath(namespaceEntity("ns1"));
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of("ns1"), PolarisEntityType.NAMESPACE)),
+            ArgumentMatchers.anyBoolean()))
+        .thenReturn(namespace);
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns1")))));
 
     assertThatThrownBy(
-            () ->
-                authorizer.authorizeOrThrow(
-                    PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
-                    Set.of(),
-                    PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
-                    List.of(namespace),
-                    null))
+            () -> authorizer.authorize(new AuthorizationState(manifest), request).throwIfDenied())
         .isInstanceOf(ForbiddenException.class)
         // Generic client message.
         .hasMessage(
@@ -424,22 +444,40 @@ public class PolarisAuthorizerImplTest {
   }
 
   @Test
-  void authorizeOrThrowLogsSecondaryMissingPrivilegeServerSide() {
+  void authorizeLogsSecondaryMissingPrivilegeServerSide() {
     // RENAME_TABLE: target privilege TABLE_DROP on the existing table; secondary privileges
     // TABLE_LIST and TABLE_CREATE on the destination namespace. Secondary details must NOT
     // appear in the client-facing exception.
     PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(realmConfigWithDefaults());
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("reader"));
     PolarisResolvedPathWrapper srcTable = resolvedPath(tableEntity("src_t"));
     PolarisResolvedPathWrapper dstNamespace = resolvedPath(namespaceEntity("dst_ns"));
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of("namespace", "src_t"), PolarisEntityType.TABLE_LIKE)),
+            ArgumentMatchers.anyBoolean()))
+        .thenReturn(srcTable);
+    when(manifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of("dst_ns"), PolarisEntityType.NAMESPACE)),
+            ArgumentMatchers.anyBoolean()))
+        .thenReturn(dstNamespace);
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new RenameAuthorizationIntent(
+                    PolarisAuthorizableOperation.RENAME_TABLE,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "namespace"),
+                        new PathSegment(PolarisEntityType.TABLE_LIKE, "src_t")),
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "dst_ns")))));
 
     assertThatThrownBy(
-            () ->
-                authorizer.authorizeOrThrow(
-                    PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
-                    Set.of(),
-                    PolarisAuthorizableOperation.RENAME_TABLE,
-                    List.of(srcTable),
-                    List.of(dstNamespace)))
+            () -> authorizer.authorize(new AuthorizationState(manifest), request).throwIfDenied())
         .isInstanceOf(ForbiddenException.class)
         // Generic client message.
         .hasMessage(

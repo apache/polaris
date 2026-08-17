@@ -941,39 +941,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   /**
-   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
-   */
-  @Deprecated(since = "1.2.0", forRemoval = true)
-  @Override
-  public void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary) {
-    authorizeOrThrow(
-        polarisPrincipal,
-        activatedEntities,
-        authzOp,
-        target == null ? null : List.of(target),
-        secondary == null ? null : List.of(secondary));
-  }
-
-  /**
-   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
-   */
-  @Deprecated(since = "1.2.0", forRemoval = true)
-  @Override
-  public void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries) {
-    authorizeRbacOrThrow(polarisPrincipal, activatedEntities, authzOp, targets, secondaries);
-  }
-
-  /**
    * Based on the required target/targetParent/secondary/secondaryParent privileges mapped from
    * {@code authzOp}, determines whether the caller's set of activatedGranteeIds is authorized for
    * the operation.
@@ -1004,9 +971,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   /**
    * Collects every required privilege the caller is missing for the operation, without
-   * short-circuiting on the first failure. Used both by {@link #isAuthorized} (which only inspects
-   * emptiness) and by {@link #authorizeOrThrow} to log the specific missing privileges and the
-   * entities they were checked against (client-facing messages stay generic).
+   * short-circuiting on the first failure. Used by authorization checks to log the specific missing
+   * privileges and the entities they were checked against (client-facing messages stay generic).
    *
    * <p>The returned list groups target-side failures before secondary-side failures. Iteration
    * order within each group follows {@link RbacOperationSemantics#targetPrivileges()} and {@link

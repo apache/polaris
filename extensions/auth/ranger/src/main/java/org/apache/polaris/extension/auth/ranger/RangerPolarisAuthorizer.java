@@ -188,7 +188,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
         throw new IllegalStateException("Unsupported authorization intent: " + intent.getClass());
       }
 
-      authorizeOrThrow(
+      authorizeRangerOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
           intent.getOperation(),
@@ -230,25 +230,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
         .toList();
   }
 
-  @Override
-  @Deprecated(since = "1.2.0", forRemoval = true)
-  public void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary) {
-    authorizeOrThrow(
-        polarisPrincipal,
-        activatedEntities,
-        authzOp,
-        target == null ? null : List.of(target),
-        secondary == null ? null : List.of(secondary));
-  }
-
-  @Override
-  @Deprecated(since = "1.2.0", forRemoval = true)
-  public void authorizeOrThrow(
+  private void authorizeRangerOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
       @NonNull PolarisAuthorizableOperation authzOp,
@@ -265,7 +247,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
     if (LOG.isDebugEnabled()) {
       LOG.debug(
-          "authorizeOrThrow(principal={}, activatedEntities={}, authzOp={name: {}, targetPrivileges: {}, secondaryPrivileges: {}), targets={}, secondaries={}",
+          "authorizeRanger(principal={}, activatedEntities={}, authzOp={name: {}, targetPrivileges: {}, secondaryPrivileges: {}), targets={}, secondaries={}",
           polarisPrincipal,
           activatedEntities,
           authzOp,

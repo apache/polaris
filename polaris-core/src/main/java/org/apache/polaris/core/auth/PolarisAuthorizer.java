@@ -18,13 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
-import java.util.List;
-import java.util.Set;
-import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
@@ -52,46 +46,4 @@ public interface PolarisAuthorizer {
    */
   @NonNull AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
-
-  /**
-   * Convenience method that throws a {@link ForbiddenException} when authorization is denied.
-   *
-   * @deprecated Use {@link #authorize(AuthorizationState, AuthorizationRequest)} and handle the
-   *     returned {@link AuthorizationDecision}.
-   */
-  @Deprecated(since = "1.2.0", forRemoval = true)
-  default void authorizeOrThrow(
-      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    AuthorizationDecision decision = authorize(authzState, request);
-    if (!decision.isAllowed()) {
-      String message = decision.getMessage().orElse("Authorization denied");
-      throw new ForbiddenException("%s", message);
-    }
-  }
-
-  /**
-   * Authorizes a single resolved target and secondary.
-   *
-   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
-   */
-  @Deprecated(since = "1.2.0", forRemoval = true)
-  void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary);
-
-  /**
-   * Authorizes one or more resolved targets and secondaries.
-   *
-   * @deprecated Use intent-based {@link #authorize(AuthorizationState, AuthorizationRequest)}.
-   */
-  @Deprecated(since = "1.2.0", forRemoval = true)
-  void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries);
 }

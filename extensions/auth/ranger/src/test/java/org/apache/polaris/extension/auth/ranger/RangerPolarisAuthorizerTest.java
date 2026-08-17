@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
@@ -49,7 +51,13 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
+import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
+import org.apache.polaris.core.auth.RenameAuthorizationIntent;
+import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
+import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -211,14 +219,20 @@ public class RangerPolarisAuthorizerTest {
     TestSuite testSuite = getMapper().readValue(reader, TestSuite.class);
 
     for (TestData test : testSuite.tests) {
+      PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+      when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles())
+          .thenReturn(Collections.emptySet());
+      stubResolutionManifest(manifest, test.request.target);
+      stubResolutionManifest(manifest, test.request.secondary);
+      AuthorizationRequest request =
+          new AuthorizationRequest(
+              test.request.principal,
+              List.of(
+                  authorizationIntent(
+                      test.request.authzOp, test.request.target, test.request.secondary)));
       if (test.result.isAllowed) {
         try {
-          authorizer.authorizeOrThrow(
-              test.request.principal,
-              Collections.emptySet(),
-              test.request.authzOp,
-              test.request.target,
-              test.request.secondary);
+          authorizer.authorize(new AuthorizationState(manifest), request).throwIfDenied();
         } catch (ForbiddenException excp) {
           fail(
               test.request.principal
@@ -234,13 +248,7 @@ public class RangerPolarisAuthorizerTest {
       } else {
         assertThrows(
             ForbiddenException.class,
-            () ->
-                authorizer.authorizeOrThrow(
-                    test.request.principal,
-                    Collections.emptySet(),
-                    test.request.authzOp,
-                    test.request.target,
-                    test.request.secondary),
+            () -> authorizer.authorize(new AuthorizationState(manifest), request).throwIfDenied(),
             () ->
                 test.request.principal
                     + " should not be allowed to perform "
@@ -252,6 +260,100 @@ public class RangerPolarisAuthorizerTest {
                     + ")");
       }
     }
+  }
+
+  private AuthorizationIntent authorizationIntent(
+      PolarisAuthorizableOperation operation,
+      PolarisResolvedPathWrapper target,
+      PolarisResolvedPathWrapper secondary) {
+    if (RangerPolarisOperationSemantics.forOperation(operation) == null) {
+      return new TargetlessAuthorizationIntent(operation);
+    }
+    if (target == null
+        || target.getResolvedLeafEntity().getEntity().getType() == PolarisEntityType.ROOT) {
+      if (secondary != null && operation.name().endsWith("_ROOT_GRANT_FROM_PRINCIPAL_ROLE")) {
+        return new RootPrivilegeGrantAuthorizationIntent(operation, toSecurable(secondary));
+      }
+      return new TargetlessAuthorizationIntent(operation);
+    }
+
+    PolarisSecurable targetSecurable = toSecurable(target);
+    if (secondary == null) {
+      return new SingleTargetAuthorizationIntent(operation, targetSecurable);
+    }
+
+    PolarisSecurable secondarySecurable = toSecurable(secondary);
+    String operationName = operation.name();
+    if (operationName.startsWith("RENAME_")) {
+      return new RenameAuthorizationIntent(operation, targetSecurable, secondarySecurable);
+    }
+    if (operationName.startsWith("ATTACH_POLICY_") || operationName.startsWith("DETACH_POLICY_")) {
+      return new PolicyAttachmentAuthorizationIntent(
+          operation, targetSecurable, secondarySecurable);
+    }
+    if (operationName.endsWith("_ROOT_GRANT_FROM_PRINCIPAL_ROLE")) {
+      return new RootPrivilegeGrantAuthorizationIntent(operation, secondarySecurable);
+    }
+    if (operationName.contains("_CATALOG_ROLE_TO_PRINCIPAL_ROLE")
+        || operationName.contains("_PRINCIPAL_ROLE")) {
+      return new RoleAssignmentAuthorizationIntent(operation, targetSecurable, secondarySecurable);
+    }
+    if (operationName.contains("_GRANT_")) {
+      return new PrivilegeGrantAuthorizationIntent(operation, targetSecurable, secondarySecurable);
+    }
+    return new RenameAuthorizationIntent(operation, targetSecurable, secondarySecurable);
+  }
+
+  private void stubResolutionManifest(
+      PolarisResolutionManifest manifest, PolarisResolvedPathWrapper resolvedPath) {
+    if (resolvedPath == null || resolvedPath.getResolvedLeafEntity() == null) {
+      return;
+    }
+    PolarisEntity leaf = resolvedPath.getResolvedLeafEntity().getEntity();
+    if (leaf.getType() == PolarisEntityType.ROOT) {
+      when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(resolvedPath);
+    } else if (leaf.getType() == PolarisEntityType.CATALOG) {
+      when(manifest.getResolvedReferenceCatalogEntity(org.mockito.ArgumentMatchers.anyBoolean()))
+          .thenReturn(resolvedPath);
+    } else if (leaf.getType().isTopLevel()) {
+      when(manifest.getResolvedTopLevelEntity(leaf.getName(), leaf.getType()))
+          .thenReturn(resolvedPath);
+    } else {
+      List<String> pathNamesWithinCatalog = new ArrayList<>();
+      List<ResolvedPolarisEntity> parentPath = resolvedPath.getResolvedParentPath();
+      if (parentPath != null) {
+        for (ResolvedPolarisEntity parent : parentPath) {
+          PolarisEntity parentEntity = parent.getEntity();
+          if (parentEntity.getType() != PolarisEntityType.ROOT
+              && parentEntity.getType() != PolarisEntityType.CATALOG) {
+            pathNamesWithinCatalog.add(parentEntity.getName());
+          }
+        }
+      }
+      pathNamesWithinCatalog.add(leaf.getName());
+      ResolvedPathKey key = ResolvedPathKey.of(pathNamesWithinCatalog, leaf.getType());
+      when(manifest.getResolvedPath(eq(key), org.mockito.ArgumentMatchers.anyBoolean()))
+          .thenReturn(resolvedPath);
+    }
+  }
+
+  private PolarisSecurable toSecurable(PolarisResolvedPathWrapper resolvedPath) {
+    List<PathSegment> segments = new ArrayList<>();
+    List<ResolvedPolarisEntity> parentPath = resolvedPath.getResolvedParentPath();
+    if (parentPath != null) {
+      for (ResolvedPolarisEntity parent : parentPath) {
+        PolarisEntity parentEntity = parent.getEntity();
+        if (parentEntity.getType() != PolarisEntityType.ROOT) {
+          segments.add(new PathSegment(parentEntity.getType(), parentEntity.getName()));
+        }
+      }
+    }
+    PolarisEntity leaf = resolvedPath.getResolvedLeafEntity().getEntity();
+    if (leaf.getType() != PolarisEntityType.ROOT) {
+      segments.add(new PathSegment(leaf.getType(), leaf.getName()));
+    }
+    return PolarisSecurable.of(
+        segments.getFirst(), segments.stream().skip(1).toArray(PathSegment[]::new));
   }
 
   @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
