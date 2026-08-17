@@ -161,7 +161,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the
   token). Credential-generation is enforced on token exchange; bearer verify is signature and claims
   only. Secrets-load failures during exchange return service unavailable.
-
+- The Policy API now rejects an unknown `policyType` query parameter on `listPolicies` and `getApplicablePolicies` with HTTP 400. Previously an unrecognized value (for example a misspelled `system.data-compaction`) was silently treated as "no filter", so the request returned policies of every type with HTTP 200, and clients could not tell a filtered result from an unfiltered one. An absent or empty `policyType` still means "no filter", as the API specification allows.
 
 ### Commits
 
