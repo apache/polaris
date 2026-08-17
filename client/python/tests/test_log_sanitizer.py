@@ -134,6 +134,60 @@ class TestLogSanitizer(unittest.TestCase):
         sanitized = sanitize_body(body)
         self.assertEqual(sanitized, body)
 
+    def test_credential_key_spellings_are_redacted(self) -> None:
+        for key in (
+            # OAuth on the management-API camelCase wire
+            "clientSecret",
+            "accessToken",
+            "refreshToken",
+            "bearerToken",
+            # OAuth on the snake_case wire (token endpoint / Iceberg REST config)
+            "client_secret",
+            "access_token",
+            "refresh_token",
+            # Bearer token key in Iceberg REST config
+            "token",
+            # Generic defense in depth
+            "password",
+            "secret",
+            # Iceberg vended-credential storage keys (bare forms)
+            "s3.secret-access-key",
+            "s3.session-token",
+            "gcs.oauth2.token",
+            "adls.sas-token",
+        ):
+            with self.subTest(key=key):
+                self.assertEqual(sanitize_data({key: "s"})[key], REDACTED)
+
+    def test_adls_sas_token_with_suffix_is_redacted(self) -> None:
+        # ``adls.sas-token`` is emitted with a hostname or account suffix.
+        for key in (
+            "adls.sas-token.myaccount.dfs.core.windows.net",
+            "adls.sas-token.myaccount",
+        ):
+            with self.subTest(key=key):
+                self.assertEqual(sanitize_data({key: "s"})[key], REDACTED)
+
+    def test_sensitive_key_with_structured_value_is_redacted(self) -> None:
+        # A sensitive key with a dict/list/tuple value must be fully redacted;
+        # earlier revisions recursed into the value, which left secrets in place.
+        payload = {
+            "clientSecret": {"v": "leak"},
+            "accessToken": ["t1", "t2"],
+        }
+        sanitized = sanitize_data(payload)
+        self.assertEqual(sanitized["clientSecret"], REDACTED)
+        self.assertEqual(sanitized["accessToken"], REDACTED)
+
+    def test_non_sensitive_lookalike_keys_are_preserved(self) -> None:
+        payload = {
+            "tokenType": "Bearer",
+            "expiresIn": 3600,
+            "clientId": "my-client",
+        }
+        sanitized = sanitize_data(payload)
+        self.assertEqual(sanitized, payload)
+
     def test_sanitize_failures_return_safe_fallback(self) -> None:
         stderr = io.StringIO()
         with patch("apache_polaris.cli.log_sanitizer.sys.stderr", stderr):
@@ -237,6 +291,39 @@ class TestApiRequestLogging(unittest.TestCase):
         self.assertNotIn("super-secret", output)
         self.assertIn('"name": "sales"', output)
         self.assertIn('"client_id": "my-client"', output)
+
+    def test_debug_logging_redacts_camelcase_credentials_on_the_wire(self) -> None:
+        response_body = json.dumps(
+            {
+                "principal": {"name": "alice", "clientId": "abc"},
+                "credentials": {"clientId": "abc", "clientSecret": "hunter2"},
+            }
+        ).encode()
+        output = self._capture_debug_output(
+            url="http://localhost:8181/api/management/v1/principals",
+            headers={"Authorization": "Bearer admin-token"},
+            body=json.dumps(
+                {
+                    "name": "ext",
+                    "connectionConfigInfo": {
+                        "authenticationParameters": {
+                            "clientId": "id",
+                            "clientSecret": "topsecret",
+                            "bearerToken": "btok",
+                        }
+                    },
+                }
+            ),
+            response_data=response_body,
+        )
+
+        self.assertNotIn("admin-token", output)
+        self.assertNotIn("topsecret", output)
+        self.assertNotIn("btok", output)
+        self.assertNotIn("hunter2", output)
+        self.assertIn('"name": "ext"', output)
+        self.assertIn('"clientId": "id"', output)
+        self.assertIn('"clientId": "abc"', output)
 
     def test_debug_logging_survives_sanitizer_failures(self) -> None:
         stderr = io.StringIO()

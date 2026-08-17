@@ -32,21 +32,47 @@ REDACTED = "***REDACTED***"
 OAUTH_TOKEN_BODY_REDACTED = "<redacted sensitive authentication payload>"
 SANITIZE_FAILURE_MESSAGE = "<redacted: unable to sanitize payload>"
 
-SENSITIVE_BODY_KEYS = frozenset({"client_secret", "access_token", "refresh_token"})
+# Explicit list of credential field names that appear on the wire.
+# - OAuth credentials: the Polaris management API serializes bodies by alias
+#   (camelCase); the OAuth token endpoint uses snake_case; Iceberg REST config
+#   uses a bare ``token`` for the bearer.
+# - Iceberg vended-credential storage properties: keys returned in
+#   ``LoadTableResult.config`` (see spec/iceberg-rest-catalog-open-api.yaml).
+#   ``adls.sas-token`` is emitted with a ``.<hostname>`` / ``.<account>``
+#   suffix; the prefix check in ``_is_sensitive_key`` handles those variants.
+SENSITIVE_BODY_KEYS = frozenset(
+    {
+        "client_secret",
+        "clientSecret",
+        "access_token",
+        "accessToken",
+        "refresh_token",
+        "refreshToken",
+        "bearerToken",
+        "token",
+        "password",
+        "secret",
+        "s3.secret-access-key",
+        "s3.session-token",
+        "gcs.oauth2.token",
+        "adls.sas-token",
+    }
+)
+
+
+def _is_sensitive_key(key: Any) -> bool:
+    # Prefix match catches ``adls.sas-token.<hostname>`` / ``.<account>`` variants.
+    return key in SENSITIVE_BODY_KEYS or (
+        isinstance(key, str) and key.startswith("adls.sas-token")
+    )
 
 
 def sanitize_data(data: Any) -> Any:
     if isinstance(data, dict):
-        sanitized: dict[Any, Any] = {}
-        for key, value in data.items():
-            if key in SENSITIVE_BODY_KEYS:
-                if isinstance(value, (dict, list, tuple)):
-                    sanitized[key] = sanitize_data(value)
-                else:
-                    sanitized[key] = REDACTED
-            else:
-                sanitized[key] = sanitize_data(value)
-        return sanitized
+        return {
+            key: REDACTED if _is_sensitive_key(key) else sanitize_data(value)
+            for key, value in data.items()
+        }
     if isinstance(data, list):
         return [sanitize_data(item) for item in data]
     if isinstance(data, tuple):
@@ -69,7 +95,7 @@ def is_oauth_token_endpoint(url: str) -> bool:
 
 def _sanitize_form_body(body: str) -> str:
     sanitized_pairs = [
-        (key, REDACTED if key in SENSITIVE_BODY_KEYS else value)
+        (key, REDACTED if _is_sensitive_key(key) else value)
         for key, value in parse_qsl(body, keep_blank_values=True)
     ]
     return urlencode(sanitized_pairs, safe="*")
