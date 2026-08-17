@@ -18,18 +18,32 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Class to represent an entity with its path
+ * Class to represent an entity with its path.
  *
  * @param catalogPath path to that entity. Could be null if this entity is top-level
  * @param entity the base entity itself
+ * @param originalEntity the original state of the entity for CAS comparison on updates, or null for
+ *     creates
  */
 public record EntityWithPath(
     @JsonProperty("catalogPath") @NonNull List<PolarisEntityCore> catalogPath,
-    @JsonProperty("entity") @NonNull PolarisBaseEntity entity) {}
+    @JsonProperty("entity") @NonNull PolarisBaseEntity entity,
+    @JsonProperty("originalEntity") @JsonInclude(JsonInclude.Include.NON_NULL)
+        @Nullable PolarisBaseEntity originalEntity) {
+
+  /** Convenience constructor for creates where no CAS baseline exists. */
+  public EntityWithPath(
+      @JsonProperty("catalogPath") @NonNull List<PolarisEntityCore> catalogPath,
+      @JsonProperty("entity") @NonNull PolarisBaseEntity entity) {
+    this(catalogPath, entity, null);
+  }
+}
