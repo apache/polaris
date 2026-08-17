@@ -2740,6 +2740,29 @@ public class PolarisTestMetaStoreManager {
             "T1");
     Assertions.assertThat(inTarget.getReturnStatus())
         .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+
+    // A top-level entity has an empty catalog path, which the javadoc calls out as a legal shape.
+    // Giving it a non-empty newCatalogPath is the same move: it would persist catalog id 0 next to
+    // a parent that lives inside a catalog. An empty path is used rather than null so the check
+    // under test is reached, since two of the managers reject a null catalogPath earlier.
+    PolarisBaseEntity principalRole =
+        this.ensureExistsByName(null, PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+    PolarisEntity promotedInput =
+        new PolarisEntity(
+            new PolarisBaseEntity.Builder(principalRole).parentId(targetN1.getId()).build());
+    Assertions.assertThatThrownBy(
+            () ->
+                polarisMetaStoreManager.renameEntity(
+                    this.polarisCallContext,
+                    List.of(),
+                    principalRole,
+                    crossCatalogPath,
+                    promotedInput))
+        .isInstanceOf(RuntimeException.class);
+
+    Assertions.assertThat(
+            this.ensureExistsByName(null, PolarisEntityType.PRINCIPAL_ROLE, "PR1").getParentId())
+        .isEqualTo(principalRole.getParentId());
   }
 
   /** Play with looking up entities */
