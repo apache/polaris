@@ -21,6 +21,8 @@ package org.apache.polaris.service.catalog.policy;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -29,11 +31,22 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 public class PolicyCatalogUtils {
+
+  /**
+   * The accepted {@code policyType} names, listed in rejection messages. Derived from the same
+   * registry {@link PolicyType#fromName(String)} resolves against, so the message cannot advertise
+   * a set that differs from the one actually accepted.
+   */
+  private static final String KNOWN_POLICY_TYPE_NAMES =
+      Arrays.stream(PredefinedPolicyTypes.values())
+          .map(PolicyType::getName)
+          .collect(Collectors.joining(", "));
 
   /**
    * Resolves the optional {@code policyType} query parameter of the policy listing APIs into a
@@ -54,7 +67,8 @@ public class PolicyCatalogUtils {
     }
     PolicyType resolved = PolicyType.fromName(policyType);
     if (resolved == null) {
-      throw new BadRequestException("Unknown policy type: %s", policyType);
+      throw new BadRequestException(
+          "Unknown policy type: '%s'. Valid values are: %s", policyType, KNOWN_POLICY_TYPE_NAMES);
     }
     return resolved;
   }
