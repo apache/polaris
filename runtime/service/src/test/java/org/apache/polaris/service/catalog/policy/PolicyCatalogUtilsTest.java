@@ -60,6 +60,19 @@ class PolicyCatalogUtilsTest {
   void testResolvePolicyTypeFilterRejectsUnknownTypes(String policyType) {
     assertThatThrownBy(() -> PolicyCatalogUtils.resolvePolicyTypeFilter(policyType))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("Unknown policy type");
+        .hasMessageContaining("Unknown policy type")
+        .hasMessageContaining(policyType);
+  }
+
+  @Test
+  void testResolvePolicyTypeFilterRejectionListsEveryValidType() {
+    assertThatThrownBy(() -> PolicyCatalogUtils.resolvePolicyTypeFilter("not-a-policy-type"))
+        .isInstanceOf(BadRequestException.class)
+        .satisfies(
+            e -> {
+              for (PredefinedPolicyTypes policyType : PredefinedPolicyTypes.values()) {
+                assertThat(e).hasMessageContaining(policyType.getName());
+              }
+            });
   }
 }
