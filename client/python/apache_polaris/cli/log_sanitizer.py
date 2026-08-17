@@ -61,6 +61,7 @@ SENSITIVE_BODY_KEYS = frozenset(
 
 
 def _is_sensitive_key(key: Any) -> bool:
+    # Prefix match catches ``adls.sas-token.<hostname>`` / ``.<account>`` variants.
     return key in SENSITIVE_BODY_KEYS or (
         isinstance(key, str) and key.startswith("adls.sas-token")
     )
