@@ -19,6 +19,7 @@
 package org.apache.polaris.service.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -229,6 +230,71 @@ public class TaskExecutorImplTest {
     PolarisEvent afterEvent =
         testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
     assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS)).isEqualTo(false);
+  }
+
+  @Test
+  void handleTaskIsANoOpWhenTaskEntityNoLongerExists() {
+    String realm = "myrealm";
+    RealmContext realmContext = () -> realm;
+
+    TestServices testServices = TestServices.builder().realmContext(realmContext).build();
+
+    InMemoryEventCollector testPolarisEventDispatcher =
+        (InMemoryEventCollector) testServices.polarisEventDispatcher();
+
+    PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
+    PolarisCallContext polarisCallCtx = testServices.newCallContext();
+
+    // Reserve an id but never persist the entity, reproducing a retry that runs after an earlier
+    // attempt already handled the task and dropped its entity.
+    long droppedTaskId = metaStoreManager.generateNewEntityId(polarisCallCtx).getId();
+
+    AtomicInteger handlerCalls = new AtomicInteger(0);
+
+    TaskExecutorImpl executor =
+        new TaskExecutorImpl(
+            Runnable::run,
+            null,
+            testServices.clock(),
+            testServices.metaStoreManagerFactory(),
+            new TaskFileIOSupplier(
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
+            new RealmContextHolder(),
+            testServices.polarisEventDispatcher(),
+            testServices.eventMetadataFactory(),
+            null,
+            new PolarisPrincipalHolder(),
+            testServices.principal());
+
+    executor.addTaskHandler(
+        new TaskHandler() {
+          @Override
+          public boolean canHandleTask(TaskEntity task) {
+            return true;
+          }
+
+          @Override
+          public void handleTask(TaskEntity task, CallContext callContext) {
+            handlerCalls.incrementAndGet();
+          }
+        });
+
+    assertThatCode(
+            () ->
+                executor.handleTask(
+                    droppedTaskId,
+                    polarisCallCtx,
+                    PolarisEventMetadata.builder().realmId(realm).build(),
+                    2))
+        .doesNotThrowAnyException();
+
+    assertThat(handlerCalls.get()).isZero();
+
+    PolarisEvent afterEvent =
+        testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
+    assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_ENTITY_ID))
+        .isEqualTo(droppedTaskId);
+    assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS)).isEqualTo(true);
   }
 
   @Test

@@ -66,6 +66,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
 - Fixed a false-negative in the JDBC optimized location-overlap check (`OPTIMIZED_SIBLING_CHECK`). Ancestor locations stored in `location_without_scheme` without a trailing slash were not matched by the generated ancestor equality terms, allowing nested table/namespace locations to be created under existing prefixes. The query now emits both slash-terminated and non-slash-terminated prefix terms and uses a slash-terminated `LIKE` pattern for descendant matching.
 - Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
+- Async task retries no longer fail with a `NullPointerException` when the task entity has already been dropped by a previous attempt. Such a retry is now recognized as an already-completed task and exits cleanly, instead of exhausting all retry attempts and logging a `NullPointerException` on each one.
 
 ### Commits
 
