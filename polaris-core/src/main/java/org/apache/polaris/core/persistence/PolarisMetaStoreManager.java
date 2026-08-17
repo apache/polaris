@@ -34,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEventManager;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -211,6 +212,54 @@ public interface PolarisMetaStoreManager
       @NonNull PolarisCallContext callCtx,
       @NonNull PolarisBaseEntity catalog,
       @NonNull List<PolarisEntityCore> principalRoles);
+
+  /**
+   * Commit a batch of entity creates, updates, deletes, and grant-record changes atomically.
+   *
+   * <p>This is the primary mutation path for multi-entity changes. Single-entity operations are
+   * thin wrappers that build a {@link MetaStoreChangeSet} with one entry and delegate here.
+   *
+   * <p>The default implementation falls back to calling individual per-entity/per-grant methods in
+   * sequence and is therefore not atomic. Concrete implementations should override this to provide
+   * the atomic guarantee when the backend supports {@link
+   * BasePersistence#supportsAtomicMixedCommit()}.
+   *
+   * @param callCtx call context
+   * @param changeSet the set of mutations to commit
+   * @return result indicating success or failure
+   */
+  default @NonNull EntitiesResult commitTransactionBatch(
+      @NonNull PolarisCallContext callCtx, @NonNull MetaStoreChangeSet changeSet) {
+    BasePersistence ms = callCtx.getMetaStore();
+
+    // Creates
+    for (EntityWithPath create : changeSet.creates()) {
+      EntityResult result = createEntityIfNotExists(callCtx, create.catalogPath(), create.entity());
+      if (!result.isSuccess()) {
+        return new EntitiesResult(result.getReturnStatus(), result.getExtraInformation());
+      }
+    }
+
+    // CAS-updates
+    if (!changeSet.updates().isEmpty()) {
+      EntitiesResult result = updateEntitiesPropertiesIfNotChanged(callCtx, changeSet.updates());
+      if (!result.isSuccess()) {
+        return result;
+      }
+    }
+
+    // Grant creates
+    for (PolarisGrantRecord grant : changeSet.grantRecordsToCreate()) {
+      ms.writeToGrantRecords(callCtx, grant);
+    }
+
+    // Grant deletes
+    for (PolarisGrantRecord grant : changeSet.grantRecordsToDelete()) {
+      ms.deleteFromGrantRecords(callCtx, grant);
+    }
+
+    return new EntitiesResult(Page.fromItems(List.of()));
+  }
 
   /**
    * Persist a newly created entity under the specified catalog path if specified, else this is a
