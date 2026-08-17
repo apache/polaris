@@ -183,9 +183,10 @@ AWS S3 Storage Options:
   --no-sts                                                             Indicates that Polaris should not use STS (e.g. if STS is not available)
   --no-kms                                                             Indicates that Polaris should not use KMS (e.g. if KMS is not available)
   --path-style-access                                                  Whether to use path-style-access for S3
-  --current-kms-key CURRENT_KMS_KEY                                    Deprecated. Use --allowed-kms-key instead
-  --allowed-kms-key ALLOWED_KMS_KEY                                    AWS KMS key ARN(s) that this catalog and its clients may use to encrypt and decrypt S3 data (zero or more)
-  --decrypt-only-kms-key DECRYPT_ONLY_KMS_KEY                          AWS KMS key ARN(s) that this catalog and its clients may use only to decrypt S3 data (zero or more)
+  --current-kms-key CURRENT_KMS_KEY                                    Deprecated. Use --encryption-key instead
+  --allowed-kms-key ALLOWED_KMS_KEY                                    Deprecated. Use --encryption-key instead
+  --encryption-key ENCRYPTION_KEY                                      AWS KMS key identifier(s) that this catalog and its clients may use to encrypt S3 data; these keys are also granted decryption permissions (zero or more)
+  --decryption-key DECRYPTION_KEY                                      AWS KMS key identifier(s) that this catalog and its clients may use to decrypt S3 data (zero or more)
   --role-arn ROLE_ARN                                                  A role ARN to use when connecting to S3
   --region REGION                                                      The region to use when connecting to S3
   --external-id EXTERNAL_ID                                            The external ID to use when connecting to S3

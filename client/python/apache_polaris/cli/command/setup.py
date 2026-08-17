@@ -340,15 +340,11 @@ class SetupCommand(Command):
                         if hasattr(c.storage_config_info, "allowed_kms_keys")
                         and c.storage_config_info.allowed_kms_keys
                         else [],
-                        "encryption_keys": sorted(
-                            c.storage_config_info.encryption_keys
-                        )
+                        "encryption_keys": sorted(c.storage_config_info.encryption_keys)
                         if hasattr(c.storage_config_info, "encryption_keys")
                         and c.storage_config_info.encryption_keys
                         else [],
-                        "decryption_keys": sorted(
-                            c.storage_config_info.decryption_keys
-                        )
+                        "decryption_keys": sorted(c.storage_config_info.decryption_keys)
                         if hasattr(c.storage_config_info, "decryption_keys")
                         and c.storage_config_info.decryption_keys
                         else [],
