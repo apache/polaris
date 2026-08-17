@@ -63,7 +63,8 @@ final class BigLakeCatalogValidator {
       return;
     }
 
-    if (!(externalCatalog.getConnectionConfigInfo() instanceof IcebergRestConnectionConfigInfo connectionConfig)) {
+    if (!(externalCatalog.getConnectionConfigInfo()
+        instanceof IcebergRestConnectionConfigInfo connectionConfig)) {
       return;
     }
 
@@ -236,13 +237,15 @@ final class BigLakeCatalogValidator {
               + ".");
     }
 
-    String defaultBaseLocation = externalCatalog.getProperties().toMap().get(DEFAULT_BASE_LOCATION_KEY);
+    String defaultBaseLocation =
+        externalCatalog.getProperties().toMap().get(DEFAULT_BASE_LOCATION_KEY);
     validateGsLocation("catalog.properties." + DEFAULT_BASE_LOCATION_KEY, defaultBaseLocation);
 
     List<String> allowedLocations = gcpStorageConfigInfo.getAllowedLocations();
     if (allowedLocations != null) {
       for (int index = 0; index < allowedLocations.size(); index++) {
-        validateGsLocation("storageConfigInfo.allowedLocations[" + index + "]", allowedLocations.get(index));
+        validateGsLocation(
+            "storageConfigInfo.allowedLocations[" + index + "]", allowedLocations.get(index));
       }
     }
 
@@ -275,7 +278,8 @@ final class BigLakeCatalogValidator {
           "Invalid BigLake " + fieldName + " '" + location + "': malformed gs:// location.", e);
     }
 
-    if (!"gs".equalsIgnoreCase(storageUri.scheme()) || Strings.isNullOrEmpty(storageUri.authority())) {
+    if (!"gs".equalsIgnoreCase(storageUri.scheme())
+        || Strings.isNullOrEmpty(storageUri.authority())) {
       throw new IllegalArgumentException(
           "Invalid BigLake " + fieldName + " '" + location + "': expected a gs:// location.");
     }

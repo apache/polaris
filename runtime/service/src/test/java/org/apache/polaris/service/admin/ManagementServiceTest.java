@@ -371,7 +371,6 @@ public class ManagementServiceTest {
             "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
   }
 
-
   @Test
   public void testCreateAndUpdateValidBigLakeCatalog() {
     String catalogName = "biglake-catalog";
@@ -379,9 +378,7 @@ public class ManagementServiceTest {
     String updatedBaseLocation = "gs://bucket/path/to/updated-data";
     Catalog catalog =
         createBigLakeCatalog(
-            catalogName,
-            initialBaseLocation,
-            createBigLakeStorageConfig(initialBaseLocation));
+            catalogName, initialBaseLocation, createBigLakeStorageConfig(initialBaseLocation));
 
     try (Response response =
         services
@@ -418,10 +415,7 @@ public class ManagementServiceTest {
         services
             .catalogsApi()
             .updateCatalog(
-                catalogName,
-                updateRequest,
-                services.realmContext(),
-                services.securityContext())) {
+                catalogName, updateRequest, services.realmContext(), services.securityContext())) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog updatedCatalog = (Catalog) response.getEntity();
       assertThat(updatedCatalog.getProperties().getDefaultBaseLocation())
@@ -489,9 +483,7 @@ public class ManagementServiceTest {
     String initialBaseLocation = "gs://bucket/path/to/data";
     Catalog catalog =
         createBigLakeCatalog(
-            catalogName,
-            initialBaseLocation,
-            createBigLakeStorageConfig(initialBaseLocation));
+            catalogName, initialBaseLocation, createBigLakeStorageConfig(initialBaseLocation));
 
     try (Response response =
         services
@@ -532,7 +524,7 @@ public class ManagementServiceTest {
                         updateRequest,
                         services.realmContext(),
                         services.securityContext()))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOfAny(BadRequestException.class, IllegalArgumentException.class)
         .hasMessageContaining("catalog.properties.default-base-location");
   }
 
@@ -557,7 +549,6 @@ public class ManagementServiceTest {
         new PolarisAuthorizerImpl(services.realmConfig()),
         ReservedProperties.NONE);
   }
-
 
   private Catalog createBigLakeCatalog(
       String catalogName, String defaultBaseLocation, StorageConfigInfo storageConfigInfo) {

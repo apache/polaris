@@ -391,8 +391,7 @@ class BigLakeCatalogValidatorTest {
       String defaultBaseLocation,
       StorageConfigInfo storageConfigInfo) {
     CatalogProperties catalogProperties = CatalogProperties.builder(defaultBaseLocation).build();
-    catalogProperties.put(
-        "enable.credential.vending", Boolean.toString(credentialVendingEnabled));
+    catalogProperties.put("enable.credential.vending", Boolean.toString(credentialVendingEnabled));
 
     return ExternalCatalog.builder()
         .setType(Catalog.TypeEnum.EXTERNAL)
