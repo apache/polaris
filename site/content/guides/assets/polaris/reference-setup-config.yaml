@@ -117,7 +117,7 @@ catalogs:
     # --- Policies ---
     # Defines policies that can be attached to entities in this catalog.
     policies:
-      compaction-policy:
+      - name: compaction-policy
         namespace: dev_namespace
         type: "system.data-compaction"
         description: "Policy to enable data compaction for tables"
@@ -134,7 +134,7 @@ catalogs:
         ## commented out as table/view doesn't exist out of box
         # attach:
         #   - { type: table-like, path: dev_namespace.sub_namespace.dev_table }
-      snapshot-expiry-policy:
+      - name: snapshot-expiry-policy
         namespace: dev_namespace
         type: "system.snapshot-expiry"
         description: "Policy to expire old snapshots"
@@ -150,7 +150,7 @@ catalogs:
         }
         attach:
           - { type: namespace, path: dev_namespace }
-      orphan-file-policy:
+      - name: orphan-file-policy
         namespace: dev_namespace
         type: "system.orphan-file-removal"
         description: "Policy to remove orphan files"
