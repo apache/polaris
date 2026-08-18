@@ -104,5 +104,6 @@ polaris setup apply --client-id ${CLIENT_ID} --client-secret ${CLIENT_SECRET} si
 The current implementation focuses on simplifying initial setup, with a few limitations to be aware of:
 
 - **Non-declarative updates**: The command is create-only. If an entity already exists, it will be skipped rather than updated. There is no state reconciliation yet.
+- **Namespace arguments outside setup**: Namespace level lists are supported only in setup configurations. Legacy setup strings and other CLI commands interpret dots as level separators, so they cannot address a single namespace level containing a dot.
 - **Policy attachment export**: Policy attachments are not included in `setup export` due to performance considerations. However, they can still be defined in YAML and applied during `setup apply`.
 - **External catalog testing**: Support for external catalogs (e.g., Hive Metastore) exists, but full end-to-end testing has not yet been completed. It is recommended to validate configurations in a non-production environment first.

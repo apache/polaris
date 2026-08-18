@@ -751,7 +751,6 @@ class TestSetupCommand(CLITestBase):
             roles=[SimpleNamespace(name="reader")]
         )
         apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
-        apply_command._grant_privilege = MagicMock()
         apply_command._create_catalog_roles(apply_client, "catalog", loaded)
 
         self.assertEqual(
@@ -769,11 +768,38 @@ class TestSetupCommand(CLITestBase):
         )
         self.assertEqual(
             [
-                grant_call.kwargs["namespace"]
-                for grant_call in apply_command._grant_privilege.call_args_list
+                (
+                    grant_call.args[2].grant.namespace,
+                    grant_call.args[2].grant.privilege.value,
+                )
+                for grant_call in apply_client.add_grant_to_catalog_role.call_args_list
             ],
-            [["finance", "us"], ["finance.us"]],
+            [
+                (["finance", "us"], "TABLE_WRITE_DATA"),
+                (["finance.us"], "TABLE_READ_DATA"),
+            ],
         )
+
+    def test_setup_apply_accepts_legacy_namespace_privilege_mapping(self) -> None:
+        apply_client = self.build_mock_client()
+        apply_client.list_catalog_roles.return_value = SimpleNamespace(
+            roles=[SimpleNamespace(name="reader")]
+        )
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+
+        apply_command._create_catalog_roles(
+            apply_client,
+            "catalog",
+            {
+                "reader": {
+                    "privileges": {"namespace": {"finance.us": ["TABLE_READ_DATA"]}}
+                }
+            },
+        )
+
+        grant = apply_client.add_grant_to_catalog_role.call_args.args[2].grant
+        self.assertEqual(grant.namespace, ["finance", "us"])
+        self.assertEqual(grant.privilege.value, "TABLE_READ_DATA")
 
     def test_setup_export_reports_top_level_read_failures(self) -> None:
         for method_name in (
