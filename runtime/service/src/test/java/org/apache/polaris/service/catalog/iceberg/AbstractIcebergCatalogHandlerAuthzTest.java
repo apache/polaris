@@ -312,7 +312,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Just activating PRINCIPAL_ROLE1 should also work.
     Assertions.assertThat(
-            newHandler(Set.of(PRINCIPAL_ROLE1)).listNamespaces(Namespace.of(), null, null).namespaces())
+            newHandler(Set.of(PRINCIPAL_ROLE1))
+                .listNamespaces(Namespace.of(), null, null)
+                .namespaces())
         .containsAll(List.of(NS1, NS2));
 
     // If we only activate PRINCIPAL_ROLE2 it won't have the privilege.
