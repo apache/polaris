@@ -190,7 +190,7 @@ public class DefaultAuthenticator implements Authenticator {
   protected AttributeMap resolvePrincipalAttributes(
       SecurityIdentity identity,
       @Nullable PrincipalEntity principalEntity,
-      boolean allRolesRequested) {
+      PrincipalRoleSelection roleSelection) {
     // Do not merge the security identity's attributes into the principal attributes:
     // these must stay separate.
     ImmutableAttributeMap.Builder principalAttributes = ImmutableAttributeMap.builder();
@@ -200,7 +200,8 @@ public class DefaultAuthenticator implements Authenticator {
     if (principalEntity != null) {
       principalAttributes
           .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
-          .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, allRolesRequested);
+          .put(
+              PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, roleSelection.allRolesRequested());
     }
     return principalAttributes.build();
   }
