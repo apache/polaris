@@ -27,6 +27,7 @@ from apache_polaris.cli.constants import (
     Arguments,
     AuthenticationType,
     ServiceIdentityType,
+    GCP_QUOTA_PROJECT_HEADER,
     UNIT_SEPARATOR,
 )
 from apache_polaris.cli.options.option_tree import Argument
@@ -73,8 +74,6 @@ class CatalogsCommand(Command):
         * polaris catalogs update cat_name --default-base-location s3://new-bucket/new-location
         * polaris catalogs list
     """
-
-    _GCP_QUOTA_PROJECT_PROPERTY = "header.x-goog-user-project"
 
     catalogs_subcommand: str
     catalog_type: Optional[str] = None
@@ -346,6 +345,7 @@ class CatalogsCommand(Command):
         if self.catalog_type != CatalogType.EXTERNAL.value:
             return None
 
+        assert self.properties is not None
         auth_params = None
         if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
             auth_params = OAuthClientCredentialsParameters(
@@ -405,13 +405,9 @@ class CatalogsCommand(Command):
         elif self.catalog_connection_type == CatalogConnectionType.ICEBERG.value:
             connection_properties = {}
             if self.catalog_authentication_type == AuthenticationType.GCP.value:
-                quota_project = (self.properties or {}).get(
-                    self._GCP_QUOTA_PROJECT_PROPERTY
-                )
+                quota_project = self.properties.get(GCP_QUOTA_PROJECT_HEADER)
                 if quota_project is not None:
-                    connection_properties[self._GCP_QUOTA_PROJECT_PROPERTY] = (
-                        quota_project
-                    )
+                    connection_properties[GCP_QUOTA_PROJECT_HEADER] = quota_project
 
             config = IcebergRestConnectionConfigInfo(
                 connection_type=self.catalog_connection_type.upper().replace("-", "_"),
@@ -438,12 +434,13 @@ class CatalogsCommand(Command):
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_type = cast(str, self.catalog_type)
         catalog_name = cast(str, self.catalog_name)
-        catalog_properties = dict(self.properties or {})
+        assert self.properties is not None
+        catalog_properties = dict(self.properties)
         if (
             self.catalog_connection_type == CatalogConnectionType.ICEBERG.value
             and self.catalog_authentication_type == AuthenticationType.GCP.value
         ):
-            catalog_properties.pop(self._GCP_QUOTA_PROJECT_PROPERTY, None)
+            catalog_properties.pop(GCP_QUOTA_PROJECT_HEADER, None)
 
         if self.catalogs_subcommand == Subcommands.CREATE:
             storage_config = self._build_storage_config_info()

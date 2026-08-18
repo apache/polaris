@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -45,7 +46,7 @@ final class BigLakeCatalogValidator {
       Pattern.compile("^[a-z][a-z0-9-]{4,28}[a-z0-9]$");
   private static final Pattern GCP_PROJECT_NUMBER_PATTERN = Pattern.compile("^[1-9][0-9]{5,}$");
   private static final Pattern BIGLAKE_URI_CATALOG_PATTERN =
-      Pattern.compile("^/[1-9][0-9]{5,}/catalogs/[^/\\s]+$");
+      Pattern.compile("^/([^/\\s]+)/catalogs/[^/\\s]+$");
   private static final Pattern BIGLAKE_RESOURCE_NAME_PATTERN =
       Pattern.compile("^projects/[^/\\s]+/locations/[^/\\s]+/catalogs/[^/\\s]+$");
   private static final Pattern BIGLAKE_SIMPLE_CATALOG_PATTERN =
@@ -55,6 +56,7 @@ final class BigLakeCatalogValidator {
 
   private static final Set<String> BLOCKED_HEADER_PROPERTIES =
       Set.of("header.authorization", "header.proxy-authorization");
+  private static final Set<String> SUPPORTED_HEADER_PROPERTIES = Set.of(QUOTA_PROJECT_HEADER);
 
   private BigLakeCatalogValidator() {}
 
@@ -68,6 +70,8 @@ final class BigLakeCatalogValidator {
       return;
     }
 
+    // BigLake uses ICEBERG_REST with GCP authentication. This is distinct from the BIGQUERY
+    // connection type used by the optional BigQuery Metastore federation extension.
     if (connectionConfig.getAuthenticationParameters() == null
         || connectionConfig.getAuthenticationParameters().getAuthenticationType()
             != AuthenticationParameters.AuthenticationTypeEnum.GCP) {
@@ -165,8 +169,7 @@ final class BigLakeCatalogValidator {
       }
 
       String normalizedPropertyName = propertyName.toLowerCase(Locale.ROOT);
-      if (!normalizedPropertyName.startsWith("header.")
-          || QUOTA_PROJECT_HEADER.equals(normalizedPropertyName)) {
+      if (!normalizedPropertyName.startsWith("header.")) {
         continue;
       }
 
@@ -177,12 +180,14 @@ final class BigLakeCatalogValidator {
                 + "': overriding security-sensitive headers is not allowed.");
       }
 
-      throw new IllegalArgumentException(
-          "Invalid BigLake connectionConfigInfo.properties entry '"
-              + propertyName
-              + "': only '"
-              + QUOTA_PROJECT_HEADER
-              + "' is supported.");
+      if (!SUPPORTED_HEADER_PROPERTIES.contains(normalizedPropertyName)) {
+        throw new IllegalArgumentException(
+            "Invalid BigLake connectionConfigInfo.properties entry '"
+                + propertyName
+                + "': only supported BigLake headers are "
+                + SUPPORTED_HEADER_PROPERTIES
+                + ".");
+      }
     }
 
     String quotaProject = headerProperties.get(QUOTA_PROJECT_HEADER);
@@ -303,13 +308,22 @@ final class BigLakeCatalogValidator {
 
   private static boolean isBigLakeCatalogUri(String remoteCatalogName) {
     URI uri = parseUri(remoteCatalogName);
-    return uri != null
-        && "bl".equalsIgnoreCase(uri.getScheme())
-        && "projects".equalsIgnoreCase(uri.getHost())
-        && uri.getPort() == -1
-        && uri.getRawQuery() == null
-        && uri.getRawFragment() == null
-        && BIGLAKE_URI_CATALOG_PATTERN.matcher(normalizePath(uri.getPath())).matches();
+    if (uri == null
+        || !"bl".equalsIgnoreCase(uri.getScheme())
+        || !"projects".equalsIgnoreCase(uri.getHost())
+        || uri.getPort() != -1
+        || uri.getRawQuery() != null
+        || uri.getRawFragment() != null) {
+      return false;
+    }
+
+    Matcher matcher = BIGLAKE_URI_CATALOG_PATTERN.matcher(normalizePath(uri.getPath()));
+    return matcher.matches() && isGcpProjectIdentifier(matcher.group(1));
+  }
+
+  private static boolean isGcpProjectIdentifier(String projectIdentifier) {
+    return GCP_PROJECT_ID_PATTERN.matcher(projectIdentifier).matches()
+        || GCP_PROJECT_NUMBER_PATTERN.matcher(projectIdentifier).matches();
   }
 
   private static String normalizePath(String path) {

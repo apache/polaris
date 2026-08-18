@@ -111,6 +111,22 @@ class BigLakeCatalogValidatorTest {
   }
 
   @Test
+  void validBigLakeBlCatalogIdentifierWithProjectIdPasses() {
+    assertThatCode(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "bl://projects/my-project-id/catalogs/my-biglake-catalog",
+                        Map.of("header.x-goog-user-project", "my-billing-project"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   void validBigLakeWarehouseIdentifierPasses() {
     assertThatCode(
             () ->
@@ -262,7 +278,7 @@ class BigLakeCatalogValidatorTest {
   }
 
   @Test
-  void rejectsUnsupportedHeaderOverride() {
+  void rejectsSecuritySensitiveHeaderOverride() {
     assertThatThrownBy(
             () ->
                 BigLakeCatalogValidator.validate(
@@ -280,6 +296,27 @@ class BigLakeCatalogValidatorTest {
                         validGcsStorage("gs://bucket/path/to/data"))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("overriding security-sensitive headers is not allowed");
+  }
+
+  @Test
+  void rejectsUnsupportedHeader() {
+    assertThatThrownBy(
+            () ->
+                BigLakeCatalogValidator.validate(
+                    realmConfig,
+                    bigLakeCatalog(
+                        "https://biglake.googleapis.com/iceberg/v1/restcatalog",
+                        "my-remote-catalog",
+                        Map.of(
+                            "header.x-goog-user-project",
+                            "my-billing-project",
+                            "header.x-custom-header",
+                            "value"),
+                        true,
+                        "gs://bucket/path/to/data",
+                        validGcsStorage("gs://bucket/path/to/data"))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("only supported BigLake headers are");
   }
 
   @Test
