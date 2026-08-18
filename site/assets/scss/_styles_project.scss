@@ -135,7 +135,12 @@ h6:hover .heading-anchor {
     z-index: -1;
     inset: 0;
     background:
-      linear-gradient(to bottom, #30638e 0, rgba(48, 99, 142, 0.5) 4rem, rgba(48, 99, 142, 0) 12rem),
+      linear-gradient(
+        to bottom,
+        $td-navbar-bg-color 0,
+        rgba($td-navbar-bg-color, 0.5) 4rem,
+        rgba($td-navbar-bg-color, 0) 12rem
+      ),
       linear-gradient(to bottom, rgba(1, 19, 25, 0.22), rgba(1, 19, 25, 0.02) 45%, rgba(1, 19, 25, 0.18)),
       radial-gradient(circle at center 35%, rgba(0, 0, 0, 0.06), rgba(0, 18, 24, 0.2));
     content: "";
@@ -243,16 +248,18 @@ h6:hover .heading-anchor {
   }
 }
 
-@media (min-width: 768px) {
-  .polaris-landing-hero__content hr {
-    max-width: 16rem;
-    margin: 1.5rem auto;
-  }
+@include media-breakpoint-up(md) {
+  .polaris-landing {
+    .polaris-landing-hero__content hr {
+      max-width: 16rem;
+      margin: 1.5rem auto;
+    }
 
-  .polaris-landing-button {
-    min-height: 3rem;
-    padding: 0.7rem 1rem;
-    font-size: 0.9rem;
+    .polaris-landing-button {
+      min-height: 3rem;
+      padding: 0.7rem 1rem;
+      font-size: 0.9rem;
+    }
   }
 }
 
@@ -285,7 +292,7 @@ h6:hover .heading-anchor {
   padding: 3.75rem 0;
   border-top: 1px solid rgba(114, 232, 221, 0.08);
   background:
-    radial-gradient(circle at 50% 45%, rgba(48, 99, 142, 0.12), rgba(48, 99, 142, 0) 58%),
+    radial-gradient(circle at 50% 45%, rgba($td-navbar-bg-color, 0.12), rgba($td-navbar-bg-color, 0) 58%),
     #073b47;
 }
 
@@ -397,7 +404,7 @@ h6:hover .heading-anchor {
   }
 }
 
-@media (max-width: 767.98px) {
+@include media-breakpoint-down(md) {
   .polaris-landing-hero {
     min-height: 43rem;
     background-position: center bottom;
