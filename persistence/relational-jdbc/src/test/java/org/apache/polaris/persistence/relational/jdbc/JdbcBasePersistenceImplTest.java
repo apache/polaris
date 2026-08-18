@@ -363,18 +363,28 @@ class JdbcBasePersistenceImplTest {
     impl.writeToPolicyMappingRecords(
         callCtx, newTestPolicyMappingRecord(policyTypeCode, Map.of("version", "2")));
 
+    // Guard the premise: the re-attach must really have replaced the stored payload. Were it ever
+    // to become a no-op, the stored parameters would still match the stale record below and even a
+    // delete that keys on parameters would pass this test.
+    PolarisPolicyMappingRecord reattached = lookupTestPolicyMapping(impl, callCtx, policyTypeCode);
+    assertThat(reattached).isNotNull();
+    assertThat(reattached.getParametersAsMap()).isEqualTo(Map.of("version", "2"));
+
     // Detach deletes the record it looked up before that update, so its parameters are stale.
     impl.deleteFromPolicyMappingRecords(callCtx, attached);
 
-    assertThat(
-            impl.lookupPolicyMappingRecord(
-                callCtx,
-                POLICY_TARGET_CATALOG_ID,
-                POLICY_TARGET_ID,
-                policyTypeCode,
-                POLICY_CATALOG_ID,
-                POLICY_ID))
-        .isNull();
+    assertThat(lookupTestPolicyMapping(impl, callCtx, policyTypeCode)).isNull();
+  }
+
+  private static PolarisPolicyMappingRecord lookupTestPolicyMapping(
+      JdbcBasePersistenceImpl impl, PolarisCallContext callCtx, int policyTypeCode) {
+    return impl.lookupPolicyMappingRecord(
+        callCtx,
+        POLICY_TARGET_CATALOG_ID,
+        POLICY_TARGET_ID,
+        policyTypeCode,
+        POLICY_CATALOG_ID,
+        POLICY_ID);
   }
 
   private static PolarisPolicyMappingRecord newTestPolicyMappingRecord(
