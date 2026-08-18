@@ -507,12 +507,12 @@ public class ManagementServiceTest {
     UpdateCatalogRequest updateRequest =
         UpdateCatalogRequest.builder()
             .setCurrentEntityVersion(fetchedCatalog.getEntityVersion())
-            .setProperties(
-                Map.of(
-                    "default-base-location",
-                    "s3://bucket/path/to/data",
-                    "enable.credential.vending",
-                    "true"))
+            .setProperties(Map.of("enable.credential.vending", "true"))
+            .setStorageConfigInfo(
+                GcpStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                    .setAllowedLocations(List.of(initialBaseLocation))
+                    .build())
             .build();
 
     assertThatThrownBy(
@@ -525,7 +525,7 @@ public class ManagementServiceTest {
                         services.realmContext(),
                         services.securityContext()))
         .isInstanceOfAny(BadRequestException.class, IllegalArgumentException.class)
-        .hasMessageContaining("catalog.properties.default-base-location");
+        .hasMessageContaining("storageConfigInfo.gcsServiceAccount");
   }
 
   private PolarisAdminService setupPolarisAdminService(
