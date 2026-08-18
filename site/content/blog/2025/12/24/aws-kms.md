@@ -18,8 +18,8 @@
 # under the License.
 #
 title: "Securing S3 data with AWS KMS"
-date: 2025-12-24
-author: Dmitri Bourlatchkov
+date: 2026-08-18
+author: Dmitri Bourlatchkov and I Ting Lee
 ---
 ## Introduction
 

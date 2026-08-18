@@ -31,6 +31,7 @@ from apache_polaris.cli.constants import (
 )
 from apache_polaris.cli.options.option_tree import Argument
 
+import logging
 from dataclasses import dataclass, field
 from pydantic import StrictStr, SecretStr
 from typing import Dict, List, Optional, Union, Tuple, Callable, cast
@@ -59,6 +60,8 @@ from apache_polaris.sdk.management import (
 from apache_polaris.cli.command.utils import get_catalog_api_client, format_timestamp
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -136,6 +139,19 @@ class CatalogsCommand(Command):
             self.path_style_access = False
 
     def validate(self) -> None:
+        if self.current_kms_key:
+            logger.warning(
+                "%s is deprecated; use %s instead.",
+                Argument.to_flag_name(Arguments.KMS_KEY_CURRENT),
+                Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION),
+            )
+        if self.allowed_kms_keys:
+            logger.warning(
+                "%s is deprecated; use %s instead.",
+                Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED),
+                Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION),
+            )
+
         if self.catalogs_subcommand in {
             Subcommands.CREATE,
             Subcommands.DELETE,

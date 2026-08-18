@@ -166,16 +166,51 @@ class TestParserBasic(CLITestBase):
         Parser.parse(["catalogs", "create", "catalog_name"])
         Parser.parse(["catalogs", "create", "catalog_name", "--type", "internal"])
         Parser.parse(["catalogs", "create", "catalog_name", "--type", "INTERNAL"])
-        Parser.parse(
+        options = Parser.parse(
             [
                 "catalogs",
                 "create",
                 "catalog_name",
+                "--current-kms-key",
+                "arn:aws:kms:us-east-1:012345678901:key/current-key",
+                "--allowed-kms-key",
+                "arn:aws:kms:us-east-1:012345678901:key/allowed-key-1",
+                "--allowed-kms-key",
+                "arn:aws:kms:us-east-1:012345678901:key/allowed-key-2",
                 "--decryption-key",
-                "arn:aws:kms:us-east-1:012345678901:key/decryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/decryption-key-1",
+                "--decryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/decryption-key-2",
                 "--encryption-key",
-                "arn:aws:kms:us-east-1:012345678901:key/encryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/encryption-key-1",
+                "--encryption-key",
+                "arn:aws:kms:us-east-1:012345678901:key/encryption-key-2",
             ]
+        )
+        self.assertEqual(
+            options.current_kms_key,
+            "arn:aws:kms:us-east-1:012345678901:key/current-key",
+        )
+        self.assertEqual(
+            options.allowed_kms_key,
+            [
+                "arn:aws:kms:us-east-1:012345678901:key/allowed-key-1",
+                "arn:aws:kms:us-east-1:012345678901:key/allowed-key-2",
+            ],
+        )
+        self.assertEqual(
+            options.decryption_key,
+            [
+                "arn:aws:kms:us-east-1:012345678901:key/decryption-key-1",
+                "arn:aws:kms:us-east-1:012345678901:key/decryption-key-2",
+            ],
+        )
+        self.assertEqual(
+            options.encryption_key,
+            [
+                "arn:aws:kms:us-east-1:012345678901:key/encryption-key-1",
+                "arn:aws:kms:us-east-1:012345678901:key/encryption-key-2",
+            ],
         )
         Parser.parse(["catalogs", "list"])
         Parser.parse(["catalogs", "get", "catalog_name"])
@@ -185,14 +220,7 @@ class TestParserBasic(CLITestBase):
             ["--base-url", "https://customservice.com/subpath", "catalogs", "list"]
         )
         Parser.parse(
-            [
-                "--catalog-url",
-                "http://localhost:8181/server1",
-                "namespaces",
-                "list",
-                "--catalog",
-                "polaris",
-            ]
+            ["--catalog-url", "http://localhost:8181/server1", "namespaces", "list", "--catalog", "polaris"]
         )
         Parser.parse(
             [

@@ -454,16 +454,20 @@ public class AwsCredentialsStorageIntegration
       statementAdded = true;
     }
 
-    LinkedHashSet<String> effectiveDecryptionKeys = new LinkedHashSet<>();
+    LinkedHashSet<String> remainingDecryptionKeys = new LinkedHashSet<>();
     if (hasDecryptionKeys) {
-      effectiveDecryptionKeys.addAll(decryptionKeys);
+      remainingDecryptionKeys.addAll(decryptionKeys);
     }
     if (hasEncryptionKeys) {
-      effectiveDecryptionKeys.addAll(encryptionKeys);
+      if (canWrite) {
+        remainingDecryptionKeys.removeAll(encryptionKeys);
+      } else {
+        remainingDecryptionKeys.addAll(encryptionKeys);
+      }
     }
-    if (!effectiveDecryptionKeys.isEmpty()) {
+    if (!remainingDecryptionKeys.isEmpty()) {
       IamStatement.Builder allowDecryption = buildKmsDecryptionStatement();
-      addKmsKeyResources(List.copyOf(effectiveDecryptionKeys), allowDecryption, "decryption");
+      addKmsKeyResources(List.copyOf(remainingDecryptionKeys), allowDecryption, "decryption");
       policyBuilder.addStatement(allowDecryption.build());
       statementAdded = true;
     }
@@ -484,6 +488,8 @@ public class AwsCredentialsStorageIntegration
   private static IamStatement.Builder buildKmsEncryptionStatement() {
     return IamStatement.builder()
         .effect(IamEffect.ALLOW)
+        .addAction("kms:DescribeKey")
+        .addAction("kms:Decrypt")
         .addAction("kms:Encrypt")
         .addAction("kms:GenerateDataKey")
         .addAction("kms:GenerateDataKeyWithoutPlaintext");

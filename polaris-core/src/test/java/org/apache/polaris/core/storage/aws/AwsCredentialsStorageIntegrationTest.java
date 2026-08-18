@@ -1020,6 +1020,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             "arn:aws:kms:us-east-1:012345678901:key/22222222-2222-2222-2222-222222222222");
     List<String> decryptionKeys =
         List.of(
+            encryptionKeys.get(0),
             "arn:aws:kms:us-east-1:012345678901:key/33333333-3333-3333-3333-333333333333",
             "arn:aws:kms:us-east-1:012345678901:key/44444444-4444-4444-4444-444444444444");
 
@@ -1038,17 +1039,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             .containsExactlyInAnyOrder(
                                 IamAction.create("kms:GenerateDataKeyWithoutPlaintext"),
                                 IamAction.create("kms:GenerateDataKey"),
-                                IamAction.create("kms:Encrypt"));
-                        assertThat(stmt.resources())
-                            .containsExactly(IamResource.create(writeKmsKey));
-                      })
-                  .anySatisfy(
-                      stmt -> {
-                        assertThat(stmt.actions())
-                            .containsExactlyInAnyOrder(
+                                IamAction.create("kms:Encrypt"),
                                 IamAction.create("kms:DescribeKey"),
                                 IamAction.create("kms:Decrypt"));
-                        assertThat(stmt.resources()).contains(IamResource.create(writeKmsKey));
+                        assertThat(stmt.resources())
+                            .containsExactly(IamResource.create(writeKmsKey));
                       });
 
               return ASSUME_ROLE_RESPONSE;
@@ -1120,7 +1115,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Optional.empty(),
             CredentialVendingContext.empty());
 
-    // Test that all encryption keys are also included in the decryption statement
+    // Test that encryption keys include decryption actions and are omitted from the separate
+    // decryption statement
     Mockito.reset(stsClient);
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
@@ -1139,16 +1135,16 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             .containsExactlyInAnyOrder(
                                 IamAction.create("kms:Encrypt"),
                                 IamAction.create("kms:GenerateDataKey"),
-                                IamAction.create("kms:GenerateDataKeyWithoutPlaintext"));
+                                IamAction.create("kms:GenerateDataKeyWithoutPlaintext"),
+                                IamAction.create("kms:DescribeKey"),
+                                IamAction.create("kms:Decrypt"));
                       })
                   .anySatisfy(
                       stmt -> {
                         assertThat(stmt.resources())
                             .containsExactlyInAnyOrder(
-                                IamResource.create(encryptionKeys.get(0)),
-                                IamResource.create(encryptionKeys.get(1)),
-                                IamResource.create(decryptionKeys.get(0)),
-                                IamResource.create(decryptionKeys.get(1)));
+                                IamResource.create(decryptionKeys.get(1)),
+                                IamResource.create(decryptionKeys.get(2)));
                         assertThat(stmt.actions())
                             .containsExactlyInAnyOrder(
                                 IamAction.create("kms:DescribeKey"),
