@@ -245,11 +245,10 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
     hasOversizedEmbeddedEntry |=
         entrySerializedSizeUpperBound > maxEmbeddedEntrySizeBeforeForcedSpill;
-    var added = embedded.add(element);
-    if (added) {
-      return !reference.containsElement(element.key());
-    }
-    return false;
+
+    var existed = contains(element.key());
+    embedded.add(element);
+    return !existed;
   }
 
   @Override
