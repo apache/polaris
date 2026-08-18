@@ -199,8 +199,7 @@ public abstract class AbstractLocalIcebergCatalogViewTest
                         new FileStorageConfigInfo(
                             StorageConfigInfo.StorageTypeEnum.FILE,
                             List.of("file://tmp", "*"),
-                            null),
-                        "file://tmp")
+                            null))
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 

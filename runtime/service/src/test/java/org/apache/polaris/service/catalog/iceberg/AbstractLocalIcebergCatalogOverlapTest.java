@@ -172,7 +172,7 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, STORAGE_LOCATION)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
