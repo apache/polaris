@@ -96,6 +96,7 @@ import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigEndpoints;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigurationEventServiceDelegator;
 import org.apache.polaris.service.catalog.iceberg.IcebergViewConfigEndpoints;
 import org.apache.polaris.service.catalog.iceberg.ImmutableIcebergCatalogHandler;
+import org.apache.polaris.service.catalog.iceberg.TableMetadataCache;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -398,6 +399,7 @@ public record TestServices(
               metaStoreManager,
               callContext,
               principal,
+              new TableMetadataCache(() -> 0),
               idempotencyRequestContext);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
