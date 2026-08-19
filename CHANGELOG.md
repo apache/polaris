@@ -75,6 +75,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `PURGE_VIEW_METADATA_ON_DROP` defaulting to `true`, dropping any view failed with HTTP 403 under
   the default configuration. A view drop is now governed by `PURGE_VIEW_METADATA_ON_DROP` alone,
   while the guard continues to protect a client-requested Iceberg table purge.
+- Table commits whose base metadata is already stale now fail before the new metadata file is
+  written, saving an object-storage write and delete per conflict and returning the `409` to the
+  client sooner.
 
 ### Deprecations
 
