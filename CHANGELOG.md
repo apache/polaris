@@ -46,6 +46,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
+  error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
+  clients can parse the response rather than failing on an off-schema shape.
 - Python CLI `setup export` now writes each catalog's `policies` as a list of
   `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
   with the same name in different namespaces. The new export format cannot be applied by older CLI

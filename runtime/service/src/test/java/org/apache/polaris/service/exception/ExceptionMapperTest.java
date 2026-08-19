@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.RuntimeIOException;
+import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.iceberg.rest.responses.ErrorResponseParser;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
@@ -119,6 +121,26 @@ public class ExceptionMapperTest {
         mapper.toResponse(new PolarisServiceUnavailableException(3, "transient conflict"));
     assertThat(response.getStatus()).isEqualTo(503);
     assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("3");
+  }
+
+  @Test
+  public void testServerSideJsonErrorUsesIcebergErrorEnvelope() {
+    IcebergJsonProcessingExceptionMapper mapper = new IcebergJsonProcessingExceptionMapper();
+    Response response =
+        mapper.toResponse(new JsonGenerationException(MESSAGE, new RuntimeException(CAUSE), null));
+
+    assertThat(response.getStatus()).isEqualTo(500);
+    assertThat(response.getEntity()).isInstanceOf(ErrorResponse.class);
+
+    // The body must be a well-formed Iceberg error envelope so clients using
+    // ErrorResponseParser can parse the 500 instead of failing on an off-schema shape.
+    String json = ErrorResponseParser.toJson((ErrorResponse) response.getEntity());
+    assertThat(json).contains("\"error\"");
+    ErrorResponse parsed = ErrorResponseParser.fromJson(json);
+    assertThat(parsed.code()).isEqualTo(500);
+    assertThat(parsed.type()).isEqualTo(JsonGenerationException.class.getSimpleName());
+    // Generic, log-correlated message only — no internal exception detail leaked.
+    assertThat(parsed.message()).contains("has been logged").doesNotContain(MESSAGE);
   }
 
   @ParameterizedTest
