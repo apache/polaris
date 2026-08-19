@@ -791,8 +791,8 @@ public class Resolver {
     // roles directly from the authenticated principal instead of resolving them from the backend.
     boolean externalPrincipal =
         polarisPrincipal
-            .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
-            .isEmpty();
+            .getAttribute(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, Boolean.class)
+            .orElse(false);
     if (externalPrincipal) {
       return resolveExternalCallerPrincipalAndPrincipalRoles(resolvePrincipalRoles);
     }

@@ -201,6 +201,8 @@ public class DefaultAuthenticator implements Authenticator {
           .put(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
           .put(
               PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, roleSelection.allRolesRequested());
+    } else {
+      principalAttributes.put(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true);
     }
     return principalAttributes.build();
   }

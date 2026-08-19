@@ -472,6 +472,9 @@ public class DefaultAuthenticatorTest {
         .doesNotContainKey(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY);
     assertThat(result.getAttributes())
         .doesNotContainKey(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY);
+    assertThat(
+            result.getAttribute(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, Boolean.class))
+        .hasValue(true);
     assertThat(result.getAttribute(PolarisPrincipal.JWT_ATTRIBUTE_KEY, String.class))
         .hasValue("raw.jwt.token");
     Mockito.verifyNoInteractions(metaStoreManagerSpy);

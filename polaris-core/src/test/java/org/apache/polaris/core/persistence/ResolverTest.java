@@ -82,7 +82,10 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("ext-user", Map.of(), Set.of("ext-role1", "ext-role2")),
+            PolarisPrincipal.of(
+                "ext-user",
+                Map.of(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true),
+                Set.of("ext-role1", "ext-role2")),
             null,
             null);
 
