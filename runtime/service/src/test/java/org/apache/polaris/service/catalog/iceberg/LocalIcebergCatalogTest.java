@@ -107,7 +107,8 @@ class LocalIcebergCatalogTest {
             null,
             null,
             null,
-            null);
+            null,
+            new TableMetadataCache(() -> 0));
   }
 
   @Test
