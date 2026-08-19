@@ -1160,7 +1160,7 @@ components:
               example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
             decryptionKeys:
               type: array
-              description: The list of KMS keys that this catalog and its clients may use to decrypt S3 data. A key may also appear in encryptionKeys.
+              description: A list of KMS keys that can be used to decrypt S3 data. Keeping this list separate from encryptionKeys is recommended, though overlapping keys are allowed.
               items:
                 type: string
               example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
