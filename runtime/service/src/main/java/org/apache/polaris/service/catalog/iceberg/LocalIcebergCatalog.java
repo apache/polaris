@@ -1905,16 +1905,27 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           tableIdentifier,
           base,
           metadata);
-      // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       if (null == base && !namespaceExists(tableIdentifier.namespace())) {
         throw new NoSuchNamespaceException(
             "Cannot create table '%s'. Namespace does not exist: '%s'",
             tableIdentifier, tableIdentifier.namespace());
       }
 
-      PolarisResolvedPathWrapper resolvedTableEntities =
+      // Resolve the table entity once for the whole commit attempt: same-name conflict check,
+      // storage validation, and the pre-write conflict check below all share this resolution.
+      PolarisResolvedPathWrapper resolvedPath =
           resolvedEntityView.getPassthroughResolvedPath(
-              ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ICEBERG_TABLE);
+              ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
+      PolarisResolvedPathWrapper resolvedTableEntities;
+      if (resolvedPath != null && resolvedPath.getRawLeafEntity() != null) {
+        var subType = resolvedPath.getRawLeafEntity().getSubType();
+        if (subType != PolarisEntitySubType.ICEBERG_TABLE) {
+          throw alreadyExistsExceptionWithSameNameForTableLikeEntity(tableIdentifier, subType);
+        }
+        resolvedTableEntities = resolvedPath;
+      } else {
+        resolvedTableEntities = null;
+      }
 
       // Fetch credentials for the resolved entity. The entity could be the table itself (if it has
       // already been stored and credentials have been configured directly) or it could be the
@@ -1966,17 +1977,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       // Detect a lost race against the current entity before paying for the metadata write.
       // The metastore-level CAS in createTableLike/updateTableLike still guards the window
       // between this check and persistence.
-      PolarisResolvedPathWrapper resolvedPath =
-          resolvedEntityView.getPassthroughResolvedPath(
-              ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
-      if (resolvedPath != null && resolvedPath.getRawLeafEntity() != null) {
-        var subType = resolvedPath.getRawLeafEntity().getSubType();
-        if (subType != PolarisEntitySubType.ICEBERG_TABLE) {
-          throw alreadyExistsExceptionWithSameNameForTableLikeEntity(tableIdentifier, subType);
-        }
-      }
       IcebergTableLikeEntity existingEntity =
-          IcebergTableLikeEntity.of(resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
+          IcebergTableLikeEntity.of(
+              resolvedTableEntities == null ? null : resolvedTableEntities.getRawLeafEntity());
       String existingLocation =
           existingEntity == null ? null : existingEntity.getMetadataLocation();
       String oldLocation = base == null ? null : base.metadataFileLocation();
@@ -1992,9 +1995,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         }
 
         throw new CommitFailedException(
-            "Cannot commit to table %s metadata location from %s to %s "
-                + "because it has been concurrently modified to %s",
-            tableIdentifier, oldLocation, nextMetadataFileLocation(metadata), existingLocation);
+            "Cannot commit to table %s: base metadata location %s has been concurrently modified to %s",
+            tableIdentifier, oldLocation, existingLocation);
       }
 
       MetadataWriteResult writeResult = writeNewMetadataIfRequired(base == null, metadata);
