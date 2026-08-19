@@ -104,7 +104,10 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
         SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
             sigV4AuthenticationParametersModel.getRoleArn(),
             sigV4AuthenticationParametersModel.getAccessKeyId(),
-            sigV4AuthenticationParametersModel.getSecretAccessKey());
+            sigV4AuthenticationParametersModel.getSecretAccessKey(),
+            sigV4AuthenticationParametersModel.getRoleSessionName(),
+            sigV4AuthenticationParametersModel.getExternalId(),
+            sigV4AuthenticationParametersModel.getSessionPolicy());
         config =
             new SigV4AuthenticationParametersDpo(
                 sigV4AuthenticationParametersModel.getRoleArn(),

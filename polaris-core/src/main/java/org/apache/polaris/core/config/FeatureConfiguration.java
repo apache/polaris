@@ -706,22 +706,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> FEDERATED_CATALOG_CREDENTIAL_PASSTHROUGH =
-      PolarisConfiguration.<Boolean>builder()
-          .key("FEDERATED_CATALOG_CREDENTIAL_PASSTHROUGH")
-          .description(
-              "When true, a federated catalog forwards the storage credentials the remote catalog "
-                  + "vended instead of minting its own from this catalog's storage configuration. "
-                  + "Required when the remote catalog's storage is not one this Polaris deployment "
-                  + "is configured for, or is only reachable with credentials the remote issues. "
-                  + "Requires ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING. Realm-level only, and "
-                  + "deliberately not settable per catalog: the forwarded credentials are scoped "
-                  + "by the remote rather than by this deployment, so the local allowed-locations "
-                  + "check does not apply and is skipped, and Polaris cannot narrow them to the "
-                  + "requesting principal's grants.")
-          .defaultValue(false)
-          .buildFeatureConfiguration();
-
   public static final FeatureConfiguration<Integer> AZURE_TIMEOUT_MILLIS =
       PolarisConfiguration.<Integer>builder()
           .key("AZURE_TIMEOUT_MILLIS")

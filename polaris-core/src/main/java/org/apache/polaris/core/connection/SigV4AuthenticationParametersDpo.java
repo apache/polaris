@@ -124,10 +124,17 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
    * static credential pair. Called on the write path, not on read.
    */
   public static void validateAuthenticationParameters(
-      @Nullable String roleArn, @Nullable String accessKeyId, @Nullable String secretAccessKey) {
-    boolean hasStaticCredentials = accessKeyId != null || secretAccessKey != null;
+      @Nullable String roleArn,
+      @Nullable String accessKeyId,
+      @Nullable String secretAccessKey,
+      @Nullable String roleSessionName,
+      @Nullable String externalId,
+      @Nullable String sessionPolicy) {
+    boolean hasAccessKeyId = StringUtils.isNotEmpty(accessKeyId);
+    boolean hasSecretAccessKey = StringUtils.isNotEmpty(secretAccessKey);
+    boolean hasStaticCredentials = hasAccessKeyId || hasSecretAccessKey;
     Preconditions.checkArgument(
-        !hasStaticCredentials || (accessKeyId != null && secretAccessKey != null),
+        !hasStaticCredentials || (hasAccessKeyId && hasSecretAccessKey),
         "accessKeyId and secretAccessKey must be provided together");
     Preconditions.checkArgument(
         StringUtils.isNotEmpty(roleArn) || hasStaticCredentials,
@@ -135,6 +142,15 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     Preconditions.checkArgument(
         StringUtils.isEmpty(roleArn) || !hasStaticCredentials,
         "roleArn and static credentials (accessKeyId + secretAccessKey) are mutually exclusive");
+    // These only shape an STS AssumeRole request. Accepting them alongside static credentials
+    // would silently ignore them, so they are rejected rather than quietly dropped.
+    Preconditions.checkArgument(
+        !hasStaticCredentials
+            || (StringUtils.isEmpty(roleSessionName)
+                && StringUtils.isEmpty(externalId)
+                && StringUtils.isEmpty(sessionPolicy)),
+        "roleSessionName, externalId and sessionPolicy apply to role assumption only and cannot be "
+            + "combined with static credentials");
   }
 
   public @Nullable String getRoleArn() {

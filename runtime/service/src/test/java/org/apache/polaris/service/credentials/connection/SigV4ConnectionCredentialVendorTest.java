@@ -311,7 +311,8 @@ public class SigV4ConnectionCredentialVendorTest {
   public void testRejectsNeitherRoleArnNorStaticCredentials() {
     Assertions.assertThatThrownBy(
             () ->
-                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(null, null, null))
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, null, null, null, null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("roleArn");
   }
@@ -321,7 +322,7 @@ public class SigV4ConnectionCredentialVendorTest {
     Assertions.assertThatThrownBy(
             () ->
                 SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
-                    null, "static-access-key-id", null))
+                    null, "static-access-key-id", null, null, null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("secretAccessKey");
   }
@@ -331,7 +332,12 @@ public class SigV4ConnectionCredentialVendorTest {
     Assertions.assertThatThrownBy(
             () ->
                 SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
-                    "arn:aws:iam::123456789012:role/customer-role", "key-id", "secret"))
+                    "arn:aws:iam::123456789012:role/customer-role",
+                    "key-id",
+                    "secret",
+                    null,
+                    null,
+                    null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("mutually exclusive");
   }
@@ -347,6 +353,46 @@ public class SigV4ConnectionCredentialVendorTest {
             () ->
                 new SigV4AuthenticationParametersDpo(
                     "", null, null, "us-west-2", "glue", null, null, null));
+  }
+
+  /** A blank string is not a credential; it must be treated the same as absent. */
+  @Test
+  public void testRejectsBlankStaticCredentials() {
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, "key-id", "", null, null, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("must be provided together");
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    "", "", "", null, null, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("roleArn");
+  }
+
+  /** roleSessionName, externalId and sessionPolicy only shape an STS request. */
+  @Test
+  public void testRejectsStsOnlyParametersWithStaticCredentials() {
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, "key-id", "secret", "a-session", null, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("role assumption only");
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, "key-id", "secret", null, "an-external-id", null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("role assumption only");
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, "key-id", "secret", null, null, "{}"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("role assumption only");
   }
 
   @Test
