@@ -19,6 +19,7 @@
 #
 linkTitle: "Authentication: Keycloak"
 title: "Getting Started with Apache Polaris, External Authentication and Keycloak"
+description: "Uses Keycloak as an external identity provider (IDP) for Polaris authentication."
 weight: 100
 tags:
   - authorization

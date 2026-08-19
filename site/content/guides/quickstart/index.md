@@ -19,6 +19,7 @@
 #
 linkTitle: "Quickstart"
 title: "Quickstart"
+description: "A minimal quickstart example that uses an in-memory metastore, automatically bootstrapped."
 weight: 10
 cascade:
     type: guides
