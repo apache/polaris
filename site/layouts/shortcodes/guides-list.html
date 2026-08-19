@@ -19,8 +19,8 @@ under the License.
 <ul>
 {{ range .Page.Pages.ByWeight -}}
 {{ $page := . -}}
-{{ with .Params.description -}}
-<li><a href="{{ $page.RelPermalink }}">{{ $page.LinkTitle }}</a>: {{ . }}</li>
+{{ with $page.LinkTitle -}}
+<li><a href="{{ $page.RelPermalink }}">{{ . }}</a>: {{ $page.Description }}</li>
 {{ end -}}
 {{ end -}}
 </ul>
