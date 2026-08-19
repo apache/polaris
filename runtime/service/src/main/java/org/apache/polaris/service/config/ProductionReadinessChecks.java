@@ -62,7 +62,7 @@ public class ProductionReadinessChecks {
       "quarkus.rest.jackson.optimization.enable-reflection-free-serializers";
 
   /**
-   * Key of the removed {@code ADD_TRAILING_SLASH_TO_LOCATION} feature flag, kept only to warn
+   * Key of the deprecated {@code ADD_TRAILING_SLASH_TO_LOCATION} feature flag, kept only to warn
    * operators whose configuration still sets it.
    */
   private static final String ADD_TRAILING_SLASH_TO_LOCATION_KEY = "ADD_TRAILING_SLASH_TO_LOCATION";
@@ -381,7 +381,7 @@ public class ProductionReadinessChecks {
   public ProductionReadinessCheck checkAddTrailingSlashToLocation(
       FeaturesConfiguration featureConfiguration) {
     var message =
-        "ADD_TRAILING_SLASH_TO_LOCATION was removed and is ignored. Polaris always adds a "
+        "ADD_TRAILING_SLASH_TO_LOCATION is deprecated and ignored. Polaris always adds a "
             + "trailing slash to table and namespace base locations. Remove this setting.";
     var errors = new ArrayList<Error>();
     if ("false"

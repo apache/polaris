@@ -869,6 +869,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     // Merge new properties into existing map.
     newProperties.putAll(properties);
+    // Keep the namespace base location slash-terminated like createNamespaceInternal, so property
+    // updates stay within the "locations written by Polaris always end with a slash" invariant.
+    String updatedBaseLocation = newProperties.get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+    if (updatedBaseLocation != null) {
+      newProperties.put(
+          PolarisEntityConstants.ENTITY_BASE_LOCATION,
+          StorageLocation.ensureTrailingSlash(updatedBaseLocation));
+    }
     PolarisEntity updatedEntity =
         new PolarisEntity.Builder(entity).setProperties(newProperties).build();
 

@@ -25,6 +25,16 @@ build:
 
 Feature configurations for Polaris. These are stable, user-facing settings.
 
+##### `polaris.features."ADD_TRAILING_SLASH_TO_LOCATION"`
+
+Deprecated and ignored: Polaris always appends a trailing slash to table and namespace base locations. Retained so existing configuration remains accepted rather than rejected.
+
+- **Type:** `Boolean`
+- **Default:** `true`
+- **Catalog Config:** `polaris.config.add-trailing-slash-to-location`
+
+---
+
 ##### `polaris.features."ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION"`
 
 If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties) explicitly supplied in a create or update request, subject to the usual structured-location, allowed-location, metadata-location, and overlap validation. If set to false, such requests are rejected, regardless of the other location compatibility flags. This setting does not apply to federated catalogs.
