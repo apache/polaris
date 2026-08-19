@@ -146,8 +146,10 @@ public class DefaultAuthenticator implements Authenticator {
     } catch (Exception e) {
       throw metaStoreUnavailable(
           e,
-          "Unable to resolve principal entity from credentials",
-          "Unable to fetch principal entity");
+          "Unable to fetch principal entity",
+          "Unable to resolve principal entity from credentials, principalName={} principalId={}",
+          credentials.getPrincipalName(),
+          credentials.getPrincipalId());
     }
 
     if (principal == null || principal.getType() != PolarisEntityType.PRINCIPAL) {
@@ -194,7 +196,7 @@ public class DefaultAuthenticator implements Authenticator {
 
     Set<String> activeRoles =
         loadGrantsResult.getGrantRecords().stream()
-            .map(gr -> loadSecurableEntity(gr, entitiesById))
+            .map(gr -> loadSecurableEntity(gr, entitiesById, principal))
             .filter(Objects::nonNull)
             .filter(entity -> entity.getType() == PolarisEntityType.PRINCIPAL_ROLE)
             .map(PrincipalRoleEntity::of)
@@ -261,7 +263,11 @@ public class DefaultAuthenticator implements Authenticator {
       principalGrantResults = metaStoreManager.loadGrantsToGrantee(polarisContext, principal);
     } catch (Exception e) {
       throw metaStoreUnavailable(
-          e, "Unable to load grants for principal", "Unable to fetch principal grants");
+          e,
+          "Unable to fetch principal grants",
+          "Unable to load grants, principalName={} principalId={}",
+          principal.getName(),
+          principal.getId());
     }
     diagnostics.check(
         principalGrantResults.isSuccess(),
@@ -281,10 +287,13 @@ public class DefaultAuthenticator implements Authenticator {
   /**
    * Resolves the securable entity for a grant record, using preloaded entities when available and
    * falling back to {@link PolarisMetaStoreManager#loadEntity} only when the metastore did not
-   * populate {@link LoadGrantsResult#getEntities()}.
+   * populate {@link LoadGrantsResult#getEntities()}. The principal identifies the failing request
+   * if that fallback hits a metastore failure.
    */
   private @Nullable PolarisBaseEntity loadSecurableEntity(
-      PolarisGrantRecord grant, @Nullable Map<Long, PolarisBaseEntity> entitiesById) {
+      PolarisGrantRecord grant,
+      @Nullable Map<Long, PolarisBaseEntity> entitiesById,
+      PrincipalEntity principal) {
     if (entitiesById != null) {
       return entitiesById.get(grant.getSecurableId());
     }
@@ -299,21 +308,33 @@ public class DefaultAuthenticator implements Authenticator {
           .getEntity();
     } catch (Exception e) {
       throw metaStoreUnavailable(
-          e, "Unable to load securable entity for grant", "Unable to fetch securable entity");
+          e,
+          "Unable to fetch securable entity",
+          "Unable to load securable entity for grant, principalName={} principalId={} "
+              + "securableCatalogId={} securableId={}",
+          principal.getName(),
+          principal.getId(),
+          grant.getSecurableCatalogId(),
+          grant.getSecurableId());
     }
   }
 
   /**
    * Logs a metastore failure raised during authentication and returns the exception to throw, so
    * that a failing backend is reported as a transient condition instead of an internal error.
+   *
+   * @param cause the metastore failure
+   * @param responseMessage the message returned to the client
+   * @param logMessage the log message, with SLF4J placeholders for {@code logArgs}
+   * @param logArgs the values for the placeholders in {@code logMessage}
    */
   private static PolarisServiceUnavailableException metaStoreUnavailable(
-      Exception cause, String logMessage, String responseMessage) {
+      Exception cause, String responseMessage, String logMessage, Object... logArgs) {
     LOGGER
         .atError()
         .addKeyValue(StructuredLogKeys.ERR_MSG, cause.getMessage())
         .addKeyValue(StructuredLogKeys.STACK_TRACE, Throwables.getStackTraceAsString(cause))
-        .log(logMessage);
+        .log(logMessage, logArgs);
     return new PolarisServiceUnavailableException(0, "%s", responseMessage);
   }
 
