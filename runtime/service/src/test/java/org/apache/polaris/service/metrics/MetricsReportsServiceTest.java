@@ -44,6 +44,8 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.metrics.api.model.QueryMetricsRequest;
+import org.apache.polaris.core.metrics.api.model.TableRef;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -66,7 +68,7 @@ import org.junit.jupiter.api.Test;
 class MetricsReportsServiceTest {
 
   private static final String CATALOG = "test-catalog";
-  private static final String NAMESPACE = "dbschema";
+  private static final List<String> NAMESPACE = List.of("db", "schema");
   private static final String TABLE = "events";
 
   private PolarisAuthorizer authorizer;
@@ -118,7 +120,6 @@ class MetricsReportsServiceTest {
     when(noOp.listReports(
             any(MetricsQuerySpi.MetricType.class),
             anyLong(),
-            anyLong(),
             any(),
             any(),
             any(),
@@ -135,22 +136,20 @@ class MetricsReportsServiceTest {
     securityContext = mock(SecurityContext.class);
   }
 
+  private static QueryMetricsRequest requestFor(
+      String metricType, List<String> namespace, String table) {
+    return new QueryMetricsRequest(
+        "scan".equals(metricType)
+            ? QueryMetricsRequest.MetricTypeEnum.SCAN
+            : QueryMetricsRequest.MetricTypeEnum.COMMIT,
+        List.of(new TableRef(namespace, table)));
+  }
+
   @Test
   void authorizedRequestWithNoBackendReturnsEmptyPage() {
     Response response =
-        service.listTableMetrics(
-            CATALOG,
-            NAMESPACE,
-            TABLE,
-            "scan",
-            null,
-            10,
-            null,
-            null,
-            null,
-            null,
-            realmContext,
-            securityContext);
+        service.queryTableMetrics(
+            CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext);
 
     // With the no-op default query provider, the read path succeeds with an empty result set.
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -169,19 +168,8 @@ class MetricsReportsServiceTest {
 
     assertThatThrownBy(
             () ->
-                service.listTableMetrics(
-                    CATALOG,
-                    NAMESPACE,
-                    TABLE,
-                    "scan",
-                    null,
-                    10,
-                    null,
-                    null,
-                    null,
-                    null,
-                    realmContext,
-                    securityContext))
+                service.queryTableMetrics(
+                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -193,19 +181,8 @@ class MetricsReportsServiceTest {
 
     assertThatThrownBy(
             () ->
-                service.listTableMetrics(
-                    CATALOG,
-                    NAMESPACE,
-                    TABLE,
-                    "scan",
-                    null,
-                    10,
-                    null,
-                    null,
-                    null,
-                    null,
-                    realmContext,
-                    securityContext))
+                service.queryTableMetrics(
+                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining(TABLE);
   }
@@ -216,86 +193,55 @@ class MetricsReportsServiceTest {
 
     assertThatThrownBy(
             () ->
-                service.listTableMetrics(
-                    CATALOG,
-                    NAMESPACE,
-                    TABLE,
-                    "scan",
-                    null,
-                    10,
-                    null,
-                    null,
-                    null,
-                    null,
-                    realmContext,
-                    securityContext))
+                service.queryTableMetrics(
+                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining(CATALOG);
   }
 
   @Test
   void pathNotFoundPropagatesNotFoundException() {
-    ResolverPath failedPath = new ResolverPath(List.of(NAMESPACE), PolarisEntityType.NAMESPACE);
+    ResolverPath failedPath = new ResolverPath(NAMESPACE, PolarisEntityType.NAMESPACE);
     when(manifest.resolveAll()).thenReturn(new ResolverStatus(failedPath, 0));
 
     assertThatThrownBy(
             () ->
-                service.listTableMetrics(
-                    CATALOG,
-                    NAMESPACE,
-                    TABLE,
-                    "scan",
-                    null,
-                    10,
-                    null,
-                    null,
-                    null,
-                    null,
-                    realmContext,
-                    securityContext))
+                service.queryTableMetrics(
+                    CATALOG, requestFor("scan", NAMESPACE, TABLE), realmContext, securityContext))
         .isInstanceOf(NotFoundException.class);
   }
 
   @Test
-  void invalidMetricTypeThrowsIllegalArgumentException() {
+  void emptyTablesThrowsIllegalArgumentException() {
+    QueryMetricsRequest request =
+        new QueryMetricsRequest(QueryMetricsRequest.MetricTypeEnum.SCAN, List.of());
+
     assertThatThrownBy(
-            () ->
-                service.listTableMetrics(
-                    CATALOG,
-                    NAMESPACE,
-                    TABLE,
-                    "bogus",
-                    null,
-                    10,
-                    null,
-                    null,
-                    null,
-                    null,
-                    realmContext,
-                    securityContext))
+            () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("bogus");
+        .hasMessageContaining("tables");
   }
 
   @Test
-  void multiLevelNamespaceIsSplitCorrectly() {
-    // JAX-RS decodes %1F -> U+001F before injection; the service must split correctly.
-    // "dbschema" represents namespace ["db", "schema"].
-    String encodedTwoLevel = "dbschema";
-    when(factory.createResolutionManifest(eq(principal), eq(CATALOG))).thenReturn(manifest);
-
+  void multiTableRequestQueriesAllResolvedTableIds() {
     Response response =
-        service.listTableMetrics(
+        service.queryTableMetrics(
             CATALOG,
-            encodedTwoLevel,
-            TABLE,
-            "scan",
-            null,
-            10,
-            null,
-            null,
-            null,
-            null,
+            new QueryMetricsRequest(
+                QueryMetricsRequest.MetricTypeEnum.SCAN,
+                List.of(new TableRef(NAMESPACE, TABLE), new TableRef(NAMESPACE, "other-table"))),
+            realmContext,
+            securityContext);
+
+    assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+  }
+
+  @Test
+  void multiLevelNamespaceIsPassedThrough() {
+    Response response =
+        service.queryTableMetrics(
+            CATALOG,
+            requestFor("scan", List.of("db", "schema"), TABLE),
             realmContext,
             securityContext);
 

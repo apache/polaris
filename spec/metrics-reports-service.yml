@@ -30,8 +30,8 @@ info:
     label indicates early-access status, not stability.**
 
 
-    Requires TABLE_READ_METRICS privilege on the target table. Durable persistence backing for this
-    API is provided by the polaris-extensions-metrics-reports-jdbc extension; without it the
+    Requires TABLE_READ_METRICS privilege on every requested table. Durable persistence backing for
+    this API is provided by the polaris-extensions-metrics-reports-jdbc extension; without it the
     endpoint returns HTTP 501.
   version: 0.1.0
   license:
@@ -47,70 +47,27 @@ servers:
         default: localhost
 
 paths:
-  /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}:
+  /catalogs/{catalogName}/metrics/query:
     parameters:
       - $ref: '#/components/parameters/catalogName'
-      - $ref: '#/components/parameters/namespace'
-      - $ref: '#/components/parameters/table'
-    get:
-      operationId: listTableMetrics
-      summary: List metrics reports for a table
+    post:
+      operationId: queryTableMetrics
+      summary: Query metrics reports for one or more tables
       description: >
-        Returns persisted metrics reports for the specified table. The required `metricType`
-        parameter selects between scan reports (produced during table reads) and commit reports
-        (produced during table writes). Results are ordered by timestamp descending.
-        Requires TABLE_READ_METRICS privilege on the target table.
+        Returns persisted metrics reports for the tables listed in the request body. All requested
+        tables must belong to the catalog identified by `catalogName`. The required `metricType`
+        selects between scan reports (produced during table reads) and commit reports (produced
+        during table writes). Results from all requested tables are merged into a single page,
+        ordered by timestamp descending, and disambiguated by the `table` field on each report's
+        `object`. Requires TABLE_READ_METRICS privilege on every requested table.
       tags:
         - Metrics
-      parameters:
-        - name: metricType
-          in: query
-          required: true
-          description: Type of metrics to retrieve
-          schema:
-            type: string
-            enum: [scan, commit]
-        - name: pageToken
-          in: query
-          required: false
-          schema:
-            type: string
-            description: Opaque cursor from a previous response's nextPageToken field
-        - name: pageSize
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            default: 100
-            description: Maximum number of results to return per page
-        - name: snapshotId
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-            description: Filter results to a specific snapshot ID
-        - name: principalName
-          in: query
-          required: false
-          schema:
-            type: string
-            description: Filter results to a specific principal (e.g. service account name)
-        - name: timestampFrom
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-            description: Inclusive lower bound on report timestamp (Unix epoch milliseconds)
-        - name: timestampTo
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-            description: Exclusive upper bound on report timestamp (Unix epoch milliseconds)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryMetricsRequest'
       responses:
         '200':
           description: Paginated list of metrics reports
@@ -151,23 +108,62 @@ components:
       required: true
       schema:
         type: string
-    namespace:
-      name: namespace
-      in: path
-      required: true
-      description: >
-        Namespace path encoded using the same convention as the Polaris Iceberg REST API:
-        multi-level namespaces use the unit separator (0x1F) between levels, URL-encoded as %1F.
-      schema:
-        type: string
-    table:
-      name: table
-      in: path
-      required: true
-      schema:
-        type: string
 
   schemas:
+    TableRef:
+      type: object
+      description: Identifies a table by its namespace levels and name
+      required:
+        - namespace
+        - name
+      properties:
+        namespace:
+          type: array
+          items:
+            type: string
+          description: Namespace levels, e.g. ["a", "b"] for namespace a.b
+        name:
+          type: string
+
+    QueryMetricsRequest:
+      type: object
+      required:
+        - metricType
+        - tables
+      properties:
+        metricType:
+          type: string
+          enum: [scan, commit]
+          description: Type of metrics to retrieve
+        tables:
+          type: array
+          minItems: 1
+          description: >
+            Tables to query. All tables must belong to the catalog identified by catalogName in
+            the path.
+          items:
+            $ref: '#/components/schemas/TableRef'
+        pageToken:
+          type: string
+          description: Opaque cursor from a previous response's nextPageToken field
+        pageSize:
+          type: integer
+          minimum: 1
+          default: 100
+          description: Maximum number of results to return per page
+        snapshotId:
+          type: integer
+          format: int64
+          description: Filter results to a specific snapshot ID
+        timestampFrom:
+          type: integer
+          format: int64
+          description: Inclusive lower bound on report timestamp (Unix epoch milliseconds)
+        timestampTo:
+          type: integer
+          format: int64
+          description: Exclusive upper bound on report timestamp (Unix epoch milliseconds)
+
     ListMetricsResponse:
       description: >
         Polymorphic response for metrics queries. The concrete type is determined by the
@@ -248,7 +244,11 @@ components:
     ScanMetricsObject:
       type: object
       description: Resource context for the scanned table operation
+      required:
+        - table
       properties:
+        table:
+          $ref: '#/components/schemas/TableRef'
         snapshotId:
           type: integer
           format: int64
@@ -258,8 +258,11 @@ components:
       type: object
       description: Resource context for the committed table operation
       required:
+        - table
         - snapshotId
       properties:
+        table:
+          $ref: '#/components/schemas/TableRef'
         snapshotId:
           type: integer
           format: int64

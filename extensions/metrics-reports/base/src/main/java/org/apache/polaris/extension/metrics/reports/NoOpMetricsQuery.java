@@ -44,9 +44,8 @@ public class NoOpMetricsQuery implements MetricsQuerySpi {
   public Page<? extends MetricsRecordIdentity> listReports(
       @NonNull MetricType metricType,
       long catalogId,
-      long tableId,
+      @NonNull List<Long> tableIds,
       @Nullable Long snapshotId,
-      @Nullable String principalName,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
       @NonNull PageToken pageToken) {
