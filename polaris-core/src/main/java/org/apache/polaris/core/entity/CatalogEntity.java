@@ -144,23 +144,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     if (internalProperties.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
       PolarisStorageConfigurationInfo configInfo = getStorageConfigurationInfo();
       if (configInfo instanceof AwsStorageConfigurationInfo awsConfig) {
-        return AwsStorageConfigInfo.builder()
-            .setRoleArn(awsConfig.getRoleARN())
-            .setExternalId(awsConfig.getExternalId())
-            .setUserArn(awsConfig.getUserARN())
-            .setEncryptionKeys(awsConfig.getEffectiveEncryptionKeys())
-            .setDecryptionKeys(awsConfig.getDecryptionKeys())
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(awsConfig.getAllowedLocations())
-            .setStorageName(awsConfig.getStorageName())
-            .setRegion(awsConfig.getRegion())
-            .setEndpoint(awsConfig.getEndpoint())
-            .setStsEndpoint(awsConfig.getStsEndpoint())
-            .setPathStyleAccess(awsConfig.getPathStyleAccess())
-            .setStsUnavailable(awsConfig.getStsUnavailable())
-            .setEndpointInternal(awsConfig.getEndpointInternal())
-            .setKmsUnavailable(awsConfig.getKmsUnavailable())
-            .build();
+        return getAwsStorageConfigInfo(awsConfig);
       }
       if (configInfo instanceof AzureStorageConfigurationInfo azureConfig) {
         return AzureStorageConfigInfo.builder()
@@ -191,6 +175,31 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return null;
     }
     return null;
+  }
+
+  @SuppressWarnings("deprecation")
+  private static AwsStorageConfigInfo getAwsStorageConfigInfo(
+      AwsStorageConfigurationInfo awsConfig) {
+    List<String> encryptionKeys = awsConfig.getEffectiveEncryptionKeys();
+    return AwsStorageConfigInfo.builder()
+        .setRoleArn(awsConfig.getRoleARN())
+        .setExternalId(awsConfig.getExternalId())
+        .setUserArn(awsConfig.getUserARN())
+        .setCurrentKmsKey(awsConfig.getCurrentKmsKey())
+        .setAllowedKmsKeys(encryptionKeys)
+        .setEncryptionKeys(encryptionKeys)
+        .setDecryptionKeys(awsConfig.getDecryptionKeys())
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setAllowedLocations(awsConfig.getAllowedLocations())
+        .setStorageName(awsConfig.getStorageName())
+        .setRegion(awsConfig.getRegion())
+        .setEndpoint(awsConfig.getEndpoint())
+        .setStsEndpoint(awsConfig.getStsEndpoint())
+        .setPathStyleAccess(awsConfig.getPathStyleAccess())
+        .setStsUnavailable(awsConfig.getStsUnavailable())
+        .setEndpointInternal(awsConfig.getEndpointInternal())
+        .setKmsUnavailable(awsConfig.getKmsUnavailable())
+        .build();
   }
 
   private ConnectionConfigInfo getConnectionInfo(

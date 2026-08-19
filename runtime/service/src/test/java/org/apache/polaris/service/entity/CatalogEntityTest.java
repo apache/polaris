@@ -309,7 +309,7 @@ public class CatalogEntityTest {
         (AwsStorageConfigInfo) entity.asCatalog().getStorageConfigInfo();
 
     assertThat(response.getCurrentKmsKey()).isNull();
-    assertThat(response.getAllowedKmsKeys()).isEmpty();
+    assertThat(response.getAllowedKmsKeys()).containsExactly(allowedKmsKey, currentKmsKey);
     assertThat(response.getEncryptionKeys()).containsExactly(allowedKmsKey, currentKmsKey);
   }
 
@@ -416,13 +416,14 @@ public class CatalogEntityTest {
   }
 
   @Test
+  @SuppressWarnings("deprecation")
   public void testCatalogTypeDefaultsToInternal() {
     String baseLocation = "s3://test-bucket/path";
     AwsStorageConfigInfo storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/test-role")
             .setExternalId("externalId")
-            .setCurrentKmsKey("arn:aws:kms:us-east-1:012345678901:key/444343245")
+            .setEncryptionKeys(List.of("arn:aws:kms:us-east-1:012345678901:key/444343245"))
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(baseLocation))
@@ -438,17 +439,20 @@ public class CatalogEntityTest {
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
     AwsStorageConfigInfo response = (AwsStorageConfigInfo) catalog.getStorageConfigInfo();
     assertThat(response.getCurrentKmsKey()).isNull();
+    assertThat(response.getAllowedKmsKeys())
+        .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
     assertThat(response.getEncryptionKeys())
         .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test
+  @SuppressWarnings("deprecation")
   public void testCatalogTypeExternalPreserved() {
     String baseLocation = "s3://test-bucket/path";
     AwsStorageConfigInfo storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/test-role")
-            .setCurrentKmsKey("arn:aws:kms:us-east-1:012345678901:key/444343245")
+            .setEncryptionKeys(List.of("arn:aws:kms:us-east-1:012345678901:key/444343245"))
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -466,6 +470,8 @@ public class CatalogEntityTest {
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
     AwsStorageConfigInfo response = (AwsStorageConfigInfo) catalog.getStorageConfigInfo();
     assertThat(response.getCurrentKmsKey()).isNull();
+    assertThat(response.getAllowedKmsKeys())
+        .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
     assertThat(response.getEncryptionKeys())
         .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
