@@ -120,6 +120,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
   a request is then truncated to the maximum and answered with a continuation token, so a client
   that does not follow continuations sees only the first page.
+- Table commits whose base metadata is already stale now fail before the new metadata file is
+  written, saving an object-storage write and delete per conflict and returning the `409` to the
+  client sooner.
 
 ### Deprecations
 
