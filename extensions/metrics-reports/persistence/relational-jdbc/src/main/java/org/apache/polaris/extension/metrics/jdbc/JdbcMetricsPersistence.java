@@ -26,9 +26,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
+import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -100,24 +102,43 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
   }
 
   @Override
-  public Page<ScanMetricsRecord> listScanReports(
+  public Page<? extends MetricsRecordIdentity> listReports(
+      @NonNull MetricType metricType,
       long catalogId,
-      long tableId,
+      @NonNull List<Long> tableIds,
       @Nullable Long snapshotId,
-      @Nullable String principalName,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
       @NonNull PageToken pageToken) {
     String realmId = realmContext.getRealmIdentifier();
     try {
+      if (metricType == MetricType.COMMIT) {
+        PreparedQuery query =
+            buildMetricsQuery(
+                ModelCommitMetricsReport.TABLE_NAME,
+                realmId,
+                catalogId,
+                tableIds,
+                snapshotId,
+                timestampFrom,
+                timestampTo,
+                pageToken);
+        List<ModelCommitMetricsReport> rows =
+            datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
+        return Page.mapped(
+            pageToken,
+            rows.stream().map(ModelCommitMetricsReport::toRecord),
+            Function.<CommitMetricsRecord>identity(),
+            MetricsReportToken::fromRecord);
+      }
+
       PreparedQuery query =
           buildMetricsQuery(
               ModelScanMetricsReport.TABLE_NAME,
               realmId,
               catalogId,
-              tableId,
+              tableIds,
               snapshotId,
-              principalName,
               timestampFrom,
               timestampTo,
               pageToken);
@@ -126,44 +147,10 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
       return Page.mapped(
           pageToken,
           rows.stream().map(ModelScanMetricsReport::toRecord),
-          Function.identity(),
+          Function.<ScanMetricsRecord>identity(),
           MetricsReportToken::fromRecord);
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to list scan metrics reports: " + e.getMessage(), e);
-    }
-  }
-
-  @Override
-  public Page<CommitMetricsRecord> listCommitReports(
-      long catalogId,
-      long tableId,
-      @Nullable Long snapshotId,
-      @Nullable String principalName,
-      @Nullable Long timestampFrom,
-      @Nullable Long timestampTo,
-      @NonNull PageToken pageToken) {
-    String realmId = realmContext.getRealmIdentifier();
-    try {
-      PreparedQuery query =
-          buildMetricsQuery(
-              ModelCommitMetricsReport.TABLE_NAME,
-              realmId,
-              catalogId,
-              tableId,
-              snapshotId,
-              principalName,
-              timestampFrom,
-              timestampTo,
-              pageToken);
-      List<ModelCommitMetricsReport> rows =
-          datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
-      return Page.mapped(
-          pageToken,
-          rows.stream().map(ModelCommitMetricsReport::toRecord),
-          Function.identity(),
-          MetricsReportToken::fromRecord);
-    } catch (SQLException e) {
-      throw new RuntimeException("Failed to list commit metrics reports: " + e.getMessage(), e);
+      throw new RuntimeException("Failed to list metrics reports: " + e.getMessage(), e);
     }
   }
 
@@ -178,28 +165,25 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
       String tableName,
       String realmId,
       long catalogId,
-      long tableId,
+      List<Long> tableIds,
       @Nullable Long snapshotId,
-      @Nullable String principalName,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
       PageToken pageToken) {
     StringBuilder sql = new StringBuilder("SELECT * FROM ");
     sql.append(QueryGenerator.getFullyQualifiedTableName(tableName));
-    sql.append(" WHERE realm_id = ? AND catalog_id = ? AND table_id = ?");
+    sql.append(" WHERE realm_id = ? AND catalog_id = ? AND table_id IN (");
+    sql.append(tableIds.stream().map(id -> "?").collect(Collectors.joining(", ")));
+    sql.append(")");
 
     List<Object> params = new ArrayList<>();
     params.add(realmId);
     params.add(catalogId);
-    params.add(tableId);
+    params.addAll(tableIds);
 
     if (snapshotId != null) {
       sql.append(" AND snapshot_id = ?");
       params.add(snapshotId);
-    }
-    if (principalName != null) {
-      sql.append(" AND principal_name = ?");
-      params.add(principalName);
     }
     if (timestampFrom != null) {
       sql.append(" AND timestamp_ms >= ?");
