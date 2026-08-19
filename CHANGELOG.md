@@ -31,6 +31,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
+  (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
+  has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
+  ineffective index until an operator recreates it manually:
+  ```sql
+  DROP INDEX polaris_schema.idx_locations;
+  CREATE INDEX idx_locations ON polaris_schema.entities USING btree (realm_id, catalog_id, location_without_scheme)
+    WHERE location_without_scheme IS NOT NULL;
+  ```
+  H2 is unaffected.
+
 ### Breaking changes
 
 - Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
@@ -46,6 +57,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Relational JDBC: the `idx_locations` index used by the optimized sibling check now matches the
+  query that reads it. On Postgres and CockroachDB the index led with `parent_id`, while the overlap
+  query filters `catalog_id`, so with `OPTIMIZED_SIBLING_CHECK` enabled every `CREATE TABLE` /
+  `CREATE NAMESPACE` fell back to a realm-wide scan instead of the intended indexed lookup. A new
+  schema version 6 creates the index on `(realm_id, catalog_id, location_without_scheme)`; H2 was
+  already correct. Existing deployments need a manual index recreation — see Upgrade notes.
 - Python CLI `setup export` now writes each catalog's `policies` as a list of
   `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
   with the same name in different namespaces. The new export format cannot be applied by older CLI
@@ -66,6 +83,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
 - Fixed a false-negative in the JDBC optimized location-overlap check (`OPTIMIZED_SIBLING_CHECK`). Ancestor locations stored in `location_without_scheme` without a trailing slash were not matched by the generated ancestor equality terms, allowing nested table/namespace locations to be created under existing prefixes. The query now emits both slash-terminated and non-slash-terminated prefix terms and uses a slash-terminated `LIKE` pattern for descendant matching.
 - Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
+- Fixed policy detach on the relational JDBC backend silently doing nothing when the mapping's `parameters` changed in between. The delete's `WHERE` clause included the non-key `parameters` column, so a re-attach landing between the detach's lookup and its delete made the delete match zero rows while detach still reported success, leaving the policy attached. The delete is now keyed on the mapping's identity columns, matching the table's primary key and the transactional backend's behavior.
 
 ### Commits
 

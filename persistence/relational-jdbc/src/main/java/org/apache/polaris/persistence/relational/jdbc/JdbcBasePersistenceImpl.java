@@ -1139,20 +1139,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         // inheritable.
         throw new PolicyMappingAlreadyExistsException(existingRecord);
       }
-      Map<String, Object> updateClause =
-          Map.of(
-              "target_catalog_id",
-              record.getTargetCatalogId(),
-              "target_id",
-              record.getTargetId(),
-              "policy_type_code",
-              record.getPolicyTypeCode(),
-              "policy_id",
-              record.getPolicyId(),
-              "policy_catalog_id",
-              record.getPolicyCatalogId(),
-              "realm_id",
-              realmId);
+      Map<String, Object> updateClause = policyMappingIdentity(record);
       // In case of the mapping exist, update the policy mapping with the new parameters.
       ModelPolicyMappingRecord modelPolicyMappingRecord =
           ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
@@ -1174,19 +1161,50 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     return true;
   }
 
+  /**
+   * Builds the identity of a policy mapping row: the target and policy ids plus the policy type,
+   * scoped to the realm. These are exactly the table's primary key columns. The mutable {@code
+   * parameters} payload is deliberately excluded, so a concurrent update of the parameters cannot
+   * make a lookup miss or turn a delete into a no-op.
+   */
+  private Map<String, Object> policyMappingIdentity(@NonNull PolarisPolicyMappingRecord record) {
+    return policyMappingIdentity(
+        record.getTargetCatalogId(),
+        record.getTargetId(),
+        record.getPolicyTypeCode(),
+        record.getPolicyCatalogId(),
+        record.getPolicyId());
+  }
+
+  private Map<String, Object> policyMappingIdentity(
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode,
+      long policyCatalogId,
+      long policyId) {
+    return Map.of(
+        "target_catalog_id",
+        targetCatalogId,
+        "target_id",
+        targetId,
+        "policy_type_code",
+        policyTypeCode,
+        "policy_id",
+        policyId,
+        "policy_catalog_id",
+        policyCatalogId,
+        "realm_id",
+        realmId);
+  }
+
   @Override
   public void deleteFromPolicyMappingRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
-    var modelPolicyMappingRecord = ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
     try {
-      Map<String, Object> objectMap =
-          modelPolicyMappingRecord.toMap(datasourceOperations.getDatabaseType());
-      objectMap.put("realm_id", realmId);
+      Map<String, Object> params = policyMappingIdentity(record);
       datasourceOperations.executeUpdate(
           QueryGenerator.generateDeleteQuery(
-              ModelPolicyMappingRecord.ALL_COLUMNS,
-              ModelPolicyMappingRecord.TABLE_NAME,
-              objectMap));
+              ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to policy records due to %s", e.getMessage()), e);
@@ -1232,19 +1250,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       long policyCatalogId,
       long policyId) {
     Map<String, Object> params =
-        Map.of(
-            "target_catalog_id",
-            targetCatalogId,
-            "target_id",
-            targetId,
-            "policy_type_code",
-            policyTypeCode,
-            "policy_id",
-            policyId,
-            "policy_catalog_id",
-            policyCatalogId,
-            "realm_id",
-            realmId);
+        policyMappingIdentity(targetCatalogId, targetId, policyTypeCode, policyCatalogId, policyId);
     List<PolarisPolicyMappingRecord> results =
         fetchPolicyMappingRecords(
             QueryGenerator.generateSelectQuery(
