@@ -1154,7 +1154,7 @@ components:
               example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
             encryptionKeys:
               type: array
-              description: The list of KMS keys that this catalog and its clients may use to encrypt S3 data. These keys are also granted decryption permissions.
+              description: A list of KMS keys that can be used to encrypt S3 data. These keys are also granted decryption permissions.
               items:
                 type: string
               example: ["arn:aws:kms:us-east-1:123456789001:key/12345678-1234-1234-1234-123456789012"]
