@@ -78,6 +78,8 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.TableMetadataCache;
+import org.apache.polaris.service.catalog.iceberg.TestTableMetadataCacheConfiguration;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
@@ -482,7 +484,8 @@ public abstract class PolarisAuthzTestBase {
             storageAccessConfigProvider,
             fileIOFactory,
             polarisEventDispatcher,
-            eventMetadataFactory);
+            eventMetadataFactory,
+            new TableMetadataCache(TestTableMetadataCacheConfiguration.disabled()));
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -499,7 +502,7 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisLocalCatalogFactory() {
-      this(null, null, null, null, null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
@@ -514,6 +517,7 @@ public abstract class PolarisAuthzTestBase {
         PolarisMetaStoreManager metaStoreManager,
         CallContext callContext,
         PolarisPrincipal principal,
+        TableMetadataCache tableMetadataCache,
         IdempotencyRequestContext idempotencyRequestContext) {
       super(
           diagnostics,
@@ -526,6 +530,7 @@ public abstract class PolarisAuthzTestBase {
           metaStoreManager,
           callContext,
           principal,
+          tableMetadataCache,
           idempotencyRequestContext);
     }
 

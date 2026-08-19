@@ -2125,6 +2125,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         metaStoreManager,
         callContext,
         authenticatedRoot,
+        new TableMetadataCache(TestTableMetadataCacheConfiguration.disabled()),
         new IdempotencyRequestContext(
             new IdempotencyConfiguration() {
               @Override

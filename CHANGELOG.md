@@ -99,6 +99,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
+- Table metadata JSON documents are now cached in memory by metadata file location, avoiding an
+  object-storage read per table refresh. Storage access is still resolved and validated on every
+  refresh. The approximate heap budget is configurable via
+  `polaris.table-metadata-cache.max-bytes` (default 128 MiB, `0` disables caching) and documents
+  larger than `polaris.table-metadata-cache.max-content-length` (default 8 MiB) are not cached.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.
