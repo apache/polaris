@@ -791,9 +791,9 @@ public class Resolver {
     // External principals are not backed by the metastore: synthesize the caller principal and its
     // roles directly from the authenticated principal instead of resolving them from the backend.
     boolean externalPrincipal =
-        polarisPrincipal.getAttributes()
-            .getOptional(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
-            .isEmpty();
+        polarisPrincipal
+            .getAttributes()
+            .getOrDefault(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, false);
     if (externalPrincipal) {
       return resolveExternalCallerPrincipalAndPrincipalRoles(resolvePrincipalRoles);
     }

@@ -539,12 +539,15 @@ public class DefaultAuthenticatorTest {
     // are taken as-is from the credentials
     assertThat(result.getName()).isEqualTo("ext-user");
     assertThat(result.getRoles()).containsExactlyInAnyOrder("ext-role1", "ext-role2");
-    assertThat(result.getAttributes())
-        .doesNotContainKey(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY);
-    assertThat(result.getAttributes())
-        .doesNotContainKey(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY);
-    assertThat(result.getAttribute(PolarisPrincipal.JWT_ATTRIBUTE_KEY, String.class))
-        .hasValue("raw.jwt.token");
+    ImmutableAttributeMap attributes = result.getAttributes();
+    assertThat(attributes.containsKey(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY))
+        .isFalse();
+    assertThat(attributes.containsKey(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isFalse();
+    assertThat(attributes.get(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY))
+        .isTrue();
+    assertThat(attributes.get(PolarisPrincipalAttributes.JWT_ATTRIBUTE_KEY))
+        .isEqualTo("raw.jwt.token");
     Mockito.verifyNoInteractions(metaStoreManagerSpy);
   }
 

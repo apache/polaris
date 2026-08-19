@@ -22,7 +22,6 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import java.time.Clock;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -85,7 +84,12 @@ public class ResolverTest extends BaseResolverTest {
             diagServices,
             callCtx(),
             metaStoreManager(),
-            PolarisPrincipal.of("ext-user", Map.of(), Set.of("ext-role1", "ext-role2")),
+            PolarisPrincipal.of(
+                "ext-user",
+                ImmutableAttributeMap.builder()
+                    .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                    .build(),
+                Set.of("ext-role1", "ext-role2")),
             null,
             null);
 

@@ -27,6 +27,22 @@ public final class PolarisPrincipalAttributes {
   private PolarisPrincipalAttributes() {}
 
   /**
+   * Attribute key, of type {@link Boolean}, used to mark a principal as external.
+   *
+   * <p>When present and true, the principal is external: it has no backing entity in the Polaris
+   * metastore, and its roles are resolved directly from the authentication result rather than from
+   * metastore grants.
+   *
+   * <p>Authenticators must set this attribute to {@code true} when they deliberately take the
+   * external-principal path. The resolver treats an explicit {@code true} as external and a missing
+   * or false marker as internal.
+   *
+   * <p>Note: Callers must not assume that this attribute is always present.
+   */
+  public static final AttributeKey<Boolean> EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY =
+      new AttributeKey<>("org.apache.polaris.core.auth.EXTERNAL_PRINCIPAL");
+
+  /**
    * Attribute key for the principal entity attribute, of type {@link PrincipalEntity}.
    *
    * <p>Note: callers must never assume that this attribute is present.
