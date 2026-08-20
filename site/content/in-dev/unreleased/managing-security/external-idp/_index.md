@@ -130,6 +130,14 @@ quarkus.oidc.auth-server-url=https://auth.example.com/realms/polaris
 quarkus.oidc.client-id=polaris
 ```
 
+Once a tenant is enabled, you can optionally advertise the authorization server via the OAuth 2.0 Protected Resource Metadata endpoint (`/.well-known/oauth-protected-resource`, [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728)). This lets clients auto-discover the authorization server from the catalog URL without extra configuration:
+
+```properties
+quarkus.oidc.resource-metadata.enabled=true
+quarkus.oidc.resource-metadata.resource=https://catalog.example.com
+quarkus.oidc.resource-metadata.authorization-server=https://auth.example.com/realms/polaris
+```
+
 Alternatively, it is possible to use multiple named tenants. Each OIDC-named tenant is then configured with standard Quarkus settings: 
 
 ```properties
