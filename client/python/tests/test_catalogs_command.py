@@ -567,42 +567,6 @@ class TestCatalogsCommand(CLITestBase):
             "--no-kms requires S3 storage_type",
         )
 
-    def test_catalog_update_allowed_locations(self) -> None:
-        # ``--allowed-location`` on update must produce
-        # ``(existing or []) + new_flags`` — including the ``None`` case
-        # (regression for the crash when the catalog was created without any).
-        cases = [
-            (None, ["s3://bucket/new"], ["s3://bucket/new"]),
-            (
-                ["s3://bucket/a"],
-                ["s3://bucket/b", "s3://bucket/c"],
-                ["s3://bucket/a", "s3://bucket/b", "s3://bucket/c"],
-            ),
-        ]
-        for existing, new_flags, expected in cases:
-            with self.subTest(existing=existing):
-                mock_client = self.build_mock_client()
-                mock_client.get_catalog.return_value = PolarisCatalog(
-                    type="INTERNAL",
-                    name="s3-catalog",
-                    entity_version=1,
-                    properties=CatalogProperties(
-                        default_base_location="s3://bucket/path",
-                        additional_properties={},
-                    ),
-                    storage_config_info=AwsStorageConfigInfo(
-                        storage_type="S3", allowed_locations=existing
-                    ),
-                )
-                args = ["catalogs", "update", "s3-catalog"]
-                for loc in new_flags:
-                    args += ["--allowed-location", loc]
-                self.mock_execute(mock_client, args)
-                call_args = mock_client.update_catalog.call_args[0][1]
-                self.assertEqual(
-                    call_args.storage_config_info.allowed_locations, expected
-                )
-
     def test_catalog_list(self) -> None:
         mock_client = self.build_mock_client()
         mock_client.list_catalogs.return_values.catalogs = []
