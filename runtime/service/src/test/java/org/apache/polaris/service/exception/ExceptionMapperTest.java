@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
@@ -110,6 +111,21 @@ public class ExceptionMapperTest {
     PolarisExceptionMapper mapper = new PolarisExceptionMapper();
     Response response = mapper.toResponse(new CommitConflictException("test"));
     assertThat(response.getStatus()).isEqualTo(409);
+  }
+
+  @Test
+  public void testCloudExceptionWithNullMessageDoesNotNpe() {
+    // Regression: containsAnyAccessDeniedHint used to dereference a null message. A cloud
+    // exception with a null message reached the unguarded call in mapCloudExceptionToResponseCode,
+    // NPE'd, and that NPE escaped toResponse -> generic 500 with no Iceberg envelope.
+    assertThat(IcebergExceptionMapper.containsAnyAccessDeniedHint(null)).isFalse();
+
+    StorageException nullMessageCloudException = new StorageException(0, null);
+    assertThat(nullMessageCloudException.getMessage()).isNull();
+
+    Optional<Integer> code =
+        IcebergExceptionMapper.mapCloudExceptionToResponseCode(nullMessageCloudException);
+    assertThat(code).contains(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
   }
 
   @Test
