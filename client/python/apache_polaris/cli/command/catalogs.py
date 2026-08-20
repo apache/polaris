@@ -511,9 +511,9 @@ class CatalogsCommand(Command):
                 # in option_tree.py should be applied individually against the existing
                 # storage_config_info here.
                 if self.allowed_locations:
-                    updated_storage_info.allowed_locations.extend(
-                        self.allowed_locations
-                    )
+                    updated_storage_info.allowed_locations = (
+                        updated_storage_info.allowed_locations or []
+                    ) + self.allowed_locations
 
                 if self.region:
                     self._require_s3(updated_storage_info, "--region")
