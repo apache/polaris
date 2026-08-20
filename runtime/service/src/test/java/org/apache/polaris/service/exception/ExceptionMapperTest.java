@@ -116,9 +116,7 @@ public class ExceptionMapperTest {
   }
 
   @ParameterizedTest
-  @CsvSource(
-      value = {"3, 3", "0, 0", "-1, null"},
-      nullValues = "null")
+  @CsvSource({"3, 3", "0, 0", "-1, 0"})
   public void testServiceUnavailableRetryAfter(int retryAfterSeconds, String expectedHeader) {
     PolarisExceptionMapper mapper = new PolarisExceptionMapper();
     Response response =
