@@ -46,6 +46,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Iceberg REST: fixed a `NullPointerException` in `IcebergExceptionMapper` when a cloud
+  provider exception (S3/Azure/GCS) in the causal chain had a null message. The mapper now
+  treats a null message as "no access-denied hint" instead of throwing, so such failures are
+  mapped to a proper status and Iceberg error envelope rather than escaping as a generic 500.
 - Python CLI `setup export` now writes each catalog's `policies` as a list of
   `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
   with the same name in different namespaces. The new export format cannot be applied by older CLI
