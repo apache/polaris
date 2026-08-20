@@ -197,7 +197,7 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@NonNull InternalIndexElement<V> element) {
+  public AddResult add(@NonNull InternalIndexElement<V> element) {
     return loaded().add(element);
   }
 

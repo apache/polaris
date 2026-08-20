@@ -46,6 +46,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
+  error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
+  clients can parse the response rather than failing on an off-schema shape.
 - Python CLI `setup export` now represents namespace paths as lists of levels in namespace,
   policy, and namespace-privilege entries. This preserves namespace levels that contain dots during
   `setup apply`; apply remains compatible with existing dot-delimited configurations. Older CLI
