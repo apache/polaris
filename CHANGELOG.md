@@ -198,6 +198,9 @@ see [changelog.d/README.md](changelog.d/README.md). Fragments are merged into th
   `fair-retries` does not apply to locally synchronized commits, which use FIFO admission;
   conflict retry backoff still applies.
 - Python CLI: added global `--ssl-ca-cert` and `--insecure` options to verify the server with a custom CA bundle or to disable TLS certificate verification
+- Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
+- Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
+- OAuth 2.0 Protected Resource Metadata (RFC 9728): when `quarkus.oidc.resource-metadata.enabled=true`, Polaris serves `/.well-known/oauth-protected-resource`, advertising the authorization server for the `/api/catalog` resource. This is server-side metadata only -- it benefits clients that already support RFC 9728 discovery; it does not change behavior for clients that don't.
 
 ### Changes
 
