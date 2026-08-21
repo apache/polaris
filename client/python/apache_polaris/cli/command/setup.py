@@ -340,6 +340,14 @@ class SetupCommand(Command):
                         if hasattr(c.storage_config_info, "allowed_kms_keys")
                         and c.storage_config_info.allowed_kms_keys
                         else [],
+                        "encryption_keys": sorted(c.storage_config_info.encryption_keys)
+                        if hasattr(c.storage_config_info, "encryption_keys")
+                        and c.storage_config_info.encryption_keys
+                        else [],
+                        "decryption_keys": sorted(c.storage_config_info.decryption_keys)
+                        if hasattr(c.storage_config_info, "decryption_keys")
+                        and c.storage_config_info.decryption_keys
+                        else [],
                     }
                     catalog_info.update(
                         {k: v for k, v in s3_info.items() if v is not None and v != []}
@@ -828,6 +836,8 @@ class SetupCommand(Command):
             "path_style_access",
             "current_kms_key",
             "allowed_kms_keys",
+            "encryption_keys",
+            "decryption_keys",
         ]
         return {
             key: catalog_data.get(key)
@@ -1000,6 +1010,8 @@ class SetupCommand(Command):
                         path_style_access=command_args.get("path_style_access"),
                         current_kms_key=command_args.get("current_kms_key"),
                         allowed_kms_keys=command_args.get("allowed_kms_keys"),
+                        encryption_keys=command_args.get("encryption_keys"),
+                        decryption_keys=command_args.get("decryption_keys"),
                         catalog_connection_type=command_args.get(
                             "catalog_connection_type"
                         ),

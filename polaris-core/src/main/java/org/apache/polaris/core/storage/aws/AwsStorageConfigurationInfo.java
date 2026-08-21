@@ -26,6 +26,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,13 +65,47 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract String getRoleARN();
 
-  /** KMS Key ARN for server-side encryption,used for writes, optional */
+  /**
+   * Deprecated KMS Key ARN, retained for compatibility and treated as an encryption key.
+   *
+   * @deprecated since 1.8.0. Use {@link #getEncryptionKeys()} instead.
+   */
+  @Deprecated(since = "1.8.0")
   @Nullable
   public abstract String getCurrentKmsKey();
 
-  /** Comma-separated list of allowed KMS Key ARNs, optional */
+  /** Deprecated list of KMS keys allowed for encryption and decryption, optional. */
+  @Deprecated(since = "1.8.0")
   @Nullable
   public abstract List<String> getAllowedKmsKeys();
+
+  /** List of KMS keys used for encryption, optional. */
+  @Nullable
+  public abstract List<String> getEncryptionKeys();
+
+  /** Returns the encryption keys, including keys from deprecated configuration properties. */
+  @JsonIgnore
+  @SuppressWarnings("deprecation")
+  public List<String> getEffectiveEncryptionKeys() {
+    List<String> effectiveEncryptionKeys = new ArrayList<>();
+    if (getEncryptionKeys() != null) {
+      effectiveEncryptionKeys.addAll(getEncryptionKeys());
+    }
+    if (getAllowedKmsKeys() != null) {
+      getAllowedKmsKeys().stream()
+          .filter(key -> !effectiveEncryptionKeys.contains(key))
+          .forEach(effectiveEncryptionKeys::add);
+    }
+    String currentKmsKey = getCurrentKmsKey();
+    if (currentKmsKey != null && !effectiveEncryptionKeys.contains(currentKmsKey)) {
+      effectiveEncryptionKeys.add(currentKmsKey);
+    }
+    return List.copyOf(effectiveEncryptionKeys);
+  }
+
+  /** List of KMS keys used for decryption, optional. */
+  @Nullable
+  public abstract List<String> getDecryptionKeys();
 
   /** AWS external ID, optional */
   @Nullable
