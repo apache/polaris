@@ -175,6 +175,8 @@ catalogs:
   - name: "quickstart_catalog_s3"
     type: internal
     storage_type: "s3"
+    # Optional name referencing a server-side storage configuration.
+    # storage_name: "analytics-prod"
     default_base_location: "s3://quickstart-bucket/quickstart_catalog/"
     allowed_locations:
       - "s3://quickstart-bucket/quickstart_catalog/"

@@ -312,6 +312,7 @@ class SetupCommand(Command):
                     "name": c.name,
                     "type": c.type.lower() if c.type else "internal",
                     "storage_type": storage_type.lower(),
+                    "storage_name": c.storage_config_info.storage_name,
                     "default_base_location": c.properties.default_base_location,
                     "allowed_locations": sorted(
                         c.storage_config_info.allowed_locations
@@ -808,6 +809,7 @@ class SetupCommand(Command):
         """Maps storage-related properties from YAML data to command arguments."""
         storage_keys = [
             "storage_type",
+            "storage_name",
             "default_base_location",
             "allowed_locations",
             "properties",
@@ -979,6 +981,7 @@ class SetupCommand(Command):
                         catalog_type=command_args.get("catalog_type"),
                         default_base_location=command_args.get("default_base_location"),
                         storage_type=command_args.get("storage_type"),
+                        storage_name=command_args.get("storage_name"),
                         allowed_locations=command_args.get("allowed_locations"),
                         properties=command_args.get("properties"),
                         set_properties=command_args.get("set_properties"),
