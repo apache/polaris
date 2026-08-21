@@ -23,9 +23,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -36,12 +37,14 @@ public class AuthorizationPreConditionsTest {
   private static final PolarisPrincipal PRINCIPAL =
       PolarisPrincipal.of(
           "alice",
-          Map.of(
-              PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-              new PrincipalEntity.Builder()
-                  .setName("alice")
-                  .setCredentialRotationRequiredState()
-                  .build()),
+          ImmutableAttributeMap.builder()
+              .put(
+                  PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                  new PrincipalEntity.Builder()
+                      .setName("alice")
+                      .setCredentialRotationRequiredState()
+                      .build())
+              .build(),
           Set.of("role"));
 
   private static RealmConfig realmConfigWithEnforcement(boolean enforce) {
@@ -88,7 +91,7 @@ public class AuthorizationPreConditionsTest {
 
   @Test
   public void testFlagOn_nonRotationOp_propertyNotSet_noException() {
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
 
     assertThatCode(
             () ->

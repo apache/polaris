@@ -34,6 +34,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Breaking changes
 
 - Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
+- The `PolarisPrincipal` interface has evolved. The `getAttributes()` method now returns `org.apache.polaris.core.collection.AttributeMap`. The attribute keys were moved to a new `org.apache.polaris.core.auth.PolarisPrincipalAttributes` class.
 
 ### New Features
 

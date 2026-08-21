@@ -27,10 +27,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -64,7 +64,7 @@ public class PolarisResolutionManifestLookupKeyTest {
             new PolarisDefaultDiagServiceImpl(),
             realmContext,
             resolverFactory,
-            PolarisPrincipal.of("p", Map.of(), Set.of()),
+            PolarisPrincipal.of("p", AttributeMap.EMPTY, Set.of()),
             "catalog");
 
     ResolverPath tablePath = new ResolverPath(List.of("ns1", "tbl1"), PolarisEntityType.TABLE_LIKE);
@@ -94,7 +94,7 @@ public class PolarisResolutionManifestLookupKeyTest {
             new PolarisDefaultDiagServiceImpl(),
             realmContext,
             resolverFactory,
-            PolarisPrincipal.of("p", Map.of(), Set.of()),
+            PolarisPrincipal.of("p", AttributeMap.EMPTY, Set.of()),
             "catalog");
 
     ResolverPath tablePath = new ResolverPath(List.of("ns1", "tbl1"), PolarisEntityType.TABLE_LIKE);
@@ -124,7 +124,7 @@ public class PolarisResolutionManifestLookupKeyTest {
             new PolarisDefaultDiagServiceImpl(),
             realmContext,
             resolverFactory,
-            PolarisPrincipal.of("p", Map.of(), Set.of()),
+            PolarisPrincipal.of("p", AttributeMap.EMPTY, Set.of()),
             "catalog");
     manifest.resolveAll();
 
@@ -157,7 +157,7 @@ public class PolarisResolutionManifestLookupKeyTest {
             new PolarisDefaultDiagServiceImpl(),
             realmContext,
             resolverFactory,
-            PolarisPrincipal.of("p", Map.of(), Set.of()),
+            PolarisPrincipal.of("p", AttributeMap.EMPTY, Set.of()),
             "catalog");
 
     ResolverPath nonOptionalPath =

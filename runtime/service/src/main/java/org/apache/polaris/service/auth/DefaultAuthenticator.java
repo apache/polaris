@@ -19,7 +19,6 @@
 package org.apache.polaris.service.auth;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
@@ -34,6 +33,9 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -100,7 +102,7 @@ public class DefaultAuthenticator implements Authenticator {
 
     PrincipalEntity principalEntity = resolvePrincipalEntity(credentials);
     PrincipalRoleSelection principalRoles = resolvePrincipalRoles(credentials, principalEntity);
-    Map<String, Object> principalAttributes =
+    AttributeMap principalAttributes =
         resolvePrincipalAttributes(identity, principalEntity, principalRoles.allRolesRequested());
     PolarisPrincipal polarisPrincipal =
         PolarisPrincipal.of(principalEntity.getName(), principalAttributes, principalRoles.roles());
@@ -160,16 +162,16 @@ public class DefaultAuthenticator implements Authenticator {
     return principal;
   }
 
-  protected Map<String, Object> resolvePrincipalAttributes(
+  protected AttributeMap resolvePrincipalAttributes(
       SecurityIdentity identity, PrincipalEntity principalEntity, boolean allRolesRequested) {
     // Do not merge the security identity's attributes into the principal attributes:
     // these must stay separate.
-    ImmutableMap.Builder<String, Object> principalAttributes =
-        ImmutableMap.<String, Object>builder()
-            .put(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
-            .put(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, allRolesRequested);
+    ImmutableAttributeMap.Builder principalAttributes =
+        ImmutableAttributeMap.builder()
+            .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+            .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, allRolesRequested);
     if (identity.getPrincipal() instanceof JsonWebToken jwt) {
-      principalAttributes.put(PolarisPrincipal.JWT_ATTRIBUTE_KEY, jwt.getRawToken());
+      principalAttributes.put(PolarisPrincipalAttributes.JWT_ATTRIBUTE_KEY, jwt.getRawToken());
     }
     return principalAttributes.build();
   }
