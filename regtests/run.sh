@@ -65,14 +65,14 @@ export PYTHONDONTWRITEBYTECODE=1
 NUM_FAILURES=0
 NUM_SUCCESSES=0
 
-# Determine test mode (default to MinIO for local S3)
+# Determine test mode (default to RustFS for local S3)
 if [ -z "${S3_TEST_BACKEND}" ]; then
-  export S3_TEST_BACKEND=minio
-  loginfo "S3_TEST_BACKEND not set, defaulting to minio"
+  export S3_TEST_BACKEND=rustfs
+  loginfo "S3_TEST_BACKEND not set, defaulting to rustfs"
 fi
 
 # Run S3 backend setup if not in real AWS mode
-if [ "${S3_TEST_BACKEND}" == "minio" ] || [ "${S3_TEST_BACKEND}" == "rustfs" ] ; then
+if [ "${S3_TEST_BACKEND}" == "rustfs" ] ; then
   loginfo "Setting up ${S3_TEST_BACKEND} for tests"
 
   export AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://s3.local:9000}
@@ -165,7 +165,7 @@ for TEST_FILE in ${TEST_LIST}; do
   fi
   if [[ "${TEST_SHORTNAME}" =~ .*.s3.*.sh ]]; then
       # Run if any S3-compatible backend is configured
-      if [[ "${S3_TEST_BACKEND}" != "aws" ]] && [[ "${S3_TEST_BACKEND}" != "minio" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
+      if [[ "${S3_TEST_BACKEND}" != "aws" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
           loginfo "S3 backend not configured, skip running test ${TEST_FILE}"
       fi
   fi
