@@ -399,7 +399,7 @@ public class CatalogEntityTest {
         new CatalogEntity.Builder()
             .setName("test-catalog")
             .setDefaultBaseLocation(baseLocation)
-            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel)
             .build();
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
@@ -425,7 +425,7 @@ public class CatalogEntityTest {
             .setName("test-external-catalog")
             .setDefaultBaseLocation(baseLocation)
             .setCatalogType(Catalog.TypeEnum.EXTERNAL.name())
-            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel)
             .build();
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
@@ -450,7 +450,7 @@ public class CatalogEntityTest {
             .setName("test-internal-catalog")
             .setDefaultBaseLocation(baseLocation)
             .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
-            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel)
             .build();
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
@@ -486,9 +486,7 @@ public class CatalogEntityTest {
             .setDefaultBaseLocation(config.getAllowedLocations().getFirst())
             .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
             .setStorageConfigurationInfo(
-                realmConfig,
-                MAPPER.readValue(configStr, StorageConfigInfo.class),
-                config.getAllowedLocations().getFirst())
+                realmConfig, MAPPER.readValue(configStr, StorageConfigInfo.class))
             .build();
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
@@ -524,7 +522,7 @@ public class CatalogEntityTest {
             .setName("test-catalog")
             .setCatalogType(Catalog.TypeEnum.EXTERNAL.name())
             .setDefaultBaseLocation(baseLocation)
-            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel)
             .setConnectionConfigInfoDpoWithSecrets(
                 icebergRestConnectionConfigInfoModel, null, new AwsIamServiceIdentityInfoDpo(null))
             .build();
@@ -603,8 +601,7 @@ public class CatalogEntityTest {
                             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
                             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                             .setAllowedLocations(List.of(allowed))
-                            .build(),
-                        base)
+                            .build())
                     .build())
         .doesNotThrowAnyException();
   }
@@ -623,8 +620,7 @@ public class CatalogEntityTest {
                             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                             .setAllowedLocations(
                                 List.of("s3://bucket-a/", "s3://bucket-b/warehouse/"))
-                            .build(),
-                        "s3://bucket-b/warehouse/data")
+                            .build())
                     .build())
         .doesNotThrowAnyException();
   }
@@ -642,8 +638,7 @@ public class CatalogEntityTest {
                             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
                             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                             .setAllowedLocations(List.of("s3://bucket/"))
-                            .build(),
-                        "s3://other-bucket/data")
+                            .build())
                     .build())
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("s3://other-bucket/data")
@@ -663,8 +658,7 @@ public class CatalogEntityTest {
                             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
                             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                             .setAllowedLocations(List.of("s3://bucket/"))
-                            .build(),
-                        "gs://bucket/data")
+                            .build())
                     .build())
         .isInstanceOf(BadRequestException.class);
   }

@@ -51,8 +51,12 @@ principals:
 
 # Principal roles are global roles that group principals.
 principal_roles:
+  # Roles without properties can use the short string form.
   - quickstart_user_role
-  - readonly_user_role
+  # Use the object form to persist optional properties with the role.
+  - name: readonly_user_role
+    properties:
+      owner: security-team
   - dev_user_role
 
 # ==================================
@@ -217,6 +221,10 @@ catalogs:
     multi_tenant_app_name: "QuickstartAzureApp"
     # The URL for OAuth consent.
     consent_url: "https://login.microsoftonline.com/consent"
+    # Set to true if the Azure storage account has a hierarchical namespace (HNS) enabled.
+    # This scopes SAS tokens down to the most specific path.
+    # The value must match the storage account's actual HNS setting.
+    hierarchical: false
     properties:
       catalog: quickstart_catalog_azure
 

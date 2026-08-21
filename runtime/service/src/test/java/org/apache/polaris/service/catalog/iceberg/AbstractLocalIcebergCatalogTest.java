@@ -341,8 +341,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                         .addProperty(
                             FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(),
                             "true")
-                        .setStorageConfigurationInfo(
-                            realmConfig, storageConfigModel, STORAGE_LOCATION)
+                        .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                         .build()
                         .asCatalog(serviceIdentityProvider)));
 
@@ -2063,8 +2062,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
-                    .setStorageConfigurationInfo(
-                        realmConfig, noPurgeStorageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, noPurgeStorageConfigModel)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
     LocalIcebergCatalog noPurgeCatalog =

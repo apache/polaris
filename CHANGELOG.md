@@ -63,10 +63,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `CREATE NAMESPACE` fell back to a realm-wide scan instead of the intended indexed lookup. A new
   schema version 6 creates the index on `(realm_id, catalog_id, location_without_scheme)`; H2 was
   already correct. Existing deployments need a manual index recreation — see Upgrade notes.
+- Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
+  error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
+  clients can parse the response rather than failing on an off-schema shape.
 - Python CLI `setup export` now writes each catalog's `policies` as a list of
   `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
   with the same name in different namespaces. The new export format cannot be applied by older CLI
   versions; use the exporting CLI version or newer for `setup apply`.
+- Python CLI `setup export` now preserves user-defined properties on principal roles,
+  so exported configurations restore that metadata during `setup apply`.
 - Python CLI `setup export` now preserves user-defined properties on principals and catalog roles,
   so exported configurations restore that metadata during `setup apply`.
 - Python CLI `setup apply` no longer double-encodes policy content emitted by `setup export`, so
@@ -80,6 +85,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Fixed JDBC persistence under `SERIALIZABLE` isolation (e.g. CockroachDB default) so that a concurrent entity create that loses a unique-name race no longer returns the phantom new entity as a successful create. The conflicting row is now reported as `ENTITY_ALREADY_EXISTS` instead of fabricating the entity that was not persisted.
 - Python CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
 - Fixed a false-negative in the JDBC optimized location-overlap check (`OPTIMIZED_SIBLING_CHECK`). Ancestor locations stored in `location_without_scheme` without a trailing slash were not matched by the generated ancestor equality terms, allowing nested table/namespace locations to be created under existing prefixes. The query now emits both slash-terminated and non-slash-terminated prefix terms and uses a slash-terminated `LIKE` pattern for descendant matching.
+- Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
 
 ### Commits
 

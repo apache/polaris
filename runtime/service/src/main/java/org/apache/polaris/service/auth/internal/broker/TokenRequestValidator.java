@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.polaris.service.auth.DefaultAuthenticator;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,6 @@ final class TokenRequestValidator {
   static final String TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
   static final String CLIENT_CREDENTIALS = "client_credentials";
   static final Set<String> ALLOWED_GRANT_TYPES = Set.of(CLIENT_CREDENTIALS, TOKEN_EXCHANGE);
-  static final String POLARIS_ROLE_PREFIX = "PRINCIPAL_ROLE:";
 
   /** Default constructor */
   TokenRequestValidator() {}
@@ -77,7 +77,8 @@ final class TokenRequestValidator {
       return Optional.of(OAuthError.invalid_scope);
     }
     for (var s : scopes) {
-      if (!s.startsWith(POLARIS_ROLE_PREFIX) || s.length() == POLARIS_ROLE_PREFIX.length()) {
+      if (!s.startsWith(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX)
+          || s.length() == DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX.length()) {
         LOGGER.info("Invalid scope '{}' provided. scope={}", s, scope);
         return Optional.of(OAuthError.invalid_scope);
       }

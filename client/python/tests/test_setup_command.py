@@ -32,6 +32,7 @@ from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     FileStorageConfigInfo,
+    AzureStorageConfigInfo,
     AwsStorageConfigInfo,
 )
 from apache_polaris.sdk.catalog import GetNamespaceResponse
@@ -80,6 +81,21 @@ class TestSetupCommand(CLITestBase):
 
         self.assertEqual(command._failure_count, 0)
         mock_client.create_principal_role.assert_called_once()
+
+    def test_setup_apply_skips_principal_role_without_name(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.list_principal_roles.return_value.roles = []
+        command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+
+        with self.assertLogs(
+            "apache_polaris.cli.command.setup", level="WARNING"
+        ) as logs:
+            command._create_principal_roles(
+                mock_client, [{"properties": {"team": "analytics"}}]
+            )
+
+        mock_client.create_principal_role.assert_not_called()
+        self.assertIn("Skipping principal role with no name", logs.output[0])
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_dry_run_reports_lookup_failures(
@@ -308,6 +324,7 @@ class TestSetupCommand(CLITestBase):
 
     def test_setup_exported_entity_properties_round_trip_through_apply(self) -> None:
         principal_properties = {"owner": "data-platform"}
+        principal_role_properties = {"team": "analytics"}
         catalog_role_properties = {"purpose": "migration"}
         export_client = self.build_mock_client()
         export_client.list_principals.return_value = SimpleNamespace(
@@ -320,6 +337,18 @@ class TestSetupCommand(CLITestBase):
         )
         export_client.list_principal_roles_assigned.return_value = SimpleNamespace(
             roles=[]
+        )
+        export_client.list_principal_roles.return_value = SimpleNamespace(
+            roles=[
+                SimpleNamespace(
+                    name="viewer-role",
+                    properties=None,
+                ),
+                SimpleNamespace(
+                    name="analytics-role",
+                    properties=principal_role_properties,
+                ),
+            ]
         )
         export_client.list_catalog_roles.return_value = SimpleNamespace(
             roles=[
@@ -339,6 +368,7 @@ class TestSetupCommand(CLITestBase):
 
         exported = {
             "principals": export_command._export_principals(export_client),
+            "principal_roles": export_command._export_principal_roles(export_client),
             "catalog_roles": export_command._export_catalog_roles_for_catalog(
                 export_client, "catalog"
             ),
@@ -350,12 +380,23 @@ class TestSetupCommand(CLITestBase):
             principal_properties,
         )
         self.assertEqual(
+            loaded["principal_roles"],
+            [
+                {
+                    "name": "analytics-role",
+                    "properties": principal_role_properties,
+                },
+                "viewer-role",
+            ],
+        )
+        self.assertEqual(
             loaded["catalog_roles"]["catalog-reader"]["properties"],
             catalog_role_properties,
         )
 
         apply_client = self.build_mock_client()
         apply_client.list_principals.return_value = SimpleNamespace(principals=[])
+        apply_client.list_principal_roles.return_value = SimpleNamespace(roles=[])
         apply_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
         apply_client.create_principal.return_value = SimpleNamespace(
             credentials=SimpleNamespace(
@@ -367,6 +408,10 @@ class TestSetupCommand(CLITestBase):
 
         with patch("sys.stdout", new_callable=io.StringIO):
             apply_command._create_principals(apply_client, loaded["principals"])
+        apply_command._create_principal_roles(
+            apply_client,
+            loaded["principal_roles"],
+        )
         apply_command._create_catalog_roles(
             apply_client,
             "catalog",
@@ -374,11 +419,20 @@ class TestSetupCommand(CLITestBase):
         )
 
         principal_request = apply_client.create_principal.call_args.args[0]
+        principal_role_requests = [
+            call.args[0] for call in apply_client.create_principal_role.call_args_list
+        ]
         catalog_role_request = apply_client.create_catalog_role.call_args.args[1]
         self.assertEqual(
             principal_request.principal.properties,
             principal_properties,
         )
+        self.assertEqual(
+            principal_role_requests[0].principal_role.properties,
+            principal_role_properties,
+        )
+        self.assertEqual(principal_role_requests[1].principal_role.name, "viewer-role")
+        self.assertEqual(principal_role_requests[1].principal_role.properties, {})
         self.assertEqual(
             catalog_role_request.catalog_role.properties,
             catalog_role_properties,
@@ -747,3 +801,53 @@ class TestSetupCommand(CLITestBase):
         self.assertEqual(
             created.storage_config_info.sts_endpoint, "https://sts.amazonaws.com"
         )
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_azure_catalog_round_trips_hierarchical(
+        self, mock_catalog_api: MagicMock
+    ) -> None:
+        mock_catalog_api.return_value.list_namespaces.return_value = []
+        mock_catalog = MagicMock()
+        mock_catalog.name = "my_catalog"
+        mock_client = self.build_mock_client()
+        mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="my_catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/",
+                additional_properties={},
+            ),
+            storage_config_info=AzureStorageConfigInfo(
+                storage_type="AZURE",
+                allowed_locations=[
+                    "abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/"
+                ],
+                tenant_id="12345678-1234-1234-1234-123456789abc",
+                multi_tenant_app_name="QuickstartAzureApp",
+                consent_url="https://login.microsoftonline.com/consent",
+                hierarchical=True,
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = MagicMock(roles=[])
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported = export_command._export_catalogs(mock_client)
+
+        self.assertEqual(len(exported), 1)
+        self.assertEqual(exported[0]["hierarchical"], True)
+
+        loaded = yaml.safe_load(yaml.safe_dump({"catalogs": exported}))
+
+        apply_client = self.build_mock_client()
+        apply_client.list_catalogs.return_value.catalogs = []
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+        apply_command._create_catalogs(apply_client, loaded["catalogs"])
+
+        apply_client.create_catalog.assert_called_once()
+        created = apply_client.create_catalog.call_args[0][0].catalog
+        self.assertEqual(created.storage_config_info.hierarchical, True)
