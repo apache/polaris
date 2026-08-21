@@ -34,11 +34,18 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Breaking changes
 
 - Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
+- The Relational JDBC backend no longer creates its database schema during bootstrap: creating the
+  schema is a privileged operation that belongs to a database administrator. Fresh installations
+  must create the schema (by default `CREATE SCHEMA polaris_schema;` on PostgreSQL) before running
+  the admin tool's `bootstrap` command. Existing deployments are unaffected — their schema already
+  exists, and the shipped `currentSchema` default (`POLARIS_SCHEMA`) preserves the previous
+  behavior on upgrade.
 
 ### New Features
 
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
+- The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
 
 ### Changes
 
