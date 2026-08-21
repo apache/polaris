@@ -467,6 +467,21 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(30 * 60) // 30 minutes
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS =
+      PolarisConfiguration.<Integer>builder()
+          .key("STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS")
+          .description(
+              "Minimum remaining validity (in seconds) that a cached storage credential must "
+                  + "have before it is considered stale and evicted. When non-zero, credentials "
+                  + "are removed from the cache this many seconds before they expire, ensuring "
+                  + "clients always receive credentials with at least this much validity left. "
+                  + "When zero (the default), credentials are kept for half of their remaining "
+                  + "lifetime, which is the legacy behavior. Must be less than "
+                  + STORAGE_CREDENTIAL_DURATION_SECONDS.key()
+                  + ".")
+          .defaultValue(0)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Integer> MAX_METADATA_REFRESH_RETRIES =
       PolarisConfiguration.<Integer>builder()
           .key("MAX_METADATA_REFRESH_RETRIES")
