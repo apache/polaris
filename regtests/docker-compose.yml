@@ -80,6 +80,7 @@ services:
       polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS": "true"
       polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION": "true"
       polaris.features."ENABLE_CATALOG_FEDERATION": "true"
+      polaris.features."ENABLE_OPENLINEAGE_INGEST": "false"
       polaris.readiness.ignore-severe-issues: "true"
     volumes:
       - ./credentials:/tmp/credentials/
