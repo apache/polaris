@@ -256,6 +256,15 @@ public enum PolarisPrivilege {
       PolarisEntityType.TABLE_LIKE,
       List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
       PolarisEntityType.CATALOG_ROLE),
+  /**
+   * Read-only access to table scan and commit metrics reports. Does not grant access to table data.
+   * Implied by TABLE_READ_DATA and TABLE_FULL_METADATA.
+   */
+  TABLE_READ_METRICS(
+      103,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
   ;
 
   /**

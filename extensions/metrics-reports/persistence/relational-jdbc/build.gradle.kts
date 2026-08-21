@@ -27,6 +27,7 @@ dependencies {
   implementation(project(":polaris-relational-jdbc"))
   implementation(project(":polaris-runtime-service"))
   implementation(project(":polaris-extensions-metrics-reports"))
+  implementation(project(":polaris-extensions-metrics-reports-spi"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
@@ -57,4 +58,5 @@ dependencies {
   testImplementation(libs.mockito.core)
   testImplementation(libs.h2)
   testImplementation(libs.postgresql)
+  testImplementation(testFixtures(project(":polaris-extensions-metrics-reports-spi")))
 }
