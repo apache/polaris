@@ -21,16 +21,57 @@ package org.apache.polaris.service.catalog.policy;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public class PolicyCatalogUtils {
+
+  /**
+   * The accepted {@code policyType} names, listed in rejection messages. Derived from the same
+   * registry {@link PolicyType#fromName(String)} resolves against, so the message cannot advertise
+   * a set that differs from the one actually accepted.
+   */
+  private static final String KNOWN_POLICY_TYPE_NAMES =
+      Arrays.stream(PredefinedPolicyTypes.values())
+          .map(PolicyType::getName)
+          .collect(Collectors.joining(", "));
+
+  /**
+   * Resolves the optional {@code policyType} query parameter of the policy listing APIs into a
+   * {@link PolicyType} filter.
+   *
+   * <p>The parameter is declared with {@code allowEmptyValue: true}, so both {@code null} and the
+   * empty string mean "do not filter". Any other value must name a known policy type: an unknown
+   * name is rejected rather than silently treated as "no filter", which would return policies of
+   * every type and make a typo look like a successful, but wrong, filtered listing.
+   *
+   * @param policyType the raw {@code policyType} query parameter, may be {@code null} or empty
+   * @return the resolved policy type, or {@code null} if no filter was requested
+   * @throws BadRequestException if a non-empty value does not name a known policy type
+   */
+  public static @Nullable PolicyType resolvePolicyTypeFilter(@Nullable String policyType) {
+    if (policyType == null || policyType.isEmpty()) {
+      return null;
+    }
+    PolicyType resolved = PolicyType.fromName(policyType);
+    if (resolved == null) {
+      throw new BadRequestException(
+          "Unknown policy type: '%s'. Valid values are: %s", policyType, KNOWN_POLICY_TYPE_NAMES);
+    }
+    return resolved;
+  }
 
   public static PolarisResolvedPathWrapper getResolvedPathWrapper(
       @NonNull PolarisResolutionManifestCatalogView resolutionManifest,
