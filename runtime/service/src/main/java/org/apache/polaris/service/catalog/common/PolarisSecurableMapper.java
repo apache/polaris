@@ -87,6 +87,20 @@ public final class PolarisSecurableMapper {
         .build();
   }
 
+  public static PolarisSecurable semanticModel(
+      String catalogName, Namespace namespace, String name) {
+    if (namespace.isEmpty()) {
+      throw new IllegalArgumentException("Semantic-model target cannot have an empty namespace");
+    }
+    ImmutablePolarisSecurable.Builder builder =
+        ImmutablePolarisSecurable.builder()
+            .addPathSegment(new PathSegment(PolarisEntityType.CATALOG, catalogName));
+    Arrays.stream(namespace.levels())
+        .map(level -> new PathSegment(PolarisEntityType.NAMESPACE, level))
+        .forEach(builder::addPathSegment);
+    return builder.addPathSegment(new PathSegment(PolarisEntityType.SEMANTIC_MODEL, name)).build();
+  }
+
   public static PolarisSecurable policyAttachmentTarget(
       String catalogName, PolicyAttachmentTarget target) {
     ImmutablePolarisSecurable.Builder builder =

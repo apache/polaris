@@ -31,6 +31,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -93,6 +95,21 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
 
+  // Converter for SELECT 1 existence probes: only the presence of a row matters, so every row maps
+  // to 1 and toMap is never used (existence queries are read-only).
+  private static final Converter<Integer> ROW_EXISTS_CONVERTER =
+      new Converter<>() {
+        @Override
+        public Integer fromResultSet(ResultSet rs) {
+          return 1;
+        }
+
+        @Override
+        public Map<String, Object> toMap(DatabaseType databaseType) {
+          throw new UnsupportedOperationException();
+        }
+      };
+
   public JdbcBasePersistenceImpl(
       PolarisDiagnostics diagnostics,
       DatasourceOperations databaseOperations,
@@ -143,15 +160,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               PolarisBaseEntity entity = entities.get(i);
               PolarisBaseEntity originalEntity =
                   originalEntities != null ? originalEntities.get(i) : null;
-              // first, check if the entity has already been created, in which case we will simply
-              // return it.
-              PolarisBaseEntity entityFound =
-                  lookupEntity(
-                      callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
-              if (entityFound != null && originalEntity == null) {
-                // probably the client retried, simply return it
-                // TODO: Check correctness of returning entityFound vs entity here. It may have
-                // already been updated after the creation.
+              if (originalEntity == null && entityExists(connection, entity.getId())) {
                 continue;
               }
               persistEntity(
@@ -165,6 +174,25 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               "Error executing the transaction for writing entities due to %s", e.getMessage()),
           e);
     }
+  }
+
+  /**
+   * Returns whether an entity row already exists, using a {@code SELECT 1 ... LIMIT 1} on the
+   * supplied transaction connection. Only existence is needed by {@link #writeEntities} on the
+   * create path, so this avoids fetching the full entity row (including the large JSON property
+   * blobs).
+   */
+  private boolean entityExists(@NonNull Connection connection, long entityId) throws SQLException {
+    AtomicBoolean exists = new AtomicBoolean(false);
+    datasourceOperations.executeSelectOverStream(
+        connection,
+        QueryGenerator.generateExistsQuery(
+            ModelEntity.getAllColumnNames(schemaVersion),
+            ModelEntity.TABLE_NAME,
+            entityKeyParams(entityId)),
+        ROW_EXISTS_CONVERTER,
+        stream -> exists.set(stream.findAny().isPresent()));
+    return exists.get();
   }
 
   private void persistEntity(
@@ -199,10 +227,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           // 1. PRIMARY KEY violated
           // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
           // With SERIALIZABLE isolation, the conflicting entity may _not_ be visible and
-          // existingEntity can be null, which would cause an NPE in
-          // EntityAlreadyExistsException.message().
-          throw new EntityAlreadyExistsException(
-              existingEntity != null ? existingEntity : entity, e);
+          // existingEntity can be null. We cannot distinguish a same-id idempotent retry from a
+          // genuine name collision in that case, so we must report a concurrency conflict rather
+          // than fabricate the entity we were trying to create.
+          if (existingEntity != null) {
+            throw new EntityAlreadyExistsException(existingEntity, e);
+          }
+          throw new RetryOnConcurrencyException(
+              e, "Conflicting entity is not visible in the current transaction snapshot; retry");
         }
         throw new RuntimeException(
             String.format("Failed to write entity due to %s", e.getMessage()), e);
@@ -422,6 +454,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
   }
 
+  private Map<String, Object> entityKeyParams(long entityId) {
+    return Map.of("id", entityId, "realm_id", realmId);
+  }
+
   @Override
   public PolarisBaseEntity lookupEntityByName(
       @NonNull PolarisCallContext callCtx,
@@ -515,7 +551,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PolarisEntityType entityType,
       PolarisEntitySubType entitySubType,
       PageToken pageToken,
-      List<String> queryProjections) {
+      List<String> queryProjections,
+      boolean applyPageSizeLimit) {
     Map<String, Object> whereEquals =
         Map.of(
             "catalog_id",
@@ -535,6 +572,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
     String orderByColumnName = null;
     Map<String, Object> whereGreater;
+    Integer limit = null;
     if (pageToken.paginationRequested()) {
       orderByColumnName = ModelEntity.ID_COLUMN;
       whereGreater =
@@ -544,12 +582,22 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   entityIdToken ->
                       Map.<String, Object>of(ModelEntity.ID_COLUMN, entityIdToken.entityId()))
               .orElse(Map.of());
+      OptionalInt pageSize = pageToken.pageSize();
+      if (applyPageSizeLimit && pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE) {
+        // One more than the page size, so the caller can still tell whether a next page exists.
+        limit = pageSize.getAsInt() + 1;
+      }
     } else {
       whereGreater = Map.of();
     }
 
     return QueryGenerator.generateSelectQuery(
-        queryProjections, ModelEntity.TABLE_NAME, whereEquals, whereGreater, orderByColumnName);
+        queryProjections,
+        ModelEntity.TABLE_NAME,
+        whereEquals,
+        whereGreater,
+        orderByColumnName,
+        limit);
   }
 
   @NonNull
@@ -569,7 +617,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               entityType,
               entitySubType,
               pageToken,
-              ModelEntity.ENTITY_LOOKUP_COLUMNS);
+              ModelEntity.ENTITY_LOOKUP_COLUMNS,
+              true);
       AtomicReference<Page<EntityNameLookupRecord>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
@@ -604,7 +653,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               entityType,
               entitySubType,
               pageToken,
-              ModelEntity.getAllColumnNames(schemaVersion));
+              ModelEntity.getAllColumnNames(schemaVersion),
+              // entityFilter is applied after the fetch, so a page size limit could under-fill a
+              // page and drop its continuation token
+              false);
       AtomicReference<Page<T>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
@@ -623,14 +675,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public int lookupEntityGrantRecordsVersion(
       @NonNull PolarisCallContext callCtx, long catalogId, long entityId) {
-
-    Map<String, Object> params =
-        Map.of("catalog_id", catalogId, "id", entityId, "realm_id", realmId);
-    PolarisBaseEntity b =
-        getPolarisBaseEntity(
-            QueryGenerator.generateSelectQuery(
-                ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
-    return b == null ? 0 : b.getGrantRecordsVersion();
+    List<PolarisChangeTrackingVersions> versions =
+        lookupEntityVersions(callCtx, List.of(new PolarisEntityId(catalogId, entityId)));
+    PolarisChangeTrackingVersions version = versions.getFirst();
+    return version == null ? 0 : version.grantRecordsVersion();
   }
 
   @Override
@@ -744,17 +792,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           datasourceOperations.executeSelect(
               QueryGenerator.generateExistsQuery(
                   ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params),
-              new Converter<Integer>() {
-                @Override
-                public Integer fromResultSet(ResultSet rs) {
-                  return 1;
-                }
-
-                @Override
-                public Map<String, Object> toMap(DatabaseType databaseType) {
-                  throw new UnsupportedOperationException();
-                }
-              });
+              ROW_EXISTS_CONVERTER);
       return results != null && !results.isEmpty();
     } catch (SQLException e) {
       throw new RuntimeException(

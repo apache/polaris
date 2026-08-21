@@ -41,6 +41,7 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
   runtimeOnly(project(":polaris-extensions-auth-ranger"))
+  runtimeOnly(project(":polaris-extensions-events-kafka"))
   runtimeOnly(project(":polaris-extensions-semantic-models"))
   runtimeOnly(project(":polaris-extensions-metrics-reports"))
   runtimeOnly(project(":polaris-extensions-metrics-reports-jdbc"))
@@ -92,6 +93,7 @@ tasks.named<QuarkusDev>("quarkusDev") {
     listOf(
       "-Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t",
       "-Dquarkus.console.color=true",
+      "-Dquarkus.observability.lgtm.enabled=false",
       "-Dpolaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"=true",
       "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",
       "-Dpolaris.readiness.ignore-severe-issues=true",

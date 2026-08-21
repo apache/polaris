@@ -45,6 +45,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -52,6 +53,7 @@ import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
+import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
@@ -59,6 +61,9 @@ import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.ids.api.MonotonicClock;
+import org.apache.polaris.persistence.nosql.api.Persistence;
+import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
+import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
@@ -85,6 +90,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   @Identifier("nosql")
   MetaStoreManagerFactory metaStoreManagerFactory;
 
+  @Inject RealmPersistenceFactory realmPersistenceFactory;
   @Inject RealmConfigurationSource configurationSource;
   @Inject MonotonicClock monotonicClock;
 
@@ -139,6 +145,59 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   void setup() {
     this.metaStore = polarisTestMetaStoreManager.polarisMetaStoreManager();
     this.callContext = polarisTestMetaStoreManager.polarisCallContext();
+  }
+
+  @Test
+  public void rotatePrincipalSecretsWhenClientIdIndexIsStriped() {
+    Persistence persistence = realmPersistenceFactory.newBuilder().realmId(realmId).build();
+
+    // Create principals until the by-client-id index spills out of the embedded region, so that
+    // client-id keys of existing principals live in stripes rather than in the embedded index.
+    CreatePrincipalResult first = null;
+    int created = 0;
+    while (created < 4000) {
+      PrincipalEntity entity =
+          new PrincipalEntity.Builder()
+              .setId(metaStore.generateNewEntityId(callContext).getId())
+              .setName("rotate_principal_" + created)
+              .setCreateTimestamp(System.currentTimeMillis())
+              .build();
+      CreatePrincipalResult result = metaStore.createPrincipal(callContext, entity);
+      assertThat(result.isSuccess()).isTrue();
+      if (first == null) {
+        first = result;
+      }
+      created++;
+      if (created % 50 == 0 && clientIdIndexIsStriped(persistence)) {
+        break;
+      }
+    }
+
+    assertThat(clientIdIndexIsStriped(persistence))
+        .describedAs(
+            "by-client-id index should have spilled to stripes after %d principals", created)
+        .isTrue();
+
+    // Rotating keeps the same client ID, so the mutation removes and re-adds the same index key.
+    var secrets = first.getPrincipalSecrets();
+    var rotated =
+        metaStore.rotatePrincipalSecrets(
+            callContext,
+            secrets.getPrincipalClientId(),
+            first.getPrincipal().getId(),
+            false,
+            secrets.getMainSecretHash());
+
+    assertThat(rotated.isSuccess()).isTrue();
+    assertThat(rotated.getPrincipalSecrets().getPrincipalClientId())
+        .isEqualTo(secrets.getPrincipalClientId());
+  }
+
+  private static boolean clientIdIndexIsStriped(Persistence persistence) {
+    return persistence
+        .fetchReferenceHead(PrincipalsObj.PRINCIPALS_REF_NAME, PrincipalsObj.class)
+        .map(principals -> !principals.byClientId().stripes().isEmpty())
+        .orElse(false);
   }
 
   @Test

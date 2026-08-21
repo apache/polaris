@@ -188,6 +188,15 @@ class TestReplCommand(CLITestBase):
         self.assertIn("repl", out)
         self.assertIn("exit", out)
 
+    def test_repl_handles_syntax_error(self) -> None:
+        repl = PolarisRepl(self.build_mock_client())
+        with patch("sys.stderr", new_callable=io.StringIO) as mock_stderr:
+            repl.default('catalogs create "unclosed')
+        output = mock_stderr.getvalue()
+        self.assertIn("Syntax error", output)
+        self.assertIn("No closing quotation", output)
+        self.assertNotIn("unexpected", output)
+
     def test_help_for_command_delegates_to_argparse(self) -> None:
         repl = PolarisRepl(self.build_mock_client())
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:

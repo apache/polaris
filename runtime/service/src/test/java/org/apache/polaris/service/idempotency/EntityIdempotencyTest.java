@@ -20,10 +20,12 @@ package org.apache.polaris.service.idempotency;
 
 import static org.apache.polaris.service.idempotency.EntityIdempotency.IDEMPOTENCY_KEYS_PROPERTY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -104,30 +106,61 @@ public class EntityIdempotencyTest {
   }
 
   @Test
-  public void recordKeyEvictsEarliestWhenFull() {
-    // Fill the window to capacity with strictly increasing expiries, so the earliest-expiring key
-    // (the first one recorded) is the well-defined eviction target.
-    UUID earliest = UUID.randomUUID();
-    UUID secondEarliest = UUID.randomUUID();
-    Map<String, String> internal =
-        EntityIdempotency.recordKey(Map.of(), earliest, NOW.plusSeconds(1), NOW);
-    internal = EntityIdempotency.recordKey(internal, secondEarliest, NOW.plusSeconds(2), NOW);
-    for (int i = 3; i <= EntityIdempotency.MAX_WINDOW_SIZE; i++) {
-      internal = EntityIdempotency.recordKey(internal, UUID.randomUUID(), NOW.plusSeconds(i), NOW);
+  public void recordKeyRetainsAllLiveKeysWithoutCountCap() {
+    // The window is bounded only by expiry, never by a fixed count: recording many still-live keys
+    // must retain every one. Evicting a live key would silently disable idempotency for it and
+    // could reintroduce the corruption failure mode idempotency exists to prevent.
+    int numberOfKeys = 500;
+    UUID[] keys = new UUID[numberOfKeys];
+    Map<String, String> internal = Map.of();
+    for (int i = 0; i < numberOfKeys; i++) {
+      keys[i] = UUID.randomUUID();
+      internal = EntityIdempotency.recordKey(internal, keys[i], LATER, NOW);
     }
 
-    // One more write past capacity must evict only the earliest-expiring key while retaining the
-    // key just recorded (trim-before-insert: the new key is never the one dropped).
-    UUID newest = UUID.randomUUID();
-    internal =
-        EntityIdempotency.recordKey(
-            internal, newest, NOW.plusSeconds(EntityIdempotency.MAX_WINDOW_SIZE + 1L), NOW);
+    for (UUID key : keys) {
+      assertThat(EntityIdempotency.hasLiveKey(internal, key, NOW)).isTrue();
+    }
+  }
 
-    // Read at NOW, when every recorded key would still be live if present, so absence == eviction.
-    // Only the single earliest key is dropped: the new key and the next-earliest survive.
-    assertThat(EntityIdempotency.hasLiveKey(internal, newest, NOW)).isTrue();
-    assertThat(EntityIdempotency.hasLiveKey(internal, secondEarliest, NOW)).isTrue();
-    assertThat(EntityIdempotency.hasLiveKey(internal, earliest, NOW)).isFalse();
+  @Test
+  public void recordKeyFailsRatherThanEvictWhenSafetyCeilingReached() {
+    // At the safety ceiling the write fails instead of evicting a live key. Fill the window to the
+    // (small, test-only) ceiling, then a further live key must throw rather than drop an existing
+    // one. Expired entries are still purged, so a full window of live keys is required to trip it.
+    int ceiling = 3;
+    Map<String, String> internal = Map.of();
+    for (int i = 0; i < ceiling; i++) {
+      internal = EntityIdempotency.recordKey(internal, UUID.randomUUID(), LATER, NOW, ceiling);
+    }
+
+    Map<String, String> full = internal;
+    assertThatThrownBy(
+            () -> EntityIdempotency.recordKey(full, UUID.randomUUID(), LATER, NOW, ceiling))
+        .isInstanceOf(PolarisServiceUnavailableException.class)
+        .hasMessageContaining("full");
+  }
+
+  @Test
+  public void malformedWindowIsTreatedAsNoLiveKeys() {
+    // A corrupt/unrecognized window must degrade to "no live keys" rather than throwing: an unknown
+    // format prefix, and a valid prefix followed by non-base64 bytes.
+    Map<String, String> unknownPrefix = Map.of(IDEMPOTENCY_KEYS_PROPERTY, "XYZgarbage");
+    Map<String, String> badBase64 = Map.of(IDEMPOTENCY_KEYS_PROPERTY, "IS1@@@not-base64@@@");
+
+    assertThat(EntityIdempotency.hasLiveKey(unknownPrefix, UUID.randomUUID(), NOW)).isFalse();
+    assertThat(EntityIdempotency.hasLiveKey(badBase64, UUID.randomUUID(), NOW)).isFalse();
+  }
+
+  @Test
+  public void recordKeyOverwritesMalformedWindow() {
+    UUID key = UUID.randomUUID();
+    Map<String, String> corrupt = Map.of(IDEMPOTENCY_KEYS_PROPERTY, "IS1@@@not-base64@@@");
+
+    Map<String, String> updated = EntityIdempotency.recordKey(corrupt, key, LATER, NOW);
+
+    assertThat(updated.get(IDEMPOTENCY_KEYS_PROPERTY)).startsWith("IS1");
+    assertThat(EntityIdempotency.hasLiveKey(updated, key, NOW)).isTrue();
   }
 
   /**

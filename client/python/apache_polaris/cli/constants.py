@@ -65,6 +65,7 @@ class AuthenticationType(Enum):
 
     OAUTH = "oauth"
     BEARER = "bearer"
+    GCP = "gcp"
     SIGV4 = "sigv4"
     IMPLICIT = "implicit"
 
@@ -110,6 +111,8 @@ class Commands:
     POLICIES = "policies"
     SETUP = "setup"
     TABLES = "tables"
+    VIEWS = "views"
+    GENERIC_TABLES = "generic-tables"
     FIND = "find"
     REPL = "repl"
 
@@ -184,6 +187,7 @@ class Arguments:
     NAMESPACE = "namespace"
     TABLE = "table"
     VIEW = "view"
+    GENERIC_TABLE = "generic-table"
     CASCADE = "cascade"
     CLIENT_SECRET = "client_secret"
     NEW_CLIENT_ID = "new_client_id"

@@ -49,4 +49,16 @@ class PolarisSecurableMapperTest {
             new PathSegment(PolarisEntityType.NAMESPACE, "ns2"),
             new PathSegment(PolarisEntityType.TABLE_LIKE, "table"));
   }
+
+  @Test
+  void semanticModelMapsNamespaceAndModelName() {
+    assertThat(
+            PolarisSecurableMapper.semanticModel("catalog", Namespace.of("ns1", "ns2"), "model")
+                .getPathSegments())
+        .containsExactly(
+            new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns2"),
+            new PathSegment(PolarisEntityType.SEMANTIC_MODEL, "model"));
+  }
 }

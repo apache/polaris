@@ -46,6 +46,7 @@ import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -197,8 +198,8 @@ public class IcebergCatalogAdapter
     } else {
       LOGGER
           .atWarn()
-          .addKeyValue("namespace", namespace)
-          .addKeyValue("tableName", tableName)
+          .addKeyValue(StructuredLogKeys.NAMESPACE, namespace)
+          .addKeyValue(StructuredLogKeys.TABLE_NAME, tableName)
           .log("Response has null metadataLocation; omitting etag");
     }
     return builder;

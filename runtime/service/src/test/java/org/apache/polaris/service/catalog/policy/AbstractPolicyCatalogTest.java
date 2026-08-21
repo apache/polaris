@@ -58,9 +58,12 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
@@ -219,7 +222,7 @@ public abstract class AbstractPolicyCatalogTest {
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
@@ -418,6 +421,31 @@ public abstract class AbstractPolicyCatalogTest {
     assertThatThrownBy(
             () -> policyCatalog.updatePolicy(POLICY1, "updated", "{\"enable\": true}", 1))
         .isInstanceOf(PolicyVersionMismatchException.class);
+  }
+
+  @Test
+  public void testUpdatePolicyLosingConcurrentUpdateIsRetryableConflict() {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+
+    // Simulate another writer winning the compare-and-swap on the policy entity.
+    PolarisMetaStoreManager concurrentlyModified = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(
+            new EntityResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, "simulated"))
+        .when(concurrentlyModified)
+        .updateEntityPropertiesIfNotChanged(Mockito.any(), Mockito.any(), Mockito.any());
+
+    PolicyCatalog catalog =
+        new PolicyCatalog(
+            concurrentlyModified,
+            polarisContext,
+            new PolarisPassthroughResolutionView(
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+
+    assertThatThrownBy(() -> catalog.updatePolicy(POLICY1, "updated", "{\"enable\": true}", 0))
+        .isInstanceOf(CommitConflictException.class);
   }
 
   @Test

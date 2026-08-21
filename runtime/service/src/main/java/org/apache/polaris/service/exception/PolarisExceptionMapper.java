@@ -19,68 +19,48 @@
 package org.apache.polaris.service.exception;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.iceberg.rest.responses.ErrorResponse;
-import org.apache.polaris.core.exceptions.AlreadyExistsException;
-import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisException;
-import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
-import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
-import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
-import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
-import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
-import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 
 /**
- * An {@link ExceptionMapper} implementation for {@link PolarisException}s modeled after {@link
- * IcebergExceptionMapper}
+ * An {@link ExceptionMapper} implementation for {@link PolarisException}s. Delegates HTTP status
+ * resolution to {@link PolarisException#httpStatusCode()}.
  */
 @Provider
 public class PolarisExceptionMapper implements ExceptionMapper<PolarisException> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisExceptionMapper.class);
 
-  private Response.Status getStatus(PolarisException exception) {
-    return switch (exception) {
-      case AlreadyExistsException alreadyExistsException -> Response.Status.CONFLICT;
-      case CommitConflictException commitConflictException -> Response.Status.CONFLICT;
-      case InvalidPolicyException invalidPolicyException -> Response.Status.BAD_REQUEST;
-      case PolicyAttachException policyAttachException -> Response.Status.BAD_REQUEST;
-      case NoSuchPolicyException noSuchPolicyException -> Response.Status.NOT_FOUND;
-      case PolicyVersionMismatchException policyVersionMismatchException ->
-          Response.Status.CONFLICT;
-      case PolicyMappingAlreadyExistsException policyMappingAlreadyExistsException ->
-          Response.Status.CONFLICT;
-      case PolicyInUseException policyInUseException -> Response.Status.BAD_REQUEST;
-      default -> Response.Status.INTERNAL_SERVER_ERROR;
-    };
-  }
-
   @Override
   public Response toResponse(PolarisException exception) {
-    Response.Status status = getStatus(exception);
+    int statusCode = exception.httpStatusCode();
     getLogger()
-        .atLevel(
-            status.getFamily() == Response.Status.Family.SERVER_ERROR ? Level.INFO : Level.DEBUG)
+        .atLevel(statusCode >= 500 ? Level.INFO : Level.DEBUG)
         .setCause(exception)
         .log("Full PolarisException");
 
     ErrorResponse errorResponse =
         ErrorResponse.builder()
-            .responseCode(status.getStatusCode())
+            .responseCode(statusCode)
             .withType(exception.getClass().getSimpleName())
             .withMessage(exception.getMessage())
             .build();
-    return Response.status(status)
-        .entity(errorResponse)
-        .type(MediaType.APPLICATION_JSON_TYPE)
-        .build();
+    Response.ResponseBuilder builder =
+        Response.status(statusCode).entity(errorResponse).type(MediaType.APPLICATION_JSON_TYPE);
+    if (exception instanceof PolarisServiceUnavailableException e
+        && e.getRetryAfterSeconds() != 0) {
+      builder.header(HttpHeaders.RETRY_AFTER, e.getRetryAfterSeconds());
+    }
+    return builder.build();
   }
 
   @VisibleForTesting

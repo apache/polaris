@@ -66,7 +66,7 @@ public interface S3AccessConfig {
   /** Override default max idle time of a pooled connection. */
   Optional<Duration> connectionMaxIdleTime();
 
-  /** Override default time-time of a pooled connection. */
+  /** Override default time-to-live of a pooled connection. */
   Optional<Duration> connectionTimeToLive();
 
   /** Override default behavior whether to expect an HTTP/100-Continue. */

@@ -272,10 +272,7 @@ public abstract class PolarisAuthzTestBase {
             .setName(FEDERATED_CATALOG_NAME)
             .setCatalogType("EXTERNAL")
             .setDefaultBaseLocation(storageLocationForFederatedCatalog)
-            .setStorageConfigurationInfo(
-                realmConfig,
-                storageConfigModelForFederatedCatalog,
-                storageLocationForFederatedCatalog)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModelForFederatedCatalog)
             .addProperty("polaris.config.enable-sub-catalog-rbac-for-federated-catalogs", "true")
             .build();
     ExternalCatalog externalCatalog =
@@ -302,8 +299,7 @@ public abstract class PolarisAuthzTestBase {
                         .setName(CATALOG_NAME)
                         .setCatalogType("INTERNAL")
                         .setDefaultBaseLocation(storageLocation)
-                        .setStorageConfigurationInfo(
-                            realmConfig, storageConfigModel, storageLocation)
+                        .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                         .build()
                         .asCatalog(serviceIdentityProvider)));
     federatedCatalogEntity =

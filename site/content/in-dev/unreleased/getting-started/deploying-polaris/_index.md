@@ -25,5 +25,5 @@ weight: 200
 
 Here you can find the guides of how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).
 
-Locally, Polaris can be deployed using both docker and local build. 
-On the cloud, the following tutorials will deploy Polaris using docker environment.
+Locally, Polaris can be deployed using both Docker and local build. 
+On the cloud, the following tutorials will deploy Polaris using a Docker environment.

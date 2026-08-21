@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage;
 import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.azure.AzureProperties;
 import org.apache.iceberg.gcp.GCPProperties;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A subset of Iceberg catalog properties recognized by Polaris.
@@ -29,97 +30,186 @@ import org.apache.iceberg.gcp.GCPProperties;
  * storage.
  */
 public enum StorageAccessProperty {
-  AWS_KEY_ID(String.class, "s3.access-key-id", "the aws access key id", true),
-  AWS_SECRET_KEY(String.class, "s3.secret-access-key", "the aws access key secret", true),
-  AWS_TOKEN(String.class, "s3.session-token", "the aws scoped access token", true),
+  AWS_KEY_ID(
+      String.class,
+      "s3.access-key-id",
+      "AWS access key ID from the STS session",
+      true,
+      StorageType.AWS),
+  AWS_SECRET_KEY(
+      String.class,
+      "s3.secret-access-key",
+      "AWS secret access key from the STS session",
+      true,
+      StorageType.AWS),
+  AWS_TOKEN(
+      String.class,
+      "s3.session-token",
+      "AWS session token from the STS session",
+      true,
+      StorageType.AWS),
   AWS_SESSION_TOKEN_EXPIRES_AT_MS(
       String.class,
       "s3.session-token-expires-at-ms",
-      "the time the aws session token expires, in milliseconds",
+      "expiration time of the session token, in milliseconds since the Unix epoch",
       true,
-      true),
-  AWS_ENDPOINT(String.class, "s3.endpoint", "the S3 endpoint to use for requests", false),
+      true,
+      StorageType.AWS),
+  AWS_ENDPOINT(
+      String.class,
+      "s3.endpoint",
+      "custom S3 endpoint URL; emitted for S3-compatible stores such as MinIO or Ozone, absent for native AWS S3",
+      false,
+      StorageType.AWS),
   AWS_PATH_STYLE_ACCESS(
-      Boolean.class, "s3.path-style-access", "whether to use S3 path style access", false),
+      Boolean.class,
+      "s3.path-style-access",
+      "set to true when path-style addressing is required; emitted for S3-compatible stores, absent for native AWS S3",
+      false,
+      StorageType.AWS),
   CLIENT_REGION(
       String.class,
       "client.region",
-      "region to configure client for making requests to AWS",
-      false),
+      "AWS region to use for S3 and STS requests",
+      false,
+      StorageType.AWS),
   AWS_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
-      "the endpoint to load vended credentials for a table from the catalog",
+      "catalog endpoint the client can call to refresh vended credentials before they expire",
       false,
-      false),
+      false,
+      StorageType.AWS),
 
-  GCS_ACCESS_TOKEN(String.class, "gcs.oauth2.token", "the gcs scoped access token", true),
-  GCS_ACCESS_TOKEN_EXPIRES_AT(
+  GCS_ACCESS_TOKEN(
+      String.class, "gcs.oauth2.token", "downscoped OAuth2 access token", true, StorageType.GCS),
+  GCS_ACCESS_TOKEN_EXPIRES_AT_MS(
       String.class,
       "gcs.oauth2.token-expires-at",
-      "the time the gcs access token expires, in milliseconds",
+      "expiration time of the access token, in milliseconds since the Unix epoch",
       true,
-      true),
+      true,
+      StorageType.GCS),
   GCS_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       GCPProperties.GCS_OAUTH2_REFRESH_CREDENTIALS_ENDPOINT,
-      "the endpoint to load vended credentials for a table from the catalog",
+      "catalog endpoint the client can call to refresh vended credentials before they expire",
       false,
-      false),
+      false,
+      StorageType.GCS),
 
-  // Currently not using ACCESS TOKEN as the ResolvingFileIO is using ADLSFileIO for azure case and
-  // it expects for SAS
-  AZURE_ACCESS_TOKEN(String.class, "", "the azure scoped access token", true),
-  AZURE_SAS_TOKEN(String.class, "adls.sas-token.", "an azure shared access signature token", true),
+  AZURE_SAS_TOKEN_ACCOUNT_HOST(
+      String.class,
+      "adls.sas-token",
+      "SAS token keyed by the full storage DNS name (e.g. `adls.sas-token.myaccount.dfs.core.windows.net`); consumed by Spark via Iceberg's ADLSFileIO",
+      true,
+      false,
+      StorageType.AZURE,
+      "account-host"),
+  AZURE_SAS_TOKEN_ACCOUNT_NAME(
+      String.class,
+      "adls.sas-token",
+      "SAS token keyed by the storage account name only (e.g. `adls.sas-token.myaccount`); consumed by Iceberg 1.7.x clients",
+      true,
+      false,
+      StorageType.AZURE,
+      "account-name"),
   AZURE_SAS_TOKEN_BARE(
       String.class,
       "adls.sas-token",
-      "an azure shared access signature token (bare property name, without the <account-host> suffix)",
-      true),
-  AZURE_ACCOUNT_NAME(String.class, "adls.account-name", "the azure storage account name", true),
+      "bare SAS token (no suffix); consumed by PyIceberg via adlfs/fsspec",
+      true,
+      StorageType.AZURE),
+  AZURE_ACCOUNT_NAME(
+      String.class,
+      "adls.account-name",
+      "storage account name; consumed by PyIceberg via adlfs/fsspec",
+      true,
+      StorageType.AZURE),
   AZURE_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       AzureProperties.ADLS_REFRESH_CREDENTIALS_ENDPOINT,
-      "the endpoint to load vended credentials for a table from the catalog",
+      "catalog endpoint the client can call to refresh vended credentials before they expire",
       false,
-      false),
-  EXPIRATION_TIME(
+      false,
+      StorageType.AZURE),
+  AZURE_SAS_TOKEN_EXPIRES_AT_MS(
       Long.class,
-      "expiration-time",
-      "the expiration time for the access token, in milliseconds",
+      "adls.sas-token-expires-at-ms",
+      "expiration time of the SAS token keyed by the full storage DNS name, in milliseconds since the Unix epoch",
       true,
-      true),
-  AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX(
-      Long.class,
-      AzureProperties.ADLS_SAS_TOKEN_EXPIRES_AT_MS_PREFIX,
-      "The expiration time for the access token, in milliseconds",
       true,
-      true);
+      StorageType.AZURE,
+      "account-host");
 
-  private final Class valueType;
+  /** Groups a {@link StorageAccessProperty} by cloud storage provider. */
+  public enum StorageType {
+    AWS,
+    AZURE,
+    GCS
+  }
+
+  private final Class<?> valueType;
   private final String propertyName;
   private final String description;
   private final boolean isCredential;
   private final boolean isExpirationTimestamp;
+  private final StorageType storageType;
+
+  /**
+   * For prefix properties the actual key is {@code propertyName + "." + runtimeSuffix}. This field
+   * names what that suffix represents (e.g. {@code "account-host"}, {@code "account-name"}) and is
+   * used only for documentation purposes.
+   */
+  private final String suffixLabel;
 
   StorageAccessProperty(
-      Class valueType, String propertyName, String description, boolean isCredential) {
-    this(valueType, propertyName, description, isCredential, false);
-  }
-
-  StorageAccessProperty(
-      Class valueType,
+      Class<?> valueType,
       String propertyName,
       String description,
       boolean isCredential,
-      boolean isExpirationTimestamp) {
+      StorageType storageType) {
+    this(valueType, propertyName, description, isCredential, false, storageType, null);
+  }
+
+  StorageAccessProperty(
+      Class<?> valueType,
+      String propertyName,
+      String description,
+      boolean isCredential,
+      boolean isExpirationTimestamp,
+      StorageType storageType) {
+    this(
+        valueType,
+        propertyName,
+        description,
+        isCredential,
+        isExpirationTimestamp,
+        storageType,
+        null);
+  }
+
+  StorageAccessProperty(
+      Class<?> valueType,
+      String propertyName,
+      String description,
+      boolean isCredential,
+      boolean isExpirationTimestamp,
+      StorageType storageType,
+      String suffixLabel) {
     this.valueType = valueType;
     this.propertyName = propertyName;
     this.description = description;
     this.isCredential = isCredential;
     this.isExpirationTimestamp = isExpirationTimestamp;
+    this.storageType = storageType;
+    this.suffixLabel = suffixLabel;
   }
 
+  /**
+   * Returns the property name base. For prefix properties (see {@link #isPrefixProperty()}) the
+   * actual runtime key is {@code getPropertyName() + "." + runtimeSuffix}.
+   */
   public String getPropertyName() {
     return propertyName;
   }
@@ -130,5 +220,35 @@ public enum StorageAccessProperty {
 
   public boolean isExpirationTimestamp() {
     return isExpirationTimestamp;
+  }
+
+  public StorageType getStorageType() {
+    return storageType;
+  }
+
+  @SuppressWarnings("unused") // consumed by reflection for automatic documentation generation
+  public Class<?> getValueType() {
+    return valueType;
+  }
+
+  @SuppressWarnings("unused") // consumed by reflection for automatic documentation generation
+  public String getDescription() {
+    return description;
+  }
+
+  /** Returns {@code true} when the actual property key is formed by appending a runtime suffix. */
+  @SuppressWarnings("unused") // consumed by reflection for automatic documentation generation
+  public boolean isPrefixProperty() {
+    return suffixLabel != null;
+  }
+
+  /**
+   * For prefix properties, a human-readable label for the suffix (e.g. {@code "account-host"}).
+   * Returns {@code null} for non-prefix properties.
+   */
+  @SuppressWarnings("unused") // consumed by reflection for automatic documentation generation
+  @Nullable
+  public String getSuffixLabel() {
+    return suffixLabel;
   }
 }

@@ -45,6 +45,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
@@ -249,12 +250,10 @@ public class PolicyCatalog {
                         newPolicyEntity)
                     .getEntity())
             .map(PolicyEntity::of)
-            .orElse(null);
-
-    if (newPolicyEntity == null) {
-      throw new IllegalStateException(
-          String.format("Failed to update policy %s", policyIdentifier));
-    }
+            .orElseThrow(
+                () ->
+                    new CommitConflictException(
+                        "Concurrent modification on policy '%s'; retry later", policyIdentifier));
 
     return constructPolicy(newPolicyEntity);
   }

@@ -30,6 +30,59 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 ### Upgrade notes
+
+### Breaking changes
+
+- Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
+- The Relational JDBC backend no longer creates its database schema during bootstrap: creating the
+  schema is a privileged operation that belongs to a database administrator. Fresh installations
+  must create the schema (by default `CREATE SCHEMA polaris_schema;` on PostgreSQL) before running
+  the admin tool's `bootstrap` command. Existing deployments are unaffected — their schema already
+  exists, and the shipped `currentSchema` default (`POLARIS_SCHEMA`) preserves the previous
+  behavior on upgrade.
+
+### New Features
+
+- Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
+- Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
+- The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.schemaName` in the Helm chart.
+
+### Changes
+
+### Deprecations
+
+### Fixes
+
+- Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
+  error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
+  clients can parse the response rather than failing on an off-schema shape.
+- Python CLI `setup export` now writes each catalog's `policies` as a list of
+  `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
+  with the same name in different namespaces. The new export format cannot be applied by older CLI
+  versions; use the exporting CLI version or newer for `setup apply`.
+- Python CLI `setup export` now preserves user-defined properties on principal roles,
+  so exported configurations restore that metadata during `setup apply`.
+- Python CLI `setup export` now preserves user-defined properties on principals and catalog roles,
+  so exported configurations restore that metadata during `setup apply`.
+- Python CLI `setup apply` no longer double-encodes policy content emitted by `setup export`, so
+  exported configurations containing policies can be restored.
+- Python CLI `setup export` now includes nested namespaces and policy definitions from those
+  namespaces. Previously, only top-level namespaces and their policies were exported.
+- Python CLI `setup export` now exits with an error without emitting partial YAML if any required
+  API read fails. Previously, individual failures were logged but the command printed incomplete
+  configuration and exited with status 0.
+- The Iceberg REST catalog now returns HTTP 500 (instead of 400) when a commit's outcome is unknown (`CommitStateUnknownException`), as required by the Iceberg REST spec. Previously, clients received `BadRequestException` for a commit that may have been applied, which could lead to unsafe retries.
+- Fixed JDBC persistence under `SERIALIZABLE` isolation (e.g. CockroachDB default) so that a concurrent entity create that loses a unique-name race no longer returns the phantom new entity as a successful create. The conflicting row is now reported as `ENTITY_ALREADY_EXISTS` instead of fabricating the entity that was not persisted.
+- Python CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
+- Fixed a false-negative in the JDBC optimized location-overlap check (`OPTIMIZED_SIBLING_CHECK`). Ancestor locations stored in `location_without_scheme` without a trailing slash were not matched by the generated ancestor equality terms, allowing nested table/namespace locations to be created under existing prefixes. The query now emits both slash-terminated and non-slash-terminated prefix terms and uses a slash-terminated `LIKE` pattern for descendant matching.
+- Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
+
+### Commits
+
+## [1.7.0]
+
+### Upgrade notes
+
 - Relational JDBC: a new schema version 5 makes the `events.catalog_id` column nullable. Events that
   are not scoped to a catalog (principal, policy, rate-limiting, etc.) now persist `NULL` instead of
   the placeholder string `__realm__` (which only ever existed in 1.6.0 release candidates). Fresh
@@ -44,12 +97,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   See the Relational JDBC metastore documentation for details.
 
 ### Breaking changes
-- The Relational JDBC backend no longer creates its database schema during bootstrap: creating the
-  schema is a privileged operation that belongs to a database administrator. Fresh installations
-  must create the schema (by default `CREATE SCHEMA polaris_schema;` on PostgreSQL) before running
-  the admin tool's `bootstrap` command. Existing deployments are unaffected — their schema already
-  exists, and the shipped `currentSchema` default (`POLARIS_SCHEMA`) preserves the previous
-  behavior on upgrade.
+
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms
   are now always bootstrapped with the latest available schema version.
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.
@@ -67,21 +115,27 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   now accepts a Quarkus `SecurityIdentity` instead of a `PolarisCredential`, and throws
   `AuthenticationFailedException` (mapped to HTTP 401) instead of Iceberg's
   `NotAuthorizedException`.
+- Polaris does not include the `expiration-time` property anymore when vending credentials. This 
+  property is not consumed by any known client and duplicates the properties specific to each
+  storage provider, such as `s3.session-token-expires-at-ms` for S3.
 
 ### New Features
+
+- Added Kafka PolarisEventListener for publishing events to Kafka.
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
 - Added the `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` feature flag (off by default). When enabled, a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix.
 - Added the `ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION` feature flag (on by default). When set to false, a caller-specified location (the `location` field, a `SetLocation` update, or the `write.data.path` / `write.metadata.path` properties) on a create-table (including a staged create-table request), create-view, update-table, replace-view, or commit-transaction request is rejected, forcing Polaris to manage all locations. Federated catalogs, committing an already staged create, and `register table` / `register view` are unaffected.
 - Added `maintenance` support in Helm chart.
-- The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.schemaName` in the Helm chart.
 - Python CLI: added `--catalog-url` to specify a custom base URL for the Iceberg REST Catalog (IRC) API. Allows use with deployments that map a path (e.g. `/server1`) directly to the catalog root instead of the standard `/api/catalog`. See #4927.
 - Added support for publishing histogram buckets for HTTP server request duration as configured SLO boundaries.
 - Added an OpenTelemetry event listener for emitting Polaris audit events as OpenTelemetry log records.
 - Added optional `sessionPolicy` field to `SigV4AuthenticationParameters` for catalog federation. When set, the IAM session policy JSON is attached to the STS AssumeRole request, allowing administrators to restrict vended credentials to only the required AWS services and actions (Principle of Least Privilege).
 - Python CLI: added `--scheme` to specify URL scheme
 - Added opt-in idempotency for `createTable` and `updateTable` in the Iceberg REST catalog. When enabled via `polaris.idempotency.enabled=true` (default `false`), a client-supplied `Idempotency-Key` header is embedded into the table entity and committed in the same transaction as the operation; a retry carrying the same key within the TTL window (`polaris.idempotency.ttl`, default `PT5M`) replays the original success instead of failing — with `AlreadyExists` for `createTable`, or with `CommitFailedException` for `updateTable` when the request's requirements no longer match the already-advanced table. When idempotency is enabled, the reuse window is advertised to clients through the `idempotency-key-lifetime` field of the `GET /v1/config` response.
+- Python CLI: Added views and generic-tables support.
 
 ### Changes
+
 - The admin tool's `bootstrap` command is now idempotent: bootstrapping a realm that is already
   bootstrapped is reported as "Realm '<realm>' is already bootstrapped; skipping." and no longer
   fails the command, making automated bootstrap jobs safe to re-run. Correspondingly,
@@ -92,15 +146,22 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The field `clientSecret` of the Polaris management API type `ResetPrincipalRequest` is now using `format: password`. This does not change the wire format, but code generated from the OpenAPI may require downstream changes.
 
 ### Deprecations
+
 - Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
 ### Fixes
+
+- The NoSQL persistence commit log (`Commits.commitLog`) no longer stops early when a commit's recent-ancestor tail is shorter than the internal fetch page size. With a `polaris.persistence.reference-previous-head-count` smaller than the page size, the natural-order commit log previously truncated at the first short tail because trailing null entries in the fetch page were treated as end-of-history, which could also drop still-referenced objects during maintenance.
+- Python CLI REPL now shows a clear "Syntax error" message for malformed input instead of a generic "unexpected error" message.
+- Python CLI `setup apply` now exits with an error after any setup operation fails, while still attempting the remaining operations. Previously, individual failures were logged but the command reported success and exited with status 0.
 - Python CLI `tables list`, `tables get`, and `tables delete` commands now exit with status 1 when catalog API requests fail. Previously, these commands printed an error but exited successfully.
 - Default table storage locations with object-storage prefixing enabled are now percent-encoded with UTF-8 instead of the JVM default charset. Previously the persisted location of a table under a non-ASCII namespace or table name depended on the platform default charset, so the same table could resolve to a different (or lossy) location on a non-UTF-8 JVM.
 - Async task execution (table cleanup, manifest and batch file cleanup) now retries when a handler returns false on transient errors (e.g. IO or delete failures). Previously `false` was swallowed with only a warning log and the task was never retried via the existing retry mechanism.
 - `TableCleanupTaskHandler` now clamps `TABLE_METADATA_CLEANUP_BATCH_SIZE` to at least 1. Previously a non-positive realm override caused an infinite loop (0) or `IllegalArgumentException` (<0) when splitting metadata files for cleanup.
 - `ManifestFileCleanupTaskHandler` now handles Iceberg v2 delete manifests in addition to data manifests. Previously, `DROP TABLE PURGE` on a v2 table that had been updated via merge-on-read DML left position-delete files and their manifests as orphans in object storage; the cleanup task failed silently because `ManifestFiles.read()` rejects delete manifests.
 - OPA authorizer now includes the realm identifier in the authorization context sent to OPA (`input.context.realm`). This ensures OPA policies can enforce tenant isolation across realms, preventing potential collisions if identical principal or resource names exist in different realms.
+- Management API delete operations for principals, principal roles, catalog roles, and catalogs now return error messages that match the actual failure reason (for example, concurrent modification no longer reports a misleading protected-entity message).
+- Python CLI `setup apply` now defaults to an `INTERNAL` catalog type when the `type` field is left blank or null in the setup config, instead of crashing with `AttributeError`
 
 ## [1.6.0]
 
@@ -139,6 +200,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The token broker now builds the JWT `Algorithm` and `JWTVerifier` once per realm in the `TokenBrokerFactory` and reuses them across requests, instead of rebuilding them on every `verify()`/`sign()` call on the request-scoped broker. For deployments using file-based symmetric secrets, the secret is now read once per realm (at first use) rather than on every JWT operation; rotating the on-disk secret requires a restart.
 
 ### Fixes
+
 - `polaris.storage.max-http-connections` (and related read/connect/acquisition/idle timeouts) now take effect for Iceberg S3FileIO clients used in table operations (previously only affected the STS client pool).
 - Fixed a boundary condition in GCS downscoped credential generation (`GcpCredentialsStorageIntegration`). Locations without a trailing slash could previously grant access to sibling object prefixes via the generated CEL conditions for `resource.name` and list prefixes. Granted paths are now normalized to a directory prefix (with a trailing slash) before the CEL conditions are built, so sibling prefixes can no longer satisfy the `startsWith` checks.
 - Fixed `NullPointerException` during `dropEntity` when an entity referenced by a grant had been concurrently removed (or purged). `lookupEntities` can return null entries for dropped entities; these are now skipped safely.
@@ -146,22 +208,21 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The admin tool `purge` command now prints the underlying exception stack trace to stderr when a purge fails unexpectedly, matching the `bootstrap` command. Previously a failed purge printed only a generic message, giving operators no diagnostic information.
 - The access token carried in `PolarisCredential` is now redacted from its `toString()`, so it is no longer written to authentication logs (including at WARN level on failed authentication).
 - JWT verification now validates the issuer claim (`"polaris"`) in addition to the active claim. Tokens signed with the same key but carrying a different issuer are now rejected.
+- Renaming a table or view now maps concurrent-modification and resolution failures to meaningful HTTP status codes instead of HTTP 500. A concurrent modification of the source returns 503 (Service Unavailable, retryable) with a `Retry-After: 3` header indicating the client should wait 3 seconds before retrying; a source or target path that no longer resolves (concurrently dropped or replaced) returns 404 (Not Found). HTTP 409 is intentionally not used because the Iceberg REST rename endpoint reserves 409 for "the target already exists".
 - Inheritable policy mapping inserts in the JDBC backend now use the active transaction connection, so they roll back correctly with the surrounding transaction.
 - Generic table drop now accepts table-scoped `TABLE_DROP` privilege.
 - Azure SAS tokens are now signed for the configured duration instead of a hardcoded 1 hour, so long jobs no longer fail with expired credentials.
 
 ## [1.5.0]
 
-### Highlights
-
-### Upgrade notes
-
 ### Breaking changes
+
 - The `ConnectionCredentials.of()` method now throws an exception when more than one expiration timestamp property is present in the credentials map. Only a single expiration timestamp is allowed per credentials bundle.
 - Entity names (namespaces, tables, views, generic tables) submitted to the REST layer are now rejected with HTTP 400 if they are empty, contain a `/`, or have leading/trailing whitespace. Clients that were previously able to create such entities must rename them before upgrading.
 - Fixed `renameTable` to return HTTP 204 (No Content) instead of 200, as per the Iceberg REST Catalog spec.
 
 ### New Features
+
 - Added `envFrom` support in Helm chart.
 - Added summarize subcommand to Polaris CLI.
 - Added find and tables options to Polaris CLI.
@@ -170,6 +231,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for **Apache Ranger** as an external authorizer (Beta).
 
 ### Changes
+
 - Improved Python CLI error messages and exit codes for invalid arguments and configuration errors.
 - Removed unused `PolarisAuthorizableOperation` values: `REVOKE_PRINCIPAL_GRANT_FROM_PRINCIPAL_ROLE`, `REVOKE_PRINCIPAL_ROLE_GRANT_FROM_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_ROOT`, `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL`, `ADD_PRINCIPAL_ROLE_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL_ROLE`, `ADD_CATALOG_ROLE_GRANT_TO_CATALOG_ROLE`, `REVOKE_CATALOG_ROLE_GRANT_FROM_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG`, `LIST_GRANTS_ON_NAMESPACE`, `LIST_GRANTS_ON_TABLE`, `LIST_GRANTS_ON_VIEW`.
 - Changed deprecated APIs in JUnit 5. This change will force downstream projects that pull in the Polaris test packages to adopt JUnit 6.
@@ -177,9 +239,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The ExternalCatalogFactory interface has been renamed to FederatedCatalogFactory. Its createCatalog() and createGenericCatalog() method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
 
 ### Deprecations
+
 - The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
 
 ### Fixes
+
 - Fixed native catalog credential vending paths (`loadCredentials` and `loadTable` with delegation) to re-validate locations against the *current* catalog `allowedLocations`. Previously these paths trusted persisted table entity locations, allowing stale credentials after an admin tightened allowed locations on a native catalog. (The federated path had a partial check.)
 
 ## [1.4.0]
@@ -189,7 +253,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.
 - The Helm chart now includes a JSON schema file for easy validation of values files. Because types 
   are now validated, existing values files may need to be updated to match the new schema.
-  
 
 ### Breaking changes
 
@@ -234,6 +297,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `PolarisConfigurationStore` has been deprecated for removal.
 
 ### Fixes
+
 - Fixed error propagation in drop operations (`dropTable`, `dropView`, `dropNamespace`). Server errors now return appropriate HTTP status codes based on persistence result instead of always returning NotFound
 - Enable non-AWS STS role ARNs
 - Helm chart: fixed a bug that prevented CORS settings to be properly applied. A new setting `cors.enabled` has been introduced in the chart as part of the fix.
@@ -311,6 +375,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   endpoints at `/q/metrics` and `/q/health` instead.
 
 ### Fixes
+
 - Fixed incorrect Azure expires at field for the credentials refresh response, leading to client failure via #2633
 
 ## [1.1.0-incubating]
@@ -416,7 +481,9 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
-[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.5.0...HEAD
+[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.7.0...HEAD
+[1.7.0]: https://github.com/apache/polaris/compare/apache-polaris-1.6.0...apache-polaris-1.7.0
+[1.6.0]: https://github.com/apache/polaris/compare/apache-polaris-1.5.0...apache-polaris-1.6.0
 [1.5.0]: https://github.com/apache/polaris/compare/apache-polaris-1.4.0...apache-polaris-1.5.0
 [1.4.0]: https://github.com/apache/polaris/compare/apache-polaris-1.3.0-incubating...apache-polaris-1.4.0
 [1.3.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.2.0-incubating...apache-polaris-1.3.0-incubating

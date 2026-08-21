@@ -51,6 +51,11 @@ dependencies {
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
+  implementation(platform(libs.awssdk.bom))
+  implementation("software.amazon.awssdk:apache-client") {
+    exclude("commons-logging", "commons-logging")
+  }
+
   implementation(project(":polaris-runtime-common"))
 
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")

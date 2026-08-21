@@ -134,7 +134,6 @@ dependencies {
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-relational-jdbc"))
 
-  testImplementation(project(":polaris-minio-testcontainer"))
   testImplementation(project(":polaris-rustfs-testcontainer"))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
@@ -157,6 +156,8 @@ dependencies {
 
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation(project(":polaris-floci-aws-testcontainer"))
+  testImplementation(project(":polaris-floci-az-testcontainer"))
+  testImplementation(project(":polaris-floci-gcp-testcontainer"))
   testImplementation(project(":polaris-keycloak-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))

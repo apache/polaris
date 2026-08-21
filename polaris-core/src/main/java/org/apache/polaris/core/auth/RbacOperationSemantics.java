@@ -41,6 +41,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_N
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_POLICY;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_PRINCIPAL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_STAGED;
@@ -55,6 +56,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DETACH_P
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DETACH_POLICY_FROM_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_NAMESPACE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_POLICY;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_VIEW;
@@ -76,10 +78,12 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_POL
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPALS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES_ASSIGNED;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLES;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_VIEWS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_NAMESPACE_METADATA;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_POLICY;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
@@ -126,6 +130,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_N
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_POLICY;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_PRINCIPAL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_TABLE_FOR_STAGED_CREATE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
@@ -135,6 +140,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_LIST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_CONTENT;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_CREATE;
@@ -406,6 +412,16 @@ record RbacOperationSemantics(
     register(DROP_POLICY, POLICY_DROP);
     register(UPDATE_POLICY, POLICY_WRITE);
     register(LIST_POLICY, POLICY_LIST);
+
+    // Semantic-model operations.
+    // Interim: gated behind the coarse CATALOG_MANAGE_CONTENT privilege, matching the
+    // design's "coarser-grained access reuses existing higher-level privileges" posture.
+    // TODO: The dedicated SEMANTIC_MODEL_* privilege matrix will be implemented in a followup.
+    register(CREATE_SEMANTIC_MODEL, CATALOG_MANAGE_CONTENT);
+    register(LOAD_SEMANTIC_MODEL, CATALOG_MANAGE_CONTENT);
+    register(UPDATE_SEMANTIC_MODEL, CATALOG_MANAGE_CONTENT);
+    register(DROP_SEMANTIC_MODEL, CATALOG_MANAGE_CONTENT);
+    register(LIST_SEMANTIC_MODEL, CATALOG_MANAGE_CONTENT);
 
     // Policy attachment operations (use CATALOG rooting)
     register(

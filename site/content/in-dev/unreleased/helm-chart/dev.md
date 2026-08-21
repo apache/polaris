@@ -248,7 +248,7 @@ helm uninstall --namespace polaris polaris
 kubectl delete namespace polaris --wait=true --ignore-not-found
 ```
 
-The stop Minikube if desired:
+Then stop Minikube if desired:
 
 ```bash
 minikube stop

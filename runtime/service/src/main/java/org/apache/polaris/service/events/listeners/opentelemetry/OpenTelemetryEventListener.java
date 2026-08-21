@@ -48,7 +48,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.admin.model.GrantResource;
-import org.apache.polaris.service.events.AttributeKey;
+import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
@@ -317,7 +317,7 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
       Function<T, String> mapper) {
     event
         .attributes()
-        .get(eventAttributeKey)
+        .getOptional(eventAttributeKey)
         .map(mapper)
         .ifPresent(value -> attributes.put(logAttributeKey, value));
   }
@@ -329,7 +329,7 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
       AttributeKey<Boolean> eventAttributeKey) {
     event
         .attributes()
-        .get(eventAttributeKey)
+        .getOptional(eventAttributeKey)
         .ifPresent(value -> attributes.put(logAttributeKey, value));
   }
 
@@ -340,7 +340,7 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
       AttributeKey<T> eventAttributeKey) {
     event
         .attributes()
-        .get(eventAttributeKey)
+        .getOptional(eventAttributeKey)
         .ifPresent(value -> attributes.put(logAttributeKey, value.longValue()));
   }
 
@@ -351,13 +351,14 @@ public class OpenTelemetryEventListener implements PolarisEventListener {
       AttributeKey<T> eventAttributeKey) {
     event
         .attributes()
-        .get(eventAttributeKey)
+        .getOptional(eventAttributeKey)
         .flatMap(this::toJsonString)
         .ifPresent(value -> attributes.put(logAttributeKey, value));
   }
 
   private void putGrantResource(AttributesBuilder attributes, PolarisEvent event) {
-    Optional<GrantResource> grantResource = event.attributes().get(EventAttributes.GRANT_RESOURCE);
+    Optional<GrantResource> grantResource =
+        event.attributes().getOptional(EventAttributes.GRANT_RESOURCE);
     grantResource
         .flatMap(this::toJsonString)
         .ifPresent(value -> attributes.put(GRANT_RESOURCE_ATTRIBUTE_KEY, value));
