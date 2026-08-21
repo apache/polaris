@@ -36,6 +36,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.EntityMutation;
+import org.apache.polaris.core.persistence.GrantMutation;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -272,6 +274,55 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   public void writeToGrantRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
     runActionInTransaction(callCtx, () -> this.writeToGrantRecordsInCurrentTxn(callCtx, grantRec));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean supportsAtomicMixedCommit() {
+    return true;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void commitChangeSet(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<EntityMutation> entityMutations,
+      @NonNull List<GrantMutation> grantMutations) {
+    runActionInTransaction(
+        callCtx,
+        () -> {
+          for (EntityMutation em : entityMutations) {
+            switch (em.type()) {
+              case CREATE -> {
+                this.checkConditionsForWriteEntityInCurrentTxn(callCtx, em.entity(), null);
+                boolean nameOrParentChanged = true;
+                this.writeEntityInCurrentTxn(callCtx, em.entity(), nameOrParentChanged, null);
+              }
+              case UPDATE -> {
+                PolarisBaseEntity originalEntity = em.originalEntity();
+                if (originalEntity == null) {
+                  throw new IllegalArgumentException(
+                      "UPDATE mutation missing originalEntity for entity id "
+                          + em.entity().getId());
+                }
+                this.checkConditionsForWriteEntityInCurrentTxn(
+                    callCtx, em.entity(), originalEntity);
+                boolean nameOrParentChanged =
+                    !em.entity().getName().equals(originalEntity.getName())
+                        || em.entity().getParentId() != originalEntity.getParentId();
+                this.writeEntityInCurrentTxn(
+                    callCtx, em.entity(), nameOrParentChanged, originalEntity);
+              }
+              case DELETE -> this.deleteEntityInCurrentTxn(callCtx, em.entity());
+            }
+          }
+          for (GrantMutation gm : grantMutations) {
+            switch (gm.type()) {
+              case CREATE -> this.writeToGrantRecordsInCurrentTxn(callCtx, gm.grantRecord());
+              case DELETE -> this.deleteFromGrantRecordsInCurrentTxn(callCtx, gm.grantRecord());
+            }
+          }
+        });
   }
 
   @Override
