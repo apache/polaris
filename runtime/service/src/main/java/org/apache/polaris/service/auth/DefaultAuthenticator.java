@@ -25,7 +25,6 @@ import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -40,6 +39,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -144,12 +144,12 @@ public class DefaultAuthenticator implements Authenticator {
                 .orElse(null);
       }
     } catch (Exception e) {
-      LOGGER
-          .atError()
-          .addKeyValue(StructuredLogKeys.ERR_MSG, e.getMessage())
-          .addKeyValue(StructuredLogKeys.STACK_TRACE, Throwables.getStackTraceAsString(e))
-          .log("Unable to resolve principal entity from credentials");
-      throw new ServiceUnavailableException("Unable to fetch principal entity");
+      throw metaStoreUnavailable(
+          e,
+          "Unable to fetch principal entity",
+          "Unable to resolve principal entity from credentials, principalName={} principalId={}",
+          credentials.getPrincipalName(),
+          credentials.getPrincipalId());
     }
 
     if (principal == null || principal.getType() != PolarisEntityType.PRINCIPAL) {
@@ -196,7 +196,7 @@ public class DefaultAuthenticator implements Authenticator {
 
     Set<String> activeRoles =
         loadGrantsResult.getGrantRecords().stream()
-            .map(gr -> loadSecurableEntity(gr, entitiesById))
+            .map(gr -> loadSecurableEntity(gr, entitiesById, principal))
             .filter(Objects::nonNull)
             .filter(entity -> entity.getType() == PolarisEntityType.PRINCIPAL_ROLE)
             .map(PrincipalRoleEntity::of)
@@ -258,8 +258,17 @@ public class DefaultAuthenticator implements Authenticator {
    */
   protected LoadGrantsResult loadPrincipalGrants(PrincipalEntity principal) {
     PolarisCallContext polarisContext = callContext.getPolarisCallContext();
-    LoadGrantsResult principalGrantResults =
-        metaStoreManager.loadGrantsToGrantee(polarisContext, principal);
+    LoadGrantsResult principalGrantResults;
+    try {
+      principalGrantResults = metaStoreManager.loadGrantsToGrantee(polarisContext, principal);
+    } catch (Exception e) {
+      throw metaStoreUnavailable(
+          e,
+          "Unable to fetch principal grants",
+          "Unable to load grants, principalName={} principalId={}",
+          principal.getName(),
+          principal.getId());
+    }
     diagnostics.check(
         principalGrantResults.isSuccess(),
         "Failed to resolve principal roles for principal name={} id={}",
@@ -278,20 +287,55 @@ public class DefaultAuthenticator implements Authenticator {
   /**
    * Resolves the securable entity for a grant record, using preloaded entities when available and
    * falling back to {@link PolarisMetaStoreManager#loadEntity} only when the metastore did not
-   * populate {@link LoadGrantsResult#getEntities()}.
+   * populate {@link LoadGrantsResult#getEntities()}. The principal identifies the failing request
+   * if that fallback hits a metastore failure.
    */
   private @Nullable PolarisBaseEntity loadSecurableEntity(
-      PolarisGrantRecord grant, @Nullable Map<Long, PolarisBaseEntity> entitiesById) {
+      PolarisGrantRecord grant,
+      @Nullable Map<Long, PolarisBaseEntity> entitiesById,
+      PrincipalEntity principal) {
     if (entitiesById != null) {
       return entitiesById.get(grant.getSecurableId());
     }
-    return metaStoreManager
-        .loadEntity(
-            callContext.getPolarisCallContext(),
-            grant.getSecurableCatalogId(),
-            grant.getSecurableId(),
-            PolarisEntityType.PRINCIPAL_ROLE)
-        .getEntity();
+    PolarisCallContext polarisContext = callContext.getPolarisCallContext();
+    try {
+      return metaStoreManager
+          .loadEntity(
+              polarisContext,
+              grant.getSecurableCatalogId(),
+              grant.getSecurableId(),
+              PolarisEntityType.PRINCIPAL_ROLE)
+          .getEntity();
+    } catch (Exception e) {
+      throw metaStoreUnavailable(
+          e,
+          "Unable to fetch securable entity",
+          "Unable to load securable entity for grant, principalName={} principalId={} "
+              + "securableCatalogId={} securableId={}",
+          principal.getName(),
+          principal.getId(),
+          grant.getSecurableCatalogId(),
+          grant.getSecurableId());
+    }
+  }
+
+  /**
+   * Logs a metastore failure raised during authentication and returns the exception to throw, so
+   * that a failing backend is reported as a transient condition instead of an internal error.
+   *
+   * @param cause the metastore failure
+   * @param responseMessage the message returned to the client
+   * @param logMessage the log message, with SLF4J placeholders for {@code logArgs}
+   * @param logArgs the values for the placeholders in {@code logMessage}
+   */
+  private static PolarisServiceUnavailableException metaStoreUnavailable(
+      Exception cause, String responseMessage, String logMessage, Object... logArgs) {
+    LOGGER
+        .atError()
+        .addKeyValue(StructuredLogKeys.ERR_MSG, cause.getMessage())
+        .addKeyValue(StructuredLogKeys.STACK_TRACE, Throwables.getStackTraceAsString(cause))
+        .log(logMessage, logArgs);
+    return new PolarisServiceUnavailableException(0, "%s", responseMessage);
   }
 
   protected record PrincipalRoleSelection(Set<String> roles, boolean allRolesRequested) {}

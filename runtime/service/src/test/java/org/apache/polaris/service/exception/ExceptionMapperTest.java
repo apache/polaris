@@ -56,6 +56,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
@@ -114,13 +115,15 @@ public class ExceptionMapperTest {
     assertThat(response.getStatus()).isEqualTo(409);
   }
 
-  @Test
-  public void testServiceUnavailableWithRetryAfter() {
+  @ParameterizedTest
+  @CsvSource({"3, 3", "0, 0", "-1, 0"})
+  public void testServiceUnavailableRetryAfter(int retryAfterSeconds, String expectedHeader) {
     PolarisExceptionMapper mapper = new PolarisExceptionMapper();
     Response response =
-        mapper.toResponse(new PolarisServiceUnavailableException(3, "transient conflict"));
+        mapper.toResponse(
+            new PolarisServiceUnavailableException(retryAfterSeconds, "transient conflict"));
     assertThat(response.getStatus()).isEqualTo(503);
-    assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("3");
+    assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo(expectedHeader);
   }
 
   @Test
