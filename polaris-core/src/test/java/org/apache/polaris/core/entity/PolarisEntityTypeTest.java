@@ -41,7 +41,8 @@ public class PolarisEntityTypeTest {
         Arguments.of(9, PolarisEntityType.FILE),
         Arguments.of(10, PolarisEntityType.POLICY),
         Arguments.of(11, PolarisEntityType.SEMANTIC_MODEL),
-        Arguments.of(12, null));
+        Arguments.of(12, PolarisEntityType.TAG),
+        Arguments.of(13, null));
   }
 
   @ParameterizedTest

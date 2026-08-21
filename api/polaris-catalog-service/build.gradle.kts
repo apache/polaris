@@ -118,7 +118,7 @@ openApiGenerate {
   ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
   removeOperationIdPrefix.set(true)
   templateDir.set(provider { templatesDir.asFile.absolutePath })
-  globalProperties.put("apis", "GenericTableApi,PolicyApi")
+  globalProperties.put("apis", "GenericTableApi,PolicyApi,TagApi")
   globalProperties.put("models", models)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
@@ -139,6 +139,12 @@ openApiGenerate {
     mapOf(
       "ErrorModel" to "org.apache.iceberg.rest.responses.ErrorResponse",
       "IcebergErrorResponse" to "org.apache.iceberg.rest.responses.ErrorResponse",
+      // The Tag API declares its own error envelope so the Polaris-specific
+      // APIs can evolve independently of the Iceberg spec. Its fields are
+      // identical to IcebergErrorResponse and the exception mappers build that
+      // Iceberg type, so map it here rather than generate a second model class
+      // that nothing constructs.
+      "PolarisErrorResponse" to "org.apache.iceberg.rest.responses.ErrorResponse",
       "TableIdentifier" to "org.apache.iceberg.catalog.TableIdentifier",
 
       // Custom types defined below

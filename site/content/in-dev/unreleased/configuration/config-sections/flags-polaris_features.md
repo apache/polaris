@@ -356,6 +356,15 @@ When enabled, allows RBAC operations to create synthetic entities for entities i
 
 ---
 
+##### `polaris.features."ENABLE_TAG_STORE"`
+
+If true, the tag-store endpoints are enabled. Disabled by default: enable it on deployments backed by the JDBC or in-memory metastores. The NoSQL metastore does not support tags yet.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING"`
 
 If set to true, require that principals must rotate their credentials before being used for anything else.
@@ -448,6 +457,16 @@ If set to true, principal name will be included in temporary subscoped credentia
 
 ---
 
+##### `polaris.features."LIST_PAGINATION_DEFAULT_PAGE_SIZE"`
+
+The page size a paginated listing uses when the request does not say how large a page it wants. Only the tag endpoints read this today.
+
+- **Type:** `Integer`
+- **Default:** `100`
+- **Catalog Config:** `polaris.config.list-pagination-default-page-size`
+
+---
+
 ##### `polaris.features."LIST_PAGINATION_ENABLED"`
 
 If set to true, pagination for APIs like listTables is enabled.
@@ -465,6 +484,26 @@ The largest page size a client may request for APIs like listTables. Larger requ
 - **Type:** `Integer`
 - **Default:** `-1`
 - **Catalog Config:** `polaris.config.list-pagination-max-page-size`
+
+---
+
+##### `polaris.features."LIST_PAGINATION_MAX_PAGE_SIZE_CEILING"`
+
+The largest page a paginated listing will return when no deployment maximum is configured, so that a page stays bounded by default. LIST_PAGINATION_MAX_PAGE_SIZE wins wherever it is set to a positive value. Only the tag endpoints read this today.
+
+- **Type:** `Integer`
+- **Default:** `1000`
+- **Catalog Config:** `polaris.config.list-pagination-max-page-size-ceiling`
+
+---
+
+##### `polaris.features."LIST_PAGINATION_UNPAGINATED_MAX_RESULTS"`
+
+The most results a listing will return when the request asks for the complete result instead of a page. A request whose full result would exceed this is rejected and told to page through it, rather than being silently truncated or switched to paged mode. Zero or less means no limit. Only the tag endpoints read this today.
+
+- **Type:** `Integer`
+- **Default:** `10000`
+- **Catalog Config:** `polaris.config.list-pagination-unpaginated-max-results`
 
 ---
 
