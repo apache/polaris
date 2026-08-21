@@ -228,18 +228,19 @@ public class DatasourceOperationsTest {
 
   @Test
   void testSuccessfulExecutionAfterOneRetry() throws SQLException {
-    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(4));
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
     when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(2000L));
     when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    // Only serialization failures (definite rollback) are retryable; connection-class errors are
+    // treated as ambiguous commit outcomes and must not be retried.
     when(mockOperation.execute())
         .thenThrow(new SQLException("Retryable error", "40001"))
-        .thenThrow(new SQLException("connection refused"))
-        .thenThrow(new SQLException("connection reset"))
+        .thenThrow(new SQLException("Retryable error", "40001"))
         .thenReturn("Success!");
 
     String result = datasourceOperations.withRetries(mockOperation);
     assertEquals("Success!", result);
-    verify(mockOperation, times(4)).execute();
+    verify(mockOperation, times(3)).execute();
   }
 
   @Test
@@ -322,5 +323,49 @@ public class DatasourceOperationsTest {
 
     assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
     verify(mockOperation, times(1)).execute();
+  }
+
+  @Test
+  void isAmbiguousCommitOutcome_classifiesConnectionAndTimeoutFailures() {
+    assertTrue(datasourceOperations.isAmbiguousCommitOutcome(new SQLException("reset", "08006")));
+    assertTrue(
+        datasourceOperations.isAmbiguousCommitOutcome(new SQLException("canceled", "57014")));
+    assertTrue(
+        datasourceOperations.isAmbiguousCommitOutcome(
+            new SQLException("Connection reset by peer")));
+    assertTrue(
+        datasourceOperations.isAmbiguousCommitOutcome(new java.sql.SQLTimeoutException("timeout")));
+    // Serialization failure is a definite rollback — retryable, not ambiguous commit success.
+    assertTrue(
+        !datasourceOperations.isAmbiguousCommitOutcome(new SQLException("serialization", "40001")));
+    // Constraint violations are definite failures.
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(new SQLException("unique", "23505")));
+  }
+
+  @Test
+  void withRetries_doesNotRetryAmbiguousConnectionFailure() throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(5000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(1L));
+    when(mockOperation.execute()).thenThrow(new SQLException("Connection reset", "08006"));
+
+    assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
+    verify(mockOperation, times(1)).execute();
+  }
+
+  @Test
+  void withRetries_retriesAmbiguousConnectionFailureForReads() throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(5000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(1L));
+    // A read has no commit outcome to protect, so a transient connection failure is retried.
+    when(mockOperation.execute())
+        .thenThrow(new SQLException("Connection reset by peer"))
+        .thenThrow(new SQLException("Connection reset by peer"))
+        .thenReturn("Success!");
+
+    String result = datasourceOperations.withRetries(mockOperation, false);
+    assertEquals("Success!", result);
+    verify(mockOperation, times(3)).execute();
   }
 }

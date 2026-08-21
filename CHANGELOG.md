@@ -28,6 +28,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Table and view commits no longer delete newly written metadata when the metastore write outcome
+  is unknown (e.g. a dropped connection); they still clean up on known failures. JDBC reports these
+  errors as `PersistenceCommitStateUnknownException` (HTTP 500).
 
 ### Upgrade notes
 
