@@ -49,13 +49,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.LocationProviders;
 import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Schema;
@@ -112,6 +110,7 @@ import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEntityUtils;
@@ -206,19 +205,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   private Map<String, String> catalogProperties;
   private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final FileIOFactory fileIOFactory;
-  private PolarisMetaStoreManager metaStoreManager;
+  private final PolarisMetaStoreManager metaStoreManager;
+  private final TableCommitActions directTableCommitActions;
+  private TableCommitActions tableCommitActions;
 
   // Entity-property idempotency: when the request context carries a key, it is stamped into the new
   // table entity's internal properties within the same transaction as the create.
   private final IdempotencyRequestContext idempotencyRequestContext;
-
-  private Consumer<MetadataFileCleanup> deleteRemovedMetadataFiles =
-      LocalIcebergCatalog::defaultDeleteRemovedMetadataFiles;
-
-  private static void defaultDeleteRemovedMetadataFiles(MetadataFileCleanup cleanup) {
-    CatalogUtil.deleteRemovedMetadataFiles(
-        cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
-  }
 
   /**
    * @param callContext the current CallContext
@@ -279,6 +272,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.fileIOFactory = fileIOFactory;
     this.metaStoreManager = metaStoreManager;
+    this.directTableCommitActions = new DirectTableCommitActions(metaStoreManager);
+    this.tableCommitActions = directTableCommitActions;
     this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
     this.idempotencyRequestContext = idempotencyRequestContext;
@@ -335,20 +330,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
   }
 
-  public void setMetaStoreManager(PolarisMetaStoreManager newMetaStoreManager) {
-    setMetaStoreManager(newMetaStoreManager, null);
+  /** Uses the supplied actions for table-entity updates and metadata-file cleanup. */
+  void setTableCommitActions(@NonNull TableCommitActions tableCommitActions) {
+    this.tableCommitActions = tableCommitActions;
   }
 
-  /**
-   * Sets the meta store manager and optionally a custom logic for deleting removed metadata files.
-   * This allows the caller (e.g. during commitTransaction) to provide a collector instead of
-   * immediate deletion, avoiding premature deletes that could lead to corruption on rollback.
-   */
-  public void setMetaStoreManager(
-      PolarisMetaStoreManager newMetaStoreManager, Consumer<MetadataFileCleanup> deleteLogic) {
-    this.metaStoreManager = newMetaStoreManager;
-    this.deleteRemovedMetadataFiles =
-        deleteLogic != null ? deleteLogic : LocalIcebergCatalog::defaultDeleteRemovedMetadataFiles;
+  /** Restores immediate persistence and metadata-file cleanup for table commits. */
+  void resetTableCommitActions() {
+    this.tableCommitActions = directTableCommitActions;
   }
 
   @Override
@@ -1520,6 +1509,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     // Attempt to directly query for siblings
     boolean useOptimizedSiblingCheck =
         realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
+    if (tableCommitActions instanceof BufferedTableCommitActions) {
+      String methodName = useOptimizedSiblingCheck ? "hasOverlappingSiblings" : "listEntities";
+      throw diagnostics.fail("illegal_method_in_transaction_workspace", methodName);
+    }
     if (useOptimizedSiblingCheck) {
       Optional<Optional<String>> directSiblingCheckResult =
           getMetaStoreManager().hasOverlappingSiblings(getCurrentPolarisContext(), entity);
@@ -1779,7 +1772,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
       long start = System.currentTimeMillis();
       doCommit(base, metadata);
-      deleteRemovedMetadataFiles.accept(new MetadataFileCleanup(io(), base, metadata));
+      tableCommitActions.cleanupMetadataFiles(new MetadataFileCleanup(io(), base, metadata));
       requestRefresh();
 
       LOGGER.info(
@@ -2921,12 +2914,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
+    List<PolarisEntityCore> catalogPathCore = PolarisEntity.toCoreList(catalogPath);
     EntityResult res =
-        getMetaStoreManager()
-            .updateEntityPropertiesIfNotChanged(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                icebergTableLikeEntity);
+        tableCommitActions.updateEntityPropertiesIfNotChanged(
+            callContext.getPolarisCallContext(), catalogPathCore, icebergTableLikeEntity);
     if (!res.isSuccess()) {
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:

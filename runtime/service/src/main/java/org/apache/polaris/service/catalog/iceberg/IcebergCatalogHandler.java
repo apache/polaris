@@ -107,7 +107,6 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -1360,16 +1359,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           baseCatalog.getClass().getName());
     }
 
-    // Swap in TransactionWorkspaceMetaStoreManager for all mutations made by this baseCatalog to
-    // only go into an in-memory collection that we can commit as a single atomic unit after all
-    // validations.
-    TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
-        new TransactionWorkspaceMetaStoreManager(diagnostics(), metaStoreManager());
-
-    List<MetadataFileCleanup> pendingCleanups = new ArrayList<>();
-
-    ((LocalIcebergCatalog) baseCatalog)
-        .setMetaStoreManager(transactionMetaStoreManager, pendingCleanups::add);
+    // Buffer the entity updates and metadata-file cleanups produced by each table commit. The
+    // entity updates are persisted as a single atomic unit after all validations succeed.
+    BufferedTableCommitActions bufferedTableCommitActions = new BufferedTableCommitActions();
+    ((LocalIcebergCatalog) baseCatalog).setTableCommitActions(bufferedTableCommitActions);
 
     // Group all changes by table identifier to handle them atomically.
     // This prevents conflicts when multiple changes target the same table entity.
@@ -1389,8 +1382,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // table. This is subtly different from applying each UpdateTableRequest as an independent
     // commit (as if each were under a lock). Requirements are still validated sequentially
     // against the evolving metadata, so conflicts are detected correctly.
-    // See also the TODO in TransactionWorkspaceMetaStoreManager for a more general (but more
-    // complex) alternative that would intercept at the MetaStoreManager layer.
+    // A more general alternative would make transaction reads resolve buffered entity updates,
+    // but that is unnecessary while changes for each table are coalesced before committing.
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
     Map<TableIdentifier, FileIO> tableFileIOs = new HashMap<>();
     changesByTable.forEach(
@@ -1424,8 +1417,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             for (MetadataUpdate singleUpdate : change.updates()) {
               // Note: If location-overlap checking is refactored to be atomic, we could
               // support validation within a single multi-table transaction as well, but
-              // will need to update the TransactionWorkspaceMetaStoreManager to better
-              // expose the concept of being able to read uncommitted updates.
+              // will need transaction-specific validation that can read buffered entity updates.
               if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
                 if (!currentMetadata.location().equals(setLocation.location())
                     && !realmConfig()
@@ -1451,8 +1443,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             currentMetadata = metadataBuilder.build();
           }
 
-          // Commit all accumulated changes for this table in a single atomic operation.
-          // The delete logic (set above to collectCleanup) will record instead of delete.
+          // Commit all accumulated changes for this table in a single atomic operation. The
+          // buffered actions record entity updates and metadata cleanup instead of applying them.
           if (!currentMetadata.changes().isEmpty()) {
             tableOps.commit(baseMetadata, currentMetadata);
             tableFileIOs.put(tableIdentifier, tableOps.io());
@@ -1461,7 +1453,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           tableMetadataObjs.add(currentMetadata);
         });
 
-    List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
+    List<EntityWithPath> pendingUpdates = bufferedTableCommitActions.pendingUpdates();
     EntitiesResult result =
         metaStoreManager()
             .updateEntitiesPropertiesIfNotChanged(
@@ -1493,7 +1485,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // It is now safe to delete removed metadata files for all tables that were part of
     // this transaction (if the table has write.metadata.delete-after-commit.enabled).
     // Because we reach here, the DB pointers have been updated to the new metadata.
-    for (MetadataFileCleanup cleanup : pendingCleanups) {
+    for (MetadataFileCleanup cleanup : bufferedTableCommitActions.pendingMetadataFileCleanups()) {
       CatalogUtil.deleteRemovedMetadataFiles(
           cleanup.io(), cleanup.baseMetadata(), cleanup.newMetadata());
     }
