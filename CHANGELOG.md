@@ -39,6 +39,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
+- Added Hierarchical Namespace (HNS) support for GCS catalogs. Iceberg table creation and Spark
+  ingestion now work against HNS-enabled GCS buckets via a two-part design:
+    - A new `prepareLocations` hook on `PolarisStorageIntegration` runs before table creation and
+      pre-materializes the table's top-level folders (`table/`, `metadata/`, `data/`) on HNS
+      buckets via the GCS Storage Control API. Non-GCS storage types use a no-op default.
+    - GCS credential vending now adds a folder rule (`inRole:roles/storage.folderAdmin`,
+      constrained by access-boundary path conditions) for HNS-enabled buckets only, letting
+      Spark create partition subfolders at write time without admin credentials. HNS status is
+      auto-detected per bucket at credential-vending time; no user-facing catalog flag is needed.
 
 ### Changes
 

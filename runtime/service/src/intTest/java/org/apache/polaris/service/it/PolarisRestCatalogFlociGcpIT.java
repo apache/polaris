@@ -166,7 +166,6 @@ public class PolarisRestCatalogFlociGcpIT {
         .setName(catalogName)
         .setStorageConfigInfo(
             GcpStorageConfigInfo.builder()
-                .setGcsServiceAccount(flociGcpAccess.projectId())
                 .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
                 .setAllowedLocations(List.of(baseLocation))
                 .build())
