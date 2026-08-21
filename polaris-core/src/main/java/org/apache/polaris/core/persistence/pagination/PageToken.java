@@ -86,13 +86,17 @@ public interface PageToken {
    *     page}
    * @param requestedPageSize optional page size for the next page. If not set, the page size of the
    *     previous page (encoded in the page token string) will be reused.
+   * @param maxPageSize the largest page size to honour, or zero or less for unlimited. When set, a
+   *     request that asks for no page size is paginated at this size rather than reading
+   *     everything.
    * @see Page#encodedResponseToken()
    */
   static PageToken build(
       @Nullable String serializedPageToken,
       @Nullable Integer requestedPageSize,
+      int maxPageSize,
       BooleanSupplier shouldDecodeToken) {
     return PageTokenUtil.decodePageRequest(
-        serializedPageToken, requestedPageSize, shouldDecodeToken);
+        serializedPageToken, requestedPageSize, maxPageSize, shouldDecodeToken);
   }
 }
