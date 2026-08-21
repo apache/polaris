@@ -19,6 +19,7 @@
 #
 linkTitle: "Storage: MinIO"
 title: "Getting Started with Apache Polaris and MinIO"
+description: "Uses MinIO for S3-compatible object storage (for local testing only; MinIO OSS is in maintenance mode)."
 weight: 200
 tags:
    - minio
