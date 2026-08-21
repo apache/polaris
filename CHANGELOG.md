@@ -31,6 +31,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
+  (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
+  has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
+  ineffective index until an operator recreates it manually:
+  ```sql
+  DROP INDEX polaris_schema.idx_locations;
+  CREATE INDEX idx_locations ON polaris_schema.entities USING btree (realm_id, catalog_id, location_without_scheme)
+    WHERE location_without_scheme IS NOT NULL;
+  ```
+  H2 is unaffected.
+
 ### Breaking changes
 
 - Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
@@ -46,6 +57,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Relational JDBC: the `idx_locations` index used by the optimized sibling check now matches the
+  query that reads it. On Postgres and CockroachDB the index led with `parent_id`, while the overlap
+  query filters `catalog_id`, so with `OPTIMIZED_SIBLING_CHECK` enabled every `CREATE TABLE` /
+  `CREATE NAMESPACE` fell back to a realm-wide scan instead of the intended indexed lookup. A new
+  schema version 6 creates the index on `(realm_id, catalog_id, location_without_scheme)`; H2 was
+  already correct. Existing deployments need a manual index recreation — see Upgrade notes.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
   error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
   clients can parse the response rather than failing on an off-schema shape.
