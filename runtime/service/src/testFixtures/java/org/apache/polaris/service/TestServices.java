@@ -349,7 +349,8 @@ public record TestServices(
       @SuppressWarnings("unchecked")
       Instance<ConnectionCredentialVendor> mockCredentialVendors = Mockito.mock(Instance.class);
       SigV4ConnectionCredentialVendor sigV4Vendor =
-          new SigV4ConnectionCredentialVendor((destination) -> stsClient, serviceIdentityProvider);
+          new SigV4ConnectionCredentialVendor(
+              (destination) -> stsClient, serviceIdentityProvider, userSecretsManager);
       Mockito.when(
               mockCredentialVendors.select(
                   any(org.apache.polaris.service.credentials.connection.AuthType.Literal.class)))
