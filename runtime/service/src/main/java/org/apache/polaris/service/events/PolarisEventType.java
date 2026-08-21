@@ -199,7 +199,19 @@ public enum PolarisEventType {
   AFTER_ATTEMPT_TASK(1401, Category.TASK_EXECUTION),
 
   // Rate Limiting Events
-  BEFORE_LIMIT_REQUEST_RATE(1500, Category.RATE_LIMITING);
+  BEFORE_LIMIT_REQUEST_RATE(1500, Category.RATE_LIMITING),
+
+  // Tag Events
+  BEFORE_CREATE_TAG(1600, Category.TAG),
+  AFTER_CREATE_TAG(1601, Category.TAG),
+  BEFORE_LIST_TAGS(1602, Category.TAG),
+  AFTER_LIST_TAGS(1603, Category.TAG),
+  BEFORE_LOAD_TAG(1604, Category.TAG),
+  AFTER_LOAD_TAG(1605, Category.TAG),
+  BEFORE_UPDATE_TAG(1606, Category.TAG),
+  AFTER_UPDATE_TAG(1607, Category.TAG),
+  BEFORE_DROP_TAG(1608, Category.TAG),
+  AFTER_DROP_TAG(1609, Category.TAG);
 
   private final int code;
   private final Category category;
@@ -238,6 +250,7 @@ public enum PolarisEventType {
     NOTIFICATION,
     CONFIG,
     TASK_EXECUTION,
-    RATE_LIMITING
+    RATE_LIMITING,
+    TAG
   }
 }

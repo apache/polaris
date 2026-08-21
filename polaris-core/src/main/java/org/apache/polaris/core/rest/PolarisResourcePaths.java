@@ -48,6 +48,10 @@ public class PolarisResourcePaths {
       "/polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings";
   public static final String V1_APPLICABLE_POLICIES = "/polaris/v1/{prefix}/applicable-policies";
 
+  // Tag endpoints
+  public static final String V1_TAGS = "/polaris/v1/{prefix}/tags";
+  public static final String V1_TAG = "/polaris/v1/{prefix}/tags/{tag-name}";
+
   // Semantic Model endpoints
   public static final String V1_SEMANTIC_MODELS =
       "/polaris/v1/{prefix}/namespaces/{namespace}/semantic-models";

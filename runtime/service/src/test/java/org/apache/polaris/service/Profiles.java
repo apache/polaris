@@ -50,6 +50,17 @@ public final class Profiles {
     }
   }
 
+  /** DefaultProfile plus the tag store, which ships disabled by default. */
+  public static class TagStoreProfile extends DefaultProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("polaris.features.\"ENABLE_TAG_STORE\"", "true")
+          .build();
+    }
+  }
+
   public static class ApplicationIntegrationProfile extends DefaultProfile {
     @Override
     public Map<String, String> getConfigOverrides() {

@@ -131,7 +131,13 @@ public class PolarisPrivilegeTest {
         Arguments.of(100, PolarisPrivilege.TABLE_REMOVE_STATISTICS),
         Arguments.of(101, PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS),
         Arguments.of(102, PolarisPrivilege.TABLE_MANAGE_STRUCTURE),
-        Arguments.of(103, null));
+        Arguments.of(103, PolarisPrivilege.TAG_CREATE),
+        Arguments.of(104, PolarisPrivilege.TAG_READ),
+        Arguments.of(105, PolarisPrivilege.TAG_DROP),
+        Arguments.of(106, PolarisPrivilege.TAG_WRITE),
+        Arguments.of(107, PolarisPrivilege.TAG_LIST),
+        Arguments.of(108, PolarisPrivilege.TAG_FULL_METADATA),
+        Arguments.of(109, null));
   }
 
   @ParameterizedTest

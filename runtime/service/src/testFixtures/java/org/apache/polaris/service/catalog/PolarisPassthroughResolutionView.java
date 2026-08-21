@@ -103,7 +103,8 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
       ResolvedPathKey key, PolarisEntitySubType subType) {
     Preconditions.checkState(
         key.entityType() == PolarisEntityType.TABLE_LIKE
-            || key.entityType() == PolarisEntityType.POLICY,
+            || key.entityType() == PolarisEntityType.POLICY
+            || key.entityType() == PolarisEntityType.TAG,
         "Trying to getPassthroughResolvedPath(key, subType) for unsupported key %s",
         key);
     PolarisResolutionManifest manifest = newResolutionManifest();

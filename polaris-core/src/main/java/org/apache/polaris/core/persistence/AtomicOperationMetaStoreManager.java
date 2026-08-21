@@ -1155,6 +1155,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         }
       }
 
+      // a live tag definition blocks the drop: tags are catalog children, so dropping the
+      // catalog would leave them behind as unreachable rows
+      if (ms.hasChildren(callCtx, PolarisEntityType.TAG, catalogId, catalogId)) {
+        return new DropEntityResult(BaseResult.ReturnStatus.CATALOG_NOT_EMPTY, null);
+      }
+
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
           ms.listFullEntities(

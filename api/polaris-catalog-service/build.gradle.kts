@@ -119,7 +119,7 @@ openApiGenerate {
   ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
   removeOperationIdPrefix.set(true)
   templateDir.set(provider { templatesDir.asFile.absolutePath })
-  globalProperties.put("apis", "GenericTableApi,PolicyApi")
+  globalProperties.put("apis", "GenericTableApi,PolicyApi,TagApi")
   globalProperties.put("models", models)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
