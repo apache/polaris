@@ -19,15 +19,23 @@
 package org.apache.polaris.service.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
+import org.apache.polaris.service.auth.AuthenticationConfiguration;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
+import org.apache.polaris.service.auth.AuthenticationType;
+import org.apache.polaris.service.auth.PrincipalMode;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,6 +80,97 @@ class ProductionReadinessChecksTest {
               assertThat(error.offendingProperty()).isEqualTo(REFLECTION_FREE_SERIALIZERS_PROPERTY);
               assertThat(error.severe()).isTrue();
             });
+  }
+
+  @Test
+  void externalPrincipalsWithExternalTypeReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipals(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void externalPrincipalsDisabledReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipals(
+            authenticationConfig(AuthenticationType.INTERNAL, PrincipalMode.INTERNAL));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void externalPrincipalsWithInternalAuthenticationReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipals(
+            authenticationConfig(AuthenticationType.INTERNAL, PrincipalMode.EXTERNAL));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.authentication.principal-mode");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  @ParameterizedTest
+  @EnumSource(AuthenticationType.class)
+  void internalPrincipalsWithInternalAuthorizerReturnsOk(AuthenticationType type) {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipalsAuthorizer(
+            authenticationConfig(type, PrincipalMode.INTERNAL), authorizationConfig("internal"));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void externalPrincipalsWithNonInternalAuthorizerReturnsOk() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipalsAuthorizer(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            authorizationConfig("ranger"));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void externalPrincipalsWithInternalAuthorizerReturnsSevereError() {
+    ProductionReadinessCheck result =
+        checks.checkExternalPrincipalsAuthorizer(
+            authenticationConfig(AuthenticationType.EXTERNAL, PrincipalMode.EXTERNAL),
+            authorizationConfig("internal"));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.offendingProperty())
+                  .isEqualTo("polaris.authentication.principal-mode");
+              assertThat(error.severe()).isTrue();
+            });
+  }
+
+  private static AuthorizationConfiguration authorizationConfig(String type) {
+    AuthorizationConfiguration config = mock(AuthorizationConfiguration.class);
+    lenient().when(config.type()).thenReturn(type);
+    return config;
+  }
+
+  private static AuthenticationConfiguration authenticationConfig(
+      AuthenticationType type, PrincipalMode mode) {
+    AuthenticationRealmConfiguration realmConfig = mock(AuthenticationRealmConfiguration.class);
+    lenient().when(realmConfig.type()).thenReturn(type);
+    lenient().when(realmConfig.principalMode()).thenReturn(mode);
+    AuthenticationConfiguration config = mock(AuthenticationConfiguration.class);
+    lenient()
+        .when(config.realms())
+        .thenReturn(Map.of(AuthenticationConfiguration.DEFAULT_REALM_KEY, realmConfig));
+    return config;
   }
 
   private static Config configWithReflectionFreeSerializers(String value) {
