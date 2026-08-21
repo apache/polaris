@@ -154,6 +154,14 @@ record NoSqlMetaStoreManager(
       @Nullable List<PolarisEntityCore> newCatalogPath,
       @NonNull PolarisEntity renamedEntity) {
     if (newCatalogPath != null && !newCatalogPath.isEmpty()) {
+      // a re-parent cannot move the entity into a different catalog: only the entity itself would
+      // be re-pointed, while its children, its grant records and its policy mappings would all
+      // keep referencing the catalog it started in
+      checkArgument(
+          catalogPath != null
+              && !catalogPath.isEmpty()
+              && newCatalogPath.get(0).getId() == catalogPath.get(0).getId(),
+          "Cannot rename an entity into a different catalog");
       var last = newCatalogPath.getLast();
       // At least BasePolarisMetaStoreManagerTest comes with the wrong parentId in renamedEntity
       if (renamedEntity.getParentId() != last.getId()) {
