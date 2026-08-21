@@ -1163,9 +1163,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   /**
    * Builds the identity of a policy mapping row: the target and policy ids plus the policy type,
-   * scoped to the realm. These are exactly the table's primary key columns. The mutable {@code
-   * parameters} payload is deliberately excluded, so a concurrent update of the parameters cannot
-   * make a lookup miss or turn a delete into a no-op.
+   * scoped to the realm. These are exactly the table's primary key columns; the mutable {@code
+   * parameters} payload is deliberately excluded.
    */
   private Map<String, Object> policyMappingIdentity(@NonNull PolarisPolicyMappingRecord record) {
     return policyMappingIdentity(
@@ -1201,6 +1200,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public void deleteFromPolicyMappingRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     try {
+      // Keying on the identity, not the full record, means a concurrent update of parameters
+      // cannot turn this delete into a no-op.
       Map<String, Object> params = policyMappingIdentity(record);
       datasourceOperations.executeUpdate(
           QueryGenerator.generateDeleteQuery(
