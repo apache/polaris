@@ -19,7 +19,7 @@
 #
 linkTitle: "Storage: RustFS"
 title: "Getting Started with Apache Polaris and RustFS"
-description: "Uses RustFS for S3-compatible object storage and Apache Flink as the stream processing engine."
+description: "Uses RustFS for S3-compatible object storage and Apache Spark as the query engine."
 weight: 200
 tags:
    - rustfs
