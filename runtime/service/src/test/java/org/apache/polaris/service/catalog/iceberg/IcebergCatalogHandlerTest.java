@@ -57,6 +57,7 @@ import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -124,6 +125,9 @@ class IcebergCatalogHandlerTest {
             .build();
     when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
         .thenReturn(storageAccessConfig);
+    // Default: authorize() returns allow. Tests that need a deny override this.
+    when(authorizer.authorize(any(AuthorizationState.class), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.allow());
   }
 
   @SuppressWarnings({"unchecked"})
@@ -323,42 +327,36 @@ class IcebergCatalogHandlerTest {
     when(catalog.loadTable(TABLE2)).thenReturn(table);
     when(accessDelegationModeResolver.resolve(any(), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
-    doThrow(new ForbiddenException("write delegation denied"))
-        .when(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            eq(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
+    // The write-delegation probe now uses authorize(state, request).isAllowed() which does not
+    // throw. Mock it to return a deny decision so the fallback to read-delegation is triggered.
+    when(authorizer.authorize(any(AuthorizationState.class), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.deny("write delegation denied"));
     @SuppressWarnings("unchecked")
     ArgumentCaptor<AuthorizationRequest> requestCaptor =
         ArgumentCaptor.forClass(AuthorizationRequest.class);
     ArgumentCaptor<AuthorizationState> stateCaptor =
         ArgumentCaptor.forClass(AuthorizationState.class);
-    ArgumentCaptor<PolarisAuthorizableOperation> operationCaptor =
-        ArgumentCaptor.forClass(PolarisAuthorizableOperation.class);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
     handler.loadCredentials(TABLE2, Optional.empty());
 
+    // Verify resolve is called once for the write-delegation operation.
     verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
     assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
         .isEqualTo(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION);
-    verify(authorizer, org.mockito.Mockito.times(2))
+    // Verify authorize() was called for the write-delegation boolean check.
+    verify(authorizer).authorize(any(AuthorizationState.class), any(AuthorizationRequest.class));
+    // Verify authorizeOrThrow is called once for the read-delegation fallback.
+    verify(authorizer)
         .authorizeOrThrow(
             any(),
             any(),
-            operationCaptor.capture(),
+            eq(PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION),
             nullable(PolarisResolvedPathWrapper.class),
             nullable(PolarisResolvedPathWrapper.class));
-    assertThat(operationCaptor.getAllValues())
-        .containsExactly(
-            PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION,
-            PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION);
   }
 
   @Test
