@@ -705,4 +705,10 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
           + "because both the creation and modification timestamps are enforced by the implementation and "
           + "cannot be tweaked by call sites")
   protected void testCreatePrincipalReturnedEntitySameAsPersisted() {}
+
+  @Override
+  @Disabled("TAG entities have no NoSQL mapping; tags cannot exist on this backend")
+  protected void testDropCatalogBlockedByTag() {
+    super.testDropCatalogBlockedByTag();
+  }
 }

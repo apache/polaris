@@ -60,6 +60,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added tag management: tag definitions can be created, listed, loaded, updated and dropped
+  through the new `/polaris/v1/{prefix}/tags` endpoints, with catalog-scoped authorization and
+  new `TAG_*` privileges covered by `CATALOG_MANAGE_CONTENT`. The feature is gated by the
+  `ENABLE_TAG_STORE` feature flag (disabled by default) and is supported on the JDBC and
+  in-memory metastores; the NoSQL metastore does not support tags yet. Tag assignment
+  operations, including `detach-all=true` on drop, arrive in a follow-up change.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 

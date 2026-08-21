@@ -527,6 +527,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_TAG_STORE =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_TAG_STORE")
+          .description(
+              "If true, the tag-store endpoints are enabled. Disabled by default: enable it on "
+                  + "deployments backed by the JDBC or in-memory metastores. The NoSQL metastore "
+                  + "does not support tags yet.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_SEMANTIC_MODELS =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_SEMANTIC_MODELS")

@@ -113,6 +113,12 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_STATISTI
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_DROP;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_FULL_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_LIST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_READ;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_WRITE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_FULL_METADATA;
@@ -675,6 +681,35 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
         List.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE, CATALOG_MANAGE_ACCESS));
+
+    // Tag privileges
+    SUPER_PRIVILEGES.putAll(
+        TAG_CREATE,
+        List.of(TAG_CREATE, TAG_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TAG_WRITE,
+        List.of(TAG_WRITE, TAG_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TAG_DROP,
+        List.of(TAG_DROP, TAG_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TAG_READ,
+        List.of(
+            TAG_READ,
+            TAG_WRITE,
+            TAG_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TAG_LIST,
+        List.of(
+            TAG_LIST,
+            TAG_CREATE,
+            TAG_READ,
+            TAG_WRITE,
+            TAG_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
 
     // Policy privileges
     SUPER_PRIVILEGES.putAll(
