@@ -20,8 +20,11 @@ package org.apache.polaris.core.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -32,16 +35,21 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-/** Regression tests for {@link AtomicOperationMetaStoreManager#refreshResolvedEntity} (#3836). */
-public class AtomicOperationMetaStoreManagerRefreshTest {
+/**
+ * Unit tests for {@link AtomicOperationMetaStoreManager}, exercising the manager against a mocked
+ * {@link BasePersistence}.
+ */
+public class AtomicOperationMetaStoreManagerTest {
 
   private static final long CATALOG_ID = 100L;
   private static final long ENTITY_ID = 200L;
@@ -182,5 +190,26 @@ public class AtomicOperationMetaStoreManagerRefreshTest {
     assertThat(result.getEntityGrantRecords()).isNotNull();
     Mockito.verify(metaStore).loadAllGrantRecordsOnGrantee(any(), anyLong(), anyLong());
     Mockito.verify(metaStore).loadAllGrantRecordsOnSecurable(any(), anyLong(), anyLong());
+  }
+
+  @Test
+  public void testRenameMapsConcurrentModificationToResultStatus() {
+    PolarisBaseEntity current =
+        new PolarisBaseEntity.Builder(buildEntity(1, 1)).name("my_role").build();
+    PolarisEntity renamed =
+        new PolarisEntity(new PolarisBaseEntity.Builder(current).name("my_role_renamed").build());
+
+    when(metaStore.lookupEntity(any(), anyLong(), anyLong(), anyInt())).thenReturn(current);
+    when(metaStore.lookupEntityIdAndSubTypeByName(
+            any(), anyLong(), anyLong(), anyInt(), anyString()))
+        .thenReturn(null);
+    doThrow(new RetryOnConcurrencyException("entity concurrently modified"))
+        .when(metaStore)
+        .writeEntity(any(), any(), anyBoolean(), any());
+
+    EntityResult result = manager.renameEntity(callCtx, null, current, null, renamed);
+
+    assertThat(result.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
   }
 }
