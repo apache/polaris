@@ -74,21 +74,14 @@ class JdbcBasePersistenceImplTest {
   private static final long POLICY_CATALOG_ID = 13L;
   private static final long POLICY_ID = 14L;
 
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2, 3, 4, 5})
-  void writeToGrantRecordsIsIdempotent(int schemaVersion) throws SQLException {
+  @Test
+  void writeToGrantRecordsIsIdempotent() throws SQLException {
     JdbcConnectionPool dataSource =
         JdbcConnectionPool.create(
-            "jdbc:h2:mem:grant_idempotency_v"
-                + schemaVersion
-                + "_"
-                + System.nanoTime()
-                + ";DB_CLOSE_DELAY=-1",
-            "sa",
-            "");
+            "jdbc:h2:mem:grant_idempotency_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1", "sa", "");
     DatasourceOperations datasourceOperations =
         new DatasourceOperations(dataSource, new TestJdbcConfiguration());
-    try (InputStream scriptStream = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+    try (InputStream scriptStream = DatabaseType.H2.openInitScriptResource()) {
       datasourceOperations.executeScript(scriptStream);
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -99,8 +92,7 @@ class JdbcBasePersistenceImplTest {
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             RANDOM_SECRETS,
-            REALM_CONTEXT.getRealmIdentifier(),
-            schemaVersion);
+            REALM_CONTEXT.getRealmIdentifier());
     PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
 
     PolarisGrantRecord grant =
@@ -135,14 +127,12 @@ class JdbcBasePersistenceImplTest {
         .when(datasourceOperations)
         .isUniquenessConstraintViolation(any(SQLException.class));
 
-    int schemaVersion = 4;
     JdbcBasePersistenceImpl basePersistence =
         new JdbcBasePersistenceImpl(
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             RANDOM_SECRETS,
-            REALM_CONTEXT.getRealmIdentifier(),
-            schemaVersion);
+            REALM_CONTEXT.getRealmIdentifier());
     PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
 
     PolarisGrantRecord grant =
@@ -155,10 +145,9 @@ class JdbcBasePersistenceImplTest {
         .withCause(nonUniqueViolation);
   }
 
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2, 3, 4})
-  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException(
-      int schemaVersion) throws SQLException {
+  @Test
+  void writeEntity_uniquenessViolationWithInvisibleConflict_throwsRetryOnConcurrencyException()
+      throws SQLException {
     DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
     when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
     doThrow(new SQLException("Unique constraint violation", "23505"))
@@ -174,8 +163,7 @@ class JdbcBasePersistenceImplTest {
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             RANDOM_SECRETS,
-            REALM_CONTEXT.getRealmIdentifier(),
-            schemaVersion);
+            REALM_CONTEXT.getRealmIdentifier());
     PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
 
     PolarisBaseEntity entity =
@@ -237,15 +225,13 @@ class JdbcBasePersistenceImplTest {
         .isSameAs(expected);
   }
 
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2})
-  void lookupEntityVersionsPreservesOrderAndNullsForMissing(int schemaVersion)
-      throws SQLException, IOException {
-    DatasourceOperations real = newH2DatasourceOperations("lookup_versions_v", schemaVersion);
+  @Test
+  void lookupEntityVersionsPreservesOrderAndNullsForMissing() throws SQLException, IOException {
+    DatasourceOperations real = newH2DatasourceOperations("lookup_versions");
     // Spy so we can assert on the SQL actually issued, without blocking the real call.
     DatasourceOperations spy = Mockito.spy(real);
     doCallRealMethod().when(spy).executeSelect(any(), any());
-    TestPersistence tp = newTestPersistence(spy, schemaVersion);
+    TestPersistence tp = newTestPersistence(spy);
     JdbcBasePersistenceImpl impl = tp.impl();
     PolarisCallContext callCtx = tp.callCtx();
 
@@ -275,20 +261,13 @@ class JdbcBasePersistenceImplTest {
     assertThat(captor.getValue().sql()).doesNotContain("properties");
   }
 
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2})
-  void hasChildrenUsesExistsQueryNotFullScan(int schemaVersion) throws SQLException, IOException {
+  @Test
+  void hasChildrenUsesExistsQueryNotFullScan() throws SQLException, IOException {
     JdbcConnectionPool dataSource =
         JdbcConnectionPool.create(
-            "jdbc:h2:mem:has_children_v"
-                + schemaVersion
-                + "_"
-                + System.nanoTime()
-                + ";DB_CLOSE_DELAY=-1",
-            "sa",
-            "");
+            "jdbc:h2:mem:has_children_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1", "sa", "");
     DatasourceOperations real = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
-    try (InputStream script = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+    try (InputStream script = DatabaseType.H2.openInitScriptResource()) {
       real.executeScript(script);
     }
     DatasourceOperations spy = Mockito.spy(real);
@@ -299,8 +278,7 @@ class JdbcBasePersistenceImplTest {
             new PolarisDefaultDiagServiceImpl(),
             spy,
             RANDOM_SECRETS,
-            REALM_CONTEXT.getRealmIdentifier(),
-            schemaVersion);
+            REALM_CONTEXT.getRealmIdentifier());
     PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, impl);
 
     impl.hasChildren(callCtx, null, 0L, 0L);
@@ -314,16 +292,14 @@ class JdbcBasePersistenceImplTest {
     assertThat(sql).doesNotContain("internal_properties");
   }
 
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2})
-  void lookupEntityGrantRecordsVersionDelegatesToLookupEntityVersions(int schemaVersion)
+  @Test
+  void lookupEntityGrantRecordsVersionDelegatesToLookupEntityVersions()
       throws SQLException, IOException {
     // lookupEntityGrantRecordsVersion delegates to lookupEntityVersions, whose SQL shape (and the
     // exclusion of large property columns) is already covered by the test above; this test only
     // needs to check the delegation's own behavioural contract.
-    DatasourceOperations datasourceOperations =
-        newH2DatasourceOperations("lookup_grant_version_v", schemaVersion);
-    TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
+    DatasourceOperations datasourceOperations = newH2DatasourceOperations("lookup_grant_version");
+    TestPersistence tp = newTestPersistence(datasourceOperations);
     JdbcBasePersistenceImpl impl = tp.impl();
     PolarisCallContext callCtx = tp.callCtx();
 
@@ -398,35 +374,28 @@ class JdbcBasePersistenceImplTest {
         parameters);
   }
 
-  private static DatasourceOperations newH2DatasourceOperations(
-      String dbNamePrefix, int schemaVersion) throws SQLException, IOException {
+  private static DatasourceOperations newH2DatasourceOperations(String dbNamePrefix)
+      throws SQLException, IOException {
     JdbcConnectionPool dataSource =
         JdbcConnectionPool.create(
-            "jdbc:h2:mem:"
-                + dbNamePrefix
-                + schemaVersion
-                + "_"
-                + System.nanoTime()
-                + ";DB_CLOSE_DELAY=-1",
+            "jdbc:h2:mem:" + dbNamePrefix + "_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1",
             "sa",
             "");
     DatasourceOperations operations =
         new DatasourceOperations(dataSource, new TestJdbcConfiguration());
-    try (InputStream script = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+    try (InputStream script = DatabaseType.H2.openInitScriptResource()) {
       operations.executeScript(script);
     }
     return operations;
   }
 
-  private static TestPersistence newTestPersistence(
-      DatasourceOperations datasourceOperations, int schemaVersion) {
+  private static TestPersistence newTestPersistence(DatasourceOperations datasourceOperations) {
     JdbcBasePersistenceImpl impl =
         new JdbcBasePersistenceImpl(
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             RANDOM_SECRETS,
-            REALM_CONTEXT.getRealmIdentifier(),
-            schemaVersion);
+            REALM_CONTEXT.getRealmIdentifier());
     return new TestPersistence(impl, new PolarisCallContext(REALM_CONTEXT, impl));
   }
 
@@ -454,18 +423,13 @@ class JdbcBasePersistenceImplTest {
    */
   @Test
   void writeEntitiesCreatePathUsesExistsCheckNotFullRowFetch() throws SQLException, IOException {
-    int schemaVersion = 5;
     JdbcConnectionPool dataSource =
         JdbcConnectionPool.create(
-            "jdbc:h2:mem:write_entities_create_v"
-                + schemaVersion
-                + "_"
-                + System.nanoTime()
-                + ";DB_CLOSE_DELAY=-1",
+            "jdbc:h2:mem:write_entities_create_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1",
             "sa",
             "");
     DatasourceOperations real = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
-    try (InputStream script = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+    try (InputStream script = DatabaseType.H2.openInitScriptResource()) {
       real.executeScript(script);
     }
     DatasourceOperations spy = Mockito.spy(real);
@@ -475,8 +439,7 @@ class JdbcBasePersistenceImplTest {
             new PolarisDefaultDiagServiceImpl(),
             spy,
             RANDOM_SECRETS,
-            REALM_CONTEXT.getRealmIdentifier(),
-            schemaVersion);
+            REALM_CONTEXT.getRealmIdentifier());
     PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, impl);
 
     PolarisBaseEntity entity = principalEntity(1L, "create-me", 1);
@@ -507,18 +470,13 @@ class JdbcBasePersistenceImplTest {
    */
   @Test
   void writeEntitiesUpdatePathSkipsExistenceLookup() throws SQLException, IOException {
-    int schemaVersion = 5;
     JdbcConnectionPool dataSource =
         JdbcConnectionPool.create(
-            "jdbc:h2:mem:write_entities_update_v"
-                + schemaVersion
-                + "_"
-                + System.nanoTime()
-                + ";DB_CLOSE_DELAY=-1",
+            "jdbc:h2:mem:write_entities_update_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1",
             "sa",
             "");
     DatasourceOperations real = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
-    try (InputStream script = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+    try (InputStream script = DatabaseType.H2.openInitScriptResource()) {
       real.executeScript(script);
     }
     DatasourceOperations spy = Mockito.spy(real);
@@ -528,8 +486,7 @@ class JdbcBasePersistenceImplTest {
             new PolarisDefaultDiagServiceImpl(),
             spy,
             RANDOM_SECRETS,
-            REALM_CONTEXT.getRealmIdentifier(),
-            schemaVersion);
+            REALM_CONTEXT.getRealmIdentifier());
     PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, impl);
 
     PolarisBaseEntity original = principalEntity(1L, "update-me", 1);
@@ -587,14 +544,12 @@ class JdbcBasePersistenceImplTest {
     }
   }
 
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2})
-  void listEntitiesBoundsPaginatedQueryByPageSize(int schemaVersion)
-      throws SQLException, IOException {
-    DatasourceOperations real = newH2DatasourceOperations("list_entities_limit_v", schemaVersion);
+  @Test
+  void listEntitiesBoundsPaginatedQueryByPageSize() throws SQLException, IOException {
+    DatasourceOperations real = newH2DatasourceOperations("list_entities_limit");
     DatasourceOperations spy = Mockito.spy(real);
     doCallRealMethod().when(spy).executeSelectOverStream(any(), any(), any());
-    TestPersistence tp = newTestPersistence(spy, schemaVersion);
+    TestPersistence tp = newTestPersistence(spy);
     JdbcBasePersistenceImpl impl = tp.impl();
     PolarisCallContext callCtx = tp.callCtx();
 
@@ -622,13 +577,11 @@ class JdbcBasePersistenceImplTest {
     assertThat(page.encodedResponseToken()).isNotNull();
   }
 
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2})
-  void paginatedListEntitiesWalksEveryPageWhenTotalIsAMultipleOfPageSize(int schemaVersion)
+  @Test
+  void paginatedListEntitiesWalksEveryPageWhenTotalIsAMultipleOfPageSize()
       throws SQLException, IOException {
-    DatasourceOperations datasourceOperations =
-        newH2DatasourceOperations("list_entities_pages_v", schemaVersion);
-    TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
+    DatasourceOperations datasourceOperations = newH2DatasourceOperations("list_entities_pages");
+    TestPersistence tp = newTestPersistence(datasourceOperations);
     JdbcBasePersistenceImpl impl = tp.impl();
     PolarisCallContext callCtx = tp.callCtx();
 

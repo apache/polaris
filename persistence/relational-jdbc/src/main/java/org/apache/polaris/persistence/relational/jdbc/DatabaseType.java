@@ -47,18 +47,6 @@ public enum DatabaseType {
     return displayName;
   }
 
-  /**
-   * Returns the latest schema version available for this database type. This is used as the default
-   * schema version for new installations.
-   */
-  public int getLatestSchemaVersion() {
-    return switch (this) {
-      case POSTGRES -> 5; // PostgreSQL has schemas v1, v2, v3, v4, v5
-      case COCKROACHDB -> 5; // CockroachDB schema version kept in sync with PostgreSQL
-      case H2 -> 5; // H2 uses same schemas as PostgreSQL
-    };
-  }
-
   public static DatabaseType fromDisplayName(String displayName) {
     return switch (displayName.toLowerCase(Locale.ROOT)) {
       case "h2" -> DatabaseType.H2;
@@ -145,29 +133,17 @@ public enum DatabaseType {
   }
 
   /**
-   * Open an InputStream that contains data from an init script. This stream should be closed by the
-   * caller.
+   * Open an InputStream that contains data from the init script. This stream should be closed by
+   * the caller.
    */
-  public InputStream openInitScriptResource(int schemaVersion) {
-    // Validate schema version is within acceptable range for this database type
-    int latestVersion = getLatestSchemaVersion();
-    if (schemaVersion <= 0 || schemaVersion > latestVersion) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Invalid schema version %d for database type %s. Valid range: 1-%d",
-              schemaVersion, this, latestVersion));
-    }
-
-    final String resourceName =
-        String.format("%s/schema-v%d.sql", this.getDisplayName(), schemaVersion);
+  public InputStream openInitScriptResource() {
+    final String resourceName = String.format("%s/schema.sql", this.getDisplayName());
 
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     InputStream stream = classLoader.getResourceAsStream(resourceName);
     if (stream == null) {
       throw new IllegalStateException(
-          String.format(
-              "Schema resource not found: %s (database type: %s, version: %d)",
-              resourceName, this, schemaVersion));
+          String.format("Schema resource not found: %s (database type: %s)", resourceName, this));
     }
     return stream;
   }

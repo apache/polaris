@@ -24,12 +24,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
-import org.junit.jupiter.params.Parameter;
-import org.junit.jupiter.params.ParameterizedClass;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -37,11 +33,9 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
  * Runs {@link org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest} integration
- * tests against every PostgreSQL schema version on the classpath.
+ * tests against PostgreSQL.
  */
 @Testcontainers
-@ParameterizedClass
-@MethodSource("schemaVersions")
 public class AtomicMetastoreManagerWithJdbcBasePersistenceImplPostgresSchemaIT
     extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
 
@@ -52,13 +46,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplPostgresSchemaIT
               .dockerImageName(null)
               .asCompatibleSubstituteFor("postgres"));
 
-  @Parameter int schemaVersion;
-
   private DataSource dataSource;
-
-  static Stream<Integer> schemaVersions() {
-    return SchemaVersions.discoverAsStream(DatabaseType.POSTGRES);
-  }
 
   @Override
   protected DatabaseType databaseType() {
@@ -66,20 +54,15 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplPostgresSchemaIT
   }
 
   @Override
-  public int schemaVersion() {
-    return schemaVersion;
-  }
-
-  @Override
   protected DataSource createDataSource() {
     if (dataSource == null) {
-      dataSource = createPostgresDataSource(schemaVersion());
+      dataSource = createPostgresDataSource();
     }
     return dataSource;
   }
 
-  private static DataSource createPostgresDataSource(int schemaVersion) {
-    String databaseName = "polaris_schema_v" + schemaVersion;
+  private static DataSource createPostgresDataSource() {
+    String databaseName = "polaris_schema";
     createDatabaseIfNotExists(databaseName);
 
     PGSimpleDataSource postgresDataSource = new PGSimpleDataSource();
