@@ -32,6 +32,11 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *
  * <p>Metrics reports are sorted by {@code (timestamp_ms DESC, report_id DESC)}. The cursor encodes
  * the last-seen pair, enabling stable keyset pagination under concurrent inserts.
+ *
+ * <p>The cursor also carries a {@link #scope()} fingerprint of the query that produced it (metric
+ * type, catalog, tables, and filters). A cursor is only honored against a subsequent request with
+ * a matching scope; otherwise it is rejected rather than silently reused against a different query
+ * and silently skipping rows.
  */
 @PolarisImmutable
 @JsonSerialize(as = ImmutableMetricsReportToken.class)
@@ -48,16 +53,25 @@ public interface MetricsReportToken extends Token {
   @JsonProperty("id")
   String reportId();
 
+  /**
+   * Fingerprint of the query scope (metric type, catalog, tables, filters) that produced this
+   * cursor.
+   */
+  @JsonProperty("sc")
+  String scope();
+
   @Override
   default String getT() {
     return ID;
   }
 
-  static @Nullable MetricsReportToken fromRecord(@Nullable MetricsRecordIdentity record) {
+  static @Nullable MetricsReportToken fromRecord(
+      @Nullable MetricsRecordIdentity record, String scope) {
     if (record == null) return null;
     return ImmutableMetricsReportToken.builder()
         .timestampMs(record.timestamp().toEpochMilli())
         .reportId(record.reportId())
+        .scope(scope)
         .build();
   }
 
