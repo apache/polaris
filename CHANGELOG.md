@@ -85,6 +85,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   compatibility fallbacks and the `SCHEMA_VERSION_FALL_BACK_ON_DNE` configuration key have been
   removed. Operators must ensure their database is at the right schema version before upgrading to 
   this version.
+- The event attribute `EventAttributes.ACCESS_DELEGATION_MODE` (`String`) has been replaced with
+  `EventAttributes.ACCESS_DELEGATION_MODES` (`List<String>`). Accordingly, the OpenTelemetry event
+  listener now emits `polaris.access_delegation_modes` instead of `polaris.access_delegation_mode`.
 
 ### New Features
 
@@ -97,6 +100,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `PolarisMetaStoreManager.hasOverlappingSiblings` and `BasePersistence.hasOverlappingSiblings` now
   take the entity's resolved parent path, so implementations exclude the entity's own ancestors
   without re-reading the parent chain from the metastore.
+- Apache Iceberg has been upgraded to 1.12.0. The Java REST client now encodes spaces in namespace
+  and table names as `%20` instead of `+` (apache/iceberg#15989). Polaris decodes path segments
+  per RFC 3986 and has always treated `+` as a literal character, so the server behaves the same for
+  all clients.
 
 ### Deprecations
 
@@ -194,6 +201,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The NoSQL metastore now honors `ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG`: dropping a
   non-empty passthrough-facade (federated) catalog previously always failed with NoSQL persistence,
   even when the flag was enabled.
+- The refresh-credentials endpoint advertised by `loadTable` and `loadCredentials`, and the
+  generic-table paths used by the Spark plugin, now encode spaces in namespace and table names as
+  `%20` instead of `+`. Previously, credential refresh failed for tables whose namespace or name
+  contained a space.
 
 ### Commits
 
