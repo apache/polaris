@@ -19,12 +19,15 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -52,7 +55,7 @@ class DatasourceOperationsSchemaTest {
    * exercising the invariant that the latest bootstrap path selects no schema of its own.
    */
   private static InputStream openSchemaScript() {
-    return DatabaseType.H2.openInitScriptResource(DatabaseType.H2.getLatestSchemaVersion());
+    return DatabaseType.H2.openInitScriptResource();
   }
 
   /** The schema holding the ENTITIES table, as reported by the database catalog. */
@@ -74,13 +77,15 @@ class DatasourceOperationsSchemaTest {
         new DatasourceOperations(
             dataSource, SimpleRelationalJdbcConfiguration.forDatabaseType(DatabaseType.H2));
 
-    assertThat(JdbcBasePersistenceImpl.entityTableExists(ops)).isFalse();
+    assertThatThrownBy(ops::validateSchemaCompatibility)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Version table not found");
 
     ops.executeScript(openSchemaScript());
 
     // Unqualified queries resolve against the schema selected by the datasource.
-    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false))
-        .isEqualTo(DatabaseType.H2.getLatestSchemaVersion());
+    assertThatCode(ops::validateSchemaCompatibility).doesNotThrowAnyException();
+
     // H2 case-folds the unquoted identifier to uppercase.
     assertThat(schemaContainingEntitiesTable(dataSource)).isEqualTo("CUSTOM_POLARIS");
   }
@@ -92,13 +97,79 @@ class DatasourceOperationsSchemaTest {
         new DatasourceOperations(
             dataSource, SimpleRelationalJdbcConfiguration.forDatabaseType(DatabaseType.H2));
 
-    assertThat(JdbcBasePersistenceImpl.entityTableExists(ops)).isFalse();
+    assertThatThrownBy(ops::validateSchemaCompatibility)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Version table not found");
 
     ops.executeScript(openSchemaScript());
 
-    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false))
-        .isEqualTo(DatabaseType.H2.getLatestSchemaVersion());
+    assertThatCode(ops::validateSchemaCompatibility).doesNotThrowAnyException();
+
     // Without a datasource-selected schema, tables land in the database's default schema.
     assertThat(schemaContainingEntitiesTable(dataSource)).isEqualTo("PUBLIC");
+  }
+
+  @Test
+  void validateSchemaCompatibility_throwsOnOlderVersion() throws SQLException {
+    DataSource dataSource = createDataSource(null);
+    DatasourceOperations ops =
+        new DatasourceOperations(
+            dataSource, SimpleRelationalJdbcConfiguration.forDatabaseType(DatabaseType.H2));
+    ops.executeScript(openSchemaScript());
+
+    int staleVersion = DatasourceOperations.CURRENT_SCHEMA_VERSION - 1;
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement =
+            connection.prepareStatement(
+                "UPDATE VERSION SET version_value = ? WHERE version_key = 'version'")) {
+      statement.setInt(1, staleVersion);
+      statement.executeUpdate();
+    }
+
+    assertThatThrownBy(ops::validateSchemaCompatibility)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Incompatible JDBC schema version " + staleVersion)
+        .hasMessageContaining("expected " + DatasourceOperations.CURRENT_SCHEMA_VERSION);
+  }
+
+  @Test
+  void validateSchemaCompatibility_throwsOnNewerVersion() throws SQLException {
+    DataSource dataSource = createDataSource(null);
+    DatasourceOperations ops =
+        new DatasourceOperations(
+            dataSource, SimpleRelationalJdbcConfiguration.forDatabaseType(DatabaseType.H2));
+    ops.executeScript(openSchemaScript());
+
+    int futureVersion = DatasourceOperations.CURRENT_SCHEMA_VERSION + 1;
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement =
+            connection.prepareStatement(
+                "UPDATE VERSION SET version_value = ? WHERE version_key = 'version'")) {
+      statement.setInt(1, futureVersion);
+      statement.executeUpdate();
+    }
+
+    assertThatThrownBy(ops::validateSchemaCompatibility)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Incompatible JDBC schema version " + futureVersion)
+        .hasMessageContaining("expected " + DatasourceOperations.CURRENT_SCHEMA_VERSION);
+  }
+
+  @Test
+  void validateSchemaCompatibility_throwsWhenVersionTableIsEmpty() throws SQLException {
+    DataSource dataSource = createDataSource(null);
+    DatasourceOperations ops =
+        new DatasourceOperations(
+            dataSource, SimpleRelationalJdbcConfiguration.forDatabaseType(DatabaseType.H2));
+    ops.executeScript(openSchemaScript());
+
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("DELETE FROM VERSION");
+    }
+
+    assertThatThrownBy(ops::validateSchemaCompatibility)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Version table exists but contains no rows");
   }
 }
