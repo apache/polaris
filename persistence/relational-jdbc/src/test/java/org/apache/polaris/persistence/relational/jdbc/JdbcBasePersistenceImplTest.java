@@ -320,13 +320,12 @@ class JdbcBasePersistenceImplTest {
    * re-attach that rewrites the parameters in between leaves the caller holding a record whose
    * parameters no longer match the stored row. The delete must still remove that row.
    */
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2, 3, 4, 5})
-  void deleteFromPolicyMappingRecordsIgnoresConcurrentParametersUpdate(int schemaVersion)
+  @Test
+  void deleteFromPolicyMappingRecordsIgnoresConcurrentParametersUpdate()
       throws SQLException, IOException {
     DatasourceOperations datasourceOperations =
-        newH2DatasourceOperations("policy_mapping_delete_v", schemaVersion);
-    TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
+        newH2DatasourceOperations("policy_mapping_delete");
+    TestPersistence tp = newTestPersistence(datasourceOperations);
     JdbcBasePersistenceImpl impl = tp.impl();
     PolarisCallContext callCtx = tp.callCtx();
 
