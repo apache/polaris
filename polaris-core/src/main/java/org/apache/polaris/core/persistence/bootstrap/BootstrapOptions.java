@@ -26,6 +26,4 @@ public interface BootstrapOptions {
   Iterable<String> realms();
 
   RootCredentialsSet rootCredentialsSet();
-
-  SchemaOptions schemaOptions();
 }
