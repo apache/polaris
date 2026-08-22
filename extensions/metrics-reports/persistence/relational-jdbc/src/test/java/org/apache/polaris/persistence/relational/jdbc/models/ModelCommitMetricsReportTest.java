@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
@@ -119,7 +120,7 @@ public class ModelCommitMetricsReportTest {
         .thenReturn(TEST_REMOVED_FILE_SIZE);
     when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_FILE_SIZE_BYTES))
         .thenReturn(TEST_TOTAL_FILE_SIZE);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_DURATION_MS))
+    when(mockResultSet.getObject(ModelCommitMetricsReport.TOTAL_DURATION_MS, Long.class))
         .thenReturn(TEST_TOTAL_DURATION);
     when(mockResultSet.getInt(ModelCommitMetricsReport.ATTEMPTS)).thenReturn(TEST_ATTEMPTS);
     when(mockResultSet.getString(ModelCommitMetricsReport.METADATA)).thenReturn(TEST_METADATA);
@@ -139,6 +140,28 @@ public class ModelCommitMetricsReportTest {
     assertEquals(TEST_TOTAL_DURATION, result.getTotalDurationMs());
     assertEquals(TEST_ATTEMPTS, result.getAttempts());
     assertEquals(TEST_METADATA, result.getMetadata());
+  }
+
+  @Test
+  public void testZeroDurationRoundTripsAsZeroNotEmpty() {
+    ModelCommitMetricsReport report =
+        ImmutableModelCommitMetricsReport.builder()
+            .from(createTestReport())
+            .totalDurationMs(0L)
+            .build();
+
+    assertEquals(Optional.of(0L), report.toRecord().totalDurationMs());
+  }
+
+  @Test
+  public void testNullDurationRoundTripsAsEmpty() {
+    ModelCommitMetricsReport report =
+        ImmutableModelCommitMetricsReport.builder()
+            .from(createTestReport())
+            .totalDurationMs((Long) null)
+            .build();
+
+    assertEquals(Optional.empty(), report.toRecord().totalDurationMs());
   }
 
   @Test
