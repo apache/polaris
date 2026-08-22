@@ -21,7 +21,9 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +45,34 @@ public final class MetricsModelUtils {
     } catch (JsonProcessingException e) {
       LOGGER.warn("Failed to parse metadata JSON: {}", e.getMessage());
       return Map.of();
+    }
+  }
+
+  /**
+   * Serializes a list of strings as a JSON array, unlike a delimiter-joined string this is safe
+   * for elements containing arbitrary punctuation (e.g. field names with commas).
+   */
+  public static @Nullable String toJsonArray(List<String> list) {
+    if (list == null || list.isEmpty()) {
+      return null;
+    }
+    try {
+      return OBJECT_MAPPER.writeValueAsString(list);
+    } catch (JsonProcessingException e) {
+      LOGGER.warn("Failed to serialize list to JSON: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  public static List<String> parseJsonArray(String json) {
+    if (json == null || json.isEmpty()) {
+      return List.of();
+    }
+    try {
+      return OBJECT_MAPPER.readValue(json, new TypeReference<List<String>>() {});
+    } catch (JsonProcessingException e) {
+      LOGGER.warn("Failed to parse JSON array: {}", e.getMessage());
+      return List.of();
     }
   }
 }

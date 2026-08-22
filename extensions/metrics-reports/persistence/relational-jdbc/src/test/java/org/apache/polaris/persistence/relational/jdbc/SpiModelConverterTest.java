@@ -53,7 +53,7 @@ class SpiModelConverterTest {
     assertThat(model.getSchemaId()).isEqualTo(1);
     assertThat(model.getFilterExpression()).isEqualTo("id > 100");
     assertThat(model.getProjectedFieldIds()).isEqualTo("1,2,3");
-    assertThat(model.getProjectedFieldNames()).isEqualTo("id,name,value");
+    assertThat(model.getProjectedFieldNames()).isEqualTo("[\"id\",\"name\",\"value\"]");
     assertThat(model.getResultDataFiles()).isEqualTo(10L);
     assertThat(model.getResultDeleteFiles()).isEqualTo(2L);
     assertThat(model.getMetadata()).isEqualTo("{\"custom\":\"value\"}");
@@ -88,6 +88,19 @@ class SpiModelConverterTest {
     assertThat(restored.projectedFieldIds()).isEqualTo(original.projectedFieldIds());
     assertThat(restored.projectedFieldNames()).isEqualTo(original.projectedFieldNames());
     assertThat(restored.resultDataFiles()).isEqualTo(original.resultDataFiles());
+  }
+
+  @Test
+  void scanRoundTripPreservesFieldNamesWithPunctuation() {
+    ScanMetricsRecord original =
+        ScanMetricsRecord.builder()
+            .from(createTestScanRecord())
+            .projectedFieldNames(List.of("last,name", "a\"quoted\"field", " spaced "))
+            .build();
+    ModelScanMetricsReport model = ModelScanMetricsReport.fromRecord(original, TEST_REALM_ID);
+    ScanMetricsRecord restored = model.toRecord();
+
+    assertThat(restored.projectedFieldNames()).isEqualTo(original.projectedFieldNames());
   }
 
   @Test

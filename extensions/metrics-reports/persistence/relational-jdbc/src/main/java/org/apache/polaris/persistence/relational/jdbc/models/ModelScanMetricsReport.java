@@ -266,7 +266,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
         .schemaId(record.schemaId().orElse(null))
         .filterExpression(record.filterExpression().orElse(null))
         .projectedFieldIds(toCommaSeparated(record.projectedFieldIds()))
-        .projectedFieldNames(toCommaSeparated(record.projectedFieldNames()))
+        .projectedFieldNames(MetricsModelUtils.toJsonArray(record.projectedFieldNames()))
         .resultDataFiles(record.resultDataFiles())
         .resultDeleteFiles(record.resultDeleteFiles())
         .totalFileSizeBytes(record.totalFileSizeBytes())
@@ -305,13 +305,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
                       }
                     })
                 .collect(Collectors.toList());
-    List<String> fieldNames =
-        rawFieldNames == null || rawFieldNames.isEmpty()
-            ? Collections.emptyList()
-            : Arrays.stream(rawFieldNames.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
+    List<String> fieldNames = MetricsModelUtils.parseJsonArray(rawFieldNames);
     return ScanMetricsRecord.builder()
         .reportId(getReportId())
         .catalogId(getCatalogId())
