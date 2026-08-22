@@ -100,7 +100,7 @@ class MetricsReportsServiceTest {
     when(manifest.resolveAll()).thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
     when(manifest.getResolvedCatalogEntity()).thenReturn(catalogEntity);
     when(manifest.getResolvedPath(
-            any(ResolvedPathKey.class), eq(PolarisEntitySubType.ANY_SUBTYPE), eq(true)))
+            any(ResolvedPathKey.class), eq(PolarisEntitySubType.ICEBERG_TABLE), eq(true)))
         .thenReturn(tableWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
     when(factory.createResolutionManifest(eq(principal), eq(CATALOG))).thenReturn(manifest);
@@ -176,7 +176,7 @@ class MetricsReportsServiceTest {
   @Test
   void tableNotFoundThrowsNotFoundException() {
     when(manifest.getResolvedPath(
-            any(ResolvedPathKey.class), eq(PolarisEntitySubType.ANY_SUBTYPE), eq(true)))
+            any(ResolvedPathKey.class), eq(PolarisEntitySubType.ICEBERG_TABLE), eq(true)))
         .thenReturn(null);
 
     assertThatThrownBy(

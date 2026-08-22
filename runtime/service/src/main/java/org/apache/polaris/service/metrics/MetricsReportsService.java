@@ -129,7 +129,7 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     for (TableIdentifier identifier : identifiers) {
       PolarisResolvedPathWrapper tableWrapper =
           manifest.getResolvedPath(
-              ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE, true);
+              ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE, true);
       long tableId = tableWrapper.getRawLeafEntity().getId();
       tableIds.add(tableId);
       tableIdToIdentifier.put(tableId, identifier);
@@ -212,7 +212,7 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     for (TableIdentifier identifier : identifiers) {
       PolarisResolvedPathWrapper tableWrapper =
           manifest.getResolvedPath(
-              ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE, true);
+              ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE, true);
 
       if (tableWrapper == null) {
         throw new NotFoundException("Table not found: %s", identifier);

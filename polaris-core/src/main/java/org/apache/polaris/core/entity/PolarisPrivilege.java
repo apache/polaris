@@ -257,13 +257,17 @@ public enum PolarisPrivilege {
       List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
       PolarisEntityType.CATALOG_ROLE),
   /**
-   * Read-only access to table scan and commit metrics reports. Does not grant access to table data.
-   * Implied by TABLE_READ_DATA and TABLE_FULL_METADATA.
+   * Read-only access to table scan and commit metrics reports. Does not grant access to table
+   * data. Implied by TABLE_FULL_METADATA.
+   *
+   * <p>Restricted to {@link PolarisEntitySubType#ICEBERG_TABLE}: the metrics ingestion and query
+   * paths only cover Iceberg tables today, and granting this on a generic table would make the
+   * privilege authorize successfully while returning no reports.
    */
   TABLE_READ_METRICS(
       103,
       PolarisEntityType.TABLE_LIKE,
-      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      List.of(PolarisEntitySubType.ICEBERG_TABLE),
       PolarisEntityType.CATALOG_ROLE),
   ;
 
