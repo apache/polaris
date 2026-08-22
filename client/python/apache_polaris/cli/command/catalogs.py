@@ -147,18 +147,17 @@ class CatalogsCommand(Command):
                 )
 
         if self.catalogs_subcommand == Subcommands.CREATE:
-            if self.catalog_type != CatalogType.EXTERNAL.value:
-                if not self.storage_type:
-                    raise CliError(
-                        f"Missing required argument:"
-                        f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
-                    )
-                if not self.default_base_location:
-                    raise CliError(
-                        f"Missing required argument:"
-                        f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
-                    )
-            else:
+            if not self.storage_type:
+                raise CliError(
+                    f"Missing required argument:"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
+                )
+            if not self.default_base_location:
+                raise CliError(
+                    f"Missing required argument:"
+                    f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
+                )
+            if self.catalog_type == CatalogType.EXTERNAL.value:
                 if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
                     if (
                         not self.catalog_token_uri

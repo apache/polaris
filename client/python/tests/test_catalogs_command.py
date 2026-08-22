@@ -47,6 +47,29 @@ class TestCatalogsCommand(CLITestBase):
             ),
             "--default-base-location",
         )
+        # External catalogs also require --storage-type and --default-base-location.
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                ["catalogs", "create", "my-catalog", "--type", "external"],
+            ),
+            "--storage-type",
+        )
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--type",
+                    "external",
+                    "--storage-type",
+                    "file",
+                ],
+            ),
+            "--default-base-location",
+        )
         # Missing catalog name
         for sub in ["delete", "get", "update", "summarize"]:
             with self.subTest(subcommand=sub):
@@ -114,6 +137,10 @@ class TestCatalogsCommand(CLITestBase):
                     "my-catalog",
                     "--type",
                     "external",
+                    "--storage-type",
+                    "file",
+                    "--default-base-location",
+                    "dbl",
                     "--catalog-connection-type",
                     "iceberg-rest",
                     "--catalog-authentication-type",
@@ -134,6 +161,10 @@ class TestCatalogsCommand(CLITestBase):
                     "my-catalog",
                     "--type",
                     "external",
+                    "--storage-type",
+                    "file",
+                    "--default-base-location",
+                    "dbl",
                     "--catalog-connection-type",
                     "iceberg-rest",
                     "--catalog-authentication-type",
