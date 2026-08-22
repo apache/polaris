@@ -102,27 +102,12 @@ java \
 
 For more details on the bootstrap command and other administrative operations, see the [Admin Tool]({{% ref "../admin-tool" %}}) documentation.
 
-## Schema upgrades
+## Schema
 
-Polaris does not run automated schema migrations. Bootstrapping applies a full `schema-vN.sql`
-script and records the schema version in the `polaris_schema.version` table; upgrading an existing
-database to a newer schema version is a manual, operator-driven step.
+Polaris does not run automated schema migrations. Each Polaris binary ships a single `schema.sql`
+for each supported database type; bootstrapping executes that script with `CREATE TABLE IF NOT
+EXISTS` and `CREATE INDEX IF NOT EXISTS` statements, so it is safe to run on every startup without
+risk of data loss.
 
-### Upgrading to schema v5
-
-Schema v5 makes the `events.catalog_id` column nullable: events that are not scoped to a catalog
-(principal, policy, rate-limiting, etc.) store `NULL` instead of the legacy placeholder string
-`__realm__` that pre-v5 schemas required (the placeholder only ever existed in 1.6.0 release
-candidates).
-
-Until you upgrade, the server keeps working: it detects a schema version below 5 from the
-`polaris_schema.version` table at startup and continues writing the legacy placeholder for events
-that are not catalog-scoped. To upgrade an existing v3/v4 database, run the following one-time SQL
-(adjust the `ALTER` syntax to your database if needed — the statements below work on PostgreSQL,
-CockroachDB, and H2), then restart Polaris:
-
-```sql
-ALTER TABLE polaris_schema.events ALTER COLUMN catalog_id DROP NOT NULL;
-UPDATE polaris_schema.events SET catalog_id = NULL WHERE catalog_id = '__realm__';
-UPDATE polaris_schema.version SET version_value = 5 WHERE version_key = 'version';
-```
+There is no support for bootstrapping a newer Polaris binary against an older schema version.
+If you need the old schema, use the matching older Polaris binary.

@@ -141,7 +141,7 @@ public class DatasourceOperationsTest {
     when(mockPreparedStatement.executeQuery()).thenThrow(new SQLException("demo", "42P07"));
 
     assertThrows(
-        SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity(1)));
+        SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity()));
   }
 
   @Test
@@ -155,7 +155,7 @@ public class DatasourceOperationsTest {
     // (no internal borrow should occur for the SELECT itself).
     assertThrows(
         SQLException.class,
-        () -> datasourceOperations.executeSelect(mockConnection, query, new ModelEntity(1)));
+        () -> datasourceOperations.executeSelect(mockConnection, query, new ModelEntity()));
 
     verify(mockConnection).prepareStatement(query.sql());
   }
@@ -171,7 +171,7 @@ public class DatasourceOperationsTest {
         SQLException.class,
         () ->
             datasourceOperations.executeSelectOverStream(
-                mockConnection, query, new ModelEntity(1), stream -> stream.forEach(x -> {})));
+                mockConnection, query, new ModelEntity(), stream -> stream.forEach(x -> {})));
 
     verify(mockConnection).prepareStatement(query.sql());
   }
