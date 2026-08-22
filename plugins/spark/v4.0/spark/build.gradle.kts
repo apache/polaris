@@ -116,7 +116,7 @@ testing {
         // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
         // manageable
         // This matches what Spark 4.0 distribution provides (hive-exec-2.3.10-core.jar)
-        implementation("org.apache.hive:hive-exec:2.3.10:core")
+        implementation("org.apache.hive:hive-exec:4.2.0:core")
 
         implementation(platform(libs.jackson.bom))
         implementation("com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider")
