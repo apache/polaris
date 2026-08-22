@@ -111,6 +111,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
       @Nullable Long timestampTo,
       @NonNull PageToken pageToken) {
     String realmId = realmContext.getRealmIdentifier();
+    String scope =
+        scopeKey(metricType, catalogId, tableIds, snapshotId, timestampFrom, timestampTo);
     try {
       if (metricType == MetricType.COMMIT) {
         PreparedQuery query =
@@ -122,14 +124,15 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
                 snapshotId,
                 timestampFrom,
                 timestampTo,
-                pageToken);
+                pageToken,
+                scope);
         List<ModelCommitMetricsReport> rows =
             datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
         return Page.mapped(
             pageToken,
             rows.stream().map(ModelCommitMetricsReport::toRecord),
             Function.<CommitMetricsRecord>identity(),
-            MetricsReportToken::fromRecord);
+            last -> MetricsReportToken.fromRecord(last, scope));
       }
 
       PreparedQuery query =
@@ -141,17 +144,43 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
               snapshotId,
               timestampFrom,
               timestampTo,
-              pageToken);
+              pageToken,
+              scope);
       List<ModelScanMetricsReport> rows =
           datasourceOperations.executeSelect(query, ModelScanMetricsReport.CONVERTER);
       return Page.mapped(
           pageToken,
           rows.stream().map(ModelScanMetricsReport::toRecord),
           Function.<ScanMetricsRecord>identity(),
-          MetricsReportToken::fromRecord);
+          last -> MetricsReportToken.fromRecord(last, scope));
     } catch (SQLException e) {
       throw new RuntimeException("Failed to list metrics reports: " + e.getMessage(), e);
     }
+  }
+
+  /**
+   * Builds a stable fingerprint of the query scope (metric type, catalog, tables, and filters).
+   * Used to reject a pagination cursor that was produced by a different query.
+   */
+  private static String scopeKey(
+      MetricType metricType,
+      long catalogId,
+      List<Long> tableIds,
+      @Nullable Long snapshotId,
+      @Nullable Long timestampFrom,
+      @Nullable Long timestampTo) {
+    List<Long> sortedTableIds = tableIds.stream().sorted().collect(Collectors.toList());
+    return metricType
+        + "|"
+        + catalogId
+        + "|"
+        + sortedTableIds
+        + "|"
+        + snapshotId
+        + "|"
+        + timestampFrom
+        + "|"
+        + timestampTo;
   }
 
   /**
@@ -169,7 +198,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
       @Nullable Long snapshotId,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
-      PageToken pageToken) {
+      PageToken pageToken,
+      String scope) {
     StringBuilder sql = new StringBuilder("SELECT * FROM ");
     sql.append(QueryGenerator.getFullyQualifiedTableName(tableName));
     sql.append(" WHERE realm_id = ? AND catalog_id = ? AND table_id IN (");
@@ -203,6 +233,10 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
           .valueAs(MetricsReportToken.class)
           .ifPresent(
               cursor -> {
+                if (!cursor.scope().equals(scope)) {
+                  throw new IllegalArgumentException(
+                      "pageToken cursor does not match the current query scope");
+                }
                 sql.append(" AND (timestamp_ms < ? OR (timestamp_ms = ? AND report_id < ?))");
                 params.add(cursor.timestampMs());
                 params.add(cursor.timestampMs());
@@ -212,9 +246,11 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
 
     sql.append(" ORDER BY timestamp_ms DESC, report_id DESC");
 
-    int limit = pageToken.pageSize().orElse(100);
-    sql.append(" LIMIT ?");
-    params.add(limit + 1);
+    if (pageToken.paginationRequested()) {
+      int limit = pageToken.pageSize().orElse(100);
+      sql.append(" LIMIT ?");
+      params.add(limit + 1);
+    }
 
     return new PreparedQuery(sql.toString(), params);
   }
