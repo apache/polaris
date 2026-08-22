@@ -103,6 +103,11 @@ for (sparkVersion in sparkVersions) {
     )
     if (first) {
       first = false
+      // Register the integration test module for the first scala version of each spark version
+      polarisProject(
+        "polaris-spark-${sparkVersion}_${scalaVersion}-integration",
+        file("${polarisSparkDir}/v${sparkVersion}/integration"),
+      )
     }
     // Skip all duplicated spark client projects while using IntelliJ IDE.
     // This is to avoid problems during dependency analysis and sync when
