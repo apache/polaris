@@ -95,5 +95,4 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
                   + " credential vending.")
           .defaultValue(false)
           .buildBehaviorChangeConfiguration();
-
 }

@@ -323,8 +323,7 @@ class JdbcBasePersistenceImplTest {
   @Test
   void deleteFromPolicyMappingRecordsIgnoresConcurrentParametersUpdate()
       throws SQLException, IOException {
-    DatasourceOperations datasourceOperations =
-        newH2DatasourceOperations("policy_mapping_delete");
+    DatasourceOperations datasourceOperations = newH2DatasourceOperations("policy_mapping_delete");
     TestPersistence tp = newTestPersistence(datasourceOperations);
     JdbcBasePersistenceImpl impl = tp.impl();
     PolarisCallContext callCtx = tp.callCtx();
