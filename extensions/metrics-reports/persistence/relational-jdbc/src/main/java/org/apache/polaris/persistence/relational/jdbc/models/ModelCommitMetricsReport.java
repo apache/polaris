@@ -161,7 +161,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   long getTotalFileSizeBytes();
 
-  long getTotalDurationMs();
+  @Nullable Long getTotalDurationMs();
 
   int getAttempts();
 
@@ -199,7 +199,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .addedFileSizeBytes(rs.getLong(ADDED_FILE_SIZE_BYTES))
         .removedFileSizeBytes(rs.getLong(REMOVED_FILE_SIZE_BYTES))
         .totalFileSizeBytes(rs.getLong(TOTAL_FILE_SIZE_BYTES))
-        .totalDurationMs(rs.getLong(TOTAL_DURATION_MS))
+        .totalDurationMs(rs.getObject(TOTAL_DURATION_MS, Long.class))
         .attempts(rs.getInt(ATTEMPTS))
         .metadata(rs.getString(METADATA))
         .build();
@@ -278,7 +278,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .addedFileSizeBytes(record.addedFileSizeBytes())
         .removedFileSizeBytes(record.removedFileSizeBytes())
         .totalFileSizeBytes(record.totalFileSizeBytes())
-        .totalDurationMs(record.totalDurationMs().orElse(0L))
+        .totalDurationMs(record.totalDurationMs().orElse(null))
         .attempts(record.attempts())
         .metadata(toJsonString(record.metadata()))
         .build();
@@ -314,9 +314,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .addedFileSizeBytes(getAddedFileSizeBytes())
         .removedFileSizeBytes(getRemovedFileSizeBytes())
         .totalFileSizeBytes(getTotalFileSizeBytes())
-        // total_duration_ms is NOT NULL in DB; 0 means unknown duration
-        .totalDurationMs(
-            getTotalDurationMs() == 0L ? Optional.empty() : Optional.of(getTotalDurationMs()))
+        .totalDurationMs(Optional.ofNullable(getTotalDurationMs()))
         .attempts(getAttempts())
         .build();
   }
@@ -346,7 +344,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
           .addedFileSizeBytes(0L)
           .removedFileSizeBytes(0L)
           .totalFileSizeBytes(0L)
-          .totalDurationMs(0L)
           .attempts(1)
           .build();
 
