@@ -30,7 +30,6 @@ menus:
     parent: doc
     weight: -10700
     identifier: doc-1.7.0
-    name: Developer Docs (unreleased)
 cascade:
   type: docs
   params:
