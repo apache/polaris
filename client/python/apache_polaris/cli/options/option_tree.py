@@ -290,6 +290,20 @@ class OptionTree:
                             group="AWS S3 Storage Options",
                         ),
                         Argument(
+                            Arguments.KMS_KEY_ENCRYPTION,
+                            str,
+                            Hints.S3_KMS_KEY_ENCRYPTION,
+                            allow_repeats=True,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_KEY_DECRYPTION,
+                            str,
+                            Hints.S3_KMS_KEY_DECRYPTION,
+                            allow_repeats=True,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
                             Arguments.ALLOWED_LOCATION,
                             str,
                             "An allowed location for files tracked by the catalog",
