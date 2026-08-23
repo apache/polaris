@@ -282,108 +282,6 @@ h6:hover .heading-anchor {
   }
 }
 
-.polaris-landing .polaris-landing-community {
-  padding: 3.75rem 0;
-  border-top: 1px solid rgba(114, 232, 221, 0.08);
-  background:
-    radial-gradient(circle at 50% 45%, rgba($td-navbar-bg-color, 0.12), rgba($td-navbar-bg-color, 0) 58%),
-    #073b47;
-}
-
-.polaris-landing-community__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: clamp(1.5rem, 3vw, 3rem);
-
-  > a,
-  > article {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 0.75rem 1rem;
-    border: 0;
-    border-radius: 0.75rem;
-    color: #fff;
-    background: transparent;
-    text-align: center;
-
-    > i {
-      display: flex;
-      width: 3.5rem;
-      height: 3.5rem;
-      align-items: center;
-      justify-content: center;
-      color: #72e8dd;
-      font-size: 2.25rem;
-      transition: color 160ms ease;
-    }
-
-    span,
-    > div {
-      display: flex;
-      width: 100%;
-      max-width: 20rem;
-      flex-direction: column;
-      gap: 0.7rem;
-      align-items: center;
-    }
-
-    strong {
-      font-size: clamp(1.25rem, 2vw, 1.5rem);
-    }
-
-    small {
-      color: rgba(255, 255, 255, 0.76);
-      font-size: 0.92rem;
-      line-height: 1.6;
-    }
-  }
-
-  > a {
-    text-decoration: none;
-    transition: color 160ms ease, transform 160ms ease;
-
-    &:hover {
-      color: #fff;
-      transform: translateY(-2px);
-
-      > i {
-        color: #a1f5ed;
-      }
-    }
-
-    &:focus-visible {
-      outline: 3px solid #7bf3e8;
-      outline-offset: 3px;
-    }
-  }
-}
-
-.polaris-landing-community__contribute {
-  h3 {
-    margin: 0;
-    color: #fff;
-    font-size: clamp(1.25rem, 2vw, 1.5rem);
-  }
-
-  p {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.76);
-    font-size: 0.92rem;
-    line-height: 1.6;
-  }
-
-  a {
-    color: #72e8dd;
-
-    &:hover {
-      color: #a1f5ed;
-    }
-  }
-}
-
 .polaris-landing .polaris-landing-trademarks {
   padding: 1rem 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -428,10 +326,6 @@ h6:hover .heading-anchor {
     width: 100%;
     max-width: 21rem;
     margin-inline: auto;
-  }
-
-  .polaris-landing-community__grid {
-    grid-template-columns: 1fr;
   }
 
   .polaris-landing-about {
