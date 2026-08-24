@@ -2187,12 +2187,19 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   // ─── Entity-level list filtering ─────────────────────────────────────────
 
   /**
-   * Enables {@code ENTITY_LEVEL_LIST_FILTERING} for the test catalog by writing the catalog config
-   * property directly to the metastore via the root-privileged metaStoreManager, bypassing the auth
-   * layer. This avoids mocking the request-scoped {@link CallContext}, which causes the second
-   * resolution manifest (created inside {@code filterNamespaces}) to hang because the CDI- produced
-   * {@code ResolutionManifestFactory} and {@code ResolverFactory} capture the real CDI {@code
-   * CallContext} at bean-creation time and do not see the mock.
+   * A table that exists in the federated (remote) catalog but has no corresponding Polaris entity.
+   * Used to pin the passthrough-facade resolution behaviour of entity-level filtering.
+   */
+  private static final TableIdentifier FEDERATED_ONLY_TABLE =
+      TableIdentifier.of(NS1A, "federated_only_table");
+
+  /**
+   * Enables {@code ENABLE_ENTITY_LEVEL_LIST_FILTERING} for the test catalog by writing the catalog
+   * config property directly to the metastore via the root-privileged metaStoreManager, bypassing
+   * the auth layer. This avoids mocking the request-scoped {@link CallContext}, which causes the
+   * second resolution manifest (created inside {@code filterNamespaces}) to hang because the CDI-
+   * produced {@code ResolutionManifestFactory} and {@code ResolverFactory} capture the real CDI
+   * {@code CallContext} at bean-creation time and do not see the mock.
    */
   private void enableEntityLevelListFiltering() {
     enableEntityLevelListFiltering(CATALOG_NAME);
@@ -2202,7 +2209,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     CatalogEntity current = adminService.getCatalog(catalogName);
     CatalogEntity updated =
         new CatalogEntity.Builder(current)
-            .addProperty("polaris.config.entity-level-list-filtering", "true")
+            .addProperty("polaris.config.enable-entity-level-list-filtering", "true")
             .build();
     metaStoreManager.updateEntityPropertiesIfNotChanged(
         callContext.getPolarisCallContext(), null, updated);
@@ -2284,6 +2291,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     inMemoryCatalog.createNamespace(NS1A);
     inMemoryCatalog.buildTable(TABLE_NS1A_1, SCHEMA).create();
     inMemoryCatalog.buildTable(TABLE_NS1A_2, SCHEMA).create();
+    // Exists only in the remote catalog: deliberately never created in Polaris, so it has no
+    // local entity to resolve against. See the passthrough-facade test below.
+    inMemoryCatalog.buildTable(FEDERATED_ONLY_TABLE, SCHEMA).create();
     inMemoryCatalog
         .buildView(VIEW_NS1A_1)
         .withSchema(SCHEMA)
@@ -2326,7 +2336,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     return spied;
   }
 
-  protected void verifyEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces() {
+  @Test
+  public void testEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces() {
     enableEntityLevelListFiltering();
     // Parent-level check passes: NAMESPACE_LIST granted at catalog level.
     assertSuccess(
@@ -2341,7 +2352,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .doesNotContain(NS2);
   }
 
-  protected void verifyEntityLevelListFilteringEnabled_filtersUnauthorizedTables() {
+  @Test
+  public void testEntityLevelListFilteringEnabled_filtersUnauthorizedTables() {
     enableEntityLevelListFiltering();
     // Parent-level check passes: TABLE_LIST granted at catalog level cascades to NS1A.
     assertSuccess(
@@ -2354,7 +2366,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .doesNotContain(TABLE_NS1A_2);
   }
 
-  protected void verifyEntityLevelListFilteringEnabled_filtersUnauthorizedViews() {
+  @Test
+  public void testEntityLevelListFilteringEnabled_filtersUnauthorizedViews() {
     enableEntityLevelListFiltering();
     // Parent-level check passes: VIEW_LIST granted at catalog level cascades to NS1A.
     assertSuccess(
@@ -2367,7 +2380,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .doesNotContain(VIEW_NS1A_2);
   }
 
-  protected void verifyEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces_paginated() {
+  @Test
+  public void testEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces_paginated() {
     enableEntityLevelListFiltering();
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
@@ -2381,7 +2395,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .doesNotContain(NS2);
   }
 
-  protected void verifyEntityLevelListFilteringEnabled_filtersUnauthorizedTables_paginated() {
+  @Test
+  public void testEntityLevelListFilteringEnabled_filtersUnauthorizedTables_paginated() {
     enableEntityLevelListFiltering();
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
@@ -2395,7 +2410,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .doesNotContain(TABLE_NS1A_2);
   }
 
-  protected void verifyEntityLevelListFilteringEnabled_filtersUnauthorizedViews_paginated() {
+  @Test
+  public void testEntityLevelListFilteringEnabled_filtersUnauthorizedViews_paginated() {
     enableEntityLevelListFiltering();
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
@@ -2409,19 +2425,36 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .doesNotContain(VIEW_NS1A_2);
   }
 
-  protected void verifyEntityLevelListFilteringDisabled_returnsAllEntities() {
+  @Test
+  public void testEntityLevelListFilteringDisabled_returnsAllEntities() {
     // Flag NOT enabled (default false)
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_LIST));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.VIEW_LIST));
 
-    // Even though the authorizer denies "table2", flag is off so all entities returned
+    // Even though the authorizer denies "table2"/"ns2"/"view2", the flag is off so all entities
+    // are returned.
     Assertions.assertThat(
             newHandlerWithEntityLevelFiltering("table2"::equals).listTables(NS1A).identifiers())
         .contains(TABLE_NS1A_1, TABLE_NS1A_2);
+    Assertions.assertThat(
+            newHandlerWithEntityLevelFiltering("ns2"::equals)
+                .listNamespaces(Namespace.of())
+                .namespaces())
+        .contains(NS1, NS2);
+    Assertions.assertThat(
+            newHandlerWithEntityLevelFiltering("view2"::equals).listViews(NS1A).identifiers())
+        .contains(VIEW_NS1A_1, VIEW_NS1A_2);
   }
 
-  protected void verifyEntityLevelListFilteringEnabled_federatedListTables_filtersUnauthorized()
+  @Test
+  public void testEntityLevelListFilteringEnabled_federatedListTables_filtersUnauthorized()
       throws Exception {
     enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
     assertSuccess(
@@ -2436,7 +2469,31 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .doesNotContain(TABLE_NS1A_2);
   }
 
-  protected void verifyEntityLevelListFilteringEnabled_federatedListViews_filtersUnauthorized()
+  /**
+   * A federated catalog carries a connection config, which makes {@code
+   * CatalogEntity.isPassthroughFacade()} true, which in turn makes the resolver treat every path as
+   * optional and {@code getResolvedPath} return a partially-resolved path rather than null. So a
+   * remote table with no Polaris entity must still survive entity-level filtering rather than being
+   * silently dropped as unresolvable.
+   */
+  @Test
+  public void testEntityLevelListFilteringEnabled_federatedKeepsEntitiesWithoutPolarisEntity()
+      throws Exception {
+    enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            FEDERATED_CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_LIST));
+
+    // Deny nothing: any absence from the result is a resolution drop, not an authorization denial.
+    Assertions.assertThat(
+            newFederatedHandlerWithEntityLevelFiltering(name -> false)
+                .listTables(NS1A, null, 10)
+                .identifiers())
+        .contains(FEDERATED_ONLY_TABLE);
+  }
+
+  @Test
+  public void testEntityLevelListFilteringEnabled_federatedListViews_filtersUnauthorized()
       throws Exception {
     enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
     assertSuccess(
@@ -2451,7 +2508,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .doesNotContain(VIEW_NS1A_2);
   }
 
-  protected void verifyEntityLevelListFilteringEnabled_federatedListNamespaces_filtersUnauthorized()
+  @Test
+  public void testEntityLevelListFilteringEnabled_federatedListNamespaces_filtersUnauthorized()
       throws Exception {
     enableEntityLevelListFiltering(FEDERATED_CATALOG_NAME);
     assertSuccess(

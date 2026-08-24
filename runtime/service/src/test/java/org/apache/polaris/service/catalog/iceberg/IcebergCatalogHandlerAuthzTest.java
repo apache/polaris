@@ -21,62 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.service.Profiles;
-import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
-public class IcebergCatalogHandlerAuthzTest extends AbstractIcebergCatalogHandlerAuthzTest {
-
-  @Test
-  void testEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces() {
-    verifyEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces();
-  }
-
-  @Test
-  void testEntityLevelListFilteringEnabled_filtersUnauthorizedTables() {
-    verifyEntityLevelListFilteringEnabled_filtersUnauthorizedTables();
-  }
-
-  @Test
-  void testEntityLevelListFilteringEnabled_filtersUnauthorizedViews() {
-    verifyEntityLevelListFilteringEnabled_filtersUnauthorizedViews();
-  }
-
-  @Test
-  void testEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces_paginated() {
-    verifyEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces_paginated();
-  }
-
-  @Test
-  void testEntityLevelListFilteringEnabled_filtersUnauthorizedTables_paginated() {
-    verifyEntityLevelListFilteringEnabled_filtersUnauthorizedTables_paginated();
-  }
-
-  @Test
-  void testEntityLevelListFilteringEnabled_filtersUnauthorizedViews_paginated() {
-    verifyEntityLevelListFilteringEnabled_filtersUnauthorizedViews_paginated();
-  }
-
-  @Test
-  void testEntityLevelListFilteringDisabled_returnsAllEntities() {
-    verifyEntityLevelListFilteringDisabled_returnsAllEntities();
-  }
-
-  @Test
-  void testEntityLevelListFilteringEnabled_federatedListTables_filtersUnauthorized()
-      throws Exception {
-    verifyEntityLevelListFilteringEnabled_federatedListTables_filtersUnauthorized();
-  }
-
-  @Test
-  void testEntityLevelListFilteringEnabled_federatedListViews_filtersUnauthorized()
-      throws Exception {
-    verifyEntityLevelListFilteringEnabled_federatedListViews_filtersUnauthorized();
-  }
-
-  @Test
-  void testEntityLevelListFilteringEnabled_federatedListNamespaces_filtersUnauthorized()
-      throws Exception {
-    verifyEntityLevelListFilteringEnabled_federatedListNamespaces_filtersUnauthorized();
-  }
-}
+public class IcebergCatalogHandlerAuthzTest extends AbstractIcebergCatalogHandlerAuthzTest {}

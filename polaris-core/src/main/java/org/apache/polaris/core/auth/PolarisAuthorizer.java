@@ -58,9 +58,15 @@ public interface PolarisAuthorizer {
    *
    * <p>The default implementation evaluates each request independently by delegating to {@link
    * #authorize(AuthorizationState, AuthorizationRequest)}. Implementations may override this method
-   * to for improved performance.
+   * for improved performance.
    *
-   * <p>The returned list preserves the same size and order as {@code requests}.
+   * <p>The returned list preserves the same size and order as {@code requests}. Each request is
+   * evaluated independently. Implementations must return a decision for every request and must not
+   * short-circuit across requests, even when an earlier request is denied.
+   *
+   * <p>Note that this differs from the contract <em>within</em> a single {@link
+   * AuthorizationRequest}, where the intents are AND-combined and evaluation may short-circuit on
+   * the first deny.
    */
   default @NonNull List<AuthorizationDecision> authorize(
       @NonNull AuthorizationState authzState, @NonNull List<AuthorizationRequest> requests) {

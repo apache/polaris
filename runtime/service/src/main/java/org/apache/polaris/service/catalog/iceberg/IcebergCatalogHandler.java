@@ -19,7 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
-import static org.apache.polaris.core.config.FeatureConfiguration.ENTITY_LEVEL_LIST_FILTERING;
+import static org.apache.polaris.core.config.FeatureConfiguration.ENABLE_ENTITY_LEVEL_LIST_FILTERING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
@@ -1680,35 +1680,42 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   private boolean isEntityLevelListFilteringEnabled() {
-    return realmConfig().getConfig(ENTITY_LEVEL_LIST_FILTERING, getResolvedCatalogEntity());
+    return realmConfig().getConfig(ENABLE_ENTITY_LEVEL_LIST_FILTERING, getResolvedCatalogEntity());
   }
 
   private <T> List<T> filterEntities(
       List<T> entities,
       Function<T, ResolverPath> toResolverPath,
-      Function<T, ResolvedPathKey> toResolvedKey,
       Function<T, PolarisSecurable> toSecurable,
       PolarisAuthorizableOperation op) {
     if (entities.isEmpty()) {
       return entities;
     }
     PolarisResolutionManifest filterManifest = newResolutionManifest();
+    List<ResolverPath> paths = new ArrayList<>(entities.size());
     for (T entity : entities) {
-      filterManifest.addPath(toResolverPath.apply(entity));
+      ResolverPath path = toResolverPath.apply(entity);
+      paths.add(path);
+      filterManifest.addPath(path);
     }
     filterManifest.resolveAll();
 
     AuthorizationState authzState = new AuthorizationState();
     authzState.setResolutionManifest(filterManifest);
 
+    var principal = polarisPrincipal();
     List<T> resolvable = new ArrayList<>();
     List<AuthorizationRequest> requests = new ArrayList<>();
+    int pathIndex = 0;
     for (T entity : entities) {
-      if (filterManifest.getResolvedPath(toResolvedKey.apply(entity), true) != null) {
+      // Look the path up under the same key addPath registered it with, so the lookup key
+      // cannot drift from the registered one.
+      ResolverPath path = paths.get(pathIndex++);
+      if (filterManifest.getResolvedPath(ResolvedPathKey.of(path), true) != null) {
         resolvable.add(entity);
         requests.add(
             new AuthorizationRequest(
-                polarisPrincipal(),
+                principal,
                 List.of(new SingleTargetAuthorizationIntent(op, toSecurable.apply(entity)))));
       }
     }
@@ -1762,7 +1769,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return filterEntities(
         namespaces,
         ns -> new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE, true),
-        ResolvedPathKey::ofNamespace,
         this::namespacePolarisSecurable,
         op);
   }
@@ -1776,7 +1782,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 PolarisCatalogHelpers.tableIdentifierToList(id),
                 PolarisEntityType.TABLE_LIKE,
                 true),
-        ResolvedPathKey::ofTableLike,
         this::tableLikePolarisSecurable,
         op);
   }
