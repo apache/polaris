@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -53,7 +54,10 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.tag.CandidateBudget;
 import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagAssignmentTargetToken;
+import org.apache.polaris.core.tag.TargetField;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -681,7 +685,9 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     if (entity.getType() == PolarisEntityType.TAG) {
       this.store
           .getSliceTagAssignmentRecordsByTag()
-          .deleteRange(this.store.buildPrefixKeyComposite(entity.getCatalogId(), entity.getId()));
+          .deleteRange(
+              TreeMapMetaStore.buildTagAssignmentByTagPrefix(
+                  entity.getCatalogId(), entity.getId()));
       // also delete the other side. We need to delete these assignments one at a time versus
       // doing a range delete
       assignmentsOnTag.forEach(record -> this.store.getSliceTagAssignmentRecords().delete(record));
@@ -715,6 +721,39 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   /** {@inheritDoc} */
   @Override
+  public @NonNull List<TagAssignmentRecord> loadTagAssignmentsOnTargetFieldsInCurrentTxn(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<TargetField> targetFields,
+      int candidateBudget) {
+    // One readRange per requested key: the cross-level coherence this method must provide comes
+    // from the caller running this whole call inside one runInReadTransaction (one lock held for
+    // the entire walk), not from a single composite query the way the JDBC backend does it.
+    //
+    // The budget spans every key rather than each one, and the keys are walked in the order the
+    // caller passed them with each range in its own key order, so the rows this read stops at are
+    // the same rows every time it is asked the same question.
+    int ceiling = candidateBudget == Integer.MAX_VALUE ? Integer.MAX_VALUE : candidateBudget + 1;
+    List<TagAssignmentRecord> results = new ArrayList<>();
+    for (TargetField targetField : targetFields) {
+      int remaining = ceiling - results.size();
+      if (remaining <= 0) {
+        return results;
+      }
+      // The bound goes into the range read rather than being applied to what it returns: reading a
+      // level's whole assignment set and then keeping a few of them costs what the whole set costs.
+      results.addAll(
+          this.store
+              .getSliceTagAssignmentRecords()
+              .readRange(
+                  this.store.buildPrefixKeyComposite(
+                      targetField.targetCatalogId(), targetField.targetId(), targetField.fieldId()),
+                  remaining));
+    }
+    return results;
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public @NonNull List<TagAssignmentRecord> loadAllTagAssignmentsOnTargetEntityInCurrentTxn(
       @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
     return this.store
@@ -729,20 +768,50 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       long tagCatalogId,
       long tagId,
       @Nullable String valueFilter,
-      @NonNull PageToken pageToken) {
-    Stream<TagAssignmentRecord> records =
-        this.store
-            .getSliceTagAssignmentRecordsByTag()
-            .readRange(this.store.buildPrefixKeyComposite(tagCatalogId, tagId))
-            .stream();
-    if (valueFilter != null) {
-      records = records.filter(record -> valueFilter.equals(record.getValue()));
-    }
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
+    String prefix = TreeMapMetaStore.buildTagAssignmentByTagPrefix(tagCatalogId, tagId);
+    Predicate<TagAssignmentRecord> matchesValue =
+        valueFilter == null ? record -> true : record -> valueFilter.equals(record.getValue());
     OptionalInt pageSize = pageToken.pageSize();
-    if (pageToken.paginationRequested() && pageSize.isPresent()) {
-      records = records.limit(pageSize.getAsInt());
+    if (pageToken.paginationRequested()
+        && pageSize.isPresent()
+        && pageSize.getAsInt() < Integer.MAX_VALUE) {
+      // The by-tag index is stored in the (targetId, fieldId) order this read promises, so a page
+      // is
+      // a seek followed by a bounded copy: no ordering pass over rows the page will not carry, and
+      // no copy of rows earlier pages already handed out. One extra row lets the caller tell
+      // whether
+      // a next page exists.
+      String resumeAfter =
+          pageToken
+              .valueAs(TagAssignmentTargetToken.class)
+              .map(
+                  token ->
+                      TreeMapMetaStore.buildTagAssignmentByTagResumeKey(
+                          tagCatalogId, tagId, token.targetId(), token.fieldId()))
+              .orElse(null);
+      // Every row this read looks at is charged to the request's budget before it is looked at,
+      // whether or not the value filter keeps it: a rejected row was still examined, and the
+      // examining is the work the budget bounds. With the budget gone and a row remaining, the
+      // budget refuses, so this read never answers short as though the range had ended.
+      Predicate<TagAssignmentRecord> examinedWithinBudget =
+          record -> {
+            candidateBudget.examine();
+            return matchesValue.test(record);
+          };
+      return this.store
+          .getSliceTagAssignmentRecordsByTag()
+          .readRange(prefix, resumeAfter, examinedWithinBudget, pageSize.getAsInt() + 1);
     }
-    return records.collect(Collectors.toList());
+    // The caller asked for the definition's whole set, so there is no page to bound the copy with
+    // and nothing is charged: the bound on a read of this shape is the caller's own, above this
+    // layer.
+    List<TagAssignmentRecord> everyRow =
+        this.store.getSliceTagAssignmentRecordsByTag().readRange(prefix);
+    return valueFilter == null
+        ? everyRow
+        : everyRow.stream().filter(matchesValue).collect(Collectors.toList());
   }
 
   private Optional<String> getEntityLocationWithoutScheme(PolarisBaseEntity entity) {

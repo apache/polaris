@@ -168,6 +168,21 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   the tag definition inside its own transaction and conflicts with a concurrent allowed-values
   update on that same definition row, so a value an update removes before the assignment commits
   is rejected.
+- Tag reads: `GET /polaris/v1/{prefix}/object-tags` returns the tags of one catalog, namespace,
+  table, Iceberg view or top-level Iceberg table column, naming the target with the same
+  `target-type` plus `namespace`/`target-name`/`column` parameters the assignment writes use, and
+  with `view=effective` returns the tags that apply after inheritance from the target's parents
+  instead of only the ones stored on it. `GET /polaris/v1/{prefix}/tags/{tag-name}/assignments` is
+  the reverse lookup, listing the targets that carry a tag, with an exact value filter. Both reads
+  bound the page they return and the full result they will answer through the same
+  `LIST_PAGINATION_*` settings the definition listing uses, and both hide assignment rows whose tag
+  definition, target or named column no longer resolves; a metadata read that fails is reported as
+  an error rather than as an absence. Both are rejected below schema v7 the same way assignment
+  writes are, rather than answering as though nothing were assigned. Reading an object's tags uses
+  that object's existing read-properties privilege and covers every tag that applies to it,
+  including inherited ones. The reverse lookup needs `TAG_READ` on the named definition and then
+  each reported target's own read-properties privilege, checked per target, so a target the caller
+  cannot read is left out of the result rather than reported.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - Python CLI: added a global `--page-size` option to paginate list calls internally on Iceberg endpoints. Requires the server-side `LIST_PAGINATION_ENABLED` feature flag.

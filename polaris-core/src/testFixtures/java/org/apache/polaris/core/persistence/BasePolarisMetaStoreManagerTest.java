@@ -388,6 +388,16 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
+  protected void testTagReadStopsAtItsCandidateBudget() {
+    polarisTestMetaStoreManager.testTagReadStopsAtItsCandidateBudget();
+  }
+
+  @Test
+  protected void testTagReadRejectsAMovedColumnSchema() {
+    polarisTestMetaStoreManager.testTagReadRejectsAMovedColumnSchema();
+  }
+
+  @Test
   protected void testDeleteAllClearsTagAssignments() {
     polarisTestMetaStoreManager.testDeleteAllClearsTagAssignments();
   }
@@ -400,6 +410,11 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testTagCrossCatalogAssignmentRejected() {
     polarisTestMetaStoreManager.testTagCrossCatalogAssignmentRejected();
+  }
+
+  @Test
+  protected void testTagReverseLookup() {
+    polarisTestMetaStoreManager.testTagReverseLookup();
   }
 
   @Test

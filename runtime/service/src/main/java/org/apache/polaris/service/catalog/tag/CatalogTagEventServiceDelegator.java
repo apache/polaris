@@ -37,6 +37,8 @@ import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
+import org.apache.polaris.service.types.GetObjectTagsResponse;
+import org.apache.polaris.service.types.ListObjectsByTagResponse;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
@@ -355,6 +357,107 @@ public class CatalogTagEventServiceDelegator
     return resp;
   }
 
-  // getObjectTags and listObjectsByTag are not implemented yet; the default
-  // PolarisCatalogTagApiService methods return 501 and are not decorated here.
+  @Override
+  public Response getObjectTags(
+      String prefix,
+      TargetType targetType,
+      Boolean pagination,
+      String namespace,
+      String targetName,
+      String column,
+      String pageToken,
+      Integer pageSize,
+      String view,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_GET_OBJECT_TAGS)) {
+      ImmutableAttributeMap.Builder attributes =
+          ImmutableAttributeMap.builder().put(EventAttributes.CATALOG_NAME, catalogName);
+      attributes.put(EventAttributes.TAG_TARGET_TYPE, String.valueOf(targetType));
+      attributes.put(EventAttributes.NAMESPACE_NAME, namespace);
+      attributes.put(EventAttributes.TARGET_NAME, targetName);
+      attributes.put(EventAttributes.COLUMN_NAME, column);
+      attributes.put(EventAttributes.TAG_VIEW, view);
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_GET_OBJECT_TAGS,
+              eventMetadataFactory.create(),
+              attributes.build()));
+    }
+    Response resp =
+        delegate.getObjectTags(
+            prefix,
+            targetType,
+            pagination,
+            namespace,
+            targetName,
+            column,
+            pageToken,
+            pageSize,
+            view,
+            realmContext,
+            securityContext);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_GET_OBJECT_TAGS)) {
+      ImmutableAttributeMap.Builder attributes =
+          ImmutableAttributeMap.builder().put(EventAttributes.CATALOG_NAME, catalogName);
+      attributes.put(EventAttributes.TAG_TARGET_TYPE, String.valueOf(targetType));
+      attributes.put(EventAttributes.NAMESPACE_NAME, namespace);
+      attributes.put(EventAttributes.TARGET_NAME, targetName);
+      attributes.put(EventAttributes.COLUMN_NAME, column);
+      attributes.put(EventAttributes.TAG_VIEW, view);
+      attributes.put(
+          EventAttributes.GET_OBJECT_TAGS_RESPONSE, (GetObjectTagsResponse) resp.getEntity());
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_GET_OBJECT_TAGS,
+              eventMetadataFactory.create(),
+              attributes.build()));
+    }
+    return resp;
+  }
+
+  @Override
+  public Response listObjectsByTag(
+      String prefix,
+      String tagName,
+      Boolean pagination,
+      String value,
+      String pageToken,
+      Integer pageSize,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_LIST_OBJECTS_BY_TAG)) {
+      ImmutableAttributeMap.Builder attributes =
+          ImmutableAttributeMap.builder()
+              .put(EventAttributes.CATALOG_NAME, catalogName)
+              .put(EventAttributes.TAG_NAME, tagName);
+      attributes.put(EventAttributes.TAG_VALUE_FILTER, value);
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_LIST_OBJECTS_BY_TAG,
+              eventMetadataFactory.create(),
+              attributes.build()));
+    }
+    Response resp =
+        delegate.listObjectsByTag(
+            prefix, tagName, pagination, value, pageToken, pageSize, realmContext, securityContext);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_LIST_OBJECTS_BY_TAG)) {
+      ImmutableAttributeMap.Builder attributes =
+          ImmutableAttributeMap.builder()
+              .put(EventAttributes.CATALOG_NAME, catalogName)
+              .put(EventAttributes.TAG_NAME, tagName);
+      attributes.put(EventAttributes.TAG_VALUE_FILTER, value);
+      attributes.put(
+          EventAttributes.LIST_OBJECTS_BY_TAG_RESPONSE,
+          (ListObjectsByTagResponse) resp.getEntity());
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_LIST_OBJECTS_BY_TAG,
+              eventMetadataFactory.create(),
+              attributes.build()));
+    }
+    return resp;
+  }
 }

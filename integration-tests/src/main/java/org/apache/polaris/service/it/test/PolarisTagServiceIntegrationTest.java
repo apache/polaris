@@ -27,6 +27,8 @@ import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -64,11 +66,15 @@ import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.GenericTable;
+import org.apache.polaris.service.types.GetObjectTagsResponse;
+import org.apache.polaris.service.types.ListObjectsByTagResponse;
 import org.apache.polaris.service.types.ListTagsResponse;
+import org.apache.polaris.service.types.ObjectTag;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
 import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TagIdentifier;
+import org.apache.polaris.service.types.TaggedObject;
 import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
 import org.assertj.core.api.Assertions;
@@ -2206,6 +2212,77 @@ public class PolarisTagServiceIntegrationTest {
     managementApi.updateCatalog(catalog, catalogProps);
   }
 
+  /**
+   * Sets this catalog's maximum page size, the ceiling a requested size is reduced to. A requested
+   * size is an upper bound the server may lower, so the only way to observe that lowering is to
+   * make the deployment maximum smaller than the size a test asks for.
+   */
+  private void setCatalogMaxPageSize(int maxPageSize) {
+    Catalog catalog = managementApi.getCatalog(currentCatalogName);
+    Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+    catalogProps.put(
+        FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE.catalogConfig(),
+        String.valueOf(maxPageSize));
+    managementApi.updateCatalog(catalog, catalogProps);
+  }
+
+  /**
+   * A requested page size above the deployment maximum is reduced to it, not refused. Exceeding the
+   * maximum alone is not an error, so the page comes back at the maximum and carries a
+   * continuation, and walking that continuation still reaches every result.
+   */
+  @Test
+  public void testGetObjectTagsCapsAPageSizeAboveTheDeploymentMaximum() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+    setCatalogMaxPageSize(1);
+
+    GetObjectTagsResponse first =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, 5000);
+    Assertions.assertThat(first.getObjectTags()).hasSize(1);
+    Assertions.assertThat(first.getNextPageToken()).isNotNull().isNotEmpty();
+
+    // The capped size drives the whole walk, not just the first page, and nothing is lost to it.
+    Set<String> seen = new HashSet<>();
+    String token = "";
+    int pages = 0;
+    while (token != null) {
+      GetObjectTagsResponse page =
+          tagApi.getObjectTagsPage(currentCatalogName, target, null, token, 5000);
+      Assertions.assertThat(page.getObjectTags()).hasSizeLessThanOrEqualTo(1);
+      page.getObjectTags().forEach(o -> seen.add(o.getTag().getName()));
+      token = page.getNextPageToken();
+      Assertions.assertThat(++pages).isLessThan(10);
+    }
+    Assertions.assertThat(pages).isGreaterThan(1);
+    Assertions.assertThat(seen).hasSize(3);
+  }
+
+  /** The reverse lookup caps a requested size the same way, for the same reason. */
+  @Test
+  public void testListObjectsByTagCapsAPageSizeAboveTheDeploymentMaximum() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+    setCatalogMaxPageSize(1);
+
+    ListObjectsByTagResponse first =
+        tagApi.listObjectsByTag(currentCatalogName, tagName, null, null, 5000);
+    Assertions.assertThat(first.getObjects()).hasSize(1);
+    Assertions.assertThat(first.getNextPageToken()).isNotNull().isNotEmpty();
+
+    List<TagAttachmentTarget> seen = new ArrayList<>();
+    String token = "";
+    int pages = 0;
+    while (token != null) {
+      ListObjectsByTagResponse page =
+          tagApi.listObjectsByTag(currentCatalogName, tagName, null, token, 5000);
+      Assertions.assertThat(page.getObjects()).hasSizeLessThanOrEqualTo(1);
+      page.getObjects().forEach(o -> seen.add(o.getTarget()));
+      token = page.getNextPageToken();
+      Assertions.assertThat(++pages).isLessThan(10);
+    }
+    Assertions.assertThat(pages).isGreaterThan(1);
+    Assertions.assertThat(seen).hasSize(3);
+  }
+
   @Test
   public void testCreateTagWithAMalformedIdempotencyKeyKeepsTheContractLiteral() {
     CreateTagRequest request =
@@ -2858,6 +2935,36 @@ public class PolarisTagServiceIntegrationTest {
             TargetType.COLUMN));
   }
 
+  /** A TABLE target inside NS1, for the read call sites that name a table by its own name. */
+  private static TagAttachmentTarget tableTargetIn(Namespace namespace, String name) {
+    List<String> path = new java.util.ArrayList<>(List.of(namespace.levels()));
+    path.add(name);
+    return TagAttachmentTarget.builder(TargetType.TABLE).setPath(path).build();
+  }
+
+  /** A COLUMN target inside NS1, for the read call sites that name a column. */
+  private static TagAttachmentTarget columnTargetIn(
+      Namespace namespace, String name, String column) {
+    List<String> path = new java.util.ArrayList<>(List.of(namespace.levels()));
+    path.add(name);
+    return TagAttachmentTarget.builder(TargetType.COLUMN)
+        .setPath(path)
+        .setColumn(List.of(column))
+        .build();
+  }
+
+  /** A NAMESPACE target, for the read call sites that name a namespace. */
+  private static TagAttachmentTarget namespaceTargetOf(Namespace namespace) {
+    return TagAttachmentTarget.builder(TargetType.NAMESPACE)
+        .setPath(List.of(namespace.levels()))
+        .build();
+  }
+
+  /** The catalog target, which takes none of the other address parameters. */
+  private static TagAttachmentTarget catalogTargetOf() {
+    return TagAttachmentTarget.builder(TargetType.CATALOG).build();
+  }
+
   private TagAttachmentTarget tableTarget() {
     return TagAttachmentTarget.builder(TargetType.TABLE)
         .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
@@ -3336,6 +3443,20 @@ public class PolarisTagServiceIntegrationTest {
             .setPath(PolarisCatalogHelpers.tableIdentifierToList(genericId))
             .build();
     tagApi.assignTag(currentCatalogName, "generictag", genericTarget, List.of("public"));
+
+    // both reads must return the assignment, not just accept the write: the reverse lookup has to
+    // rebuild a generic table's identifier the same way it rebuilds an Iceberg table's
+    var listed =
+        tagApi.listObjectsByTag(currentCatalogName, "generictag", null, null, null).getObjects();
+    Assertions.assertThat(listed).hasSize(1);
+    Assertions.assertThat(listed.iterator().next().getTarget()).isEqualTo(genericTarget);
+    var direct =
+        tagApi
+            .getObjectTags(currentCatalogName, tableTargetIn(NS1, genericId.name()), null)
+            .getObjectTags();
+    Assertions.assertThat(direct).hasSize(1);
+    Assertions.assertThat(direct.iterator().next().getAssignedAt()).isEqualTo(genericTarget);
+
     tagApi.unassignTag(currentCatalogName, "generictag", genericTarget);
 
     genericTableApi.purge(currentCatalogName, NS1);
@@ -3460,6 +3581,1297 @@ public class PolarisTagServiceIntegrationTest {
           .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
       assertErrorType(body, "BadRequest");
       Assertions.assertThat(body).contains("SCHEMA");
+    }
+  }
+
+  @Test
+  public void testGetObjectTagsDirectAndEffective() {
+    createAllTargetsTag("readtag");
+    createT1();
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+    TagAttachmentTarget namespaceTarget =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of(NS1.levels()[0])).build();
+
+    tagApi.assignTag(currentCatalogName, "readtag", namespaceTarget, List.of("internal"));
+    tagApi.assignTag(currentCatalogName, "readtag", tableTarget(), List.of("public"));
+
+    // direct view returns only the queried target's own assignment
+    GetObjectTagsResponse direct =
+        tagApi.getObjectTags(currentCatalogName, tableTargetIn(NS1, NS1_T1.name()), null);
+    Assertions.assertThat(direct.getObjectTags()).hasSize(1);
+    ObjectTag directTag = direct.getObjectTags().iterator().next();
+    Assertions.assertThat(directTag.getTag().getName()).isEqualTo("readtag");
+    Assertions.assertThat(directTag.getApplyMethod()).isEqualTo("DIRECT");
+    Assertions.assertThat(directTag.getAssignedAt()).isEqualTo(tableTarget());
+    Assertions.assertThat(directTag.getValues()).containsExactly("public");
+
+    // effective view: the table's own assignment is the closest
+    GetObjectTagsResponse effective =
+        tagApi.getObjectTags(currentCatalogName, tableTargetIn(NS1, NS1_T1.name()), "effective");
+    Assertions.assertThat(effective.getObjectTags()).hasSize(1);
+    Assertions.assertThat(effective.getObjectTags().iterator().next().getApplyMethod())
+        .isEqualTo("DIRECT");
+
+    // after removing the direct assignment, the namespace assignment is inherited
+    tagApi.unassignTag(currentCatalogName, "readtag", tableTarget());
+    Assertions.assertThat(
+            tagApi
+                .getObjectTags(currentCatalogName, tableTargetIn(NS1, NS1_T1.name()), null)
+                .getObjectTags())
+        .isEmpty();
+    GetObjectTagsResponse inherited =
+        tagApi.getObjectTags(currentCatalogName, tableTargetIn(NS1, NS1_T1.name()), "effective");
+    ObjectTag inheritedTag = inherited.getObjectTags().iterator().next();
+    Assertions.assertThat(inheritedTag.getApplyMethod()).isEqualTo("INHERITED");
+    Assertions.assertThat(inheritedTag.getAssignedAt()).isEqualTo(namespaceTarget);
+    Assertions.assertThat(inheritedTag.getValues()).containsExactly("internal");
+
+    // the catalog has no assignment and no parents: a complete, empty result
+    Assertions.assertThat(
+            tagApi
+                .getObjectTags(currentCatalogName, catalogTargetOf(), "effective")
+                .getObjectTags())
+        .isEmpty();
+    tagApi.assignTag(currentCatalogName, "readtag", catalogTarget, List.of("public"));
+    Assertions.assertThat(
+            tagApi.getObjectTags(currentCatalogName, catalogTargetOf(), null).getObjectTags())
+        .hasSize(1);
+
+    // leave no live assignments behind: the harness purge uses a plain drop
+    tagApi.dropTag(currentCatalogName, "readtag", true);
+  }
+
+  @Test
+  public void testGetObjectTagsColumnSkippedIntermediateAndDestinationFilter() {
+    // namespaces and columns only: the table between them is excluded but must not stop the walk
+    tagApi.createTag(
+        currentCatalogName,
+        "nscol",
+        null,
+        VALUES,
+        List.of(TargetType.NAMESPACE, TargetType.COLUMN));
+    createT1();
+    TagAttachmentTarget namespaceTarget =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of(NS1.levels()[0])).build();
+    tagApi.assignTag(currentCatalogName, "nscol", namespaceTarget, List.of("internal"));
+
+    // the excluded table kind is omitted as a destination
+    Assertions.assertThat(
+            tagApi
+                .getObjectTags(currentCatalogName, tableTargetIn(NS1, NS1_T1.name()), "effective")
+                .getObjectTags())
+        .isEmpty();
+
+    // the column inherits through the excluded table
+    GetObjectTagsResponse column =
+        tagApi.getObjectTags(
+            currentCatalogName, columnTargetIn(NS1, NS1_T1.name(), "data"), "effective");
+    Assertions.assertThat(column.getObjectTags()).hasSize(1);
+    ObjectTag inherited = column.getObjectTags().iterator().next();
+    Assertions.assertThat(inherited.getApplyMethod()).isEqualTo("INHERITED");
+    Assertions.assertThat(inherited.getAssignedAt()).isEqualTo(namespaceTarget);
+
+    // a direct column read is unaffected by the parent assignment
+    Assertions.assertThat(
+            tagApi
+                .getObjectTags(currentCatalogName, columnTargetIn(NS1, NS1_T1.name(), "data"), null)
+                .getObjectTags())
+        .isEmpty();
+
+    // a direct column assignment is closer than the namespace one
+    TagAttachmentTarget columnTarget =
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of("data"))
+            .build();
+    tagApi.assignTag(currentCatalogName, "nscol", columnTarget, List.of("public"));
+    ObjectTag own =
+        tagApi
+            .getObjectTags(
+                currentCatalogName, columnTargetIn(NS1, NS1_T1.name(), "data"), "effective")
+            .getObjectTags()
+            .iterator()
+            .next();
+    Assertions.assertThat(own.getApplyMethod()).isEqualTo("DIRECT");
+    Assertions.assertThat(own.getValues()).containsExactly("public");
+
+    tagApi.dropTag(currentCatalogName, "nscol", true);
+  }
+
+  @Test
+  public void testGetObjectTagsParamAndTargetValidation() {
+    createT1();
+    // parameter combinations outside the four target kinds are rejected
+    assertGetObjectTagsFails(TargetType.TABLE, null, "T1", null, null, Response.Status.BAD_REQUEST);
+    assertGetObjectTagsFails(
+        TargetType.COLUMN, null, null, "data", null, Response.Status.BAD_REQUEST);
+    assertGetObjectTagsFails(
+        TargetType.COLUMN, "NS1", null, "data", null, Response.Status.BAD_REQUEST);
+    // an unknown view value is rejected
+    assertGetObjectTagsFails(
+        TargetType.TABLE, "NS1", "T1", null, "both", Response.Status.BAD_REQUEST);
+    // a present but empty parameter is a malformed target, not an absent parameter
+    assertGetObjectTagsFails(
+        TargetType.NAMESPACE, "", null, null, null, Response.Status.BAD_REQUEST);
+    assertGetObjectTagsFails(TargetType.TABLE, "NS1", "", null, null, Response.Status.BAD_REQUEST);
+    assertGetObjectTagsFails(TargetType.COLUMN, "NS1", "T1", "", null, Response.Status.BAD_REQUEST);
+    // a blank path member is a malformed target, not a lookup miss: an empty namespace level
+    // between two separators, or a whitespace-only table name, is 400 rather than 404
+    assertGetObjectTagsFails(
+        TargetType.NAMESPACE, "NS1\u001F\u001FX", null, null, null, Response.Status.BAD_REQUEST);
+    assertGetObjectTagsFails(TargetType.TABLE, "NS1", " ", null, null, Response.Status.BAD_REQUEST);
+    // unresolved targets and columns are 404 NoSuchTargetException, the wire type the contract
+    // defines for a missing target, not the underlying Iceberg exception types
+    assertGetObjectTagsFails(
+        TargetType.TABLE, "NS1", "missing", null, null, Response.Status.NOT_FOUND, "NoSuchTarget");
+    assertGetObjectTagsFails(
+        TargetType.COLUMN, "NS1", "T1", "nope", null, Response.Status.NOT_FOUND, "NoSuchTarget");
+    assertGetObjectTagsFails(
+        TargetType.NAMESPACE,
+        "missingns",
+        null,
+        null,
+        null,
+        Response.Status.NOT_FOUND,
+        "NoSuchTarget");
+    // a table-like query against a namespace that does not exist classifies the same way the
+    // assignment path already does for the same shape: NoSuchTargetException, not the base
+    // CatalogHandler's Iceberg exception types
+    assertGetObjectTagsFails(
+        TargetType.TABLE, "missingns", "T1", null, null, Response.Status.NOT_FOUND, "NoSuchTarget");
+  }
+
+  @Test
+  public void testListObjectsByTagPaginationAndValueFilter() {
+    createAllTargetsTag("revtag");
+    createAllTargetsTag("othertag");
+    createT1();
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+    TagAttachmentTarget namespaceTarget =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of(NS1.levels()[0])).build();
+    TagAttachmentTarget columnTarget =
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of("data"))
+            .build();
+    tagApi.assignTag(currentCatalogName, "revtag", catalogTarget, List.of("public"));
+    tagApi.assignTag(currentCatalogName, "revtag", namespaceTarget, List.of("internal"));
+    tagApi.assignTag(currentCatalogName, "revtag", tableTarget(), List.of("public"));
+    tagApi.assignTag(currentCatalogName, "revtag", columnTarget, List.of("public"));
+    tagApi.assignTag(currentCatalogName, "othertag", namespaceTarget, List.of("public"));
+
+    ListObjectsByTagResponse all = tagApi.listObjectsByTagAll(currentCatalogName, "revtag", null);
+    Assertions.assertThat(all.getObjects()).hasSize(4);
+    Assertions.assertThat(all.getObjects()).allMatch(o -> o.getApplyMethod().equals("DIRECT"));
+    Assertions.assertThat(all.getObjects().stream().map(TaggedObject::getTarget))
+        .containsExactlyInAnyOrder(catalogTarget, namespaceTarget, tableTarget(), columnTarget);
+
+    // exact value filter, grandfathered values are findable as stored
+    Assertions.assertThat(
+            tagApi.listObjectsByTagAll(currentCatalogName, "revtag", "internal").getObjects())
+        .hasSize(1);
+
+    // pageSize=1 walks every row exactly once and terminates.
+    java.util.List<TaggedObject> paged = new java.util.ArrayList<>();
+    String pageToken = "";
+    int pages = 0;
+    do {
+      ListObjectsByTagResponse page =
+          tagApi.listObjectsByTag(currentCatalogName, "revtag", null, pageToken, 1);
+      // One row per page is the whole point of the bound: a page carrying all four would mean the
+      // pagination parameters never reached the server, which is what a misspelled parameter name
+      // looks like from here, and every assertion below would then pass while nothing paged.
+      Assertions.assertThat(page.getObjects()).hasSizeLessThanOrEqualTo(1);
+      paged.addAll(page.getObjects());
+      pageToken = page.getNextPageToken();
+      pages++;
+      Assertions.assertThat(pages).isLessThan(10);
+    } while (pageToken != null);
+    // Four rows at one per page is four pages, so the walk really was paged.
+    Assertions.assertThat(pages).isGreaterThan(1);
+    Assertions.assertThat(paged).hasSize(4);
+    Assertions.assertThat(paged.stream().map(TaggedObject::getTarget).distinct()).hasSize(4);
+    // A full-result request carries no continuation, while a size on its own bounds the first page
+    // of the request it was already going to get.
+    Assertions.assertThat(all.getNextPageToken()).isNull();
+    ListObjectsByTagResponse sizeWithoutToken =
+        tagApi.listObjectsByTag(currentCatalogName, "revtag", null, null, 1);
+    Assertions.assertThat(sizeWithoutToken.getObjects()).hasSize(1);
+    Assertions.assertThat(sizeWithoutToken.getNextPageToken()).isNotNull().isNotEmpty();
+
+    // A missing definition is 404 NoSuchTag. The route matters as much as the status: sending this
+    // to
+    // a path the service does not serve would satisfy the status assertion from the framework's own
+    // 404, without the handler ever running.
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "missingtag"))
+            .get()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      assertErrorType(body, "NoSuchTag");
+    }
+
+    tagApi.dropTag(currentCatalogName, "revtag", true);
+    tagApi.dropTag(currentCatalogName, "othertag", true);
+  }
+
+  @Test
+  public void testListObjectsByTagHidesRemovedColumnAndDroppedTable() {
+    createAllTargetsTag("orphantag");
+    createT1();
+    TagAttachmentTarget columnTarget =
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of("data"))
+            .build();
+    tagApi.assignTag(currentCatalogName, "orphantag", tableTarget(), List.of("public"));
+    tagApi.assignTag(currentCatalogName, "orphantag", columnTarget, List.of("internal"));
+    Assertions.assertThat(
+            tagApi.listObjectsByTag(currentCatalogName, "orphantag", null, null, null).getObjects())
+        .hasSize(2);
+
+    // dropping the column orphans its assignment row: hidden, while the table row stays visible
+    restCatalog.loadTable(NS1_T1).updateSchema().deleteColumn("data").commit();
+    ListObjectsByTagResponse afterColumnDrop =
+        tagApi.listObjectsByTag(currentCatalogName, "orphantag", null, null, null);
+    Assertions.assertThat(afterColumnDrop.getObjects()).hasSize(1);
+    Assertions.assertThat(afterColumnDrop.getObjects().iterator().next().getTarget())
+        .isEqualTo(tableTarget());
+
+    // the same column name recreated gets a new field id: the old row must not resurface
+    restCatalog.loadTable(NS1_T1).updateSchema().addColumn("data", Types.StringType.get()).commit();
+    Assertions.assertThat(
+            tagApi.listObjectsByTag(currentCatalogName, "orphantag", null, null, null).getObjects())
+        .hasSize(1);
+
+    // dropping the table removes or hides its rows either way: nothing may surface
+    restCatalog.dropTable(NS1_T1, false);
+    Assertions.assertThat(
+            tagApi.listObjectsByTag(currentCatalogName, "orphantag", null, null, null).getObjects())
+        .isEmpty();
+
+    // orphaned rows are hidden but still stored, so a plain drop would refuse with in_use
+    tagApi.dropTag(currentCatalogName, "orphantag", true);
+  }
+
+  /**
+   * Removing a value from a definition's allowed list does not rewrite or hide the assignments that
+   * already carry it, and a reverse lookup can still be filtered by that value. The existing
+   * grandfathering coverage stops one step short of this: it narrows the list and then checks that
+   * the WRITE is refused, and the reverse-lookup test that mentions grandfathered values never
+   * narrows anything, so nothing pinned that a removed value is still searchable through the API.
+   */
+  @Test
+  public void testListObjectsByTagFindsAGrandfatheredValue() {
+    createAllTargetsTag("grandfatheredtag");
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+    tagApi.assignTag(currentCatalogName, "grandfatheredtag", catalogTarget, List.of("internal"));
+
+    // narrow the allowed list so "internal" is no longer writable
+    Tag current = tagApi.loadTag(currentCatalogName, "grandfatheredtag");
+    tagApi.updateTag(
+        currentCatalogName,
+        "grandfatheredtag",
+        UpdateTagRequest.builder()
+            .setCurrentTagVersion(current.getVersion())
+            // An update replaces the whole editable definition rather than patching one field, so
+            // description is required even when only the values are being narrowed.
+            .setDescription(current.getDescription() == null ? "" : current.getDescription())
+            .setValues(List.of("public"))
+            .build());
+    assertAssignFails(
+        "grandfatheredtag",
+        catalogTarget,
+        List.of("internal"),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+
+    // the stored assignment is untouched, and the removed value still finds it
+    var byRemovedValue =
+        tagApi
+            .listObjectsByTag(currentCatalogName, "grandfatheredtag", "internal", null, null)
+            .getObjects();
+    Assertions.assertThat(byRemovedValue).hasSize(1);
+    Assertions.assertThat(byRemovedValue.iterator().next().getValues()).containsExactly("internal");
+    // and the value now allowed matches nothing, because narrowing rewrote no row
+    Assertions.assertThat(
+            tagApi
+                .listObjectsByTag(currentCatalogName, "grandfatheredtag", "public", null, null)
+                .getObjects())
+        .isEmpty();
+
+    tagApi.dropTag(currentCatalogName, "grandfatheredtag", true);
+  }
+
+  /**
+   * The namespace query value is the levels joined with U+001F and then URI-encoded once, so a
+   * multi-level namespace has to survive that round trip intact. Nothing pinned this before: the
+   * only multi-level value any getObjectTags test sent was an invalid one.
+   *
+   * <p>The non-ASCII level covers the UTF-8 half of the rules: {@code café} travels as {@code
+   * caf%C3%A9}, per-byte, with no normalization. The spec's own {@code with space} example is not
+   * reachable from a test: this catalog derives a storage location from the namespace name, so
+   * createNamespace rejects a space before any tag code runs.
+   *
+   * <p>The last case is the one the encoding rules are really about. Levels containing the literal
+   * text {@code %20} and {@code %1F} encode to {@code tax%2520rate%1F%251F}, where the single
+   * {@code %1F} is the separator and {@code %251F} is a name that merely looks like one. Those
+   * names are not created here, so what it pins is that the value parses as a two-level namespace
+   * and reaches resolution -- a lookup miss, 404 -- rather than being rejected as malformed, 400,
+   * which is what a mis-split or a second decode would produce.
+   */
+  @Test
+  public void testGetObjectTagsMultiLevelNamespaceRoundTrip() {
+    Namespace sales = Namespace.of("sales");
+    Namespace salesEu = Namespace.of("sales", "eu");
+    Namespace salesCafe = Namespace.of("sales", "café");
+    restCatalog.createNamespace(sales);
+    restCatalog.createNamespace(salesEu);
+    restCatalog.createNamespace(salesCafe);
+    createAllTargetsTag("roundtriptag");
+
+    for (Namespace namespace : List.of(salesEu, salesCafe)) {
+      TagAttachmentTarget target =
+          TagAttachmentTarget.builder(TargetType.NAMESPACE)
+              .setPath(Arrays.asList(namespace.levels()))
+              .build();
+      tagApi.assignTag(currentCatalogName, "roundtriptag", target, List.of("internal"));
+      var tags =
+          tagApi
+              .getObjectTags(currentCatalogName, namespaceTargetOf(namespace), null)
+              .getObjectTags();
+      Assertions.assertThat(tags).hasSize(1);
+      Assertions.assertThat(tags.iterator().next().getAssignedAt()).isEqualTo(target);
+      tagApi.unassignTag(currentCatalogName, "roundtriptag", target);
+    }
+
+    // literal percent sequences inside level names: a two-level miss, not a malformed request
+    String separator = String.valueOf((char) 0x1F);
+    assertGetObjectTagsFails(
+        TargetType.NAMESPACE,
+        "tax%20rate" + separator + "%1F",
+        null,
+        null,
+        null,
+        Response.Status.NOT_FOUND,
+        "NoSuchTarget");
+
+    tagApi.dropTag(currentCatalogName, "roundtriptag", true);
+    restCatalog.dropNamespace(salesEu);
+    restCatalog.dropNamespace(salesCafe);
+    restCatalog.dropNamespace(sales);
+  }
+
+  /**
+   * An empty namespace level is invalid wherever it sits. The middle position was already pinned;
+   * the first and last were not, and those are the two a leading or trailing separator in the
+   * joined value produces by accident.
+   */
+  @Test
+  public void testGetObjectTagsRejectsEmptyLeadingAndTrailingNamespaceLevel() {
+    String separator = String.valueOf((char) 0x1F);
+    assertGetObjectTagsFails(
+        TargetType.NAMESPACE, separator + "sales", null, null, null, Response.Status.BAD_REQUEST);
+    assertGetObjectTagsFails(
+        TargetType.NAMESPACE, "sales" + separator, null, null, null, Response.Status.BAD_REQUEST);
+  }
+
+  /**
+   * The kind is always stated, never inferred. A request without target-type is rejected and is not
+   * treated as a catalog read, and a combination that does not match the kind it does state is
+   * rejected even when every value in it is well formed.
+   */
+  @Test
+  public void testGetObjectTagsRequiresAnExplicitAndMatchingTargetType() {
+    createT1();
+
+    // No target-type at all. This must not be read as the catalog, which is what an inferred kind
+    // would have made of it.
+    try (Response res =
+        tagApi
+            .request("polaris/v1/{cat}/object-tags", Map.of("cat", currentCatalogName), Map.of())
+            .get()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+    }
+
+    // A catalog target takes none of the other three, so a namespace alongside it contradicts the
+    // kind even though the namespace itself exists.
+    assertGetObjectTagsFails(
+        TargetType.CATALOG, "NS1", null, null, null, Response.Status.BAD_REQUEST, "BadRequest");
+    // A namespace target takes no target-name.
+    assertGetObjectTagsFails(
+        TargetType.NAMESPACE, "NS1", "T1", null, null, Response.Status.BAD_REQUEST, "BadRequest");
+    // A table target takes no column.
+    assertGetObjectTagsFails(
+        TargetType.TABLE, "NS1", "T1", "data", null, Response.Status.BAD_REQUEST, "BadRequest");
+    // An unknown kind is not a lookup miss. The value fails while the query parameter is bound,
+    // before any handler runs, and the framework answers a bound-parameter failure with 404 unless
+    // the converter raises a WebApplicationException, so the error type matters as much as the
+    // status here.
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/object-tags",
+                Map.of("cat", currentCatalogName),
+                Map.of("target-type", "SCHEMA"))
+            .get()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, "BadRequest");
+      Assertions.assertThat(body).contains("SCHEMA");
+    }
+  }
+
+  /**
+   * A prefix that names no catalog is NoSuchCatalog on both reads, not a missing tag and not a
+   * generic 404: the contract fixes the wire type for the surrounding catalog.
+   */
+  @Test
+  public void testReadsAnswerNoSuchCatalogForAnUnknownPrefix() {
+    String missingCatalog = client.newEntityName("no_such_catalog");
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/object-tags",
+                Map.of("cat", missingCatalog),
+                Map.of("target-type", "CATALOG"))
+            .get()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      assertErrorType(body, "NoSuchCatalog");
+    }
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", missingCatalog, "tag", "classification"),
+                Map.of())
+            .get()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      assertErrorType(body, "NoSuchCatalog");
+    }
+  }
+
+  /**
+   * A read names the definition by id as well as by name, and it is the same id loadTag reports, so
+   * a client can recognize one definition across a rename without re-reading it.
+   */
+  @Test
+  public void testObjectTagNamesTheDefinitionByIdAndName() {
+    createT1();
+    createAllTargetsTag("idtag");
+    tagApi.assignTag(currentCatalogName, "idtag", tableTarget(), List.of("public"));
+
+    Tag definition = tagApi.loadTag(currentCatalogName, "idtag");
+    Assertions.assertThat(definition.getId()).isNotBlank();
+
+    ObjectTag read =
+        tagApi
+            .getObjectTags(currentCatalogName, tableTargetIn(NS1, NS1_T1.name()), null)
+            .getObjectTags()
+            .iterator()
+            .next();
+    Assertions.assertThat(read.getTag().getName()).isEqualTo("idtag");
+    Assertions.assertThat(read.getTag().getId()).isEqualTo(definition.getId());
+
+    // The id outlives a rename while the name does not, which is the whole reason it is reported.
+    tagApi.renameTag(currentCatalogName, "idtag", "idtag_renamed", definition.getVersion());
+    ObjectTag afterRename =
+        tagApi
+            .getObjectTags(currentCatalogName, tableTargetIn(NS1, NS1_T1.name()), null)
+            .getObjectTags()
+            .iterator()
+            .next();
+    Assertions.assertThat(afterRename.getTag().getId()).isEqualTo(definition.getId());
+    Assertions.assertThat(afterRename.getTag().getName()).isEqualTo("idtag_renamed");
+    tagApi.dropTag(currentCatalogName, "idtag_renamed", true);
+  }
+
+  /**
+   * A view is its own target kind. The same namespace and name can name both a table and a view,
+   * and the stated kind is what decides which one a read addresses.
+   */
+  @Test
+  public void testGetObjectTagsDistinguishesAViewFromATableOfTheSameName() {
+    createAllTargetsTag("viewreadtag");
+    restCatalog.createNamespace(NS1);
+    TableIdentifier sharedName = TableIdentifier.of(NS1, "SHARED");
+    restCatalog
+        .buildTable(
+            sharedName, new Schema(Types.NestedField.optional(1, "id", Types.LongType.get())))
+        .create();
+    TableIdentifier viewName = TableIdentifier.of(NS1, "SHARED_VIEW");
+    restCatalog
+        .buildView(viewName)
+        .withSchema(new Schema(Types.NestedField.optional(1, "id", Types.LongType.get())))
+        .withDefaultNamespace(NS1)
+        .withQuery("spark", "select 1 as id")
+        .create();
+
+    TagAttachmentTarget viewTarget =
+        TagAttachmentTarget.builder(TargetType.VIEW)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(viewName))
+            .build();
+    tagApi.assignTag(currentCatalogName, "viewreadtag", viewTarget, List.of("public"));
+
+    // The view read returns the assignment, and reports the target as a VIEW.
+    GetObjectTagsResponse onView = tagApi.getObjectTags(currentCatalogName, viewTarget, null);
+    Assertions.assertThat(onView.getObjectTags()).hasSize(1);
+    Assertions.assertThat(onView.getObjectTags().iterator().next().getAssignedAt().getType())
+        .isEqualTo(TargetType.VIEW);
+
+    // Naming the view as a TABLE addresses a table that does not exist, not the view.
+    assertGetObjectTagsFails(
+        TargetType.TABLE,
+        NS1.levels()[0],
+        viewName.name(),
+        null,
+        null,
+        Response.Status.NOT_FOUND,
+        "NoSuchTarget");
+    // And the table of a similar name carries nothing, so a view assignment cannot leak onto it.
+    Assertions.assertThat(
+            tagApi
+                .getObjectTags(currentCatalogName, tableTargetIn(NS1, sharedName.name()), null)
+                .getObjectTags())
+        .isEmpty();
+
+    // The reverse lookup reports the view as a VIEW too.
+    Assertions.assertThat(
+            tagApi
+                .listObjectsByTag(currentCatalogName, "viewreadtag", null, null, null)
+                .getObjects())
+        .hasSize(1)
+        .allSatisfy(o -> Assertions.assertThat(o.getTarget().getType()).isEqualTo(TargetType.VIEW));
+
+    tagApi.unassignTag(currentCatalogName, "viewreadtag", viewTarget);
+    tagApi.dropTag(currentCatalogName, "viewreadtag", true);
+    restCatalog.dropView(viewName);
+    restCatalog.dropTable(sharedName);
+  }
+
+  /**
+   * Three tags on one table, and a catalog page of one. The realm default page is larger than any
+   * fixture here, so only a catalog-level override makes the default mode observable at all.
+   */
+  private TagAttachmentTarget targetWithThreeTagsAndAPageOfOne() {
+    createT1();
+    for (String name : List.of("modetag1", "modetag2", "modetag3")) {
+      createAllTargetsTag(name);
+      tagApi.assignTag(currentCatalogName, name, tableTarget(), List.of("public"));
+    }
+    setCatalogDefaultPageSize(1);
+    return tableTargetIn(NS1, NS1_T1.name());
+  }
+
+  /** One tag on three targets, and a catalog page of one. */
+  private String tagOnThreeTargetsWithAPageOfOne() {
+    createT1();
+    createAllTargetsTag("moderevtag");
+    tagApi.assignTag(
+        currentCatalogName,
+        "moderevtag",
+        TagAttachmentTarget.builder(TargetType.CATALOG).build(),
+        List.of("public"));
+    tagApi.assignTag(
+        currentCatalogName,
+        "moderevtag",
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of(NS1.levels()[0])).build(),
+        List.of("internal"));
+    tagApi.assignTag(currentCatalogName, "moderevtag", tableTarget(), List.of("public"));
+    setCatalogDefaultPageSize(1);
+    return "moderevtag";
+  }
+
+  private void assertObjectTagsRequestIsBadRequest(
+      TagAttachmentTarget target, String query, String expectInMessage) {
+    try (Response res = tagApi.getObjectTagsRaw(currentCatalogName, target, query)) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(query + " -> " + body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, "BadRequest");
+      if (expectInMessage != null) {
+        Assertions.assertThat(body).contains(expectInMessage);
+      }
+    }
+  }
+
+  private void assertReverseLookupRequestIsBadRequest(
+      String tagName, String query, String expectInMessage) {
+    try (Response res = tagApi.listObjectsByTagRaw(currentCatalogName, tagName, query)) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(query + " -> " + body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, "BadRequest");
+      if (expectInMessage != null) {
+        Assertions.assertThat(body).contains(expectInMessage);
+      }
+    }
+  }
+
+  @Test
+  public void testGetObjectTagsWithoutPaginationParametersReturnsTheFirstPage() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+
+    // With a page of one, a request that sends no pagination parameter must come back short and
+    // carry a continuation, which is what proves it answered with a page and not the whole set.
+    GetObjectTagsResponse response =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, null);
+
+    Assertions.assertThat(response.getObjectTags()).hasSize(1);
+    Assertions.assertThat(response.getNextPageToken()).isNotNull().isNotEmpty();
+  }
+
+  @Test
+  public void testGetObjectTagsWithPaginationTrueMatchesOmittingIt() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+
+    GetObjectTagsResponse omitted =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, null);
+    try (Response res = tagApi.getObjectTagsRaw(currentCatalogName, target, "pagination=true")) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      GetObjectTagsResponse explicit = res.readEntity(GetObjectTagsResponse.class);
+      // Saying the default out loud changes nothing, which is what makes it the default.
+      Assertions.assertThat(explicit.getObjectTags()).isEqualTo(omitted.getObjectTags());
+      Assertions.assertThat(explicit.getNextPageToken()).isEqualTo(omitted.getNextPageToken());
+    }
+  }
+
+  @Test
+  public void testGetObjectTagsWithPaginationFalseReturnsTheCompleteResult() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+
+    GetObjectTagsResponse full = tagApi.getObjectTagsAll(currentCatalogName, target, null);
+
+    // On a static set the full result is exactly what a finished paged walk collects, and it ends
+    // without a continuation of its own.
+    Set<String> paged = new HashSet<>();
+    String token = "";
+    while (token != null) {
+      GetObjectTagsResponse page =
+          tagApi.getObjectTagsPage(currentCatalogName, target, null, token, 1);
+      page.getObjectTags().forEach(o -> paged.add(o.getTag().getName()));
+      token = page.getNextPageToken();
+    }
+    Assertions.assertThat(full.getObjectTags()).hasSize(3);
+    Assertions.assertThat(full.getNextPageToken()).isNull();
+    Assertions.assertThat(full.getObjectTags().stream().map(o -> o.getTag().getName()))
+        .containsExactlyInAnyOrderElementsOf(paged);
+  }
+
+  @Test
+  public void testGetObjectTagsRejectsPaginationFalseCombinedWithAPageTokenOrPageSize() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+    String realToken =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, null).getNextPageToken();
+    Assertions.assertThat(realToken).isNotNull().isNotEmpty();
+
+    // A full result has no position to resume from and no page to bound, so either parameter
+    // contradicts the mode instead of refining it. An empty value is still a value the client sent.
+    for (String query :
+        List.of(
+            "pagination=false&pageToken=",
+            "pagination=false&pageToken=" + realToken,
+            "pagination=false&pageSize=1",
+            "pagination=false&pageSize=")) {
+      assertObjectTagsRequestIsBadRequest(target, query, null);
+    }
+  }
+
+  @Test
+  public void testGetObjectTagsRejectsAPaginationValueThatIsNotTrueOrFalse() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+
+    // Only the two literals mean anything. An empty or misspelled value is the case a boolean
+    // conversion would quietly turn into a request for the whole set.
+    for (String query :
+        List.of("pagination=", "pagination=yes", "pagination=TRUE", "pagination=1")) {
+      assertObjectTagsRequestIsBadRequest(target, query, "pagination");
+    }
+  }
+
+  @Test
+  public void testGetObjectTagsRejectsARepeatedPaginationParameter() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+
+    // Two copies carry no single value to act on, whether or not they agree. Agreeing copies matter
+    // because a stack that folded them would answer a request nobody sent.
+    for (String name : List.of("pagination", "pageToken", "pageSize")) {
+      String[] values =
+          switch (name) {
+            case "pagination" -> new String[] {"true", "true"};
+            case "pageSize" -> new String[] {"1", "1"};
+            default -> new String[] {"", ""};
+          };
+      try (Response res =
+          tagApi.getObjectTagsWithRepeatedParameter(currentCatalogName, target, name, values)) {
+        String body = res.readEntity(String.class);
+        Assertions.assertThat(res.getStatus())
+            .as(name + " twice -> " + body)
+            .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertErrorType(body, "BadRequest");
+        Assertions.assertThat(body).contains(name);
+      }
+    }
+  }
+
+  /**
+   * The work a tag read may do does not follow the page it was asked for. A page bounds the tags
+   * returned; it does not bound the hierarchy walked, which is the same hierarchy whichever page is
+   * asked for. So the same target answers the same tags at any page size, and a small page is not a
+   * way to be refused a target a large page would have answered.
+   */
+  @Test
+  public void testGetObjectTagsAnswersTheSameTagsAtAnyPageSize() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+    setCatalogDefaultPageSize(100);
+
+    Set<String> onePerPage = new HashSet<>();
+    String token = "";
+    while (token != null) {
+      GetObjectTagsResponse page =
+          tagApi.getObjectTagsPage(currentCatalogName, target, null, token, 1);
+      Assertions.assertThat(page.getObjectTags()).hasSizeLessThanOrEqualTo(1);
+      page.getObjectTags().forEach(o -> onePerPage.add(o.getTag().getName()));
+      token = page.getNextPageToken();
+    }
+
+    GetObjectTagsResponse wholePage =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, 100);
+    Assertions.assertThat(wholePage.getObjectTags()).hasSize(3);
+    Assertions.assertThat(onePerPage)
+        .containsExactlyInAnyOrderElementsOf(
+            wholePage.getObjectTags().stream().map(o -> o.getTag().getName()).toList());
+  }
+
+  @Test
+  public void testGetObjectTagsContinuationUsesTheServerDefaultNotTheTokensSize() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+    setCatalogDefaultPageSize(100);
+
+    // The first page is bound by the size this request asked for; the continuation omits it, so the
+    // server's current default applies rather than the size the token was minted with.
+    GetObjectTagsResponse first =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, 1);
+    Assertions.assertThat(first.getObjectTags()).hasSize(1);
+    GetObjectTagsResponse rest =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, first.getNextPageToken(), null);
+    Assertions.assertThat(rest.getObjectTags()).hasSize(2);
+    Assertions.assertThat(rest.getNextPageToken()).isNull();
+  }
+
+  /**
+   * The page size the binding cannot use. A non-integer value is corrected to 400 by the tag
+   * response filter the definition slice added, which is scoped to this resource class, so both
+   * reads inherit it; this asserts that inheritance rather than reimplementing the correction.
+   */
+  @Test
+  public void testGetObjectTagsRejectsAPageSizeThatCannotBeRead() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+
+    for (String query :
+        List.of("pageSize=large", "pageSize=1.5", "pageSize=", "pageSize=0", "pageSize=-1")) {
+      assertObjectTagsRequestIsBadRequest(target, query, "pageSize");
+    }
+    // A refused request changed nothing: the target is still readable.
+    Assertions.assertThat(tagApi.getObjectTagsAll(currentCatalogName, target, null).getObjectTags())
+        .hasSize(3);
+  }
+
+  /**
+   * A continuation token belongs to the definition it was minted for, not to the name that
+   * definition happened to have. Delete the definition and create another under the same name
+   * between two pages and the second page is answering a different question: the new definition
+   * inherits none of the old assignments, so the position carried by the token is a position in a
+   * set that no longer exists. Continuing would skip every row of the new definition that sorts
+   * below it, rows no query ever returned or refused.
+   */
+  @Test
+  public void testReverseLookupTokenDoesNotSurviveASameNameReplacement() {
+    createT1();
+    createAllTargetsTag("identitybound");
+    tagApi.assignTag(
+        currentCatalogName, "identitybound", catalogTargetOf(), List.of(VALUES.get(0)));
+    tagApi.assignTag(
+        currentCatalogName,
+        "identitybound",
+        tableTargetIn(NS1, NS1_T1.name()),
+        List.of(VALUES.get(0)));
+
+    ListObjectsByTagResponse first =
+        tagApi.listObjectsByTag(currentCatalogName, "identitybound", null, null, 1);
+    Assertions.assertThat(first.getObjects()).hasSize(1);
+    Assertions.assertThat(first.getNextPageToken()).isNotNull().isNotEmpty();
+
+    // The same name, a different definition.
+    tagApi.dropTag(currentCatalogName, "identitybound", true);
+    createAllTargetsTag("identitybound");
+    tagApi.assignTag(
+        currentCatalogName, "identitybound", catalogTargetOf(), List.of(VALUES.get(0)));
+    tagApi.assignTag(
+        currentCatalogName,
+        "identitybound",
+        tableTargetIn(NS1, NS1_T1.name()),
+        List.of(VALUES.get(0)));
+
+    try (Response res =
+        tagApi.listObjectsByTagResponse(
+            currentCatalogName, "identitybound", null, first.getNextPageToken(), 1)) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(() -> "replayed token -> " + body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, "BadRequest");
+    }
+
+    // Refusing the stale token is not the same as losing the data: the new definition answers its
+    // own
+    // first page, and reading it whole shows both of its assignments.
+    Assertions.assertThat(
+            tagApi.listObjectsByTagAll(currentCatalogName, "identitybound", null).getObjects())
+        .hasSize(2);
+  }
+
+  /**
+   * The same rule for the forward read, where the identity that can be replaced is the target's.
+   * The path is resolved again on every page, while the page position is a threshold over the
+   * previous target's results, so a target dropped and recreated under one path would resume
+   * against results that were never produced for it.
+   */
+  @Test
+  public void testObjectTagsTokenDoesNotSurviveASameNameTargetReplacement() {
+    createT1();
+    createAllTargetsTag("targetbound1");
+    createAllTargetsTag("targetbound2");
+    TagAttachmentTarget target = tableTargetIn(NS1, NS1_T1.name());
+    tagApi.assignTag(currentCatalogName, "targetbound1", target, List.of(VALUES.get(0)));
+    tagApi.assignTag(currentCatalogName, "targetbound2", target, List.of(VALUES.get(0)));
+
+    GetObjectTagsResponse first =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, 1);
+    Assertions.assertThat(first.getObjectTags()).hasSize(1);
+    Assertions.assertThat(first.getNextPageToken()).isNotNull().isNotEmpty();
+
+    // The same path, a different table.
+    restCatalog.dropTable(NS1_T1, false);
+    restCatalog
+        .buildTable(
+            NS1_T1,
+            new Schema(
+                Types.NestedField.optional(1, "id", Types.LongType.get()),
+                Types.NestedField.optional(2, "data", Types.StringType.get())))
+        .create();
+    tagApi.assignTag(currentCatalogName, "targetbound1", target, List.of(VALUES.get(0)));
+    tagApi.assignTag(currentCatalogName, "targetbound2", target, List.of(VALUES.get(0)));
+
+    try (Response res =
+        tagApi.getObjectTagsResponse(
+            currentCatalogName, target, null, first.getNextPageToken(), 1)) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(() -> "replayed token -> " + body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, "BadRequest");
+    }
+
+    Assertions.assertThat(tagApi.getObjectTagsAll(currentCatalogName, target, null).getObjectTags())
+        .hasSize(2);
+  }
+
+  /**
+   * A column's identity is its table's id together with its Iceberg field id, and a column dropped
+   * and recreated under the same name gets a new field id -- Iceberg never reuses one -- while the
+   * table, the path and the column name all stay as they were. So this is the replacement that
+   * changes nothing a page token could otherwise notice, and a token that survived it would resume
+   * a position taken in one column's assignments inside a different column's, hiding every
+   * definition that sorts at or below where the first page stopped.
+   */
+  @Test
+  public void testObjectTagsTokenDoesNotSurviveASameNameColumnReplacement() {
+    createT1();
+    Tag first = createAllTargetsTag("columnbound1");
+    Tag second = createAllTargetsTag("columnbound2");
+    // a page of a target's tags advances by definition id, so name the one a first page of one
+    // returns rather than assuming which of the two the server assigned the lower id
+    Tag lower = Long.parseLong(first.getId()) < Long.parseLong(second.getId()) ? first : second;
+    TagAttachmentTarget target = columnTargetIn(NS1, NS1_T1.name(), "data");
+    tagApi.assignTag(currentCatalogName, first.getName(), target, List.of(VALUES.get(0)));
+    tagApi.assignTag(currentCatalogName, second.getName(), target, List.of(VALUES.get(0)));
+
+    GetObjectTagsResponse firstPage =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, 1);
+    Assertions.assertThat(firstPage.getObjectTags()).hasSize(1);
+    Assertions.assertThat(firstPage.getObjectTags().iterator().next().getTag().getName())
+        .isEqualTo(lower.getName());
+    Assertions.assertThat(firstPage.getNextPageToken()).isNotNull().isNotEmpty();
+
+    // The same table, the same path, the same column name, a different column.
+    restCatalog.loadTable(NS1_T1).updateSchema().deleteColumn("data").commit();
+    restCatalog.loadTable(NS1_T1).updateSchema().addColumn("data", Types.StringType.get()).commit();
+    // on the replacement, the definition the first page already returned: a surviving token would
+    // resume strictly past it and answer that the column carries nothing
+    tagApi.assignTag(currentCatalogName, lower.getName(), target, List.of(VALUES.get(0)));
+
+    try (Response res =
+        tagApi.getObjectTagsResponse(
+            currentCatalogName, target, null, firstPage.getNextPageToken(), 1)) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(() -> "replayed token -> " + body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, "BadRequest");
+    }
+
+    // and a fresh read sees exactly the assignment a surviving token would have skipped
+    GetObjectTagsResponse afterReplacement =
+        tagApi.getObjectTagsAll(currentCatalogName, target, null);
+    Assertions.assertThat(afterReplacement.getObjectTags()).hasSize(1);
+    Assertions.assertThat(afterReplacement.getObjectTags().iterator().next().getTag().getName())
+        .isEqualTo(lower.getName());
+  }
+
+  @Test
+  public void testGetObjectTagsRejectsAnInvalidPageToken() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+
+    // A token is opaque, so a value this server did not issue is client input it cannot interpret.
+    assertObjectTagsRequestIsBadRequest(target, "pageToken=not-a-token-this-server-issued", null);
+  }
+
+  @Test
+  public void testListObjectsByTagWithoutPaginationParametersReturnsTheFirstPage() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+
+    ListObjectsByTagResponse response =
+        tagApi.listObjectsByTag(currentCatalogName, tagName, null, null, null);
+
+    Assertions.assertThat(response.getObjects()).hasSize(1);
+    Assertions.assertThat(response.getNextPageToken()).isNotNull().isNotEmpty();
+  }
+
+  @Test
+  public void testListObjectsByTagWithPaginationTrueMatchesOmittingIt() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+
+    ListObjectsByTagResponse omitted =
+        tagApi.listObjectsByTag(currentCatalogName, tagName, null, null, null);
+    try (Response res =
+        tagApi.listObjectsByTagRaw(currentCatalogName, tagName, "pagination=true")) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      ListObjectsByTagResponse explicit = res.readEntity(ListObjectsByTagResponse.class);
+      Assertions.assertThat(explicit.getObjects()).isEqualTo(omitted.getObjects());
+      Assertions.assertThat(explicit.getNextPageToken()).isEqualTo(omitted.getNextPageToken());
+    }
+  }
+
+  @Test
+  public void testListObjectsByTagWithPaginationFalseReturnsTheCompleteResult() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+
+    ListObjectsByTagResponse full = tagApi.listObjectsByTagAll(currentCatalogName, tagName, null);
+
+    List<TagAttachmentTarget> paged = new ArrayList<>();
+    String token = "";
+    while (token != null) {
+      ListObjectsByTagResponse page =
+          tagApi.listObjectsByTag(currentCatalogName, tagName, null, token, 1);
+      page.getObjects().forEach(o -> paged.add(o.getTarget()));
+      token = page.getNextPageToken();
+    }
+    Assertions.assertThat(full.getObjects()).hasSize(3);
+    Assertions.assertThat(full.getNextPageToken()).isNull();
+    Assertions.assertThat(full.getObjects().stream().map(TaggedObject::getTarget))
+        .containsExactlyInAnyOrderElementsOf(paged);
+  }
+
+  @Test
+  public void testListObjectsByTagRejectsPaginationFalseCombinedWithAPageTokenOrPageSize() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+    String realToken =
+        tagApi.listObjectsByTag(currentCatalogName, tagName, null, null, null).getNextPageToken();
+    Assertions.assertThat(realToken).isNotNull().isNotEmpty();
+
+    for (String query :
+        List.of(
+            "pagination=false&pageToken=",
+            "pagination=false&pageToken=" + realToken,
+            "pagination=false&pageSize=1",
+            "pagination=false&pageSize=")) {
+      assertReverseLookupRequestIsBadRequest(tagName, query, null);
+    }
+  }
+
+  @Test
+  public void testListObjectsByTagRejectsAPaginationValueThatIsNotTrueOrFalse() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+
+    for (String query :
+        List.of("pagination=", "pagination=yes", "pagination=TRUE", "pagination=1")) {
+      assertReverseLookupRequestIsBadRequest(tagName, query, "pagination");
+    }
+  }
+
+  @Test
+  public void testListObjectsByTagRejectsARepeatedPaginationParameter() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+
+    for (String name : List.of("pagination", "pageToken", "pageSize")) {
+      String[] values =
+          switch (name) {
+            case "pagination" -> new String[] {"true", "true"};
+            case "pageSize" -> new String[] {"1", "1"};
+            default -> new String[] {"", ""};
+          };
+      try (Response res =
+          tagApi.listObjectsByTagWithRepeatedParameter(currentCatalogName, tagName, name, values)) {
+        String body = res.readEntity(String.class);
+        Assertions.assertThat(res.getStatus())
+            .as(name + " twice -> " + body)
+            .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertErrorType(body, "BadRequest");
+        Assertions.assertThat(body).contains(name);
+      }
+    }
+  }
+
+  @Test
+  public void testListObjectsByTagContinuationUsesTheServerDefaultNotTheTokensSize() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+    setCatalogDefaultPageSize(100);
+
+    ListObjectsByTagResponse first =
+        tagApi.listObjectsByTag(currentCatalogName, tagName, null, null, 1);
+    Assertions.assertThat(first.getObjects()).hasSize(1);
+    ListObjectsByTagResponse rest =
+        tagApi.listObjectsByTag(currentCatalogName, tagName, null, first.getNextPageToken(), null);
+    Assertions.assertThat(rest.getObjects()).hasSize(2);
+    Assertions.assertThat(rest.getNextPageToken()).isNull();
+  }
+
+  /**
+   * The reverse lookup inherits the same page-size correction, and asserts it rather than adding
+   * one.
+   */
+  @Test
+  public void testListObjectsByTagRejectsAPageSizeThatCannotBeRead() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+
+    for (String query :
+        List.of("pageSize=large", "pageSize=1.5", "pageSize=", "pageSize=0", "pageSize=-1")) {
+      assertReverseLookupRequestIsBadRequest(tagName, query, "pageSize");
+    }
+    Assertions.assertThat(
+            tagApi.listObjectsByTagAll(currentCatalogName, tagName, null).getObjects())
+        .hasSize(3);
+  }
+
+  @Test
+  public void testListObjectsByTagRejectsAnInvalidPageToken() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+
+    assertReverseLookupRequestIsBadRequest(
+        tagName, "pageToken=not-a-token-this-server-issued", null);
+  }
+
+  /**
+   * A value filter the client sent is never silently dropped. This has to go through HTTP: the
+   * binding turns a present-but-empty query value into null before any handler sees it, so passing
+   * an empty string straight to the handler would exercise a case the wire cannot produce and would
+   * pass while the request path still answered as though no filter had been asked for.
+   */
+  @Test
+  public void testListObjectsByTagRejectsAnEmptyValueFilter() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+
+    assertReverseLookupRequestIsBadRequest(tagName, "value=", "value");
+
+    // An absent filter is still the unfiltered read, so the rejection is about presence, not about
+    // the parameter existing at all.
+    Assertions.assertThat(
+            tagApi.listObjectsByTagAll(currentCatalogName, tagName, null).getObjects())
+        .hasSize(3);
+  }
+
+  /**
+   * A continuation token belongs to the query that produced it. A cursor alone says where to resume
+   * and nothing about what was being read, so replaying one against a different target would resume
+   * from a position that means nothing there and silently skip results, which a client cannot tell
+   * from a short page.
+   */
+  @Test
+  public void testGetObjectTagsRejectsAPageTokenFromADifferentTarget() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+    String token =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, null).getNextPageToken();
+    Assertions.assertThat(token).isNotNull().isNotEmpty();
+
+    TagAttachmentTarget otherTarget =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of(NS1.levels()[0])).build();
+    assertObjectTagsRequestIsBadRequest(otherTarget, "pageToken=" + token, null);
+  }
+
+  /** The view is part of the query too: a direct cursor is not an effective cursor. */
+  @Test
+  public void testGetObjectTagsRejectsAPageTokenFromADifferentView() {
+    TagAttachmentTarget target = targetWithThreeTagsAndAPageOfOne();
+    String token =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, null).getNextPageToken();
+    Assertions.assertThat(token).isNotNull().isNotEmpty();
+
+    assertObjectTagsRequestIsBadRequest(target, "view=effective&pageToken=" + token, null);
+
+    // The same query still continues, and honours a size given on the continuation rather than the
+    // one the token was minted with, so binding the query did not freeze the page size.
+    GetObjectTagsResponse rest =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, token, 2);
+    Assertions.assertThat(rest.getObjectTags()).hasSize(2);
+  }
+
+  /** The value filter is part of the reverse lookup's query. */
+  @Test
+  public void testListObjectsByTagRejectsAPageTokenFromADifferentValueFilter() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+    String token =
+        tagApi.listObjectsByTag(currentCatalogName, tagName, "public", null, 1).getNextPageToken();
+    Assertions.assertThat(token).isNotNull().isNotEmpty();
+
+    assertReverseLookupRequestIsBadRequest(
+        tagName, "value=internal&pageToken=" + token + "&pageSize=1", null);
+
+    // The same filter continues normally, with a size chosen on the continuation.
+    ListObjectsByTagResponse rest =
+        tagApi.listObjectsByTag(currentCatalogName, tagName, "public", token, 5);
+    Assertions.assertThat(rest.getObjects()).hasSize(1);
+  }
+
+  /** And so is the definition being looked up. */
+  @Test
+  public void testListObjectsByTagRejectsAPageTokenFromADifferentTag() {
+    String tagName = tagOnThreeTargetsWithAPageOfOne();
+    String token =
+        tagApi.listObjectsByTag(currentCatalogName, tagName, null, null, 1).getNextPageToken();
+    Assertions.assertThat(token).isNotNull().isNotEmpty();
+
+    createAllTargetsTag("othermoderevtag");
+    tagApi.assignTag(currentCatalogName, "othermoderevtag", tableTarget(), List.of("public"));
+    assertReverseLookupRequestIsBadRequest(
+        "othermoderevtag", "pageToken=" + token + "&pageSize=1", null);
+  }
+
+  /**
+   * getObjectTags pages the tags it returns. The walk behind an effective read is never the thing
+   * being bounded: every page still considers the whole hierarchy for the tags on it.
+   */
+  @Test
+  public void testGetObjectTagsPagination() {
+    createT1();
+    for (String name : List.of("pagetag1", "pagetag2", "pagetag3")) {
+      createAllTargetsTag(name);
+      tagApi.assignTag(currentCatalogName, name, tableTarget(), List.of("public"));
+    }
+    TagAttachmentTarget target = tableTargetIn(NS1, NS1_T1.name());
+
+    // Asking for the target's whole set is now an explicit request, and it carries no continuation.
+    GetObjectTagsResponse all = tagApi.getObjectTagsAll(currentCatalogName, target, null);
+    Assertions.assertThat(all.getObjectTags()).hasSize(3);
+    Assertions.assertThat(all.getNextPageToken()).isNull();
+
+    // A size on its own selects no mode. It bounds the page the request was going to get anyway,
+    // so it comes back short with a continuation rather than answering the whole set.
+    GetObjectTagsResponse sizeOnly =
+        tagApi.getObjectTagsPage(currentCatalogName, target, null, null, 1);
+    Assertions.assertThat(sizeOnly.getObjectTags()).hasSize(1);
+    Assertions.assertThat(sizeOnly.getNextPageToken()).isNotNull().isNotEmpty();
+
+    // One tag per page means three pages, and a continuation that omits pageSize uses the server's
+    // default rather than the size the token remembers, so this loop also pins that the second
+    // request is not silently bound to 1 by the token alone.
+    java.util.List<ObjectTag> paged = new java.util.ArrayList<>();
+    String pageToken = "";
+    int pages = 0;
+    do {
+      GetObjectTagsResponse page =
+          tagApi.getObjectTagsPage(currentCatalogName, target, null, pageToken, 1);
+      Assertions.assertThat(page.getObjectTags()).hasSizeLessThanOrEqualTo(1);
+      paged.addAll(page.getObjectTags());
+      pageToken = page.getNextPageToken();
+      pages++;
+      Assertions.assertThat(pages).isLessThan(10);
+    } while (pageToken != null);
+    Assertions.assertThat(pages).isGreaterThan(1);
+    Assertions.assertThat(paged).hasSize(3);
+    Assertions.assertThat(paged.stream().map(o -> o.getTag().getId()).distinct()).hasSize(3);
+
+    for (String name : List.of("pagetag1", "pagetag2", "pagetag3")) {
+      tagApi.dropTag(currentCatalogName, name, true);
+    }
+  }
+
+  private void assertGetObjectTagsFails(
+      TargetType targetType,
+      String namespace,
+      String targetName,
+      String column,
+      String view,
+      Response.Status expected) {
+    assertGetObjectTagsFails(targetType, namespace, targetName, column, view, expected, null);
+  }
+
+  /**
+   * Sends a raw object-tags query and pins the status and, when given, the wire error type. The
+   * target-type is spelled by the caller rather than derived, because the kind is what the request
+   * states and several of these cases are exactly a kind disagreeing with the rest of the address.
+   */
+  private void assertGetObjectTagsFails(
+      TargetType targetType,
+      String namespace,
+      String targetName,
+      String column,
+      String view,
+      Response.Status expected,
+      String expectedType) {
+    Map<String, String> queryParams = new java.util.HashMap<>();
+    if (targetType != null) {
+      queryParams.put("target-type", targetType.toString());
+    }
+    if (namespace != null) {
+      queryParams.put("namespace", namespace);
+    }
+    if (targetName != null) {
+      queryParams.put("target-name", targetName);
+    }
+    if (column != null) {
+      queryParams.put("column", column);
+    }
+    if (view != null) {
+      queryParams.put("view", view);
+    }
+    try (Response res =
+        tagApi
+            .request("polaris/v1/{cat}/object-tags", Map.of("cat", currentCatalogName), queryParams)
+            .get()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus()).as(body).isEqualTo(expected.getStatusCode());
+      if (expectedType != null) {
+        assertErrorType(body, expectedType);
+      }
     }
   }
 

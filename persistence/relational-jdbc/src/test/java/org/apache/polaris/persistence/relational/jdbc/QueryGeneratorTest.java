@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.tag.TargetField;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -165,6 +166,68 @@ public class QueryGeneratorTest {
         () ->
             QueryGenerator.generateSelectQueryWithEntityIdsVersionOnly(
                 REALM_ID, Collections.emptyList()));
+  }
+
+  @Test
+  void testGenerateSelectQueryWithTargetFields_singleField() {
+    List<TargetField> targetFields = Collections.singletonList(new TargetField(123L, 1L, 0));
+    String expectedQuery =
+        "SELECT target_catalog_id, target_id, field_id, tag_catalog_id, tag_id, tag_value"
+            + " FROM TAG_ASSIGNMENT_RECORD"
+            + " WHERE (target_catalog_id, target_id, field_id) IN ((?, ?, ?)) AND realm_id = ?";
+    QueryGenerator.PreparedQuery query =
+        QueryGenerator.generateSelectQueryWithTargetFields(REALM_ID, targetFields, null);
+    assertEquals(expectedQuery, query.sql());
+    Assertions.assertThat(query.parameters()).containsExactly(123L, 1L, 0, REALM_ID);
+  }
+
+  /**
+   * A bounded read is ordered as well as limited. The order is the row identity, so asking the same
+   * question twice returns the same rows: a caller that compares two reads to establish that they
+   * describe one state must not be told they disagree because the store was free to pick a
+   * different subset the second time.
+   */
+  @Test
+  void testGenerateSelectQueryWithTargetFields_boundedReadIsOrdered() {
+    List<TargetField> targetFields = Collections.singletonList(new TargetField(123L, 1L, 0));
+    String expectedQuery =
+        "SELECT target_catalog_id, target_id, field_id, tag_catalog_id, tag_id, tag_value"
+            + " FROM TAG_ASSIGNMENT_RECORD"
+            + " WHERE (target_catalog_id, target_id, field_id) IN ((?, ?, ?)) AND realm_id = ?"
+            + " ORDER BY target_catalog_id, target_id, field_id, tag_catalog_id, tag_id ASC"
+            + " LIMIT 21";
+    QueryGenerator.PreparedQuery query =
+        QueryGenerator.generateSelectQueryWithTargetFields(REALM_ID, targetFields, 21);
+    assertEquals(expectedQuery, query.sql());
+    Assertions.assertThat(query.parameters()).containsExactly(123L, 1L, 0, REALM_ID);
+  }
+
+  /**
+   * Two levels of a hierarchy read in one statement: the SQL shape the bulk effective-tag read
+   * relies on for cross-level coherence (one statement covering every requested level).
+   */
+  @Test
+  void testGenerateSelectQueryWithTargetFields_multipleFields() {
+    List<TargetField> targetFields =
+        Arrays.asList(new TargetField(10L, 20L, 0), new TargetField(10L, 21L, 0));
+    String expectedQuery =
+        "SELECT target_catalog_id, target_id, field_id, tag_catalog_id, tag_id, tag_value"
+            + " FROM TAG_ASSIGNMENT_RECORD"
+            + " WHERE (target_catalog_id, target_id, field_id) IN ((?, ?, ?), (?, ?, ?))"
+            + " AND realm_id = ?";
+    QueryGenerator.PreparedQuery query =
+        QueryGenerator.generateSelectQueryWithTargetFields(REALM_ID, targetFields, null);
+    assertEquals(expectedQuery, query.sql());
+    Assertions.assertThat(query.parameters()).containsExactly(10L, 20L, 0, 10L, 21L, 0, REALM_ID);
+  }
+
+  @Test
+  void testGenerateSelectQueryWithTargetFields_emptyList() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            QueryGenerator.generateSelectQueryWithTargetFields(
+                REALM_ID, Collections.emptyList(), null));
   }
 
   @Test

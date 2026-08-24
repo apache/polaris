@@ -41,10 +41,12 @@ import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.types.CreateTagRequest;
+import org.apache.polaris.service.types.ListObjectsByTagResponse;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -571,6 +573,138 @@ public class TagCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         .shouldFailWith(PolarisPrivilege.TAG_DROP)
         .shouldFailWith(PolarisPrivilege.TAG_DETACH)
         .shouldFailWith(PolarisPrivilege.TAG_FULL_METADATA)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testGetObjectTagsOnCatalogPrivileges() {
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+    return authzTestsBuilder("getObjectTagsOnCatalog")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .getObjectTags(catalogTarget, false, true, null, null))
+        .shouldPassWith(PolarisPrivilege.CATALOG_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TAG_READ)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testGetObjectTagsOnNamespacePrivileges() {
+    TagAttachmentTarget namespaceTarget =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE)
+            .setPath(Arrays.asList(NS1.levels()))
+            .build();
+    return authzTestsBuilder("getObjectTagsOnNamespace")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .getObjectTags(namespaceTarget, true, true, null, null))
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.CATALOG_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TAG_READ)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testGetObjectTagsOnTablePrivileges() {
+    List<String> tablePath = new java.util.ArrayList<>(Arrays.asList(NS1.levels()));
+    tablePath.add(TABLE_NS1_1.name());
+    TagAttachmentTarget tableTarget =
+        TagAttachmentTarget.builder(TargetType.TABLE).setPath(tablePath).build();
+    return authzTestsBuilder("getObjectTagsOnTable")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .getObjectTags(tableTarget, true, true, null, null))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TAG_READ)
+        .createTests();
+  }
+
+  /**
+   * The per-target half of the reverse lookup's contract, which the privilege-set tests above
+   * cannot express: reading the definition does not reveal the objects carrying it. A caller
+   * holding TAG_READ plus read-properties on one namespace sees that namespace's assignment and not
+   * the other's, and the unreadable one is omitted rather than turned into a denial of the whole
+   * request.
+   */
+  @Test
+  public void testListObjectsByTagOmitsTargetsTheCallerCannotRead() {
+    grantSetupPrivilege(PolarisPrivilege.TAG_CREATE);
+    grantSetupPrivilege(PolarisPrivilege.TAG_ATTACH);
+    grantSetupPrivilege(PolarisPrivilege.NAMESPACE_ATTACH_TAG);
+    TagCatalogHandler setup = newHandler(Set.of(PRINCIPAL_ROLE2));
+    setup.createTag(allTargetsRequest("partial_read_tag"));
+    TagAttachmentTarget readableTarget =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of(NS1.levels())).build();
+    TagAttachmentTarget hiddenTarget =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of(NS2.levels())).build();
+    setup.assignTag("partial_read_tag", readableTarget, List.of("v1"));
+    setup.assignTag("partial_read_tag", hiddenTarget, List.of("v1"));
+
+    // The caller may read the definition and exactly one of the two namespaces.
+    assertSuccess(
+        newRootAdminService()
+            .grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TAG_READ));
+    assertSuccess(
+        newRootAdminService()
+            .grantPrivilegeOnNamespaceToRole(
+                CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.NAMESPACE_READ_PROPERTIES));
+
+    ListObjectsByTagResponse response =
+        newHandler(Set.of(PRINCIPAL_ROLE1))
+            .listObjectsByTag("partial_read_tag", null, true, null, null);
+
+    Assertions.assertThat(response.getObjects())
+        .as("only the namespace the caller may read is reported")
+        .hasSize(1);
+    Assertions.assertThat(response.getObjects().iterator().next().getTarget())
+        .isEqualTo(readableTarget);
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testListObjectsByTagPrivileges() {
+    grantSetupPrivilege(PolarisPrivilege.TAG_CREATE);
+    newHandler(Set.of(PRINCIPAL_ROLE2)).createTag(allTargetsRequest("authz_lookup_tag"));
+    // The operation is authorized on the definition alone, the way loadTag is: TAG_READ on the
+    // definition is the whole requirement, and it confers no authority over the objects carrying
+    // the tag. Whether a particular target may be reported is a separate, per-target decision made
+    // while the page is built, which is not a privilege-set question and is covered on its own.
+    return authzTestsBuilder("listObjectsByTag")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .listObjectsByTag("authz_lookup_tag", null, true, null, null))
+        // The same set loadTag takes, because it is the same requirement: TAG_READ on the
+        // definition, and the privileges that subsume it.
+        .shouldPassWith(PolarisPrivilege.TAG_READ)
+        .shouldPassWith(PolarisPrivilege.TAG_WRITE)
+        .shouldPassWith(PolarisPrivilege.TAG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.TAG_LIST)
+        .shouldFailWith(PolarisPrivilege.TAG_CREATE)
+        .shouldFailWith(PolarisPrivilege.TAG_DROP)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
         .createTests();
   }
 }

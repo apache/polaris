@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -46,6 +48,8 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
@@ -53,17 +57,23 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentTargetsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.TagAssignmentResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.tag.CandidateBudget;
 import org.apache.polaris.core.tag.ClassifiedAssignment;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager;
 import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagAssignmentTargetToken;
 import org.apache.polaris.core.tag.TagEntity;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
 import org.assertj.core.api.Assertions;
@@ -3513,6 +3523,179 @@ public class PolarisTestMetaStoreManager {
         .toList();
   }
 
+  /**
+   * A tag read is bounded by the rows it may consume, not only by the results its caller may
+   * return. A level's assignment count is not bounded by anything the request can see, so the read
+   * carries a candidate budget and stops one row past it: that extra row is how the caller tells a
+   * trimmed read from a complete one.
+   */
+  void testTagReadStopsAtItsCandidateBudget() {
+    PolarisBaseEntity catalog = this.createTestCatalog("budget");
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    if (!tagAssignmentsSupported(N1)) {
+      return;
+    }
+    for (int i = 1; i <= 4; i++) {
+      TagEntity tag = createTag(catalog, "BUDGET_T" + i, List.of("v1"));
+      TagAssignmentResult assigned =
+          polarisMetaStoreManager.assignTagToEntity(
+              polarisCallContext, catalogPath, N1, 0, catalogPath, tag, "v1");
+      if (assigned.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+        // fail-closed write gate: this store's schema predates tag assignments
+        return;
+      }
+      Assertions.assertThat(assigned.isSuccess()).isTrue();
+    }
+    PolarisBaseEntity resolvedN1 =
+        polarisMetaStoreManager
+            .loadEntity(polarisCallContext, N1.getCatalogId(), N1.getId(), N1.getType())
+            .getEntity();
+    List<PolarisTagAssignmentManager.TargetLevel> levels =
+        List.of(new PolarisTagAssignmentManager.TargetLevel(resolvedN1, 0));
+
+    // Four rows exist and two may be consumed: the read comes back with three, the budget plus the
+    // one row that says there were more. Nothing here asks the store for all four.
+    LoadTagAssignmentsResult bounded =
+        polarisMetaStoreManager.loadTagsOnEntities(polarisCallContext, levels, 2);
+    Assertions.assertThat(bounded.isSuccess()).isTrue();
+    Assertions.assertThat(bounded.getTagAssignmentRecords()).hasSize(3);
+
+    // A budget the level fits inside returns exactly what the read returned before it was bounded.
+    LoadTagAssignmentsResult whole =
+        polarisMetaStoreManager.loadTagsOnEntities(polarisCallContext, levels, 4);
+    Assertions.assertThat(whole.isSuccess()).isTrue();
+    Assertions.assertThat(whole.getTagAssignmentRecords()).hasSize(4);
+    Assertions.assertThat(
+            whole.getTagAssignmentRecords().stream().map(TagAssignmentRecord::getTagId).distinct())
+        .hasSize(4);
+  }
+
+  /**
+   * A column's tags are resolved against an Iceberg schema, and that schema comes from the table's
+   * metadata pointer. The pointer is therefore one of the facts the response is built from, so a
+   * read whose level moved must establish that the pointer it resolved against still stands.
+   *
+   * <p>The negative half is the point of the test as much as the positive one: a whole-object level
+   * resolves no schema, so a pointer that moved under it changes nothing about what the response
+   * says. An Iceberg commit rewriting a metadata location must not fail that read, and it does not.
+   */
+  void testTagReadRejectsAMovedColumnSchema() {
+    PolarisBaseEntity catalog = this.createTestCatalog("schemacoherence");
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    if (!tagAssignmentsSupported(N1)) {
+      return;
+    }
+    PolarisBaseEntity table =
+        this.createEntity(
+            List.of(catalog, N1),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "COHERENT_TBL");
+    TagEntity tag = createTag(catalog, "COHERENCE_T1", List.of("v1"));
+    TagAssignmentResult assigned =
+        polarisMetaStoreManager.assignTagToEntity(
+            polarisCallContext, List.of(catalog, N1), table, 5, catalogPath, tag, "v1");
+    if (assigned.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+      // fail-closed write gate: this store's schema predates tag assignments
+      return;
+    }
+    Assertions.assertThat(assigned.isSuccess()).isTrue();
+
+    // The state the request resolves its column against: a table carrying one metadata pointer.
+    BasePersistence ms = polarisCallContext.getMetaStore();
+    PolarisBaseEntity atFirstPointer =
+        new PolarisBaseEntity.Builder(table)
+            .internalPropertiesAsMap(
+                Map.of(IcebergTableLikeEntity.METADATA_LOCATION_KEY, "file:///m/00000-a.json"))
+            .entityVersion(table.getEntityVersion() + 1)
+            .build();
+    ms.writeEntity(polarisCallContext, atFirstPointer, false, table);
+
+    // The commit: a new metadata pointer, and the entity version every write moves with it.
+    ms.writeEntity(
+        polarisCallContext,
+        new PolarisBaseEntity.Builder(atFirstPointer)
+            .internalPropertiesAsMap(
+                Map.of(IcebergTableLikeEntity.METADATA_LOCATION_KEY, "file:///m/00001-b.json"))
+            .entityVersion(atFirstPointer.getEntityVersion() + 1)
+            .build(),
+        false,
+        atFirstPointer);
+
+    // A column level resolved against the old pointer cannot be answered: the schema that produced
+    // the field id and the assignments about to be returned do not describe one state.
+    Assertions.assertThatThrownBy(
+            () ->
+                polarisMetaStoreManager.loadTagsOnEntities(
+                    polarisCallContext,
+                    List.of(
+                        new PolarisTagAssignmentManager.TargetLevel(
+                            atFirstPointer,
+                            5,
+                            atFirstPointer
+                                .getInternalPropertiesAsMap()
+                                .get(IcebergTableLikeEntity.METADATA_LOCATION_KEY))),
+                    Integer.MAX_VALUE))
+        .isInstanceOf(PolarisServiceUnavailableException.class)
+        .hasMessageContaining("Concurrent modification");
+
+    // The same moved pointer under a whole-object level: nothing was resolved against it, so the
+    // read stands.
+    LoadTagAssignmentsResult wholeObject =
+        polarisMetaStoreManager.loadTagsOnEntities(
+            polarisCallContext,
+            List.of(new PolarisTagAssignmentManager.TargetLevel(atFirstPointer, 0)),
+            Integer.MAX_VALUE);
+    Assertions.assertThat(wholeObject.isSuccess()).isTrue();
+
+    // The shape an effective column read actually sends: the whole table and the column on that
+    // same
+    // table, in that order, one entity requested at two levels. Only the column level carries a
+    // schema pointer, so a check that looks at one level per entity looks at the wrong one here and
+    // reports the read coherent. Each level's own facts have to survive for the response to
+    // describe
+    // one state.
+    Assertions.assertThatThrownBy(
+            () ->
+                polarisMetaStoreManager.loadTagsOnEntities(
+                    polarisCallContext,
+                    List.of(
+                        new PolarisTagAssignmentManager.TargetLevel(atFirstPointer, 0),
+                        new PolarisTagAssignmentManager.TargetLevel(
+                            atFirstPointer,
+                            5,
+                            atFirstPointer
+                                .getInternalPropertiesAsMap()
+                                .get(IcebergTableLikeEntity.METADATA_LOCATION_KEY))),
+                    Integer.MAX_VALUE))
+        .isInstanceOf(PolarisServiceUnavailableException.class)
+        .hasMessageContaining("Concurrent modification");
+
+    // ... and the same combined shape with the column level's pointer current again is answered, so
+    // the stricter check refuses a moved pointer rather than refusing every multi-level read.
+    PolarisBaseEntity atSecondPointer =
+        polarisMetaStoreManager
+            .loadEntity(polarisCallContext, table.getCatalogId(), table.getId(), table.getType())
+            .getEntity();
+    LoadTagAssignmentsResult combinedCurrent =
+        polarisMetaStoreManager.loadTagsOnEntities(
+            polarisCallContext,
+            List.of(
+                new PolarisTagAssignmentManager.TargetLevel(atSecondPointer, 0),
+                new PolarisTagAssignmentManager.TargetLevel(
+                    atSecondPointer,
+                    5,
+                    atSecondPointer
+                        .getInternalPropertiesAsMap()
+                        .get(IcebergTableLikeEntity.METADATA_LOCATION_KEY))),
+            Integer.MAX_VALUE);
+    Assertions.assertThat(combinedCurrent.isSuccess()).isTrue();
+  }
+
   void testTagAssignment() {
     PolarisBaseEntity catalog = this.createTestCatalog("test");
     PolarisBaseEntity N1 =
@@ -4131,7 +4314,8 @@ public class PolarisTestMetaStoreManager {
                 tag.getCatalogId(),
                 tag.getId(),
                 null,
-                PageToken.readEverything()))
+                PageToken.readEverything(),
+                CandidateBudget.unbounded()))
         .isEmpty();
   }
 
@@ -4164,7 +4348,166 @@ public class PolarisTestMetaStoreManager {
                 tag.getCatalogId(),
                 tag.getId(),
                 null,
-                PageToken.readEverything()))
+                PageToken.readEverything(),
+                CandidateBudget.unbounded()))
         .isEmpty();
+  }
+
+  void testTagReverseLookup() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    if (!tagAssignmentsSupported(N1)) {
+      return;
+    }
+    TagEntity tag = createTag(catalog, "T4", List.of("v1", "v2"));
+    TagEntity otherTag = createTag(catalog, "T5", List.of("v1"));
+    List<PolarisEntityCore> tablePath = List.of(catalog, N1);
+    PolarisBaseEntity TA =
+        this.createEntity(
+            tablePath, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, "TBL_A");
+    PolarisBaseEntity TB =
+        this.createEntity(
+            tablePath, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, "TBL_B");
+    TagAssignmentResult assignedFirst =
+        polarisMetaStoreManager.assignTagToEntity(
+            polarisCallContext, catalogPath, N1, 0, catalogPath, tag, "v1");
+    if (assignedFirst.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+      // fail-closed write gate: this store's schema predates tag assignments
+      Assertions.assertThat(assignedFirst.getExtraInformation()).contains("schema version");
+      // fail-closed read gate: the reverse-lookup read rejects the same way the write did,
+      // never a silent empty result
+      LoadTagAssignmentTargetsResult reverseLookup =
+          polarisMetaStoreManager.loadTargetsOnTag(
+              polarisCallContext,
+              tag,
+              null,
+              PageToken.readEverything(),
+              CandidateBudget.unbounded());
+      Assertions.assertThat(reverseLookup.getReturnStatus())
+          .isEqualTo(BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED);
+      Assertions.assertThat(reverseLookup.getExtraInformation()).contains("schema version");
+      return;
+    }
+    Assertions.assertThat(assignedFirst.isSuccess()).isTrue();
+    for (Object[] row :
+        new Object[][] {
+          {TA, 0, "v2"}, {TA, 5, "v1"}, {TB, 0, "v1"},
+        }) {
+      Assertions.assertThat(
+              polarisMetaStoreManager
+                  .assignTagToEntity(
+                      polarisCallContext,
+                      tablePath,
+                      (PolarisBaseEntity) row[0],
+                      (Integer) row[1],
+                      catalogPath,
+                      tag,
+                      (String) row[2])
+                  .isSuccess())
+          .isTrue();
+    }
+    // an assignment of another definition must never appear in this definition's lookup
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .assignTagToEntity(
+                    polarisCallContext, catalogPath, N1, 0, catalogPath, otherTag, "v1")
+                .isSuccess())
+        .isTrue();
+
+    BasePersistence ms = polarisCallContext.getMetaStore();
+    List<TagAssignmentRecord> all =
+        ms.loadAllTargetsOnTag(
+            polarisCallContext,
+            tag.getCatalogId(),
+            tag.getId(),
+            null,
+            PageToken.readEverything(),
+            CandidateBudget.unbounded());
+    Assertions.assertThat(all).hasSize(4);
+    Assertions.assertThat(all).allMatch(r -> r.getTagId() == tag.getId());
+
+    // exact, case-sensitive value filter; a filter for an unknown value matches nothing
+    Assertions.assertThat(
+            ms.loadAllTargetsOnTag(
+                polarisCallContext,
+                tag.getCatalogId(),
+                tag.getId(),
+                "v1",
+                PageToken.readEverything(),
+                CandidateBudget.unbounded()))
+        .hasSize(3)
+        .allMatch(r -> "v1".equals(r.getValue()));
+    Assertions.assertThat(
+            ms.loadAllTargetsOnTag(
+                polarisCallContext,
+                tag.getCatalogId(),
+                tag.getId(),
+                "V1",
+                PageToken.readEverything(),
+                CandidateBudget.unbounded()))
+        .isEmpty();
+
+    // pagination: deterministic (targetId, fieldId) order, keyset resume, no dups, no misses
+    Comparator<TagAssignmentRecord> order =
+        Comparator.comparingLong(TagAssignmentRecord::getTargetId)
+            .thenComparingInt(TagAssignmentRecord::getFieldId);
+    List<TagAssignmentRecord> expected = all.stream().sorted(order).collect(Collectors.toList());
+    List<TagAssignmentRecord> paged = new ArrayList<>();
+    PageToken request = PageToken.fromLimit(2);
+    int pages = 0;
+    while (true) {
+      List<TagAssignmentRecord> raw =
+          ms.loadAllTargetsOnTag(
+              polarisCallContext,
+              tag.getCatalogId(),
+              tag.getId(),
+              null,
+              request,
+              CandidateBudget.unbounded());
+      Page<TagAssignmentRecord> page =
+          Page.mapped(
+              request, raw.stream(), Function.identity(), TagAssignmentTargetToken::fromRecord);
+      Assertions.assertThat(page.items().size()).isLessThanOrEqualTo(2);
+      Assertions.assertThat(page.items()).isSortedAccordingTo(order);
+      paged.addAll(page.items());
+      pages++;
+      String encoded = page.encodedResponseToken();
+      if (encoded == null) {
+        break;
+      }
+      Assertions.assertThat(pages).isLessThan(10); // paranoia: no infinite paging
+      request = PageToken.build(encoded, null, 0 /* keep the size the token carries */, () -> true);
+    }
+    Assertions.assertThat(pages).isEqualTo(2);
+    Assertions.assertThat(paged).containsExactlyElementsOf(expected);
+
+    // page size 1 with a value filter still terminates and covers exactly the matching rows
+    paged.clear();
+    request = PageToken.fromLimit(1);
+    while (true) {
+      List<TagAssignmentRecord> raw =
+          ms.loadAllTargetsOnTag(
+              polarisCallContext,
+              tag.getCatalogId(),
+              tag.getId(),
+              "v1",
+              request,
+              CandidateBudget.unbounded());
+      Page<TagAssignmentRecord> page =
+          Page.mapped(
+              request, raw.stream(), Function.identity(), TagAssignmentTargetToken::fromRecord);
+      paged.addAll(page.items());
+      String encoded = page.encodedResponseToken();
+      if (encoded == null) {
+        break;
+      }
+      Assertions.assertThat(paged.size()).isLessThan(10);
+      request = PageToken.build(encoded, null, 0 /* keep the size the token carries */, () -> true);
+    }
+    Assertions.assertThat(paged)
+        .containsExactlyElementsOf(
+            expected.stream().filter(r -> "v1".equals(r.getValue())).collect(Collectors.toList()));
   }
 }

@@ -58,6 +58,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
@@ -67,8 +68,11 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.tag.CandidateBudget;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager.TargetLevel;
 import org.apache.polaris.core.tag.TagAssignmentRecord;
 import org.apache.polaris.core.tag.TagEntity;
+import org.apache.polaris.core.tag.TargetField;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelTagAssignmentRecord;
@@ -705,7 +709,12 @@ class JdbcBasePersistenceImplTest {
         .isNull();
     assertThat(
             impl.loadAllTargetsOnTag(
-                callCtx, POLICY_CATALOG_ID, POLICY_ID, null, PageToken.readEverything()))
+                callCtx,
+                POLICY_CATALOG_ID,
+                POLICY_ID,
+                null,
+                PageToken.readEverything(),
+                CandidateBudget.unbounded()))
         .isEmpty();
   }
 
@@ -742,9 +751,170 @@ class JdbcBasePersistenceImplTest {
   }
 
   /**
-   * Below schema v7 the tag_assignment_record table does not exist. Writes must fail closed with an
-   * error naming the v7 requirement; reads must return empty; the entity-drop cleanup must be a
-   * no-op so entity drops keep working.
+   * Cross-level read coherence, reproduced directly against {@link
+   * JdbcBasePersistenceImpl#loadTagAssignmentsOnTargetFields}. Two levels under the same tag: a
+   * "namespace" level and a "table" level. Real time order is fixed: the table starts with a direct
+   * assignment of tag D; W1 commits, assigning D to the namespace; W2 commits after W1, unassigning
+   * D from the table. No real instant ever has both levels unassigned: before W1 the table was
+   * assigned, and from W1 onward the namespace is assigned.
+   *
+   * <p>RED: calling the bulk method once per level, with both real commits landing in the gap
+   * between the two calls, combines a stale namespace read (from before W1) with a fresh table read
+   * (from after W2) into exactly that impossible state. This needs no thread or latch: the defect
+   * is a wall-clock ordering problem between two separate statements, and plain sequential calls
+   * reproduce it deterministically on every backend, H2 included.
+   */
+  @Test
+  void perLevelReadsCanCombineIntoAStateThatNeverExisted() throws SQLException, IOException {
+    int schemaVersion = 7;
+    DatasourceOperations real =
+        newH2DatasourceOperations("tag_bulk_coherence_red_v", schemaVersion);
+    DatasourceOperations spy = Mockito.spy(real);
+    TestPersistence tp = newTestPersistence(spy, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    long tagId = POLICY_ID;
+    impl.writeEntity(callCtx, newTestTagEntity(tagId, List.of("v1")), true, null);
+    long namespaceTargetId = POLICY_TARGET_ID;
+    long tableTargetId = POLICY_TARGET_ID + 1;
+    TargetField namespaceField = new TargetField(POLICY_TARGET_CATALOG_ID, namespaceTargetId, 0);
+    TargetField tableField = new TargetField(POLICY_TARGET_CATALOG_ID, tableTargetId, 0);
+
+    AtomicInteger tagAssignmentSelects = new AtomicInteger();
+    Mockito.doAnswer(
+            invocation -> {
+              QueryGenerator.PreparedQuery q = invocation.getArgument(0);
+              if (q.sql().contains(ModelTagAssignmentRecord.TABLE_NAME)) {
+                tagAssignmentSelects.incrementAndGet();
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spy)
+        .executeSelect(Mockito.any(QueryGenerator.PreparedQuery.class), Mockito.any());
+
+    // Real state before t1: namespace unassigned, table directly assigned.
+    impl.writeToTagAssignmentRecords(
+        callCtx,
+        new TagAssignmentRecord(
+            POLICY_TARGET_CATALOG_ID, tableTargetId, 0, POLICY_CATALOG_ID, tagId, "v1"));
+
+    // The reader's namespace-level statement lands before t1.
+    List<TagAssignmentRecord> namespaceRead =
+        impl.loadTagAssignmentsOnTargetFields(callCtx, List.of(namespaceField), Integer.MAX_VALUE);
+
+    // t1: W1 commits, assigning D to the namespace.
+    impl.writeToTagAssignmentRecords(
+        callCtx,
+        new TagAssignmentRecord(
+            POLICY_TARGET_CATALOG_ID, namespaceTargetId, 0, POLICY_CATALOG_ID, tagId, "v1"));
+    // t2 (> t1): W2 commits, unassigning D from the table.
+    assertThat(
+            impl.deleteFromTagAssignmentRecords(
+                callCtx,
+                new TagAssignmentRecord(
+                    POLICY_TARGET_CATALOG_ID, tableTargetId, 0, POLICY_CATALOG_ID, tagId, "v1")))
+        .isTrue();
+
+    // The reader's table-level statement lands after t2, as a separate round trip.
+    List<TagAssignmentRecord> tableRead =
+        impl.loadTagAssignmentsOnTargetFields(callCtx, List.of(tableField), Integer.MAX_VALUE);
+
+    // Two separate statements for this one logical read: the mechanism the fix removes.
+    assertThat(tagAssignmentSelects.get()).isEqualTo(2);
+    // Combined per-level result: {namespace: unassigned, table: unassigned}. This state never
+    // existed: it is stitched from a pre-t1 snapshot and a post-t2 snapshot.
+    assertThat(namespaceRead).isEmpty();
+    assertThat(tableRead).isEmpty();
+  }
+
+  /**
+   * Same worked example as {@link #perLevelReadsCanCombineIntoAStateThatNeverExisted}. GREEN: one
+   * call to the bulk method for both levels together, issued between t1 and t2, is one statement
+   * and returns the real state that existed at that instant: both levels assigned. It can never
+   * return the impossible {both unassigned} combination the per-level version produces above,
+   * because there is no second, independently-timed statement for a later write to land in front
+   * of.
+   *
+   * <p>This establishes the cross-level ordering property on H2: a single statement covering both
+   * levels reflects one wall-clock instant, never a stitched mix of two instants. It does NOT
+   * establish the finer, Postgres-specific point that a write committing truly concurrently, mid-
+   * execution of that one statement, is all-or-nothing across the rows the statement touches; H2's
+   * transaction model is not documented to give that same per-statement snapshot guarantee, and
+   * forcing a pause inside a single JDBC statement's own execution (as opposed to between two
+   * statements) is not something this harness can do deterministically. That narrower point is
+   * NOT_ESTABLISHED here.
+   */
+  @Test
+  void bulkTargetFieldReadReturnsOneRealStateAcrossLevels() throws SQLException, IOException {
+    int schemaVersion = 7;
+    DatasourceOperations real =
+        newH2DatasourceOperations("tag_bulk_coherence_green_v", schemaVersion);
+    DatasourceOperations spy = Mockito.spy(real);
+    TestPersistence tp = newTestPersistence(spy, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    long tagId = POLICY_ID;
+    impl.writeEntity(callCtx, newTestTagEntity(tagId, List.of("v1")), true, null);
+    long namespaceTargetId = POLICY_TARGET_ID;
+    long tableTargetId = POLICY_TARGET_ID + 1;
+    TargetField namespaceField = new TargetField(POLICY_TARGET_CATALOG_ID, namespaceTargetId, 0);
+    TargetField tableField = new TargetField(POLICY_TARGET_CATALOG_ID, tableTargetId, 0);
+
+    AtomicInteger tagAssignmentSelects = new AtomicInteger();
+    Mockito.doAnswer(
+            invocation -> {
+              QueryGenerator.PreparedQuery q = invocation.getArgument(0);
+              if (q.sql().contains(ModelTagAssignmentRecord.TABLE_NAME)) {
+                tagAssignmentSelects.incrementAndGet();
+              }
+              return invocation.callRealMethod();
+            })
+        .when(spy)
+        .executeSelect(Mockito.any(QueryGenerator.PreparedQuery.class), Mockito.any());
+
+    // Real state before t1: namespace unassigned, table directly assigned.
+    impl.writeToTagAssignmentRecords(
+        callCtx,
+        new TagAssignmentRecord(
+            POLICY_TARGET_CATALOG_ID, tableTargetId, 0, POLICY_CATALOG_ID, tagId, "v1"));
+    // t1: W1 commits, assigning D to the namespace.
+    impl.writeToTagAssignmentRecords(
+        callCtx,
+        new TagAssignmentRecord(
+            POLICY_TARGET_CATALOG_ID, namespaceTargetId, 0, POLICY_CATALOG_ID, tagId, "v1"));
+
+    // ONE bulk statement spanning both levels, issued between t1 and t2.
+    List<TagAssignmentRecord> bulk =
+        impl.loadTagAssignmentsOnTargetFields(
+            callCtx, List.of(namespaceField, tableField), Integer.MAX_VALUE);
+
+    // t2 (> t1): W2 commits after the read, unassigning D from the table.
+    assertThat(
+            impl.deleteFromTagAssignmentRecords(
+                callCtx,
+                new TagAssignmentRecord(
+                    POLICY_TARGET_CATALOG_ID, tableTargetId, 0, POLICY_CATALOG_ID, tagId, "v1")))
+        .isTrue();
+
+    // One statement for both levels together.
+    assertThat(tagAssignmentSelects.get()).isEqualTo(1);
+    // The bulk read returns the real state that existed between t1 and t2: both levels assigned.
+    // Never the impossible {both unassigned} combination the per-level version can produce.
+    assertThat(bulk).hasSize(2);
+    assertThat(bulk)
+        .allSatisfy(record -> assertThat(record.getValue()).isEqualTo("v1"))
+        .extracting(TagAssignmentRecord::getTargetId)
+        .containsExactlyInAnyOrder(namespaceTargetId, tableTargetId);
+  }
+
+  /**
+   * Below schema v7 the tag_assignment_record table does not exist. Writes and reads must both fail
+   * closed with an error naming the v7 requirement: a read is not a write, but this backend cannot
+   * resolve tag assignments at all below v7, so it must reject the same way rather than silently
+   * answer "no assignments". The one exception is the best-effort entity-drop cleanup loader, which
+   * must stay a no-op so entity drops keep working on an older schema.
    */
   @ParameterizedTest
   @ValueSource(ints = {1, 2, 3, 4, 5, 6})
@@ -781,13 +951,34 @@ class JdbcBasePersistenceImplTest {
                     POLICY_ID))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("schema version");
+
+    // The two tag-read operations reject the same way the writes do.
+    assertThatThrownBy(
+            () ->
+                impl.loadTagAssignmentsOnTargetFields(
+                    callCtx,
+                    List.of(new TargetField(POLICY_TARGET_CATALOG_ID, POLICY_TARGET_ID, 0)),
+                    Integer.MAX_VALUE))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("schema version");
+    assertThatThrownBy(
+            () ->
+                impl.loadAllTargetsOnTag(
+                    callCtx,
+                    POLICY_CATALOG_ID,
+                    POLICY_ID,
+                    null,
+                    PageToken.readEverything(),
+                    CandidateBudget.unbounded()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("schema version");
+
+    // The best-effort entity-drop cleanup loader is the one exception: no assignment can exist
+    // below v7, and entity drops must keep working, so this stays a silent no-op rather than
+    // rejecting.
     assertThat(
             impl.loadAllTagAssignmentsOnTargetEntity(
                 callCtx, POLICY_TARGET_CATALOG_ID, POLICY_TARGET_ID))
-        .isEmpty();
-    assertThat(
-            impl.loadAllTargetsOnTag(
-                callCtx, POLICY_CATALOG_ID, POLICY_ID, null, PageToken.readEverything()))
         .isEmpty();
 
     // entity drops must keep working: cleanup is silently nothing to do
@@ -1564,5 +1755,223 @@ class JdbcBasePersistenceImplTest {
                 POLICY_CATALOG_ID,
                 POLICY_ID))
         .isNull();
+  }
+
+  private static PolarisBaseEntity newNamespaceTarget(String name) {
+    return new PolarisBaseEntity.Builder()
+        .id(POLICY_TARGET_ID)
+        .catalogId(POLICY_TARGET_CATALOG_ID)
+        .parentId(POLICY_TARGET_CATALOG_ID)
+        .typeCode(PolarisEntityType.NAMESPACE.getCode())
+        .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+        .name(name)
+        .createTimestamp(System.currentTimeMillis())
+        .build();
+  }
+
+  /**
+   * The reverse lookup's half of the one-state read guarantee. Each item it returns names a target
+   * and a stored value, and on this backend those come from two separate statements, so a writer
+   * can land in the gap between them.
+   *
+   * <p>Worked example: the target is a namespace called "ns_reverse" carrying value "v1". Between
+   * the assignment read and the target read, one writer replaces the value with "v2" and renames
+   * the target to "ns_reverse_renamed". The pair ("ns_reverse_renamed", "v1") never existed at any
+   * instant: while the stored value was "v1" the target was still called "ns_reverse".
+   *
+   * <p>RED before the validation: exactly that pair is returned. GREEN: the second read of the
+   * assignment statement disagrees with the first, the read retries, and the settled pair
+   * ("ns_reverse_renamed", "v2") comes back. A rename on its own is deliberately not a failure
+   * here: the row keeps its value, so the renamed target and that value do coexist.
+   */
+  @Test
+  void reverseLookupNeverPairsARenamedTargetWithAnOldValue() throws SQLException, IOException {
+    int schemaVersion = 7;
+    DatasourceOperations real = newH2DatasourceOperations("tag_reverse_coherence_v", schemaVersion);
+    DatasourceOperations spy = Mockito.spy(real);
+    TestPersistence tp = newTestPersistence(spy, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    PolarisBaseEntity target = newNamespaceTarget("ns_reverse");
+    impl.writeEntity(callCtx, target, true, null);
+    PolarisBaseEntity definition = newTestTagEntity(POLICY_ID, List.of("v1", "v2"));
+    impl.writeEntity(callCtx, definition, true, null);
+    impl.writeToTagAssignmentRecords(callCtx, newTestTagAssignmentRecord(POLICY_ID, "v1"));
+
+    // Fires once, on the first read of the assignment statement, so the retry sees settled state.
+    AtomicBoolean injected = new AtomicBoolean();
+    Mockito.doAnswer(
+            invocation -> {
+              QueryGenerator.PreparedQuery q = invocation.getArgument(0);
+              Object result = invocation.callRealMethod();
+              if (q.sql().contains(ModelTagAssignmentRecord.TABLE_NAME)
+                  && injected.compareAndSet(false, true)) {
+                impl.deleteFromTagAssignmentRecords(
+                    callCtx, newTestTagAssignmentRecord(POLICY_ID, "v1"));
+                impl.writeToTagAssignmentRecords(
+                    callCtx, newTestTagAssignmentRecord(POLICY_ID, "v2"));
+                impl.writeEntity(
+                    callCtx,
+                    new PolarisBaseEntity.Builder(target)
+                        .name("ns_reverse_renamed")
+                        .entityVersion(target.getEntityVersion() + 1)
+                        .build(),
+                    true,
+                    target);
+              }
+              return result;
+            })
+        .when(spy)
+        .executeSelect(Mockito.any(QueryGenerator.PreparedQuery.class), Mockito.any());
+
+    AtomicOperationMetaStoreManager metaStoreManager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    var result =
+        metaStoreManager.loadTargetsOnTag(
+            callCtx, definition, null, PageToken.readEverything(), CandidateBudget.unbounded());
+
+    assertThat(injected.get()).isTrue();
+    assertThat(result.isSuccess()).isTrue();
+    assertThat(result.getAssignments().items()).hasSize(1);
+    assertThat(result.getTargetEntitiesAsMap()).hasSize(1);
+    // The impossible pair is the assertion: the renamed target must never be reported alongside the
+    // value it did not carry while it had that name.
+    assertThat(result.getAssignments().items().get(0).getValue()).isEqualTo("v2");
+    assertThat(result.getTargetEntitiesAsMap().get(POLICY_TARGET_ID).getName())
+        .isEqualTo("ns_reverse_renamed");
+  }
+
+  /**
+   * The definitions half of the one-state read guarantee, at the manager seam this time rather than
+   * the persistence one. The read takes its assignment rows and its tag definitions from separate
+   * statements, so a writer can land in the gap between them.
+   *
+   * <p>Worked example: the target carries value "v1" of a definition named "testTag". Between the
+   * assignment read and the definition read, one writer replaces the value with "v2" and renames
+   * the definition to "testTagRenamed". The pair ("v1", "testTagRenamed") never existed at any
+   * instant: while the stored value was "v1" the definition was still called "testTag".
+   *
+   * <p>RED before the validation: exactly that pair is returned. GREEN: the second read of the
+   * assignment statement disagrees with the first, the read retries, and the settled pair ("v2",
+   * "testTagRenamed") comes back. No thread or latch is needed, for the same reason {@link
+   * #perLevelReadsCanCombineIntoAStateThatNeverExisted} needs none: the defect is an ordering
+   * problem between two statements, and sequential injection reproduces it on every backend.
+   */
+  @Test
+  void effectiveReadNeverPairsAnOldRowWithARenamedDefinition() throws SQLException, IOException {
+    int schemaVersion = 7;
+    DatasourceOperations real =
+        newH2DatasourceOperations("tag_definition_coherence_v", schemaVersion);
+    DatasourceOperations spy = Mockito.spy(real);
+    TestPersistence tp = newTestPersistence(spy, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    PolarisBaseEntity target = newNamespaceTarget("ns_one_state");
+    impl.writeEntity(callCtx, target, true, null);
+    PolarisBaseEntity definition = newTestTagEntity(POLICY_ID, List.of("v1", "v2"));
+    impl.writeEntity(callCtx, definition, true, null);
+    impl.writeToTagAssignmentRecords(callCtx, newTestTagAssignmentRecord(POLICY_ID, "v1"));
+
+    // Fires once, on the first read of the assignment statement, so the retry sees settled state.
+    AtomicBoolean injected = new AtomicBoolean();
+    Mockito.doAnswer(
+            invocation -> {
+              QueryGenerator.PreparedQuery q = invocation.getArgument(0);
+              Object result = invocation.callRealMethod();
+              if (q.sql().contains(ModelTagAssignmentRecord.TABLE_NAME)
+                  && injected.compareAndSet(false, true)) {
+                impl.deleteFromTagAssignmentRecords(
+                    callCtx, newTestTagAssignmentRecord(POLICY_ID, "v1"));
+                impl.writeToTagAssignmentRecords(
+                    callCtx, newTestTagAssignmentRecord(POLICY_ID, "v2"));
+                impl.writeEntity(
+                    callCtx,
+                    new PolarisBaseEntity.Builder(definition)
+                        .name("testTagRenamed")
+                        .entityVersion(definition.getEntityVersion() + 1)
+                        .build(),
+                    true,
+                    definition);
+              }
+              return result;
+            })
+        .when(spy)
+        .executeSelect(Mockito.any(QueryGenerator.PreparedQuery.class), Mockito.any());
+
+    AtomicOperationMetaStoreManager metaStoreManager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    var result =
+        metaStoreManager.loadTagsOnEntities(
+            callCtx, List.of(new TargetLevel(target, 0)), Integer.MAX_VALUE);
+
+    assertThat(injected.get()).isTrue();
+    assertThat(result.isSuccess()).isTrue();
+    assertThat(result.getTagAssignmentRecords()).hasSize(1);
+    assertThat(result.getTagAssignmentRecords().get(0).getValue()).isEqualTo("v2");
+    assertThat(result.getEntities()).hasSize(1);
+    assertThat(result.getEntities().get(0).getName()).isEqualTo("testTagRenamed");
+  }
+
+  /**
+   * The chain half of the same guarantee. The parent chain and the target names a response prints
+   * are resolved before the read runs, outside every statement it issues, so a rename in between
+   * would have the response name a chain that no longer coexists with its rows.
+   *
+   * <p>Two halves, and the first one matters as much as the second: an unrelated write to a level
+   * bumps its entity_version without changing what the response says about it, and must NOT fail
+   * the read -- an Iceberg table commit on the queried table is exactly that. A rename must.
+   *
+   * <p>RED before the validation: the rename case returns the stale name with no error.
+   */
+  @Test
+  void effectiveReadAcceptsAnUnrelatedLevelWriteAndRejectsARename()
+      throws SQLException, IOException {
+    int schemaVersion = 7;
+    DatasourceOperations datasourceOperations =
+        newH2DatasourceOperations("tag_chain_coherence_v", schemaVersion);
+    TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    PolarisBaseEntity resolvedTarget = newNamespaceTarget("ns_chain");
+    impl.writeEntity(callCtx, resolvedTarget, true, null);
+    impl.writeEntity(callCtx, newTestTagEntity(POLICY_ID, List.of("v1")), true, null);
+    impl.writeToTagAssignmentRecords(callCtx, newTestTagAssignmentRecord(POLICY_ID, "v1"));
+
+    AtomicOperationMetaStoreManager metaStoreManager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+
+    // (a) the level is written for an unrelated reason: version moves, identity does not
+    PolarisBaseEntity touched =
+        new PolarisBaseEntity.Builder(resolvedTarget)
+            .entityVersion(resolvedTarget.getEntityVersion() + 1)
+            .lastUpdateTimestamp(System.currentTimeMillis() + 1)
+            .build();
+    impl.writeEntity(callCtx, touched, false, resolvedTarget);
+
+    var accepted =
+        metaStoreManager.loadTagsOnEntities(
+            callCtx, List.of(new TargetLevel(resolvedTarget, 0)), Integer.MAX_VALUE);
+    assertThat(accepted.isSuccess()).isTrue();
+    assertThat(accepted.getTagAssignmentRecords()).hasSize(1);
+
+    // (b) the level is renamed: the response would print a name that is no longer this level's
+    impl.writeEntity(
+        callCtx,
+        new PolarisBaseEntity.Builder(touched)
+            .name("ns_chain_renamed")
+            .entityVersion(touched.getEntityVersion() + 1)
+            .build(),
+        true,
+        touched);
+
+    assertThatThrownBy(
+            () ->
+                metaStoreManager.loadTagsOnEntities(
+                    callCtx, List.of(new TargetLevel(resolvedTarget, 0)), Integer.MAX_VALUE))
+        .isInstanceOf(PolarisServiceUnavailableException.class)
+        .hasMessageContaining("Concurrent modification");
   }
 }

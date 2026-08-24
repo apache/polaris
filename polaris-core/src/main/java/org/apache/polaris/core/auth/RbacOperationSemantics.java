@@ -73,6 +73,10 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPL
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_OBJECT_TAGS_ON_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_OBJECT_TAGS_ON_NAMESPACE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_OBJECT_TAGS_ON_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_OBJECT_TAGS_ON_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE;
@@ -82,6 +86,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CAT
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_GRANTS_FOR_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_NAMESPACES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_OBJECTS_BY_TAG;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_POLICY;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPALS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
@@ -516,6 +521,22 @@ record RbacOperationSemantics(
         EnumSet.of(TAG_DETACH),
         EnumSet.of(VIEW_DETACH_TAG),
         ResolvedPathRooting.CATALOG);
+
+    // Tag read operations: permission to read a target's properties includes the tags that
+    // apply to it, mirroring the get-applicable-policies registrations.
+    register(
+        GET_OBJECT_TAGS_ON_CATALOG,
+        EnumSet.of(CATALOG_READ_PROPERTIES),
+        null,
+        ResolvedPathRooting.CATALOG);
+    register(GET_OBJECT_TAGS_ON_NAMESPACE, NAMESPACE_READ_PROPERTIES);
+    register(GET_OBJECT_TAGS_ON_TABLE, TABLE_READ_PROPERTIES);
+    register(GET_OBJECT_TAGS_ON_VIEW, VIEW_READ_PROPERTIES);
+    // Reverse lookup is authorized on the definition alone, the way loadTag is. It introduces no
+    // catalog-wide authority: each target the response would report is judged separately by that
+    // target's own read-properties privilege while the page is built, and a target the caller may
+    // not read is left out rather than reported.
+    register(LIST_OBJECTS_BY_TAG, TAG_READ);
 
     // Policy attachment operations (use CATALOG rooting)
     register(

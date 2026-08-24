@@ -73,10 +73,13 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.tag.CandidateBudget;
 import org.apache.polaris.core.tag.ClassifiedAssignment;
 import org.apache.polaris.core.tag.TagAssignmentIdentity;
 import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagAssignmentTargetToken;
 import org.apache.polaris.core.tag.TagEntity;
+import org.apache.polaris.core.tag.TargetField;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
@@ -1661,6 +1664,29 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @NonNull
   @Override
+  public List<TagAssignmentRecord> loadTagAssignmentsOnTargetFields(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<TargetField> targetFields,
+      int candidateBudget) {
+    // Reads reject the same way writes do: an incapable store must never silently report "no
+    // assignments" for a read it cannot actually perform.
+    requireTagAssignmentSchemaVersion();
+    if (targetFields.isEmpty()) {
+      return Collections.emptyList();
+    }
+    // One composite-tuple IN statement covering every requested (target, field) key: under plain
+    // autocommit READ COMMITTED, one statement is one snapshot, so every level requested by this
+    // call is read as of the same instant, rather than one snapshot per level.
+    //
+    // One row beyond the budget tells the caller the budget was exceeded, the same way the reverse
+    // lookup asks for one row beyond its page size.
+    Integer limit = candidateBudget == Integer.MAX_VALUE ? null : candidateBudget + 1;
+    return fetchTagAssignmentRecords(
+        QueryGenerator.generateSelectQueryWithTargetFields(realmId, targetFields, limit));
+  }
+
+  @NonNull
+  @Override
   public List<TagAssignmentRecord> loadAllTagAssignmentsOnTargetEntity(
       @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
     if (!tagAssignmentSchemaSupported()) {
@@ -1680,10 +1706,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       long tagCatalogId,
       long tagId,
       @Nullable String valueFilter,
-      @NonNull PageToken pageToken) {
-    if (!tagAssignmentSchemaSupported()) {
-      return Collections.emptyList();
-    }
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
+    // Reads reject the same way writes do: an incapable store must never silently report "no
+    // assignments" for a read it cannot actually perform.
+    requireTagAssignmentSchemaVersion();
     Map<String, Object> params = new LinkedHashMap<>();
     params.put("tag_catalog_id", tagCatalogId);
     params.put("tag_id", tagId);
@@ -1693,21 +1720,39 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     params.put("realm_id", realmId);
     OptionalInt pageSize = pageToken.pageSize();
     QueryGenerator.PreparedQuery query;
-    if (pageToken.paginationRequested()
-        && pageSize.isPresent()
-        && pageSize.getAsInt() < Integer.MAX_VALUE) {
+    boolean paged =
+        pageToken.paginationRequested()
+            && pageSize.isPresent()
+            && pageSize.getAsInt() < Integer.MAX_VALUE;
+    if (paged) {
+      // Deterministic (target_id, field_id) order with keyset resume; one extra row lets the
+      // caller tell whether a next page exists.
+      List<Object> resumeValues =
+          pageToken
+              .valueAs(TagAssignmentTargetToken.class)
+              .<List<Object>>map(token -> List.of(token.targetId(), token.fieldId()))
+              .orElse(List.of());
       query =
-          QueryGenerator.generateSelectQuery(
+          QueryGenerator.generateSelectQueryWithRowValueResume(
               ModelTagAssignmentRecord.ALL_COLUMNS,
               ModelTagAssignmentRecord.TABLE_NAME,
               params,
-              pageSize.getAsInt());
+              List.of("target_id", "field_id"),
+              resumeValues,
+              pageSize.getAsInt() + 1);
     } else {
       query =
           QueryGenerator.generateSelectQuery(
               ModelTagAssignmentRecord.ALL_COLUMNS, ModelTagAssignmentRecord.TABLE_NAME, params);
     }
-    return fetchTagAssignmentRecords(query);
+    List<TagAssignmentRecord> records = fetchTagAssignmentRecords(query);
+    if (paged) {
+      // This read bounds the rows it returns per call, through the LIMIT above, and those rows are
+      // what it charges to the budget. The scan the database performs to produce them is not
+      // measured here.
+      candidateBudget.charge(records.size());
+    }
+    return records;
   }
 
   @Override

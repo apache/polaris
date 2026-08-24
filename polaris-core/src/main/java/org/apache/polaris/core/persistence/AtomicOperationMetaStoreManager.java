@@ -63,6 +63,8 @@ import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadAllTagAssignmentTargetsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentTargetsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
@@ -77,9 +79,13 @@ import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.tag.CandidateBudget;
 import org.apache.polaris.core.tag.ClassifiedAssignment;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager.TargetLevel;
 import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagAssignmentTargetToken;
 import org.apache.polaris.core.tag.TagEntity;
+import org.apache.polaris.core.tag.TargetField;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -1300,7 +1306,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                 refreshEntityToDrop.getCatalogId(),
                 refreshEntityToDrop.getId(),
                 null,
-                PageToken.fromLimit(1));
+                PageToken.fromLimit(1),
+                CandidateBudget.unbounded());
         if (!records.isEmpty()) {
           return new DropEntityResult(BaseResult.ReturnStatus.TAG_HAS_ASSIGNMENTS, null);
         }
@@ -2121,6 +2128,168 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
   }
 
+  @Override
+  public @NonNull LoadTagAssignmentsResult loadTagsOnEntities(
+      @NonNull PolarisCallContext callCtx, @NonNull List<TargetLevel> levels, int candidateBudget) {
+    if (levels.isEmpty()) {
+      return new LoadTagAssignmentsResult(List.of(), List.of());
+    }
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    // One bulk existence check across every requested level, in the same statement count as a
+    // single-level check: a level whose target has vanished fails the whole read rather than a
+    // partial result, matching the pre-existing single-level contract. entityIds keys by the
+    // entity's own catalog id, not the assignment row's containing-catalog id: a catalog target's
+    // own catalogId is null-ish (it is not contained in another catalog), while
+    // TagAssignmentRecord.containingCatalogId reports its own id for that same entity; these are
+    // deliberately different id spaces for the same target.
+    List<PolarisEntityId> targetEntityIds =
+        levels.stream()
+            .map(
+                level -> new PolarisEntityId(level.entity().getCatalogId(), level.entity().getId()))
+            .distinct()
+            .collect(Collectors.toList());
+    List<PolarisBaseEntity> targetEntities = ms.lookupEntities(callCtx, targetEntityIds);
+    if (targetEntities.stream().anyMatch(Objects::isNull)) {
+      // At least one requested target entity does not exist
+      return new LoadTagAssignmentsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    // The version each level carried when the request resolved it. Nothing is read for this: the
+    // caller hands the read its already-resolved entities.
+    Map<PolarisEntityId, Integer> resolvedLevelVersions = tagLevelResolvedVersions(levels);
+
+    try {
+      List<TargetField> targetFields =
+          levels.stream()
+              .map(
+                  level ->
+                      new TargetField(
+                          TagAssignmentRecord.containingCatalogId(level.entity()),
+                          level.entity().getId(),
+                          level.fieldId()))
+              .collect(Collectors.toList());
+
+      // Two attempts. A first disagreement is an ordinary concurrent write that a second read gets
+      // past; a second one is not something to keep retrying under.
+      for (int attempt = 1; attempt <= 2; attempt++) {
+        // One composite-tuple IN statement covering every requested level: one statement is one
+        // snapshot under READ COMMITTED, so every level requested by this call is read as of the
+        // same instant.
+        List<TagAssignmentRecord> assignmentRecords =
+            ms.loadTagAssignmentsOnTargetFields(callCtx, targetFields, candidateBudget);
+
+        List<PolarisBaseEntity> tagEntities;
+        List<TagAssignmentRecord> assignmentRecordsAgain;
+        if (assignmentRecords.isEmpty()) {
+          // No row to pair with a definition. The empty answer is the state that one statement
+          // read, so only the level chain still has to belong to it, and this read costs exactly
+          // what it cost before this validation existed.
+          tagEntities = List.of();
+          assignmentRecordsAgain = assignmentRecords;
+        } else {
+          tagEntities = loadTagsFromAssignmentRecords(callCtx, ms, assignmentRecords);
+          // The same statement again, under the same budget: a second read bounded differently
+          // would disagree with the first because it read a different window, not because a writer
+          // moved anything.
+          assignmentRecordsAgain =
+              ms.loadTagAssignmentsOnTargetFields(callCtx, targetFields, candidateBudget);
+        }
+
+        List<PolarisEntityId> versionIds = new ArrayList<>(resolvedLevelVersions.keySet());
+        tagEntities.stream()
+            .filter(Objects::nonNull)
+            .map(definition -> new PolarisEntityId(definition.getCatalogId(), definition.getId()))
+            .distinct()
+            .forEach(versionIds::add);
+        // One version-only statement for the levels and the definitions together.
+        Map<PolarisEntityId, PolarisChangeTrackingVersions> versionsNow =
+            indexVersionsById(versionIds, ms.lookupEntityVersions(callCtx, versionIds));
+
+        List<PolarisEntityId> movedLevels = tagLevelsThatMoved(resolvedLevelVersions, versionsNow);
+        if (!movedLevels.isEmpty() && !levelIdentitiesSurvived(callCtx, ms, levels, movedLevels)) {
+          // Fail without retrying. entity_version only moves forward and the caller's resolution is
+          // fixed, so a further attempt compares against a version that can only be further away.
+          throw concurrentTagReadModification("the target or one of its parents changed");
+        }
+
+        if (tagAssignmentRowsUnchanged(assignmentRecords, assignmentRecordsAgain)
+            && tagDefinitionsUnchanged(tagEntities, versionsNow)) {
+          return new LoadTagAssignmentsResult(assignmentRecords, tagEntities);
+        }
+      }
+      throw concurrentTagReadModification("assignments or tag definitions kept changing");
+    } catch (UnsupportedOperationException e) {
+      return new LoadTagAssignmentsResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          Objects.requireNonNullElse(
+              e.getMessage(), "this backend does not support tag assignments"));
+    }
+  }
+
+  /**
+   * Whether every level whose entity_version moved still presents the same identity to the read: it
+   * is there, it is live, its parent, kind and name are the ones the request resolved, and for a
+   * field level the schema it was resolved against still stands. See {@link #tagLevelUnchanged}.
+   */
+  private boolean levelIdentitiesSurvived(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull List<TargetLevel> levels,
+      @NonNull List<PolarisEntityId> movedLevels) {
+    List<PolarisBaseEntity> current = ms.lookupEntities(callCtx, movedLevels);
+    for (int i = 0; i < movedLevels.size(); i++) {
+      PolarisEntityId movedId = movedLevels.get(i);
+      PolarisBaseEntity currentEntity = current.get(i);
+      // One entity can be requested at more than one level: an effective read of a column asks for
+      // the whole table and for the column on that same table, and only the column level carries
+      // the
+      // schema pointer. Every level requested on this entity has to survive, because each one
+      // contributes its own facts to the response; checking one of them would leave the others
+      // unvalidated.
+      List<TargetLevel> requestedOnThisEntity =
+          levels.stream()
+              .filter(
+                  level ->
+                      level.entity().getId() == movedId.id()
+                          && level.entity().getCatalogId() == movedId.catalogId())
+              .toList();
+      if (requestedOnThisEntity.isEmpty()) {
+        return false;
+      }
+      for (TargetLevel level : requestedOnThisEntity) {
+        if (!tagLevelUnchanged(level, currentEntity)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Load tag definitions from a list of tag assignment records
+   *
+   * @param callCtx call context
+   * @param ms meta store
+   * @param assignmentRecords a list of tag assignment records
+   * @return a list of tag definition entities
+   */
+  private List<PolarisBaseEntity> loadTagsFromAssignmentRecords(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull List<TagAssignmentRecord> assignmentRecords) {
+    List<PolarisEntityId> tagEntityIds =
+        assignmentRecords.stream()
+            .map(
+                assignmentRecord ->
+                    new PolarisEntityId(
+                        assignmentRecord.getTagCatalogId(), assignmentRecord.getTagId()))
+            .distinct()
+            .collect(Collectors.toList());
+    return ms.lookupEntities(callCtx, tagEntityIds);
+  }
+
   /**
    * Load policies from a list of policy mapping records
    *
@@ -2162,7 +2331,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     try {
       List<TagAssignmentRecord> records =
           ms.loadAllTargetsOnTag(
-              callCtx, tag.getCatalogId(), tag.getId(), null, PageToken.readEverything());
+              callCtx,
+              tag.getCatalogId(),
+              tag.getId(),
+              null,
+              PageToken.readEverything(),
+              CandidateBudget.unbounded());
       List<PolarisEntityId> targetEntityIds =
           records.stream()
               .map(
@@ -2182,6 +2356,94 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       return new LoadAllTagAssignmentTargetsResult(records, targetEntities);
     } catch (UnsupportedOperationException e) {
       return new LoadAllTagAssignmentTargetsResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          Objects.requireNonNullElse(
+              e.getMessage(), "this backend does not support tag assignments"));
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @NonNull LoadTagAssignmentTargetsResult loadTargetsOnTag(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore tag,
+      @Nullable String valueFilter,
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    PolarisBaseEntity tagEntity =
+        ms.lookupEntity(callCtx, tag.getCatalogId(), tag.getId(), tag.getTypeCode());
+    if (tagEntity == null) {
+      // tag definition does not exist
+      return new LoadTagAssignmentTargetsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    try {
+      // Two attempts. The rows and the entities they name are read by separate statements here, so
+      // each attempt re-reads the rows afterwards and only stands if they did not move: that is
+      // what
+      // makes the pair it returns -- this row's value, this entity's resolved name -- a pair that
+      // existed together. A first disagreement is an ordinary concurrent write that a second
+      // attempt
+      // gets past; a second one is not something to keep retrying under.
+      for (int attempt = 1; attempt <= 2; attempt++) {
+        List<TagAssignmentRecord> records =
+            ms.loadAllTargetsOnTag(
+                callCtx, tag.getCatalogId(), tag.getId(), valueFilter, pageToken, candidateBudget);
+        Page<TagAssignmentRecord> page =
+            Page.mapped(
+                pageToken,
+                records.stream(),
+                Function.identity(),
+                TagAssignmentTargetToken::fromRecord);
+        List<PolarisEntityId> targetEntityIds =
+            page.items().stream()
+                .map(
+                    record ->
+                        new PolarisEntityId(
+                            // a catalog target's assignment row stores the catalog's own id as its
+                            // containing catalog id, while the catalog entity itself lives under
+                            // the
+                            // root container: invert that mapping for the entity lookup
+                            record.getTargetCatalogId() == record.getTargetId()
+                                ? PolarisEntityConstants.getNullId()
+                                : record.getTargetCatalogId(),
+                            record.getTargetId()))
+                .distinct()
+                .collect(Collectors.toList());
+        List<PolarisBaseEntity> targetEntities =
+            targetEntityIds.isEmpty() ? List.of() : ms.lookupEntities(callCtx, targetEntityIds);
+
+        // The same window again. Agreement is what lets the entities read in between stand for
+        // these
+        // rows; the comparison is by row identity and stored value, because a value is replaced in
+        // place and a row whose value changed is a different assignment state at the same identity.
+        // The re-read covers the rows the first read already charged, so it is not charged again.
+        List<TagAssignmentRecord> recordsAgain =
+            ms.loadAllTargetsOnTag(
+                callCtx,
+                tag.getCatalogId(),
+                tag.getId(),
+                valueFilter,
+                pageToken,
+                CandidateBudget.unbounded());
+        if (tagAssignmentRowsUnchanged(
+            page.items(),
+            Page.mapped(
+                    pageToken,
+                    recordsAgain.stream(),
+                    Function.identity(),
+                    TagAssignmentTargetToken::fromRecord)
+                .items())) {
+          return new LoadTagAssignmentTargetsResult(page, targetEntities);
+        }
+      }
+      throw concurrentTagReadModification(
+          "assignments kept changing while their targets were read");
+    } catch (UnsupportedOperationException e) {
+      return new LoadTagAssignmentTargetsResult(
           BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
           Objects.requireNonNullElse(
               e.getMessage(), "this backend does not support tag assignments"));

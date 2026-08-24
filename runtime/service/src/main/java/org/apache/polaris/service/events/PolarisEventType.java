@@ -217,7 +217,11 @@ public enum PolarisEventType {
   BEFORE_ASSIGN_TAG(1612, Category.TAG),
   AFTER_ASSIGN_TAG(1613, Category.TAG),
   BEFORE_UNASSIGN_TAG(1614, Category.TAG),
-  AFTER_UNASSIGN_TAG(1615, Category.TAG);
+  AFTER_UNASSIGN_TAG(1615, Category.TAG),
+  BEFORE_GET_OBJECT_TAGS(1616, Category.TAG),
+  AFTER_GET_OBJECT_TAGS(1617, Category.TAG),
+  BEFORE_LIST_OBJECTS_BY_TAG(1618, Category.TAG),
+  AFTER_LIST_OBJECTS_BY_TAG(1619, Category.TAG);
 
   private final int code;
   private final Category category;

@@ -66,6 +66,8 @@ import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadAllTagAssignmentTargetsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentTargetsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
@@ -76,7 +78,9 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.tag.CandidateBudget;
 import org.apache.polaris.core.tag.ClassifiedAssignment;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager.TargetLevel;
 import org.apache.polaris.core.tag.TagEntity;
 import org.apache.polaris.persistence.nosql.metastore.mutation.GrantsMutation;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
@@ -234,6 +238,26 @@ record NoSqlMetaStoreManager(
   public @NonNull LoadAllTagAssignmentTargetsResult loadAllTargetsOnTagWithEntities(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisEntityCore tag) {
     return new LoadAllTagAssignmentTargetsResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag assignments are not supported by the NoSQL backend");
+  }
+
+  @Override
+  public @NonNull LoadTagAssignmentsResult loadTagsOnEntities(
+      @NonNull PolarisCallContext callCtx, @NonNull List<TargetLevel> levels, int candidateBudget) {
+    return new LoadTagAssignmentsResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag assignments are not supported by the NoSQL backend");
+  }
+
+  @Override
+  public @NonNull LoadTagAssignmentTargetsResult loadTargetsOnTag(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore tag,
+      @Nullable String valueFilter,
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
+    return new LoadTagAssignmentTargetsResult(
         BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
         "tag assignments are not supported by the NoSQL backend");
   }

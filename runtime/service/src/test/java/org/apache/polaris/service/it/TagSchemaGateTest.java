@@ -210,6 +210,41 @@ public class TagSchemaGateTest {
   }
 
   @Test
+  public void testGetObjectTagsRejectedBelowSchemaV7() {
+    // A read is not a write, but this backend cannot even resolve whether an assignment exists
+    // below v7: it must reject the same way the writes do, not silently answer "no tags".
+    createTag("classification");
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/object-tags",
+                Map.of("cat", currentCatalogName),
+                // target-type is required, so a request without it would answer 400 for the missing
+                // parameter and never reach the schema gate this test is about.
+                Map.of("target-type", "CATALOG"))
+            .get()) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains("schema version").contains("7");
+    }
+  }
+
+  @Test
+  public void testListObjectsByTagRejectedBelowSchemaV7() {
+    // Same fail-closed contract for the reverse-lookup read: below v7 this must reject naming the
+    // v7 requirement, not silently answer an empty page.
+    String tagName = createTag("classification");
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", tagName))
+            .get()) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains("schema version").contains("7");
+    }
+  }
+
+  @Test
   public void testDetachAllDropRejectedBelowSchemaV7() {
     String tagName = createTag("classification");
     try (Response res =

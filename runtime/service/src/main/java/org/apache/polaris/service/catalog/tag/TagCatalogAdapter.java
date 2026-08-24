@@ -38,6 +38,8 @@ import org.apache.polaris.service.catalog.api.PolarisCatalogTagApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
+import org.apache.polaris.service.types.GetObjectTagsResponse;
+import org.apache.polaris.service.types.ListObjectsByTagResponse;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
@@ -54,7 +56,8 @@ public class TagCatalogAdapter implements PolarisCatalogTagApiService, CatalogAd
    * {@code false}, yet the binding converts any other value to a boolean without complaint, and a
    * full-result request must reject a {@code pageToken} or {@code pageSize} that is present even
    * when it is empty, which the binding hands over as null. The query map keeps both differences,
-   * so {@link #requestedPagedMode} reads it from here.
+   * so {@link #requestedPagedMode} reads it from here. A target address has the same problem for
+   * the same reason, so {@link #requireAbsentOrNonEmpty} reads presence from here too.
    */
   @Context UriInfo uriInfo;
 
@@ -270,6 +273,110 @@ public class TagCatalogAdapter implements PolarisCatalogTagApiService, CatalogAd
     return Response.noContent().build();
   }
 
-  // getObjectTags and listObjectsByTag are not implemented yet; the default
-  // PolarisCatalogTagApiService methods return 501.
+  /**
+   * The bound {@code pagination} value is unused here for the reason the field javadoc gives: it
+   * declares a default, so an absent flag and an explicit {@code true} arrive the same way, and the
+   * conversion never fails, so a misspelled value arrives as a request for the whole result. Only
+   * the raw query says which of the two literals the client sent.
+   */
+  @Override
+  public Response getObjectTags(
+      String prefix,
+      TargetType targetType,
+      Boolean pagination,
+      String namespace,
+      String targetName,
+      String column,
+      String pageToken,
+      Integer pageSize,
+      String view,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    TagCatalogHandler handler = newHandler(securityContext, prefix);
+    rejectRepeatedQueryParameters(
+        "target-type",
+        "namespace",
+        "target-name",
+        "column",
+        "pagination",
+        "pageToken",
+        "pageSize",
+        "view");
+    // The mode is settled before the address is decoded, so that both reads answer a bad pagination
+    // parameter the same way the definition listing does.
+    boolean paged = requestedPagedMode();
+    rejectUnusablePageSize(pageSize);
+    // A present but empty target parameter is a malformed address, not an absent parameter. The
+    // decoder below sees null for both, because the container collapses an empty single-value query
+    // parameter before the adapter is called, so the distinction is recovered from the raw query.
+    requireAbsentOrNonEmpty("namespace", namespace);
+    requireAbsentOrNonEmpty("target-name", targetName);
+    requireAbsentOrNonEmpty("column", column);
+    requireAbsentOrNonEmpty("view", view);
+    TagAttachmentTarget target =
+        TagCatalogUtils.targetFromQuery(targetType, namespace, targetName, column);
+    GetObjectTagsResponse response =
+        handler.getObjectTags(target, effectiveViewRequested(view), paged, pageToken, pageSize);
+    return Response.ok(response).build();
+  }
+
+  /**
+   * Which read the {@code view} parameter selects. Omitting it is the same as {@code direct}; any
+   * other value than the two the contract names is rejected rather than treated as the default,
+   * because answering a direct read to a caller who asked for something else looks like a complete
+   * answer to a client that cannot tell the difference.
+   */
+  private static boolean effectiveViewRequested(String view) {
+    if (view == null || view.equals("direct")) {
+      return false;
+    }
+    if (view.equals("effective")) {
+      return true;
+    }
+    throw new BadRequestException("view must be 'direct' or 'effective': %s", view);
+  }
+
+  /** The bound {@code pagination} value is unused for the same reason it is on the target read. */
+  @Override
+  public Response listObjectsByTag(
+      String prefix,
+      String tagName,
+      Boolean pagination,
+      String value,
+      String pageToken,
+      Integer pageSize,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    TagCatalogHandler handler = newHandler(securityContext, prefix);
+    rejectRepeatedQueryParameters("value", "pagination", "pageToken", "pageSize");
+    boolean paged = requestedPagedMode();
+    rejectUnusablePageSize(pageSize);
+    // A present but empty value is a filter the client asked for, not an absent one. The binding
+    // hands both over as null, and a null reaches persistence as "no value predicate", so without
+    // this the request would be answered as though no filter had been requested at all. An empty
+    // value can never match a stored one, because an assignment refuses empty members.
+    requireAbsentOrNonEmpty("value", value);
+    ListObjectsByTagResponse response =
+        handler.listObjectsByTag(tagName, value, paged, pageToken, pageSize);
+    return Response.ok(response).build();
+  }
+
+  private void requireAbsentOrNonEmpty(String parameter, String value) {
+    if (value != null && value.isEmpty()) {
+      throw new BadRequestException("Query parameter %s must not be empty", parameter);
+    }
+    // The generated resource binds a query parameter declared as a plain String, and the
+    // container's single-value extraction collapses a present-but-empty value to null before it
+    // ever reaches this method: from here, "namespace=" on the wire is indistinguishable from
+    // namespace being absent altogether. Recover the distinction from the raw query string, the
+    // one place the empty value still survives.
+    if (value == null && isPresentButEmptyInRawQuery(parameter)) {
+      throw new BadRequestException("Query parameter %s must not be empty", parameter);
+    }
+  }
+
+  private boolean isPresentButEmptyInRawQuery(String parameter) {
+    List<String> rawValues = uriInfo.getQueryParameters().get(parameter);
+    return rawValues != null && !rawValues.isEmpty() && rawValues.get(0).isEmpty();
+  }
 }

@@ -33,6 +33,8 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
+import org.apache.polaris.service.types.GetObjectTagsResponse;
+import org.apache.polaris.service.types.ListObjectsByTagResponse;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
@@ -343,6 +345,204 @@ public class TagApi extends PolarisRestApi {
 
   public void dropTag(String catalog, String tagName) {
     dropTag(catalog, tagName, null);
+  }
+
+  /**
+   * Reads one target's tags. The target is named the way the assignment writes name theirs, through
+   * {@link #queryParamsForTarget}, so a test cannot accidentally send an address shape the contract
+   * does not define.
+   */
+  public GetObjectTagsResponse getObjectTags(
+      String catalog, TagAttachmentTarget target, String view) {
+    return getObjectTagsPage(catalog, target, view, null, null);
+  }
+
+  /**
+   * One page of a target's tags. Paging is the default, so a null or empty pageToken asks for the
+   * first page rather than the whole result; {@link #getObjectTagsAll} is what asks for everything.
+   */
+  public GetObjectTagsResponse getObjectTagsPage(
+      String catalog, TagAttachmentTarget target, String view, String pageToken, Integer pageSize) {
+    try (Response res = getObjectTagsResponse(catalog, target, view, pageToken, pageSize)) {
+      Assertions.assertThat(res.getStatus())
+          .as(() -> res.readEntity(String.class))
+          .isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(GetObjectTagsResponse.class);
+    }
+  }
+
+  /** The raw response, so a test can assert a status and an error type of its own. */
+  public Response getObjectTagsResponse(
+      String catalog, TagAttachmentTarget target, String view, String pageToken, Integer pageSize) {
+    Map<String, String> queryParams = queryParamsForTarget(target);
+    if (view != null) {
+      queryParams.put("view", view);
+    }
+    putPaginationParams(queryParams, pageToken, pageSize);
+    return request("polaris/v1/{cat}/object-tags", Map.of("cat", catalog), queryParams).get();
+  }
+
+  /**
+   * Reads every tag of the target in one response. Both views page by default, so a caller that
+   * wants the target's complete set has to ask for it; sending nothing asks for the first page.
+   */
+  public GetObjectTagsResponse getObjectTagsAll(
+      String catalog, TagAttachmentTarget target, String view) {
+    Map<String, String> queryParams = queryParamsForTarget(target);
+    if (view != null) {
+      queryParams.put("view", view);
+    }
+    queryParams.put("pagination", "false");
+    try (Response res =
+        request("polaris/v1/{cat}/object-tags", Map.of("cat", catalog), queryParams).get()) {
+      Assertions.assertThat(res.getStatus())
+          .as(() -> res.readEntity(String.class))
+          .isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(GetObjectTagsResponse.class);
+    }
+  }
+
+  /**
+   * Reads a target with one query parameter supplied several times. The contract keys on the
+   * parameter appearing more than once, which a map of parameters cannot say.
+   */
+  public Response getObjectTagsWithRepeatedParameter(
+      String catalog, TagAttachmentTarget target, String name, String... values) {
+    WebTarget webTarget =
+        targetWithQuery(
+            "polaris/v1/{cat}/object-tags", Map.of("cat", catalog), queryParamsForTarget(target));
+    for (String value : values) {
+      webTarget = webTarget.queryParam(name, value);
+    }
+    return request(webTarget, defaultHeaders()).get();
+  }
+
+  /**
+   * Reads a target with extra raw query pairs appended to its address, so a test can send a value
+   * the typed helpers cannot express: an empty one, or a mode that is not a contract literal.
+   */
+  public Response getObjectTagsRaw(String catalog, TagAttachmentTarget target, String query) {
+    return request(
+            withRawQueryPairs(
+                targetWithQuery(
+                    "polaris/v1/{cat}/object-tags",
+                    Map.of("cat", catalog),
+                    queryParamsForTarget(target)),
+                query),
+            defaultHeaders())
+        .get();
+  }
+
+  public ListObjectsByTagResponse listObjectsByTag(
+      String catalog, String tagName, String value, String pageToken, Integer pageSize) {
+    try (Response res = listObjectsByTagResponse(catalog, tagName, value, pageToken, pageSize)) {
+      Assertions.assertThat(res.getStatus())
+          .as(() -> res.readEntity(String.class))
+          .isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(ListObjectsByTagResponse.class);
+    }
+  }
+
+  /** The raw response, so a test can assert a status and an error type of its own. */
+  public Response listObjectsByTagResponse(
+      String catalog, String tagName, String value, String pageToken, Integer pageSize) {
+    Map<String, String> queryParams = new HashMap<>();
+    if (value != null) {
+      queryParams.put("value", value);
+    }
+    putPaginationParams(queryParams, pageToken, pageSize);
+    return request(
+            "polaris/v1/{cat}/tags/{tag}/assignments",
+            Map.of("cat", catalog, "tag", tagName),
+            queryParams)
+        .get();
+  }
+
+  /**
+   * The complete reverse lookup in one response. The endpoint pages by default, so asking for every
+   * assignment means saying so.
+   */
+  public ListObjectsByTagResponse listObjectsByTagAll(
+      String catalog, String tagName, String value) {
+    Map<String, String> queryParams = new HashMap<>();
+    if (value != null) {
+      queryParams.put("value", value);
+    }
+    queryParams.put("pagination", "false");
+    try (Response res =
+        request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", catalog, "tag", tagName),
+                queryParams)
+            .get()) {
+      Assertions.assertThat(res.getStatus())
+          .as(() -> res.readEntity(String.class))
+          .isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(ListObjectsByTagResponse.class);
+    }
+  }
+
+  /** A reverse lookup with one query parameter supplied several times. */
+  public Response listObjectsByTagWithRepeatedParameter(
+      String catalog, String tagName, String name, String... values) {
+    WebTarget webTarget =
+        target("polaris/v1/{cat}/tags/{tag}/assignments", Map.of("cat", catalog, "tag", tagName));
+    for (String value : values) {
+      webTarget = webTarget.queryParam(name, value);
+    }
+    return request(webTarget, defaultHeaders()).get();
+  }
+
+  /** A reverse lookup with a raw query string, for values the typed helpers cannot express. */
+  public Response listObjectsByTagRaw(String catalog, String tagName, String query) {
+    return request(
+            withRawQueryPairs(
+                target(
+                    "polaris/v1/{cat}/tags/{tag}/assignments",
+                    Map.of("cat", catalog, "tag", tagName)),
+                query),
+            defaultHeaders())
+        .get();
+  }
+
+  /**
+   * A web target carrying the given query parameters, so a helper that then appends raw pairs
+   * starts from a complete address rather than rebuilding one.
+   */
+  private WebTarget targetWithQuery(
+      String path, Map<String, String> pathParams, Map<String, String> queryParams) {
+    WebTarget webTarget = target(path, pathParams);
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      webTarget = webTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    return webTarget;
+  }
+
+  /**
+   * Appends {@code name=value} pairs exactly as written, including an empty value and a repeated
+   * name, which is what makes a contract rule about presence testable from the outside.
+   */
+  private static WebTarget withRawQueryPairs(WebTarget webTarget, String query) {
+    for (String pair : query.split("&")) {
+      int eq = pair.indexOf('=');
+      webTarget = webTarget.queryParam(pair.substring(0, eq), pair.substring(eq + 1));
+    }
+    return webTarget;
+  }
+
+  /**
+   * The two pagination parameters, under the names the contract gives them. They are spelled here
+   * once rather than at each call site: sending {@code page-token} instead of {@code pageToken}
+   * leaves the server in full-result mode, which makes a paging test pass while never paging.
+   */
+  private static void putPaginationParams(
+      Map<String, String> queryParams, String pageToken, Integer pageSize) {
+    if (pageToken != null) {
+      queryParams.put("pageToken", pageToken);
+    }
+    if (pageSize != null) {
+      queryParams.put("pageSize", pageSize.toString());
+    }
   }
 
   public void dropTag(String catalog, String tagName, Boolean detachAll) {

@@ -117,6 +117,37 @@ public interface TagAssignmentPersistence {
   }
 
   /**
+   * Get all tag assignments stored on the specified list of (target, field) keys, in one read
+   * spanning every requested key. A field id of 0 in a key returns the whole-object assignments of
+   * that target; a non-zero field id returns the assignments of that column.
+   *
+   * <p>Implementations must not read one key at a time and stitch the results together: a caller
+   * loading several levels of a hierarchy through one call gets every level's rows as of the same
+   * read.
+   *
+   * <p>The read is bounded by a candidate budget spanning every requested key, because the number
+   * of rows a key holds is not bounded by anything the caller can see. Implementations return at
+   * most one row beyond the budget, so a caller can tell that the budget was exceeded rather than
+   * mistake a trimmed read for the whole set, and they must apply a deterministic order when they
+   * trim: a bounded read that returns an arbitrary subset cannot be compared with a second read of
+   * the same window.
+   *
+   * @param callCtx call context
+   * @param targetFields the exact (targetCatalogId, targetId, fieldId) keys to load
+   * @param candidateBudget the greatest number of rows this read may consume across every requested
+   *     key; {@link Integer#MAX_VALUE} for an unbounded read
+   * @return every tag assignment record matching any of the requested keys, up to one row beyond
+   *     the budget
+   */
+  @NonNull
+  default List<TagAssignmentRecord> loadTagAssignmentsOnTargetFields(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<TargetField> targetFields,
+      int candidateBudget) {
+    throw new UnsupportedOperationException("this backend does not support tag assignments");
+  }
+
+  /**
    * Get all tag assignments stored on the specified target entity across every field, including
    * whole-object assignments (field id 0) and every column assignment. Used by target lifecycle
    * cleanup, which must see the target's complete assignment set.
@@ -141,7 +172,18 @@ public interface TagAssignmentPersistence {
    * @param tagId id of the tag definition
    * @param valueFilter exact selected value to filter by, or null for all values
    * @param pageToken pagination token
-   * @return one page of tag assignment records for the specified tag definition
+   * @param candidateBudget how many candidate rows this read may still examine. A paged read
+   *     charges it for every row it examines, before examining it, whether or not the value filter
+   *     keeps the row, or for the rows it returns where the read is bounded by its rows returned; a
+   *     read with no page to bound its work with is given {@link CandidateBudget#unbounded()}. A
+   *     read that has rows left and no budget throws {@link
+   *     org.apache.polaris.core.tag.exceptions.CandidateBudgetExceededException} rather than
+   *     answering short, because a short answer reads as the end of the definition.
+   * @return one page of tag assignment records for the specified tag definition. When pagination is
+   *     requested, implementations must return records in deterministic {@code (targetId, fieldId)}
+   *     order, resume strictly after the {@link TagAssignmentTargetToken} carried by the page
+   *     token, and may return up to one row more than the requested page size so the caller can
+   *     tell whether a next page exists.
    */
   @NonNull
   default List<TagAssignmentRecord> loadAllTargetsOnTag(
@@ -149,7 +191,8 @@ public interface TagAssignmentPersistence {
       long tagCatalogId,
       long tagId,
       @Nullable String valueFilter,
-      @NonNull PageToken pageToken) {
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
     throw new UnsupportedOperationException("this backend does not support tag assignments");
   }
 

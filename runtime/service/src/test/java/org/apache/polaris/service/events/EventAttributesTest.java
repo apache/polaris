@@ -55,6 +55,8 @@ import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.GetApplicablePoliciesResponse;
+import org.apache.polaris.service.types.GetObjectTagsResponse;
+import org.apache.polaris.service.types.ListObjectsByTagResponse;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.LoadPolicyResponse;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -105,6 +107,8 @@ class EventAttributesTest {
           CreatePolicyRequest.class,
           AssignTagRequest.class,
           TagAttachmentTarget.class,
+          GetObjectTagsResponse.class,
+          ListObjectsByTagResponse.class,
           CreateTagRequest.class,
           RenameTagRequest.class,
           UpdateTagRequest.class,

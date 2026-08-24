@@ -289,9 +289,9 @@ public class TagCatalogUtils {
   }
 
   /**
-   * The top-level column name carrying the given Iceberg field id, or null when the id no longer
-   * names a top-level column of this schema. A null answer is what identifies an assignment row
-   * whose column was removed by schema evolution.
+   * Finds the current top-level column name for the given Iceberg field id, or null when no
+   * top-level column with that id exists any more. The inverse of {@link #resolveTopLevelFieldId};
+   * callers batch existence checks by reusing one schema object per target.
    */
   public static String findTopLevelColumnName(Schema schema, int fieldId) {
     for (Types.NestedField column : schema.columns()) {

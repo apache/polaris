@@ -18,10 +18,16 @@
  */
 package org.apache.polaris.service.catalog.tag;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +35,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -38,27 +46,37 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.entity.table.TableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadTagAssignmentTargetsResult;
+import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.core.tag.CandidateBudget;
 import org.apache.polaris.core.tag.ClassifiedAssignment;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager.TargetLevel;
 import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagAssignmentTargetToken;
 import org.apache.polaris.core.tag.TagEntity;
 import org.apache.polaris.core.tag.TagValidation;
 import org.apache.polaris.core.tag.TagVersionToken;
+import org.apache.polaris.core.tag.exceptions.CandidateBudgetExceededException;
 import org.apache.polaris.core.tag.exceptions.NoSuchAssignmentException;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
 import org.apache.polaris.core.tag.exceptions.NoSuchTargetException;
@@ -68,9 +86,11 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.idempotency.EntityIdempotency;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
+import org.apache.polaris.service.types.ObjectTag;
 import org.apache.polaris.service.types.Tag;
 import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TagIdentifier;
+import org.apache.polaris.service.types.TaggedObject;
 import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
 import org.jspecify.annotations.Nullable;
@@ -595,7 +615,7 @@ public class TagCatalog {
       return new RemainingAssignments(false, Set.of());
     }
     var targetsById = result.getTargetEntitiesAsMap();
-    Map<Long, Schema> schemaByTableId = new HashMap<>();
+    Map<Long, SchemaAt> schemaByTableId = new HashMap<>();
     Set<ClassifiedAssignment> inertAssignments = new LinkedHashSet<>();
     for (var record : records) {
       // Stopping at the first row, the way an existence probe does, cannot answer this question:
@@ -624,7 +644,7 @@ public class TagCatalog {
       String tagName,
       TagAssignmentRecord record,
       @Nullable PolarisBaseEntity targetEntity,
-      Map<Long, Schema> schemaByTableId) {
+      Map<Long, SchemaAt> schemaByTableId) {
     if (targetEntity == null || targetEntity.getDropTimestamp() != 0) {
       // The target id no longer resolves, or the target is soft-dropped. Ids are never reused, so a
       // row that has lost its target can never become live again, and a replacement created under
@@ -654,18 +674,25 @@ public class TagCatalog {
                   + " assignment on it cannot be judged",
               tagName, tableEntity.getTableIdentifier()));
     }
+    // This probe reads its rows and their targets from one snapshot, so every row of a table here
+    // carries the same pointer and the id alone is a sufficient key; the pointer travels with the
+    // cached value all the same, so the two users of this cache cannot drift apart.
     Schema schema =
-        schemaByTableId.computeIfAbsent(
-            targetEntity.getId(),
-            id ->
-                TagCatalogUtils.loadCurrentSchema(
-                    storageAccessConfigProvider,
-                    fileIOFactory,
-                    realmConfig,
-                    catalogEntity,
-                    tableEntity.getTableIdentifier(),
-                    tableEntity,
-                    resolvedEntityView.getResolvedReferenceCatalogEntity()));
+        schemaByTableId
+            .computeIfAbsent(
+                targetEntity.getId(),
+                id ->
+                    new SchemaAt(
+                        tableEntity.getMetadataLocation(),
+                        TagCatalogUtils.loadCurrentSchema(
+                            storageAccessConfigProvider,
+                            fileIOFactory,
+                            realmConfig,
+                            catalogEntity,
+                            tableEntity.getTableIdentifier(),
+                            tableEntity,
+                            resolvedEntityView.getResolvedReferenceCatalogEntity())))
+            .schema();
     return TagCatalogUtils.findTopLevelColumnName(schema, record.getFieldId()) != null;
   }
 
@@ -716,7 +743,7 @@ public class TagCatalog {
         case ENTITY_CANNOT_BE_RESOLVED:
           throw new NoSuchTargetException("Target no longer exists for tag %s", tagName);
         case TAG_ASSIGNMENTS_NOT_SUPPORTED:
-          throw tagAssignmentsUnsupported("assign", tagName, result);
+          throw tagAssignmentsUnsupported("assign", "tag " + tagName, result);
         default:
           throw new IllegalStateException(
               String.format(
@@ -753,7 +780,7 @@ public class TagCatalog {
         case ENTITY_CANNOT_BE_RESOLVED:
           throw new NoSuchTargetException("Target no longer exists for tag %s", tagName);
         case TAG_ASSIGNMENTS_NOT_SUPPORTED:
-          throw tagAssignmentsUnsupported("unassign", tagName, result);
+          throw tagAssignmentsUnsupported("unassign", "tag " + tagName, result);
         default:
           throw new IllegalStateException(
               String.format(
@@ -764,13 +791,629 @@ public class TagCatalog {
   }
 
   /**
-   * The capability reject shares one shape across drop/assign/unassign: the backend cannot perform
-   * tag-assignment operations, surfaced as a 400 with the manager's explanation.
+   * The capability reject shares one shape across every tag-assignment operation, write or read:
+   * the backend cannot perform tag-assignment operations, surfaced as a 400 with the manager's
+   * explanation. The caller composes the subject, because a write names the tag it was operating on
+   * while a read of one object's tags names the kind of object it could not read.
    */
   private static BadRequestException tagAssignmentsUnsupported(
-      String action, String tagName, BaseResult result) {
+      String action, String subject, BaseResult result) {
     return new BadRequestException(
-        "Cannot %s tag %s: %s", action, tagName, result.getExtraInformation());
+        "Cannot %s %s: %s", action, subject, result.getExtraInformation());
+  }
+
+  /**
+   * The refusal a tag read owes its caller when answering it would examine more candidate
+   * assignments than the request may consume. It is a client error rather than a server fault: the
+   * request asked for more work than this deployment performs in one response, and it names the
+   * limit so the caller knows what it asked past.
+   *
+   * <p>The remedy it names is deliberately not "ask for a smaller page". A page bounds this read's
+   * results but not its candidates, because the hierarchy walked is the same hierarchy whether one
+   * tag or the whole set is asked for, so the page size does not move this budget in either
+   * direction. Pointing a caller at the page size would send it round a loop that cannot succeed.
+   */
+  private static BadRequestException candidateBudgetExceeded(int candidateBudget) {
+    return new BadRequestException(
+        "Reading this target's tags would examine more candidate assignments than one request may"
+            + " consume (limit %d); the page size does not change this budget, so retry as a"
+            + " full-result read by setting pagination=false, or reduce the number of tags assigned"
+            + " across this target's hierarchy",
+        candidateBudget);
+  }
+
+  /**
+   * The refusal a reverse lookup owes its caller when the budget ran out before a single candidate
+   * could be returned or resumed from. The remedy names what actually moves the budget: it is
+   * derived from the page size, up to the deployment's maximum page size, and there is no separate
+   * setting for it. It does not suggest narrowing the value filter, because a filter that rejects
+   * more rows examines more rows, not fewer.
+   */
+  private static BadRequestException candidateBudgetExhaustedWithoutProgress(int candidateBudget) {
+    return new BadRequestException(
+        "This request examined more candidate assignments than its work budget allows (limit %d)"
+            + " without finding one it could return or resume from; the budget grows with the page"
+            + " size, up to the deployment's maximum page size, and a client that sent a value"
+            + " filter can instead page without it and apply the filter to the pages it receives",
+        candidateBudget);
+  }
+
+  /** apply-method for a winning assignment stored on the queried target itself. */
+  private static final String APPLY_METHOD_DIRECT = "DIRECT";
+
+  /** apply-method for a winning assignment stored on a parent of the queried target. */
+  private static final String APPLY_METHOD_INHERITED = "INHERITED";
+
+  /**
+   * Returns the direct or effective tags of one target. The effective view walks the target's
+   * parent chain root-to-leaf keeping, per tag definition, the closest assignment that passes the
+   * definition's target-types rules in both directions: an excluded kind is skipped as an
+   * assignment source and omitted as a queried destination, but an excluded intermediate kind does
+   * not stop the walk. The read returns the complete result or fails; it never degrades to a
+   * partial hierarchy or falls back to the direct view.
+   *
+   * <p>The target is resolved once, by the caller, and that one resolution is what both the read
+   * and any continuation the caller binds are built on. The read of the assignment rows is
+   * attempted twice against it: the manager reports a concurrent write it could not read through as
+   * an unavailable service, and rows or definitions that moved between two of its own reads are
+   * exactly what a second attempt can find settled. What a second attempt cannot change is the
+   * resolution itself -- it is fixed for the request by design, so a target whose schema moved
+   * under the read fails rather than silently answering from a newer state. One retry, then the
+   * failure stands: a request that cannot establish one state is a service failure, not something
+   * to keep attempting.
+   */
+  public Page<ObjectTag> getObjectTags(
+      ResolvedTarget resolved,
+      TagAttachmentTarget target,
+      boolean effective,
+      PageToken pageToken,
+      int candidateBudget) {
+    try {
+      return getObjectTagsOnce(resolved, target, effective, pageToken, candidateBudget);
+    } catch (PolarisServiceUnavailableException firstAttempt) {
+      return getObjectTagsOnce(resolved, target, effective, pageToken, candidateBudget);
+    }
+  }
+
+  /**
+   * {@link #getObjectTags(ResolvedTarget, TagAttachmentTarget, boolean, PageToken, int)} for a
+   * caller that has no continuation to bind and so needs no resolution of its own.
+   */
+  public Page<ObjectTag> getObjectTags(
+      TagAttachmentTarget target, boolean effective, PageToken pageToken, int candidateBudget) {
+    return getObjectTags(resolveTarget(target), target, effective, pageToken, candidateBudget);
+  }
+
+  private Page<ObjectTag> getObjectTagsOnce(
+      ResolvedTarget resolved,
+      TagAttachmentTarget target,
+      boolean effective,
+      PageToken pageToken,
+      int candidateBudget) {
+    PolarisResolvedPathWrapper resolvedTarget = resolved.path();
+    int fieldId = resolved.fieldId();
+    String metadataLocation = resolved.metadataLocation();
+    String queriedKind = target.getType().toString();
+
+    if (!effective) {
+      PolarisEntity leaf = resolvedTarget.getRawLeafEntity();
+      Map<Long, ObjectTag> direct = new LinkedHashMap<>();
+      var byLevel =
+          loadVisibleAssignmentsByLevel(
+              queriedKind,
+              List.of(new TargetLevel(leaf, fieldId, metadataLocation)),
+              candidateBudget);
+      for (VisibleAssignment assignment : assignmentsAt(byLevel, leaf.getId(), fieldId)) {
+        if (!assignment.tag().getTargetTypes().contains(queriedKind)) {
+          continue;
+        }
+        direct.put(
+            assignment.tag().getId(), constructObjectTag(assignment, APPLY_METHOD_DIRECT, target));
+      }
+      return pageOfWinners(direct, pageToken);
+    }
+
+    // One traversal level per path entity, root to leaf, plus a final column level for a column
+    // query. A column can only carry a direct assignment at the queried level itself.
+    record TraversalLevel(
+        PolarisEntity entity, String kind, int fieldId, TagAttachmentTarget assignedAt) {}
+    List<PolarisEntity> fullPath = resolvedTarget.getRawFullPath();
+    List<TraversalLevel> levels = new ArrayList<>();
+    List<String> pathNames = new ArrayList<>();
+    for (PolarisEntity entity : fullPath) {
+      if (entity.getType() == PolarisEntityType.CATALOG) {
+        levels.add(
+            new TraversalLevel(
+                entity,
+                TargetType.CATALOG.toString(),
+                0,
+                TagAttachmentTarget.builder(TargetType.CATALOG).build()));
+      } else {
+        pathNames.add(entity.getName());
+        TargetType kind = traversalKindOf(entity);
+        levels.add(
+            new TraversalLevel(
+                entity,
+                kind.toString(),
+                0,
+                TagAttachmentTarget.builder(kind).setPath(List.copyOf(pathNames)).build()));
+      }
+    }
+    if (target.getType() == TargetType.COLUMN) {
+      levels.add(
+          new TraversalLevel(
+              fullPath.get(fullPath.size() - 1), TargetType.COLUMN.toString(), fieldId, target));
+    }
+
+    // Load every level's assignments in one call: the whole traversal describes one state that
+    // actually existed, not results stitched from independent reads taken at different times.
+    List<TargetLevel> requestedLevels =
+        levels.stream()
+            .map(
+                level ->
+                    new TargetLevel(
+                        level.entity(),
+                        level.fieldId(),
+                        // Only a field level resolved a schema, so only it carries the pointer that
+                        // schema came from; a whole-object level has nothing of the kind to check.
+                        level.fieldId() == 0 ? null : metadataLocation))
+            .collect(Collectors.toList());
+    var byLevel = loadVisibleAssignmentsByLevel(queriedKind, requestedLevels, candidateBudget);
+
+    // Closest wins per definition: root-to-leaf overwrite keyed by the definition's id (never its
+    // name, so a recreated same-name definition can never inherit an old assignment).
+    Map<Long, ObjectTag> winners = new LinkedHashMap<>();
+    Set<Long> omittedDefinitions = new HashSet<>();
+    for (int i = 0; i < levels.size(); i++) {
+      TraversalLevel level = levels.get(i);
+      boolean isQueriedLevel = i == levels.size() - 1;
+      for (VisibleAssignment assignment :
+          assignmentsAt(byLevel, level.entity().getId(), level.fieldId())) {
+        long tagId = assignment.tag().getId();
+        if (omittedDefinitions.contains(tagId)) {
+          continue;
+        }
+        List<String> targetTypes = assignment.tag().getTargetTypes();
+        if (!targetTypes.contains(queriedKind)) {
+          // the queried target kind is excluded by this definition: omit it entirely
+          omittedDefinitions.add(tagId);
+          continue;
+        }
+        if (!targetTypes.contains(level.kind())) {
+          // excluded assignment source: ignore this level but keep walking
+          continue;
+        }
+        winners.put(
+            tagId,
+            constructObjectTag(
+                assignment,
+                isQueriedLevel ? APPLY_METHOD_DIRECT : APPLY_METHOD_INHERITED,
+                level.assignedAt()));
+      }
+    }
+    return pageOfWinners(winners, pageToken);
+  }
+
+  /**
+   * One page of a target's tags, keyed and ordered by tag definition id.
+   *
+   * <p>The hierarchy walk above is never cut short: a page bounds what is returned, not what was
+   * considered, so an effective result still describes the complete hierarchy for the tags on it.
+   * The definition id is the continuation key because it is the one identity the result is unique
+   * on and it outlives a rename, so a page boundary cannot drop or repeat a definition when one is
+   * renamed between requests.
+   */
+  private Page<ObjectTag> pageOfWinners(Map<Long, ObjectTag> winners, PageToken pageToken) {
+    List<Long> ordered = new ArrayList<>(winners.keySet());
+    Collections.sort(ordered);
+    long after =
+        pageToken.valueAs(EntityIdToken.class).map(EntityIdToken::entityId).orElse(Long.MIN_VALUE);
+    Stream<Long> remaining =
+        pageToken.value().isPresent()
+            ? ordered.stream().filter(id -> id > after)
+            : ordered.stream();
+    // Page.mapped hands the token builder null once the stream is exhausted, which is how it says
+    // "complete"; an unboxing method reference would fail on exactly that call.
+    return Page.mapped(
+        pageToken,
+        remaining,
+        winners::get,
+        last -> last == null ? null : EntityIdToken.fromEntityId(last));
+  }
+
+  /**
+   * Reverse lookup: one page of the targets carrying a direct assignment of one definition,
+   * optionally filtered by an exact, case-sensitive selected value. Only direct assignments are
+   * returned, soft-dropped and orphaned targets are hidden, and a column result is hidden when its
+   * field id no longer names a top-level column of the current table schema.
+   *
+   * <p>The definition arrives already resolved, by the caller, once. A name is not an identity: a
+   * definition dropped and recreated under the same name is a different definition inheriting none
+   * of the old assignments, so resolving the name a second time inside the request would let the
+   * rows be read from one definition while the request was authorized, and its continuation bound,
+   * against another. Being handed the identity makes those the same value rather than two values
+   * that would have to be compared, and a definition that is gone by the time its rows are read is
+   * reported missing by the store's own existence check on that id.
+   *
+   * <p>{@code readable} decides, per candidate, whether the caller may read that target. A target
+   * it refuses is left out of the result rather than reported, and is a consumed candidate: the
+   * continuation advances past it. It never turns a refusal into an error, and it never swallows
+   * one: a failure to reach a decision propagates.
+   *
+   * <p>{@code candidateBudget} bounds the work one request may do, which a page size alone cannot,
+   * because filtering may examine many candidates without returning any. It is one budget for the
+   * whole request: every persistence read below charges the rows it examined to the same instance,
+   * so a later read sees what the earlier ones spent. When the budget runs out after a candidate
+   * has been consumed, the page is returned short, or empty, with a token that resumes strictly
+   * after that candidate, so nothing examined-but-unreturned is lost. When it runs out before any
+   * candidate was consumed there is no position to resume from, and the request is refused rather
+   * than answered with an empty page that would read as the end of the definition.
+   */
+  public Page<TaggedObject> listObjectsByTag(
+      TagEntity tag,
+      String valueFilter,
+      PageToken pageToken,
+      Predicate<TagAttachmentTarget> readable,
+      int candidateBudget) {
+    List<TaggedObject> objects = new ArrayList<>();
+    // One metadata read per distinct table state, reused for every column row that arrives from
+    // that
+    // same state, including across the persistence reads below. A row whose target carries a newer
+    // pointer reads again rather than reusing what an earlier read returned.
+    Map<Long, SchemaAt> schemaByTableId = new HashMap<>();
+    PageToken currentPageToken = pageToken;
+    int requested = pageToken.pageSize().orElse(Integer.MAX_VALUE);
+    CandidateBudget budget = CandidateBudget.of(candidateBudget);
+    TagAssignmentRecord lastConsumed = null;
+    boolean storeExhausted = false;
+
+    while (true) {
+      LoadTagAssignmentTargetsResult result;
+      try {
+        result =
+            metaStoreManager.loadTargetsOnTag(
+                callContext.getPolarisCallContext(), tag, valueFilter, currentPageToken, budget);
+      } catch (CandidateBudgetExceededException rowsRemain) {
+        // The read had rows left to examine and no budget to examine them with. A request that has
+        // consumed a candidate resumes after it: the rows that read looked at sit past that
+        // candidate and are examined again by the next page, so nothing is skipped. A request that
+        // has consumed none has no position to resume from and is refused, never answered with an
+        // empty page that would read as the end of the definition.
+        if (lastConsumed == null) {
+          throw candidateBudgetExhaustedWithoutProgress(candidateBudget);
+        }
+        break;
+      }
+      if (!result.isSuccess()) {
+        switch (result.getReturnStatus()) {
+          case ENTITY_NOT_FOUND:
+            // The definition this request resolved is no longer there. A definition recreated under
+            // the same name is a different definition, so this is a miss and never a substitution.
+            throw new NoSuchTagException(String.format("Tag does not exist: %s", tag.getName()));
+          case TAG_ASSIGNMENTS_NOT_SUPPORTED:
+            // Reads reject the same way writes do: an incapable store must never silently report
+            // "nothing to list" for a read it cannot actually perform.
+            throw tagAssignmentsUnsupported("list objects by", "tag " + tag.getName(), result);
+          default:
+            throw new IllegalStateException(
+                String.format(
+                    "Failed to list objects by tag %s error status: %s with extraInfo: %s",
+                    tag.getName(), result.getReturnStatus(), result.getExtraInformation()));
+        }
+      }
+
+      Map<Long, PolarisBaseEntity> targetsById = result.getTargetEntitiesAsMap();
+      boolean pageFull = false;
+      for (var record : result.getAssignments().items()) {
+        if (objects.size() >= requested) {
+          // Stop before touching this row: it stays fetched-but-unconsumed and the token below
+          // resumes at it, so no candidate is skipped.
+          pageFull = true;
+          break;
+        }
+        lastConsumed = record;
+        PolarisBaseEntity targetEntity = targetsById.get(record.getTargetId());
+        if (targetEntity == null || targetEntity.getDropTimestamp() != 0) {
+          // purged or soft-dropped target: the row is orphaned or inactive and stays hidden
+          continue;
+        }
+        TagAttachmentTarget itemTarget =
+            constructAssignmentTarget(record.getFieldId(), targetEntity, schemaByTableId);
+        if (itemTarget == null) {
+          continue;
+        }
+        if (!tag.getTargetTypes().contains(itemTarget.getType().toString())) {
+          // belt: only target kinds listed by the definition may appear
+          continue;
+        }
+        if (!readable.test(itemTarget)) {
+          // The caller may read the definition but not this target. Reading the definition is not
+          // authority over the objects carrying it, so the row is left out rather than reported.
+          continue;
+        }
+        objects.add(
+            TaggedObject.builder()
+                .setTarget(itemTarget)
+                .setValues(new LinkedHashSet<>(List.of(record.getValue())))
+                .setApplyMethod(APPLY_METHOD_DIRECT)
+                .build());
+      }
+
+      String storeToken = result.getAssignments().encodedResponseToken();
+      if (pageFull) {
+        break;
+      }
+      if (storeToken == null) {
+        storeExhausted = true;
+        break;
+      }
+      if (objects.size() >= requested) {
+        break;
+      }
+      if (budget.isExhausted()) {
+        // Rows remain and the budget does not. Every row read so far was consumed, so the page is
+        // answered as it stands, with a continuation after the last of them.
+        break;
+      }
+      // This persistence page was entirely hidden or filtered. Pull the next one rather than
+      // answering an empty page while data remains. What stops this loop is the budget: it is
+      // finite on both the paged and the full-result path, and only an operator who switches the
+      // unpaginated result limit off leaves it unbounded.
+      currentPageToken =
+          PageToken.build(storeToken, null, 0 /* keep the size the token carries */, () -> true);
+    }
+
+    if (!pageToken.paginationRequested()) {
+      // A full-result request is answered in full or not at all; the handler's own limit probe
+      // decides that, so there is no continuation to hand back here. The handler reaches this
+      // branch
+      // only where it has no limit to probe with, having been told to answer every result, and it
+      // passes an unbounded budget with it, so there is no bound here left to report either.
+      return Page.fromItems(objects);
+    }
+    return Page.page(
+        pageToken,
+        objects,
+        storeExhausted ? null : TagAssignmentTargetToken.fromRecord(lastConsumed));
+  }
+
+  /** One assignment row whose tag definition still resolves, paired with that definition. */
+  private record VisibleAssignment(TagAssignmentRecord record, TagEntity tag) {}
+
+  /**
+   * Loads the assignments stored on every requested (target, fieldId) level in one call, and hides
+   * every row whose definition no longer resolves or is soft-dropped: physical rows left behind by
+   * a failed cleanup must never surface as results.
+   *
+   * <p>The read is bounded: the levels say how far to walk, but one level may carry any number of
+   * assignments, so the request also states how many candidate rows it may consume. A read that
+   * needs more is refused rather than trimmed, because an effective result must describe the whole
+   * hierarchy and a trimmed one silently would not.
+   *
+   * @param queriedKind the wire target-type of the object being read, used only to name what could
+   *     not be read if the backend rejects this call
+   * @param levels the (target, fieldId) levels to load, in no particular order
+   * @param candidateBudget the greatest number of assignment rows this read may consume across
+   *     every level
+   * @return the visible assignments grouped by target entity id, then by field id. A caller reads
+   *     one level's assignments with {@link #assignmentsAt}.
+   */
+  private Map<Long, Map<Integer, List<VisibleAssignment>>> loadVisibleAssignmentsByLevel(
+      String queriedKind, List<TargetLevel> levels, int candidateBudget) {
+    var result =
+        metaStoreManager.loadTagsOnEntities(
+            callContext.getPolarisCallContext(), levels, candidateBudget);
+    if (!result.isSuccess()) {
+      switch (result.getReturnStatus()) {
+        case TAG_ASSIGNMENTS_NOT_SUPPORTED:
+          // Reads reject the same way writes do: an incapable store must never silently report
+          // "no assignments" for a read it cannot actually perform.
+          throw tagAssignmentsUnsupported("read tags on", queriedKind, result);
+        case ENTITY_NOT_FOUND:
+        case ENTITY_CANNOT_BE_RESOLVED:
+          // a requested target was purged between resolution and this load; the write path
+          // answers the same miss 404.
+          throw new NoSuchTargetException("Target no longer exists");
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  "Failed to load tags on entities error status: %s with extraInfo: %s",
+                  result.getReturnStatus(), result.getExtraInformation()));
+      }
+    }
+    if (result.getTagAssignmentRecords().size() > candidateBudget) {
+      // The read came back with more rows than the request was allowed to consume, which is how a
+      // bounded read reports that it was cut short. There is no honest short answer available: an
+      // effective read that stopped part way through a level would report a hierarchy that was
+      // never whole, and a client cannot tell that from a complete one.
+      throw candidateBudgetExceeded(candidateBudget);
+    }
+    Map<Long, TagEntity> definitionsById = new HashMap<>();
+    for (PolarisBaseEntity definition : result.getEntities()) {
+      if (definition != null && definition.getDropTimestamp() == 0) {
+        definitionsById.put(definition.getId(), TagEntity.of(definition));
+      }
+    }
+    Map<Long, Map<Integer, List<VisibleAssignment>>> byLevel = new HashMap<>();
+    for (var record : result.getTagAssignmentRecords()) {
+      TagEntity definition = definitionsById.get(record.getTagId());
+      if (definition == null) {
+        continue;
+      }
+      byLevel
+          .computeIfAbsent(record.getTargetId(), unused -> new HashMap<>())
+          .computeIfAbsent(record.getFieldId(), unused -> new ArrayList<>())
+          .add(new VisibleAssignment(record, definition));
+    }
+    return byLevel;
+  }
+
+  /** The visible assignments of one requested level, or an empty list if it has none. */
+  private static List<VisibleAssignment> assignmentsAt(
+      Map<Long, Map<Integer, List<VisibleAssignment>>> byLevel, long targetId, int fieldId) {
+    return byLevel.getOrDefault(targetId, Map.of()).getOrDefault(fieldId, List.of());
+  }
+
+  private static ObjectTag constructObjectTag(
+      VisibleAssignment assignment, String applyMethod, TagAttachmentTarget assignedAt) {
+    return ObjectTag.builder()
+        .setTag(
+            TagIdentifier.builder()
+                .setId(Long.toString(assignment.tag().getId()))
+                .setName(assignment.tag().getName())
+                .build())
+        .setValues(new LinkedHashSet<>(List.of(assignment.record().getValue())))
+        .setApplyMethod(applyMethod)
+        .setAssignedAt(assignedAt)
+        .build();
+  }
+
+  /**
+   * A table's schema together with the Iceberg metadata pointer it was read from. The pointer is
+   * part of the cached value, not just of the read that produced it, because a later row of the
+   * same table may arrive from a newer state: what makes a cached schema reusable is not that it is
+   * the same table, it is that it is the same state of that table.
+   */
+  record SchemaAt(String metadataLocation, Schema schema) {}
+
+  /**
+   * Whether a schema already read for a table may render a row whose own target carries {@code
+   * metadataLocation}. Only if it was read from that same pointer: rows of one table can arrive
+   * across several persistence reads inside one request, and a later read may bring a newer
+   * pointer, so a schema memoized from the earlier one would name a column as of a state that row's
+   * assignment never belonged to. A cached entry with no pointer recorded, or a row whose target
+   * has none, cannot be shown to describe the same state and so does not count as a hit.
+   */
+  @VisibleForTesting
+  static boolean stillDescribes(@Nullable SchemaAt cached, @Nullable String metadataLocation) {
+    return cached != null
+        && cached.metadataLocation() != null
+        && metadataLocation != null
+        && cached.metadataLocation().equals(metadataLocation);
+  }
+
+  /**
+   * Rebuilds the API target a reverse-lookup row addresses, or null when the row must stay hidden
+   * (an unsupported entity kind, a table that no longer resolves, or a removed column).
+   */
+  private TagAttachmentTarget constructAssignmentTarget(
+      int fieldId, PolarisBaseEntity targetEntity, Map<Long, SchemaAt> schemaByTableId) {
+    if (fieldId != 0) {
+      if (targetEntity.getType() != PolarisEntityType.TABLE_LIKE
+          || targetEntity.getSubType() != PolarisEntitySubType.ICEBERG_TABLE) {
+        return null;
+      }
+      var tableEntity = IcebergTableLikeEntity.of(targetEntity);
+      TableIdentifier tableIdentifier = tableEntity.getTableIdentifier();
+      SchemaAt cached = schemaByTableId.get(targetEntity.getId());
+      Schema schema =
+          stillDescribes(cached, tableEntity.getMetadataLocation()) ? cached.schema() : null;
+      if (schema == null) {
+        if (tableEntity.getMetadataLocation() == null) {
+          // Being unable to read a table's metadata does not establish that its column is gone, so
+          // the row cannot be hidden on that basis: hiding it would answer the lookup as if the
+          // assignment did not exist. A read that cannot establish what it was asked for fails,
+          // the same way any other failure to load metadata already does here.
+          throw new IllegalStateException(
+              String.format(
+                  "Cannot list objects by tag: table %s has no current metadata location, so the"
+                      + " column assignment on it cannot be validated",
+                  tableIdentifier));
+        }
+        // the target was looked up by id and soft-drop-filtered above; read its current schema
+        // once for all of its column rows, validating storage against the resolved catalog
+        schema =
+            TagCatalogUtils.loadCurrentSchema(
+                storageAccessConfigProvider,
+                fileIOFactory,
+                realmConfig,
+                catalogEntity,
+                tableIdentifier,
+                tableEntity,
+                resolvedEntityView.getResolvedReferenceCatalogEntity());
+        schemaByTableId.put(
+            targetEntity.getId(), new SchemaAt(tableEntity.getMetadataLocation(), schema));
+      }
+      String columnName = TagCatalogUtils.findTopLevelColumnName(schema, fieldId);
+      if (columnName == null) {
+        // the field id no longer names a top-level column: the row is orphaned and stays hidden
+        return null;
+      }
+      return TagAttachmentTarget.builder(TargetType.COLUMN)
+          .setPath(tablePathOf(tableIdentifier))
+          .setColumn(List.of(columnName))
+          .build();
+    }
+    switch (targetEntity.getType()) {
+      case CATALOG:
+        return TagAttachmentTarget.builder(TargetType.CATALOG).build();
+      case NAMESPACE:
+        return TagAttachmentTarget.builder(TargetType.NAMESPACE)
+            .setPath(Arrays.asList(NamespaceEntity.of(targetEntity).asNamespace().levels()))
+            .build();
+      case TABLE_LIKE:
+        {
+          // Resolve the identifier through the shared table-like accessor, not the Iceberg
+          // subclass: a whole-object assignment on a GENERIC_TABLE is a target the write path
+          // accepts, and IcebergTableLikeEntity's constructor rejects every subtype but Iceberg
+          // table and view, so building it that way would fail this whole page over one row the
+          // lookup is required to return.
+          TableLikeEntity tableLike = tableLikeTargetOf(targetEntity);
+          if (tableLike == null) {
+            return null;
+          }
+          return TagAttachmentTarget.builder(tableLikeKindOf(targetEntity))
+              .setPath(tablePathOf(tableLike.getTableIdentifier()))
+              .build();
+        }
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * The table-like wrapper for a reverse-lookup row's target, or null when the row's subtype is not
+   * one this API returns as a whole-object target. Each resolves its identifier through {@link
+   * TableLikeEntity}, which derives it from the stored parent namespace and name without caring
+   * which table format the entity is.
+   */
+  private static TableLikeEntity tableLikeTargetOf(PolarisBaseEntity targetEntity) {
+    return switch (targetEntity.getSubType()) {
+      case ICEBERG_TABLE, ICEBERG_VIEW -> IcebergTableLikeEntity.of(targetEntity);
+      case GENERIC_TABLE -> GenericTableEntity.of(targetEntity);
+      default -> null;
+    };
+  }
+
+  /**
+   * The API kind of a table-like entity. A namespace and a name identify either a table or a view,
+   * and the two are separate target kinds a definition may list independently, so the subtype is
+   * what decides and never the path.
+   */
+  private static TargetType tableLikeKindOf(PolarisBaseEntity targetEntity) {
+    return targetEntity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW
+        ? TargetType.VIEW
+        : TargetType.TABLE;
+  }
+
+  /**
+   * The kind one level of the effective-read walk reports. The queried target's own kind is the
+   * request's, but a parent level is whatever the resolved entity is, and a view level has to say
+   * so: the target-types test runs against this kind, so reporting a view as a table would let a
+   * definition that lists only TABLE reach it.
+   */
+  private static TargetType traversalKindOf(PolarisEntity entity) {
+    if (entity.getType() == PolarisEntityType.NAMESPACE) {
+      return TargetType.NAMESPACE;
+    }
+    return tableLikeKindOf(entity);
+  }
+
+  /** The namespace-levels-plus-name path form the API uses for a table-like target. */
+  private static List<String> tablePathOf(TableIdentifier tableIdentifier) {
+    List<String> tablePath = new ArrayList<>(Arrays.asList(tableIdentifier.namespace().levels()));
+    tablePath.add(tableIdentifier.name());
+    return tablePath;
   }
 
   private PolarisResolvedPathWrapper resolveAssignmentTarget(TagAttachmentTarget target) {
@@ -805,8 +1448,40 @@ public class TagCatalog {
 
   private int resolveFieldId(
       TagAttachmentTarget target, PolarisResolvedPathWrapper resolvedTarget) {
+    return resolveField(target, resolvedTarget).fieldId();
+  }
+
+  /**
+   * What one request's target resolved to: the path it named, the Iceberg field id a column target
+   * addresses, and the metadata pointer the schema that field was read from came from.
+   *
+   * <p>The three travel together because they are one fact, established once. The pointer belongs
+   * with the field because a read that reports a column has used that schema to decide the column
+   * exists, and the assignment read has to be able to establish that they still describe the state
+   * it returns. The path belongs with them because the field id is meaningless without the table it
+   * was resolved against, and a caller that has to bind a continuation to the object being read
+   * needs the whole identity, not the half of it a name can express.
+   */
+  record ResolvedTarget(
+      PolarisResolvedPathWrapper path, int fieldId, @Nullable String metadataLocation) {}
+
+  /**
+   * Resolves and validates a tag-read target once, for the whole request.
+   *
+   * <p>A column's identity is its containing table's id together with its Iceberg field id, and the
+   * field id comes from the table's current schema. Resolving it twice in one request is therefore
+   * two different questions asked of two different moments, so the caller that binds a page token
+   * to the object being read and the read that answers the page are given the same resolution
+   * rather than each taking their own.
+   */
+  ResolvedTarget resolveTarget(TagAttachmentTarget target) {
+    return resolveField(target, resolveAssignmentTarget(target));
+  }
+
+  private ResolvedTarget resolveField(
+      TagAttachmentTarget target, PolarisResolvedPathWrapper resolvedTarget) {
     if (target.getType() != TargetType.COLUMN) {
-      return 0;
+      return new ResolvedTarget(resolvedTarget, 0, null);
     }
     TableIdentifier tableIdentifier = TableIdentifier.of(target.getPath().toArray(new String[0]));
     Schema schema =
@@ -818,7 +1493,10 @@ public class TagCatalog {
             resolvedEntityView,
             tableIdentifier,
             resolvedTarget);
-    return TagCatalogUtils.resolveTopLevelFieldId(schema, target.getColumn().get(0));
+    return new ResolvedTarget(
+        resolvedTarget,
+        TagCatalogUtils.resolveTopLevelFieldId(schema, target.getColumn().get(0)),
+        IcebergTableLikeEntity.of(resolvedTarget.getRawLeafEntity()).getMetadataLocation());
   }
 
   private PolarisResolvedPathWrapper getResolvedPathWrapper(String tagName) {

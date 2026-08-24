@@ -46,9 +46,11 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.tag.CandidateBudget;
 import org.apache.polaris.core.tag.ClassifiedAssignment;
 import org.apache.polaris.core.tag.TagAssignmentRecord;
 import org.apache.polaris.core.tag.TagEntity;
+import org.apache.polaris.core.tag.TargetField;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -864,6 +866,20 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @NonNull
+  public List<TagAssignmentRecord> loadTagAssignmentsOnTargetFields(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<TargetField> targetFields,
+      int candidateBudget) {
+    return this.runInReadTransaction(
+        callCtx,
+        () ->
+            this.loadTagAssignmentsOnTargetFieldsInCurrentTxn(
+                callCtx, targetFields, candidateBudget));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @NonNull
   public List<TagAssignmentRecord> loadAllTagAssignmentsOnTargetEntity(
       @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
     return this.runInReadTransaction(
@@ -881,12 +897,13 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       long tagCatalogId,
       long tagId,
       @Nullable String valueFilter,
-      @NonNull PageToken pageToken) {
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
     return this.runInReadTransaction(
         callCtx,
         () ->
             this.loadAllTargetsOnTagInCurrentTxn(
-                callCtx, tagCatalogId, tagId, valueFilter, pageToken));
+                callCtx, tagCatalogId, tagId, valueFilter, pageToken, candidateBudget));
   }
 
   /** {@inheritDoc} */

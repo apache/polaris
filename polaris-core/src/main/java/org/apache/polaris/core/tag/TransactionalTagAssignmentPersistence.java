@@ -70,6 +70,15 @@ public interface TransactionalTagAssignmentPersistence {
     throw new UnsupportedOperationException("this backend does not support tag assignments");
   }
 
+  /** See {@link TagAssignmentPersistence#loadTagAssignmentsOnTargetFields} */
+  @NonNull
+  default List<TagAssignmentRecord> loadTagAssignmentsOnTargetFieldsInCurrentTxn(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<TargetField> targetFields,
+      int candidateBudget) {
+    throw new UnsupportedOperationException("this backend does not support tag assignments");
+  }
+
   /** See {@link TagAssignmentPersistence#loadAllTagAssignmentsOnTargetEntity} */
   @NonNull
   default List<TagAssignmentRecord> loadAllTagAssignmentsOnTargetEntityInCurrentTxn(
@@ -87,7 +96,12 @@ public interface TransactionalTagAssignmentPersistence {
       @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity tagEntity) {
     List<TagAssignmentRecord> assignmentsOnTag =
         loadAllTargetsOnTagInCurrentTxn(
-            callCtx, tagEntity.getCatalogId(), tagEntity.getId(), null, PageToken.readEverything());
+            callCtx,
+            tagEntity.getCatalogId(),
+            tagEntity.getId(),
+            null,
+            PageToken.readEverything(),
+            CandidateBudget.unbounded());
     deleteAllEntityTagAssignmentRecordsInCurrentTxn(
         callCtx, tagEntity, assignmentsOnTag, List.of());
   }
@@ -115,7 +129,12 @@ public interface TransactionalTagAssignmentPersistence {
     }
     List<TagAssignmentRecord> assignmentsOnTag =
         loadAllTargetsOnTagInCurrentTxn(
-            callCtx, tagEntity.getCatalogId(), tagEntity.getId(), null, PageToken.readEverything());
+            callCtx,
+            tagEntity.getCatalogId(),
+            tagEntity.getId(),
+            null,
+            PageToken.readEverything(),
+            CandidateBudget.unbounded());
     for (TagAssignmentRecord record : assignmentsOnTag) {
       if (!judgedFrom.containsKey(TagAssignmentIdentity.of(record))) {
         return false;
@@ -168,7 +187,8 @@ public interface TransactionalTagAssignmentPersistence {
       long tagCatalogId,
       long tagId,
       @Nullable String valueFilter,
-      @NonNull PageToken pageToken) {
+      @NonNull PageToken pageToken,
+      @NonNull CandidateBudget candidateBudget) {
     throw new UnsupportedOperationException("this backend does not support tag assignments");
   }
 }

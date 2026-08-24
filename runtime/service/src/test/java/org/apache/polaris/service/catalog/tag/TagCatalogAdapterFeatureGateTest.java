@@ -22,11 +22,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.types.TargetType;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -45,6 +47,35 @@ public class TagCatalogAdapterFeatureGateTest {
     // The gate fires before the security context or request body are touched.
     assertThatThrownBy(
             () -> adapter(realmConfig, true).listTags("cat", null, null, null, null, null))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("ENABLE_TAG_STORE");
+  }
+
+  /**
+   * getObjectTags answers the capability gate before it reads the query at all: a realm with the
+   * tag store off must say the feature is not enabled rather than hand back a parse verdict on the
+   * parameters of a route it does not serve.
+   */
+  @Test
+  public void testDisabledFeatureRejectsGetObjectTagsBeforeParameterValidation() {
+    RealmConfig realmConfig = mock(RealmConfig.class);
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_TAG_STORE)).thenReturn(false);
+
+    assertThatThrownBy(
+            () ->
+                adapter(realmConfig, true)
+                    .getObjectTags(
+                        "cat",
+                        TargetType.CATALOG,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        mock(SecurityContext.class)))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("ENABLE_TAG_STORE");
   }
