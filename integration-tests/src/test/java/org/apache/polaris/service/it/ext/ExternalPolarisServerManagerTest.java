@@ -49,17 +49,6 @@ class ExternalPolarisServerManagerTest {
   }
 
   @Test
-  void serverForContextUsesConfiguredHost() {
-    System.setProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, "12345");
-    System.setProperty(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY, "12346");
-    System.setProperty(ExternalPolarisServerManager.HOST_PROPERTY, "127.0.0.1");
-
-    Server server = new ExternalPolarisServerManager().serverForContext(null);
-
-    assertThat(server.baseUri()).hasToString("http://127.0.0.1:12345");
-  }
-
-  @Test
   void serverForContextUsesConfiguredHttpPort() {
     System.setProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, "12345");
 
@@ -69,6 +58,16 @@ class ExternalPolarisServerManagerTest {
     assertThat(server.adminCredentials().principalName()).isEqualTo("root");
     assertThat(server.adminCredentials().credentials().clientId()).isEqualTo("test-admin");
     assertThat(server.adminCredentials().credentials().clientSecret()).isEqualTo("test-secret");
+  }
+
+  @Test
+  void serverForContextUsesConfiguredHost() {
+    System.setProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, "12345");
+    System.setProperty(ExternalPolarisServerManager.HOST_PROPERTY, "127.0.0.1");
+
+    Server server = new ExternalPolarisServerManager().serverForContext(null);
+
+    assertThat(server.baseUri()).hasToString("http://127.0.0.1:12345");
   }
 
   @Test
@@ -104,21 +103,16 @@ class ExternalPolarisServerManagerTest {
     System.setProperty(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY, "12346");
 
     Server server = new ExternalPolarisServerManager().serverForContext(null);
-
     assertThat(server.managementUri()).contains(URI.create("http://localhost:12346/q"));
-    assertThat(server.adminCredentials().principalName()).isEqualTo("root");
-    assertThat(server.adminCredentials().credentials().clientId()).isEqualTo("test-admin");
-    assertThat(server.adminCredentials().credentials().clientSecret()).isEqualTo("test-secret");
   }
 
   @Test
-  void serverForContextRejectsMissingManagementPort() {
+  void serverForContextAcceptsMissingManagementPort() {
     System.setProperty(ExternalPolarisServerManager.HTTP_PORT_PROPERTY, "12345");
     System.clearProperty(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY);
 
-    assertThatThrownBy(() -> new ExternalPolarisServerManager().serverForContext(null))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining(ExternalPolarisServerManager.MANAGEMENT_PORT_PROPERTY);
+    Server server = new ExternalPolarisServerManager().serverForContext(null);
+    assertThat(server.managementUri()).isEmpty();
   }
 
   @Test

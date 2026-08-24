@@ -21,7 +21,6 @@ package org.apache.polaris.service.it;
 import io.quarkus.test.common.http.TestHTTPResourceManager;
 import io.quarkus.test.config.ConfigInjector;
 import io.quarkus.test.config.ValueRegistryInjector;
-import io.quarkus.value.registry.ValueRegistry;
 import java.net.URI;
 import java.util.Optional;
 import org.apache.polaris.service.it.env.ClientCredentials;
@@ -31,9 +30,6 @@ import org.apache.polaris.service.it.ext.PolarisServerManager;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class ServerManager implements PolarisServerManager {
-
-  private static final ValueRegistry.RuntimeKey<Integer> MANAGEMENT_PORT =
-      ValueRegistry.RuntimeKey.intKey("quarkus.management.port");
 
   @Override
   public Server serverForContext(ExtensionContext context) {

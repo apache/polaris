@@ -38,9 +38,12 @@ public class ExternalPolarisServerManager implements PolarisServerManager {
 
   @Override
   public Server serverForContext(ExtensionContext context) {
-    URI baseUri = formatUri(httpPort());
+    URI baseUri = URI.create(String.format("http://%s:%d", host(), httpPort()));
     Optional<URI> managementUri =
-        managementPort().stream().boxed().map(ExternalPolarisServerManager::formatUri).findFirst();
+        managementPort().stream()
+            .boxed()
+            .map(port -> URI.create(String.format("http://%s:%d/q", host(), port)))
+            .findFirst();
     return new Server() {
       @Override
       public URI baseUri() {
@@ -62,10 +65,6 @@ public class ExternalPolarisServerManager implements PolarisServerManager {
         // The external process owner is responsible for server lifecycle.
       }
     };
-  }
-
-  private static URI formatUri(int port) {
-    return URI.create(String.format("http://%s:%d", host(), port));
   }
 
   private static String host() {
