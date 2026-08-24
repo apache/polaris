@@ -34,7 +34,6 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -46,6 +45,7 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
@@ -151,7 +151,60 @@ public class DefaultAuthenticatorTest {
     DefaultAuthenticator standaloneAuthenticator = newStandaloneAuthenticator(metaStoreManagerSpy);
 
     assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
-        .isInstanceOf(ServiceUnavailableException.class);
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            e -> assertThat(e.getRetryAfterSeconds()).isZero());
+  }
+
+  @Test
+  void testLoadGrantsThrowsServiceExceptionOnMetastoreException() {
+    // Given: a metastore that fails while loading the principal's grants
+    PolarisCredential credentials =
+        PolarisCredential.of(
+            principalEntity.getId(), null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+
+    PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
+    Mockito.doThrow(new RuntimeException("Metastore exception"))
+        .when(metaStoreManagerSpy)
+        .loadGrantsToGrantee(any(), any());
+
+    DefaultAuthenticator standaloneAuthenticator = newStandaloneAuthenticator(metaStoreManagerSpy);
+
+    // When/Then: the metastore failure should surface as PolarisServiceUnavailableException
+    assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            e -> assertThat(e.getRetryAfterSeconds()).isZero());
+  }
+
+  @Test
+  void testLoadSecurableEntityThrowsServiceExceptionOnMetastoreException() {
+    // Given: grants without preloaded entities, so role resolution falls back to loadEntity,
+    // and a metastore that fails on that fallback
+    LoadGrantsResult grants =
+        metaStoreManager.loadGrantsToGrantee(callContext.getPolarisCallContext(), principalEntity);
+    LoadGrantsResult grantsWithoutEntities =
+        new LoadGrantsResult(grants.getGrantsVersion(), grants.getGrantRecords(), null);
+
+    PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(grantsWithoutEntities)
+        .when(metaStoreManagerSpy)
+        .loadGrantsToGrantee(
+            any(), Mockito.argThat(p -> p != null && p.getId() == principalEntity.getId()));
+    Mockito.doThrow(new RuntimeException("Metastore exception"))
+        .when(metaStoreManagerSpy)
+        .loadEntity(any(), anyLong(), anyLong(), Mockito.eq(PolarisEntityType.PRINCIPAL_ROLE));
+
+    PolarisCredential credentials =
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+
+    DefaultAuthenticator standaloneAuthenticator = newStandaloneAuthenticator(metaStoreManagerSpy);
+
+    // When/Then: the metastore failure should surface as PolarisServiceUnavailableException
+    assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            e -> assertThat(e.getRetryAfterSeconds()).isZero());
   }
 
   @Test
