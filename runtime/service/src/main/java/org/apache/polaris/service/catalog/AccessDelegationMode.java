@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog;
 import com.google.common.base.Functions;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -48,21 +49,22 @@ public enum AccessDelegationMode {
     return protocolValue;
   }
 
-  public static EnumSet<AccessDelegationMode> fromProtocolValuesList(String protocolValues) {
+  public static EnumSet<AccessDelegationMode> fromProtocolValuesList(List<String> protocolValues) {
     if (protocolValues == null || protocolValues.isEmpty()) {
       return EnumSet.noneOf(AccessDelegationMode.class);
     }
 
     // Backward-compatibility case for old clients that still use the unofficial value of `true` to
     // request credential vending. Note that if the client requests `true` among other values it
-    // will be parsed as `UNKNOWN` (by the code below this `if`) since the client submitting
+    // will be filtered out (by the code below this `if`) since the client submitting
     // multiple access modes is expected to be aware of the Iceberg REST API spec.
-    if (protocolValues.trim().toLowerCase(Locale.ROOT).equals("true")) {
+    if (protocolValues.size() == 1
+        && protocolValues.getFirst().trim().toLowerCase(Locale.ROOT).equals("true")) {
       return EnumSet.of(VENDED_CREDENTIALS);
     }
 
     EnumSet<AccessDelegationMode> set = EnumSet.noneOf(AccessDelegationMode.class);
-    Arrays.stream(protocolValues.split(",")) // per Iceberg REST Catalog spec
+    protocolValues.stream() // per Iceberg REST Catalog spec
         .map(String::trim)
         .map(Mapper::map)
         .filter(Objects::nonNull)
