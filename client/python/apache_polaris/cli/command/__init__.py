@@ -82,6 +82,8 @@ class Command(ABC):
                 path_style_access=options_get(Arguments.PATH_STYLE_ACCESS),
                 current_kms_key=options_get(Arguments.KMS_KEY_CURRENT),
                 allowed_kms_keys=options_get(Arguments.KMS_KEY_ALLOWED),
+                encryption_keys=options_get(Arguments.KMS_KEY_ENCRYPTION),
+                decryption_keys=options_get(Arguments.KMS_KEY_DECRYPTION),
                 catalog_connection_type=options_get(Arguments.CATALOG_CONNECTION_TYPE),
                 catalog_authentication_type=options_get(
                     Arguments.CATALOG_AUTHENTICATION_TYPE
@@ -231,6 +233,30 @@ class Command(ABC):
                     Arguments.NAMESPACE, lambda x: x.split(".") if x else None
                 ),
                 table_name=options_get(Arguments.TABLE),
+            )
+        elif options.command == Commands.VIEWS:
+            from apache_polaris.cli.command.views import ViewCommand
+
+            subcommand = options_get(f"{Commands.VIEWS}_subcommand")
+            command = ViewCommand(
+                subcommand,
+                catalog_name=options_get(Arguments.CATALOG),
+                namespace=options_get(
+                    Arguments.NAMESPACE, lambda x: x.split(".") if x else None
+                ),
+                view_name=options_get(Arguments.VIEW),
+            )
+        elif options.command == Commands.GENERIC_TABLES:
+            from apache_polaris.cli.command.generic_tables import GenericTableCommand
+
+            subcommand = options_get(f"{Commands.GENERIC_TABLES}_subcommand")
+            command = GenericTableCommand(
+                subcommand,
+                catalog_name=options_get(Arguments.CATALOG),
+                namespace=options_get(
+                    Arguments.NAMESPACE, lambda x: x.split(".") if x else None
+                ),
+                generic_table_name=options_get(Arguments.GENERIC_TABLE),
             )
         elif options.command == Commands.FIND:
             from apache_polaris.cli.command.find import FindCommand

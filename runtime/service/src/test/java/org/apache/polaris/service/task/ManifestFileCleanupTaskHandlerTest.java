@@ -20,7 +20,6 @@ package org.apache.polaris.service.task;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
 import io.quarkus.test.InjectMock;
@@ -97,7 +96,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    handler.handleTask(task, polarisCallContext);
   }
 
   @Test
@@ -118,7 +117,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    handler.handleTask(task, polarisCallContext);
   }
 
   @Test
@@ -154,9 +153,49 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    handler.handleTask(task, polarisCallContext);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
+  }
+
+  @Test
+  public void testCleanupDeleteManifest() throws IOException {
+    FileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void close() {
+            // no-op
+          }
+        };
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
+    String deleteFile1Path = "deleteFile1.parquet";
+    OutputFile deleteFile1 = fileIO.newOutputFile(deleteFile1Path);
+    PositionOutputStream out1 = deleteFile1.createOrOverwrite();
+    out1.write("position deletes".getBytes(UTF_8));
+    out1.close();
+    String deleteFile2Path = "deleteFile2.parquet";
+    OutputFile deleteFile2 = fileIO.newOutputFile(deleteFile2Path);
+    PositionOutputStream out2 = deleteFile2.createOrOverwrite();
+    out2.write("position deletes".getBytes(UTF_8));
+    out2.close();
+    ManifestFile manifestFile =
+        TaskTestUtils.deleteManifestFile(
+            fileIO, "deleteManifest1.avro", 100L, deleteFile1Path, deleteFile2Path);
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
+            .withData(
+                ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                    tableIdentifier, manifestFile))
+            .setName(UUID.randomUUID().toString())
+            .build();
+    task = addTaskLocation(task);
+    assertThatPredicate(handler::canHandleTask).accepts(task);
+    handler.handleTask(task, polarisCallContext);
+    assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(deleteFile1Path);
+    assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(deleteFile2Path);
+    assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(manifestFile.path());
   }
 
   @Test
@@ -206,7 +245,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    handler.handleTask(task, polarisCallContext);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
   }

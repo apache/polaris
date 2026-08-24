@@ -43,9 +43,10 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.service.events.DefaultEventSanitizer;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
@@ -129,15 +130,16 @@ class PolarisPersistenceEventListenerTest {
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_TABLES,
             metadataWithOpenTelemetry(),
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
-                .put(EventAttributes.NAMESPACE, NAMESPACE)));
+                .put(EventAttributes.NAMESPACE, NAMESPACE)
+                .build()));
 
     Map<String, String> properties =
         additionalProperties(listener.persistedEvent(PolarisEventType.BEFORE_LIST_TABLES));
     assertThat(properties)
-        .containsEntry(EventAttributes.CATALOG_NAME.name(), CATALOG_NAME)
-        .containsKey(EventAttributes.NAMESPACE.name())
+        .containsEntry(EventAttributes.CATALOG_NAME.key(), CATALOG_NAME)
+        .containsKey(EventAttributes.NAMESPACE.key())
         .containsEntry(OPEN_TELEMETRY_TRACE_ID_KEY, "trace-123")
         .containsEntry(OPEN_TELEMETRY_SPAN_ID_KEY, "span-456");
   }
@@ -151,8 +153,8 @@ class PolarisPersistenceEventListenerTest {
     Map<String, String> properties =
         additionalProperties(listener.persistedEvent(PolarisEventType.BEFORE_LIST_TABLES));
     assertThat(properties)
-        .containsEntry(EventAttributes.CATALOG_NAME.name(), CATALOG_NAME)
-        .containsKey(EventAttributes.NAMESPACE.name())
+        .containsEntry(EventAttributes.CATALOG_NAME.key(), CATALOG_NAME)
+        .containsKey(EventAttributes.NAMESPACE.key())
         .containsEntry(OPEN_TELEMETRY_TRACE_ID_KEY, "trace-123")
         .containsEntry(OPEN_TELEMETRY_SPAN_ID_KEY, "span-456");
   }
@@ -173,7 +175,9 @@ class PolarisPersistenceEventListenerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_CATALOG,
             metadata(),
-            new EventAttributeMap().put(EventAttributes.CATALOG_NAME, CATALOG_NAME)));
+            ImmutableAttributeMap.builder()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .build()));
 
     EventEntity persisted = listener.persistedEvent(PolarisEventType.AFTER_CREATE_CATALOG);
     assertThat(listener.persistedRealm(PolarisEventType.AFTER_CREATE_CATALOG)).isEqualTo(REALM_ID);
@@ -181,7 +185,7 @@ class PolarisPersistenceEventListenerTest {
     assertThat(persisted.getResourceType()).isEqualTo(EventEntity.ResourceType.CATALOG);
     assertThat(persisted.getResourceIdentifier()).isEqualTo(CATALOG_NAME);
     assertThat(additionalProperties(persisted))
-        .containsEntry(EventAttributes.CATALOG_NAME.name(), CATALOG_NAME);
+        .containsEntry(EventAttributes.CATALOG_NAME.key(), CATALOG_NAME);
   }
 
   @Test
@@ -190,10 +194,10 @@ class PolarisPersistenceEventListenerTest {
 
     listener.onEvent(
         new PolarisEvent(
-            PolarisEventType.BEFORE_LIMIT_REQUEST_RATE, metadata(), new EventAttributeMap()));
+            PolarisEventType.BEFORE_LIMIT_REQUEST_RATE, metadata(), new MutableAttributeMap()));
 
     EventEntity persisted = listener.persistedEvent(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
-    assertThat(persisted.getCatalogId()).isEqualTo(EventEntity.REALM_SCOPED);
+    assertThat(persisted.getCatalogId()).isNull();
     assertThat(persisted.getResourceType()).isEqualTo(EventEntity.ResourceType.REALM);
     assertThat(persisted.getResourceIdentifier())
         .isEqualTo(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE.name());
@@ -247,11 +251,12 @@ class PolarisPersistenceEventListenerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_TABLE,
             metadata(),
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
                 .put(EventAttributes.NAMESPACE, NAMESPACE)
                 .put(EventAttributes.TABLE_NAME, TABLE_NAME)
-                .put(EventAttributes.LOAD_TABLE_RESPONSE, response)));
+                .put(EventAttributes.LOAD_TABLE_RESPONSE, response)
+                .build()));
 
     Map<String, String> properties =
         additionalProperties(listener.persistedEvent(PolarisEventType.AFTER_CREATE_TABLE));
@@ -262,7 +267,7 @@ class PolarisPersistenceEventListenerTest {
         .containsKey("table_current_snapshot_id")
         .containsKey("table_schema")
         .containsKey("table_last_updated_ms")
-        .doesNotContainKey(EventAttributes.LOAD_TABLE_RESPONSE.name());
+        .doesNotContainKey(EventAttributes.LOAD_TABLE_RESPONSE.key());
   }
 
   @Test
@@ -276,27 +281,29 @@ class PolarisPersistenceEventListenerTest {
         new PolarisEvent(
             PolarisEventType.BEFORE_RENAME_VIEW,
             metadata(),
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
                 .put(
                     EventAttributes.RENAME_TABLE_REQUEST,
                     RenameTableRequest.builder()
                         .withSource(viewSource)
                         .withDestination(viewDest)
-                        .build())));
+                        .build())
+                .build()));
 
     listener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_RENAME_VIEW,
             metadata(),
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
                 .put(
                     EventAttributes.RENAME_TABLE_REQUEST,
                     RenameTableRequest.builder()
                         .withSource(viewSource)
                         .withDestination(viewDest)
-                        .build())));
+                        .build())
+                .build()));
 
     EventEntity beforeEvent = listener.persistedEvent(PolarisEventType.BEFORE_RENAME_VIEW);
     assertThat(beforeEvent.getResourceType()).isEqualTo(EventEntity.ResourceType.VIEW);
@@ -315,10 +322,11 @@ class PolarisPersistenceEventListenerTest {
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_GENERIC_TABLE,
             metadata(),
-            new EventAttributeMap()
+            ImmutableAttributeMap.builder()
                 .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
                 .put(EventAttributes.NAMESPACE, NAMESPACE)
-                .put(EventAttributes.TABLE_NAME, "generic_tbl")));
+                .put(EventAttributes.TABLE_NAME, "generic_tbl")
+                .build()));
 
     EventEntity persisted = listener.persistedEvent(PolarisEventType.AFTER_CREATE_GENERIC_TABLE);
     assertThat(persisted.getResourceType()).isEqualTo(EventEntity.ResourceType.TABLE);
@@ -327,8 +335,8 @@ class PolarisPersistenceEventListenerTest {
   }
 
   private static PolarisEvent tableEvent(PolarisEventType eventType) {
-    EventAttributeMap attributes =
-        new EventAttributeMap().put(EventAttributes.CATALOG_NAME, CATALOG_NAME);
+    ImmutableAttributeMap.Builder attributes =
+        ImmutableAttributeMap.builder().put(EventAttributes.CATALOG_NAME, CATALOG_NAME);
 
     switch (eventType) {
       case BEFORE_CREATE_TABLE ->
@@ -372,7 +380,7 @@ class PolarisPersistenceEventListenerTest {
       default -> throw new IllegalArgumentException("Unexpected table event type " + eventType);
     }
 
-    return new PolarisEvent(eventType, metadata(), attributes);
+    return new PolarisEvent(eventType, metadata(), attributes.build());
   }
 
   private static PolarisEventMetadata metadata() {
@@ -392,9 +400,10 @@ class PolarisPersistenceEventListenerTest {
     return new PolarisEvent(
         PolarisEventType.BEFORE_LIST_TABLES,
         metadata,
-        new EventAttributeMap()
+        ImmutableAttributeMap.builder()
             .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
-            .put(EventAttributes.NAMESPACE, NAMESPACE));
+            .put(EventAttributes.NAMESPACE, NAMESPACE)
+            .build());
   }
 
   private static CreateTableRequest createTableRequest() {

@@ -25,6 +25,7 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
@@ -55,8 +56,12 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
   @Override
   public abstract boolean canHandleTask(TaskEntity task);
 
+  /**
+   * Handles the provided task. A normal return indicates success and the task entity will be
+   * dropped; throwing indicates failure and triggers the task retry path.
+   */
   @Override
-  public abstract boolean handleTask(TaskEntity task, CallContext callContext);
+  public abstract void handleTask(TaskEntity task, CallContext callContext);
 
   /**
    * Attempts to delete a single file with retry logic. If the file does not exist, it logs a
@@ -81,9 +86,9 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
     if (e != null && attempt <= MAX_ATTEMPTS) {
       LOGGER
           .atWarn()
-          .addKeyValue("file", file)
-          .addKeyValue("attempt", attempt)
-          .addKeyValue("error", e.getMessage())
+          .addKeyValue(StructuredLogKeys.FILE, file)
+          .addKeyValue(StructuredLogKeys.ATTEMPT, attempt)
+          .addKeyValue(StructuredLogKeys.ERROR, e.getMessage())
           .log("Error encountered attempting to delete file");
     }
     if (attempt > MAX_ATTEMPTS && e != null) {
@@ -102,9 +107,9 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
                 // already gone (e.g. InMemoryFileIO or race)
                 LOGGER
                     .atDebug()
-                    .addKeyValue("file", file)
-                    .addKeyValue("baseFile", baseFile != null ? baseFile : "")
-                    .addKeyValue("tableId", tableId)
+                    .addKeyValue(StructuredLogKeys.FILE, file)
+                    .addKeyValue(StructuredLogKeys.BASE_FILE, baseFile != null ? baseFile : "")
+                    .addKeyValue(StructuredLogKeys.TABLE_ID, tableId)
                     .log("table file cleanup task scheduled, but data file doesn't exist");
               }
             },
@@ -113,9 +118,9 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
             newEx -> {
               LOGGER
                   .atWarn()
-                  .addKeyValue("file", file)
-                  .addKeyValue("tableIdentifier", tableId)
-                  .addKeyValue("baseFile", baseFile != null ? baseFile : "")
+                  .addKeyValue(StructuredLogKeys.FILE, file)
+                  .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableId)
+                  .addKeyValue(StructuredLogKeys.BASE_FILE, baseFile != null ? baseFile : "")
                   .log("Exception caught deleting data file {}", newEx);
               return tryDelete(tableId, fileIO, baseFile, file, newEx, attempt + 1);
             },
@@ -147,10 +152,10 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
     if (e != null && attempt <= MAX_ATTEMPTS) {
       LOGGER
           .atWarn()
-          .addKeyValue("files", files)
-          .addKeyValue("attempt", attempt)
-          .addKeyValue("error", e.getMessage())
-          .addKeyValue("type", type)
+          .addKeyValue(StructuredLogKeys.FILES, files)
+          .addKeyValue(StructuredLogKeys.ATTEMPT, attempt)
+          .addKeyValue(StructuredLogKeys.ERROR, e.getMessage())
+          .addKeyValue(StructuredLogKeys.TYPE, type)
           .log("Error encountered attempting to delete files");
     }
     if (attempt > MAX_ATTEMPTS && e != null) {
@@ -162,9 +167,9 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
             newEx -> {
               LOGGER
                   .atWarn()
-                  .addKeyValue("files", files)
-                  .addKeyValue("tableIdentifier", tableId)
-                  .addKeyValue("type", type)
+                  .addKeyValue(StructuredLogKeys.FILES, files)
+                  .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableId)
+                  .addKeyValue(StructuredLogKeys.TYPE, type)
                   .log("Exception caught deleting data files {}", newEx);
               return tryDelete(tableId, fileIO, files, type, isConcurrent, newEx, attempt + 1);
             },

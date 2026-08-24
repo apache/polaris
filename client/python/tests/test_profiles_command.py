@@ -82,6 +82,7 @@ class TestProfilesCommand(CLITestBase):
             "s3cr3t",
             "localhost",
             8181,
+            "https",
             "",
             "Polaris-Realm",
         ]
@@ -91,6 +92,8 @@ class TestProfilesCommand(CLITestBase):
             self.assertIn("Polaris profile dev created successfully.", output)
         mock_input.assert_any_call("Polaris Client Secret: ")
         mock_save_profiles.assert_called_once()
+        saved = mock_save_profiles.call_args[0][0]["dev"]
+        self.assertEqual(saved["scheme"], "https")
 
     @patch(
         "apache_polaris.cli.command.profiles.load_profiles",
@@ -157,6 +160,7 @@ class TestProfilesCommand(CLITestBase):
             "new-secret",
             "newhost",
             9090,
+            "https",
             "myrealm",
             "Polaris-Realm",
         ]
@@ -168,6 +172,8 @@ class TestProfilesCommand(CLITestBase):
             "Enter Polaris Client Secret (empty to reuse previous value): "
         )
         mock_save_profiles.assert_called_once()
+        saved = mock_save_profiles.call_args[0][0]["dev"]
+        self.assertEqual(saved["scheme"], "https")
 
     @patch(
         "apache_polaris.cli.command.profiles.load_profiles",
@@ -180,3 +186,34 @@ class TestProfilesCommand(CLITestBase):
 
         with self.assertRaises(CliError):
             self.mock_execute(mock_client, ["profiles", "update", "missing"])
+
+    @patch("apache_polaris.cli.command.profiles.save_profiles")
+    @patch(
+        "apache_polaris.cli.command.profiles.load_profiles",
+        return_value={},
+    )
+    @patch("builtins.input")
+    def test_profile_create_rejects_invalid_scheme_and_reprompts(
+        self,
+        mock_input: MagicMock,
+        mock_load_profiles: MagicMock,
+        mock_save_profiles: MagicMock,
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_input.side_effect = [
+            "root",
+            "s3cr3t",
+            "localhost",
+            8181,
+            "ftp",
+            "https",
+            "",
+            "Polaris-Realm",
+        ]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(mock_client, ["profiles", "create", "dev"])
+            output = mock_stdout.getvalue()
+            self.assertIn("Invalid scheme 'ftp'", output)
+        mock_save_profiles.assert_called_once()
+        saved = mock_save_profiles.call_args[0][0]["dev"]
+        self.assertEqual(saved["scheme"], "https")

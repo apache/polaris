@@ -46,6 +46,7 @@ import org.apache.iceberg.BaseTransaction;
 import org.apache.iceberg.DataOperations;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.MetadataUpdate.UpgradeFormatVersion;
+import org.apache.iceberg.RetryableValidationException;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SnapshotRef;
@@ -182,17 +183,6 @@ public class CatalogHandlerUtils {
     return Pair.of(subList, nextPageToken);
   }
 
-  public ListNamespacesResponse listNamespaces(SupportsNamespaces catalog, Namespace parent) {
-    List<Namespace> results;
-    if (parent.isEmpty()) {
-      results = catalog.listNamespaces();
-    } else {
-      results = catalog.listNamespaces(parent);
-    }
-
-    return ListNamespacesResponse.builder().addAll(results).build();
-  }
-
   public ListNamespacesResponse listNamespaces(
       SupportsNamespaces catalog, Namespace parent, String pageToken, Integer pageSize) {
     List<Namespace> results;
@@ -258,11 +248,6 @@ public class CatalogHandlerUtils {
         .addUpdated(updates.keySet())
         .addRemoved(Sets.difference(removals, missing))
         .build();
-  }
-
-  public ListTablesResponse listTables(Catalog catalog, Namespace namespace) {
-    List<TableIdentifier> idents = catalog.listTables(namespace);
-    return ListTablesResponse.builder().addAll(idents).build();
   }
 
   public ListTablesResponse listTables(
@@ -513,7 +498,17 @@ public class CatalogHandlerUtils {
                 }
 
                 TableMetadata.Builder newMetadataBuilder = TableMetadata.buildFrom(newBase);
-                request.updates().forEach((update) -> update.applyTo(newMetadataBuilder));
+                try {
+                  request.updates().forEach((update) -> update.applyTo(newMetadataBuilder));
+                } catch (RetryableValidationException e) {
+                  // Validation failed because the commit includes stale values (e.g. sequence
+                  // number or first-row-id behind the current table state). This is not a conflict.
+                  // Server-side retry won't help since the stale values are in the request itself.
+                  // Wrap as CommitFailedException so the client can retry with refreshed metadata.
+                  throw new ValidationFailureException(
+                      new CommitFailedException(
+                          e, "Validation failed, please retry: %s", e.getMessage()));
+                }
                 TableMetadata updated = newMetadataBuilder.build();
                 if (updated.changes().isEmpty()) {
                   // do not commit if the metadata has not changed
@@ -666,10 +661,6 @@ public class CatalogHandlerUtils {
     Preconditions.checkState(
         view instanceof BaseView, "Cannot wrap catalog that does not produce BaseView");
     return (BaseView) view;
-  }
-
-  public ListTablesResponse listViews(ViewCatalog catalog, Namespace namespace) {
-    return ListTablesResponse.builder().addAll(catalog.listViews(namespace)).build();
   }
 
   public ListTablesResponse listViews(

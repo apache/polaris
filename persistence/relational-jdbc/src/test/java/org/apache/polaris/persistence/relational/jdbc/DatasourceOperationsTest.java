@@ -110,7 +110,7 @@ public class DatasourceOperationsTest {
           ImmutableModelEvent.builder()
               .resourceType(EventEntity.ResourceType.CATALOG)
               .resourceIdentifier("catalog_" + i)
-              .catalogId("catalog_" + i)
+              .catalogId(i % 2 == 0 ? "catalog_" + i : null)
               .eventId("event_" + i)
               .requestId("request_" + i)
               .eventType("event_type1")

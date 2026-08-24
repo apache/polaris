@@ -21,10 +21,13 @@ package org.apache.polaris.core.entity;
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
 import com.google.common.base.Preconditions;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -46,6 +49,7 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -89,8 +93,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     Map<String, String> internalProperties = new HashMap<>();
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
-    builder.setStorageConfigurationInfo(
-        realmConfig, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
+    builder.setStorageConfigurationInfo(realmConfig, catalog.getStorageConfigInfo());
     return builder.build();
   }
 
@@ -141,23 +144,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     if (internalProperties.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
       PolarisStorageConfigurationInfo configInfo = getStorageConfigurationInfo();
       if (configInfo instanceof AwsStorageConfigurationInfo awsConfig) {
-        return AwsStorageConfigInfo.builder()
-            .setRoleArn(awsConfig.getRoleARN())
-            .setExternalId(awsConfig.getExternalId())
-            .setUserArn(awsConfig.getUserARN())
-            .setCurrentKmsKey(awsConfig.getCurrentKmsKey())
-            .setAllowedKmsKeys(awsConfig.getAllowedKmsKeys())
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(awsConfig.getAllowedLocations())
-            .setStorageName(awsConfig.getStorageName())
-            .setRegion(awsConfig.getRegion())
-            .setEndpoint(awsConfig.getEndpoint())
-            .setStsEndpoint(awsConfig.getStsEndpoint())
-            .setPathStyleAccess(awsConfig.getPathStyleAccess())
-            .setStsUnavailable(awsConfig.getStsUnavailable())
-            .setEndpointInternal(awsConfig.getEndpointInternal())
-            .setKmsUnavailable(awsConfig.getKmsUnavailable())
-            .build();
+        return getAwsStorageConfigInfo(awsConfig);
       }
       if (configInfo instanceof AzureStorageConfigurationInfo azureConfig) {
         return AzureStorageConfigInfo.builder()
@@ -188,6 +175,31 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return null;
     }
     return null;
+  }
+
+  @SuppressWarnings("deprecation")
+  private static AwsStorageConfigInfo getAwsStorageConfigInfo(
+      AwsStorageConfigurationInfo awsConfig) {
+    List<String> encryptionKeys = awsConfig.getEffectiveEncryptionKeys();
+    return AwsStorageConfigInfo.builder()
+        .setRoleArn(awsConfig.getRoleARN())
+        .setExternalId(awsConfig.getExternalId())
+        .setUserArn(awsConfig.getUserARN())
+        .setCurrentKmsKey(awsConfig.getCurrentKmsKey())
+        .setAllowedKmsKeys(encryptionKeys)
+        .setEncryptionKeys(encryptionKeys)
+        .setDecryptionKeys(awsConfig.getDecryptionKeys())
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setAllowedLocations(awsConfig.getAllowedLocations())
+        .setStorageName(awsConfig.getStorageName())
+        .setRegion(awsConfig.getRegion())
+        .setEndpoint(awsConfig.getEndpoint())
+        .setStsEndpoint(awsConfig.getStsEndpoint())
+        .setPathStyleAccess(awsConfig.getPathStyleAccess())
+        .setStsUnavailable(awsConfig.getStsUnavailable())
+        .setEndpointInternal(awsConfig.getEndpointInternal())
+        .setKmsUnavailable(awsConfig.getKmsUnavailable())
+        .build();
   }
 
   private ConnectionConfigInfo getConnectionInfo(
@@ -243,7 +255,43 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return null;
   }
 
+  /**
+   * Validates {@code defaultBaseLocation} against the given allowed-locations list.
+   *
+   * <p>Rejects null/empty allowed-locations to match the runtime semantic in {@code
+   * InMemoryStorageIntegration} (an empty allowed-list means "no location is allowed", not "no
+   * constraint"). Then verifies {@code defaultBaseLocation} is a subpath of at least one entry.
+   *
+   * @throws BadRequestException if {@code allowedLocations} is null/empty, or if {@code
+   *     defaultBaseLocation} is not within any entry of {@code allowedLocations}
+   */
+  private static void validateBaseLocationAgainstAllowedList(
+      List<String> allowedLocations, String defaultBaseLocation) {
+    if (allowedLocations == null || allowedLocations.isEmpty()) {
+      throw new BadRequestException(
+          "Cannot set default-base-location '%s': storage configuration has no allowed-locations"
+              + " (allowed-locations list is %s)",
+          defaultBaseLocation, allowedLocations == null ? "null" : "empty");
+    }
+
+    StorageLocation baseLocation = StorageLocation.of(defaultBaseLocation);
+    boolean isAllowed =
+        allowedLocations.stream()
+            .filter(Objects::nonNull)
+            .map(StorageLocation::of)
+            .anyMatch(baseLocation::isChildOf);
+
+    if (!isAllowed) {
+      throw new BadRequestException(
+          "default-base-location '%s' is not within any of the allowed locations %s",
+          defaultBaseLocation, allowedLocations);
+    }
+  }
+
   public static class Builder extends PolarisEntity.BaseBuilder<CatalogEntity, Builder> {
+    private RealmConfig realmConfig;
+    private StorageConfigInfo storageConfigModel;
+
     public Builder() {
       super();
       setType(PolarisEntityType.CATALOG);
@@ -266,42 +314,57 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return this;
     }
 
-    public Builder setStorageConfigurationInfo(
-        RealmConfig realmConfig, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
-      if (storageConfigModel != null) {
-        PolarisStorageConfigurationInfo config;
-        Set<String> allowedLocations = new HashSet<>(storageConfigModel.getAllowedLocations());
+    private void validateDefaultBaseLocation() {
+      String defaultBaseLocation = properties.get(DEFAULT_BASE_LOCATION_KEY);
+      if (defaultBaseLocation == null) {
+        return;
+      }
+      String configStr =
+          internalProperties.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+      if (configStr == null) {
+        return;
+      }
+      PolarisStorageConfigurationInfo storageConfig =
+          PolarisStorageConfigurationInfo.deserialize(configStr);
+      if (storageConfig == null) {
+        return;
+      }
+      List<String> allowedLocations = storageConfig.getAllowedLocations();
+      if (allowedLocations != null && !allowedLocations.isEmpty()) {
+        validateBaseLocationAgainstAllowedList(allowedLocations, defaultBaseLocation);
+      }
+    }
 
-        // TODO: Reconsider whether this should actually just be a check up-front or if we
-        // actually want to silently add to the allowed locations. Maybe ideally we only
-        // add to the allowedLocations if allowedLocations is empty for the simple case,
-        // but if the caller provided allowedLocations explicitly, then we just verify that
-        // the defaultBaseLocation is at least a subpath of one of the allowedLocations.
+    public Builder setStorageConfigurationInfo(
+        RealmConfig realmConfig, StorageConfigInfo storageConfigModel) {
+      Preconditions.checkNotNull(
+          realmConfig, "realmConfig must be provided when setting StorageConfigInfo");
+      this.realmConfig = realmConfig;
+      this.storageConfigModel = storageConfigModel;
+      return this;
+    }
+
+    private void processStorageConfigurationInfo() {
+      if (storageConfigModel != null) {
+        String defaultBaseLocation = properties.get(DEFAULT_BASE_LOCATION_KEY);
         if (defaultBaseLocation == null) {
           throw new BadRequestException("Must specify default base location");
         }
-        allowedLocations.add(defaultBaseLocation);
+        List<String> userAllowedLocations = storageConfigModel.getAllowedLocations();
+        Set<String> allowedLocations;
+        if (userAllowedLocations == null || userAllowedLocations.isEmpty()) {
+          allowedLocations = new HashSet<>();
+          allowedLocations.add(defaultBaseLocation);
+        } else {
+          allowedLocations = new HashSet<>(userAllowedLocations);
+        }
+        PolarisStorageConfigurationInfo config;
         validateMaxAllowedLocations(realmConfig, allowedLocations);
         switch (storageConfigModel.getStorageType()) {
           case S3:
-            AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
-            AwsStorageConfigurationInfo awsConfig =
-                AwsStorageConfigurationInfo.builder()
-                    .allowedLocations(allowedLocations)
-                    .storageName(storageConfigModel.getStorageName())
-                    .roleARN(awsConfigModel.getRoleArn())
-                    .currentKmsKey(awsConfigModel.getCurrentKmsKey())
-                    .allowedKmsKeys(awsConfigModel.getAllowedKmsKeys())
-                    .externalId(awsConfigModel.getExternalId())
-                    .region(awsConfigModel.getRegion())
-                    .endpoint(awsConfigModel.getEndpoint())
-                    .stsEndpoint(awsConfigModel.getStsEndpoint())
-                    .pathStyleAccess(awsConfigModel.getPathStyleAccess())
-                    .stsUnavailable(awsConfigModel.getStsUnavailable())
-                    .endpointInternal(awsConfigModel.getEndpointInternal())
-                    .kmsUnavailable(awsConfigModel.getKmsUnavailable())
-                    .build();
-            config = awsConfig;
+            config =
+                getAwsStorageConfigurationInfo(
+                    (AwsStorageConfigInfo) storageConfigModel, allowedLocations);
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
@@ -338,7 +401,36 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         internalProperties.put(
             PolarisEntityConstants.getStorageConfigInfoPropertyName(), config.serialize());
       }
-      return this;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static AwsStorageConfigurationInfo getAwsStorageConfigurationInfo(
+        AwsStorageConfigInfo awsConfigModel, Set<String> allowedLocations) {
+      List<String> encryptionKeys = new ArrayList<>(awsConfigModel.getEncryptionKeys());
+      for (String allowedKmsKey : awsConfigModel.getAllowedKmsKeys()) {
+        if (!encryptionKeys.contains(allowedKmsKey)) {
+          encryptionKeys.add(allowedKmsKey);
+        }
+      }
+      String currentKmsKey = awsConfigModel.getCurrentKmsKey();
+      if (currentKmsKey != null && !encryptionKeys.contains(currentKmsKey)) {
+        encryptionKeys.add(currentKmsKey);
+      }
+      return AwsStorageConfigurationInfo.builder()
+          .allowedLocations(allowedLocations)
+          .storageName(awsConfigModel.getStorageName())
+          .roleARN(awsConfigModel.getRoleArn())
+          .encryptionKeys(encryptionKeys)
+          .decryptionKeys(awsConfigModel.getDecryptionKeys())
+          .externalId(awsConfigModel.getExternalId())
+          .region(awsConfigModel.getRegion())
+          .endpoint(awsConfigModel.getEndpoint())
+          .stsEndpoint(awsConfigModel.getStsEndpoint())
+          .pathStyleAccess(awsConfigModel.getPathStyleAccess())
+          .stsUnavailable(awsConfigModel.getStsUnavailable())
+          .endpointInternal(awsConfigModel.getEndpointInternal())
+          .kmsUnavailable(awsConfigModel.getKmsUnavailable())
+          .build();
     }
 
     /** Validate the number of allowed locations not exceeding the max value. */
@@ -379,11 +471,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     @Override
     public CatalogEntity build() {
+      processStorageConfigurationInfo();
+      validateDefaultBaseLocation();
       return new CatalogEntity(buildBase());
     }
-  }
-
-  protected static @NonNull String getBaseLocation(Catalog catalog) {
-    return catalog.getProperties().getDefaultBaseLocation();
   }
 }

@@ -53,6 +53,7 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.Transaction;
 import org.apache.iceberg.UpdatePartitionSpec;
 import org.apache.iceberg.UpdateSchema;
@@ -186,7 +187,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   private static final Map<String, String> DEFAULT_CATALOG_PROPERTIES =
       Map.of(
           "polaris.config.allow.unstructured.table.location", "true",
-          "polaris.config.allow.external.table.location", "true",
+          "polaris.config.allow.external.metadata.file.location", "true",
           "polaris.config.list-pagination-enabled", "true",
           "polaris.config.namespace-custom-location.enabled", "true");
 
@@ -1489,6 +1490,159 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     assertThat(schema2.columns()).hasSize(1);
   }
 
+  /**
+   * With {@code write.metadata.delete-after-commit.enabled=true}, old metadata files evicted from
+   * the metadata log must NOT be deleted while a multi-table transaction is in flight: if a later
+   * table in the transaction fails, the catalog rolls back to metadata pointers that must still
+   * resolve to existing files.
+   */
+  @Test
+  public void testCommitTransactionDoesNotDeleteOldMetadataFilesOnFailure() {
+    Namespace namespace = Namespace.of("txnMetadataRetainNs");
+    TableIdentifier identifier1 = TableIdentifier.of(namespace, "txnMetadataRetainTable1");
+    TableIdentifier identifier2 = TableIdentifier.of(namespace, "txnMetadataRetainTable2");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    // Keep only one previous metadata version, so every commit makes the oldest metadata file a
+    // deletion candidate.
+    Map<String, String> deleteAfterCommitProps =
+        Map.of(
+            TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true",
+            TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1");
+
+    catalog().buildTable(identifier1, SCHEMA).withProperties(deleteAfterCommitProps).create();
+    Table table2 =
+        catalog().buildTable(identifier2, SCHEMA).withProperties(deleteAfterCommitProps).create();
+
+    // Move table1 from v1 to v2 so the single previous-versions slot is filled with v1.
+    catalog()
+        .loadTable(identifier1)
+        .updateSchema()
+        .addColumn("extra_col", Types.LongType.get())
+        .commit();
+
+    // Capture all metadata file locations of table1 before the failing transaction (v2 + v1).
+    TableMetadata preTxnMetadata =
+        ((BaseTable) catalog().loadTable(identifier1)).operations().current();
+    List<String> preTxnMetadataLocations =
+        Stream.concat(
+                Stream.of(preTxnMetadata.metadataFileLocation()),
+                preTxnMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file))
+            .toList();
+    assertThat(preTxnMetadataLocations).hasSizeGreaterThanOrEqualTo(2);
+
+    // Transaction: a benign update on table1 (would evict v1 from the metadata log) and a
+    // conflicting update on table2 that makes the transaction fail as a whole.
+    Transaction t1Transaction = catalog().loadTable(identifier1).newTransaction();
+    t1Transaction.updateSchema().addColumn("new_col1", Types.LongType.get()).commit();
+
+    Transaction t2Transaction = catalog().loadTable(identifier2).newTransaction();
+    t2Transaction.updateSchema().renameColumn("data", "new-column").commit();
+
+    // delete the column that is being renamed in the above TX to cause a conflict
+    table2.updateSchema().deleteColumn("data").commit();
+
+    TableCommit tableCommit1 =
+        TableCommit.create(
+            identifier1,
+            ((BaseTransaction) t1Transaction).startMetadata(),
+            ((BaseTransaction) t1Transaction).currentMetadata());
+    TableCommit tableCommit2 =
+        TableCommit.create(
+            identifier2,
+            ((BaseTransaction) t2Transaction).startMetadata(),
+            ((BaseTransaction) t2Transaction).currentMetadata());
+
+    assertThatThrownBy(() -> restCatalog.commitTransaction(tableCommit1, tableCommit2))
+        .isInstanceOf(CommitFailedException.class);
+
+    // The transaction failed, so every metadata file that existed before it must still exist.
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+      for (String location : preTxnMetadataLocations) {
+        assertThat(resolvingFileIO.newInputFile(location).exists())
+            .as("Metadata file %s must not be deleted by a failed transaction", location)
+            .isTrue();
+      }
+    }
+  }
+
+  /**
+   * Positive counterpart of {@link #testCommitTransactionDoesNotDeleteOldMetadataFilesOnFailure}:
+   * once a multi-table transaction commits successfully, metadata files evicted from the metadata
+   * log are deleted (deferred until after the atomic commit).
+   */
+  @Test
+  public void testCommitTransactionDeletesOldMetadataFilesAfterSuccess() {
+    Namespace namespace = Namespace.of("txnMetadataDeleteNs");
+    TableIdentifier identifier1 = TableIdentifier.of(namespace, "txnMetadataDeleteTable1");
+    TableIdentifier identifier2 = TableIdentifier.of(namespace, "txnMetadataDeleteTable2");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    Map<String, String> deleteAfterCommitProps =
+        Map.of(
+            TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true",
+            TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1");
+
+    catalog().buildTable(identifier1, SCHEMA).withProperties(deleteAfterCommitProps).create();
+    catalog().buildTable(identifier2, SCHEMA).withProperties(deleteAfterCommitProps).create();
+
+    // Move table1 from v1 to v2; v1 now occupies the single previous-versions slot and will be
+    // evicted (and become deletable) by the next commit.
+    catalog()
+        .loadTable(identifier1)
+        .updateSchema()
+        .addColumn("extra_col", Types.LongType.get())
+        .commit();
+
+    TableMetadata preTxnMetadata =
+        ((BaseTable) catalog().loadTable(identifier1)).operations().current();
+    assertThat(preTxnMetadata.previousFiles()).isNotEmpty();
+    String evictedMetadataLocation = preTxnMetadata.previousFiles().get(0).file();
+
+    Transaction t1Transaction = catalog().loadTable(identifier1).newTransaction();
+    t1Transaction.updateSchema().addColumn("new_col1", Types.LongType.get()).commit();
+
+    Transaction t2Transaction = catalog().loadTable(identifier2).newTransaction();
+    t2Transaction.updateSchema().addColumn("new_col2", Types.LongType.get()).commit();
+
+    TableCommit tableCommit1 =
+        TableCommit.create(
+            identifier1,
+            ((BaseTransaction) t1Transaction).startMetadata(),
+            ((BaseTransaction) t1Transaction).currentMetadata());
+    TableCommit tableCommit2 =
+        TableCommit.create(
+            identifier2,
+            ((BaseTransaction) t2Transaction).startMetadata(),
+            ((BaseTransaction) t2Transaction).currentMetadata());
+
+    restCatalog.commitTransaction(tableCommit1, tableCommit2);
+
+    TableMetadata postTxnMetadata =
+        ((BaseTable) catalog().loadTable(identifier1)).operations().current();
+
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+      assertThat(resolvingFileIO.newInputFile(evictedMetadataLocation).exists())
+          .as(
+              "Metadata file %s evicted by the committed transaction must be deleted",
+              evictedMetadataLocation)
+          .isFalse();
+      assertThat(resolvingFileIO.newInputFile(postTxnMetadata.metadataFileLocation()).exists())
+          .as("Current metadata file must exist after the committed transaction")
+          .isTrue();
+    }
+  }
+
   @Test
   public void testMultipleConflictingCommitsToSingleTableInTransaction() {
     Namespace namespace = Namespace.of("ns1");
@@ -2665,13 +2819,13 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     String prefix = "testPaginatedListTables";
     Namespace namespace = Namespace.of(prefix);
     restCatalog.createNamespace(namespace);
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 30; i++) {
       restCatalog.createTable(TableIdentifier.of(namespace, prefix + i), SCHEMA);
     }
 
     try {
-      assertThat(catalogApi.listTables(currentCatalogName, namespace)).hasSize(20);
-      for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 2000)) {
+      assertThat(catalogApi.listTables(currentCatalogName, namespace)).hasSize(30);
+      for (var pageSize : List.of(1, 2, 3, 9, 10, 11, 19, 20, 21, 25, 2000)) {
         int total = 0;
         String pageToken = null;
         do {
@@ -2682,10 +2836,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
           total += response.identifiers().size();
           pageToken = response.nextPageToken();
         } while (pageToken != null);
-        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(20);
+        assertThat(total).as("Total paginated results for pageSize = " + pageSize).isEqualTo(30);
       }
     } finally {
-      for (int i = 0; i < 20; i++) {
+      for (int i = 0; i < 30; i++) {
         restCatalog.dropTable(TableIdentifier.of(namespace, prefix + i));
       }
       restCatalog.dropNamespace(namespace);

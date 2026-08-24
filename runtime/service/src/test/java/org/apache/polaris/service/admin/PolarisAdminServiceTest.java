@@ -23,24 +23,46 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
+import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.ExternalCatalog;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -49,6 +71,7 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
@@ -56,6 +79,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.assertj.core.api.Assertions;
@@ -97,8 +121,18 @@ public class PolarisAdminServiceTest {
 
     when(resolutionManifestFactory.createResolutionManifest(any(), any()))
         .thenReturn(resolutionManifest);
-    when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
+    ResolverStatus successStatus = createSuccessfulResolverStatus();
+    when(resolutionManifest.resolveAll()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
     when(resolutionManifest.getIsPassthroughFacade()).thenReturn(false);
+    doAnswer(
+            invocation -> {
+              AuthorizationState authzState = invocation.getArgument(0);
+              authzState.getResolutionManifest().resolveAll();
+              return null;
+            })
+        .when(authorizer)
+        .resolveAuthorizationInputs(any(), any());
 
     adminService =
         new PolarisAdminService(
@@ -114,6 +148,79 @@ public class PolarisAdminServiceTest {
 
   protected static void assertSuccess(BaseResult result) {
     Assertions.assertThat(result.isSuccess()).isTrue();
+  }
+
+  @Test
+  void testCreateCatalogCleansUpInlineSecretsWhenCatalogAlreadyExists() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogCreate(secretReference);
+    when(metaStoreManager.createCatalog(any(), any(), any()))
+        .thenReturn(new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
+
+    assertThatThrownBy(
+            () ->
+                adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
+        .isInstanceOf(AlreadyExistsException.class);
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testCreateCatalogCleansUpInlineBearerSecretWhenCatalogAlreadyExists() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:bearer", Map.of());
+    setupExternalCatalogCreate(
+        secretReference, AuthenticationParameters.AuthenticationTypeEnum.BEARER);
+    when(metaStoreManager.createCatalog(any(), any(), any()))
+        .thenReturn(new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
+
+    assertThatThrownBy(
+            () ->
+                adminService.createCatalog(new CreateCatalogRequest(createExternalBearerCatalog())))
+        .isInstanceOf(AlreadyExistsException.class);
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testCreateCatalogCleanupFailureDoesNotHideOriginalFailure() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogCreate(secretReference);
+    CreateCatalogResult resultWithError =
+        new CreateCatalogResult(
+            BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unexpected Error Occurred");
+    when(metaStoreManager.createCatalog(any(), any(), any())).thenReturn(resultWithError);
+    doThrow(new RuntimeException("cleanup failed")).when(userSecretsManager).deleteSecret(any());
+
+    assertThatThrownBy(
+            () ->
+                adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog())))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage(
+            String.format(
+                "Cannot create Catalog %s: %s with extraInfo %s",
+                "external-catalog",
+                resultWithError.getReturnStatus(),
+                resultWithError.getExtraInformation()));
+
+    verify(userSecretsManager).deleteSecret(secretReference);
+  }
+
+  @Test
+  void testCreateCatalogDoesNotCleanUpInlineSecretsOnSuccess() {
+    SecretReference secretReference =
+        new SecretReference("urn:polaris-secret:test:oauth", Map.of());
+    setupExternalCatalogCreate(secretReference);
+    when(metaStoreManager.createCatalog(any(), any(), any()))
+        .thenReturn(
+            new CreateCatalogResult(
+                createBaseCatalog("external-catalog"), createBaseCatalogRole()));
+
+    adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog()));
+
+    verify(userSecretsManager, never()).deleteSecret(any());
   }
 
   @Test
@@ -146,7 +253,9 @@ public class PolarisAdminServiceTest {
 
     when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
-    when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
+    ResolverStatus successStatus = createSuccessfulResolverStatus();
+    when(resolutionManifest.resolveAll()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
     when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
@@ -181,7 +290,9 @@ public class PolarisAdminServiceTest {
 
     when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
-    when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
+    ResolverStatus successStatus = createSuccessfulResolverStatus();
+    when(resolutionManifest.resolveAll()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG, 1L);
     when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
@@ -243,7 +354,9 @@ public class PolarisAdminServiceTest {
 
     when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
-    when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
+    ResolverStatus successStatus = createSuccessfulResolverStatus();
+    when(resolutionManifest.resolveAll()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity =
@@ -275,7 +388,9 @@ public class PolarisAdminServiceTest {
 
     when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
-    when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
+    ResolverStatus successStatus = createSuccessfulResolverStatus();
+    when(resolutionManifest.resolveAll()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity =
@@ -552,6 +667,71 @@ public class PolarisAdminServiceTest {
   }
 
   @Test
+  void testGrantPrivilegeOnViewLikeToRole_PassthroughFacade() throws Exception {
+    String catalogName = "test-catalog";
+    String catalogRoleName = "test-role";
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier = TableIdentifier.of(namespace, "test-view");
+    PolarisPrivilege privilege = PolarisPrivilege.VIEW_WRITE_PROPERTIES;
+
+    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
+    when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
+
+    PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisEntity catalogRoleEntity = createEntity(catalogRoleName, PolarisEntityType.CATALOG_ROLE);
+    when(catalogRoleWrapper.getRawLeafEntity()).thenReturn(catalogRoleEntity);
+    when(resolutionManifest.getResolvedPath(
+            eq(ResolvedPathKey.of(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE))))
+        .thenReturn(catalogRoleWrapper);
+
+    PolarisEntity nsEntity = createNamespaceEntity(namespace, 2L, 1L);
+
+    // The view is not yet resolved as a table-like entity, so the pre-existing path stops at the
+    // namespace (leaf subtype is not ICEBERG_VIEW). This forces the synthetic-creation branch.
+    PolarisResolvedPathWrapper existingPathWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(existingPathWrapper.getRawFullPath()).thenReturn(List.of(catalogEntity, nsEntity));
+    when(existingPathWrapper.getRawLeafEntity()).thenReturn(nsEntity);
+    when(resolutionManifest.getResolvedPath(
+            eq(ResolvedPathKey.ofTableLike(identifier)), eq(PolarisEntitySubType.ANY_SUBTYPE)))
+        .thenReturn(existingPathWrapper);
+
+    // The single-level namespace already exists, so no synthetic namespace is created.
+    PolarisResolvedPathWrapper nsWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(nsWrapper.getRawFullPath()).thenReturn(List.of(catalogEntity, nsEntity));
+    when(nsWrapper.getRawLeafEntity()).thenReturn(nsEntity);
+    when(nsWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace))).thenReturn(true);
+    when(resolutionManifest.getPassthroughResolvedPath(eq(ResolvedPathKey.ofNamespace(namespace))))
+        .thenReturn(nsWrapper);
+
+    GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
+    when(idResult.getId()).thenReturn(6L);
+    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    EntityResult createResult = mock(EntityResult.class);
+    when(createResult.isSuccess()).thenReturn(true);
+    when(metaStoreManager.createEntityIfNotExists(any(), any(), any())).thenReturn(createResult);
+
+    // After creation, the synthetic leaf re-resolves as an ICEBERG_VIEW (via selectEntitySubType).
+    PolarisEntity viewEntity =
+        createTableEntity(identifier, PolarisEntitySubType.ICEBERG_VIEW, 6L, 2L);
+    PolarisResolvedPathWrapper viewPathWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(viewPathWrapper.getRawLeafEntity()).thenReturn(viewEntity);
+    when(viewPathWrapper.getRawParentPath()).thenReturn(List.of(catalogEntity, nsEntity));
+    when(resolutionManifest.getPassthroughResolvedPath(eq(ResolvedPathKey.ofTableLike(identifier))))
+        .thenReturn(viewPathWrapper);
+
+    PrivilegeResult successResult = mock(PrivilegeResult.class);
+    when(successResult.isSuccess()).thenReturn(true);
+    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any(), any()))
+        .thenReturn(successResult);
+
+    PrivilegeResult result =
+        adminService.grantPrivilegeOnViewToRole(
+            catalogName, catalogRoleName, identifier, privilege);
+    assertThat(result.isSuccess()).isTrue();
+  }
+
+  @Test
   void testGrantPrivilegeOnTableLikeToRole_PassthroughFacade_FeatureDisabled() throws Exception {
     String catalogName = "test-catalog";
     String catalogRoleName = "test-role";
@@ -617,7 +797,8 @@ public class PolarisAdminServiceTest {
   void testGrantPrivilegeOnTableLikeToRole_SyntheticEntityCreationFails() throws Exception {
     String catalogName = "test-catalog";
     String catalogRoleName = "test-role";
-    TableIdentifier identifier = TableIdentifier.of(Namespace.empty(), "test-table");
+    Namespace namespace = Namespace.of("valid-ns");
+    TableIdentifier identifier = TableIdentifier.of(namespace, "test-table");
     PolarisPrivilege privilege = PolarisPrivilege.TABLE_WRITE_DATA;
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
@@ -633,6 +814,7 @@ public class PolarisAdminServiceTest {
 
     PolarisResolvedPathWrapper existingPathWrapper = mock(PolarisResolvedPathWrapper.class);
     when(existingPathWrapper.getRawFullPath()).thenReturn(List.of(catalogEntity));
+    when(existingPathWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
     when(resolutionManifest.getResolvedPath(
             eq(
                 ResolvedPathKey.of(
@@ -640,23 +822,29 @@ public class PolarisAdminServiceTest {
                     PolarisEntityType.TABLE_LIKE)),
             eq(PolarisEntitySubType.ANY_SUBTYPE)))
         .thenReturn(existingPathWrapper);
-    when(existingPathWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
 
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
     when(idResult.getId()).thenReturn(3L);
     when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
-    EntityResult tableCreateResult = mock(EntityResult.class);
-    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
-        .thenReturn(tableCreateResult);
-    when(tableCreateResult.isSuccess()).thenReturn(false);
+    EntityResult namespaceCreateResult = mock(EntityResult.class);
+    when(namespaceCreateResult.isSuccess()).thenReturn(true);
+    PolarisEntity namespaceEntity = createNamespaceEntity(namespace, 4L, catalogEntity.getId());
+    when(namespaceCreateResult.getEntity()).thenReturn(namespaceEntity);
 
-    when(resolutionManifest.getResolvedPath(
-            eq(
-                ResolvedPathKey.of(
-                    PolarisCatalogHelpers.tableIdentifierToList(identifier),
-                    PolarisEntityType.TABLE_LIKE))))
-        .thenReturn(existingPathWrapper);
-    when(existingPathWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
+    EntityResult tableCreateResult = mock(EntityResult.class);
+    when(tableCreateResult.isSuccess()).thenReturn(false);
+    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
+        .thenReturn(namespaceCreateResult, tableCreateResult);
+
+    PolarisResolvedPathWrapper namespacePathWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(namespacePathWrapper.getRawLeafEntity()).thenReturn(namespaceEntity);
+    when(namespacePathWrapper.getRawFullPath()).thenReturn(List.of(catalogEntity, namespaceEntity));
+    when(namespacePathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
+        .thenReturn(true);
+    when(resolutionManifest.getPassthroughResolvedPath(eq(ResolvedPathKey.ofNamespace(namespace))))
+        .thenReturn(namespacePathWrapper);
+    when(resolutionManifest.getPassthroughResolvedPath(eq(ResolvedPathKey.ofTableLike(identifier))))
+        .thenReturn(null);
 
     assertThatThrownBy(
             () ->
@@ -675,6 +863,107 @@ public class PolarisAdminServiceTest {
         .setCatalogId(1L)
         .setCreateTimestamp(System.currentTimeMillis())
         .build();
+  }
+
+  private void setupExternalCatalogCreate(SecretReference secretReference) {
+    setupExternalCatalogCreate(
+        secretReference, AuthenticationParameters.AuthenticationTypeEnum.OAUTH);
+  }
+
+  private void setupExternalCatalogCreate(
+      SecretReference secretReference, AuthenticationParameters.AuthenticationTypeEnum authType) {
+    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS))
+        .thenReturn(true);
+    when(realmConfig.getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS))
+        .thenReturn(-1);
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_CATALOG_FEDERATION)).thenReturn(true);
+    when(realmConfig.getConfig(
+            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
+        .thenReturn(List.of(authType.name()));
+
+    GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
+    when(idResult.getId()).thenReturn(2L);
+    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    when(reservedProperties.removeReservedProperties(Mockito.<Map<String, String>>any()))
+        .thenReturn(Map.of());
+    when(userSecretsManager.writeSecret(any(), any())).thenReturn(secretReference);
+    when(identityProvider.allocateServiceIdentity(any())).thenReturn(Optional.empty());
+  }
+
+  private AwsStorageConfigInfo createAwsStorageConfig() {
+    return AwsStorageConfigInfo.builder()
+        .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+        .setExternalId("externalId")
+        .setUserArn("userArn")
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+        .build();
+  }
+
+  private Catalog createExternalOauthCatalog() {
+    ConnectionConfigInfo connectionConfigInfo =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/polaris/api/catalog")
+            .setRemoteCatalogName("remote-catalog")
+            .setAuthenticationParameters(
+                OAuthClientCredentialsParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
+                    .setClientId("client-id")
+                    .setClientSecret("client-secret")
+                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName("external-catalog")
+        .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+        .setStorageConfigInfo(createAwsStorageConfig())
+        .setConnectionConfigInfo(connectionConfigInfo)
+        .build();
+  }
+
+  private Catalog createExternalBearerCatalog() {
+    ConnectionConfigInfo connectionConfigInfo =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/polaris/api/catalog")
+            .setRemoteCatalogName("remote-catalog")
+            .setAuthenticationParameters(
+                BearerAuthenticationParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.BEARER)
+                    .setBearerToken("bearer-token")
+                    .build())
+            .build();
+
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName("external-catalog")
+        .setProperties(CatalogProperties.builder("s3://bucket/path/to/data").build())
+        .setStorageConfigInfo(createAwsStorageConfig())
+        .setConnectionConfigInfo(connectionConfigInfo)
+        .build();
+  }
+
+  private PolarisBaseEntity createBaseCatalog(String name) {
+    return new PolarisBaseEntity(
+        PolarisEntityConstants.getNullId(),
+        2L,
+        PolarisEntityType.CATALOG,
+        PolarisEntitySubType.NULL_SUBTYPE,
+        PolarisEntityConstants.getRootEntityId(),
+        name);
+  }
+
+  private PolarisBaseEntity createBaseCatalogRole() {
+    return new PolarisBaseEntity(
+        2L,
+        3L,
+        PolarisEntityType.CATALOG_ROLE,
+        PolarisEntitySubType.NULL_SUBTYPE,
+        2L,
+        PolarisEntityConstants.getNameOfCatalogAdminRole());
   }
 
   private PolarisEntity createEntity(String name, PolarisEntityType type, long id) {
@@ -740,7 +1029,9 @@ public class PolarisAdminServiceTest {
 
     when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
-    when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
+    ResolverStatus successStatus = createSuccessfulResolverStatus();
+    when(resolutionManifest.resolveAll()).thenReturn(successStatus);
+    when(resolutionManifest.getPrimaryResolverStatusOrThrow()).thenReturn(successStatus);
     when(resolutionManifest.getResolvedPath(
             eq(ResolvedPathKey.of(List.of(namespace.levels()), PolarisEntityType.NAMESPACE))))
         .thenReturn(resolvedPathWrapper);

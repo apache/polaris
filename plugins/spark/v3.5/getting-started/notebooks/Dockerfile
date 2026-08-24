@@ -34,6 +34,7 @@ USER spark
 WORKDIR /home/spark
 
 COPY --chown=spark client /home/spark/client
+COPY --chown=spark spec /home/spark/spec
 COPY --chown=spark regtests/requirements.txt /tmp
 COPY --chown=spark regtests/notebook_requirements.txt /tmp
 COPY --chown=spark plugins/spark/v3.5/spark/build/2.12/libs/*bundle.jar /opt/spark/jars/

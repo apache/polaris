@@ -38,8 +38,10 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.function.TriConsumer;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -48,7 +50,6 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -203,17 +204,19 @@ public class TaskExecutorImpl implements TaskExecutor {
           new PolarisEvent(
               PolarisEventType.BEFORE_ATTEMPT_TASK,
               eventMetadataFactory.copy(eventMetadata),
-              new EventAttributeMap()
+              ImmutableAttributeMap.builder()
                   .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                  .put(EventAttributes.TASK_ATTEMPT, attempt)));
+                  .put(EventAttributes.TASK_ATTEMPT, attempt)
+                  .build()));
     }
 
     boolean success = false;
+    PolarisBaseEntity taskEntity = null;
     try {
       LOGGER.info("Handling task entity id {}", taskEntityId);
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
-      PolarisBaseEntity taskEntity =
+      taskEntity =
           metaStoreManager
               .loadEntity(ctx.getPolarisCallContext(), 0L, taskEntityId, PolarisEntityType.TASK)
               .getEntity();
@@ -226,48 +229,54 @@ public class TaskExecutorImpl implements TaskExecutor {
       if (handlerOpt.isEmpty()) {
         LOGGER
             .atWarn()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("taskType", task.getTaskType())
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .addKeyValue(StructuredLogKeys.TASK_TYPE, task.getTaskType())
             .log("Unable to find handler for task type");
-        throw new RuntimeException(
+        throw new TaskHandlerNotFoundException(
             "Unable to find handler for task type "
                 + task.getTaskType()
                 + " for task entity id "
                 + taskEntityId);
       }
       TaskHandler handler = handlerOpt.get();
-      success = handler.handleTask(task, ctx);
-      if (success) {
-        LOGGER
-            .atInfo()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("handlerClass", handler.getClass())
-            .log("Task successfully handled");
-        metaStoreManager.dropEntityIfExists(
-            ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
-      } else {
+      // Normal return from handleTask means the task work completed successfully. Set success
+      // before dropEntityIfExists so a later cleanup failure still reports TASK_SUCCESS=true
+      // (the exception is rethrown for retry/logging, but the attempt is not a handler failure).
+      handler.handleTask(task, ctx);
+      success = true;
+      LOGGER
+          .atInfo()
+          .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+          .addKeyValue(StructuredLogKeys.HANDLER_CLASS, handler.getClass())
+          .log("Task successfully handled");
+      metaStoreManager.dropEntityIfExists(
+          ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
+    } catch (TaskHandlerNotFoundException e) {
+      // success stays false (never set true). Re-throw without the generic failure log below.
+      throw e;
+    } catch (Exception e) {
+      // Do not force success=false: handleTask may already have completed (success=true) and the
+      // failure may be from post-completion cleanup (e.g. dropEntityIfExists).
+      if (!success) {
         LOGGER
             .atWarn()
-            .addKeyValue("taskEntityId", taskEntityId)
-            .addKeyValue("taskEntityName", taskEntity.getName())
+            .addKeyValue(StructuredLogKeys.TASK_ENTITY_ID, taskEntityId)
+            .addKeyValue(
+                StructuredLogKeys.TASK_ENTITY_NAME, taskEntity != null ? taskEntity.getName() : "")
             .log("Unable to execute async task");
-        throw new RuntimeException(
-            "Task handler returned false for task entity id "
-                + taskEntityId
-                + " (handler: "
-                + handler.getClass().getSimpleName()
-                + ")");
       }
+      throw e;
     } finally {
       if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_ATTEMPT_TASK)) {
         polarisEventDispatcher.dispatch(
             new PolarisEvent(
                 PolarisEventType.AFTER_ATTEMPT_TASK,
                 eventMetadataFactory.copy(eventMetadata),
-                new EventAttributeMap()
+                ImmutableAttributeMap.builder()
                     .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
                     .put(EventAttributes.TASK_ATTEMPT, attempt)
-                    .put(EventAttributes.TASK_SUCCESS, success)));
+                    .put(EventAttributes.TASK_SUCCESS, success)
+                    .build()));
       }
     }
   }
@@ -306,6 +315,12 @@ public class TaskExecutorImpl implements TaskExecutor {
       } finally {
         span.end();
       }
+    }
+  }
+
+  private static final class TaskHandlerNotFoundException extends RuntimeException {
+    TaskHandlerNotFoundException(String message) {
+      super(message);
     }
   }
 }

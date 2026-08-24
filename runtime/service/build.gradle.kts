@@ -110,6 +110,7 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
 
   implementation(platform(libs.jackson3.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
@@ -133,7 +134,6 @@ dependencies {
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-relational-jdbc"))
 
-  testImplementation(project(":polaris-minio-testcontainer"))
   testImplementation(project(":polaris-rustfs-testcontainer"))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
@@ -155,7 +155,10 @@ dependencies {
   testImplementation("io.rest-assured:rest-assured")
 
   testImplementation(platform(libs.testcontainers.bom))
-  testImplementation("org.testcontainers:testcontainers-localstack")
+  testImplementation(project(":polaris-floci-aws-testcontainer"))
+  testImplementation(project(":polaris-floci-az-testcontainer"))
+  testImplementation(project(":polaris-floci-gcp-testcontainer"))
+  testImplementation(project(":polaris-keycloak-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
@@ -208,10 +211,6 @@ dependencies {
   testFixturesImplementation("com.azure:azure-core")
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
-
-  // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
-  // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
-  intTestRuntimeOnly(libs.keycloak.admin.client)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

@@ -31,6 +31,7 @@ from apache_polaris.cli.constants import (
 )
 from apache_polaris.cli.options.option_tree import Argument
 
+import logging
 from dataclasses import dataclass, field
 from pydantic import StrictStr, SecretStr
 from typing import Dict, List, Optional, Union, Tuple, Callable, cast
@@ -47,6 +48,7 @@ from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     BearerAuthenticationParameters,
+    GcpAuthenticationParameters,
     ImplicitAuthenticationParameters,
     OAuthClientCredentialsParameters,
     SigV4AuthenticationParameters,
@@ -58,6 +60,8 @@ from apache_polaris.sdk.management import (
 from apache_polaris.cli.command.utils import get_catalog_api_client, format_timestamp
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -102,6 +106,8 @@ class CatalogsCommand(Command):
     path_style_access: Optional[bool] = None
     current_kms_key: Optional[str] = None
     allowed_kms_keys: Optional[List[str]] = None
+    encryption_keys: Optional[List[str]] = None
+    decryption_keys: Optional[List[str]] = None
     catalog_connection_type: Optional[str] = None
     catalog_authentication_type: Optional[str] = None
     catalog_service_identity_type: Optional[str] = None
@@ -133,6 +139,19 @@ class CatalogsCommand(Command):
             self.path_style_access = False
 
     def validate(self) -> None:
+        if self.current_kms_key:
+            logger.warning(
+                "%s is deprecated; use %s instead.",
+                Argument.to_flag_name(Arguments.KMS_KEY_CURRENT),
+                Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION),
+            )
+        if self.allowed_kms_keys:
+            logger.warning(
+                "%s is deprecated; use %s instead.",
+                Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED),
+                Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION),
+            )
+
         if self.catalogs_subcommand in {
             Subcommands.CREATE,
             Subcommands.DELETE,
@@ -146,18 +165,17 @@ class CatalogsCommand(Command):
                 )
 
         if self.catalogs_subcommand == Subcommands.CREATE:
-            if self.catalog_type != CatalogType.EXTERNAL.value:
-                if not self.storage_type:
-                    raise CliError(
-                        f"Missing required argument:"
-                        f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
-                    )
-                if not self.default_base_location:
-                    raise CliError(
-                        f"Missing required argument:"
-                        f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
-                    )
-            else:
+            if not self.storage_type:
+                raise CliError(
+                    f"Missing required argument:"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
+                )
+            if not self.default_base_location:
+                raise CliError(
+                    f"Missing required argument:"
+                    f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
+                )
+            if self.catalog_type == CatalogType.EXTERNAL.value:
                 if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
                     if (
                         not self.catalog_token_uri
@@ -221,6 +239,8 @@ class CatalogsCommand(Command):
                     f" {Argument.to_flag_name(Arguments.ENDPOINT_INTERNAL)},"
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_CURRENT)},"
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_KEY_DECRYPTION)},"
                     f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)},"
                     f" {Argument.to_flag_name(Arguments.STS_UNAVAILABLE)},"
                     f" {Argument.to_flag_name(Arguments.KMS_UNAVAILABLE)}, and"
@@ -266,7 +286,11 @@ class CatalogsCommand(Command):
             or self.sts_endpoint
             or self.current_kms_key
             or self.allowed_kms_keys
+            or self.encryption_keys
+            or self.decryption_keys
             or self.path_style_access
+            or self.sts_unavailable
+            or self.kms_unavailable
         )
 
     def _has_azure_storage_info(self) -> bool:
@@ -279,6 +303,14 @@ class CatalogsCommand(Command):
 
     def _has_gcs_storage_info(self) -> bool:
         return bool(self.service_account)
+
+    @staticmethod
+    def _require_s3(storage_info: StorageConfigInfo, flag: str) -> None:
+        # Note: We have to lowercase the returned value because the server enum
+        # is uppercase but we defined the StorageType enums as lowercase.
+        storage_type = storage_info.storage_type
+        if storage_type.lower() != StorageType.S3.value:
+            raise CliError(f"{flag} requires S3 storage_type, got: {storage_type}")
 
     def _build_storage_config_info(self) -> Optional[StorageConfigInfo]:
         config = None
@@ -298,6 +330,8 @@ class CatalogsCommand(Command):
                 path_style_access=self.path_style_access,
                 current_kms_key=self.current_kms_key,
                 allowed_kms_keys=self.allowed_kms_keys,
+                encryption_keys=self.encryption_keys,
+                decryption_keys=self.decryption_keys,
             )
         elif self.storage_type == StorageType.AZURE.value:
             config = AzureStorageConfigInfo(
@@ -346,6 +380,10 @@ class CatalogsCommand(Command):
             auth_params = BearerAuthenticationParameters(
                 authentication_type=self.catalog_authentication_type.upper(),
                 bearer_token=SecretStr(self.catalog_bearer_token),
+            )
+        elif self.catalog_authentication_type == AuthenticationType.GCP.value:
+            auth_params = GcpAuthenticationParameters(
+                authentication_type=self.catalog_authentication_type.upper()
             )
         elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
             auth_params = SigV4AuthenticationParameters(
@@ -496,19 +534,21 @@ class CatalogsCommand(Command):
                 # in option_tree.py should be applied individually against the existing
                 # storage_config_info here.
                 if self.allowed_locations:
-                    updated_storage_info.allowed_locations.extend(
-                        self.allowed_locations
-                    )
+                    updated_storage_info.allowed_locations = (
+                        updated_storage_info.allowed_locations or []
+                    ) + self.allowed_locations
 
                 if self.region:
-                    # Note: We have to lowercase the returned value because the server enum
-                    # is uppercase but we defined the StorageType enums as lowercase.
-                    storage_type = updated_storage_info.storage_type
-                    if storage_type.lower() != StorageType.S3.value:
-                        raise CliError(
-                            f"--region requires S3 storage_type, got: {storage_type}"
-                        )
+                    self._require_s3(updated_storage_info, "--region")
                     updated_storage_info.region = self.region
+
+                if self.sts_unavailable:
+                    self._require_s3(updated_storage_info, "--no-sts")
+                    updated_storage_info.sts_unavailable = self.sts_unavailable
+
+                if self.kms_unavailable:
+                    self._require_s3(updated_storage_info, "--no-kms")
+                    updated_storage_info.kms_unavailable = self.kms_unavailable
 
                 request = UpdateCatalogRequest(
                     current_entity_version=catalog.entity_version,

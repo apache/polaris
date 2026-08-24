@@ -29,7 +29,6 @@ import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.list;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -60,6 +59,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @QuarkusTest
 @TestProfile(TestPersistenceDistCacheInvalidationsIntegration.Profile.class)
@@ -100,7 +101,7 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
   @BeforeEach
   public void before() {
     soft = new SoftAssertions();
-    mapper = new ObjectMapper();
+    mapper = JsonMapper.shared();
   }
 
   @AfterEach

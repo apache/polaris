@@ -535,6 +535,10 @@ public record MutationAttempt(
 
   public static void updateLocationsIndex(
       UpdatableIndex<EntityIdSet> locations, ObjBase originalObj, ObjBase entityObj) {
+    if (locations == null) {
+      return;
+    }
+
     var previousBaseLocation =
         originalObj != null ? originalObj.properties().get(ENTITY_BASE_LOCATION) : null;
     var entityBaseLocation =

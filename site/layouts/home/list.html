@@ -17,7 +17,55 @@
  under the License.
 */}}
 {{ define "main" -}}
-<div class="td-content text-center">
-    {{ .Content }}
+<div class="polaris-landing">
+  <section class="polaris-landing-hero" aria-labelledby="polaris-landing-title">
+    <div class="polaris-landing-hero__content">
+      <h1 id="polaris-landing-title">
+        <img src="/img/logos/polaris-brandmark-white.svg" alt="">
+        <span>Apache Polaris™</span>
+      </h1>
+      <p>The open catalog for data and AI assets.</p>
+      <hr>
+      <nav class="polaris-landing-actions" aria-label="Apache Polaris resources">
+        <a class="polaris-landing-button polaris-landing-button--primary" href="/releases/latest/getting-started/">
+          <i class="fa-solid fa-rocket" aria-hidden="true"></i>
+          Get started
+        </a>
+        <a class="polaris-landing-button" href="/community/">
+          <i class="fa-solid fa-people-group" aria-hidden="true"></i>
+          Community
+        </a>
+        <a class="polaris-landing-button" href="https://github.com/apache/polaris">
+          <i class="fa-brands fa-github" aria-hidden="true"></i>
+          GitHub
+        </a>
+        <a class="polaris-landing-button" href="https://join.slack.com/t/apache-polaris/shared_invite/zt-3txht5g9x-9NYK98fK6hk40bOaWGW83Q">
+          <i class="fa-brands fa-slack" aria-hidden="true"></i>
+          Slack
+        </a>
+      </nav>
+    </div>
+  </section>
+
+  <section class="polaris-landing-about" aria-label="About Apache Polaris">
+    <div class="polaris-landing-shell">
+      <p>
+        Apache Polaris is an open-source, fully-featured catalog for Apache Iceberg™. It
+        implements Iceberg's REST API, enabling seamless multi-engine interoperability across
+        a wide range of platforms, including Apache Doris™, Apache Flink®, Apache Spark™,
+        Dremio® OSS, StarRocks, and Trino.
+      </p>
+    </div>
+  </section>
+
+  <section class="polaris-landing-trademarks" aria-label="Trademark attribution">
+    <div class="polaris-landing-shell">
+      <p>
+        Apache®, Apache Polaris™, Apache Iceberg™, and Apache Spark™ are either registered
+        trademarks or trademarks of the Apache Software Foundation in the United States
+        and/or other countries.
+      </p>
+    </div>
+  </section>
 </div>
 {{ end }}

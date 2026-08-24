@@ -22,6 +22,7 @@ import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.Prep
 
 import com.google.common.base.Preconditions;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,8 +30,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -57,9 +59,6 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
-import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -69,22 +68,21 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
-import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
+import org.apache.polaris.persistence.relational.jdbc.models.EntityVersionConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
-import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JdbcBasePersistenceImpl
-    implements BasePersistence, IntegrationPersistence, MetricsPersistence {
+public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
@@ -96,6 +94,21 @@ public class JdbcBasePersistenceImpl
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
+
+  // Converter for SELECT 1 existence probes: only the presence of a row matters, so every row maps
+  // to 1 and toMap is never used (existence queries are read-only).
+  private static final Converter<Integer> ROW_EXISTS_CONVERTER =
+      new Converter<>() {
+        @Override
+        public Integer fromResultSet(ResultSet rs) {
+          return 1;
+        }
+
+        @Override
+        public Map<String, Object> toMap(DatabaseType databaseType) {
+          throw new UnsupportedOperationException();
+        }
+      };
 
   public JdbcBasePersistenceImpl(
       PolarisDiagnostics diagnostics,
@@ -147,15 +160,7 @@ public class JdbcBasePersistenceImpl
               PolarisBaseEntity entity = entities.get(i);
               PolarisBaseEntity originalEntity =
                   originalEntities != null ? originalEntities.get(i) : null;
-              // first, check if the entity has already been created, in which case we will simply
-              // return it.
-              PolarisBaseEntity entityFound =
-                  lookupEntity(
-                      callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
-              if (entityFound != null && originalEntity == null) {
-                // probably the client retried, simply return it
-                // TODO: Check correctness of returning entityFound vs entity here. It may have
-                // already been updated after the creation.
+              if (originalEntity == null && entityExists(connection, entity.getId())) {
                 continue;
               }
               persistEntity(
@@ -169,6 +174,25 @@ public class JdbcBasePersistenceImpl
               "Error executing the transaction for writing entities due to %s", e.getMessage()),
           e);
     }
+  }
+
+  /**
+   * Returns whether an entity row already exists, using a {@code SELECT 1 ... LIMIT 1} on the
+   * supplied transaction connection. Only existence is needed by {@link #writeEntities} on the
+   * create path, so this avoids fetching the full entity row (including the large JSON property
+   * blobs).
+   */
+  private boolean entityExists(@NonNull Connection connection, long entityId) throws SQLException {
+    AtomicBoolean exists = new AtomicBoolean(false);
+    datasourceOperations.executeSelectOverStream(
+        connection,
+        QueryGenerator.generateExistsQuery(
+            ModelEntity.getAllColumnNames(schemaVersion),
+            ModelEntity.TABLE_NAME,
+            entityKeyParams(entityId)),
+        ROW_EXISTS_CONVERTER,
+        stream -> exists.set(stream.findAny().isPresent()));
+    return exists.get();
   }
 
   private void persistEntity(
@@ -203,10 +227,14 @@ public class JdbcBasePersistenceImpl
           // 1. PRIMARY KEY violated
           // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
           // With SERIALIZABLE isolation, the conflicting entity may _not_ be visible and
-          // existingEntity can be null, which would cause an NPE in
-          // EntityAlreadyExistsException.message().
-          throw new EntityAlreadyExistsException(
-              existingEntity != null ? existingEntity : entity, e);
+          // existingEntity can be null. We cannot distinguish a same-id idempotent retry from a
+          // genuine name collision in that case, so we must report a concurrency conflict rather
+          // than fabricate the entity we were trying to create.
+          if (existingEntity != null) {
+            throw new EntityAlreadyExistsException(existingEntity, e);
+          }
+          throw new RetryOnConcurrencyException(
+              e, "Conflicting entity is not visible in the current transaction snapshot; retry");
         }
         throw new RuntimeException(
             String.format("Failed to write entity due to %s", e.getMessage()), e);
@@ -284,7 +312,7 @@ public class JdbcBasePersistenceImpl
           QueryGenerator.generateInsertQuery(
               ModelEvent.ALL_COLUMNS,
               ModelEvent.TABLE_NAME,
-              ModelEvent.fromEvent(events.getFirst())
+              ModelEvent.fromEvent(events.getFirst(), schemaVersion)
                   .toMap(datasourceOperations.getDatabaseType())
                   .values()
                   .stream()
@@ -302,7 +330,7 @@ public class JdbcBasePersistenceImpl
             QueryGenerator.generateInsertQuery(
                 ModelEvent.ALL_COLUMNS,
                 ModelEvent.TABLE_NAME,
-                ModelEvent.fromEvent(event)
+                ModelEvent.fromEvent(event, schemaVersion)
                     .toMap(datasourceOperations.getDatabaseType())
                     .values()
                     .stream()
@@ -426,6 +454,10 @@ public class JdbcBasePersistenceImpl
             ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
   }
 
+  private Map<String, Object> entityKeyParams(long entityId) {
+    return Map.of("id", entityId, "realm_id", realmId);
+  }
+
   @Override
   public PolarisBaseEntity lookupEntityByName(
       @NonNull PolarisCallContext callCtx,
@@ -494,23 +526,23 @@ public class JdbcBasePersistenceImpl
   @Override
   public List<PolarisChangeTrackingVersions> lookupEntityVersions(
       @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
-    Map<PolarisEntityId, ModelEntity> idToEntityMap =
-        lookupEntities(callCtx, entityIds).stream()
-            .filter(Objects::nonNull)
-            .collect(
-                Collectors.toMap(
-                    entry -> new PolarisEntityId(entry.getCatalogId(), entry.getId()),
-                    entry -> ModelEntity.fromEntity(entry, schemaVersion)));
-    return entityIds.stream()
-        .map(
-            entityId -> {
-              ModelEntity entity = idToEntityMap.getOrDefault(entityId, null);
-              return entity == null
-                  ? null
-                  : new PolarisChangeTrackingVersions(
-                      entity.getEntityVersion(), entity.getGrantRecordsVersion());
-            })
-        .collect(Collectors.toList());
+    if (entityIds == null || entityIds.isEmpty()) {
+      return new ArrayList<>();
+    }
+    PreparedQuery query =
+        QueryGenerator.generateSelectQueryWithEntityIdsVersionOnly(realmId, entityIds);
+    Map<PolarisEntityId, PolarisChangeTrackingVersions> idToVersions;
+    try {
+      idToVersions =
+          datasourceOperations.executeSelect(query, new EntityVersionConverter()).stream()
+              .collect(
+                  Collectors.toMap(
+                      EntityVersionConverter.EntityVersionRow::entityId,
+                      EntityVersionConverter.EntityVersionRow::versions));
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to retrieve entity versions: " + e.getMessage(), e);
+    }
+    return entityIds.stream().map(idToVersions::get).collect(Collectors.toList());
   }
 
   private PreparedQuery buildEntityQuery(
@@ -519,7 +551,8 @@ public class JdbcBasePersistenceImpl
       PolarisEntityType entityType,
       PolarisEntitySubType entitySubType,
       PageToken pageToken,
-      List<String> queryProjections) {
+      List<String> queryProjections,
+      boolean applyPageSizeLimit) {
     Map<String, Object> whereEquals =
         Map.of(
             "catalog_id",
@@ -539,6 +572,7 @@ public class JdbcBasePersistenceImpl
 
     String orderByColumnName = null;
     Map<String, Object> whereGreater;
+    Integer limit = null;
     if (pageToken.paginationRequested()) {
       orderByColumnName = ModelEntity.ID_COLUMN;
       whereGreater =
@@ -548,12 +582,22 @@ public class JdbcBasePersistenceImpl
                   entityIdToken ->
                       Map.<String, Object>of(ModelEntity.ID_COLUMN, entityIdToken.entityId()))
               .orElse(Map.of());
+      OptionalInt pageSize = pageToken.pageSize();
+      if (applyPageSizeLimit && pageSize.isPresent() && pageSize.getAsInt() < Integer.MAX_VALUE) {
+        // One more than the page size, so the caller can still tell whether a next page exists.
+        limit = pageSize.getAsInt() + 1;
+      }
     } else {
       whereGreater = Map.of();
     }
 
     return QueryGenerator.generateSelectQuery(
-        queryProjections, ModelEntity.TABLE_NAME, whereEquals, whereGreater, orderByColumnName);
+        queryProjections,
+        ModelEntity.TABLE_NAME,
+        whereEquals,
+        whereGreater,
+        orderByColumnName,
+        limit);
   }
 
   @NonNull
@@ -573,7 +617,8 @@ public class JdbcBasePersistenceImpl
               entityType,
               entitySubType,
               pageToken,
-              ModelEntity.ENTITY_LOOKUP_COLUMNS);
+              ModelEntity.ENTITY_LOOKUP_COLUMNS,
+              true);
       AtomicReference<Page<EntityNameLookupRecord>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
@@ -608,7 +653,10 @@ public class JdbcBasePersistenceImpl
               entityType,
               entitySubType,
               pageToken,
-              ModelEntity.getAllColumnNames(schemaVersion));
+              ModelEntity.getAllColumnNames(schemaVersion),
+              // entityFilter is applied after the fetch, so a page size limit could under-fill a
+              // page and drop its continuation token
+              false);
       AtomicReference<Page<T>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
@@ -627,14 +675,10 @@ public class JdbcBasePersistenceImpl
   @Override
   public int lookupEntityGrantRecordsVersion(
       @NonNull PolarisCallContext callCtx, long catalogId, long entityId) {
-
-    Map<String, Object> params =
-        Map.of("catalog_id", catalogId, "id", entityId, "realm_id", realmId);
-    PolarisBaseEntity b =
-        getPolarisBaseEntity(
-            QueryGenerator.generateSelectQuery(
-                ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
-    return b == null ? 0 : b.getGrantRecordsVersion();
+    List<PolarisChangeTrackingVersions> versions =
+        lookupEntityVersions(callCtx, List.of(new PolarisEntityId(catalogId, entityId)));
+    PolarisChangeTrackingVersions version = versions.getFirst();
+    return version == null ? 0 : version.grantRecordsVersion();
   }
 
   @Override
@@ -746,9 +790,9 @@ public class JdbcBasePersistenceImpl
     try {
       var results =
           datasourceOperations.executeSelect(
-              QueryGenerator.generateSelectQuery(
+              QueryGenerator.generateExistsQuery(
                   ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params),
-              new ModelEntity(schemaVersion));
+              ROW_EXISTS_CONVERTER);
       return results != null && !results.isEmpty();
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -1095,20 +1139,7 @@ public class JdbcBasePersistenceImpl
         // inheritable.
         throw new PolicyMappingAlreadyExistsException(existingRecord);
       }
-      Map<String, Object> updateClause =
-          Map.of(
-              "target_catalog_id",
-              record.getTargetCatalogId(),
-              "target_id",
-              record.getTargetId(),
-              "policy_type_code",
-              record.getPolicyTypeCode(),
-              "policy_id",
-              record.getPolicyId(),
-              "policy_catalog_id",
-              record.getPolicyCatalogId(),
-              "realm_id",
-              realmId);
+      Map<String, Object> updateClause = policyMappingIdentity(record);
       // In case of the mapping exist, update the policy mapping with the new parameters.
       ModelPolicyMappingRecord modelPolicyMappingRecord =
           ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
@@ -1130,19 +1161,51 @@ public class JdbcBasePersistenceImpl
     return true;
   }
 
+  /**
+   * Builds the identity of a policy mapping row: the target and policy ids plus the policy type,
+   * scoped to the realm. These are exactly the table's primary key columns; the mutable {@code
+   * parameters} payload is deliberately excluded.
+   */
+  private Map<String, Object> policyMappingIdentity(@NonNull PolarisPolicyMappingRecord record) {
+    return policyMappingIdentity(
+        record.getTargetCatalogId(),
+        record.getTargetId(),
+        record.getPolicyTypeCode(),
+        record.getPolicyCatalogId(),
+        record.getPolicyId());
+  }
+
+  private Map<String, Object> policyMappingIdentity(
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode,
+      long policyCatalogId,
+      long policyId) {
+    return Map.of(
+        "target_catalog_id",
+        targetCatalogId,
+        "target_id",
+        targetId,
+        "policy_type_code",
+        policyTypeCode,
+        "policy_id",
+        policyId,
+        "policy_catalog_id",
+        policyCatalogId,
+        "realm_id",
+        realmId);
+  }
+
   @Override
   public void deleteFromPolicyMappingRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
-    var modelPolicyMappingRecord = ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
     try {
-      Map<String, Object> objectMap =
-          modelPolicyMappingRecord.toMap(datasourceOperations.getDatabaseType());
-      objectMap.put("realm_id", realmId);
+      // Keying on the identity, not the full record, means a concurrent update of parameters
+      // cannot turn this delete into a no-op.
+      Map<String, Object> params = policyMappingIdentity(record);
       datasourceOperations.executeUpdate(
           QueryGenerator.generateDeleteQuery(
-              ModelPolicyMappingRecord.ALL_COLUMNS,
-              ModelPolicyMappingRecord.TABLE_NAME,
-              objectMap));
+              ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to policy records due to %s", e.getMessage()), e);
@@ -1188,19 +1251,7 @@ public class JdbcBasePersistenceImpl
       long policyCatalogId,
       long policyId) {
     Map<String, Object> params =
-        Map.of(
-            "target_catalog_id",
-            targetCatalogId,
-            "target_id",
-            targetId,
-            "policy_type_code",
-            policyTypeCode,
-            "policy_id",
-            policyId,
-            "policy_catalog_id",
-            policyCatalogId,
-            "realm_id",
-            realmId);
+        policyMappingIdentity(targetCatalogId, targetId, policyTypeCode, policyCatalogId, policyId);
     List<PolarisPolicyMappingRecord> results =
         fetchPolicyMappingRecords(
             QueryGenerator.generateSelectQuery(
@@ -1336,60 +1387,5 @@ public class JdbcBasePersistenceImpl
   @FunctionalInterface
   private interface QueryAction {
     Integer apply(Connection connection, QueryGenerator.PreparedQuery query) throws SQLException;
-  }
-
-  // ============================================================================
-  // MetricsPersistence Implementation
-  // ============================================================================
-
-  /** Returns the datasource operations to use for metrics persistence. */
-  private DatasourceOperations getMetricsDatasource() {
-    return datasourceOperations;
-  }
-
-  @Override
-  public void writeScanReport(@NonNull ScanMetricsRecord record) {
-    ModelScanMetricsReport model = ModelScanMetricsReport.fromRecord(record, realmId);
-    writeScanMetricsReport(model);
-  }
-
-  @Override
-  public void writeCommitReport(@NonNull CommitMetricsRecord record) {
-    ModelCommitMetricsReport model = ModelCommitMetricsReport.fromRecord(record, realmId);
-    writeCommitMetricsReport(model);
-  }
-
-  // ========== Internal Metrics JDBC methods ==========
-
-  private void writeScanMetricsReport(@NonNull ModelScanMetricsReport report) {
-    DatasourceOperations metricsOps = getMetricsDatasource();
-    try {
-      PreparedQuery pq =
-          QueryGenerator.generateInsertQuery(
-              ModelScanMetricsReport.ALL_COLUMNS,
-              ModelScanMetricsReport.TABLE_NAME,
-              report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),
-              realmId);
-      metricsOps.executeUpdate(pq);
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to write scan metrics report due to %s", e.getMessage()), e);
-    }
-  }
-
-  private void writeCommitMetricsReport(@NonNull ModelCommitMetricsReport report) {
-    DatasourceOperations metricsOps = getMetricsDatasource();
-    try {
-      PreparedQuery pq =
-          QueryGenerator.generateInsertQuery(
-              ModelCommitMetricsReport.ALL_COLUMNS,
-              ModelCommitMetricsReport.TABLE_NAME,
-              report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),
-              realmId);
-      metricsOps.executeUpdate(pq);
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
-    }
   }
 }

@@ -233,7 +233,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   // Mutators
 
   @Override
-  public boolean add(@NonNull InternalIndexElement<V> element) {
+  public AddResult add(@NonNull InternalIndexElement<V> element) {
     checkNotFinalized();
 
     var maxEmbeddedIndexSize = params.maxEmbeddedIndexSize().asLong();
@@ -245,11 +245,16 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
     hasOversizedEmbeddedEntry |=
         entrySerializedSizeUpperBound > maxEmbeddedEntrySizeBeforeForcedSpill;
-    var added = embedded.add(element);
-    if (added) {
-      return !reference.containsElement(element.key());
-    }
-    return false;
+
+    return switch (embedded.add(element)) {
+      // embedded index had the key with a non-null value -> updated
+      case UPDATED -> AddResult.UPDATED;
+      // embedded index had the key with a null value (removal sentinel) -> logically added
+      case UPDATED_NO_VALUE -> AddResult.NEW_KEY;
+      // embedded index did not contain the key -> the reference index determines the result
+      case NEW_KEY ->
+          reference.containsElement(element.key()) ? AddResult.UPDATED : AddResult.NEW_KEY;
+    };
   }
 
   @Override

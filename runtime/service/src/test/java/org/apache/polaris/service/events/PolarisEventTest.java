@@ -20,6 +20,7 @@ package org.apache.polaris.service.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.junit.jupiter.api.Test;
 
 class PolarisEventTest {
@@ -33,19 +34,23 @@ class PolarisEventTest {
 
   @Test
   void testConstructorWithAttributes() {
+    MutableAttributeMap attributes =
+        MutableAttributeMap.builder()
+            .put(EventAttributes.CATALOG_NAME, TEST_CATALOG)
+            .put(EventAttributes.TABLE_NAME, TEST_TABLE)
+            .build();
     PolarisEvent event =
-        new PolarisEvent(
-            PolarisEventType.BEFORE_CREATE_TABLE,
-            TEST_METADATA,
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, TEST_CATALOG)
-                .put(EventAttributes.TABLE_NAME, TEST_TABLE));
+        new PolarisEvent(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA, attributes);
 
     assertThat(event.type()).isEqualTo(PolarisEventType.BEFORE_CREATE_TABLE);
     assertThat(event.metadata()).isEqualTo(TEST_METADATA);
     assertThat(event.attributes().getRequired(EventAttributes.CATALOG_NAME))
         .isEqualTo(TEST_CATALOG);
     assertThat(event.attributes().getRequired(EventAttributes.TABLE_NAME)).isEqualTo(TEST_TABLE);
+
+    // test defensive copy of attributes
+    attributes.clear();
+    assertThat(event.attributes()).isNotEqualTo(attributes);
   }
 
   @Test

@@ -305,6 +305,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_METADATA_FILE_LOCATION")
+          .catalogConfig("polaris.config.allow.external.metadata.file.location")
           .description(
               "If set to true, Polaris allows metadata files to be located outside the table's "
                   + "default metadata directory. This relaxes the normal check that metadata "
@@ -334,18 +335,38 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  /**
+   * @deprecated since 1.7.0, will be removed in 1.8.0. Use {@link
+   *     #ALLOW_EXTERNAL_METADATA_FILE_LOCATION} instead. This legacy flag is retained as a
+   *     compatibility alias for external metadata file locations.
+   */
+  @SuppressWarnings("DeprecatedIsStillUsed")
+  @Deprecated(since = "1.7.0", forRemoval = true)
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")
           .catalogConfig("polaris.config.allow.external.table.location")
           .legacyCatalogConfig("allow.external.table.location")
           .description(
-              "If set to true, Polaris treats table locations as externally managed instead of "
-                  + "assuming the default managed structure. Allowed-location validation still "
-                  + "applies, but metadata location checks are relaxed, so operators should keep "
-                  + "allowed locations narrow and specific. This setting is typically used "
-                  + "together with ALLOW_UNSTRUCTURED_TABLE_LOCATION.")
+              "Deprecated. Use ALLOW_EXTERNAL_METADATA_FILE_LOCATION instead. When enabled, this "
+                  + "legacy compatibility flag relaxes metadata location checks; it does not "
+                  + "control whether table locations may escape the structured namespace layout. "
+                  + "Use ALLOW_UNSTRUCTURED_TABLE_LOCATION for that behavior.")
           .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION")
+          .catalogConfig("polaris.config.allow.client-specified.table.location")
+          .description(
+              "If set to true (the default), Polaris honors a `location` (and the "
+                  + "`write.data.path` / `write.metadata.path` properties) explicitly supplied in a "
+                  + "create or update request, subject to the usual structured-location, "
+                  + "allowed-location, metadata-location, and overlap validation. If set to false, "
+                  + "such requests are rejected, regardless of the other location compatibility flags. "
+                  + "This setting does not apply to federated catalogs.")
+          .defaultValue(true)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING =
@@ -433,7 +454,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "The duration of time that vended storage credentials are valid for. Support for"
                   + " longer (or shorter) durations is dependent on the storage provider. GCS"
-                  + " current does not respect this value.")
+                  + " currently does not respect this value.")
           .defaultValue(60 * 60) // 1 hour
           .buildFeatureConfiguration();
 
@@ -514,6 +535,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "way. It is disabled by default; enable it with caution and report any issues "
                   + "encountered.")
           .defaultValue(false) // beta feature, keep it off by default
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_OPENLINEAGE_INGEST =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_OPENLINEAGE_INGEST")
+          .description(
+              "If true, the OpenLineage ingest endpoints are enabled and advertised to clients in "
+                  + "the catalog configuration response during endpoint discovery. If false, the "
+                  + "endpoints return 501 Not Implemented and are not advertised. The routes are "
+                  + "always mounted when the OpenLineage extension is assembled into the server; "
+                  + "this flag is the runtime switch that turns the feature on or off.")
+          .defaultValue(true)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_CONNECTION_TYPES =
@@ -617,9 +650,21 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "When enabled, Iceberg tables and views created without a location specified will have a prefix "
                   + "applied to the location within the catalog's base location, rather than a location directly "
-                  + "inside the parent namespace. Note that this requires ALLOW_EXTERNAL_TABLE_LOCATION to be "
+                  + "inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be "
                   + "enabled, but with OPTIMIZED_SIBLING_CHECK enabled "
                   + "it is still possible to enforce the uniqueness of table locations within a catalog.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED")
+          .catalogConfig("polaris.config.default-unique-table-location.enabled")
+          .description(
+              "When enabled, a managed location generated for a table or view created without an "
+                  + "explicit location is given a unique, unpredictable suffix, so that no two "
+                  + "tables share a path prefix. When disabled (the default), the generated "
+                  + "location is the legacy `<namespace location>/<table name>` form.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -638,7 +683,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .key("ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS")
               .description(
                   "If set to true (default), Polaris will allow setting or changing "
-                      + "catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs."
+                      + "catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs. "
                       + "If set to false, Polaris will disallow setting or changing the above catalog property")
               .defaultValue(true)
               .buildFeatureConfiguration();
@@ -649,7 +694,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .key("ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG")
               .description(
                   "If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. "
-                      + "passthrough-facade catalogs may contain leftover entities when syncing with source catalog."
+                      + "passthrough-facade catalogs may contain leftover entities when syncing with source catalog. "
                       + "In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.")
               .catalogConfig("polaris.config.allow-dropping-non-empty-passthrough-facade-catalog")
               .defaultValue(false)
@@ -707,7 +752,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. "
                   + "The jitter is applied as a random percentage of the computed exponential backoff delay. "
-                  + "For example, 0.5 means up to 50%% random jitter will be added to each retry delay. "
+                  + "For example, 0.5 means up to 50% random jitter will be added to each retry delay. "
                   + "Helps prevent thundering herd when multiple requests fail simultaneously.")
           .defaultValue(0.5)
           .buildFeatureConfiguration();

@@ -32,6 +32,7 @@ def _builder_options() -> Namespace:
         catalog_url=None,
         host=None,
         port=None,
+        scheme=None,
         proxy=None,
         access_token=None,
         client_id="test-id",
@@ -116,6 +117,7 @@ class TestBuilderConfigCatalogUrl(unittest.TestCase):
             catalog_url=catalog_url,
             host=None,
             port=None,
+            scheme=None,
             proxy=None,
             access_token=None,
             client_id=None,
@@ -165,6 +167,86 @@ class TestBuilderConfigCatalogUrl(unittest.TestCase):
             mock_api.return_value = mock_client
             builder.get_api_client()
             self.assertFalse(hasattr(mock_config, "_polaris_catalog_base"))
+
+
+class TestBuilderConfigBaseUrl(unittest.TestCase):
+    def _options(
+        self,
+        *,
+        base_url: str | None = None,
+        host: str | None = None,
+        port: int | None = None,
+        scheme: str | None = None,
+        profile: str | None = None,
+    ) -> Namespace:
+        return Namespace(
+            base_url=base_url,
+            catalog_url=None,
+            host=host,
+            port=port,
+            scheme=scheme,
+            proxy=None,
+            access_token=None,
+            client_id=None,
+            client_secret=None,
+            realm=None,
+            header=None,
+            profile=profile,
+        )
+
+    def test_default_scheme_is_http(self) -> None:
+        cfg = BuilderConfig(self._options(host="localhost", port=8181))
+        self.assertEqual(cfg.base_url, "http://localhost:8181")
+
+    def test_base_url_includes_scheme(self) -> None:
+        cfg = BuilderConfig(
+            self._options(host="localhost", port=443, scheme="https")
+        )
+        self.assertEqual(cfg.base_url, "https://localhost:443")
+
+    def test_scheme_from_profile(self) -> None:
+        opts = self._options(profile="prod")
+        with patch(
+            "apache_polaris.cli.api_client_builder.load_profiles",
+            return_value={
+                "prod": {
+                    "host": "localhost",
+                    "port": 443,
+                    "scheme": "https",
+                }
+            },
+        ):
+            cfg = BuilderConfig(opts)
+            self.assertEqual(cfg.base_url, "https://localhost:443")
+
+    def test_option_scheme_overrides_profile(self) -> None:
+        opts = self._options(profile="prod", scheme="http")
+        with patch(
+            "apache_polaris.cli.api_client_builder.load_profiles",
+            return_value={
+                "prod": {
+                    "host": "localhost",
+                    "port": 443,
+                    "scheme": "https",
+                }
+            },
+        ):
+            cfg = BuilderConfig(opts)
+            self.assertEqual(cfg.base_url, "http://localhost:443")
+
+    def test_base_url_conflicts_with_scheme(self) -> None:
+        cfg = BuilderConfig(
+            self._options(base_url="https://localhost", scheme="https")
+        )
+        with self.assertRaises(CliError) as cm:
+            _ = cfg.base_url
+        message = str(cm.exception)
+        self.assertIn("--base-url", message)
+        self.assertIn("--scheme", message)
+
+    def test_base_url_is_preserved(self) -> None:
+        cfg = BuilderConfig(self._options(base_url="https://localhost:443"))
+        self.assertEqual(cfg.base_url, "https://localhost:443")
 
 
 if __name__ == "__main__":

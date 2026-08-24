@@ -31,6 +31,7 @@ from apache_polaris.cli.constants import (
     Arguments,
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
+    DEFAULT_SCHEME,
 )
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.options.option_tree import Argument
@@ -59,17 +60,25 @@ class BuilderConfig:
     @cached_property
     def base_url(self) -> str:
         if self.options.base_url:
-            if self.options.host is not None or self.options.port is not None:
+            if (
+                self.options.host is not None
+                or self.options.port is not None
+                or self.options.scheme is not None
+            ):
                 raise CliError(
                     f"Please provide either {Argument.to_flag_name(Arguments.BASE_URL)} or"
                     f" {Argument.to_flag_name(Arguments.HOST)} &"
-                    f" {Argument.to_flag_name(Arguments.PORT)}, but not both"
+                    f" {Argument.to_flag_name(Arguments.PORT)} (with optional"
+                    f" {Argument.to_flag_name(Arguments.SCHEME)}), but not both"
                 )
             return self.options.base_url
 
         host = self.options.host or self.profile.get(Arguments.HOST) or DEFAULT_HOSTNAME
         port = self.options.port or self.profile.get(Arguments.PORT) or DEFAULT_PORT
-        return f"http://{host}:{port}"
+        scheme = (
+            self.options.scheme or self.profile.get(Arguments.SCHEME) or DEFAULT_SCHEME
+        )
+        return f"{scheme}://{host}:{port}"
 
     @cached_property
     def management_url(self) -> str:

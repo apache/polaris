@@ -29,6 +29,7 @@ val genProjectPaths = listOf(
   ":polaris-async-api",
   ":polaris-core",
   ":polaris-extensions-auth-opa",
+  ":polaris-extensions-events-kafka",
   ":polaris-nodes-api",
   ":polaris-persistence-nosql-api",
   ":polaris-persistence-nosql-impl",
@@ -160,6 +161,7 @@ abstract class CopyConfigSectionsToSite : DefaultTask() {
       .matching {
         include("smallrye-*.md")
         include("flags-*.md")
+        include("storage-*.md")
       }
       .files
       .forEach { file ->

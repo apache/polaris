@@ -20,9 +20,9 @@ package org.apache.polaris.service.it.nosql;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.PolarisRestCatalogRustFSIT;
+import org.apache.polaris.service.it.PolarisRestCatalogFlociS3IT;
 import org.apache.polaris.test.commons.NoSqlInMemoryProfile;
 
 @QuarkusIntegrationTest
 @TestProfile(value = NoSqlInMemoryProfile.class)
-public class NoSqlCatalogIT extends PolarisRestCatalogRustFSIT {}
+public class NoSqlCatalogIT extends PolarisRestCatalogFlociS3IT {}

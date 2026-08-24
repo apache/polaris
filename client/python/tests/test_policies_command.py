@@ -27,7 +27,7 @@ from apache_polaris.cli.command.policies import PoliciesCommand
 
 
 class TestPoliciesCommand(CLITestBase):
-    def test_policy_attach_paremeters(self) -> None:
+    def test_policy_attach_parameters(self) -> None:
         options = Parser.parse(
             [
                 "policies",

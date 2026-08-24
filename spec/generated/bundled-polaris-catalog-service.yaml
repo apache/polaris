@@ -1766,7 +1766,7 @@ paths:
                 PolicyToUpdateDoesNotExist:
                   $ref: '#/components/examples/NoSuchPolicyError'
         '409':
-          description: The policy version doesn't match the current-policy-version; retry after fetching latest version
+          description: The policy version doesn't match the current-policy-version, or the policy was concurrently modified; retry after fetching latest version
           content:
             application/json:
               schema:

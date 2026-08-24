@@ -25,8 +25,10 @@ import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.aws.HttpClientProperties;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -35,22 +37,30 @@ import org.jspecify.annotations.NonNull;
  *
  * <p>This class acts as a translation layer between Polaris properties and the properties required
  * by Iceberg's {@link FileIO}.
+ *
+ * <p>{@code polaris.storage.*} HTTP client settings from {@link S3AccessConfig} are applied to
+ * Iceberg AWS FileIOs. Production CDI paths inject the live config; tests/fixtures can pass {@link
+ * S3AccessConfig#empty()}.
  */
 @RequestScoped
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
+  private final S3AccessConfig s3AccessConfig;
+
   @Inject
-  public DefaultFileIOFactory() {}
+  public DefaultFileIOFactory(S3AccessConfig s3AccessConfig) {
+    this.s3AccessConfig = s3AccessConfig;
+  }
 
   @Override
   public FileIO loadFileIO(
       @NonNull StorageAccessConfig storageAccessConfig,
       @NonNull String ioImplClassName,
-      @NonNull Map<String, String> properties) {
+      @NonNull Map<String, String> tableProperties) {
 
     // Get subcoped creds
-    properties = new HashMap<>(properties);
+    Map<String, String> properties = new HashMap<>(tableProperties);
 
     // Update the FileIO with the subscoped credentials
     // Update with properties in case there are table-level overrides the credentials should
@@ -59,6 +69,53 @@ public class DefaultFileIOFactory implements FileIOFactory {
     properties.putAll(storageAccessConfig.credentials());
     properties.putAll(storageAccessConfig.extraProperties());
     properties.putAll(storageAccessConfig.internalProperties());
+
+    // Apply polaris.storage.* HTTP client settings to Iceberg S3FileIO (and other AWS FileIOs).
+    // Previously only applied to the STS client pool. Empty config is a no-op (tests/fixtures).
+    s3AccessConfig
+        .maxHttpConnections()
+        .ifPresent(
+            v -> properties.put(HttpClientProperties.APACHE_MAX_CONNECTIONS, String.valueOf(v)));
+    s3AccessConfig
+        .readTimeout()
+        .ifPresent(
+            d ->
+                properties.put(
+                    HttpClientProperties.APACHE_SOCKET_TIMEOUT_MS, String.valueOf(d.toMillis())));
+    s3AccessConfig
+        .connectTimeout()
+        .ifPresent(
+            d ->
+                properties.put(
+                    HttpClientProperties.APACHE_CONNECTION_TIMEOUT_MS,
+                    String.valueOf(d.toMillis())));
+    s3AccessConfig
+        .connectionAcquisitionTimeout()
+        .ifPresent(
+            d ->
+                properties.put(
+                    HttpClientProperties.APACHE_CONNECTION_ACQUISITION_TIMEOUT_MS,
+                    String.valueOf(d.toMillis())));
+    s3AccessConfig
+        .connectionMaxIdleTime()
+        .ifPresent(
+            d ->
+                properties.put(
+                    HttpClientProperties.APACHE_CONNECTION_MAX_IDLE_TIME_MS,
+                    String.valueOf(d.toMillis())));
+    s3AccessConfig
+        .connectionTimeToLive()
+        .ifPresent(
+            d ->
+                properties.put(
+                    HttpClientProperties.APACHE_CONNECTION_TIME_TO_LIVE_MS,
+                    String.valueOf(d.toMillis())));
+    s3AccessConfig
+        .expectContinueEnabled()
+        .ifPresent(
+            v ->
+                properties.put(
+                    HttpClientProperties.APACHE_EXPECT_CONTINUE_ENABLED, String.valueOf(v)));
 
     return loadFileIOInternal(ioImplClassName, properties);
   }

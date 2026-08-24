@@ -25,6 +25,7 @@ import com.auth0.jwt.interfaces.JWTVerifier;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
@@ -123,12 +124,26 @@ public class JWTBroker implements TokenBroker {
     if (principalLookup.isEmpty()) {
       return TokenResponse.of(OAuthError.unauthorized_client);
     }
+    String tokenScope = decodedToken.getScope();
+    if (scope != null) {
+      TokenRequestValidator validator = new TokenRequestValidator();
+      Optional<OAuthError> validationError = validator.validateScope(scope);
+      if (validationError.isPresent()) {
+        return TokenResponse.of(validationError.get());
+      }
+      Set<String> requestedScopes = validator.parseScopes(scope);
+      if (!decodedToken.getPrincipalRoles().contains(DefaultAuthenticator.PRINCIPAL_ROLE_ALL)
+          && !decodedToken.getPrincipalRoles().containsAll(requestedScopes)) {
+        return TokenResponse.of(OAuthError.invalid_scope);
+      }
+      tokenScope = scope;
+    }
     String tokenString =
         generateTokenString(
             decodedToken.getPrincipalName(),
             decodedToken.getPrincipalId(),
             decodedToken.getClientId(),
-            decodedToken.getScope());
+            tokenScope);
     return TokenResponse.of(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }

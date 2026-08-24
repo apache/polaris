@@ -83,6 +83,10 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
   public static final List<String> ENTITY_LOOKUP_COLUMNS =
       List.of("id", "catalog_id", "parent_id", "type_code", "name", "sub_type_code");
 
+  /** Minimal projection for version-check queries; avoids fetching large JSON property blobs. */
+  public static final List<String> VERSION_COLUMNS =
+      List.of("id", "catalog_id", "entity_version", "grant_records_version");
+
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
   // like a catalog
   private long catalogId;

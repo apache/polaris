@@ -65,6 +65,7 @@ class AuthenticationType(Enum):
 
     OAUTH = "oauth"
     BEARER = "bearer"
+    GCP = "gcp"
     SIGV4 = "sigv4"
     IMPLICIT = "implicit"
 
@@ -110,6 +111,8 @@ class Commands:
     POLICIES = "policies"
     SETUP = "setup"
     TABLES = "tables"
+    VIEWS = "views"
+    GENERIC_TABLES = "generic-tables"
     FIND = "find"
     REPL = "repl"
 
@@ -184,6 +187,7 @@ class Arguments:
     NAMESPACE = "namespace"
     TABLE = "table"
     VIEW = "view"
+    GENERIC_TABLE = "generic-table"
     CASCADE = "cascade"
     CLIENT_SECRET = "client_secret"
     NEW_CLIENT_ID = "new_client_id"
@@ -191,6 +195,7 @@ class Arguments:
     ACCESS_TOKEN = "access_token"
     HOST = "host"
     PORT = "port"
+    SCHEME = "scheme"
     BASE_URL = "base_url"
     CATALOG_URL = "catalog_url"
     PARENT = "parent"
@@ -209,6 +214,8 @@ class Arguments:
     KMS_UNAVAILABLE = "no_kms"
     KMS_KEY_CURRENT = "current_kms_key"
     KMS_KEY_ALLOWED = "allowed_kms_key"
+    KMS_KEY_ENCRYPTION = "encryption_key"
+    KMS_KEY_DECRYPTION = "decryption_key"
     PATH_STYLE_ACCESS = "path_style_access"
     CATALOG_CONNECTION_TYPE = "catalog_connection_type"
     CATALOG_AUTHENTICATION_TYPE = "catalog_authentication_type"
@@ -299,8 +306,10 @@ class Hints:
         "Indicates that Polaris should not use KMS (e.g. if KMS is not available)"
     )
     S3_PATH_STYLE_ACCESS = "Whether to use path-style-access for S3"
-    S3_KMS_KEY_CURRENT = "The AWS KMS key ARN to be used for encrypting new S3 data"
-    S3_KMS_KEY_ALLOWED = "AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)"
+    S3_KMS_KEY_CURRENT = "Deprecated. Use --encryption-key instead"
+    S3_KMS_KEY_ALLOWED = "Deprecated. Use --encryption-key instead"
+    S3_KMS_KEY_ENCRYPTION = "AWS KMS key identifier(s) that this catalog and its clients may use to encrypt S3 data; these keys are also granted decryption permissions (zero or more)"
+    S3_KMS_KEY_DECRYPTION = "AWS KMS key identifier(s) that this catalog and its clients may use to decrypt S3 data (zero or more)"
     ## Azure
     AZURE_TENANT_ID = "(Required) A tenant ID to use when connecting to Azure Storage"
     AZURE_MULTI_TENANT_APP_NAME = "The app name to use when connecting to Azure Storage"
@@ -359,6 +368,7 @@ HEADER_ENV = "HEADER"
 DEFAULT_HEADER = "Polaris-Realm"
 DEFAULT_HOSTNAME = "localhost"
 DEFAULT_PORT = 8181
+DEFAULT_SCHEME = "http"
 CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduser(
     "~/.polaris"
 )

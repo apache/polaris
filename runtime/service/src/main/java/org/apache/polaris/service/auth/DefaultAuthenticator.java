@@ -19,25 +19,31 @@
 package org.apache.polaris.service.auth;
 
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
+import io.quarkus.security.AuthenticationFailedException;
+import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import java.util.Optional;
+import jakarta.ws.rs.ServiceUnavailableException;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,25 +88,33 @@ public class DefaultAuthenticator implements Authenticator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAuthenticator.class);
 
-  private static final Set<String> ALL_ROLES_REQUESTED = Set.of();
-
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
   @Inject PolarisDiagnostics diagnostics;
 
   @Override
-  public PolarisPrincipal authenticate(PolarisCredential credentials) {
+  public PolarisPrincipal authenticate(SecurityIdentity identity) {
 
+    PolarisCredential credentials = extractPolarisCredential(identity);
     LOGGER.debug("Resolving principal for credentials: {}", credentials);
 
     PrincipalEntity principalEntity = resolvePrincipalEntity(credentials);
-    Set<String> principalRoles = resolvePrincipalRoles(credentials, principalEntity);
+    PrincipalRoleSelection principalRoles = resolvePrincipalRoles(credentials, principalEntity);
+    Map<String, Object> principalAttributes =
+        resolvePrincipalAttributes(identity, principalEntity, principalRoles.allRolesRequested());
     PolarisPrincipal polarisPrincipal =
-        PolarisPrincipal.of(
-            principalEntity, principalRoles, Optional.ofNullable(credentials.getToken()));
+        PolarisPrincipal.of(principalEntity.getName(), principalAttributes, principalRoles.roles());
 
     LOGGER.debug("Resolved principal: {}", polarisPrincipal);
     return polarisPrincipal;
+  }
+
+  private static PolarisCredential extractPolarisCredential(SecurityIdentity identity) {
+    PolarisCredential credential = identity.getCredential(PolarisCredential.class);
+    if (credential == null) {
+      throw new AuthenticationFailedException("No Polaris credential available");
+    }
+    return credential;
   }
 
   /**
@@ -108,7 +122,7 @@ public class DefaultAuthenticator implements Authenticator {
    *
    * <p>This method attempts to load the principal entity using either the principal ID or the
    * principal name from the credentials. If neither is available, nor if the principal entity can
-   * be found, it throws a {@link NotAuthorizedException}.
+   * be found, it throws a {@link AuthenticationFailedException}.
    */
   protected PrincipalEntity resolvePrincipalEntity(PolarisCredential credentials) {
 
@@ -132,18 +146,32 @@ public class DefaultAuthenticator implements Authenticator {
     } catch (Exception e) {
       LOGGER
           .atError()
-          .addKeyValue("errMsg", e.getMessage())
-          .addKeyValue("stackTrace", Throwables.getStackTraceAsString(e))
-          .log("Unable to authenticate user with token");
-      throw new ServiceFailureException("Unable to fetch principal entity");
+          .addKeyValue(StructuredLogKeys.ERR_MSG, e.getMessage())
+          .addKeyValue(StructuredLogKeys.STACK_TRACE, Throwables.getStackTraceAsString(e))
+          .log("Unable to resolve principal entity from credentials");
+      throw new ServiceUnavailableException("Unable to fetch principal entity");
     }
 
     if (principal == null || principal.getType() != PolarisEntityType.PRINCIPAL) {
       LOGGER.warn("Failed to resolve principal from credentials={}", credentials);
-      throw new NotAuthorizedException("Unable to authenticate");
+      throw new AuthenticationFailedException("Unable to authenticate");
     }
 
     return principal;
+  }
+
+  protected Map<String, Object> resolvePrincipalAttributes(
+      SecurityIdentity identity, PrincipalEntity principalEntity, boolean allRolesRequested) {
+    // Do not merge the security identity's attributes into the principal attributes:
+    // these must stay separate.
+    ImmutableMap.Builder<String, Object> principalAttributes =
+        ImmutableMap.<String, Object>builder()
+            .put(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+            .put(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, allRolesRequested);
+    if (identity.getPrincipal() instanceof JsonWebToken jwt) {
+      principalAttributes.put(PolarisPrincipal.JWT_ATTRIBUTE_KEY, jwt.getRawToken());
+    }
+    return principalAttributes.build();
   }
 
   /**
@@ -158,41 +186,36 @@ public class DefaultAuthenticator implements Authenticator {
    * roles they have been granted in the system, and all such roles will be included in the returned
    * set.
    */
-  protected Set<String> resolvePrincipalRoles(
+  protected PrincipalRoleSelection resolvePrincipalRoles(
       PolarisCredential credentials, PrincipalEntity principal) {
 
-    Set<String> requestedRoles = extractRequestedRoles(credentials);
+    PrincipalRoleSelection requestedRoles = extractRequestedRoles(credentials);
     LoadGrantsResult loadGrantsResult = loadPrincipalGrants(principal);
 
-    Predicate<String> includeRoleFilter =
-        requestedRoles == ALL_ROLES_REQUESTED ? role -> true : requestedRoles::contains;
+    Map<Long, PolarisBaseEntity> entitiesById = loadGrantsResult.getEntitiesAsMap();
 
     Set<String> activeRoles =
         loadGrantsResult.getGrantRecords().stream()
-            .map(
-                gr ->
-                    metaStoreManager.loadEntity(
-                        callContext.getPolarisCallContext(),
-                        gr.getSecurableCatalogId(),
-                        gr.getSecurableId(),
-                        PolarisEntityType.PRINCIPAL_ROLE))
-            .filter(EntityResult::isSuccess)
-            .map(EntityResult::getEntity)
+            .map(gr -> loadSecurableEntity(gr, entitiesById))
+            .filter(Objects::nonNull)
+            .filter(entity -> entity.getType() == PolarisEntityType.PRINCIPAL_ROLE)
             .map(PrincipalRoleEntity::of)
             .map(PrincipalRoleEntity::getName)
-            .filter(includeRoleFilter)
+            .filter(
+                role -> requestedRoles.allRolesRequested() || requestedRoles.roles().contains(role))
             .collect(Collectors.toSet());
 
-    if (requestedRoles != ALL_ROLES_REQUESTED && !activeRoles.containsAll(requestedRoles)) {
+    if (!requestedRoles.allRolesRequested() && !activeRoles.containsAll(requestedRoles.roles())) {
       LOGGER
           .atWarn()
-          .addKeyValue("principal", principal.getName())
-          .addKeyValue("credentials", credentials)
-          .addKeyValue("roles", activeRoles)
+          .addKeyValue(StructuredLogKeys.PRINCIPAL, principal.getName())
+          .addKeyValue(StructuredLogKeys.CREDENTIALS, credentials)
+          .addKeyValue(StructuredLogKeys.ROLES, activeRoles)
           .log("Some principal roles were not found in the principal's grants");
+      throw new AuthenticationFailedException("Unable to authenticate");
     }
 
-    return activeRoles;
+    return new PrincipalRoleSelection(activeRoles, requestedRoles.allRolesRequested());
   }
 
   /**
@@ -204,25 +227,27 @@ public class DefaultAuthenticator implements Authenticator {
    * <p>Otherwise, it filters the roles that start with the {@link #PRINCIPAL_ROLE_PREFIX} and
    * returns the set of roles without the prefix.
    */
-  protected Set<String> extractRequestedRoles(PolarisCredential credentials) {
+  protected PrincipalRoleSelection extractRequestedRoles(PolarisCredential credentials) {
     Set<String> credentialsRoles = credentials.getPrincipalRoles();
     if (credentialsRoles.contains(PRINCIPAL_ROLE_ALL)) {
-      return ALL_ROLES_REQUESTED;
+      return new PrincipalRoleSelection(Set.of(), true);
     }
     if (credentialsRoles.stream().anyMatch(s -> !s.startsWith(PRINCIPAL_ROLE_PREFIX))) {
       LOGGER
           .atWarn()
-          .addKeyValue("credentials", credentials)
-          .addKeyValue("roles", credentialsRoles)
+          .addKeyValue(StructuredLogKeys.CREDENTIALS, credentials)
+          .addKeyValue(StructuredLogKeys.ROLES, credentialsRoles)
           .log(
               "Credentials contain roles that do not start with expected prefix '{}'. "
                   + "These roles will be ignored during authentication.",
               PRINCIPAL_ROLE_PREFIX);
     }
-    return credentialsRoles.stream()
-        .filter(s -> s.startsWith(PRINCIPAL_ROLE_PREFIX))
-        .map(s -> s.substring(PRINCIPAL_ROLE_PREFIX.length()))
-        .collect(Collectors.toSet());
+    return new PrincipalRoleSelection(
+        credentialsRoles.stream()
+            .filter(s -> s.startsWith(PRINCIPAL_ROLE_PREFIX))
+            .map(s -> s.substring(PRINCIPAL_ROLE_PREFIX.length()))
+            .collect(Collectors.toSet()),
+        false);
   }
 
   /**
@@ -245,8 +270,29 @@ public class DefaultAuthenticator implements Authenticator {
           "Failed to resolve principal roles for principal name={} id={}",
           principal.getName(),
           principal.getId());
-      throw new NotAuthorizedException("Unable to authenticate");
+      throw new AuthenticationFailedException("Unable to authenticate");
     }
     return principalGrantResults;
   }
+
+  /**
+   * Resolves the securable entity for a grant record, using preloaded entities when available and
+   * falling back to {@link PolarisMetaStoreManager#loadEntity} only when the metastore did not
+   * populate {@link LoadGrantsResult#getEntities()}.
+   */
+  private @Nullable PolarisBaseEntity loadSecurableEntity(
+      PolarisGrantRecord grant, @Nullable Map<Long, PolarisBaseEntity> entitiesById) {
+    if (entitiesById != null) {
+      return entitiesById.get(grant.getSecurableId());
+    }
+    return metaStoreManager
+        .loadEntity(
+            callContext.getPolarisCallContext(),
+            grant.getSecurableCatalogId(),
+            grant.getSecurableId(),
+            PolarisEntityType.PRINCIPAL_ROLE)
+        .getEntity();
+  }
+
+  protected record PrincipalRoleSelection(Set<String> roles, boolean allRolesRequested) {}
 }

@@ -20,6 +20,8 @@ package org.apache.polaris.service.task;
 
 import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
 import io.quarkus.test.InjectMock;
@@ -43,6 +45,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.InputFile;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -182,8 +185,10 @@ public class BatchFileCleanupTaskHandlerTest {
             .build();
 
     task = addTaskLocation(task);
+    TaskEntity finalTask = task;
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThatCode(() -> handler.handleTask(finalTask, polarisCallContext))
+        .doesNotThrowAnyException();
 
     for (String cleanupFile : cleanupFiles) {
       assertThatPredicate((String file) -> TaskUtils.exists(file, fileIO)).rejects(cleanupFile);
@@ -224,9 +229,47 @@ public class BatchFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
 
-    task = addTaskLocation(task);
-    assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    TaskEntity taskWithLocation = addTaskLocation(task);
+    assertThatPredicate(handler::canHandleTask).accepts(taskWithLocation);
+    assertThatNoException()
+        .isThrownBy(() -> handler.handleTask(taskWithLocation, polarisCallContext));
+  }
+
+  @Test
+  public void testExistenceCheckIsPerformedOncePerFile() {
+    String presentFile1 = "s3://bucket/present1";
+    String presentFile2 = "s3://bucket/present2";
+    String missingFile = "s3://bucket/missing";
+
+    InputFile presentInput = Mockito.mock(InputFile.class);
+    Mockito.when(presentInput.exists()).thenReturn(true);
+    InputFile missingInput = Mockito.mock(InputFile.class);
+    Mockito.when(missingInput.exists()).thenReturn(false);
+
+    FileIO fileIO = Mockito.mock(FileIO.class);
+    Mockito.when(fileIO.newInputFile(presentFile1)).thenReturn(presentInput);
+    Mockito.when(fileIO.newInputFile(presentFile2)).thenReturn(presentInput);
+    Mockito.when(fileIO.newInputFile(missingFile)).thenReturn(missingInput);
+
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
+            .withData(
+                new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
+                    tableIdentifier,
+                    List.of(presentFile1, presentFile2, missingFile),
+                    BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+            .setName(UUID.randomUUID().toString())
+            .build();
+
+    assertThatCode(() -> handler.handleTask(task, polarisCallContext)).doesNotThrowAnyException();
+
+    // Each file must have been checked exactly once by the pre-delete scan.
+    Mockito.verify(fileIO, Mockito.times(1)).newInputFile(presentFile1);
+    Mockito.verify(fileIO, Mockito.times(1)).newInputFile(presentFile2);
+    Mockito.verify(fileIO, Mockito.times(1)).newInputFile(missingFile);
   }
 
   @ParameterizedTest

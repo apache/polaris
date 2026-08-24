@@ -29,21 +29,41 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iceberg.DataFile;
+import org.apache.iceberg.GenericStatisticsFile;
+import org.apache.iceberg.ImmutableGenericPartitionStatisticsFile;
+import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.PartitionStatisticsFile;
+import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.SortOrder;
+import org.apache.iceberg.StatisticsFile;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
+import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
+import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
@@ -53,10 +73,13 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 
 public class IcebergAllowedLocationTest {
   private static final String namespace = "ns";
@@ -121,7 +144,7 @@ public class IcebergAllowedLocationTest {
     assertNotEquals(catalogLocation, namespaceLocation);
 
     // add the namespace location to the allowed locations of the catalog
-    createCatalog(services, Map.of(), catalogLocation, List.of(namespaceLocation));
+    createCatalog(services, Map.of(), catalogLocation, List.of(tmpDir.toUri().toString()));
 
     createNamespace(services, namespaceLocation);
 
@@ -187,7 +210,7 @@ public class IcebergAllowedLocationTest {
     var namespaceLocation = tmpDir.resolve(namespace).toAbsolutePath().toUri().toString();
     assertNotEquals(catalogLocation, namespaceLocation);
 
-    createCatalog(services, Map.of(), catalogLocation, List.of(namespaceLocation));
+    createCatalog(services, Map.of(), catalogLocation, List.of(tmpDir.toUri().toString()));
     createNamespace(services, namespaceLocation);
 
     var createTableRequest =
@@ -495,6 +518,166 @@ public class IcebergAllowedLocationTest {
         .containsEntry("write.data.path", writeDataPath);
   }
 
+  @Test
+  void testUpdateTableRejectsManifestListOutsideAllowedLocations(@TempDir Path tmpDir) {
+    var tableName = getTableName();
+    var tableId = TableIdentifier.of(namespace, tableName);
+
+    var services = createTableUnderAllowedCatalogLocation(tmpDir, tableName);
+
+    var outsideLocation = tmpDir.resolve("outside").toAbsolutePath().toUri().toString();
+    var snapshot =
+        new TestSnapshot(1L, 1L, null, System.currentTimeMillis(), outsideLocation + "snap.avro");
+
+    var updateRequest =
+        UpdateTableRequest.create(
+            tableId, List.of(), List.of(new MetadataUpdate.AddSnapshot(snapshot)));
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogAdapter()
+                    .newHandler(services.securityContext(), catalog)
+                    .updateTable(tableId, updateRequest))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
+  @Test
+  void testUpdateTableRejectsStatisticsFileOutsideAllowedLocations(@TempDir Path tmpDir) {
+    var tableName = getTableName();
+    var tableId = TableIdentifier.of(namespace, tableName);
+
+    var services = createTableUnderAllowedCatalogLocation(tmpDir, tableName);
+
+    var outsideLocation = tmpDir.resolve("outside").toAbsolutePath().toUri().toString();
+    StatisticsFile statisticsFile =
+        new GenericStatisticsFile(1L, outsideLocation + "stats.puffin", 1L, 1L, List.of());
+
+    var updateRequest =
+        UpdateTableRequest.create(
+            tableId, List.of(), List.of(new MetadataUpdate.SetStatistics(statisticsFile)));
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogAdapter()
+                    .newHandler(services.securityContext(), catalog)
+                    .updateTable(tableId, updateRequest))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
+  @Test
+  void testUpdateTableRejectsPartitionStatisticsFileOutsideAllowedLocations(@TempDir Path tmpDir) {
+    var tableName = getTableName();
+    var tableId = TableIdentifier.of(namespace, tableName);
+
+    var services = createTableUnderAllowedCatalogLocation(tmpDir, tableName);
+
+    var outsideLocation = tmpDir.resolve("outside").toAbsolutePath().toUri().toString();
+    PartitionStatisticsFile partitionStatisticsFile =
+        ImmutableGenericPartitionStatisticsFile.builder()
+            .snapshotId(1L)
+            .path(outsideLocation + "partition-stats.puffin")
+            .fileSizeInBytes(1L)
+            .build();
+
+    var updateRequest =
+        UpdateTableRequest.create(
+            tableId,
+            List.of(),
+            List.of(new MetadataUpdate.SetPartitionStatistics(partitionStatisticsFile)));
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogAdapter()
+                    .newHandler(services.securityContext(), catalog)
+                    .updateTable(tableId, updateRequest))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
+  private TestServices createTableUnderAllowedCatalogLocation(Path tmpDir, String tableName) {
+    var services = getTestServices();
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = catalogLocation + "/" + namespace;
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder().withName(tableName).withSchema(SCHEMA).build();
+
+    var createResponse =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                null,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext());
+    assertThat(createResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    return services;
+  }
+
+  @Test
+  void testRegisterTableRejectsDirectMetadataReferencesOutsideAllowedLocations(@TempDir Path tmpDir)
+      throws IOException {
+    var services = getTestServices();
+    var tableName = getTableName();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = catalogLocation + "/" + namespace;
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNamespace(services, namespaceLocation);
+
+    var tableDir = tmpDir.resolve(catalog).resolve(namespace).resolve(tableName);
+    var metadataPath = tableDir.resolve("metadata").resolve("00000.metadata.json");
+    Files.createDirectories(metadataPath.getParent());
+
+    var tableLocation = tableDir.toAbsolutePath().toUri().toString();
+    var outsideLocation = tmpDir.resolve("outside").toAbsolutePath().toUri().toString();
+    var snapshot =
+        new TestSnapshot(1L, 1L, null, System.currentTimeMillis(), outsideLocation + "snap.avro");
+    var metadata =
+        TableMetadata.buildFrom(
+                TableMetadata.newTableMetadata(
+                    SCHEMA,
+                    PartitionSpec.unpartitioned(),
+                    SortOrder.unsorted(),
+                    tableLocation,
+                    Map.of()))
+            .addSnapshot(snapshot)
+            .build();
+
+    Files.writeString(metadataPath, TableMetadataParser.toJson(metadata), StandardCharsets.UTF_8);
+
+    var registerRequest =
+        ImmutableRegisterTableRequest.builder()
+            .name(tableName)
+            .metadataLocation(metadataPath.toAbsolutePath().toUri().toString())
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogAdapter()
+                    .newHandler(services.securityContext(), catalog)
+                    .registerTable(
+                        Namespace.of(namespace),
+                        registerRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
   private void createCatalog(
       TestServices services,
       Map<String, String> catalogConfig,
@@ -552,6 +735,76 @@ public class IcebergAllowedLocationTest {
     }
   }
 
+  private void updateNamespaceProperties(TestServices services, Map<String, String> updates) {
+    UpdateNamespacePropertiesRequest.Builder request = UpdateNamespacePropertiesRequest.builder();
+    updates.forEach(request::update);
+    try (Response response =
+        services
+            .restApi()
+            .updateProperties(
+                catalog,
+                namespace,
+                request.build(),
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  void testNamespacePropertyUpdateValidatesLocationOnlyWhenItChanges(@TempDir Path tmpDir) {
+    AtomicBoolean counting = new AtomicBoolean(false);
+    AtomicInteger listEntitiesCalls = new AtomicInteger();
+
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE"),
+                    "ALLOW_NAMESPACE_CUSTOM_LOCATION",
+                    "true",
+                    OPTIMIZED_SIBLING_CHECK.key(),
+                    "false"))
+            .metaStoreManagerDecorator(
+                msm -> {
+                  PolarisMetaStoreManager spy = Mockito.spy(msm);
+                  Mockito.doAnswer(
+                          invocation -> {
+                            if (counting.get()) {
+                              listEntitiesCalls.incrementAndGet();
+                            }
+                            return invocation.callRealMethod();
+                          })
+                      .when(spy)
+                      .listEntities(
+                          Mockito.any(),
+                          Mockito.any(),
+                          Mockito.any(),
+                          Mockito.any(),
+                          Mockito.any());
+                  return spy;
+                })
+            .build();
+
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    String namespaceLocation = String.format("%s/%s/%s", catalogLocation, catalog, namespace);
+    createNamespace(services, namespaceLocation);
+
+    counting.set(true);
+
+    updateNamespaceProperties(services, Map.of("owner", "bob"));
+    assertThat(listEntitiesCalls.get()).isZero();
+
+    listEntitiesCalls.set(0);
+    updateNamespaceProperties(services, Map.of("location", namespaceLocation + "_moved"));
+    assertThat(listEntitiesCalls.get()).isPositive();
+  }
+
   private void updateCatalogAllowedLocations(
       TestServices services, List<String> newAllowedLocations) {
     // Fetch current catalog to get entity version for update.
@@ -574,6 +827,7 @@ public class IcebergAllowedLocationTest {
         UpdateCatalogRequest.builder()
             .setCurrentEntityVersion(fetched.getEntityVersion())
             .setStorageConfigInfo(newConfig)
+            .setProperties(Map.of("default-base-location", newAllowedLocations.get(0)))
             .build();
 
     try (Response updateResp =
@@ -595,7 +849,7 @@ public class IcebergAllowedLocationTest {
     var disallowedAfterShrink = baseDir + "/other-data";
 
     // Catalog initially allows the original location
-    createCatalog(services, Map.of(), baseDir, List.of(allowedWhenCreated));
+    createCatalog(services, Map.of(), allowedWhenCreated, List.of(allowedWhenCreated));
     createNamespace(services, allowedWhenCreated + "/" + namespace);
 
     String tableName = getTableName();
@@ -634,5 +888,50 @@ public class IcebergAllowedLocationTest {
     assertThatThrownBy(() -> handler.loadCredentials(tableId, Optional.empty()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("outside the catalog's current allowed locations");
+  }
+
+  @SuppressWarnings({"deprecation", "RedundantSuppression"})
+  private record TestSnapshot(
+      long sequenceNumber,
+      long snapshotId,
+      Long parentId,
+      long timestampMillis,
+      String manifestListLocation)
+      implements Snapshot {
+
+    @Override
+    public List<ManifestFile> allManifests(FileIO io) {
+      return List.of();
+    }
+
+    @Override
+    public List<ManifestFile> dataManifests(FileIO io) {
+      return List.of();
+    }
+
+    @Override
+    public List<ManifestFile> deleteManifests(FileIO io) {
+      return List.of();
+    }
+
+    @Override
+    public String operation() {
+      return "append";
+    }
+
+    @Override
+    public Map<String, String> summary() {
+      return Map.of("operation", operation());
+    }
+
+    @Override
+    public Iterable<DataFile> addedDataFiles(FileIO io) {
+      return List.of();
+    }
+
+    @Override
+    public Iterable<DataFile> removedDataFiles(FileIO io) {
+      return List.of();
+    }
   }
 }

@@ -121,7 +121,7 @@ class OptionTree:
         Argument(
             Arguments.CATALOG_AUTHENTICATION_TYPE,
             str,
-            "Authentication type [OAUTH, BEARER, SIGV4, IMPLICIT]",
+            "Authentication type [OAUTH, BEARER, GCP, SIGV4, IMPLICIT]",
             lower=True,
             choices=[at.value for at in AuthenticationType],
             group="External Catalog Federation: General Options",
@@ -290,6 +290,20 @@ class OptionTree:
                             group="AWS S3 Storage Options",
                         ),
                         Argument(
+                            Arguments.KMS_KEY_ENCRYPTION,
+                            str,
+                            Hints.S3_KMS_KEY_ENCRYPTION,
+                            allow_repeats=True,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_KEY_DECRYPTION,
+                            str,
+                            Hints.S3_KMS_KEY_DECRYPTION,
+                            allow_repeats=True,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
                             Arguments.ALLOWED_LOCATION,
                             str,
                             "An allowed location for files tracked by the catalog",
@@ -396,6 +410,18 @@ class OptionTree:
                             Arguments.REGION,
                             str,
                             Hints.S3_REGION,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.STS_UNAVAILABLE,
+                            bool,
+                            Hints.S3_STS_UNAVAILABLE,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_UNAVAILABLE,
+                            bool,
+                            Hints.S3_KMS_UNAVAILABLE,
                             group="AWS S3 Storage Options",
                         ),
                         Argument(
@@ -1230,6 +1256,90 @@ class OptionTree:
         )
 
     @staticmethod
+    def _views_option() -> Option:
+        return Option(
+            Commands.VIEWS,
+            hint="manage views",
+            children=[
+                Option(
+                    Subcommands.LIST,
+                    hint="List views",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                ),
+                Option(
+                    Subcommands.GET,
+                    hint="Retrieve metadata for a view",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+                Option(
+                    Subcommands.SUMMARIZE,
+                    hint="Display a summary for a view",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+                Option(
+                    Subcommands.DELETE,
+                    hint="Drop a view from catalog",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.VIEW,
+                    input_metavar="VIEW_NAME",
+                ),
+            ],
+        )
+
+    @staticmethod
+    def _generic_tables_option() -> Option:
+        return Option(
+            Commands.GENERIC_TABLES,
+            hint="manage generic tables",
+            children=[
+                Option(
+                    Subcommands.LIST,
+                    hint="List generic tables",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                ),
+                Option(
+                    Subcommands.GET,
+                    hint="Retrieve metadata for a generic table",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.GENERIC_TABLE,
+                    input_metavar="GENERIC_TABLE_NAME",
+                ),
+                Option(
+                    Subcommands.DELETE,
+                    hint="Drop a generic table from catalog",
+                    args=[
+                        Argument(Arguments.CATALOG, str, Hints.CATALOG),
+                        Argument(Arguments.NAMESPACE, str, Hints.NAMESPACE),
+                    ],
+                    input_name=Arguments.GENERIC_TABLE,
+                    input_metavar="GENERIC_TABLE_NAME",
+                ),
+            ],
+        )
+
+    @staticmethod
     def _find_option() -> Option:
         return Option(
             Commands.FIND,
@@ -1270,6 +1380,8 @@ class OptionTree:
             OptionTree._policies_option(),
             OptionTree._setup_option(),
             OptionTree._tables_option(),
+            OptionTree._views_option(),
+            OptionTree._generic_tables_option(),
             OptionTree._find_option(),
             OptionTree._repl_option(),
         ]

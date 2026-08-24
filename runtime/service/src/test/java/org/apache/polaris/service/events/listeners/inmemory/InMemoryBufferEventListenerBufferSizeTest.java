@@ -24,8 +24,6 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -48,7 +46,6 @@ class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListe
     sendAsync("test2", 10);
     assertRows("test1", 10);
     assertRows("test2", 10);
-    verify(metaStoreManagerFactory, never()).getOrCreateMetricsPersistence(any());
   }
 
   @Test

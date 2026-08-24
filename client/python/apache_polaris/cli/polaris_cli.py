@@ -30,6 +30,7 @@ from apache_polaris.cli.command import Command
 from apache_polaris.cli.constants import Commands
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.options.parser import Parser
+from apache_polaris.sdk.catalog.exceptions import ApiException as CatalogApiException
 from apache_polaris.sdk.management import PolarisDefaultApi
 from apache_polaris.sdk.management.exceptions import ApiException
 from apache_polaris.cli.command.profiles import ProfilesCommand
@@ -83,7 +84,7 @@ class PolarisCli:
         # Handlers from most specific to least: ApiException (OpenAPI client), CliError
         # (expected user/config failures with their own exit codes), NotImplementedError
         # (abstract Command misuse), then generic bugs.
-        except ApiException as e:
+        except (ApiException, CatalogApiException) as e:
             PolarisCli.print_api_exception(e)
             sys.exit(CLI_ERROR_EXIT_CODE)
         except CliError as e:
@@ -131,7 +132,7 @@ class PolarisCli:
         urllib3.PoolManager.urlopen = urlopen_wrapper
 
     @staticmethod
-    def print_api_exception(e: ApiException) -> None:
+    def print_api_exception(e: ApiException | CatalogApiException) -> None:
         try:
             error = json.loads(e.body)["error"]
             sys.stderr.write(

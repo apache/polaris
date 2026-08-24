@@ -33,6 +33,9 @@ principals:
   # A principal for a quickstart user
   quickstart_user:
     type: service
+    # Optional properties persisted with the principal.
+    properties:
+      owner: data-platform
     roles:
       - quickstart_user_role
   # A principal for a readonly user
@@ -48,8 +51,12 @@ principals:
 
 # Principal roles are global roles that group principals.
 principal_roles:
+  # Roles without properties can use the short string form.
   - quickstart_user_role
-  - readonly_user_role
+  # Use the object form to persist optional properties with the role.
+  - name: readonly_user_role
+    properties:
+      owner: security-team
   - dev_user_role
 
 # ==================================
@@ -75,6 +82,9 @@ catalogs:
     # Catalog roles are scoped to this specific catalog.
     roles:
       quickstart_catalog_role:
+        # Optional properties persisted with the catalog role.
+        properties:
+          purpose: catalog-administration
         # Assigns this catalog role to one or more principal roles.
         assign_to:
           - quickstart_user_role
@@ -111,7 +121,7 @@ catalogs:
     # --- Policies ---
     # Defines policies that can be attached to entities in this catalog.
     policies:
-      compaction-policy:
+      - name: compaction-policy
         namespace: dev_namespace
         type: "system.data-compaction"
         description: "Policy to enable data compaction for tables"
@@ -128,7 +138,7 @@ catalogs:
         ## commented out as table/view doesn't exist out of box
         # attach:
         #   - { type: table-like, path: dev_namespace.sub_namespace.dev_table }
-      snapshot-expiry-policy:
+      - name: snapshot-expiry-policy
         namespace: dev_namespace
         type: "system.snapshot-expiry"
         description: "Policy to expire old snapshots"
@@ -144,7 +154,7 @@ catalogs:
         }
         attach:
           - { type: namespace, path: dev_namespace }
-      orphan-file-policy:
+      - name: orphan-file-policy
         namespace: dev_namespace
         type: "system.orphan-file-removal"
         description: "Policy to remove orphan files"
@@ -179,17 +189,22 @@ catalogs:
     region: "us-west-2"
     # Custom S3 endpoint.
     endpoint: "https://s3.us-west-2.amazonaws.com"
+    # Private S3 endpoint that Polaris server uses (defaults to `endpoint`).
+    endpoint_internal: "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com"
+    # STS endpoint that Polaris server uses (falls back to `endpoint_internal` then `endpoint`).
+    sts_endpoint: "https://sts.amazonaws.com"
     # Set to true if the storage does not support AWS STS for credential vending.
     sts_unavailable: false
     # Set to true to disable KMS key policies.
     kms_unavailable: false
     # Set to true to use path-style access.
     path_style_access: false
-    # The ARN of the default KMS key for server-side encryption.
-    current_kms_key: "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
-    # A list of other KMS keys that are allowed for this catalog.
-    allowed_kms_keys:
+    # KMS keys that may be used to encrypt data. These keys also receive decrypt permissions.
+    encryption_keys:
       - "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
+    # Additional KMS keys that may be used to decrypt data.
+    decryption_keys:
+      - "arn:aws:kms:us-west-2:123456789012:key/87654321-4321-4321-4321-210987654321"
     properties:
       catalog: quickstart_catalog_s3
 
@@ -207,6 +222,10 @@ catalogs:
     multi_tenant_app_name: "QuickstartAzureApp"
     # The URL for OAuth consent.
     consent_url: "https://login.microsoftonline.com/consent"
+    # Set to true if the Azure storage account has a hierarchical namespace (HNS) enabled.
+    # This scopes SAS tokens down to the most specific path.
+    # The value must match the storage account's actual HNS setting.
+    hierarchical: false
     properties:
       catalog: quickstart_catalog_azure
 
@@ -223,4 +242,3 @@ catalogs:
   #   service_account: "quickstart-service-account@gcs-project.iam.gserviceaccount.com"
   #   properties:
   #     catalog: quickstart_catalog_gcs
-

@@ -32,8 +32,10 @@ import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -117,13 +119,7 @@ public abstract class PolarisStorageConfigurationInfo {
 
   public static Optional<LocationRestrictions> forEntityPath(
       RealmConfig realmConfig, List<PolarisEntity> entityPath) {
-    return findStorageInfoFromHierarchy(entityPath)
-        .map(
-            storageInfo ->
-                deserialize(
-                    storageInfo
-                        .getInternalPropertiesAsMap()
-                        .get(PolarisEntityConstants.getStorageConfigInfoPropertyName())))
+    return findStorageConfigFromHierarchy(entityPath)
         .map(
             configInfo -> {
               List<PolarisEntity> entityPathReversed = new ArrayList<>(entityPath);
@@ -160,7 +156,12 @@ public abstract class PolarisStorageConfigurationInfo {
             });
   }
 
-  public static @NonNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
+  public static @NonNull Optional<PolarisEntity> findEntityWithStorageConfigFromHierarchy(
+      PolarisResolvedPathWrapper resolvedStorageEntity) {
+    return findEntityWithStorageConfigFromHierarchy(resolvedStorageEntity.getRawFullPath());
+  }
+
+  public static @NonNull Optional<PolarisEntity> findEntityWithStorageConfigFromHierarchy(
       List<PolarisEntity> entityPath) {
     for (int i = entityPath.size() - 1; i >= 0; i--) {
       PolarisEntity e = entityPath.get(i);
@@ -170,6 +171,20 @@ public abstract class PolarisStorageConfigurationInfo {
       }
     }
     return Optional.empty();
+  }
+
+  public static @NonNull Optional<PolarisStorageConfigurationInfo> findStorageConfigFromHierarchy(
+      List<PolarisEntity> entityPath) {
+    return findEntityWithStorageConfigFromHierarchy(entityPath)
+        .flatMap(PolarisStorageConfigurationInfo::extractStorageConfigFromEntity);
+  }
+
+  public static @NonNull Optional<PolarisStorageConfigurationInfo> extractStorageConfigFromEntity(
+      PolarisEntity entity) {
+    return Optional.ofNullable(entity)
+        .map(PolarisBaseEntity::getInternalPropertiesAsMap)
+        .map(props -> props.get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+        .map(PolarisStorageConfigurationInfo::deserialize);
   }
 
   /** Subclasses must provide the Iceberg FileIO impl associated with their type in this method. */

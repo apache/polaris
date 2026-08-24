@@ -75,6 +75,17 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(true)
               .buildBehaviorChangeConfiguration();
 
+  public static final BehaviorChangeConfiguration<Boolean>
+      VIEW_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT =
+          PolarisConfiguration.<Boolean>builder()
+              .key("VIEW_OPERATIONS_MAKE_METADATA_CURRENT_ON_COMMIT")
+              .description(
+                  "If true, BasePolarisViewOperations should mark the metadata that is passed into"
+                      + " `commit` as current, and reuse it to skip a trip to object storage to re-construct"
+                      + " the committed metadata again.")
+              .defaultValue(true)
+              .buildBehaviorChangeConfiguration();
+
   public static final BehaviorChangeConfiguration<Boolean> ALLOW_NAMESPACE_CUSTOM_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_NAMESPACE_CUSTOM_LOCATION")

@@ -56,6 +56,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -162,7 +163,7 @@ public class AzureCredentialsStorageIntegration
     AzureLocation location = new AzureLocation(loc);
     validateAccountAndContainer(location, locations, writeLocations);
 
-    String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
+    String storageDnsName = location.getStorageDnsName();
     String filePath = location.getFilePath();
 
     BlobSasPermission blobSasPermission = new BlobSasPermission();
@@ -206,14 +207,14 @@ public class AzureCredentialsStorageIntegration
 
     LOGGER
         .atDebug()
-        .addKeyValue("allowedListAction", allowList)
-        .addKeyValue("locations", locations)
-        .addKeyValue("writeLocations", writeLocations)
-        .addKeyValue("location", loc)
-        .addKeyValue("storageAccount", location.getStorageAccount())
-        .addKeyValue("endpoint", location.getEndpoint())
-        .addKeyValue("container", location.getContainer())
-        .addKeyValue("filePath", filePath)
+        .addKeyValue(StructuredLogKeys.ALLOWED_LIST_ACTION, allowList)
+        .addKeyValue(StructuredLogKeys.LOCATIONS, locations)
+        .addKeyValue(StructuredLogKeys.WRITE_LOCATIONS, writeLocations)
+        .addKeyValue(StructuredLogKeys.LOCATION, loc)
+        .addKeyValue(StructuredLogKeys.STORAGE_ACCOUNT, location.getStorageAccount())
+        .addKeyValue(StructuredLogKeys.ENDPOINT, location.getEndpoint())
+        .addKeyValue(StructuredLogKeys.CONTAINER, location.getContainer())
+        .addKeyValue(StructuredLogKeys.FILE_PATH, filePath)
         .log("Subscope Azure SAS");
     String sasToken;
     if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {
@@ -252,19 +253,18 @@ public class AzureCredentialsStorageIntegration
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
 
-    return toAccessConfig(sasToken, storageDnsName, sanitizedEndTime.toInstant(), refreshEndpoint);
+    return toAccessConfig(sasToken, location, sanitizedEndTime.toInstant(), refreshEndpoint);
   }
 
   @VisibleForTesting
   static StorageAccessConfig toAccessConfig(
       String sasToken,
-      String storageDnsName,
+      AzureLocation location,
       Instant expiresAt,
       Optional<String> refreshCredentialsEndpoint) {
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
-    handleAzureCredential(accessConfig, sasToken, storageDnsName, expiresAt);
-    accessConfig.put(
-        StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
+    handleAzureCredential(accessConfig, sasToken, location, expiresAt);
+    accessConfig.expiresAt(expiresAt);
     refreshCredentialsEndpoint.ifPresent(
         endpoint -> {
           accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
@@ -273,30 +273,42 @@ public class AzureCredentialsStorageIntegration
   }
 
   private static void handleAzureCredential(
-      StorageAccessConfig.Builder config, String sasToken, String host, Instant expiresAt) {
-    config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + host, sasToken);
+      StorageAccessConfig.Builder config,
+      String sasToken,
+      AzureLocation location,
+      Instant expiresAt) {
+    String storageDnsName = location.getStorageDnsName();
+    String accountName = location.getStorageAccount();
+
     config.putCredential(
-        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX.getPropertyName() + host,
+        StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_HOST.getPropertyName() + "." + storageDnsName,
+        sasToken);
+    config.putCredential(
+        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS.getPropertyName()
+            + "."
+            + storageDnsName,
         String.valueOf(expiresAt.toEpochMilli()));
 
-    // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint
-    if (host.endsWith(AzureLocation.ADLS_ENDPOINT)) {
-      int suffixIndex = host.lastIndexOf(AzureLocation.ADLS_ENDPOINT) - 1;
-      if (suffixIndex > 0) {
-        String withSuffixStripped = host.substring(0, suffixIndex);
-        config.putCredential(
-            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
-      }
+    // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint.
+    // Use accountName (from location) for the stripped variant.
+    if (location.isAdls()) {
+      config.putCredential(
+          StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_NAME.getPropertyName() + "." + accountName,
+          sasToken);
     }
 
-    if (host.endsWith(AzureLocation.BLOB_ENDPOINT)) {
-      int suffixIndex = host.lastIndexOf(AzureLocation.BLOB_ENDPOINT) - 1;
-      if (suffixIndex > 0) {
-        String withSuffixStripped = host.substring(0, suffixIndex);
-        config.putCredential(
-            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
-      }
+    if (location.isBlob()) {
+      config.putCredential(
+          StorageAccessProperty.AZURE_SAS_TOKEN_ACCOUNT_NAME.getPropertyName() + "." + accountName,
+          sasToken);
     }
+
+    // PyIceberg and other clients need bare adls.sas-token and adls.account-name for compatibility
+    // with adlfs/fsspec (and similar libraries). The bare keys are emitted in addition to the
+    // suffixed variants used by Spark.
+    // See https://github.com/apache/polaris/issues/418
+    config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN_BARE.getPropertyName(), sasToken);
+    config.putCredential(StorageAccessProperty.AZURE_ACCOUNT_NAME.getPropertyName(), accountName);
   }
 
   private static String getBlobUserDelegationSas(

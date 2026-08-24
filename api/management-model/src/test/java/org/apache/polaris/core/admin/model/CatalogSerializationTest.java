@@ -20,6 +20,7 @@ package org.apache.polaris.core.admin.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,8 @@ public class CatalogSerializationTest {
   private static final String TEST_CATALOG_NAME = "test-catalog";
   private static final String TEST_ROLE_ARN = "arn:aws:iam::123456789012:role/test-role";
   private static final String KMS_KEY = "arn:aws:kms:us-east-1:012345678901:key/allowed-key-1";
+  private static final String DECRYPTION_KEY =
+      "arn:aws:kms:us-east-1:012345678901:key/decryption-key-1";
 
   @BeforeEach
   public void setUp() {
@@ -71,6 +74,8 @@ public class CatalogSerializationTest {
                 + "\"storageConfigInfo\":{"
                 + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-role\","
                 + "\"allowedKmsKeys\":[],"
+                + "\"encryptionKeys\":[],"
+                + "\"decryptionKeys\":[],"
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"
@@ -86,7 +91,8 @@ public class CatalogSerializationTest {
             new CatalogProperties(TEST_LOCATION),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setRoleArn(TEST_ROLE_ARN)
-                .setCurrentKmsKey(KMS_KEY)
+                .setEncryptionKeys(List.of(KMS_KEY))
+                .setDecryptionKeys(List.of(DECRYPTION_KEY))
                 .build());
 
     String json = mapper.writeValueAsString(catalog);
@@ -98,8 +104,9 @@ public class CatalogSerializationTest {
                 + "\"properties\":{\"default-base-location\":\"s3://test/\"},"
                 + "\"storageConfigInfo\":{"
                 + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-role\","
-                + "\"currentKmsKey\":\"arn:aws:kms:us-east-1:012345678901:key/allowed-key-1\","
                 + "\"allowedKmsKeys\":[],"
+                + "\"encryptionKeys\":[\"arn:aws:kms:us-east-1:012345678901:key/allowed-key-1\"],"
+                + "\"decryptionKeys\":[\"arn:aws:kms:us-east-1:012345678901:key/decryption-key-1\"],"
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"

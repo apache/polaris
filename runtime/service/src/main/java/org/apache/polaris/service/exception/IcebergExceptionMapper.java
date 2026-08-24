@@ -177,7 +177,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case CommitFailedException e -> Status.CONFLICT.getStatusCode();
       case UnprocessableEntityException e -> 422;
       case CherrypickAncestorCommitException e -> Status.BAD_REQUEST.getStatusCode();
-      case CommitStateUnknownException e -> Status.BAD_REQUEST.getStatusCode();
+      case CommitStateUnknownException e -> Status.INTERNAL_SERVER_ERROR.getStatusCode();
       case DuplicateWAPCommitException e -> Status.BAD_REQUEST.getStatusCode();
       case ForbiddenException e -> Status.FORBIDDEN.getStatusCode();
       case jakarta.ws.rs.ForbiddenException e -> Status.FORBIDDEN.getStatusCode();

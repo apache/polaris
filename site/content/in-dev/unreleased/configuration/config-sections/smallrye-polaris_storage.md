@@ -25,7 +25,7 @@ build:
 
 Configuration interface containing parameters for clients accessing S3 services from Polaris  servers.  
 
-Currently, this configuration does not apply to all of Polaris code, but only to select  services.
+Applies to the STS client pool and to Iceberg S3 clients created for table operations via  `S3FileIO`.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
@@ -41,5 +41,5 @@ Currently, this configuration does not apply to all of Polaris code, but only to
 | `polaris.storage.connect-timeout` |  | `duration` | Override the default TCP connect timeout.  |
 | `polaris.storage.connection-acquisition-timeout` |  | `duration` | Override default connection acquisition timeout. This is the time a request will wait for a  connection from the pool.  |
 | `polaris.storage.connection-max-idle-time` |  | `duration` | Override default max idle time of a pooled connection.  |
-| `polaris.storage.connection-time-to-live` |  | `duration` | Override default time-time of a pooled connection.  |
+| `polaris.storage.connection-time-to-live` |  | `duration` | Override default time-to-live of a pooled connection.  |
 | `polaris.storage.expect-continue-enabled` |  | `boolean` | Override default behavior whether to expect an HTTP/100-Continue.  |

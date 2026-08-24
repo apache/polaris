@@ -27,9 +27,9 @@ import static org.apache.polaris.persistence.nosql.coretypes.mapping.BaseTestMap
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.BaseTestMapping.MappingSample.entityWithInternalProperty;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static tools.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
@@ -62,6 +62,8 @@ import org.junit.jupiter.params.Parameter;
 import org.junit.jupiter.params.ParameterizedClass;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @ParameterizedClass
 @ExtendWith(SoftAssertionsExtension.class)
@@ -74,7 +76,12 @@ public abstract class BaseTestMapping {
 
   @BeforeAll
   public static void beforeAll() {
-    objectMapper = JsonMapper.builder().findAndAddModules().build();
+    objectMapper =
+        JsonMapper.builder()
+            .findAndAddModules()
+            .disable(FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(DEFAULT_VIEW_INCLUSION)
+            .build();
   }
 
   public BaseMapping<?, ?> mapping;
@@ -237,9 +244,7 @@ public abstract class BaseTestMapping {
 
     // serialization roundtrip
     var objAsJson = objectWriter.writeValueAsString(entityToObj);
-    var reserialized =
-        objectReader.readValue(
-            objAsJson, mapping.objTypeForSubType(entity.getSubType()).targetClass());
+    var reserialized = objectReader.readValue(objAsJson);
     soft.assertThat(reserialized)
         .isEqualTo(entityToObj)
         .isInstanceOf(mapping.objTypeForSubType(entity.getSubType()).targetClass());
@@ -262,9 +267,7 @@ public abstract class BaseTestMapping {
 
     // serialization roundtrip
     objAsJson = objectWriter.writeValueAsString(entityToObj);
-    reserialized =
-        objectReader.readValue(
-            objAsJson, mapping.objTypeForSubType(entity.getSubType()).targetClass());
+    reserialized = objectReader.readValue(objAsJson);
     soft.assertThat(reserialized)
         .isEqualTo(entityToObj)
         .isInstanceOf(mapping.objTypeForSubType(entity.getSubType()).targetClass());

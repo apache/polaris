@@ -45,6 +45,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
@@ -324,10 +325,10 @@ public class GcpCredentialsStorageIntegration
     } catch (IOException e) {
       LOGGER
           .atError()
-          .addKeyValue("readLocations", readLocations)
-          .addKeyValue("listLocations", listLocations)
-          .addKeyValue("writeLocations", writeLocations)
-          .addKeyValue("accessBoundary", convertToString(accessBoundary))
+          .addKeyValue(StructuredLogKeys.READ_LOCATIONS, readLocations)
+          .addKeyValue(StructuredLogKeys.LIST_LOCATIONS, listLocations)
+          .addKeyValue(StructuredLogKeys.WRITE_LOCATIONS, writeLocations)
+          .addKeyValue(StructuredLogKeys.ACCESS_BOUNDARY, convertToString(accessBoundary))
           .log("Unable to refresh access credentials", e);
       throw new RuntimeException("Unable to fetch access credentials " + e.getMessage());
     }
@@ -337,7 +338,7 @@ public class GcpCredentialsStorageIntegration
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
     accessConfig.put(StorageAccessProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
     accessConfig.put(
-        StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
+        StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT_MS,
         String.valueOf(token.getExpirationTime().getTime()));
 
     key.refreshCredentialsEndpoint()

@@ -41,7 +41,16 @@ class Parser(object):
         Argument(Arguments.HOST, str, hint="Polaris server hostname"),
         Argument(Arguments.PORT, int, hint="Polaris server port"),
         Argument(
-            Arguments.BASE_URL, str, hint="Complete base URL (overrides host/port)"
+            Arguments.SCHEME,
+            str,
+            hint="URL scheme for host/port (default: http)",
+            choices=["http", "https"],
+            lower=True,
+        ),
+        Argument(
+            Arguments.BASE_URL,
+            str,
+            hint="Complete base URL (overrides host/port/scheme)",
         ),
         Argument(
             Arguments.CATALOG_URL,

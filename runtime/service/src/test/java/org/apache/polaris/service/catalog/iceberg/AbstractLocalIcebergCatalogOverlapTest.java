@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
@@ -164,13 +165,14 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(STORAGE_LOCATION)
                     .addProperty(
-                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                        FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION.catalogConfig(),
+                        "true")
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, STORAGE_LOCATION)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
@@ -290,6 +292,45 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                     .buildTable(anotherChildTable, SCHEMA)
                     .withLocation(anotherChildLoc)
                     .create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Unable to create entity at location")
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testParentPrefixOverlapWithTrailingSlashMismatch() {
+    // Profiles disable ADD_TRAILING_SLASH_TO_LOCATION so the parent is stored without a trailing
+    // slash. That is the OPTIMIZED_SIBLING_CHECK false-negative for JDBC: ancestor equality terms
+    // used to be slash-terminated only, so location_without_scheme without '/' was missed.
+    Namespace ns = Namespace.of("ns-for-trailing-slash-overlap");
+    catalog().createNamespace(ns);
+
+    TableIdentifier parentTable = TableIdentifier.of(ns, "trailing-parent");
+    String parentLoc = STORAGE_LOCATION + "/trailing-overlap/parent";
+    assertThat(parentLoc).doesNotEndWith("/");
+    catalog().buildTable(parentTable, SCHEMA).withLocation(parentLoc).create();
+
+    // Guardrail: if trailing-slash normalization were still on, this test would not exercise the
+    // slash-less location_without_scheme path that QueryGenerator must handle.
+    assertThat(catalog().loadTable(parentTable).location())
+        .as("parent must remain slash-less so overlap uses non-slash-terminated stored location")
+        .isEqualTo(parentLoc)
+        .doesNotEndWith("/");
+
+    // Creating a child table under the slash-less parent location must be rejected.
+    TableIdentifier childTable = TableIdentifier.of(ns, "trailing-child");
+    String childLoc = STORAGE_LOCATION + "/trailing-overlap/parent/child";
+    assertThatThrownBy(
+            () -> catalog().buildTable(childTable, SCHEMA).withLocation(childLoc).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Unable to create entity at location")
+        .hasMessageContaining("conflicts with existing table or namespace");
+
+    // The same must hold when the slash-terminated form of the same prefix is used.
+    TableIdentifier siblingTable = TableIdentifier.of(ns, "trailing-sibling");
+    String siblingLoc = STORAGE_LOCATION + "/trailing-overlap/parent/";
+    assertThatThrownBy(
+            () -> catalog().buildTable(siblingTable, SCHEMA).withLocation(siblingLoc).create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Unable to create entity at location")
         .hasMessageContaining("conflicts with existing table or namespace");

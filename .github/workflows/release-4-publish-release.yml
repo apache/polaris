@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: # zizmor: ignore[artipacked]
           # Fetch full history for proper branch operations
           fetch-depth: 0
@@ -195,7 +195,7 @@ jobs:
           echo "rc_commit=${rc_commit}" >> $GITHUB_ENV
 
           exec_process git tag -a "${final_release_tag}" "${rc_commit}" -m "Apache Polaris ${version_without_rc} Release"
-          exec_process git push apache "${final_release_tag}"
+          exec_process git push origin "${final_release_tag}"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Git Release Tag
@@ -213,7 +213,7 @@ jobs:
           docker buildx inspect
 
       - name: Set up Java
-        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -224,7 +224,7 @@ jobs:
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
           DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }} # zizmor: ignore[secrets-outside-env]
         run: |
-          echo "${DOCKERHUB_TOKEN}" | docker login ghcr.io -u "${DOCKERHUB_USER}" --password-stdin
+          echo "${DOCKERHUB_TOKEN}" | docker login docker.io -u "${DOCKERHUB_USER}" --password-stdin
 
       - name: Publish Polaris Server Docker image to Docker Hub
         run: |
@@ -429,15 +429,25 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up environment variables
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+          # exec_process defaults to dry-run when DRY_RUN is unset, so it must be
+          # set explicitly here or the wheel download below would silently no-op.
+          if [[ "${DRY_RUN_INPUT}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+          fi
 
       - name: Install Subversion
         run: |
@@ -462,6 +472,7 @@ jobs:
             "${dev_python_client_url}" dist/
 
       - name: Publish Python client release to PyPI
+        if: env.DRY_RUN == '0'
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
         with:
           packages-dir: dist/

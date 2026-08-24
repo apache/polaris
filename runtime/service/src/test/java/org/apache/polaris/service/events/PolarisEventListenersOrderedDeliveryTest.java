@@ -37,6 +37,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
+import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.junit.jupiter.api.Test;
 
@@ -89,7 +91,7 @@ public class PolarisEventListenersOrderedDeliveryTest {
 
   static class OrderedEventListener implements PolarisEventListener {
 
-    static final AttributeKey<Integer> SEQ = new AttributeKey<>("seq", Integer.class);
+    static final AttributeKey<Integer> SEQ = new AttributeKey<>("seq");
 
     final List<Integer> receivedSequences = new CopyOnWriteArrayList<>();
     final AtomicInteger receivedEventCount = new AtomicInteger();
@@ -99,7 +101,7 @@ public class PolarisEventListenersOrderedDeliveryTest {
     @Override
     public void onEvent(PolarisEvent event) {
       assertThat(BlockingOperationControl.isBlockingAllowed()).isTrue();
-      if (!event.attributes().contains(SEQ)) {
+      if (!event.attributes().containsKey(SEQ)) {
         return;
       }
       try {
@@ -133,7 +135,8 @@ public class PolarisEventListenersOrderedDeliveryTest {
     orderedEventListener1.pauseLatch.countDown();
 
     for (int i = 0; i < EVENTS_COUNT; i++) {
-      var attrs = new EventAttributeMap().put(OrderedEventListener.SEQ, i);
+      var attrs = new MutableAttributeMap();
+      attrs.put(OrderedEventListener.SEQ, i);
       eventDispatcher.dispatch(
           new PolarisEvent(PolarisEventType.AFTER_SEND_NOTIFICATION, null, attrs));
       // listener2 is unblocked midway through event submission

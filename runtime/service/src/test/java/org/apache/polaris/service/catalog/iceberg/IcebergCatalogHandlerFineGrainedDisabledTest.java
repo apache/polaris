@@ -33,6 +33,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.admin.PolarisAuthzTestsFactory;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
@@ -47,8 +48,23 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
   private IcebergCatalogHandler newHandler() {
-    PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
-    return icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of());
+    IcebergCatalogHandler handler =
+        icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
+    return ImmutableIcebergCatalogHandler.builder().from(handler).build();
+  }
+
+  @Override
+  protected PolarisAuthzTestsFactory.Builder authzTestsBuilder(String operationName) {
+    return super.authzTestsBuilder(operationName).useFreshRequestContext(true);
   }
 
   public static class Profile extends Profiles.PolarisAuthzBaseProfile {

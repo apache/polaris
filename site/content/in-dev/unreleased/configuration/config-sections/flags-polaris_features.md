@@ -35,9 +35,19 @@ When set, the base location for a table or namespace will have `/` added as a su
 
 ---
 
+##### `polaris.features."ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION"`
+
+If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties) explicitly supplied in a create or update request, subject to the usual structured-location, allowed-location, metadata-location, and overlap validation. If set to false, such requests are rejected, regardless of the other location compatibility flags. This setting does not apply to federated catalogs.
+
+- **Type:** `Boolean`
+- **Default:** `true`
+- **Catalog Config:** `polaris.config.allow.client-specified.table.location`
+
+---
+
 ##### `polaris.features."ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG"`
 
-If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. passthrough-facade catalogs may contain leftover entities when syncing with source catalog.In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.
+If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. passthrough-facade catalogs may contain leftover entities when syncing with source catalog. In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -61,12 +71,13 @@ If set to true, Polaris allows metadata files to be located outside the table's 
 
 - **Type:** `Boolean`
 - **Default:** `false`
+- **Catalog Config:** `polaris.config.allow.external.metadata.file.location`
 
 ---
 
 ##### `polaris.features."ALLOW_EXTERNAL_TABLE_LOCATION"`
 
-If set to true, Polaris treats table locations as externally managed instead of assuming the default managed structure. Allowed-location validation still applies, but metadata location checks are relaxed, so operators should keep allowed locations narrow and specific. This setting is typically used together with ALLOW_UNSTRUCTURED_TABLE_LOCATION.
+Deprecated. Use ALLOW_EXTERNAL_METADATA_FILE_LOCATION instead. When enabled, this legacy compatibility flag relaxes metadata location checks; it does not control whether table locations may escape the structured namespace layout. Use ALLOW_UNSTRUCTURED_TABLE_LOCATION for that behavior.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -131,7 +142,7 @@ If set to true (default), Polaris will permit S3 storage configurations to have 
 
 ##### `polaris.features."ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS"`
 
-If set to true (default), Polaris will allow setting or changing catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs.If set to false, Polaris will disallow setting or changing the above catalog property
+If set to true (default), Polaris will allow setting or changing catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs. If set to false, Polaris will disallow setting or changing the above catalog property
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -205,7 +216,7 @@ Initial delay in milliseconds before first retry for Azure API requests. Delay d
 
 ##### `polaris.features."AZURE_RETRY_JITTER_FACTOR"`
 
-Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. The jitter is applied as a random percentage of the computed exponential backoff delay. For example, 0.5 means up to 50%% random jitter will be added to each retry delay. Helps prevent thundering herd when multiple requests fail simultaneously.
+Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. The jitter is applied as a random percentage of the computed exponential backoff delay. For example, 0.5 means up to 50% random jitter will be added to each retry delay. Helps prevent thundering herd when multiple requests fail simultaneously.
 
 - **Type:** `Double`
 - **Default:** `0.5`
@@ -243,11 +254,21 @@ If set to true, clean up data when a namespace is dropped
 
 ##### `polaris.features."DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED"`
 
-When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_EXTERNAL_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog.
+When enabled, Iceberg tables and views created without a location specified will have a prefix applied to the location within the catalog's base location, rather than a location directly inside the parent namespace. Note that this requires ALLOW_UNSTRUCTURED_TABLE_LOCATION to be enabled, but with OPTIMIZED_SIBLING_CHECK enabled it is still possible to enforce the uniqueness of table locations within a catalog.
 
 - **Type:** `Boolean`
 - **Default:** `false`
 - **Catalog Config:** `polaris.config.default-table-location-object-storage-prefix.enabled`
+
+---
+
+##### `polaris.features."DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED"`
+
+When enabled, a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix. When disabled (the default), the generated location is the legacy `<namespace location>/<table name>` form.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.default-unique-table-location.enabled`
 
 ---
 
@@ -292,6 +313,15 @@ When true, enables finer grained update table privileges which are passed to the
 ##### `polaris.features."ENABLE_GENERIC_TABLES"`
 
 If true, the generic-tables endpoints are enabled
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
+##### `polaris.features."ENABLE_OPENLINEAGE_INGEST"`
+
+If true, the OpenLineage ingest endpoints are enabled and advertised to clients in the catalog configuration response during endpoint discovery. If false, the endpoints return 501 Not Implemented and are not advertised. The routes are always mounted when the OpenLineage extension is assembled into the server; this flag is the runtime switch that turns the feature on or off.
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -512,7 +542,7 @@ How long to store storage credentials in the local cache. This should be less th
 
 ##### `polaris.features."STORAGE_CREDENTIAL_DURATION_SECONDS"`
 
-The duration of time that vended storage credentials are valid for. Support for longer (or shorter) durations is dependent on the storage provider. GCS current does not respect this value.
+The duration of time that vended storage credentials are valid for. Support for longer (or shorter) durations is dependent on the storage provider. GCS currently does not respect this value.
 
 - **Type:** `Integer`
 - **Default:** `3600`
