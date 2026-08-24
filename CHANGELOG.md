@@ -57,12 +57,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
-- Relational JDBC: the `idx_locations` index used by the optimized sibling check now matches the
-  query that reads it. On Postgres and CockroachDB the index led with `parent_id`, while the overlap
-  query filters `catalog_id`, so with `OPTIMIZED_SIBLING_CHECK` enabled every `CREATE TABLE` /
-  `CREATE NAMESPACE` fell back to a realm-wide scan instead of the intended indexed lookup. A new
-  schema version 6 creates the index on `(realm_id, catalog_id, location_without_scheme)`; H2 was
-  already correct. Existing deployments need a manual index recreation — see Upgrade notes.
+- Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
   error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
   clients can parse the response rather than failing on an off-schema shape.
@@ -86,6 +81,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
 - Fixed a false-negative in the JDBC optimized location-overlap check (`OPTIMIZED_SIBLING_CHECK`). Ancestor locations stored in `location_without_scheme` without a trailing slash were not matched by the generated ancestor equality terms, allowing nested table/namespace locations to be created under existing prefixes. The query now emits both slash-terminated and non-slash-terminated prefix terms and uses a slash-terminated `LIKE` pattern for descendant matching.
 - Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
+- Fixed policy detach on the relational JDBC backend silently doing nothing when the mapping's `parameters` changed in between. The delete's `WHERE` clause included the non-key `parameters` column, so a re-attach landing between the detach's lookup and its delete made the delete match zero rows while detach still reported success, leaving the policy attached. The delete is now keyed on the mapping's identity columns, matching the table's primary key and the transactional backend's behavior.
+- Relational JDBC: the `idx_locations` index used by the optimized sibling check now matches the
+  query that reads it. On Postgres and CockroachDB the index led with `parent_id`, while the overlap
+  query filters `catalog_id`, so with `OPTIMIZED_SIBLING_CHECK` enabled every `CREATE TABLE` /
+  `CREATE NAMESPACE` fell back to a realm-wide scan instead of the intended indexed lookup. A new
+  schema version 6 creates the index on `(realm_id, catalog_id, location_without_scheme)`; H2 was
+  already correct. Existing deployments need a manual index recreation — see Upgrade notes.
 
 ### Commits
 
@@ -130,7 +132,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   storage provider, such as `s3.session-token-expires-at-ms` for S3.
 
 ### New Features
-
+- Added AWS KMS decryption-key access through the `decryptionKeys` catalog storage configuration property.
 - Added Kafka PolarisEventListener for publishing events to Kafka.
 - Added GCS principal attribution for vended credentials (the GCP counterpart of AWS STS session tags). Set `GCS_PRINCIPAL_ATTRIBUTION_ENABLED=true` to activate; the feature flags `GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE`, `GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER`, and `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE` are then required (a missing value is a fatal configuration error). Also requires a `gcpServiceAccount` on the catalog StorageConfiguration. When enabled, credential vending chains a catalog-signed JWT through a Workload Identity Federation token exchange and service-account impersonation, so the Polaris principal appears in GCS Data Access audit logs (`serviceAccountDelegationInfo.principalSubject`) for any client. `GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID` sets the JWT `kid` for JWKS key rotation. Attribution is keyed per-principal in the credential cache; when disabled (default), GCP vending behaviour is unchanged.
 - Added the `DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED` feature flag (off by default). When enabled, a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix.
@@ -156,7 +158,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The field `clientSecret` of the Polaris management API type `ResetPrincipalRequest` is now using `format: password`. This does not change the wire format, but code generated from the OpenAPI may require downstream changes.
 
 ### Deprecations
-
+- The `currentKmsKey` and `allowedKmsKeys` AWS storage configuration properties are deprecated. Use `encryptionKeys` instead.
 - Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
 ### Fixes

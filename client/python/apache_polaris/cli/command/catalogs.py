@@ -31,6 +31,7 @@ from apache_polaris.cli.constants import (
 )
 from apache_polaris.cli.options.option_tree import Argument
 
+import logging
 from dataclasses import dataclass, field
 from pydantic import StrictStr, SecretStr
 from typing import Dict, List, Optional, Union, Tuple, Callable, cast
@@ -59,6 +60,8 @@ from apache_polaris.sdk.management import (
 from apache_polaris.cli.command.utils import get_catalog_api_client, format_timestamp
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -103,6 +106,8 @@ class CatalogsCommand(Command):
     path_style_access: Optional[bool] = None
     current_kms_key: Optional[str] = None
     allowed_kms_keys: Optional[List[str]] = None
+    encryption_keys: Optional[List[str]] = None
+    decryption_keys: Optional[List[str]] = None
     catalog_connection_type: Optional[str] = None
     catalog_authentication_type: Optional[str] = None
     catalog_service_identity_type: Optional[str] = None
@@ -134,6 +139,19 @@ class CatalogsCommand(Command):
             self.path_style_access = False
 
     def validate(self) -> None:
+        if self.current_kms_key:
+            logger.warning(
+                "%s is deprecated; use %s instead.",
+                Argument.to_flag_name(Arguments.KMS_KEY_CURRENT),
+                Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION),
+            )
+        if self.allowed_kms_keys:
+            logger.warning(
+                "%s is deprecated; use %s instead.",
+                Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED),
+                Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION),
+            )
+
         if self.catalogs_subcommand in {
             Subcommands.CREATE,
             Subcommands.DELETE,
@@ -147,18 +165,17 @@ class CatalogsCommand(Command):
                 )
 
         if self.catalogs_subcommand == Subcommands.CREATE:
-            if self.catalog_type != CatalogType.EXTERNAL.value:
-                if not self.storage_type:
-                    raise CliError(
-                        f"Missing required argument:"
-                        f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
-                    )
-                if not self.default_base_location:
-                    raise CliError(
-                        f"Missing required argument:"
-                        f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
-                    )
-            else:
+            if not self.storage_type:
+                raise CliError(
+                    f"Missing required argument:"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
+                )
+            if not self.default_base_location:
+                raise CliError(
+                    f"Missing required argument:"
+                    f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
+                )
+            if self.catalog_type == CatalogType.EXTERNAL.value:
                 if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
                     if (
                         not self.catalog_token_uri
@@ -222,6 +239,8 @@ class CatalogsCommand(Command):
                     f" {Argument.to_flag_name(Arguments.ENDPOINT_INTERNAL)},"
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_CURRENT)},"
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_KEY_ENCRYPTION)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_KEY_DECRYPTION)},"
                     f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)},"
                     f" {Argument.to_flag_name(Arguments.STS_UNAVAILABLE)},"
                     f" {Argument.to_flag_name(Arguments.KMS_UNAVAILABLE)}, and"
@@ -267,6 +286,8 @@ class CatalogsCommand(Command):
             or self.sts_endpoint
             or self.current_kms_key
             or self.allowed_kms_keys
+            or self.encryption_keys
+            or self.decryption_keys
             or self.path_style_access
             or self.sts_unavailable
             or self.kms_unavailable
@@ -309,6 +330,8 @@ class CatalogsCommand(Command):
                 path_style_access=self.path_style_access,
                 current_kms_key=self.current_kms_key,
                 allowed_kms_keys=self.allowed_kms_keys,
+                encryption_keys=self.encryption_keys,
+                decryption_keys=self.decryption_keys,
             )
         elif self.storage_type == StorageType.AZURE.value:
             config = AzureStorageConfigInfo(

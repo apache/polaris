@@ -199,11 +199,12 @@ catalogs:
     kms_unavailable: false
     # Set to true to use path-style access.
     path_style_access: false
-    # The ARN of the default KMS key for server-side encryption.
-    current_kms_key: "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
-    # A list of other KMS keys that are allowed for this catalog.
-    allowed_kms_keys:
+    # KMS keys that may be used to encrypt data. These keys also receive decrypt permissions.
+    encryption_keys:
       - "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
+    # Additional KMS keys that may be used to decrypt data.
+    decryption_keys:
+      - "arn:aws:kms:us-west-2:123456789012:key/87654321-4321-4321-4321-210987654321"
     properties:
       catalog: quickstart_catalog_s3
 

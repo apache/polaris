@@ -82,6 +82,8 @@ class Command(ABC):
                 path_style_access=options_get(Arguments.PATH_STYLE_ACCESS),
                 current_kms_key=options_get(Arguments.KMS_KEY_CURRENT),
                 allowed_kms_keys=options_get(Arguments.KMS_KEY_ALLOWED),
+                encryption_keys=options_get(Arguments.KMS_KEY_ENCRYPTION),
+                decryption_keys=options_get(Arguments.KMS_KEY_DECRYPTION),
                 catalog_connection_type=options_get(Arguments.CATALOG_CONNECTION_TYPE),
                 catalog_authentication_type=options_get(
                     Arguments.CATALOG_AUTHENTICATION_TYPE
