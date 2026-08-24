@@ -1457,24 +1457,19 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         throw new IllegalArgumentException(
             "Cannot create namespace without a parent storage configuration");
       }
-      List<StorageLocation> defaultLocations =
-          parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
-              .filter(java.util.Objects::nonNull)
-              .map(
-                  l ->
-                      StorageLocation.ensureTrailingSlash(
-                          StorageLocation.ensureTrailingSlash(l) + namespace.getName()))
-              .map(StorageLocation::of)
-              .toList();
-      if (!defaultLocations.contains(namespaceLocation)) {
+      String parentLocation = resolveLocationForPath(diagnostics, List.of(parent));
+      StorageLocation defaultLocation =
+          StorageLocation.of(
+              StorageLocation.ensureTrailingSlash(
+                  StorageLocation.ensureTrailingSlash(parentLocation) + namespace.getName()));
+      if (!defaultLocation.equals(namespaceLocation)) {
         throw new IllegalArgumentException(
             "Namespace "
                 + namespace.getName()
                 + " has a custom location, "
-                + "which is not enabled. Expected a location in: ["
-                + String.join(
-                    ", ", defaultLocations.stream().map(StorageLocation::toString).toList())
-                + "]. Got location: "
+                + "which is not enabled. Expected location: ["
+                + defaultLocation
+                + "]. Got location: ["
                 + namespaceLocation
                 + "]");
       }
