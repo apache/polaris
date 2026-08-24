@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -82,6 +83,7 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
+import org.apache.iceberg.view.BaseView;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
@@ -118,6 +120,7 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.configuration.PreferredAssumptionException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -129,6 +132,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -209,6 +213,26 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   protected <T extends FileIO> T initializeClientFileIO(T fileIO) {
     fileIO.initialize(clientFileIOProperties().build());
     return fileIO;
+  }
+
+  private void assertViewMetadataFileExists(String metadataLocation, boolean shouldBeDeleted) {
+    try (ResolvingFileIO fileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(fileIO);
+      fileIO.setConf(new Configuration());
+      if (shouldBeDeleted) {
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(20))
+            .untilAsserted(
+                () ->
+                    assertThat(fileIO.newInputFile(metadataLocation).exists())
+                        .as("View metadata file should be deleted when purge is enabled")
+                        .isFalse());
+      } else {
+        assertThat(fileIO.newInputFile(metadataLocation).exists())
+            .as("View metadata file should remain when purge is disabled")
+            .isTrue();
+      }
+    }
   }
 
   /**
@@ -1886,8 +1910,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
-  @Test
-  public void testDropViewWithPurge() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testDropViewWithPurge(boolean purgeViewMetadataOnDrop) {
     restCatalog.createNamespace(Namespace.of("ns1"));
     TableIdentifier id = TableIdentifier.of(Namespace.of("ns1"), "view1");
     restCatalog
@@ -1897,14 +1922,21 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         .withQuery("spark", VIEW_QUERY)
         .create();
 
+    String metadataLocation =
+        ((BaseView) restCatalog.loadView(id)).operations().current().metadataFileLocation();
+
     Catalog catalog = managementApi.getCatalog(currentCatalogName);
     Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+    // DROP_WITH_PURGE_ENABLED guards client-requested table purges, not view drops.
     catalogProps.put(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false");
-    catalogProps.put(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "true");
+    catalogProps.put(
+        FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(),
+        Boolean.toString(purgeViewMetadataOnDrop));
     managementApi.updateCatalog(catalog, catalogProps);
 
-    // DROP_WITH_PURGE_ENABLED guards client-requested table purges, not view drops.
     assertThatCode(() -> restCatalog.dropView(id)).doesNotThrowAnyException();
+
+    assertViewMetadataFileExists(metadataLocation, purgeViewMetadataOnDrop);
   }
 
   @Test
