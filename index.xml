@@ -3554,21 +3554,7 @@ See the &lt;a href="../spark"&gt;Spark Notebooks Example&lt;/a&gt; for a more ad
 &lt;p&gt;This guide describes how to spin up a &lt;strong&gt;single-node Ceph cluster&lt;/strong&gt; with &lt;strong&gt;RADOS Gateway (RGW)&lt;/strong&gt; for S3-compatible storage and configure it for use by &lt;strong&gt;Polaris&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;This example cluster is configured for basic access key authentication only.
 It does not include STS (Security Token Service) or temporary credentials.
-All access to the Ceph RGW (RADOS Gateway) and Polaris integration uses static S3-style credentials (as configured via radosgw-admin user create).&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and MinIO</title><link>https://polaris.apache.org/guides/minio/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/minio/</guid><description>&lt;div class="alert alert-warning"&gt;&lt;p class="alert-heading"&gt;
- ⚠️ Warning&lt;/p&gt;
- &lt;strong&gt;Disclaimer:&lt;/strong&gt; This guide uses MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes.
-&lt;/div&gt;
-
-&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
-&lt;/h2&gt;
-&lt;p&gt;This example uses MinIO as a storage provider with Polaris.&lt;/p&gt;
-&lt;p&gt;Spark is used as a query engine. This example assumes a local Spark installation.
-See the &lt;a href="../spark"&gt;Spark Notebooks Example&lt;/a&gt; for a more advanced Spark setup.&lt;/p&gt;
-&lt;h2 id="starting-the-example" id="starting-the-example"&gt;Starting the Example&lt;a class="heading-anchor" href="#starting-the-example" aria-label="Anchor"&gt;🔗&lt;/a&gt;
-&lt;/h2&gt;
-&lt;ol&gt;
-&lt;li&gt;
-&lt;p&gt;Build the Polaris server image if it&amp;rsquo;s not already present locally:&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and RustFS</title><link>https://polaris.apache.org/guides/rustfs/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/rustfs/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+All access to the Ceph RGW (RADOS Gateway) and Polaris integration uses static S3-style credentials (as configured via radosgw-admin user create).&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and RustFS</title><link>https://polaris.apache.org/guides/rustfs/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/rustfs/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;p&gt;This example uses &lt;a href="https://rustfs.com/"&gt;RustFS&lt;/a&gt; as a storage provider with Polaris.&lt;/p&gt;
 &lt;p&gt;Spark is used as a query engine. This example assumes a local Spark installation.
