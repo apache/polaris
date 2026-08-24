@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.tag;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,12 +35,32 @@ import org.apache.iceberg.exceptions.BadRequestException;
  */
 public final class TagValidation {
 
+  /**
+   * Upper bound on a tag value, in UTF-8 bytes. Values are stored in an indexed column, and index
+   * entries carry a per-page size limit on the relational backends; bounding the value keeps every
+   * accepted definition value assignable.
+   */
+  public static final int MAX_VALUE_BYTES = 2000;
+
   private TagValidation() {}
 
   /**
+   * Rejects a value longer than {@link #MAX_VALUE_BYTES} in UTF-8, naming the limit. Shared by the
+   * definition's allowed-values check and the assignment's selected-value check so both sides
+   * enforce the same bound.
+   */
+  public static void validateValueLength(String value, String what) {
+    int bytes = value.getBytes(StandardCharsets.UTF_8).length;
+    if (bytes > MAX_VALUE_BYTES) {
+      throw new BadRequestException(
+          "%s must be at most %d bytes in UTF-8, got %d", what, MAX_VALUE_BYTES, bytes);
+    }
+  }
+
+  /**
    * Validates a tag's allowed values: the list must be present and non-empty, no member may be
-   * empty, and members must be distinct. Values are compared exactly, so case and surrounding
-   * whitespace are significant.
+   * empty or longer than {@link #MAX_VALUE_BYTES}, and members must be distinct. Values are
+   * compared exactly, so case and surrounding whitespace are significant.
    */
   public static void validateAllowedValues(List<String> allowedValues) {
     if (allowedValues == null || allowedValues.isEmpty()) {
@@ -50,6 +71,7 @@ public final class TagValidation {
       if (value == null || value.isEmpty()) {
         throw new BadRequestException("Allowed values must not contain an empty value");
       }
+      validateValueLength(value, "An allowed value");
       if (!seen.add(value)) {
         throw new BadRequestException("Allowed values must not contain duplicates: %s", value);
       }

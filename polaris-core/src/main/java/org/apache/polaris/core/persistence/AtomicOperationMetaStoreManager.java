@@ -67,6 +67,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.TagAssignmentResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -75,6 +76,8 @@ import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagEntity;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -235,6 +238,31 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         ms.deleteAllEntityPolicyMappingRecords(callCtx, entity, mappingOnTarget, mappingOnPolicy);
       } catch (UnsupportedOperationException e) {
         // Policy mapping persistence not implemented, but we should not block dropping entities
+      }
+    }
+
+    if (entity.getType() == PolarisEntityType.CATALOG
+        || entity.getType() == PolarisEntityType.NAMESPACE
+        || entity.getType() == PolarisEntityType.TABLE_LIKE) {
+      // Best-effort cleanup - for potential tag assignment targets, drop the assignment rows
+      // stored on the dropped target. Target deletion never depends on this cleanup succeeding;
+      // any row left behind is orphaned and hidden from reads. (Dropping a TAG definition itself
+      // is handled in dropEntityIfExists and is all-or-nothing, never best-effort.)
+      try {
+        final List<TagAssignmentRecord> assignmentsOnTarget =
+            ms.loadAllTagAssignmentsOnTargetEntity(
+                callCtx, TagAssignmentRecord.containingCatalogId(entity), entity.getId());
+        ms.deleteAllEntityTagAssignmentRecords(callCtx, entity, List.of(), assignmentsOnTarget);
+      } catch (UnsupportedOperationException e) {
+        // Tag assignment persistence not implemented, but we should not block dropping entities
+      } catch (RuntimeException e) {
+        // Best-effort by contract: a cleanup failure must never fail the target entity drop.
+        // Rows left behind are orphaned and hidden from reads.
+        LOGGER.warn(
+            "Failed best-effort tag-assignment cleanup while dropping entity {} of type {}",
+            entity.getId(),
+            entity.getType(),
+            e);
       }
     }
 
@@ -1204,6 +1232,42 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       } catch (UnsupportedOperationException e) {
         // Policy mapping persistence not implemented, but we should not block dropping entities
       }
+    } else if (refreshEntityToDrop.getType() == PolarisEntityType.TAG) {
+      if (cleanup) {
+        // detach-all: atomically remove the definition and every assignment, or nothing. A tag
+        // drop must never report success after partial work, so a backend that cannot perform
+        // this atomically cannot drop a tag definition this way.
+        try {
+          ms.deleteTagAndAllAssignmentRecords(callCtx, refreshEntityToDrop);
+        } catch (UnsupportedOperationException e) {
+          return new DropEntityResult(
+              BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+              Objects.requireNonNullElse(
+                  e.getMessage(),
+                  "this backend cannot atomically remove a tag definition and its assignments"));
+        }
+        // No grant records can reference a TAG securable today (no grant API produces one), so
+        // the grant cleanup performed by dropEntity has nothing to do on this path. No cleanup
+        // task is scheduled: the assignments are already gone.
+        return new DropEntityResult();
+      }
+      try {
+        List<TagAssignmentRecord> records =
+            ms.loadAllTargetsOnTag(
+                callCtx,
+                refreshEntityToDrop.getCatalogId(),
+                refreshEntityToDrop.getId(),
+                null,
+                PageToken.fromLimit(1));
+        if (!records.isEmpty()) {
+          return new DropEntityResult(BaseResult.ReturnStatus.TAG_HAS_ASSIGNMENTS, null);
+        }
+      } catch (UnsupportedOperationException e) {
+        // Like the POLICY branch above, and unlike the detach-all branch: below the
+        // tag-assignment schema version no assignment can exist, so this is not a backend that
+        // cannot answer whether the tag has assignments, the answer is definitively "none", and
+        // a plain drop must keep working (same contract as the target-entity-drop cleanup path).
+      }
     }
 
     // simply delete that entity. Will be removed from entities_active, added to the
@@ -1213,7 +1277,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // if cleanup, schedule a cleanup task for the entity. do this here, so that drop and scheduling
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task
     // later
-    if (cleanup && refreshEntityToDrop.getType() != PolarisEntityType.POLICY) {
+    if (cleanup
+        && refreshEntityToDrop.getType() != PolarisEntityType.POLICY
+        && refreshEntityToDrop.getType() != PolarisEntityType.TAG) {
       Map<String, String> properties = new HashMap<>();
       properties.put(
           PolarisTaskConstants.TASK_TYPE,
@@ -1909,6 +1975,108 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     return new PolicyAttachmentResult(mappingRecord);
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult assignTagToEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag,
+      @NonNull String value) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    if (ms.lookupEntity(callCtx, target.getCatalogId(), target.getId(), target.getTypeCode())
+        == null) {
+      // Target-side miss: maps to the target-not-found wire error, distinct from a tag miss.
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, "target no longer exists");
+    }
+    if (ms.lookupEntity(callCtx, tag.getCatalogId(), tag.getId(), PolarisEntityType.TAG.getCode())
+        == null) {
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "tag no longer exists");
+    }
+    // Assignments are same-catalog: enforce the invariant at this boundary rather than relying
+    // on the REST wiring, which happens to only express same-catalog requests today.
+    if (TagAssignmentRecord.containingCatalogId(target) != tag.getCatalogId()) {
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, "target is not in the tag's catalog");
+    }
+
+    TagAssignmentRecord assignmentRecord =
+        new TagAssignmentRecord(
+            TagAssignmentRecord.containingCatalogId(target),
+            target.getId(),
+            fieldId,
+            tag.getCatalogId(),
+            tag.getId(),
+            value);
+    try {
+      // The persistence write validates the value against the definition's current allowed
+      // values within the same atomicity boundary as the write.
+      ms.writeToTagAssignmentRecords(callCtx, assignmentRecord);
+    } catch (UnsupportedOperationException e) {
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          Objects.requireNonNullElse(
+              e.getMessage(), "this backend does not support tag assignments"));
+    }
+    return new TagAssignmentResult(assignmentRecord);
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult unassignTagFromEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    // Concurrent-miss precedence is deterministic and identical across managers: a target miss
+    // classifies before a tag miss, matching the resolution-time classification.
+    if (ms.lookupEntity(callCtx, target.getCatalogId(), target.getId(), target.getTypeCode())
+        == null) {
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, "target no longer exists");
+    }
+    if (ms.lookupEntity(callCtx, tag.getCatalogId(), tag.getId(), PolarisEntityType.TAG.getCode())
+        == null) {
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "tag no longer exists");
+    }
+
+    try {
+      TagAssignmentRecord assignmentRecord =
+          ms.lookupTagAssignmentRecord(
+              callCtx,
+              TagAssignmentRecord.containingCatalogId(target),
+              target.getId(),
+              fieldId,
+              tag.getCatalogId(),
+              tag.getId());
+      if (assignmentRecord == null) {
+        return new TagAssignmentResult(BaseResult.ReturnStatus.TAG_ASSIGNMENT_NOT_FOUND, null);
+      }
+      // The lookup above and this delete are two separate calls, not one atomic step: a
+      // concurrent unassign can remove the row in between. The delete's own return value, not
+      // the preceding lookup, is what tells us whether this call actually removed a row.
+      if (!ms.deleteFromTagAssignmentRecords(callCtx, assignmentRecord)) {
+        return new TagAssignmentResult(BaseResult.ReturnStatus.TAG_ASSIGNMENT_NOT_FOUND, null);
+      }
+      return new TagAssignmentResult(assignmentRecord);
+    } catch (UnsupportedOperationException e) {
+      return new TagAssignmentResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          Objects.requireNonNullElse(
+              e.getMessage(), "this backend does not support tag assignments"));
+    }
   }
 
   /**

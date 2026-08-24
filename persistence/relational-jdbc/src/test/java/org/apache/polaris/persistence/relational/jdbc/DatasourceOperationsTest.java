@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -158,6 +159,65 @@ public class DatasourceOperationsTest {
         () -> datasourceOperations.executeSelect(mockConnection, query, new ModelEntity(1)));
 
     verify(mockConnection).prepareStatement(query.sql());
+  }
+
+  /**
+   * The connection-aware SELECT retries a retryable failure (here, a serialization failure) by
+   * re-issuing the same statement on the same connection. That is exactly the hazard a caller
+   * already inside a transaction must avoid: on a real database, a failure that aborts the
+   * transaction makes every further statement on that connection fail (here simulated as "current
+   * transaction is aborted", 25P02) rather than let a retry succeed. Contrast with {@link
+   * #executeSelectNoRetryDoesNotRetryOnSameConnection}.
+   */
+  @Test
+  void executeSelectWithConnectionRetriesOnSameConnectionAndCanSurfaceAbortedTransaction()
+      throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(2));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("SELECT * FROM users", List.of());
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery())
+        .thenThrow(new SQLException("serialization failure", "40001"))
+        .thenThrow(new SQLException("current transaction is aborted", "25P02"));
+
+    assertThatThrownBy(
+            () -> datasourceOperations.executeSelect(mockConnection, query, new ModelEntity(1)))
+        .isInstanceOf(SQLException.class)
+        .extracting(ex -> ((SQLException) ex).getSQLState())
+        .isEqualTo("25P02");
+    verify(mockConnection, times(2)).prepareStatement(query.sql());
+    verify(mockPreparedStatement, times(2)).executeQuery();
+  }
+
+  /**
+   * The no-retry connection-aware SELECT must fail on the very first attempt rather than re-issuing
+   * the statement on the same connection: a caller already inside a transaction relies on this to
+   * let a retryable failure reach the transaction boundary, where the surrounding transaction retry
+   * (or a caller's own outer re-run) gets a fresh connection instead of retrying in place on a
+   * connection whose transaction the failure may have already aborted. Contrast with {@link
+   * #executeSelectWithConnectionRetriesOnSameConnectionAndCanSurfaceAbortedTransaction}.
+   */
+  @Test
+  void executeSelectNoRetryDoesNotRetryOnSameConnection() throws Exception {
+    // Deliberately no relationalJdbcConfiguration stubbing: executeSelectNoRetry must never
+    // consult the retry budget at all, because it never calls withRetries.
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("SELECT * FROM users", List.of());
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery())
+        .thenThrow(new SQLException("serialization failure", "40001"));
+
+    assertThatThrownBy(
+            () ->
+                datasourceOperations.executeSelectNoRetry(
+                    mockConnection, query, new ModelEntity(1)))
+        .isInstanceOf(SQLException.class)
+        .extracting(ex -> ((SQLException) ex).getSQLState())
+        .isEqualTo("40001");
+    verify(mockConnection, times(1)).prepareStatement(query.sql());
+    verify(mockPreparedStatement, times(1)).executeQuery();
   }
 
   @Test

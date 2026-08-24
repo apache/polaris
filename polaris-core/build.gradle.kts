@@ -91,6 +91,9 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
   testFixturesApi(libs.jakarta.ws.rs.api)
 
+  testFixturesImplementation(platform(libs.iceberg.bom))
+  testFixturesImplementation("org.apache.iceberg:iceberg-api")
+
   compileOnly(libs.jspecify)
 }
 

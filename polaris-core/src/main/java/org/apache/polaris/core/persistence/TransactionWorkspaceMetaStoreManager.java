@@ -52,10 +52,12 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.TagAssignmentResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.tag.TagEntity;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -392,6 +394,29 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @NonNull PolarisEntityCore target,
       @NonNull PolicyType policyType) {
     throw illegalMethodError("loadPoliciesOnEntityByType");
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult assignTagToEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag,
+      @NonNull String value) {
+    throw illegalMethodError("assignTagToEntity");
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult unassignTagFromEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag) {
+    throw illegalMethodError("unassignTagFromEntity");
   }
 
   @Override

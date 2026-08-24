@@ -231,6 +231,26 @@ public class DatasourceOperations {
   }
 
   /**
+   * Connection-aware SELECT that does not retry on this connection. A statement issued mid-
+   * transaction is already covered by a retry around the whole transaction (a fresh connection per
+   * attempt, via {@link #runWithinTransaction}, or a caller's own outer re-run of the whole unit of
+   * work): retrying just this one statement in place would re-issue it on this same connection,
+   * whose transaction a retryable failure may already have left unusable for further statements.
+   * Failing immediately lets that failure reach the transaction boundary, where the existing retry
+   * can re-run cleanly on a fresh connection.
+   */
+  public <T> List<T> executeSelectNoRetry(
+      @NonNull Connection connection,
+      @NonNull PreparedQuery query,
+      @NonNull Converter<T> converterInstance)
+      throws SQLException {
+    ArrayList<T> results = new ArrayList<>();
+    executeSelectOverStreamWithConnection(
+        query, converterInstance, stream -> stream.forEach(results::add), connection);
+    return results;
+  }
+
+  /**
    * Executes the UPDATE or INSERT Query
    *
    * @param preparedQuery : query to be executed

@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -50,11 +51,14 @@ import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.TagAssignmentResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagEntity;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.jspecify.annotations.NonNull;
@@ -3307,5 +3311,365 @@ public class PolarisTestMetaStoreManager {
         polarisMetaStoreManager.loadPoliciesOnEntity(polarisCallContext, N1_N2_T1);
     Assertions.assertThat(loadPolicyMappingsResult.isSuccess()).isTrue();
     Assertions.assertThat(loadPolicyMappingsResult.getEntities()).isEmpty();
+  }
+
+  /** create a tag definition entity under the catalog */
+  TagEntity createTag(PolarisBaseEntity catalog, String name, List<String> allowedValues) {
+    TagEntity entity =
+        new TagEntity.Builder(name)
+            .setCatalogId(catalog.getId())
+            .setParentId(catalog.getId())
+            .setAllowedValues(allowedValues)
+            .setTargetTypes(List.of("catalog", "namespace", "table-like", "column"))
+            .setId(polarisMetaStoreManager.generateNewEntityId(polarisCallContext).getId())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
+    var result =
+        polarisMetaStoreManager.createEntityIfNotExists(
+            polarisCallContext, List.of(catalog), entity);
+    Assertions.assertThat(result.isSuccess()).isTrue();
+    return TagEntity.of(result.getEntity());
+  }
+
+  /**
+   * Probes whether this backend supports tag assignments. A backend that does not must REJECT
+   * assignment operations (never silently succeed), which this probe also asserts.
+   */
+  private boolean tagAssignmentsSupported(
+      List<PolarisEntityCore> targetCatalogPath, PolarisBaseEntity target) {
+    TagEntity unpersisted =
+        new TagEntity.Builder("probe")
+            .setCatalogId(target.getCatalogId())
+            .setParentId(target.getCatalogId())
+            .setAllowedValues(List.of("v"))
+            .setTargetTypes(List.of("namespace"))
+            .setId(-1)
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
+    TagAssignmentResult probe =
+        polarisMetaStoreManager.assignTagToEntity(
+            polarisCallContext, targetCatalogPath, target, 0, targetCatalogPath, unpersisted, "v");
+    Assertions.assertThat(probe.isSuccess()).isFalse();
+    if (probe.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+      return false;
+    }
+    // supported backend: the unpersisted probe tag must simply not resolve
+    Assertions.assertThat(probe.getReturnStatus())
+        .isIn(
+            BaseResult.ReturnStatus.ENTITY_NOT_FOUND,
+            BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+    return true;
+  }
+
+  /**
+   * Reads the assignments stored on a target at one field straight from persistence: the manager
+   * read surface ships with the read slice, so the write-path fixtures verify through the store.
+   */
+  private List<TagAssignmentRecord> assignmentsOn(PolarisBaseEntity target, int fieldId) {
+    return polarisCallContext
+        .getMetaStore()
+        .loadAllTagAssignmentsOnTargetEntity(
+            polarisCallContext, TagAssignmentRecord.containingCatalogId(target), target.getId())
+        .stream()
+        .filter(r -> r.getFieldId() == fieldId)
+        .toList();
+  }
+
+  void testTagAssignment() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    if (!tagAssignmentsSupported(catalogPath, N1)) {
+      return;
+    }
+    TagEntity tag = createTag(catalog, "T1", List.of("v1", "v2"));
+
+    TagAssignmentResult assigned =
+        polarisMetaStoreManager.assignTagToEntity(
+            polarisCallContext, catalogPath, N1, 0, catalogPath, tag, "v1");
+    if (assigned.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+      // fail-closed write gate: this store's schema predates tag assignments
+      Assertions.assertThat(assigned.getExtraInformation()).contains("schema version");
+      Assertions.assertThat(assignmentsOn(N1, 0)).isEmpty();
+      return;
+    }
+    Assertions.assertThat(assigned.isSuccess()).isTrue();
+
+    // a value outside the definition's current allowed values must be rejected
+    Throwable invalidValue =
+        Assertions.catchThrowable(
+            () ->
+                polarisMetaStoreManager.assignTagToEntity(
+                    polarisCallContext, catalogPath, N1, 0, catalogPath, tag, "nope"));
+    Assertions.assertThat(invalidValue).isInstanceOf(BadRequestException.class);
+
+    // re-assigning the same identity replaces the stored value
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .assignTagToEntity(polarisCallContext, catalogPath, N1, 0, catalogPath, tag, "v2")
+                .isSuccess())
+        .isTrue();
+    List<TagAssignmentRecord> onEntity = assignmentsOn(N1, 0);
+    Assertions.assertThat(onEntity).hasSize(1);
+    Assertions.assertThat(onEntity.get(0).getValue()).isEqualTo("v2");
+
+    // a column assignment (non-zero field id) is a separate relationship
+    PolarisBaseEntity T1 =
+        this.createEntity(
+            List.of(catalog, N1),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "TBL");
+    List<PolarisEntityCore> tablePath = List.of(catalog, N1);
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .assignTagToEntity(polarisCallContext, tablePath, T1, 5, catalogPath, tag, "v1")
+                .isSuccess())
+        .isTrue();
+    Assertions.assertThat(assignmentsOn(T1, 0)).isEmpty();
+    Assertions.assertThat(assignmentsOn(T1, 5)).hasSize(1);
+
+    // unassign removes the relationship; a second unassign reports it missing
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .unassignTagFromEntity(polarisCallContext, tablePath, T1, 5, catalogPath, tag)
+                .isSuccess())
+        .isTrue();
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .unassignTagFromEntity(polarisCallContext, tablePath, T1, 5, catalogPath, tag)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TAG_ASSIGNMENT_NOT_FOUND);
+
+    // concurrent-miss precedence is deterministic across managers: a target that no longer
+    // exists classifies as the target-side miss for assign and unassign alike
+    PolarisBaseEntity ghostTarget =
+        new PolarisBaseEntity(
+            catalog.getId(),
+            987654321L,
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            catalog.getId(),
+            "ghost");
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .assignTagToEntity(
+                    polarisCallContext, catalogPath, ghostTarget, 0, catalogPath, tag, "v1")
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .unassignTagFromEntity(
+                    polarisCallContext, catalogPath, ghostTarget, 0, catalogPath, tag)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+  }
+
+  void testTagDropDetachAll() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    if (!tagAssignmentsSupported(catalogPath, N1)) {
+      // the same rejection must hold for dropping a tag definition on this backend: the drop
+      // must fail closed. The probe entity is built unpersisted because such a backend may not
+      // store TAG entities at all; the type-based reject must fire before any lookup.
+      TagEntity probeTag =
+          new TagEntity.Builder("T2")
+              .setCatalogId(catalog.getId())
+              .setParentId(catalog.getId())
+              .setAllowedValues(List.of("v1"))
+              .setTargetTypes(List.of("catalog"))
+              .setId(polarisMetaStoreManager.generateNewEntityId(polarisCallContext).getId())
+              .setCreateTimestamp(System.currentTimeMillis())
+              .build();
+      var rejectedDrop =
+          polarisMetaStoreManager.dropEntityIfExists(
+              polarisCallContext, catalogPath, probeTag, Map.of(), true);
+      Assertions.assertThat(rejectedDrop.isSuccess()).isFalse();
+      Assertions.assertThat(rejectedDrop.getReturnStatus())
+          .isEqualTo(BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED);
+      return;
+    }
+    TagEntity tag = createTag(catalog, "T2", List.of("v1"));
+    TagAssignmentResult assignedT2 =
+        polarisMetaStoreManager.assignTagToEntity(
+            polarisCallContext, catalogPath, N1, 0, catalogPath, tag, "v1");
+    if (assignedT2.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+      // fail-closed write gate: this store's schema predates tag assignments
+      Assertions.assertThat(assignedT2.getExtraInformation()).contains("schema version");
+      return;
+    }
+    Assertions.assertThat(assignedT2.isSuccess()).isTrue();
+
+    // a plain drop refuses while assignments exist
+    var inUse =
+        polarisMetaStoreManager.dropEntityIfExists(
+            polarisCallContext, catalogPath, tag, Map.of(), false);
+    Assertions.assertThat(inUse.isSuccess()).isFalse();
+    Assertions.assertThat(inUse.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TAG_HAS_ASSIGNMENTS);
+
+    // detach-all removes every assignment and the definition together
+    var detachAll =
+        polarisMetaStoreManager.dropEntityIfExists(
+            polarisCallContext, catalogPath, tag, Map.of(), true);
+    Assertions.assertThat(detachAll.isSuccess()).isTrue();
+    Assertions.assertThat(assignmentsOn(N1, 0)).isEmpty();
+
+    // after a successful delete, no assignment may appear for that definition id
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .assignTagToEntity(polarisCallContext, catalogPath, N1, 0, catalogPath, tag, "v1")
+                .getReturnStatus())
+        .isIn(
+            BaseResult.ReturnStatus.ENTITY_NOT_FOUND,
+            BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+  }
+
+  void testTagCatalogTargetAssignment() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    if (!tagAssignmentsSupported(catalogPath, N1)) {
+      return;
+    }
+    TagEntity tag = createTag(catalog, "T5", List.of("v1"));
+    TagAssignmentResult assigned =
+        polarisMetaStoreManager.assignTagToEntity(
+            polarisCallContext, catalogPath, catalog, 0, catalogPath, tag, "v1");
+    if (assigned.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+      // fail-closed write gate: this store's schema predates tag assignments
+      Assertions.assertThat(assigned.getExtraInformation()).contains("schema version");
+      return;
+    }
+    Assertions.assertThat(assigned.isSuccess()).isTrue();
+
+    // A catalog-level assignment stores the catalog's own id on the target side, so the stored
+    // row satisfies the target-catalog = tag-catalog invariant.
+    List<TagAssignmentRecord> onCatalog = assignmentsOn(catalog, 0);
+    Assertions.assertThat(onCatalog).hasSize(1);
+    var record = onCatalog.get(0);
+    Assertions.assertThat(record.getTargetCatalogId()).isEqualTo(tag.getCatalogId());
+    Assertions.assertThat(record.getTargetId()).isEqualTo(catalog.getId());
+
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .unassignTagFromEntity(
+                    polarisCallContext, catalogPath, catalog, 0, catalogPath, tag)
+                .isSuccess())
+        .isTrue();
+  }
+
+  void testTagCrossCatalogAssignmentRejected() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    if (!tagAssignmentsSupported(catalogPath, N1)) {
+      return;
+    }
+    // The tag lives in a different catalog than the target: the manager must reject the
+    // assignment regardless of backend, enforcing the same-catalog invariant below REST.
+    // A bare second catalog suffices (createTestCatalog builds realm-global roles and
+    // cannot run twice against one store).
+    PolarisBaseEntity otherCatalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            polarisMetaStoreManager.generateNewEntityId(polarisCallContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "test_other");
+    otherCatalog =
+        polarisMetaStoreManager
+            .createCatalog(polarisCallContext, otherCatalog, List.of())
+            .getCatalog();
+    TagEntity tag = createTag(otherCatalog, "T6", List.of("v1"));
+    TagAssignmentResult crossed =
+        polarisMetaStoreManager.assignTagToEntity(
+            polarisCallContext, catalogPath, N1, 0, List.of(otherCatalog), tag, "v1");
+    Assertions.assertThat(crossed.isSuccess()).isFalse();
+    Assertions.assertThat(crossed.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+    Assertions.assertThat(crossed.getExtraInformation()).contains("catalog");
+  }
+
+  void testTagAssignmentCleanup() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    if (!tagAssignmentsSupported(catalogPath, N1)) {
+      return;
+    }
+    TagEntity tag = createTag(catalog, "T3", List.of("v1"));
+    PolarisBaseEntity T1 =
+        this.createEntity(
+            List.of(catalog, N1),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "TBL3");
+    List<PolarisEntityCore> tablePath = List.of(catalog, N1);
+    TagAssignmentResult assignedT3 =
+        polarisMetaStoreManager.assignTagToEntity(
+            polarisCallContext, tablePath, T1, 0, catalogPath, tag, "v1");
+    if (assignedT3.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+      // fail-closed write gate: this store's schema predates tag assignments
+      Assertions.assertThat(assignedT3.getExtraInformation()).contains("schema version");
+      return;
+    }
+    Assertions.assertThat(assignedT3.isSuccess()).isTrue();
+
+    // dropping the target entity best-effort-cleans the assignment rows stored on it
+    var dropped =
+        polarisMetaStoreManager.dropEntityIfExists(
+            polarisCallContext, tablePath, T1, Map.of(), false);
+    Assertions.assertThat(dropped.isSuccess()).isTrue();
+
+    BasePersistence ms = polarisCallContext.getMetaStore();
+    Assertions.assertThat(
+            ms.loadAllTargetsOnTag(
+                polarisCallContext,
+                tag.getCatalogId(),
+                tag.getId(),
+                null,
+                PageToken.readEverything()))
+        .isEmpty();
+  }
+
+  void testDeleteAllClearsTagAssignments() {
+    PolarisBaseEntity catalog = this.createTestCatalog("test");
+    PolarisBaseEntity N1 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    List<PolarisEntityCore> catalogPath = List.of(catalog);
+    if (!tagAssignmentsSupported(catalogPath, N1)) {
+      return;
+    }
+    TagEntity tag = createTag(catalog, "T4", List.of("v1"));
+    TagAssignmentResult assignedT4 =
+        polarisMetaStoreManager.assignTagToEntity(
+            polarisCallContext, catalogPath, N1, 0, catalogPath, tag, "v1");
+    if (assignedT4.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+      // fail-closed write gate: this store's schema predates tag assignments
+      Assertions.assertThat(assignedT4.getExtraInformation()).contains("schema version");
+      return;
+    }
+    Assertions.assertThat(assignedT4.isSuccess()).isTrue();
+
+    // realm-wide purge must also clear tag assignment storage, like grants and policy mappings
+    Assertions.assertThat(polarisMetaStoreManager.purge(polarisCallContext).isSuccess()).isTrue();
+
+    BasePersistence ms = polarisCallContext.getMetaStore();
+    Assertions.assertThat(
+            ms.loadAllTargetsOnTag(
+                polarisCallContext,
+                tag.getCatalogId(),
+                tag.getId(),
+                null,
+                PageToken.readEverything()))
+        .isEmpty();
   }
 }

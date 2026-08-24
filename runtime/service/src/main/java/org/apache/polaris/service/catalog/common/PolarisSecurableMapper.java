@@ -28,6 +28,7 @@ import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 
 /**
  * Utility mapper for translating Polaris domain identifiers into canonical {@link
@@ -106,6 +107,41 @@ public final class PolarisSecurableMapper {
         .map(level -> new PathSegment(PolarisEntityType.NAMESPACE, level))
         .forEach(builder::addPathSegment);
     return builder.addPathSegment(new PathSegment(PolarisEntityType.SEMANTIC_MODEL, name)).build();
+  }
+
+  public static PolarisSecurable tagAttachmentTarget(
+      String catalogName, TagAttachmentTarget target) {
+    ImmutablePolarisSecurable.Builder builder =
+        ImmutablePolarisSecurable.builder()
+            .addPathSegment(new PathSegment(PolarisEntityType.CATALOG, catalogName));
+    switch (target.getType()) {
+      case CATALOG:
+        return catalog(catalogName);
+      case NAMESPACE:
+        if (target.getPath() == null || target.getPath().isEmpty()) {
+          throw new IllegalArgumentException("Namespace target path must not be empty");
+        }
+        target.getPath().stream()
+            .map(level -> new PathSegment(PolarisEntityType.NAMESPACE, level))
+            .forEach(builder::addPathSegment);
+        return builder.build();
+      case TABLE_LIKE:
+      case COLUMN:
+        // A column target is authorized against its containing table.
+        List<String> path = target.getPath();
+        if (path == null || path.isEmpty()) {
+          throw new IllegalArgumentException("Table-like target path must not be empty");
+        }
+        path.subList(0, path.size() - 1).stream()
+            .map(level -> new PathSegment(PolarisEntityType.NAMESPACE, level))
+            .forEach(builder::addPathSegment);
+        return builder
+            .addPathSegment(
+                new PathSegment(PolarisEntityType.TABLE_LIKE, path.get(path.size() - 1)))
+            .build();
+      default:
+        throw new IllegalArgumentException("Unsupported target type: " + target.getType());
+    }
   }
 
   public static PolarisSecurable policyAttachmentTarget(

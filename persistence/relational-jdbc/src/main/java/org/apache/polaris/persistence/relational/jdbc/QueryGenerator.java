@@ -256,6 +256,37 @@ public class QueryGenerator {
   }
 
   /**
+   * Builds a no-op UPDATE that re-sets a version column to itself, conditioned on the row still
+   * being at the expected version. Used to take this transaction's write lock on a row and detect
+   * whether a concurrent writer already moved it past the version read earlier in the same
+   * transaction, without changing any of the row's actual values: an updated row count of zero
+   * means the row moved.
+   *
+   * @param tableName Target table.
+   * @param versionColumn The version column to re-set to itself; also expected as a key in {@code
+   *     whereClause}.
+   * @param tableColumns All valid columns of the table, used to validate {@code whereClause}.
+   * @param whereClause Conditions identifying the row, including the expected version value.
+   * @return UPDATE query with parameter bindings for the WHERE clause only.
+   */
+  public static PreparedQuery generateVersionCheckUpdateQuery(
+      @NonNull String tableName,
+      @NonNull String versionColumn,
+      @NonNull List<String> tableColumns,
+      @NonNull Map<String, Object> whereClause) {
+    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
+    String sql =
+        "UPDATE "
+            + getFullyQualifiedTableName(tableName)
+            + " SET "
+            + versionColumn
+            + " = "
+            + versionColumn
+            + where.sql();
+    return new PreparedQuery(sql, where.parameters());
+  }
+
+  /**
    * Builds a DELETE query with the given conditions.
    *
    * @param tableColumns List of valid table columns.

@@ -68,10 +68,12 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.TagAssignmentResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.tag.TagEntity;
 import org.apache.polaris.persistence.nosql.metastore.mutation.GrantsMutation;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 import org.jspecify.annotations.NonNull;
@@ -171,7 +173,43 @@ record NoSqlMetaStoreManager(
       @NonNull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
+    if (entityToDrop.getType() == PolarisEntityType.TAG) {
+      // Defense in depth: TAG entities have no type mapping on this backend, and dropEntity
+      // deletes the entity before any type-specific cleanup could run, so a TAG drop here could
+      // never honor the tag drop contract (reject when assignments remain, or remove the
+      // definition and every assignment together). Reject instead of deleting.
+      return new DropEntityResult(
+          BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+          "tag entities are not supported by the NoSQL backend");
+    }
     return ms(callCtx).dropEntity(entityToDrop, cleanupProperties, cleanup);
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult assignTagToEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag,
+      @NonNull String value) {
+    return new TagAssignmentResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag assignments are not supported by the NoSQL backend");
+  }
+
+  @Override
+  public @NonNull TagAssignmentResult unassignTagFromEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      int fieldId,
+      @NonNull List<PolarisEntityCore> tagCatalogPath,
+      @NonNull TagEntity tag) {
+    return new TagAssignmentResult(
+        BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED,
+        "tag assignments are not supported by the NoSQL backend");
   }
 
   @NonNull

@@ -29,9 +29,11 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogTagApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.LoadTagResponse;
+import org.apache.polaris.service.types.UnassignTagRequest;
 import org.apache.polaris.service.types.UpdateTagRequest;
 
 @RequestScoped
@@ -114,6 +116,30 @@ public class TagCatalogAdapter implements PolarisCatalogTagApiService, CatalogAd
     return Response.noContent().build();
   }
 
-  // assignTag, unassignTag, getObjectTags, and listObjectsByTag are not implemented yet; the
-  // default PolarisCatalogTagApiService methods return 501.
+  @Override
+  public Response assignTag(
+      String prefix,
+      String tagName,
+      AssignTagRequest assignTagRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    TagCatalogHandler handler = newHandler(securityContext, prefix);
+    handler.assignTag(tagName, assignTagRequest);
+    return Response.noContent().build();
+  }
+
+  @Override
+  public Response unassignTag(
+      String prefix,
+      String tagName,
+      UnassignTagRequest unassignTagRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    TagCatalogHandler handler = newHandler(securityContext, prefix);
+    handler.unassignTag(tagName, unassignTagRequest);
+    return Response.noContent().build();
+  }
+
+  // getObjectTags and listObjectsByTag are not implemented yet; the default
+  // PolarisCatalogTagApiService methods return 501.
 }

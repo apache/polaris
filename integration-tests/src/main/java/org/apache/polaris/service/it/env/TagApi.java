@@ -26,12 +26,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.LoadTagResponse;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TagIdentifier;
 import org.apache.polaris.service.types.TargetType;
+import org.apache.polaris.service.types.UnassignTagRequest;
 import org.apache.polaris.service.types.UpdateTagRequest;
 import org.assertj.core.api.Assertions;
 
@@ -41,9 +44,9 @@ public class TagApi extends PolarisRestApi {
   }
 
   public void purge(String catalog) {
-    // Plain drops: detach-all answers 501 until assignments land (revisit with the
-    // assignment PR so purge stays effective once assignments exist).
-    listTags(catalog).forEach(t -> dropTag(catalog, t.getName()));
+    // detach-all removes assignments and the definition together, so purge cannot be blocked by
+    // tags that still carry assignments.
+    listTags(catalog).forEach(t -> dropTag(catalog, t.getName(), true));
   }
 
   /**
@@ -59,7 +62,7 @@ public class TagApi extends PolarisRestApi {
       }
       tags = res.readEntity(ListTagsResponse.class).getIdentifiers().stream().toList();
     }
-    tags.forEach(t -> dropTag(catalog, t.getName()));
+    tags.forEach(t -> dropTag(catalog, t.getName(), true));
   }
 
   /**
@@ -118,6 +121,28 @@ public class TagApi extends PolarisRestApi {
             .put(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(LoadTagResponse.class).getTag();
+    }
+  }
+
+  public void assignTag(
+      String catalog, String tagName, TagAttachmentTarget target, List<String> values) {
+    AssignTagRequest request =
+        AssignTagRequest.builder().setTarget(target).setValues(List.copyOf(values)).build();
+    try (Response res =
+        request("polaris/v1/{cat}/tags/{tag}/mappings", Map.of("cat", catalog, "tag", tagName))
+            .put(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus())
+          .as(res.hasEntity() ? res.readEntity(String.class) : "")
+          .isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+  }
+
+  public void unassignTag(String catalog, String tagName, TagAttachmentTarget target) {
+    UnassignTagRequest request = UnassignTagRequest.builder().setTarget(target).build();
+    try (Response res =
+        request("polaris/v1/{cat}/tags/{tag}/mappings", Map.of("cat", catalog, "tag", tagName))
+            .post(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
     }
   }
 

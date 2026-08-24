@@ -18,14 +18,19 @@
  */
 package org.apache.polaris.service.catalog.tag;
 
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -35,6 +40,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -44,9 +50,15 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.tag.TagEntity;
 import org.apache.polaris.core.tag.TagValidation;
 import org.apache.polaris.core.tag.TagVersionToken;
+import org.apache.polaris.core.tag.exceptions.NoSuchMappingException;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
+import org.apache.polaris.core.tag.exceptions.NoSuchTargetException;
+import org.apache.polaris.core.tag.exceptions.TagInUseException;
 import org.apache.polaris.core.tag.exceptions.TagVersionMismatchException;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TagIdentifier;
 import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
@@ -65,16 +77,25 @@ public class TagCatalog {
   private final CatalogEntity catalogEntity;
   private final long catalogId;
   private final PolarisMetaStoreManager metaStoreManager;
+  private final StorageAccessConfigProvider storageAccessConfigProvider;
+  private final FileIOFactory fileIOFactory;
+  private final RealmConfig realmConfig;
 
   public TagCatalog(
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
-      PolarisResolutionManifestCatalogView resolvedEntityView) {
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      StorageAccessConfigProvider storageAccessConfigProvider,
+      FileIOFactory fileIOFactory,
+      RealmConfig realmConfig) {
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.catalogId = catalogEntity.getId();
     this.metaStoreManager = metaStoreManager;
+    this.storageAccessConfigProvider = storageAccessConfigProvider;
+    this.fileIOFactory = fileIOFactory;
+    this.realmConfig = realmConfig;
   }
 
   public Tag createTag(
@@ -280,7 +301,7 @@ public class TagCatalog {
     return constructTag(updatedEntity);
   }
 
-  public boolean dropTag(String tagName) {
+  public boolean dropTag(String tagName, boolean detachAll) {
     var resolvedTagPath = getResolvedPathWrapper(tagName);
     var catalogPath = resolvedTagPath.getRawParentPath();
     var tagEntity = resolvedTagPath.getRawLeafEntity();
@@ -291,7 +312,7 @@ public class TagCatalog {
             PolarisEntity.toCoreList(catalogPath),
             tagEntity,
             Map.of(),
-            false);
+            detachAll);
 
     if (!result.isSuccess()) {
       switch (result.getReturnStatus()) {
@@ -300,6 +321,22 @@ public class TagCatalog {
         case ENTITY_NOT_FOUND:
         case CATALOG_PATH_CANNOT_BE_RESOLVED:
           throw new NoSuchTagException(String.format("Tag does not exist: %s", tagName));
+        case TAG_HAS_ASSIGNMENTS:
+          throw new TagInUseException(
+              "Tag %s is in use: assignments exist; retry with detach-all=true to remove them",
+              tagName);
+        case TAG_ASSIGNMENTS_NOT_SUPPORTED:
+          if (detachAll) {
+            // The contract reserves 501 for a detach-all=true request the implementation cannot
+            // honor as one atomic result; permissions were already checked and nothing changed.
+            throw new WebApplicationException(
+                String.format(
+                    "This implementation cannot guarantee the detach-all=true result; no visible"
+                        + " change was made: %s",
+                    result.getExtraInformation()),
+                Response.Status.NOT_IMPLEMENTED);
+          }
+          throw tagAssignmentsUnsupported("drop", tagName, result);
         default:
           throw new IllegalStateException(
               String.format(
@@ -308,6 +345,152 @@ public class TagCatalog {
       }
     }
     return true;
+  }
+
+  public void assignTag(String tagName, TagAttachmentTarget target, List<String> values) {
+    var resolvedTagPath = getResolvedPathWrapper(tagName);
+    var tag = TagEntity.of(resolvedTagPath.getRawLeafEntity());
+    var tagCatalogPath = PolarisEntity.toCoreList(resolvedTagPath.getRawParentPath());
+
+    if (values == null || values.isEmpty()) {
+      throw new BadRequestException("values must be present and non-empty");
+    }
+    if (values.size() > 1) {
+      throw new BadRequestException("multiple selected values are not supported");
+    }
+    String value = values.get(0);
+    if (value == null || value.isEmpty()) {
+      throw new BadRequestException("values must not contain a null or empty member");
+    }
+    TagValidation.validateValueLength(value, "A selected value");
+
+    // Resolve the target (path, subtype, column) before checking whether the definition allows
+    // its kind: a target that does not exist answers the target-level 404 even when its kind
+    // would have been rejected, and only an existing target of an excluded kind answers 400.
+    // target-types is create-only, so checking it after resolution introduces no race; the
+    // selected value is re-validated against the definition inside the persistence write.
+    var resolvedTarget = resolveAssignmentTarget(target);
+    int fieldId = resolveFieldId(target, resolvedTarget);
+    if (!tag.getTargetTypes().contains(target.getType().toString())) {
+      throw new BadRequestException(
+          "Target type %s is not allowed by tag %s", target.getType(), tag.getName());
+    }
+
+    var result =
+        metaStoreManager.assignTagToEntity(
+            callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(resolvedTarget.getRawParentPath()),
+            resolvedTarget.getRawLeafEntity(),
+            fieldId,
+            tagCatalogPath,
+            tag,
+            value);
+    if (!result.isSuccess()) {
+      switch (result.getReturnStatus()) {
+        case ENTITY_NOT_FOUND:
+          throw new NoSuchTagException(String.format("Tag no longer exists: %s", tagName));
+        case ENTITY_CANNOT_BE_RESOLVED:
+          throw new NoSuchTargetException("Target no longer exists for tag %s", tagName);
+        case TAG_ASSIGNMENTS_NOT_SUPPORTED:
+          throw tagAssignmentsUnsupported("assign", tagName, result);
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  "Failed to assign tag %s error status: %s with extraInfo: %s",
+                  tagName, result.getReturnStatus(), result.getExtraInformation()));
+      }
+    }
+  }
+
+  public void unassignTag(String tagName, TagAttachmentTarget target) {
+    var resolvedTagPath = getResolvedPathWrapper(tagName);
+    var tag = TagEntity.of(resolvedTagPath.getRawLeafEntity());
+    var tagCatalogPath = PolarisEntity.toCoreList(resolvedTagPath.getRawParentPath());
+
+    // unassign removes an existing relationship; it does not re-check target-types.
+    var resolvedTarget = resolveAssignmentTarget(target);
+    int fieldId = resolveFieldId(target, resolvedTarget);
+
+    var result =
+        metaStoreManager.unassignTagFromEntity(
+            callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(resolvedTarget.getRawParentPath()),
+            resolvedTarget.getRawLeafEntity(),
+            fieldId,
+            tagCatalogPath,
+            tag);
+    if (!result.isSuccess()) {
+      switch (result.getReturnStatus()) {
+        case TAG_ASSIGNMENT_NOT_FOUND:
+          throw new NoSuchMappingException(
+              "Tag assignment does not exist for tag %s on the given target", tagName);
+        case ENTITY_NOT_FOUND:
+          throw new NoSuchTagException(String.format("Tag no longer exists: %s", tagName));
+        case ENTITY_CANNOT_BE_RESOLVED:
+          throw new NoSuchTargetException("Target no longer exists for tag %s", tagName);
+        case TAG_ASSIGNMENTS_NOT_SUPPORTED:
+          throw tagAssignmentsUnsupported("unassign", tagName, result);
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  "Failed to unassign tag %s error status: %s with extraInfo: %s",
+                  tagName, result.getReturnStatus(), result.getExtraInformation()));
+      }
+    }
+  }
+
+  /**
+   * The capability reject shares one shape across drop/assign/unassign: the backend cannot perform
+   * tag-assignment operations, surfaced as a 400 with the manager's explanation.
+   */
+  private static BadRequestException tagAssignmentsUnsupported(
+      String action, String tagName, BaseResult result) {
+    return new BadRequestException(
+        "Cannot %s tag %s: %s", action, tagName, result.getExtraInformation());
+  }
+
+  private PolarisResolvedPathWrapper resolveAssignmentTarget(TagAttachmentTarget target) {
+    var resolvedTarget = TagCatalogUtils.getResolvedTargetWrapper(resolvedEntityView, target);
+    PolarisEntitySubType subType = resolvedTarget.getRawLeafEntity().getSubType();
+    if (target.getType() == TargetType.COLUMN) {
+      // v1 supports columns of Iceberg tables only: generic tables define no stable column id,
+      // and view column ids are not stable across replaces.
+      if (subType != PolarisEntitySubType.ICEBERG_TABLE) {
+        throw new BadRequestException(
+            "Column targets are supported only on Iceberg tables; %s is not", subType);
+      }
+      if (target.getColumn() == null
+          || target.getColumn().size() != 1
+          || target.getColumn().get(0) == null
+          || target.getColumn().get(0).isBlank()) {
+        throw new BadRequestException("column must contain exactly one top-level column name");
+      }
+    } else if (target.getType() == TargetType.TABLE_LIKE
+        && subType == PolarisEntitySubType.ICEBERG_VIEW) {
+      // v1 excludes Iceberg views as targets entirely.
+      throw new BadRequestException("Iceberg views are not supported as tag targets in v1");
+    } else if (target.getColumn() != null && !target.getColumn().isEmpty()) {
+      throw new BadRequestException("column is only valid for column targets");
+    }
+    return resolvedTarget;
+  }
+
+  private int resolveFieldId(
+      TagAttachmentTarget target, PolarisResolvedPathWrapper resolvedTarget) {
+    if (target.getType() != TargetType.COLUMN) {
+      return 0;
+    }
+    TableIdentifier tableIdentifier = TableIdentifier.of(target.getPath().toArray(new String[0]));
+    Schema schema =
+        TagCatalogUtils.loadCurrentSchema(
+            storageAccessConfigProvider,
+            fileIOFactory,
+            realmConfig,
+            catalogEntity,
+            resolvedEntityView,
+            tableIdentifier,
+            resolvedTarget);
+    return TagCatalogUtils.resolveTopLevelFieldId(schema, target.getColumn().get(0));
   }
 
   private PolarisResolvedPathWrapper getResolvedPathWrapper(String tagName) {

@@ -20,8 +20,10 @@ package org.apache.polaris.core.auth;
 
 import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootPrincipalName;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ATTACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ATTACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_LIST;
@@ -43,8 +45,10 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_USAGE
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_ATTACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_ATTACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DETACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DETACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST;
@@ -89,8 +93,10 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SNAPSHOT
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SORT_ORDER;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ASSIGN_UUID;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_TAG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
@@ -113,7 +119,9 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_STATISTI
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_ATTACH;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_DETACH;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TAG_LIST;
@@ -710,6 +718,28 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TAG_FULL_METADATA,
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TAG_ATTACH, List.of(TAG_ATTACH, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TAG_DETACH, List.of(TAG_DETACH, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        CATALOG_ATTACH_TAG,
+        List.of(CATALOG_ATTACH_TAG, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        NAMESPACE_ATTACH_TAG,
+        List.of(NAMESPACE_ATTACH_TAG, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_ATTACH_TAG,
+        List.of(TABLE_ATTACH_TAG, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        CATALOG_DETACH_TAG,
+        List.of(CATALOG_DETACH_TAG, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        NAMESPACE_DETACH_TAG,
+        List.of(NAMESPACE_DETACH_TAG, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_DETACH_TAG,
+        List.of(TABLE_DETACH_TAG, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
 
     // Policy privileges
     SUPER_PRIVILEGES.putAll(
@@ -842,6 +872,15 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             List.of(
                 getResolvedSecurable(
                     resolutionManifest, policyAttachmentIntent.attachedTo(), prependRootContainer));
+      } else if (intent instanceof TagAttachmentAuthorizationIntent tagAttachmentIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, tagAttachmentIntent.tag(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, tagAttachmentIntent.attachedTo(), prependRootContainer));
       } else if (intent instanceof RoleAssignmentAuthorizationIntent roleAssignmentIntent) {
         resolvedTargets =
             List.of(

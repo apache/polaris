@@ -41,6 +41,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.TransactionalPolicyMappingPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.tag.TransactionalTagAssignmentPersistence;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -53,7 +54,8 @@ public interface TransactionalPersistence
     extends BasePersistence,
         IntegrationPersistence,
         MetricsPersistence,
-        TransactionalPolicyMappingPersistence {
+        TransactionalPolicyMappingPersistence,
+        TransactionalTagAssignmentPersistence {
 
   /**
    * Run the specified transaction code (a Supplier lambda type) in a database read/write

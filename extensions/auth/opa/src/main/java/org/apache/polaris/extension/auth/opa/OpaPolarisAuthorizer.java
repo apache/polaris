@@ -54,6 +54,7 @@ import org.apache.polaris.core.auth.RenameAuthorizationIntent;
 import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
 import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.auth.TagAttachmentAuthorizationIntent;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -159,6 +160,10 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
         case PolicyAttachmentAuthorizationIntent policyAttachmentIntent -> {
           targets = toResourceEntitiesFromSecurable(policyAttachmentIntent.policy());
           secondaries = toResourceEntitiesFromSecurable(policyAttachmentIntent.attachedTo());
+        }
+        case TagAttachmentAuthorizationIntent tagAttachmentIntent -> {
+          targets = toResourceEntitiesFromSecurable(tagAttachmentIntent.tag());
+          secondaries = toResourceEntitiesFromSecurable(tagAttachmentIntent.attachedTo());
         }
         case RoleAssignmentAuthorizationIntent roleAssignmentIntent -> {
           targets = toResourceEntitiesFromSecurable(roleAssignmentIntent.role());

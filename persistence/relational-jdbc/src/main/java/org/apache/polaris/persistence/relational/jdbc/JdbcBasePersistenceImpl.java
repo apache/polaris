@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -68,6 +69,9 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagEntity;
+import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityVersionConverter;
@@ -76,6 +80,7 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelTagAssignmentRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -436,6 +441,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                     ModelPolicyMappingRecord.ALL_COLUMNS,
                     ModelPolicyMappingRecord.TABLE_NAME,
                     params));
+            if (tagAssignmentSchemaSupported()) {
+              // Older schemas have no tag_assignment_record table; realm deletion must keep
+              // working there, so the tag delete is skipped exactly like the read paths.
+              datasourceOperations.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelTagAssignmentRecord.ALL_COLUMNS,
+                      ModelTagAssignmentRecord.TABLE_NAME,
+                      params));
+            }
             return true;
           });
     } catch (SQLException e) {
@@ -1351,6 +1366,412 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     return fetchPolicyMappingRecords(
         QueryGenerator.generateSelectQuery(
             ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Tag assignment persistence.
+  //
+  // Schema-version gating: the tag_assignment_record table exists from schema v7. Assignment
+  // WRITES on an older schema are rejected with an error naming the v7 requirement (an assignment
+  // accepted without a table to store it would be silent data loss); the unassign-path lookup is
+  // part of the write path and takes the same gate. READS return empty and the entity-drop
+  // cleanup is a no-op on an older schema, because no assignment can exist there and entity
+  // drops must keep working.
+  // ---------------------------------------------------------------------------------------------
+
+  private static final int TAG_ASSIGNMENT_MIN_SCHEMA_VERSION = 7;
+
+  private boolean tagAssignmentSchemaSupported() {
+    return schemaVersion >= TAG_ASSIGNMENT_MIN_SCHEMA_VERSION;
+  }
+
+  private void requireTagAssignmentSchemaVersion() {
+    if (!tagAssignmentSchemaSupported()) {
+      throw new UnsupportedOperationException(
+          String.format(
+              "Tag assignments require JDBC schema version >= %d; this database is at version %d."
+                  + " See the schema upgrade notes for the one-time upgrade SQL.",
+              TAG_ASSIGNMENT_MIN_SCHEMA_VERSION, schemaVersion));
+    }
+  }
+
+  /**
+   * Builds the identity of a tag assignment row: the target, field and tag ids, scoped to the
+   * realm. These are exactly the table's primary key columns; the mutable {@code tag_value} payload
+   * is deliberately excluded so a concurrent value replacement cannot turn a delete or update into
+   * a no-op.
+   */
+  private Map<String, Object> tagAssignmentIdentity(@NonNull TagAssignmentRecord record) {
+    return tagAssignmentIdentity(
+        record.getTargetCatalogId(),
+        record.getTargetId(),
+        record.getFieldId(),
+        record.getTagCatalogId(),
+        record.getTagId());
+  }
+
+  private Map<String, Object> tagAssignmentIdentity(
+      long targetCatalogId, long targetId, int fieldId, long tagCatalogId, long tagId) {
+    return Map.of(
+        "target_catalog_id",
+        targetCatalogId,
+        "target_id",
+        targetId,
+        "field_id",
+        fieldId,
+        "tag_catalog_id",
+        tagCatalogId,
+        "tag_id",
+        tagId,
+        "realm_id",
+        realmId);
+  }
+
+  @Override
+  public void writeToTagAssignmentRecords(
+      @NonNull PolarisCallContext callCtx, @NonNull TagAssignmentRecord record) {
+    requireTagAssignmentSchemaVersion();
+    // This write is create-or-replace, so a caller that loses a race on the same identity must
+    // still land on "replaced", never on an error. Two first-time writers can both observe no row
+    // and both insert; the loser's failure is reported as a unique violation (23505) under READ
+    // COMMITTED and as a serialization failure (40001) under SERIALIZABLE. Either way the write
+    // re-runs itself once, in full: the definition is re-read and the value re-validated, and the
+    // existing-row check now finds the winner's row and replaces its value. This re-run is local
+    // to this write and independent of the datasource's retry budget, which keeps governing
+    // unrelated transient failures; a second conflict surfaces unchanged.
+    for (int attempt = 1; ; attempt++) {
+      try {
+        datasourceOperations.runWithinTransaction(
+            connection -> {
+              // Re-read the tag definition inside the transaction: the selected value must satisfy
+              // the definition's allowed values as of this write, so a concurrent allowed-values
+              // update or definition drop behaves as if it happened before or after this
+              // assignment, never interleaved.
+              Map<String, Object> tagEntityParams =
+                  Map.of(
+                      "catalog_id",
+                      record.getTagCatalogId(),
+                      "id",
+                      record.getTagId(),
+                      "type_code",
+                      PolarisEntityType.TAG.getCode(),
+                      "realm_id",
+                      realmId);
+              // No-retry: a failure here must reach the transaction boundary rather than
+              // re-issuing this SELECT on a connection whose transaction the failure may have
+              // already aborted (see executeSelectNoRetry).
+              List<PolarisBaseEntity> tagEntities =
+                  datasourceOperations.executeSelectNoRetry(
+                      connection,
+                      QueryGenerator.generateSelectQuery(
+                          ModelEntity.getAllColumnNames(schemaVersion),
+                          ModelEntity.TABLE_NAME,
+                          tagEntityParams),
+                      new ModelEntity(schemaVersion));
+              if (tagEntities.isEmpty()) {
+                throw new NoSuchTagException(
+                    String.format("Tag definition %d no longer exists", record.getTagId()));
+              }
+              TagEntity tagEntity = TagEntity.of(tagEntities.getFirst());
+              if (!tagEntity.getAllowedValues().contains(record.getValue())) {
+                throw new BadRequestException(
+                    "Value '%s' is not in the current allowed values of tag %s",
+                    record.getValue(), tagEntity.getName());
+              }
+
+              // Re-setting entity_version to itself, conditioned on the version just read above,
+              // takes this transaction's write lock on the definition row without changing it.
+              // From here, this write and any concurrent update of the tag's allowed values
+              // conflict with each other through that row's version: either this assignment
+              // reaches this point first and commits, and is grandfathered against the update
+              // that follows it, or the update commits first, this UPDATE matches zero rows, and
+              // the write below re-runs its whole transaction, re-reading the new allowed values
+              // above and re-validating the selected value against them.
+              int definitionStillCurrent =
+                  datasourceOperations.execute(
+                      connection,
+                      QueryGenerator.generateVersionCheckUpdateQuery(
+                          ModelEntity.TABLE_NAME,
+                          "entity_version",
+                          ModelEntity.getAllColumnNames(schemaVersion),
+                          Map.of(
+                              "id",
+                              record.getTagId(),
+                              "catalog_id",
+                              record.getTagCatalogId(),
+                              "entity_version",
+                              tagEntities.getFirst().getEntityVersion(),
+                              "realm_id",
+                              realmId)));
+              if (definitionStillCurrent == 0) {
+                throw new DefinitionVersionConflictException(
+                    String.format("Tag definition %d concurrently modified", record.getTagId()));
+              }
+
+              ModelTagAssignmentRecord model =
+                  ModelTagAssignmentRecord.fromTagAssignmentRecord(record);
+              List<Object> values =
+                  model.toMap(datasourceOperations.getDatabaseType()).values().stream().toList();
+              List<TagAssignmentRecord> existing =
+                  fetchTagAssignmentRecords(
+                      QueryGenerator.generateSelectQuery(
+                          ModelTagAssignmentRecord.ALL_COLUMNS,
+                          ModelTagAssignmentRecord.TABLE_NAME,
+                          tagAssignmentIdentity(record)),
+                      connection);
+              if (existing.isEmpty()) {
+                datasourceOperations.execute(
+                    connection,
+                    QueryGenerator.generateInsertQuery(
+                        ModelTagAssignmentRecord.ALL_COLUMNS,
+                        ModelTagAssignmentRecord.TABLE_NAME,
+                        values,
+                        realmId));
+              } else {
+                // Assignment identity already exists: replace the stored value.
+                datasourceOperations.execute(
+                    connection,
+                    QueryGenerator.generateUpdateQuery(
+                        ModelTagAssignmentRecord.ALL_COLUMNS,
+                        ModelTagAssignmentRecord.TABLE_NAME,
+                        values,
+                        tagAssignmentIdentity(record)));
+              }
+              return true;
+            });
+        return;
+      } catch (SQLException e) {
+        if (attempt < TAG_ASSIGNMENT_WRITE_ATTEMPTS && isWriteConflict(e)) {
+          continue;
+        }
+        throw new RuntimeException(
+            String.format("Failed to write to tag assignment records due to %s", e.getMessage()),
+            e);
+      }
+    }
+  }
+
+  private static final int TAG_ASSIGNMENT_WRITE_ATTEMPTS = 2;
+
+  /**
+   * A same-identity conflict (unique violation under READ COMMITTED, or a serialization failure),
+   * or the definition row moving out from under this write's version check. {@link
+   * DatasourceOperations#withRetries} does not retry {@link DefinitionVersionConflictException}
+   * itself (it carries no SQL state, so {@link DatasourceOperations} never mistakes it for a
+   * serialization failure it should retry on a fresh connection); instead it always reaches this
+   * check either directly or as the cause of the wrapper {@link SQLException} that {@code
+   * withRetries} throws once it decides a failure is not retryable, so both shapes are checked.
+   */
+  private boolean isWriteConflict(SQLException e) {
+    return datasourceOperations.isUniquenessConstraintViolation(e)
+        || "40001".equals(e.getSQLState())
+        || e instanceof DefinitionVersionConflictException
+        || e.getCause() instanceof DefinitionVersionConflictException;
+  }
+
+  /**
+   * Signals that the tag definition's version, read and checked earlier in the same tag assignment
+   * write transaction, no longer matches: a concurrent update of the definition's allowed values
+   * committed in between. Package-private so {@link JdbcBasePersistenceImplTest} can construct and
+   * inject it directly in tests.
+   */
+  static final class DefinitionVersionConflictException extends SQLException {
+    DefinitionVersionConflictException(String message) {
+      super(message);
+    }
+  }
+
+  @Override
+  public boolean deleteFromTagAssignmentRecords(
+      @NonNull PolarisCallContext callCtx, @NonNull TagAssignmentRecord record) {
+    requireTagAssignmentSchemaVersion();
+    try {
+      int rowsDeleted =
+          datasourceOperations.executeUpdate(
+              QueryGenerator.generateDeleteQuery(
+                  ModelTagAssignmentRecord.ALL_COLUMNS,
+                  ModelTagAssignmentRecord.TABLE_NAME,
+                  tagAssignmentIdentity(record)));
+      return rowsDeleted > 0;
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to delete tag assignment record due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void deleteAllEntityTagAssignmentRecords(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      @NonNull List<TagAssignmentRecord> assignmentsOnTag,
+      @NonNull List<TagAssignmentRecord> assignmentsOnTarget) {
+    if (!tagAssignmentSchemaSupported()) {
+      // No assignment can exist below v7 and entity drops must keep working: nothing to clean.
+      return;
+    }
+    try {
+      Map<String, Object> queryParams = new LinkedHashMap<>();
+      if (entity.getType() == PolarisEntityType.TAG) {
+        queryParams.put("tag_catalog_id", entity.getCatalogId());
+        queryParams.put("tag_id", entity.getId());
+      } else {
+        queryParams.put("target_catalog_id", TagAssignmentRecord.containingCatalogId(entity));
+        queryParams.put("target_id", entity.getId());
+      }
+      queryParams.put("realm_id", realmId);
+      datasourceOperations.executeUpdate(
+          QueryGenerator.generateDeleteQuery(
+              ModelTagAssignmentRecord.ALL_COLUMNS,
+              ModelTagAssignmentRecord.TABLE_NAME,
+              queryParams));
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to delete tag assignment records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Nullable
+  @Override
+  public TagAssignmentRecord lookupTagAssignmentRecord(
+      @NonNull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int fieldId,
+      long tagCatalogId,
+      long tagId) {
+    // This lookup only serves the unassign write path, so it takes the write gate: answering
+    // "no such assignment" on a pre-v7 schema would turn every unassign into a 404 instead of
+    // the rejection naming the v7 requirement.
+    requireTagAssignmentSchemaVersion();
+    List<TagAssignmentRecord> results =
+        fetchTagAssignmentRecords(
+            QueryGenerator.generateSelectQuery(
+                ModelTagAssignmentRecord.ALL_COLUMNS,
+                ModelTagAssignmentRecord.TABLE_NAME,
+                tagAssignmentIdentity(targetCatalogId, targetId, fieldId, tagCatalogId, tagId)));
+    Preconditions.checkState(results.size() <= 1, "More than one tag assignment record found");
+    return results.size() == 1 ? results.getFirst() : null;
+  }
+
+  @NonNull
+  @Override
+  public List<TagAssignmentRecord> loadAllTagAssignmentsOnTargetEntity(
+      @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+    if (!tagAssignmentSchemaSupported()) {
+      return Collections.emptyList();
+    }
+    Map<String, Object> params =
+        Map.of("target_catalog_id", targetCatalogId, "target_id", targetId, "realm_id", realmId);
+    return fetchTagAssignmentRecords(
+        QueryGenerator.generateSelectQuery(
+            ModelTagAssignmentRecord.ALL_COLUMNS, ModelTagAssignmentRecord.TABLE_NAME, params));
+  }
+
+  @NonNull
+  @Override
+  public List<TagAssignmentRecord> loadAllTargetsOnTag(
+      @NonNull PolarisCallContext callCtx,
+      long tagCatalogId,
+      long tagId,
+      @Nullable String valueFilter,
+      @NonNull PageToken pageToken) {
+    if (!tagAssignmentSchemaSupported()) {
+      return Collections.emptyList();
+    }
+    Map<String, Object> params = new LinkedHashMap<>();
+    params.put("tag_catalog_id", tagCatalogId);
+    params.put("tag_id", tagId);
+    if (valueFilter != null) {
+      params.put("tag_value", valueFilter);
+    }
+    params.put("realm_id", realmId);
+    OptionalInt pageSize = pageToken.pageSize();
+    QueryGenerator.PreparedQuery query;
+    if (pageToken.paginationRequested()
+        && pageSize.isPresent()
+        && pageSize.getAsInt() < Integer.MAX_VALUE) {
+      query =
+          QueryGenerator.generateSelectQuery(
+              ModelTagAssignmentRecord.ALL_COLUMNS,
+              ModelTagAssignmentRecord.TABLE_NAME,
+              params,
+              pageSize.getAsInt());
+    } else {
+      query =
+          QueryGenerator.generateSelectQuery(
+              ModelTagAssignmentRecord.ALL_COLUMNS, ModelTagAssignmentRecord.TABLE_NAME, params);
+    }
+    return fetchTagAssignmentRecords(query);
+  }
+
+  @Override
+  public void deleteTagAndAllAssignmentRecords(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity tagEntity) {
+    requireTagAssignmentSchemaVersion();
+    try {
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            // Both deletes commit together or neither does: callers must observe every
+            // assignment and the definition removed, or no change.
+            datasourceOperations.execute(
+                connection,
+                QueryGenerator.generateDeleteQuery(
+                    ModelEntity.getAllColumnNames(schemaVersion),
+                    ModelEntity.TABLE_NAME,
+                    Map.of(
+                        "id",
+                        tagEntity.getId(),
+                        "catalog_id",
+                        tagEntity.getCatalogId(),
+                        "realm_id",
+                        realmId)));
+            datasourceOperations.execute(
+                connection,
+                QueryGenerator.generateDeleteQuery(
+                    ModelTagAssignmentRecord.ALL_COLUMNS,
+                    ModelTagAssignmentRecord.TABLE_NAME,
+                    Map.of(
+                        "tag_catalog_id",
+                        tagEntity.getCatalogId(),
+                        "tag_id",
+                        tagEntity.getId(),
+                        "realm_id",
+                        realmId)));
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to atomically delete tag and assignment records due to %s", e.getMessage()),
+          e);
+    }
+  }
+
+  private List<TagAssignmentRecord> fetchTagAssignmentRecords(QueryGenerator.PreparedQuery query) {
+    try {
+      var results = datasourceOperations.executeSelect(query, new ModelTagAssignmentRecord());
+      return results == null ? Collections.emptyList() : results;
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to retrieve tag assignment records %s", e.getMessage()), e);
+    }
+  }
+
+  /**
+   * Connection-aware version for use inside runWithinTransaction. Does not retry on this
+   * connection; see {@link DatasourceOperations#executeSelectNoRetry}.
+   */
+  private List<TagAssignmentRecord> fetchTagAssignmentRecords(
+      QueryGenerator.PreparedQuery query, @NonNull Connection connection) {
+    try {
+      var results =
+          datasourceOperations.executeSelectNoRetry(
+              connection, query, new ModelTagAssignmentRecord());
+      return results == null ? Collections.emptyList() : results;
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to retrieve tag assignment records %s", e.getMessage()), e);
+    }
   }
 
   private List<PolarisPolicyMappingRecord> fetchPolicyMappingRecords(

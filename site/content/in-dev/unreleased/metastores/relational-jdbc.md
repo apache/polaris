@@ -68,7 +68,7 @@ quarkus.rds.credentials-provider.aws.port=6160
 
 This is the basic configuration. For more details, please refer to the [Quarkus plugin documentation](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-rds.html#_configuration_reference).
 
-The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgreSQL and H2 databases. At this time, official documentation is provided exclusively for usage with PostgreSQL.
+The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports PostgreSQL, CockroachDB and H2 databases. At this time, official documentation is provided exclusively for usage with PostgreSQL.
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource).
 
@@ -107,6 +107,41 @@ For more details on the bootstrap command and other administrative operations, s
 Polaris does not run automated schema migrations. Bootstrapping applies a full `schema-vN.sql`
 script and records the schema version in the `polaris_schema.version` table; upgrading an existing
 database to a newer schema version is a manual, operator-driven step.
+
+### Upgrading to schema v7
+
+Schema v7 adds the `tag_assignment_record` table, which stores tag assignments. Until you upgrade,
+the server keeps working: tag definitions are unaffected, and tag assignment writes are rejected
+with an error naming the v7 requirement. Assignment writes and definition updates on the same tag
+serialize on the definition row, so the outcome is always one of the two orders the design text
+allows. To upgrade an existing database, run the following one-time SQL (works on PostgreSQL,
+CockroachDB, and H2), then restart Polaris. A database below
+schema v5 must first apply the earlier schema versions' upgrade steps in order: schema v5 (see
+"Upgrading to schema v5" below), then schema v6 (see the CHANGELOG entry for schema v6), then this
+one. New realms bootstrapped into an existing database stay on that database's current schema
+version, so this step is required before tag assignments can be used anywhere on it:
+
+```sql
+CREATE TABLE IF NOT EXISTS polaris_schema.tag_assignment_record (
+    realm_id TEXT NOT NULL,
+    target_catalog_id BIGINT NOT NULL,
+    target_id BIGINT NOT NULL,
+    field_id INTEGER NOT NULL DEFAULT 0,
+    tag_catalog_id BIGINT NOT NULL,
+    tag_id BIGINT NOT NULL,
+    tag_value TEXT NOT NULL,
+    PRIMARY KEY (realm_id, target_catalog_id, target_id, field_id, tag_catalog_id, tag_id)
+);
+CREATE INDEX IF NOT EXISTS idx_tag_assignment_record_by_tag
+    ON polaris_schema.tag_assignment_record (realm_id, tag_catalog_id, tag_id);
+CREATE INDEX IF NOT EXISTS idx_tag_assignment_record_by_tag_value
+    ON polaris_schema.tag_assignment_record (realm_id, tag_catalog_id, tag_id, tag_value);
+UPDATE polaris_schema.version SET version_value = 7 WHERE version_key = 'version';
+```
+
+On CockroachDB, declare `field_id INT4` instead of `INTEGER`, matching the shipped
+`cockroachdb/schema-v7.sql` (the generic INTEGER type maps incorrectly in the CockroachDB JDBC
+driver).
 
 ### Upgrading to schema v5
 

@@ -59,6 +59,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.RenameAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.auth.TagAttachmentAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -988,6 +989,126 @@ public class OpaPolarisAuthorizerTest {
             """);
     assertThat(root.path("input").path("resource").path("secondaries").get(0))
         .isEqualTo(expectedDestination);
+  }
+
+  @Test
+  void authorizeTagAttachmentIncludesTagTargetAndAttachedToSecondary() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+    HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
+    @SuppressWarnings("resource")
+    ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
+    mockResponse.setEntity(mockEntity);
+
+    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
+
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role-1")),
+            List.of(
+                new TagAttachmentAuthorizationIntent(
+                    PolarisAuthorizableOperation.ASSIGN_TAG_TO_TABLE,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
+                        new PathSegment(PolarisEntityType.TAG, "pii")),
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns"),
+                        new PathSegment(PolarisEntityType.TABLE_LIKE, "tbl")))));
+
+    OpaPolarisAuthorizer authorizer =
+        new OpaPolarisAuthorizer(
+            URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
+            mock(CloseableHttpClient.class),
+            JsonMapper.builder().build(),
+            null,
+            null,
+            "test-realm") {
+          @Override
+          <T> T httpClientExecute(
+              ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
+              throws HttpException, IOException {
+            capturedRequestBody[0] =
+                new String(request.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+            return responseHandler.handleResponse(mockResponse);
+          }
+        };
+
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode root = mapper.readTree(capturedRequestBody[0]);
+
+    assertThat(decision.isAllowed()).isTrue();
+
+    JsonNode expectedTag =
+        mapper.readTree(
+            """
+            {
+              "type": "TAG",
+              "name": "pii",
+              "parents": [
+                {"type": "CATALOG", "name": "catalog1", "parents": []}
+              ]
+            }
+            """);
+    assertThat(root.path("input").path("resource").path("targets").get(0)).isEqualTo(expectedTag);
+
+    JsonNode expectedAttachedTo =
+        mapper.readTree(
+            """
+            {
+              "type": "TABLE_LIKE",
+              "name": "tbl",
+              "parents": [
+                {"type": "CATALOG", "name": "catalog1", "parents": []},
+                {"type": "NAMESPACE", "name": "ns", "parents": []}
+              ]
+            }
+            """);
+    assertThat(root.path("input").path("resource").path("secondaries").get(0))
+        .isEqualTo(expectedAttachedTo);
+  }
+
+  @Test
+  void authorizeTagAttachmentDeniedByPolicy() throws Exception {
+    HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":false}}");
+    @SuppressWarnings("resource")
+    ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
+    mockResponse.setEntity(mockEntity);
+
+    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
+
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role-1")),
+            List.of(
+                new TagAttachmentAuthorizationIntent(
+                    PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_NAMESPACE,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
+                        new PathSegment(PolarisEntityType.TAG, "pii")),
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")))));
+
+    OpaPolarisAuthorizer authorizer =
+        new OpaPolarisAuthorizer(
+            URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
+            mock(CloseableHttpClient.class),
+            JsonMapper.builder().build(),
+            null,
+            null,
+            "test-realm") {
+          @Override
+          <T> T httpClientExecute(
+              ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
+              throws HttpException, IOException {
+            return responseHandler.handleResponse(mockResponse);
+          }
+        };
+
+    assertThat(authorizer.authorize(authzState, request).isAllowed()).isFalse();
   }
 
   @Test

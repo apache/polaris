@@ -262,6 +262,22 @@ public enum PolarisPrivilege {
   TAG_WRITE(106, PolarisEntityType.TAG),
   TAG_LIST(107, PolarisEntityType.CATALOG),
   TAG_FULL_METADATA(108, PolarisEntityType.TAG),
+  TAG_ATTACH(109, PolarisEntityType.TAG),
+  TAG_DETACH(110, PolarisEntityType.TAG),
+  CATALOG_ATTACH_TAG(111, PolarisEntityType.CATALOG),
+  NAMESPACE_ATTACH_TAG(112, PolarisEntityType.NAMESPACE),
+  TABLE_ATTACH_TAG(
+      113,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
+  CATALOG_DETACH_TAG(114, PolarisEntityType.CATALOG),
+  NAMESPACE_DETACH_TAG(115, PolarisEntityType.NAMESPACE),
+  TABLE_DETACH_TAG(
+      116,
+      PolarisEntityType.TABLE_LIKE,
+      List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+      PolarisEntityType.CATALOG_ROLE),
   ;
 
   /**

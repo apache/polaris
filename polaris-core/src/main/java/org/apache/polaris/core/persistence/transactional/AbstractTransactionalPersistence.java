@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -44,6 +45,9 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
+import org.apache.polaris.core.tag.TagEntity;
+import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -786,5 +790,114 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
         () ->
             this.loadAllTargetsOnPolicyInCurrentTxn(
                 callCtx, policyCatalogId, policyId, policyTypeCode));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void writeToTagAssignmentRecords(
+      @NonNull PolarisCallContext callCtx, @NonNull TagAssignmentRecord record) {
+    this.runActionInTransaction(
+        callCtx,
+        () -> {
+          // Re-read the tag definition inside the transaction: the selected value must satisfy
+          // the definition's allowed values as of this write.
+          PolarisBaseEntity tagEntity =
+              this.lookupEntityInCurrentTxn(
+                  callCtx,
+                  record.getTagCatalogId(),
+                  record.getTagId(),
+                  PolarisEntityType.TAG.getCode());
+          if (tagEntity == null) {
+            throw new NoSuchTagException(
+                String.format("Tag definition %d no longer exists", record.getTagId()));
+          }
+          if (!TagEntity.of(tagEntity).getAllowedValues().contains(record.getValue())) {
+            throw new BadRequestException(
+                "Value '%s' is not in the current allowed values of tag %s",
+                record.getValue(), tagEntity.getName());
+          }
+          this.writeToTagAssignmentRecordsInCurrentTxn(callCtx, record);
+        });
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean deleteFromTagAssignmentRecords(
+      @NonNull PolarisCallContext callCtx, @NonNull TagAssignmentRecord record) {
+    return this.runInTransaction(
+        callCtx, () -> this.deleteFromTagAssignmentRecordsInCurrentTxn(callCtx, record));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteAllEntityTagAssignmentRecords(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      @NonNull List<TagAssignmentRecord> assignmentsOnTag,
+      @NonNull List<TagAssignmentRecord> assignmentsOnTarget) {
+    this.runActionInTransaction(
+        callCtx,
+        () ->
+            this.deleteAllEntityTagAssignmentRecordsInCurrentTxn(
+                callCtx, entity, assignmentsOnTag, assignmentsOnTarget));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @Nullable
+  public TagAssignmentRecord lookupTagAssignmentRecord(
+      @NonNull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int fieldId,
+      long tagCatalogId,
+      long tagId) {
+    return this.runInReadTransaction(
+        callCtx,
+        () ->
+            this.lookupTagAssignmentRecordInCurrentTxn(
+                callCtx, targetCatalogId, targetId, fieldId, tagCatalogId, tagId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @NonNull
+  public List<TagAssignmentRecord> loadAllTagAssignmentsOnTargetEntity(
+      @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+    return this.runInReadTransaction(
+        callCtx,
+        () ->
+            this.loadAllTagAssignmentsOnTargetEntityInCurrentTxn(
+                callCtx, targetCatalogId, targetId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @NonNull
+  public List<TagAssignmentRecord> loadAllTargetsOnTag(
+      @NonNull PolarisCallContext callCtx,
+      long tagCatalogId,
+      long tagId,
+      @Nullable String valueFilter,
+      @NonNull PageToken pageToken) {
+    return this.runInReadTransaction(
+        callCtx,
+        () ->
+            this.loadAllTargetsOnTagInCurrentTxn(
+                callCtx, tagCatalogId, tagId, valueFilter, pageToken));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteTagAndAllAssignmentRecords(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity tagEntity) {
+    // The whole cleanup-then-delete runs in one transaction: callers observe every assignment
+    // and the definition removed, or no change.
+    this.runActionInTransaction(
+        callCtx,
+        () -> {
+          this.deleteAllTagAssignmentsOnTagInCurrentTxn(callCtx, tagEntity);
+          this.deleteEntityInCurrentTxn(callCtx, tagEntity);
+        });
   }
 }

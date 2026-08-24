@@ -137,7 +137,15 @@ public class PolarisPrivilegeTest {
         Arguments.of(106, PolarisPrivilege.TAG_WRITE),
         Arguments.of(107, PolarisPrivilege.TAG_LIST),
         Arguments.of(108, PolarisPrivilege.TAG_FULL_METADATA),
-        Arguments.of(109, null));
+        Arguments.of(109, PolarisPrivilege.TAG_ATTACH),
+        Arguments.of(110, PolarisPrivilege.TAG_DETACH),
+        Arguments.of(111, PolarisPrivilege.CATALOG_ATTACH_TAG),
+        Arguments.of(112, PolarisPrivilege.NAMESPACE_ATTACH_TAG),
+        Arguments.of(113, PolarisPrivilege.TABLE_ATTACH_TAG),
+        Arguments.of(114, PolarisPrivilege.CATALOG_DETACH_TAG),
+        Arguments.of(115, PolarisPrivilege.NAMESPACE_DETACH_TAG),
+        Arguments.of(116, PolarisPrivilege.TABLE_DETACH_TAG),
+        Arguments.of(117, null));
   }
 
   @ParameterizedTest

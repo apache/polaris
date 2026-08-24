@@ -16,20 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.core.tag.exceptions;
 
-import org.jspecify.annotations.NonNull;
+import com.google.errorprone.annotations.FormatMethod;
+import jakarta.ws.rs.core.Response;
+import org.apache.polaris.core.exceptions.PolarisException;
 
-/** Authorization intent describing an operation and its target resource shape. */
-public sealed interface AuthorizationIntent
-    permits TargetlessAuthorizationIntent,
-        SingleTargetAuthorizationIntent,
-        RenameAuthorizationIntent,
-        PolicyAttachmentAuthorizationIntent,
-        RoleAssignmentAuthorizationIntent,
-        PrivilegeGrantAuthorizationIntent,
-        RootPrivilegeGrantAuthorizationIntent,
-        TagAttachmentAuthorizationIntent {
+/** Raised when the requested tag assignment does not exist on the target. */
+public class NoSuchMappingException extends PolarisException {
 
-  @NonNull PolarisAuthorizableOperation getOperation();
+  @FormatMethod
+  public NoSuchMappingException(String message, Object... args) {
+    super(String.format(message, args));
+  }
+
+  @Override
+  public int httpStatusCode() {
+    return Response.Status.NOT_FOUND.getStatusCode();
+  }
 }

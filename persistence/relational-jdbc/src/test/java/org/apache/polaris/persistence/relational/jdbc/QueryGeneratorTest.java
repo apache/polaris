@@ -217,6 +217,26 @@ public class QueryGeneratorTest {
   }
 
   @Test
+  void testGenerateVersionCheckUpdateQuery() {
+    Map<String, Object> whereClause = new LinkedHashMap<>();
+    whereClause.put("id", 123L);
+    whereClause.put("catalog_id", 5L);
+    whereClause.put("entity_version", 3);
+    whereClause.put("realm_id", REALM_ID);
+    String expectedQuery =
+        "UPDATE POLARIS_SCHEMA.ENTITIES SET entity_version = entity_version WHERE id = ? AND"
+            + " catalog_id = ? AND entity_version = ? AND realm_id = ?";
+    QueryGenerator.PreparedQuery query =
+        QueryGenerator.generateVersionCheckUpdateQuery(
+            ModelEntity.TABLE_NAME,
+            "entity_version",
+            ModelEntity.getAllColumnNames(2),
+            whereClause);
+    Assertions.assertThat(query.sql()).isEqualTo(expectedQuery);
+    Assertions.assertThat(query.parameters()).isEqualTo(List.of(123L, 5L, 3, REALM_ID));
+  }
+
+  @Test
   void testGenerateDeleteQuery_withMapWhereClause() {
     Map<String, Object> whereClause = new HashMap<>();
     whereClause.put("name", "oldName");

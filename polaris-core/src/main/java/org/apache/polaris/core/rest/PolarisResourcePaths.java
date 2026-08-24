@@ -51,6 +51,7 @@ public class PolarisResourcePaths {
   // Tag endpoints
   public static final String V1_TAGS = "/polaris/v1/{prefix}/tags";
   public static final String V1_TAG = "/polaris/v1/{prefix}/tags/{tag-name}";
+  public static final String V1_TAG_MAPPINGS = "/polaris/v1/{prefix}/tags/{tag-name}/mappings";
 
   // Semantic Model endpoints
   public static final String V1_SEMANTIC_MODELS =
