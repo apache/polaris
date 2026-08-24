@@ -146,7 +146,6 @@ public class DefaultAuthenticator implements Authenticator {
     } catch (Exception e) {
       throw metaStoreUnavailable(
           e,
-          "Unable to fetch principal entity",
           "Unable to resolve principal entity from credentials, principalName={} principalId={}",
           credentials.getPrincipalName(),
           credentials.getPrincipalId());
@@ -264,7 +263,6 @@ public class DefaultAuthenticator implements Authenticator {
     } catch (Exception e) {
       throw metaStoreUnavailable(
           e,
-          "Unable to fetch principal grants",
           "Unable to load grants, principalName={} principalId={}",
           principal.getName(),
           principal.getId());
@@ -309,7 +307,6 @@ public class DefaultAuthenticator implements Authenticator {
     } catch (Exception e) {
       throw metaStoreUnavailable(
           e,
-          "Unable to fetch securable entity",
           "Unable to load securable entity for grant, principalName={} principalId={} "
               + "securableCatalogId={} securableId={}",
           principal.getName(),
@@ -323,19 +320,23 @@ public class DefaultAuthenticator implements Authenticator {
    * Logs a metastore failure raised during authentication and returns the exception to throw, so
    * that a failing backend is reported as a transient condition instead of an internal error.
    *
+   * <p>The caller is not authenticated yet at this point, so the response carries a fixed message
+   * and only the log names the lookup that failed. The two are matched through the request id,
+   * returned by default as {@code X-Request-ID} and printed by the default log format as {@code
+   * requestId}.
+   *
    * @param cause the metastore failure
-   * @param responseMessage the message returned to the client
    * @param logMessage the log message, with SLF4J placeholders for {@code logArgs}
    * @param logArgs the values for the placeholders in {@code logMessage}
    */
   private static PolarisServiceUnavailableException metaStoreUnavailable(
-      Exception cause, String responseMessage, String logMessage, Object... logArgs) {
+      Exception cause, String logMessage, Object... logArgs) {
     LOGGER
         .atError()
         .addKeyValue(StructuredLogKeys.ERR_MSG, cause.getMessage())
         .addKeyValue(StructuredLogKeys.STACK_TRACE, Throwables.getStackTraceAsString(cause))
         .log(logMessage, logArgs);
-    return new PolarisServiceUnavailableException(0, "%s", responseMessage);
+    return new PolarisServiceUnavailableException(0, "Service unavailable");
   }
 
   protected record PrincipalRoleSelection(Set<String> roles, boolean allRolesRequested) {}
