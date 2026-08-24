@@ -530,6 +530,7 @@ class TestSetupCommand(CLITestBase):
 
         catalog = command._export_catalogs(mock_client)[0]
 
+        self.assertNotIn("storage_name", catalog)
         self.assertEqual(
             catalog["namespaces"], [{"name": "parent"}, {"name": "parent.child"}]
         )

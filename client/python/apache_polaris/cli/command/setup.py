@@ -312,7 +312,6 @@ class SetupCommand(Command):
                     "name": c.name,
                     "type": c.type.lower() if c.type else "internal",
                     "storage_type": storage_type.lower(),
-                    "storage_name": c.storage_config_info.storage_name,
                     "default_base_location": c.properties.default_base_location,
                     "allowed_locations": sorted(
                         c.storage_config_info.allowed_locations
@@ -321,6 +320,8 @@ class SetupCommand(Command):
                     if c.properties.additional_properties
                     else {},
                 }
+                if c.storage_config_info.storage_name is not None:
+                    catalog_info["storage_name"] = c.storage_config_info.storage_name
                 # Serialize storage config details
                 if storage_type.lower() == StorageType.S3.value:
                     s3_info = {
