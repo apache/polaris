@@ -50,12 +50,7 @@ public class ServerManager implements PolarisServerManager {
       public Optional<URI> managementUri() {
         var registry = ValueRegistryInjector.get(context);
         var config = ConfigInjector.get(context);
-        // Probe whether the actual port to use has been registered. If not, the management
-        // interface is not available, and we are likely in a @QuarkusIntegrationTest.
-        int dynamicPort = registry.getOrDefault(MANAGEMENT_PORT, -1);
-        return dynamicPort == -1
-            ? Optional.empty()
-            : Optional.of(URI.create(TestHTTPResourceManager.testManagementUrl(registry, config)));
+        return Optional.of(URI.create(TestHTTPResourceManager.testManagementUrl(registry, config)));
       }
 
       @Override

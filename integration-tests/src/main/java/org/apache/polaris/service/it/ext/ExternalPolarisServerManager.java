@@ -19,6 +19,8 @@
 package org.apache.polaris.service.it.ext;
 
 import java.net.URI;
+import java.util.Optional;
+import java.util.OptionalInt;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.Server;
@@ -31,15 +33,23 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 public class ExternalPolarisServerManager implements PolarisServerManager {
 
   public static final String HTTP_PORT_PROPERTY = "quarkus.http.test-port";
+  public static final String MANAGEMENT_PORT_PROPERTY = "quarkus.management.test-port";
   public static final String HOST_PROPERTY = "polaris.test.server.host";
 
   @Override
   public Server serverForContext(ExtensionContext context) {
-    URI baseUri = URI.create(String.format("http://%s:%d", host(), httpPort()));
+    URI baseUri = formatUri(httpPort());
+    Optional<URI> managementUri =
+        managementPort().stream().boxed().map(ExternalPolarisServerManager::formatUri).findFirst();
     return new Server() {
       @Override
       public URI baseUri() {
         return baseUri;
+      }
+
+      @Override
+      public Optional<URI> managementUri() {
+        return managementUri;
       }
 
       @Override
@@ -54,6 +64,10 @@ public class ExternalPolarisServerManager implements PolarisServerManager {
     };
   }
 
+  private static URI formatUri(int port) {
+    return URI.create(String.format("http://%s:%d", host(), port));
+  }
+
   private static String host() {
     String host = System.getProperty(HOST_PROPERTY, "localhost");
     return host.isBlank() ? "localhost" : host;
@@ -61,9 +75,19 @@ public class ExternalPolarisServerManager implements PolarisServerManager {
 
   private static int httpPort() {
     String port = System.getProperty(HTTP_PORT_PROPERTY);
+    return portAsInt(port, HTTP_PORT_PROPERTY);
+  }
+
+  private static OptionalInt managementPort() {
+    String port = System.getProperty(MANAGEMENT_PORT_PROPERTY);
+    return port == null || port.isBlank()
+        ? OptionalInt.empty()
+        : OptionalInt.of(portAsInt(port, MANAGEMENT_PORT_PROPERTY));
+  }
+
+  private static int portAsInt(String port, String property) {
     if (port == null || port.isBlank()) {
-      throw new IllegalStateException(
-          String.format("System property '%s' must be set", HTTP_PORT_PROPERTY));
+      throw new IllegalStateException(String.format("System property '%s' must be set", property));
     }
     try {
       int parsed = Integer.parseInt(port);
@@ -73,9 +97,7 @@ public class ExternalPolarisServerManager implements PolarisServerManager {
       return parsed;
     } catch (IllegalArgumentException e) {
       throw new IllegalStateException(
-          String.format(
-              "System property '%s' must be a valid TCP port: %s", HTTP_PORT_PROPERTY, port),
-          e);
+          String.format("System property '%s' must be a valid TCP port: %s", property, port), e);
     }
   }
 }
