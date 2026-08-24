@@ -23,19 +23,26 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
+import org.apache.polaris.core.tag.exceptions.NoSuchTargetException;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.RenameTagRequest;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
 import org.junit.jupiter.api.DynamicNode;
@@ -48,6 +55,23 @@ public class TagCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   private static final String TAG1 = "tag1";
   private static final String TAG2 = "tag2";
+
+  @Inject StorageAccessConfigProvider storageAccessConfigProvider;
+  @Inject FileIOFactory fileIOFactory;
+
+  private static CreateTagRequest allTargetsRequest(String name) {
+    return CreateTagRequest.builder()
+        .setName(name)
+        .setValues(List.of("v1", "v2"))
+        .setTargetTypes(
+            List.of(
+                TargetType.CATALOG,
+                TargetType.NAMESPACE,
+                TargetType.TABLE,
+                TargetType.VIEW,
+                TargetType.COLUMN))
+        .build();
+  }
 
   private static CreateTagRequest createRequest(String name) {
     return CreateTagRequest.builder()
@@ -75,6 +99,8 @@ public class TagCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .authorizer(polarisAuthorizer)
+        .storageAccessConfigProvider(storageAccessConfigProvider)
+        .fileIOFactory(fileIOFactory)
         .build();
   }
 
@@ -227,6 +253,17 @@ public class TagCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         .isInstanceOf(ForbiddenException.class);
   }
 
+  @Test
+  public void testDropTagDetachAllAuthorizesBeforeParameterCheck() {
+    grantSetupPrivilege(PolarisPrivilege.TAG_CREATE);
+    newHandler(Set.of(PRINCIPAL_ROLE2)).createTag(createRequest(TAG1));
+
+    // A caller without the drop privilege must get the authorization failure, never the
+    // detach-all parameter error: authorization runs first.
+    assertThatThrownBy(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropTag(TAG1, true))
+        .isInstanceOf(ForbiddenException.class);
+  }
+
   /**
    * Rename authorization is covered by named tests rather than a privilege matrix. The matrix
    * declares one sufficient set and expects every other privilege to be refused, which suits an
@@ -343,5 +380,197 @@ public class TagCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
                 .setCurrentTagVersion(version)
                 .build());
     assertThat(newHandler(Set.of(PRINCIPAL_ROLE2)).loadTag(TAG2).getName()).isEqualTo(TAG2);
+  }
+
+  @Test
+  public void testAssignTagTargetSubtypeValidation() {
+    grantSetupPrivilege(PolarisPrivilege.TAG_CREATE);
+    newHandler(Set.of(PRINCIPAL_ROLE2)).createTag(allTargetsRequest("subtype_tag"));
+    grantSetupPrivilege(PolarisPrivilege.CATALOG_MANAGE_CONTENT);
+
+    // Whole-object assignment on a generic table works: the v1 exclusion is columns only.
+    TagAttachmentTarget genericTable =
+        TagAttachmentTarget.builder(TargetType.TABLE)
+            .setPath(List.of(NS1.level(0), TABLE_NS1_1_GENERIC.name()))
+            .build();
+    newHandler(Set.of(PRINCIPAL_ROLE2)).assignTag("subtype_tag", genericTable, List.of("v1"));
+
+    // A column on a generic table is rejected: generic tables define no stable column id.
+    TagAttachmentTarget genericColumn =
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(List.of(NS1.level(0), TABLE_NS1_1_GENERIC.name()))
+            .setColumn(List.of("c1"))
+            .build();
+    assertThatThrownBy(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE2))
+                    .assignTag("subtype_tag", genericColumn, List.of("v1")))
+        .isInstanceOf(BadRequestException.class);
+
+    // Whole-object assignment on an Iceberg view works too, addressed by its own target-type;
+    // TABLE naming the same view is a kind mismatch, not the view target itself.
+    TagAttachmentTarget viewTarget =
+        TagAttachmentTarget.builder(TargetType.VIEW)
+            .setPath(List.of(NS1.level(0), VIEW_NS1_1.name()))
+            .build();
+    newHandler(Set.of(PRINCIPAL_ROLE2)).assignTag("subtype_tag", viewTarget, List.of("v1"));
+    TagAttachmentTarget viewAsTable =
+        TagAttachmentTarget.builder(TargetType.TABLE)
+            .setPath(List.of(NS1.level(0), VIEW_NS1_1.name()))
+            .build();
+    assertThatThrownBy(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE2))
+                    .assignTag("subtype_tag", viewAsTable, List.of("v1")))
+        .isInstanceOf(NoSuchTargetException.class);
+
+    // Cleanup: remove the successful assignments so the shared fixture stays clean.
+    newHandler(Set.of(PRINCIPAL_ROLE2)).unassignTag("subtype_tag", genericTable);
+    newHandler(Set.of(PRINCIPAL_ROLE2)).unassignTag("subtype_tag", viewTarget);
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testAssignTagToCatalogPrivileges() {
+    grantSetupPrivilege(PolarisPrivilege.TAG_CREATE);
+    newHandler(Set.of(PRINCIPAL_ROLE2)).createTag(allTargetsRequest("authz_assign_tag"));
+    grantSetupPrivilege(PolarisPrivilege.TAG_DETACH);
+    grantSetupPrivilege(PolarisPrivilege.CATALOG_DETACH_TAG);
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+
+    return authzTestsBuilder("assignTagToCatalog")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .assignTag("authz_assign_tag", catalogTarget, List.of("v1")))
+        .cleanupAction(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE2)).unassignTag("authz_assign_tag", catalogTarget))
+        .shouldPassWith(PolarisPrivilege.TAG_ATTACH, PolarisPrivilege.CATALOG_ATTACH_TAG)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TAG_ATTACH, PolarisPrivilege.NAMESPACE_ATTACH_TAG)
+        .shouldFailWith(PolarisPrivilege.TAG_ATTACH, PolarisPrivilege.TABLE_ATTACH_TAG)
+        .shouldFailWith(PolarisPrivilege.TAG_ATTACH)
+        .shouldFailWith(PolarisPrivilege.CATALOG_ATTACH_TAG)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testAssignTagToTablePrivileges() {
+    grantSetupPrivilege(PolarisPrivilege.TAG_CREATE);
+    newHandler(Set.of(PRINCIPAL_ROLE2)).createTag(allTargetsRequest("authz_assign_table_tag"));
+    grantSetupPrivilege(PolarisPrivilege.TAG_DETACH);
+    grantSetupPrivilege(PolarisPrivilege.TABLE_DETACH_TAG);
+    // The table-side fine-grained privileges cover Iceberg and generic tables alike; exercise
+    // both subtypes through the same privilege matrix.
+    TagAttachmentTarget icebergTable =
+        TagAttachmentTarget.builder(TargetType.TABLE)
+            .setPath(List.of(NS1.level(0), TABLE_NS1_1.name()))
+            .build();
+    TagAttachmentTarget genericTable =
+        TagAttachmentTarget.builder(TargetType.TABLE)
+            .setPath(List.of(NS1.level(0), TABLE_NS1_1_GENERIC.name()))
+            .build();
+    return Stream.concat(
+        tableAssignAuthzTests("assignTagToIcebergTable", icebergTable),
+        tableAssignAuthzTests("assignTagToGenericTable", genericTable));
+  }
+
+  private Stream<DynamicNode> tableAssignAuthzTests(String name, TagAttachmentTarget target) {
+    return authzTestsBuilder(name)
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .assignTag("authz_assign_table_tag", target, List.of("v1")))
+        .cleanupAction(
+            () -> newHandler(Set.of(PRINCIPAL_ROLE2)).unassignTag("authz_assign_table_tag", target))
+        .shouldPassWith(PolarisPrivilege.TAG_ATTACH, PolarisPrivilege.TABLE_ATTACH_TAG)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TAG_ATTACH, PolarisPrivilege.CATALOG_ATTACH_TAG)
+        .shouldFailWith(PolarisPrivilege.TAG_ATTACH, PolarisPrivilege.NAMESPACE_ATTACH_TAG)
+        .shouldFailWith(PolarisPrivilege.TABLE_ATTACH_TAG)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testAssignTagToViewPrivileges() {
+    grantSetupPrivilege(PolarisPrivilege.TAG_CREATE);
+    newHandler(Set.of(PRINCIPAL_ROLE2)).createTag(allTargetsRequest("authz_assign_view_tag"));
+    grantSetupPrivilege(PolarisPrivilege.TAG_DETACH);
+    grantSetupPrivilege(PolarisPrivilege.VIEW_DETACH_TAG);
+    TagAttachmentTarget viewTarget =
+        TagAttachmentTarget.builder(TargetType.VIEW)
+            .setPath(List.of(NS1.level(0), VIEW_NS1_1.name()))
+            .build();
+    return viewAssignAuthzTests("assignTagToView", viewTarget);
+  }
+
+  private Stream<DynamicNode> viewAssignAuthzTests(String name, TagAttachmentTarget target) {
+    return authzTestsBuilder(name)
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .assignTag("authz_assign_view_tag", target, List.of("v1")))
+        .cleanupAction(
+            () -> newHandler(Set.of(PRINCIPAL_ROLE2)).unassignTag("authz_assign_view_tag", target))
+        .shouldPassWith(PolarisPrivilege.TAG_ATTACH, PolarisPrivilege.VIEW_ATTACH_TAG)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TAG_ATTACH, PolarisPrivilege.TABLE_ATTACH_TAG)
+        .shouldFailWith(PolarisPrivilege.VIEW_ATTACH_TAG)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testUnassignTagFromNamespacePrivileges() {
+    grantSetupPrivilege(PolarisPrivilege.TAG_CREATE);
+    newHandler(Set.of(PRINCIPAL_ROLE2)).createTag(allTargetsRequest("authz_unassign_tag"));
+    grantSetupPrivilege(PolarisPrivilege.TAG_ATTACH);
+    grantSetupPrivilege(PolarisPrivilege.NAMESPACE_ATTACH_TAG);
+    TagAttachmentTarget namespaceTarget =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE)
+            .setPath(Arrays.asList(NS1.levels()))
+            .build();
+    newHandler(Set.of(PRINCIPAL_ROLE2))
+        .assignTag("authz_unassign_tag", namespaceTarget, List.of("v1"));
+
+    return authzTestsBuilder("unassignTagFromNamespace")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .unassignTag("authz_unassign_tag", namespaceTarget))
+        .cleanupAction(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE2))
+                    .assignTag("authz_unassign_tag", namespaceTarget, List.of("v1")))
+        .shouldPassWith(PolarisPrivilege.TAG_DETACH, PolarisPrivilege.NAMESPACE_DETACH_TAG)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TAG_DETACH, PolarisPrivilege.CATALOG_DETACH_TAG)
+        .shouldFailWith(PolarisPrivilege.TAG_DETACH, PolarisPrivilege.TABLE_DETACH_TAG)
+        .shouldFailWith(PolarisPrivilege.TAG_DETACH)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_DETACH_TAG)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testDropTagDetachAllPrivileges() {
+    grantSetupPrivilege(PolarisPrivilege.TAG_CREATE);
+    newHandler(Set.of(PRINCIPAL_ROLE2)).createTag(allTargetsRequest("authz_detach_all_tag"));
+
+    return authzTestsBuilder("dropTagDetachAll")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropTag("authz_detach_all_tag", true))
+        .cleanupAction(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE2))
+                    .createTag(allTargetsRequest("authz_detach_all_tag")))
+        .shouldPassWith(PolarisPrivilege.TAG_DROP, PolarisPrivilege.TAG_DETACH)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TAG_DROP)
+        .shouldFailWith(PolarisPrivilege.TAG_DETACH)
+        .shouldFailWith(PolarisPrivilege.TAG_FULL_METADATA)
+        .createTests();
   }
 }

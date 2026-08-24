@@ -353,6 +353,56 @@ public abstract class BasePolarisMetaStoreManagerTest {
   }
 
   @Test
+  protected void testTagAssignment() {
+    polarisTestMetaStoreManager.testTagAssignment();
+  }
+
+  @Test
+  protected void testTagDropDetachAll() {
+    polarisTestMetaStoreManager.testTagDropDetachAll();
+  }
+
+  @Test
+  protected void testTagDropWithOrphanRows() {
+    polarisTestMetaStoreManager.testTagDropWithOrphanRows();
+  }
+
+  @Test
+  protected void testTagDropRejectsAnAssignmentWrittenAfterClassification() {
+    polarisTestMetaStoreManager.testTagDropRejectsAnAssignmentWrittenAfterClassification();
+  }
+
+  @Test
+  protected void testTagDropWithEmptyClassificationRejectsARowWrittenAfterwards() {
+    polarisTestMetaStoreManager.testTagDropWithEmptyClassificationRejectsARowWrittenAfterwards();
+  }
+
+  @Test
+  protected void testTagDropRejectsWhenAJudgedTargetHasMovedOn() {
+    polarisTestMetaStoreManager.testTagDropRejectsWhenAJudgedTargetHasMovedOn();
+  }
+
+  @Test
+  protected void testTagAssignmentCleanup() {
+    polarisTestMetaStoreManager.testTagAssignmentCleanup();
+  }
+
+  @Test
+  protected void testDeleteAllClearsTagAssignments() {
+    polarisTestMetaStoreManager.testDeleteAllClearsTagAssignments();
+  }
+
+  @Test
+  protected void testTagCatalogTargetAssignment() {
+    polarisTestMetaStoreManager.testTagCatalogTargetAssignment();
+  }
+
+  @Test
+  protected void testTagCrossCatalogAssignmentRejected() {
+    polarisTestMetaStoreManager.testTagCrossCatalogAssignmentRejected();
+  }
+
+  @Test
   protected void testLoadTasks() {
     for (int i = 0; i < 20; i++) {
       polarisTestMetaStoreManager.createEntity(

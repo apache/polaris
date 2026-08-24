@@ -35,6 +35,7 @@ import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationIntentResolver.ResolvedIntent;
 import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -541,6 +542,100 @@ public class PolarisAuthorizerImplTest {
         .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
         .setName(name)
         .build();
+  }
+
+  @Test
+  void authorizeTagAttachmentIntentUsesTagTargetAndAttachedToSecondary() {
+    // The intent-based path must evaluate the same operation with the same target/secondary
+    // shape the tag handler needs: tag as the target, the attached-to entity as the secondary.
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfig()));
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
+    PolarisResolvedPathWrapper tagWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisResolvedPathWrapper namespaceWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisPrincipal principal =
+        PolarisPrincipal.of("alice", ImmutableAttributeMap.builder().build(), Set.of("role"));
+
+    when(manifest.getResolvedPath(ResolvedPathKey.of(List.of("t1"), PolarisEntityType.TAG), false))
+        .thenReturn(tagWrapper);
+    when(manifest.getResolvedPath(
+            ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), false))
+        .thenReturn(namespaceWrapper);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    doReturn(List.of())
+        .when(authorizer)
+        .findMissingPrivileges(
+            any(PolarisPrincipal.class),
+            ArgumentMatchers.any(),
+            eq(PolarisAuthorizableOperation.ASSIGN_TAG_TO_NAMESPACE),
+            any(ResolvedIntent.class));
+
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new TagAttachmentAuthorizationIntent(
+                    PolarisAuthorizableOperation.ASSIGN_TAG_TO_NAMESPACE,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.TAG, "t1")),
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")))));
+
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
+
+    assertThat(decision.isAllowed()).isTrue();
+    verify(authorizer)
+        .findMissingPrivileges(
+            eq(principal),
+            eq(Set.of()),
+            eq(PolarisAuthorizableOperation.ASSIGN_TAG_TO_NAMESPACE),
+            eq(new ResolvedIntent(List.of(tagWrapper), List.of(namespaceWrapper))));
+  }
+
+  @Test
+  void authorizeTagAttachmentIntentReturnsDenyDecision() {
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(realmConfig()));
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(manifest);
+    PolarisPrincipal principal =
+        PolarisPrincipal.of("alice", ImmutableAttributeMap.builder().build(), Set.of("role"));
+
+    when(manifest.getResolvedPath(ResolvedPathKey.of(List.of("t1"), PolarisEntityType.TAG), false))
+        .thenReturn(mock(PolarisResolvedPathWrapper.class));
+    when(manifest.getResolvedPath(
+            ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), false))
+        .thenReturn(mock(PolarisResolvedPathWrapper.class));
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    doReturn(
+            List.of(
+                PolarisAuthorizerImpl.MissingPrivilege.onTarget(
+                    PolarisPrivilege.TAG_DETACH, mock(PolarisResolvedPathWrapper.class))))
+        .when(authorizer)
+        .findMissingPrivileges(
+            any(PolarisPrincipal.class),
+            ArgumentMatchers.any(),
+            eq(PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_NAMESPACE),
+            any(ResolvedIntent.class));
+
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new TagAttachmentAuthorizationIntent(
+                    PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_NAMESPACE,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.TAG, "t1")),
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")))));
+
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
+
+    assertThat(decision.isAllowed()).isFalse();
+    assertThat(decision.getMessage().orElseThrow()).contains("is not authorized");
   }
 
   private static RealmConfig realmConfigWithDefaults() {

@@ -213,7 +213,11 @@ public enum PolarisEventType {
   BEFORE_DROP_TAG(1608, Category.TAG),
   AFTER_DROP_TAG(1609, Category.TAG),
   BEFORE_RENAME_TAG(1610, Category.TAG),
-  AFTER_RENAME_TAG(1611, Category.TAG);
+  AFTER_RENAME_TAG(1611, Category.TAG),
+  BEFORE_ASSIGN_TAG(1612, Category.TAG),
+  AFTER_ASSIGN_TAG(1613, Category.TAG),
+  BEFORE_UNASSIGN_TAG(1614, Category.TAG),
+  AFTER_UNASSIGN_TAG(1615, Category.TAG);
 
   private final int code;
   private final Category category;

@@ -43,6 +43,7 @@ import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.tag.TagValidation;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.TargetType;
@@ -57,6 +58,7 @@ public final class Serializers {
     module.addDeserializer(UpdateTagRequest.class, new UpdateTagRequestDeserializer());
     module.addDeserializer(CreateTagRequest.class, new CreateTagRequestDeserializer());
     module.addDeserializer(RenameTagRequest.class, new RenameTagRequestDeserializer());
+    module.addDeserializer(AssignTagRequest.class, new AssignTagRequestDeserializer());
     module.addDeserializer(CreateCatalogRequest.class, new CreateCatalogRequestDeserializer());
     module.addDeserializer(CreatePrincipalRequest.class, new CreatePrincipalRequestDeserializer());
     module.addDeserializer(
@@ -521,6 +523,44 @@ public final class Serializers {
         throws IOException {
       JsonNode value = node.get(field);
       return value == null || value.isNull() ? null : bindField(ctxt, value, field, type);
+    }
+  }
+
+  /**
+   * Deserializer for {@link AssignTagRequest}: refuses a selected-values member whose JSON type the
+   * schema does not permit, instead of letting it be converted to text.
+   *
+   * <p>The generated model binds {@code values} as a list of String, and Jackson converts each
+   * scalar on the way in, so a number member arrives as its digits and the operation then judges it
+   * on content: it reports a selection the definition does not allow, or accepts one it does. A
+   * definition whose allowed values contain that same text would therefore store an assignment for
+   * a request the schema never permitted.
+   *
+   * <p>Registering this deserializer replaces the generated binding, so the two answers that
+   * binding already gives are reproduced here rather than inherited: an absent field is the schema
+   * failure its {@code required} creator property reports today, and an explicitly null field binds
+   * to an empty list, which the operation answers as a selection that names no value.
+   */
+  public static final class AssignTagRequestDeserializer
+      extends JsonDeserializer<AssignTagRequest> {
+    @Override
+    public AssignTagRequest deserialize(JsonParser p, DeserializationContext ctxt)
+        throws IOException {
+      TreeNode treeNode = p.readValueAsTree();
+      if (!treeNode.isObject()) {
+        ctxt.reportInputMismatch(AssignTagRequest.class, "Expected a JSON object");
+      }
+      ObjectNode node = (ObjectNode) treeNode;
+      JsonNode values = node.get("values");
+      if (values == null) {
+        throw new IllegalArgumentException("Field values is required");
+      }
+      if (values.isNull()) {
+        // An explicit null is not a schema failure here: the generated creator turns it into an
+        // empty list and the operation answers it as a selection that names no value.
+        return new AssignTagRequest(List.of());
+      }
+      return new AssignTagRequest(bindStringList(ctxt, values, "values"));
     }
   }
 }

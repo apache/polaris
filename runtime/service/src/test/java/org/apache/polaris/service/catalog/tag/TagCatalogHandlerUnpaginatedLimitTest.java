@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,8 @@ import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.TagIdentifier;
@@ -51,6 +54,9 @@ import org.junit.jupiter.api.Test;
 public class TagCatalogHandlerUnpaginatedLimitTest extends PolarisAuthzTestBase {
 
   private static final int LIMIT = 2;
+
+  @Inject StorageAccessConfigProvider storageAccessConfigProvider;
+  @Inject FileIOFactory fileIOFactory;
 
   public static class Profile extends Profiles.PolarisAuthzBaseProfile {
     @Override
@@ -135,6 +141,8 @@ public class TagCatalogHandlerUnpaginatedLimitTest extends PolarisAuthzTestBase 
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .authorizer(polarisAuthorizer)
+        .storageAccessConfigProvider(storageAccessConfigProvider)
+        .fileIOFactory(fileIOFactory)
         .build();
   }
 }

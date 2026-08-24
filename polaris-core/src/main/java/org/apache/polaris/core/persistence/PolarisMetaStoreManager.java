@@ -51,6 +51,7 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
+import org.apache.polaris.core.tag.PolarisTagAssignmentManager;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -62,6 +63,7 @@ public interface PolarisMetaStoreManager
     extends PolarisSecretsManager,
         PolarisGrantManager,
         PolarisPolicyMappingManager,
+        PolarisTagAssignmentManager,
         PolarisEventManager {
 
   /**

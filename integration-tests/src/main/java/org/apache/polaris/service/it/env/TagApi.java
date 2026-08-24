@@ -29,10 +29,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.polaris.core.rest.NamespaceUtils;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TagIdentifier;
 import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
@@ -45,9 +49,9 @@ public class TagApi extends PolarisRestApi {
   }
 
   public void purge(String catalog) {
-    // Plain drops are enough while no assignment can exist; revisit with the assignment change so
-    // purge stays effective once they do.
-    listTags(catalog).forEach(t -> dropTag(catalog, t.getName()));
+    // detach-all removes assignments and the definition together, so purge cannot be blocked by
+    // tags that still carry assignments.
+    listTags(catalog).forEach(t -> dropTag(catalog, t.getName(), true));
   }
 
   /**
@@ -65,7 +69,7 @@ public class TagApi extends PolarisRestApi {
       }
       tags = res.readEntity(ListTagsResponse.class).getIdentifiers().stream().toList();
     }
-    tags.forEach(t -> dropTag(catalog, t.getName()));
+    tags.forEach(t -> dropTag(catalog, t.getName(), true));
   }
 
   /**
@@ -190,6 +194,56 @@ public class TagApi extends PolarisRestApi {
     }
   }
 
+  public void assignTag(
+      String catalog, String tagName, TagAttachmentTarget target, List<String> values) {
+    try (Response res = assignTagResponse(catalog, tagName, target, values)) {
+      Assertions.assertThat(res.getStatus())
+          .as(res.hasEntity() ? res.readEntity(String.class) : "")
+          .isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+  }
+
+  /** Assigns a tag and hands back the raw response, so a test can assert a status of its own. */
+  public Response assignTagResponse(
+      String catalog, String tagName, TagAttachmentTarget target, List<String> values) {
+    AssignTagRequest request = AssignTagRequest.builder().setValues(List.copyOf(values)).build();
+    return request(
+            "polaris/v1/{cat}/tags/{tag}/assignments",
+            Map.of("cat", catalog, "tag", tagName),
+            queryParamsForTarget(target))
+        .put(Entity.json(request));
+  }
+
+  /**
+   * Builds the {@code target-type} plus matching query parameters a {@link TagAttachmentTarget}
+   * decodes to. A namespace target's whole path is the {@code namespace} parameter; a table, view
+   * or column target's path is the namespace levels followed by the table or view name, so only the
+   * last level is {@code target-name}. {@code column} is the one column name a column target
+   * carries. {@code namespace} joins its levels with the shared U+001F separator.
+   */
+  private static Map<String, String> queryParamsForTarget(TagAttachmentTarget target) {
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("target-type", target.getType().toString());
+    List<String> path = target.getPath();
+    if (path == null || path.isEmpty()) {
+      return queryParams;
+    }
+    List<String> namespaceLevels =
+        target.getType() == TargetType.NAMESPACE ? path : path.subList(0, path.size() - 1);
+    queryParams.put(
+        "namespace",
+        NamespaceUtils.joinNamespace(
+            Namespace.of(namespaceLevels.toArray(new String[0])),
+            NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
+    if (target.getType() != TargetType.NAMESPACE) {
+      queryParams.put("target-name", path.get(path.size() - 1));
+    }
+    if (target.getColumn() != null && !target.getColumn().isEmpty()) {
+      queryParams.put("column", target.getColumn().get(0));
+    }
+    return queryParams;
+  }
+
   /**
    * Renames a definition and hands back the raw response, optionally under an idempotency key, so a
    * test can assert a status and an error type of its own.
@@ -254,6 +308,37 @@ public class TagApi extends PolarisRestApi {
     Map<String, String> headers = new HashMap<>(defaultHeaders());
     headers.put("Idempotency-Key", idempotencyKey);
     return request(target(path, templateValues), headers);
+  }
+
+  /**
+   * An assign/unassign request carrying a raw {@code Idempotency-Key} header, so a test can send
+   * one the shared filter has to reject even though neither operation declares the header itself:
+   * the filter runs before the tag code does, on every request.
+   */
+  public Invocation.Builder assignmentRequestWithRawIdempotencyKey(
+      String catalog, String tagName, TagAttachmentTarget target, String idempotencyKey) {
+    Map<String, String> headers = new HashMap<>(defaultHeaders());
+    headers.put("Idempotency-Key", idempotencyKey);
+    return request(
+        "polaris/v1/{cat}/tags/{tag}/assignments",
+        Map.of("cat", catalog, "tag", tagName),
+        queryParamsForTarget(target),
+        headers);
+  }
+
+  public void unassignTag(String catalog, String tagName, TagAttachmentTarget target) {
+    try (Response res = unassignTagResponse(catalog, tagName, target)) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+  }
+
+  /** Unassigns a tag and hands back the raw response, so a test can assert a status of its own. */
+  public Response unassignTagResponse(String catalog, String tagName, TagAttachmentTarget target) {
+    return request(
+            "polaris/v1/{cat}/tags/{tag}/assignments",
+            Map.of("cat", catalog, "tag", tagName),
+            queryParamsForTarget(target))
+        .delete();
   }
 
   public void dropTag(String catalog, String tagName) {

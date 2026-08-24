@@ -36,10 +36,13 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogTagApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
+import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
 
 @RequestScoped
@@ -124,7 +127,7 @@ public class TagCatalogAdapter implements PolarisCatalogTagApiService, CatalogAd
       RealmContext realmContext,
       SecurityContext securityContext) {
     TagCatalogHandler handler = newHandler(securityContext, prefix);
-    rejectRepeatedPaginationParameters();
+    rejectRepeatedQueryParameters("pagination", "pageToken", "pageSize");
     boolean paged = requestedPagedMode();
     rejectUnusablePageSize(pageSize);
     ListTagsResponse response = handler.listTags(paged, pageToken, pageSize);
@@ -145,12 +148,12 @@ public class TagCatalogAdapter implements PolarisCatalogTagApiService, CatalogAd
   }
 
   /**
-   * Refuses a pagination parameter that was sent more than once. Such a request has no single value
-   * to act on, and picking one silently would answer a question the client did not ask.
+   * Refuses a query parameter that was sent more than once. Such a request has no single value to
+   * act on, and picking one silently would answer a question the client did not ask.
    */
-  private void rejectRepeatedPaginationParameters() {
+  private void rejectRepeatedQueryParameters(String... names) {
     MultivaluedMap<String, String> query = uriInfo.getQueryParameters();
-    for (String name : List.of("pagination", "pageToken", "pageSize")) {
+    for (String name : names) {
       List<String> values = query.get(name);
       if (values != null && values.size() > 1) {
         throw new BadRequestException("Query parameter %s was supplied more than once", name);
@@ -230,6 +233,43 @@ public class TagCatalogAdapter implements PolarisCatalogTagApiService, CatalogAd
     return Response.noContent().build();
   }
 
-  // assignTag, unassignTag, getObjectTags, and listObjectsByTag are not implemented yet; the
-  // default PolarisCatalogTagApiService methods return 501.
+  @Override
+  public Response assignTag(
+      String prefix,
+      String tagName,
+      TargetType targetType,
+      AssignTagRequest assignTagRequest,
+      String namespace,
+      String targetName,
+      String column,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    TagCatalogHandler handler = newHandler(securityContext, prefix);
+    rejectRepeatedQueryParameters("target-type", "namespace", "target-name", "column");
+    TagAttachmentTarget target =
+        TagCatalogUtils.targetFromQuery(targetType, namespace, targetName, column);
+    handler.assignTag(tagName, target, assignTagRequest.getValues());
+    return Response.noContent().build();
+  }
+
+  @Override
+  public Response unassignTag(
+      String prefix,
+      String tagName,
+      TargetType targetType,
+      String namespace,
+      String targetName,
+      String column,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    TagCatalogHandler handler = newHandler(securityContext, prefix);
+    rejectRepeatedQueryParameters("target-type", "namespace", "target-name", "column");
+    TagAttachmentTarget target =
+        TagCatalogUtils.targetFromQuery(targetType, namespace, targetName, column);
+    handler.unassignTag(tagName, target);
+    return Response.noContent().build();
+  }
+
+  // getObjectTags and listObjectsByTag are not implemented yet; the default
+  // PolarisCatalogTagApiService methods return 501.
 }

@@ -25,6 +25,8 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 
 @RequestScoped
@@ -35,6 +37,8 @@ public class TagCatalogHandlerFactory {
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject PolarisAuthorizer authorizer;
   @Inject IdempotencyRequestContext idempotencyRequestContext;
+  @Inject StorageAccessConfigProvider storageAccessConfigProvider;
+  @Inject FileIOFactory fileIOFactory;
 
   public TagCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutableTagCatalogHandler.builder()
@@ -45,6 +49,8 @@ public class TagCatalogHandlerFactory {
         .metaStoreManager(metaStoreManager)
         .authorizer(authorizer)
         .idempotencyRequestContext(idempotencyRequestContext)
+        .storageAccessConfigProvider(storageAccessConfigProvider)
+        .fileIOFactory(fileIOFactory)
         .build();
   }
 }

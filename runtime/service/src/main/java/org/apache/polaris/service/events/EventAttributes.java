@@ -57,6 +57,7 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
@@ -70,6 +71,7 @@ import org.apache.polaris.service.types.LoadPolicyResponse;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
 import org.apache.polaris.service.types.UpdateTagRequest;
 
@@ -243,6 +245,10 @@ public final class EventAttributes {
 
   public static final AttributeKey<ListTagsResponse> LIST_TAGS_RESPONSE =
       new AttributeKey<>("list_tags_response");
+  public static final AttributeKey<AssignTagRequest> ASSIGN_TAG_REQUEST =
+      new AttributeKey<>("assign_tag_request");
+  public static final AttributeKey<TagAttachmentTarget> TAG_ASSIGNMENT_TARGET =
+      new AttributeKey<>("tag_assignment_target");
 
   public static Optional<AttributeKey<?>> findByName(String name) {
     return Optional.ofNullable(AttributeLookupHolder.ALL_BY_NAME.get(name));

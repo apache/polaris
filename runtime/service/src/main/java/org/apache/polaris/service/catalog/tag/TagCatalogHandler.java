@@ -20,14 +20,19 @@ package org.apache.polaris.service.catalog.tag;
 
 import static java.util.Objects.requireNonNull;
 
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.RenameAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.auth.TagAttachmentAuthorizationIntent;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -42,15 +47,19 @@ import org.apache.polaris.core.tag.TagValidation;
 import org.apache.polaris.core.tag.TagVersionToken;
 import org.apache.polaris.core.tag.exceptions.NoSuchCatalogException;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
+import org.apache.polaris.core.tag.exceptions.NoSuchTargetException;
 import org.apache.polaris.core.tag.exceptions.TagVersionMismatchException;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TagIdentifier;
 import org.apache.polaris.service.types.UpdateTagRequest;
 import org.immutables.value.Value;
@@ -73,6 +82,10 @@ public abstract class TagCatalogHandler extends CatalogHandler {
     return IdempotencyRequestContext.DISABLED;
   }
 
+  protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
+
+  protected abstract FileIOFactory fileIOFactory();
+
   @Override
   protected void initializeCatalog() {
     this.tagCatalog =
@@ -80,7 +93,10 @@ public abstract class TagCatalogHandler extends CatalogHandler {
             metaStoreManager(),
             callContext(),
             this.resolutionManifest,
-            idempotencyRequestContext());
+            idempotencyRequestContext(),
+            storageAccessConfigProvider(),
+            fileIOFactory(),
+            realmConfig());
   }
 
   /**
@@ -295,6 +311,157 @@ public abstract class TagCatalogHandler extends CatalogHandler {
         request.getSource(), request.getDestination(), request.getCurrentTagVersion());
   }
 
+  public boolean dropTag(String tagName, boolean detachAll) {
+    // detach-all removes every assignment of the definition and then the definition itself, so it
+    // requires both TAG_DROP and TAG_DETACH on the definition (a distinct operation); a plain drop
+    // requires only TAG_DROP.
+    PolarisAuthorizableOperation op =
+        detachAll
+            ? PolarisAuthorizableOperation.DROP_TAG_DETACH_ALL
+            : PolarisAuthorizableOperation.DROP_TAG;
+    authorizeBasicTagOperationOrThrow(op, tagName);
+
+    return tagCatalog.dropTag(tagName, detachAll);
+  }
+
+  public void assignTag(String tagName, TagAttachmentTarget target, List<String> values) {
+    authorizeTagAssignmentOperationOrThrow(tagName, target, true);
+    tagCatalog.assignTag(tagName, target, values);
+  }
+
+  public void unassignTag(String tagName, TagAttachmentTarget target) {
+    authorizeTagAssignmentOperationOrThrow(tagName, target, false);
+    tagCatalog.unassignTag(tagName, target);
+  }
+
+  private void authorizeTagAssignmentOperationOrThrow(
+      String tagName, TagAttachmentTarget target, boolean isAssign) {
+    if (target == null || target.getType() == null) {
+      throw new BadRequestException("Assignment target is required");
+    }
+    resolutionManifest = newResolutionManifest();
+    resolutionManifest.addPassthroughPath(
+        new ResolverPath(List.of(tagName), PolarisEntityType.TAG, true /* optional */));
+
+    switch (target.getType()) {
+      case CATALOG -> {
+        if (target.getPath() != null && !target.getPath().isEmpty()) {
+          throw new BadRequestException("A catalog target must not carry a path");
+        }
+      }
+      case NAMESPACE -> {
+        if (target.getPath() == null || target.getPath().isEmpty()) {
+          throw new BadRequestException("Namespace target path must not be empty");
+        }
+        requireValidPathMembers(target.getPath());
+        Namespace targetNamespace = Namespace.of(target.getPath().toArray(new String[0]));
+        resolutionManifest.addPath(
+            new ResolverPath(Arrays.asList(targetNamespace.levels()), PolarisEntityType.NAMESPACE));
+      }
+      case TABLE, VIEW, COLUMN -> {
+        if (target.getPath() == null || target.getPath().size() < 2) {
+          throw new BadRequestException("Table-like target path must name a namespace and table");
+        }
+        requireValidPathMembers(target.getPath());
+        TableIdentifier targetIdentifier =
+            TableIdentifier.of(target.getPath().toArray(new String[0]));
+        resolutionManifest.addPath(
+            new ResolverPath(
+                PolarisCatalogHelpers.tableIdentifierToList(targetIdentifier),
+                PolarisEntityType.TABLE_LIKE));
+      }
+      default -> throw new BadRequestException("Unsupported target type: %s", target.getType());
+    }
+
+    PolarisAuthorizableOperation op = determineTagAssignmentOperation(target, isAssign);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    AuthorizationRequest authorizationRequest =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(
+                new TagAttachmentAuthorizationIntent(
+                    op,
+                    PolarisSecurableMapper.tag(catalogName(), tagName),
+                    PolarisSecurableMapper.tagAttachmentTarget(catalogName(), target))));
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
+
+    // A failed required path fails the whole manifest, so every getResolvedPath below would
+    // return null and a missing target would surface as the tag-level 404. Classify the failed
+    // path first, the way policy attachment does, so the response names the entity that is
+    // actually missing. The tag path is registered optional and cannot fail the manifest, so a
+    // failure here is always the target's.
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
+    throwIfCatalogMissing(status);
+    if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
+      List<String> failedPath = status.getFailedToResolvePath().entityNames();
+      switch (status.getFailedToResolvePath().lastEntityType()) {
+        case NAMESPACE ->
+            throw new NoSuchTargetException(
+                "Namespace does not exist: %s", Namespace.of(failedPath.toArray(new String[0])));
+        case TABLE_LIKE ->
+            throw new NoSuchTargetException(
+                "Table does not exist: %s", TableIdentifier.of(failedPath.toArray(new String[0])));
+        default ->
+            throw new IllegalStateException(
+                "Unexpected unresolved path type: " + status.getFailedToResolvePath());
+      }
+    }
+
+    PolarisResolvedPathWrapper tagWrapper =
+        resolutionManifest.getResolvedPath(
+            ResolvedPathKey.of(List.of(tagName), PolarisEntityType.TAG), true);
+    if (tagWrapper == null) {
+      throw new NoSuchTagException(String.format("Tag does not exist: %s", tagName));
+    }
+
+    // Fetched for its own 404 classification: a target that fails to resolve here throws
+    // NoSuchTargetException before the authorizer ever sees it.
+    TagCatalogUtils.getResolvedTargetWrapper(resolutionManifest, target);
+
+    authorizer().authorize(authorizationState, authorizationRequest).throwIfDenied();
+
+    initializeCatalog();
+  }
+
+  /**
+   * Rejects a null, blank, or U+001F-bearing path member before it reaches an Iceberg identifier
+   * constructor. Namespace.of and TableIdentifier.of treat a null member as a bug
+   * (NullPointerException, mapped to a 500) rather than a malformed request, and U+001F is the
+   * namespace level separator in query encoding, so a name carrying it could never round-trip.
+   */
+  private static void requireValidPathMembers(List<String> path) {
+    for (String member : path) {
+      if (member == null || member.isBlank() || member.indexOf('\u001F') >= 0) {
+        throw new BadRequestException(
+            "Target path must not contain a null, empty, or U+001F segment");
+      }
+    }
+  }
+
+  private PolarisAuthorizableOperation determineTagAssignmentOperation(
+      TagAttachmentTarget target, boolean isAssign) {
+    return switch (target.getType()) {
+      case CATALOG ->
+          isAssign
+              ? PolarisAuthorizableOperation.ASSIGN_TAG_TO_CATALOG
+              : PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_CATALOG;
+      case NAMESPACE ->
+          isAssign
+              ? PolarisAuthorizableOperation.ASSIGN_TAG_TO_NAMESPACE
+              : PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_NAMESPACE;
+      // A column target is authorized against its containing table.
+      case TABLE, COLUMN ->
+          isAssign
+              ? PolarisAuthorizableOperation.ASSIGN_TAG_TO_TABLE
+              : PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_TABLE;
+      case VIEW ->
+          isAssign
+              ? PolarisAuthorizableOperation.ASSIGN_TAG_TO_VIEW
+              : PolarisAuthorizableOperation.UNASSIGN_TAG_FROM_VIEW;
+      default -> throw new BadRequestException("Unsupported target type: %s", target.getType());
+    };
+  }
+
   /**
    * The entity id the version token names, or null when the token is not one this server issued. An
    * unreadable token is not reported here: the normal path reports it, so that a request with a bad
@@ -400,24 +567,6 @@ public abstract class TagCatalogHandler extends CatalogHandler {
 
     initializeCatalog();
     return true;
-  }
-
-  public boolean dropTag(String tagName, boolean detachAll) {
-    // detach-all removes every assignment of the definition and then the definition itself, so it
-    // requires both TAG_DROP and TAG_DETACH on the definition, even while no assignment can exist
-    // yet;
-    // a plain drop requires only TAG_DROP.
-    PolarisAuthorizableOperation op =
-        detachAll
-            ? PolarisAuthorizableOperation.DROP_TAG_DETACH_ALL
-            : PolarisAuthorizableOperation.DROP_TAG;
-    authorizeBasicTagOperationOrThrow(op, tagName);
-
-    // detach-all promises that the definition and every assignment of it are gone together. No
-    // assignment can exist yet, so that promise is already kept by deleting the definition and the
-    // parameter changes nothing here. The assignment change adds the cleanup, and the separate
-    // privilege the wider operation needs, at the same time.
-    return tagCatalog.dropTag(tagName);
   }
 
   private void authorizeBasicTagOperationOrThrow(PolarisAuthorizableOperation op, String tagName) {

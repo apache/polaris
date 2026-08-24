@@ -41,13 +41,29 @@ public final class TagValidation {
    * not on characters and not on the request text: a multi-byte character reaches it sooner than
    * its length suggests, and JSON escaping in the body is invisible to it because the value is
    * measured after the body has been read.
+   *
+   * <p>Values are stored in an indexed column and index entries carry a per-page size limit on the
+   * relational backends, so bounding the value keeps every accepted definition value assignable.
    */
-  private static final int MAX_VALUE_BYTES = 2000;
+  public static final int MAX_VALUE_BYTES = 2000;
 
   /** The same expression the API declares for a tag name. */
   private static final Pattern NAME_PATTERN = Pattern.compile("^[A-Za-z0-9\\-_]+$");
 
   private TagValidation() {}
+
+  /**
+   * Rejects a value longer than {@link #MAX_VALUE_BYTES} in UTF-8, naming the limit. Shared by the
+   * definition's allowed-values check and the assignment's selected-value check so both sides
+   * enforce the same bound.
+   */
+  public static void validateValueLength(String value, String what) {
+    if (value.getBytes(StandardCharsets.UTF_8).length > MAX_VALUE_BYTES) {
+      throw new BadRequestException(
+          "%s must not exceed %d bytes, measured on the decoded value in UTF-8",
+          what, MAX_VALUE_BYTES);
+    }
+  }
 
   /**
    * Validates a tag name against the pattern the API declares. The generated model carries the same
@@ -77,13 +93,9 @@ public final class TagValidation {
       if (value == null || value.isEmpty()) {
         throw new BadRequestException("Values must not contain an empty value");
       }
+      validateValueLength(value, "Values");
       if (!seen.add(value)) {
         throw new BadRequestException("Values must not contain duplicates: %s", value);
-      }
-      if (value.getBytes(StandardCharsets.UTF_8).length > MAX_VALUE_BYTES) {
-        throw new BadRequestException(
-            "Values must not exceed %d bytes, measured on the decoded value in UTF-8",
-            MAX_VALUE_BYTES);
       }
     }
   }

@@ -33,7 +33,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.responses.ErrorResponseParser;
+import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
@@ -45,22 +50,29 @@ import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.GenericTableApi;
+import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.TagApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
+import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TagIdentifier;
 import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
 import org.assertj.core.api.Assertions;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -109,6 +121,11 @@ public class PolarisTagServiceIntegrationTest {
   private static TagApi tagApi;
 
   private String currentCatalogName;
+  private RESTCatalog restCatalog;
+  private GenericTableApi genericTableApi;
+
+  private static final Namespace NS1 = Namespace.of("NS1");
+  private static final TableIdentifier NS1_T1 = TableIdentifier.of(NS1, "T1");
 
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
@@ -149,11 +166,20 @@ public class PolarisTagServiceIntegrationTest {
 
     String principalToken = client.obtainToken(principalCredentials);
     tagApi = client.tagApi(principalToken);
+    genericTableApi = client.genericTableApi(principalToken);
+    restCatalog =
+        IcebergHelper.restCatalog(endpoints, currentCatalogName, Map.of(), principalToken);
   }
 
   @AfterEach
   public void cleanUp() throws IOException {
-    client.cleanUp(adminToken);
+    try {
+      if (restCatalog != null) {
+        restCatalog.close();
+      }
+    } finally {
+      client.cleanUp(adminToken);
+    }
   }
 
   /**
@@ -2276,6 +2302,20 @@ public class PolarisTagServiceIntegrationTest {
   }
 
   @Test
+  public void testAssignTagWithAMalformedIdempotencyKeyKeepsTheContractLiteral() {
+    // assignTag declares no Idempotency-Key parameter, but the shared filter runs on every
+    // request regardless, before the tag code that would otherwise ignore the header.
+    createAllTargetsTag("classification");
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+    AssignTagRequest request = AssignTagRequest.builder().setValues(List.of("public")).build();
+    assertInvalidIdempotencyKey(
+        tagApi
+            .assignmentRequestWithRawIdempotencyKey(
+                currentCatalogName, "classification", catalogTarget, MALFORMED_KEY)
+            .put(Entity.json(request)));
+  }
+
+  @Test
   public void testCreateTagInAMissingCatalogIsNoSuchCatalog() {
     CreateTagRequest request =
         CreateTagRequest.builder()
@@ -2659,6 +2699,120 @@ public class PolarisTagServiceIntegrationTest {
   }
 
   @Test
+  public void testDropTagDetachAll() {
+    createDefaultTag("classification");
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+    tagApi.assignTag(currentCatalogName, "classification", catalogTarget, List.of("public"));
+
+    // a plain drop refuses while assignments remain and changes nothing
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}",
+                Map.of("cat", currentCatalogName, "tag", "classification"),
+                Map.of("detach-all", "false"))
+            .delete()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(body).contains("in use");
+      Assertions.assertThat(body).contains("TagInUse");
+    }
+    Assertions.assertThat(tagApi.loadTag(currentCatalogName, "classification")).isNotNull();
+
+    // detach-all removes every assignment and the definition together
+    tagApi.dropTag(currentCatalogName, "classification", true);
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}",
+                Map.of("cat", currentCatalogName, "tag", "classification"))
+            .get()) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+    }
+  }
+
+  @Test
+  public void testDropTagIgnoresAnAssignmentOnARemovedColumn() {
+    createAllTargetsTag("coltag");
+    createT1();
+    TagAttachmentTarget columnTarget =
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of("data"))
+            .build();
+    tagApi.assignTag(currentCatalogName, "coltag", columnTarget, List.of("public"));
+
+    // Ordinary schema evolution removes the column while the table itself survives. Nothing cleans
+    // the assignment row up, and unassign can no longer name the column, so the row is inert: it
+    // must not keep the definition alive.
+    restCatalog.loadTable(NS1_T1).updateSchema().deleteColumn("data").commit();
+
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}",
+                Map.of("cat", currentCatalogName, "tag", "coltag"),
+                Map.of("detach-all", "false"))
+            .delete()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+
+    // the definition is gone, so a read cannot return it or anything attached to it
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}", Map.of("cat", currentCatalogName, "tag", "coltag"))
+            .get()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      assertErrorType(body, "NoSuchTag");
+    }
+  }
+
+  @Test
+  public void testDropTagStillBlocksWhenALiveAssignmentSurvivesAnOrphan() {
+    createAllTargetsTag("coltag");
+    createT1();
+    TagAttachmentTarget columnTarget =
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of("data"))
+            .build();
+    tagApi.assignTag(currentCatalogName, "coltag", columnTarget, List.of("public"));
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+    tagApi.assignTag(currentCatalogName, "coltag", catalogTarget, List.of("public"));
+
+    // one row becomes inert, one stays live
+    restCatalog.loadTable(NS1_T1).updateSchema().deleteColumn("data").commit();
+
+    // The live row still blocks. This is the case an existence probe cannot get right: whichever
+    // row it happened to read first would decide the answer, so passing over the inert one has to
+    // continue the search rather than end it.
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}",
+                Map.of("cat", currentCatalogName, "tag", "coltag"),
+                Map.of("detach-all", "false"))
+            .delete()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(body).contains("in use");
+      assertErrorType(body, "TagInUse");
+    }
+    Assertions.assertThat(tagApi.loadTag(currentCatalogName, "coltag")).isNotNull();
+  }
+
+  @Test
   public void testDropTagDetachAllRemovesTheDefinition() {
     createDefaultTag("classification");
     // detach-all promises that the definition and every assignment of it are gone together. No
@@ -2688,5 +2842,693 @@ public class PolarisTagServiceIntegrationTest {
     // detach-all=false behaves exactly like the absent parameter.
     createDefaultTag("classification");
     tagApi.dropTag(currentCatalogName, "classification", false);
+  }
+
+  private Tag createAllTargetsTag(String name) {
+    return tagApi.createTag(
+        currentCatalogName,
+        name,
+        "a comment",
+        VALUES,
+        List.of(
+            TargetType.CATALOG,
+            TargetType.NAMESPACE,
+            TargetType.TABLE,
+            TargetType.VIEW,
+            TargetType.COLUMN));
+  }
+
+  private TagAttachmentTarget tableTarget() {
+    return TagAttachmentTarget.builder(TargetType.TABLE)
+        .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+        .build();
+  }
+
+  private void createT1() {
+    restCatalog.createNamespace(NS1);
+    restCatalog
+        .buildTable(
+            NS1_T1,
+            new Schema(
+                Types.NestedField.optional(1, "id", Types.LongType.get()),
+                Types.NestedField.optional(2, "data", Types.StringType.get())))
+        .create();
+  }
+
+  @Test
+  public void testAssignAndUnassignTag() {
+    createAllTargetsTag("assigntag");
+    createT1();
+
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+    TagAttachmentTarget namespaceTarget =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of(NS1.levels()[0])).build();
+
+    tagApi.assignTag(currentCatalogName, "assigntag", catalogTarget, List.of("public"));
+    // re-assigning the same identity replaces the value
+    tagApi.assignTag(currentCatalogName, "assigntag", catalogTarget, List.of("internal"));
+    tagApi.assignTag(currentCatalogName, "assigntag", namespaceTarget, List.of("public"));
+    tagApi.assignTag(currentCatalogName, "assigntag", tableTarget(), List.of("public"));
+
+    tagApi.unassignTag(currentCatalogName, "assigntag", catalogTarget);
+    tagApi.unassignTag(currentCatalogName, "assigntag", namespaceTarget);
+    tagApi.unassignTag(currentCatalogName, "assigntag", tableTarget());
+
+    // unassigning a missing relationship is a 404
+    try (Response res =
+        tagApi.unassignTagResponse(currentCatalogName, "assigntag", catalogTarget)) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class)).contains("NoSuchAssignment");
+    }
+  }
+
+  @Test
+  public void testAssignTagToColumn() {
+    createAllTargetsTag("coltag");
+    createT1();
+    TagAttachmentTarget columnTarget =
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of("data"))
+            .build();
+    tagApi.assignTag(currentCatalogName, "coltag", columnTarget, List.of("public"));
+    tagApi.unassignTag(currentCatalogName, "coltag", columnTarget);
+
+    // a column absent from the current schema is a 404
+    TagAttachmentTarget badColumn =
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of("nope"))
+            .build();
+    assertAssignFails(
+        "coltag", badColumn, List.of("public"), Response.Status.NOT_FOUND, "NoSuchTarget");
+
+    // a present-but-empty column member is malformed, not a miss
+    assertAssignFails(
+        "coltag",
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of(""))
+            .build(),
+        List.of("public"),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+    // an absent column list is malformed too, not merely unresolvable
+    assertAssignFails(
+        "coltag",
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .build(),
+        List.of("public"),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+  }
+
+  @Test
+  public void testTagValueByteBound() {
+    // A value of exactly the bound is accepted end to end (definition, assignment, read back);
+    // one byte more is rejected at both the definition and the assignment with a message naming
+    // the limit.
+    String atLimit = "v".repeat(2000);
+    String overLimit = "v".repeat(2001);
+    tagApi.createTag(
+        currentCatalogName,
+        "boundtag",
+        null,
+        List.of(atLimit, "short"),
+        List.of(TargetType.CATALOG));
+    Assertions.assertThat(tagApi.loadTag(currentCatalogName, "boundtag").getValues())
+        .contains(atLimit);
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+    tagApi.assignTag(currentCatalogName, "boundtag", catalogTarget, List.of(atLimit));
+    tagApi.unassignTag(currentCatalogName, "boundtag", catalogTarget);
+
+    try (Response res =
+        tagApi
+            .request("polaris/v1/{cat}/tags", Map.of("cat", currentCatalogName))
+            .post(
+                Entity.json(
+                    "{\"name\":\"overtag\",\"values\":[\""
+                        + overLimit
+                        + "\"],\"target-types\":[\"catalog\"]}"))) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(body).contains("2000");
+    }
+    assertAssignFails(
+        "boundtag", catalogTarget, List.of(overLimit), Response.Status.BAD_REQUEST, "BadRequest");
+  }
+
+  private Map<String, String> queryParamsForTableTarget() {
+    return Map.of("target-type", "TABLE", "namespace", NS1.levels()[0], "target-name", "T1");
+  }
+
+  @Test
+  public void testAssignTagValuesOverTheWire() {
+    createAllTargetsTag("wirevalues");
+    createT1();
+
+    // A body that does not carry a selected-values array is a schema failure: the field is missing,
+    // explicitly null, or not an array at all. None of those is a selection this operation can
+    // judge.
+    assertAssignValuesRejected("wirevalues", "{}", "ValidationError");
+    // An explicit null is invalid and answers 400 BadRequest, as does an empty list.
+    assertAssignValuesRejected("wirevalues", "{\"values\": null}", "BadRequest");
+    assertAssignValuesRejected("wirevalues", "{\"values\": \"x\"}", "ValidationError");
+
+    // The array arrives and the selection in it is wrong, which this operation does judge.
+    assertAssignValuesRejected("wirevalues", "{\"values\": []}", "BadRequest");
+    assertAssignValuesRejected("wirevalues", "{\"values\": [\"\"]}", "BadRequest");
+    // Sent as raw JSON so the repeated member arrives as the client wrote it.
+    assertAssignValuesRejected(
+        "wirevalues", "{\"values\": [\"public\", \"public\"]}", "BadRequest");
+    assertAssignValuesRejected(
+        "wirevalues", "{\"values\": [\"public\", \"internal\"]}", "BadRequest");
+    assertAssignValuesRejected("wirevalues", "{\"values\": [\"nope\"]}", "BadRequest");
+    // A member whose JSON type the schema does not permit is a schema failure, not a selection to
+    // judge: the array being present says nothing about its members' types.
+    assertAssignValuesRejected("wirevalues", "{\"values\": [1]}", "ValidationError");
+    assertAssignValuesRejected("wirevalues", "{\"values\": [true]}", "ValidationError");
+    assertAssignValuesRejected("wirevalues", "{\"values\": [{\"x\": 1}]}", "ValidationError");
+    assertAssignValuesRejected("wirevalues", "{\"values\": [[\"x\"]]}", "ValidationError");
+    // A null member carries no type to reject, so it stays the Tag validation answer for a member
+    // that names no value.
+    assertAssignValuesRejected("wirevalues", "{\"values\": [null]}", "BadRequest");
+
+    // One allowed value succeeds, and unassign then finds the assignment, which is what shows the
+    // thirteen rejections above stored nothing rather than failing after a write.
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "wirevalues"),
+                queryParamsForTableTarget())
+            .put(Entity.json("{\"values\": [\"public\"]}"))) {
+      String body = res.hasEntity() ? res.readEntity(String.class) : "";
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+    try (Response res =
+        tagApi.unassignTagResponse(currentCatalogName, "wirevalues", tableTarget())) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+  }
+
+  @Test
+  public void testAssignTagNumericMemberIsRejectedEvenWhenItsTextIsAllowed() {
+    // The case that shows why a member's type has to be checked rather than its content. This
+    // definition allows the literal text "1", so converting the number 1 to "1" would produce a
+    // selection the definition does allow, and the request would be accepted: a body the schema
+    // never permitted would create an assignment. Nothing about the content check can catch it,
+    // because by then the number is indistinguishable from the string a client could have sent.
+    tagApi.createTag(
+        currentCatalogName,
+        "numericvalues",
+        null,
+        List.of("1"),
+        List.of(
+            TargetType.CATALOG,
+            TargetType.NAMESPACE,
+            TargetType.TABLE,
+            TargetType.VIEW,
+            TargetType.COLUMN));
+    createT1();
+
+    assertAssignValuesRejected("numericvalues", "{\"values\": [1]}", "ValidationError");
+
+    // The same selection sent as the string the schema declares is accepted, which is what shows
+    // the rejection above is about the member's type and not about the value.
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "numericvalues"),
+                queryParamsForTableTarget())
+            .put(Entity.json("{\"values\": [\"1\"]}"))) {
+      String body = res.hasEntity() ? res.readEntity(String.class) : "";
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
+    }
+  }
+
+  /**
+   * Sends one raw assignTag body and asserts the wire answer. The body is a raw string rather than
+   * the generated model so that a missing field, an explicit null, a non-array and a duplicate
+   * member all reach the server as sent: the model would normalize or reject them in the client.
+   */
+  @Test
+  public void testAssignTagEnvelopeErrorTypeSurvivesTheResponseFilter() {
+    createAllTargetsTag("envelopetag");
+    createT1();
+
+    // An empty selected-values array is this operation's own rejection and already answers in the
+    // error envelope, so it must keep its own type rather than be reported as a schema failure.
+    // This
+    // is the companion to the schema cases above: it shows only a foreign body shape is replaced.
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "envelopetag"),
+                queryParamsForTableTarget())
+            .put(Entity.json("{\"values\": []}"))) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, "BadRequest");
+      Assertions.assertThat(body).contains("values must not be empty");
+    }
+  }
+
+  private void assertAssignValuesRejected(String tagName, String rawBody, String expectedType) {
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", tagName),
+                queryParamsForTableTarget())
+            .put(Entity.json(rawBody))) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as("body was: " + body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, expectedType);
+    }
+    // No read endpoint exists in this slice, so unassign is the only observable for the
+    // relationship:
+    // a rejected assign must leave nothing behind, which shows up as the not-found literal.
+    try (Response res = tagApi.unassignTagResponse(currentCatalogName, tagName, tableTarget())) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as("a rejected assign must leave no assignment; body was: " + body)
+          .isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      assertErrorType(body, "NoSuchAssignment");
+    }
+  }
+
+  @Test
+  public void testAssignTagValueAndTargetValidation() {
+    // definition allows only catalog targets
+    tagApi.createTag(currentCatalogName, "narrowtag", null, VALUES, List.of(TargetType.CATALOG));
+    createT1();
+    TagAttachmentTarget catalogTarget = TagAttachmentTarget.builder(TargetType.CATALOG).build();
+
+    // value outside the current allowed values
+    assertAssignFails(
+        "narrowtag",
+        catalogTarget,
+        List.of("restricted"),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+    // empty and multi-value lists
+    assertAssignFails(
+        "narrowtag", catalogTarget, List.of(), Response.Status.BAD_REQUEST, "BadRequest");
+    assertAssignFails(
+        "narrowtag",
+        catalogTarget,
+        List.of("public", "internal"),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+    // an empty-string value member is malformed, not merely outside the allowed values
+    assertAssignFails(
+        "narrowtag", catalogTarget, List.of(""), Response.Status.BAD_REQUEST, "BadRequest");
+    // a supported target kind the definition does not list: 400 on an existing target, but the
+    // target is resolved first, so the same excluded kind on a missing target answers the
+    // target-level 404
+    assertAssignFails(
+        "narrowtag", tableTarget(), List.of("public"), Response.Status.BAD_REQUEST, "BadRequest");
+    assertAssignFails(
+        "narrowtag",
+        TagAttachmentTarget.builder(TargetType.TABLE)
+            .setPath(List.of(NS1.levels()[0], "missing_for_excluded_kind"))
+            .build(),
+        List.of("public"),
+        Response.Status.NOT_FOUND,
+        "NoSuchTarget");
+    assertAssignFails(
+        "narrowtag",
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of("no_such_column"))
+            .build(),
+        List.of("public"),
+        Response.Status.NOT_FOUND,
+        "NoSuchTarget");
+    // a catalog target must not carry a path
+    assertAssignFails(
+        "narrowtag",
+        TagAttachmentTarget.builder(TargetType.CATALOG).setPath(List.of(NS1.levels()[0])).build(),
+        List.of("public"),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+    // malformed target shapes: empty namespace path, table path without a table segment,
+    // and requests missing the target or its type entirely
+    assertAssignFails(
+        "narrowtag",
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of()).build(),
+        List.of("public"),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+    assertAssignFails(
+        "narrowtag",
+        TagAttachmentTarget.builder(TargetType.TABLE).setPath(List.of(NS1.levels()[0])).build(),
+        List.of("public"),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+    // target-type is required: a request that omits it entirely, with or without the other
+    // address parameters, is a bean-validation failure before any tag code runs.
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "narrowtag"))
+            .put(Entity.json(AssignTagRequest.builder().setValues(List.of("public")).build()))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+    }
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "narrowtag"),
+                Map.of("namespace", "ns"))
+            .put(Entity.json(AssignTagRequest.builder().setValues(List.of("public")).build()))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+    }
+
+    // A target whose path does not resolve answers the target-level 404 naming the missing
+    // entity (table or namespace), and that classification wins over a missing tag. Column
+    // misses are detected later, after the tag lookup: a resolvable table with an absent column
+    // answers the column-level 404 (asserted in testAssignTagToColumn), but a missing tag wins
+    // over a missing column.
+    TagAttachmentTarget missingTable =
+        TagAttachmentTarget.builder(TargetType.TABLE)
+            .setPath(List.of(NS1.levels()[0], "missing"))
+            .build();
+    assertAssignFails(
+        "narrowtag", missingTable, List.of("public"), Response.Status.NOT_FOUND, "NoSuchTarget");
+    TagAttachmentTarget missingNamespace =
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of("no_such_ns")).build();
+    assertAssignFails(
+        "narrowtag",
+        missingNamespace,
+        List.of("public"),
+        Response.Status.NOT_FOUND,
+        "NoSuchTarget");
+    // a tag that does not exist, and both misses at once: the target-level 404 wins because
+    // target resolution fails the request before the tag lookup runs
+    assertAssignFails(
+        "missingtag", catalogTarget, List.of("public"), Response.Status.NOT_FOUND, "NoSuchTag");
+    assertAssignFails(
+        "missingtag", missingTable, List.of("public"), Response.Status.NOT_FOUND, "NoSuchTarget");
+    // unassign classifies a missing target the same way
+    try (Response res = tagApi.unassignTagResponse(currentCatalogName, "narrowtag", missingTable)) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
+      Assertions.assertThat(body).contains("NoSuchTarget");
+    }
+
+    // grandfathering: narrow the list after assigning, the write with the removed value fails
+    tagApi.assignTag(currentCatalogName, "narrowtag", catalogTarget, List.of("internal"));
+    Tag current = tagApi.loadTag(currentCatalogName, "narrowtag");
+    tagApi.updateTag(
+        currentCatalogName,
+        "narrowtag",
+        UpdateTagRequest.builder()
+            .setDescription(current.getDescription() == null ? "" : current.getDescription())
+            .setCurrentTagVersion(current.getVersion())
+            .setValues(List.of("public"))
+            .build());
+    assertAssignFails(
+        "narrowtag", catalogTarget, List.of("internal"), Response.Status.BAD_REQUEST, "BadRequest");
+
+    // Remove the still-assigned tag explicitly so later tests' cleanup starts from a clean
+    // catalog.
+    tagApi.dropTag(currentCatalogName, "narrowtag", true);
+  }
+
+  @Test
+  public void testAssignTagToViewAndGenericTableColumnRejected() {
+    createAllTargetsTag("subtypetag");
+    restCatalog.createNamespace(NS1);
+
+    // A view is addressed by its own target-type; naming it as TABLE is a kind mismatch, so
+    // the target is treated the same as one that does not exist rather than a malformed request.
+    TableIdentifier viewId = TableIdentifier.of(NS1, "V1");
+    restCatalog
+        .buildView(viewId)
+        .withSchema(new Schema(Types.NestedField.optional(1, "id", Types.LongType.get())))
+        .withDefaultNamespace(NS1)
+        .withQuery("spark", "select 1 as id")
+        .create();
+    assertAssignFails(
+        "subtypetag",
+        TagAttachmentTarget.builder(TargetType.TABLE)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(viewId))
+            .build(),
+        List.of("public"),
+        Response.Status.NOT_FOUND,
+        "NoSuchTarget");
+
+    // whole-object assignment on the view, addressed by its own target-type, works
+    TagAttachmentTarget viewTarget =
+        TagAttachmentTarget.builder(TargetType.VIEW)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(viewId))
+            .build();
+    tagApi.assignTag(currentCatalogName, "subtypetag", viewTarget, List.of("public"));
+    tagApi.unassignTag(currentCatalogName, "subtypetag", viewTarget);
+
+    // a generic table defines no stable column id, so column targets are rejected on it
+    TableIdentifier genericId = TableIdentifier.of(NS1, "G1");
+    GenericTable genericTable =
+        genericTableApi.createGenericTable(currentCatalogName, genericId, "format", Map.of());
+    Assertions.assertThat(genericTable).isNotNull();
+    assertAssignFails(
+        "subtypetag",
+        TagAttachmentTarget.builder(TargetType.COLUMN)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(genericId))
+            .setColumn(List.of("c1"))
+            .build(),
+        List.of("public"),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+    genericTableApi.purge(currentCatalogName, NS1);
+  }
+
+  @Test
+  public void testAssignAndUnassignTagOnGenericTable() {
+    // whole-object assignment is supported on a generic table, unlike column targets
+    createAllTargetsTag("generictag");
+    restCatalog.createNamespace(NS1);
+    TableIdentifier genericId = TableIdentifier.of(NS1, "G1");
+    GenericTable genericTable =
+        genericTableApi.createGenericTable(currentCatalogName, genericId, "format", Map.of());
+    Assertions.assertThat(genericTable).isNotNull();
+
+    TagAttachmentTarget genericTarget =
+        TagAttachmentTarget.builder(TargetType.TABLE)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(genericId))
+            .build();
+    tagApi.assignTag(currentCatalogName, "generictag", genericTarget, List.of("public"));
+    tagApi.unassignTag(currentCatalogName, "generictag", genericTarget);
+
+    genericTableApi.purge(currentCatalogName, NS1);
+  }
+
+  @Test
+  public void testUnassignTagMalformedTargetRejected() {
+    createAllTargetsTag("unassigntag");
+    createT1();
+
+    // an empty namespace path
+    assertUnassignFails(
+        "unassigntag",
+        TagAttachmentTarget.builder(TargetType.NAMESPACE).setPath(List.of()).build(),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+    // a table-like path must name a namespace and a table, not just the namespace
+    assertUnassignFails(
+        "unassigntag",
+        TagAttachmentTarget.builder(TargetType.TABLE).setPath(List.of(NS1.levels()[0])).build(),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+    // column is only valid for column targets, not for a table-like target
+    assertUnassignFails(
+        "unassigntag",
+        TagAttachmentTarget.builder(TargetType.TABLE)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS1_T1))
+            .setColumn(List.of("data"))
+            .build(),
+        Response.Status.BAD_REQUEST,
+        "BadRequest");
+  }
+
+  @Test
+  public void testNullPathSegmentRejected() {
+    createAllTargetsTag("nulltag");
+    createT1();
+
+    // An empty namespace level, produced by a leading, trailing or doubled U+001F separator, is
+    // not a namespace segment Iceberg can resolve, so it must be rejected as a malformed target
+    // before any identifier is built from it, whether the empty level is the only one, the first
+    // namespace level, or sits right before the table name, and for both assign and unassign.
+    assertEmptyPathSegmentRejected("NAMESPACE", "\u001f", null);
+    assertEmptyPathSegmentRejected("TABLE", "\u001fNS1", "T1");
+    assertEmptyPathSegmentRejected("TABLE", "NS1\u001f", "T1");
+  }
+
+  private void assertEmptyPathSegmentRejected(
+      String targetType, String namespace, @Nullable String targetName) {
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("target-type", targetType);
+    queryParams.put("namespace", namespace);
+    if (targetName != null) {
+      queryParams.put("target-name", targetName);
+    }
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "nulltag"),
+                queryParams)
+            .put(Entity.json(AssignTagRequest.builder().setValues(List.of("public")).build()))) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(body).contains("BadRequest");
+    }
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "nulltag"),
+                queryParams)
+            .delete()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(body).contains("BadRequest");
+    }
+  }
+
+  @Test
+  public void testUnknownTargetTypeRejectedOnAssignAndUnassign() {
+    createAllTargetsTag("unknownkind");
+    createT1();
+
+    // SCHEMA is not a v1 target kind. The value fails while the query parameter is bound, before
+    // any
+    // handler runs, and the framework answers a bound-parameter failure with 404 unless the
+    // converter raises a WebApplicationException. The contract names this case 400 BadRequest, so
+    // the status alone is not the point: the error type is.
+    Map<String, String> unknownKind =
+        Map.of("target-type", "SCHEMA", "namespace", NS1.levels()[0], "target-name", "T1");
+
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "unknownkind"),
+                unknownKind)
+            .put(Entity.json(AssignTagRequest.builder().setValues(List.of("public")).build()))) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, "BadRequest");
+      Assertions.assertThat(body).contains("SCHEMA");
+    }
+
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "unknownkind"),
+                unknownKind)
+            .delete()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertErrorType(body, "BadRequest");
+      Assertions.assertThat(body).contains("SCHEMA");
+    }
+  }
+
+  private void assertAssignFails(
+      String tagName,
+      TagAttachmentTarget target,
+      List<String> values,
+      Response.Status expected,
+      String expectedType) {
+    try (Response res = tagApi.assignTagResponse(currentCatalogName, tagName, target, values)) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus()).as(body).isEqualTo(expected.getStatusCode());
+      Assertions.assertThat(body).contains(expectedType);
+    }
+  }
+
+  @Test
+  public void testUnitSeparatorPathSegmentRejected() {
+    // U+001F is the namespace level separator, so it is expected inside `namespace`, where it
+    // splits into levels rather than being rejected (sales%1Feu decodes to two levels, asserted
+    // in the decoder unit tests). `target-name` is never split, so the same character inside it
+    // is a malformed member, not a level boundary.
+    createAllTargetsTag("ustag");
+    createT1();
+    String memberWithUnitSeparator = "T\u001f1";
+
+    assertUnitSeparatorInMemberRejected("TABLE", NS1.levels()[0], memberWithUnitSeparator);
+  }
+
+  private void assertUnitSeparatorInMemberRejected(
+      String targetType, String namespace, String targetName) {
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("target-type", targetType);
+    queryParams.put("namespace", namespace);
+    queryParams.put("target-name", targetName);
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "ustag"),
+                queryParams)
+            .put(Entity.json(AssignTagRequest.builder().setValues(List.of("public")).build()))) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(body).contains("BadRequest");
+    }
+    try (Response res =
+        tagApi
+            .request(
+                "polaris/v1/{cat}/tags/{tag}/assignments",
+                Map.of("cat", currentCatalogName, "tag", "ustag"),
+                queryParams)
+            .delete()) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus())
+          .as(body)
+          .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(body).contains("BadRequest");
+    }
+  }
+
+  private void assertUnassignFails(
+      String tagName, TagAttachmentTarget target, Response.Status expected, String expectedType) {
+    try (Response res = tagApi.unassignTagResponse(currentCatalogName, tagName, target)) {
+      String body = res.readEntity(String.class);
+      Assertions.assertThat(res.getStatus()).as(body).isEqualTo(expected.getStatusCode());
+      Assertions.assertThat(body).contains(expectedType);
+    }
   }
 }

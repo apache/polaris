@@ -120,6 +120,15 @@ public class BaseResult {
 
     // policy has mappings and cannot be dropped
     POLICY_HAS_MAPPINGS(16),
+
+    // tag has assignments and cannot be dropped without detaching them
+    TAG_HAS_ASSIGNMENTS(17),
+
+    // tag assignment not found
+    TAG_ASSIGNMENT_NOT_FOUND(18),
+
+    // the backend cannot support the requested tag assignment operation
+    TAG_ASSIGNMENTS_NOT_SUPPORTED(19),
     ;
 
     // code for the enum

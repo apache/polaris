@@ -35,10 +35,13 @@ import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
+import org.apache.polaris.service.types.AssignTagRequest;
 import org.apache.polaris.service.types.CreateTagRequest;
 import org.apache.polaris.service.types.ListTagsResponse;
 import org.apache.polaris.service.types.RenameTagRequest;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
+import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
 
 @Decorator
@@ -252,6 +255,106 @@ public class CatalogTagEventServiceDelegator
     return resp;
   }
 
-  // assignTag, unassignTag, getObjectTags, and listObjectsByTag are not implemented yet; the
-  // default PolarisCatalogTagApiService methods return 501 and are not decorated here.
+  @Override
+  public Response assignTag(
+      String prefix,
+      String tagName,
+      TargetType targetType,
+      AssignTagRequest assignTagRequest,
+      String namespace,
+      String targetName,
+      String column,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
+    TagAttachmentTarget target =
+        TagCatalogUtils.targetFromQuery(targetType, namespace, targetName, column);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_ASSIGN_TAG)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_ASSIGN_TAG,
+              eventMetadataFactory.create(),
+              ImmutableAttributeMap.builder()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.TAG_NAME, tagName)
+                  .put(EventAttributes.TAG_ASSIGNMENT_TARGET, target)
+                  .put(EventAttributes.ASSIGN_TAG_REQUEST, assignTagRequest)
+                  .build()));
+    }
+    Response resp =
+        delegate.assignTag(
+            prefix,
+            tagName,
+            targetType,
+            assignTagRequest,
+            namespace,
+            targetName,
+            column,
+            realmContext,
+            securityContext);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_ASSIGN_TAG)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_ASSIGN_TAG,
+              eventMetadataFactory.create(),
+              ImmutableAttributeMap.builder()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.TAG_NAME, tagName)
+                  .put(EventAttributes.TAG_ASSIGNMENT_TARGET, target)
+                  .put(EventAttributes.ASSIGN_TAG_REQUEST, assignTagRequest)
+                  .build()));
+    }
+    return resp;
+  }
+
+  @Override
+  public Response unassignTag(
+      String prefix,
+      String tagName,
+      TargetType targetType,
+      String namespace,
+      String targetName,
+      String column,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
+    TagAttachmentTarget target =
+        TagCatalogUtils.targetFromQuery(targetType, namespace, targetName, column);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_UNASSIGN_TAG)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_UNASSIGN_TAG,
+              eventMetadataFactory.create(),
+              ImmutableAttributeMap.builder()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.TAG_NAME, tagName)
+                  .put(EventAttributes.TAG_ASSIGNMENT_TARGET, target)
+                  .build()));
+    }
+    Response resp =
+        delegate.unassignTag(
+            prefix,
+            tagName,
+            targetType,
+            namespace,
+            targetName,
+            column,
+            realmContext,
+            securityContext);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_UNASSIGN_TAG)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_UNASSIGN_TAG,
+              eventMetadataFactory.create(),
+              ImmutableAttributeMap.builder()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.TAG_NAME, tagName)
+                  .put(EventAttributes.TAG_ASSIGNMENT_TARGET, target)
+                  .build()));
+    }
+    return resp;
+  }
+
+  // getObjectTags and listObjectsByTag are not implemented yet; the default
+  // PolarisCatalogTagApiService methods return 501 and are not decorated here.
 }

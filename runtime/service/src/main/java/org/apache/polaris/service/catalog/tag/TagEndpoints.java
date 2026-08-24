@@ -34,6 +34,10 @@ public class TagEndpoints {
   public static final Endpoint V1_LOAD_TAG = Endpoint.create("GET", PolarisResourcePaths.V1_TAG);
   public static final Endpoint V1_UPDATE_TAG = Endpoint.create("PUT", PolarisResourcePaths.V1_TAG);
   public static final Endpoint V1_DROP_TAG = Endpoint.create("DELETE", PolarisResourcePaths.V1_TAG);
+  public static final Endpoint V1_ASSIGN_TAG =
+      Endpoint.create("PUT", PolarisResourcePaths.V1_TAG_ASSIGNMENTS);
+  public static final Endpoint V1_UNASSIGN_TAG =
+      Endpoint.create("DELETE", PolarisResourcePaths.V1_TAG_ASSIGNMENTS);
 
   public static final Set<Endpoint> TAG_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
@@ -43,5 +47,7 @@ public class TagEndpoints {
           .add(V1_LOAD_TAG)
           .add(V1_UPDATE_TAG)
           .add(V1_DROP_TAG)
+          .add(V1_ASSIGN_TAG)
+          .add(V1_UNASSIGN_TAG)
           .build();
 }

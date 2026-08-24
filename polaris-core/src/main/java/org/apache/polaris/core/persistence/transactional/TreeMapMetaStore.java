@@ -31,6 +31,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
 import org.jspecify.annotations.NonNull;
 
 /** Implements a simple in-memory store for Polaris, using tree-map */
@@ -128,16 +129,19 @@ public class TreeMapMetaStore {
      * delete the specified record from the slice
      *
      * @param key key for the record to remove
+     * @return whether a record was actually removed; false if the key was not present
      */
-    public void delete(String key) {
+    public boolean delete(String key) {
       ensureReadWriteTr();
-      if (slice.containsKey(key)) {
+      boolean existed = slice.containsKey(key);
+      if (existed) {
         // write undo if needs be
         if (!this.undoSlice.containsKey(key)) {
           this.undoSlice.put(key, this.slice.getOrDefault(key, null));
         }
         this.slice.remove(key);
       }
+      return existed;
     }
 
     /**
@@ -163,9 +167,10 @@ public class TreeMapMetaStore {
      * delete the specified record from the slice
      *
      * @param value value to remove
+     * @return whether a record was actually removed; false if no matching record was present
      */
-    public void delete(T value) {
-      this.delete(this.buildKey(value));
+    public boolean delete(T value) {
+      return this.delete(this.buildKey(value));
     }
 
     /** Rollback all changes made to this slice since transaction started */
@@ -224,6 +229,10 @@ public class TreeMapMetaStore {
   private final Slice<PolarisPolicyMappingRecord> slicePolicyMappingRecords;
 
   private final Slice<PolarisPolicyMappingRecord> slicePolicyMappingRecordsByPolicy;
+
+  private final Slice<TagAssignmentRecord> sliceTagAssignmentRecords;
+
+  private final Slice<TagAssignmentRecord> sliceTagAssignmentRecordsByTag;
 
   // next id generator
   private final AtomicLong nextId = new AtomicLong();
@@ -308,6 +317,30 @@ public class TreeMapMetaStore {
                     policyMappingRecord.getTargetId()),
             PolarisPolicyMappingRecord::new);
 
+    this.sliceTagAssignmentRecords =
+        new Slice<>(
+            tagAssignmentRecord ->
+                String.format(
+                    "%d::%d::%d::%d::%d",
+                    tagAssignmentRecord.getTargetCatalogId(),
+                    tagAssignmentRecord.getTargetId(),
+                    tagAssignmentRecord.getFieldId(),
+                    tagAssignmentRecord.getTagCatalogId(),
+                    tagAssignmentRecord.getTagId()),
+            TagAssignmentRecord::new);
+
+    this.sliceTagAssignmentRecordsByTag =
+        new Slice<>(
+            tagAssignmentRecord ->
+                String.format(
+                    "%d::%d::%d::%d::%d",
+                    tagAssignmentRecord.getTagCatalogId(),
+                    tagAssignmentRecord.getTagId(),
+                    tagAssignmentRecord.getTargetCatalogId(),
+                    tagAssignmentRecord.getTargetId(),
+                    tagAssignmentRecord.getFieldId()),
+            TagAssignmentRecord::new);
+
     this.initialDiagnosticServices = diagnostics;
     // no transaction open yet
     this.diagnosticServices = diagnostics;
@@ -390,6 +423,8 @@ public class TreeMapMetaStore {
     this.slicePrincipalSecrets.startWriteTransaction();
     this.slicePolicyMappingRecords.startWriteTransaction();
     this.slicePolicyMappingRecordsByPolicy.startWriteTransaction();
+    this.sliceTagAssignmentRecords.startWriteTransaction();
+    this.sliceTagAssignmentRecordsByTag.startWriteTransaction();
   }
 
   /** Rollback transaction */
@@ -402,6 +437,8 @@ public class TreeMapMetaStore {
     this.slicePrincipalSecrets.rollback();
     this.slicePolicyMappingRecords.rollback();
     this.slicePolicyMappingRecordsByPolicy.rollback();
+    this.sliceTagAssignmentRecords.rollback();
+    this.sliceTagAssignmentRecordsByTag.rollback();
   }
 
   /** Ensure that a read/write FDB transaction has been started */
@@ -538,6 +575,14 @@ public class TreeMapMetaStore {
     return slicePolicyMappingRecordsByPolicy;
   }
 
+  public Slice<TagAssignmentRecord> getSliceTagAssignmentRecords() {
+    return sliceTagAssignmentRecords;
+  }
+
+  public Slice<TagAssignmentRecord> getSliceTagAssignmentRecordsByTag() {
+    return sliceTagAssignmentRecordsByTag;
+  }
+
   /**
    * Next sequence number generator
    *
@@ -559,5 +604,7 @@ public class TreeMapMetaStore {
     this.slicePrincipalSecrets.deleteAll();
     this.slicePolicyMappingRecords.deleteAll();
     this.slicePolicyMappingRecordsByPolicy.deleteAll();
+    this.sliceTagAssignmentRecords.deleteAll();
+    this.sliceTagAssignmentRecordsByTag.deleteAll();
   }
 }

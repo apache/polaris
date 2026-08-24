@@ -27,6 +27,7 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisCallContext;
@@ -42,6 +43,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -52,11 +54,17 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadAllTagAssignmentTargetsResult;
+import org.apache.polaris.core.persistence.dao.entity.TagAssignmentResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.tag.ClassifiedAssignment;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
 import org.apache.polaris.core.tag.TagEntity;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
+import org.apache.polaris.core.tag.exceptions.NoSuchTargetException;
+import org.apache.polaris.core.tag.exceptions.TagInUseException;
 import org.apache.polaris.core.tag.exceptions.TagVersionMismatchException;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -67,6 +75,7 @@ import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
 import org.junit.jupiter.api.BeforeAll;
@@ -77,6 +86,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 /**
@@ -168,12 +178,17 @@ public class TagCatalogTest {
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
+    // The storage/file-io collaborators and realm config are only used by column field-id
+    // resolution, which these unit tests do not exercise.
     tagCatalog =
         new TagCatalog(
             metaStoreManager,
             polarisContext,
             newPassthroughView(),
-            IdempotencyRequestContext.DISABLED);
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
   }
 
   private PolarisPassthroughResolutionView newPassthroughView() {
@@ -191,6 +206,19 @@ public class TagCatalogTest {
             tagName);
     assertThat(result.isSuccess()).isTrue();
     return TagEntity.of(result.getEntity());
+  }
+
+  @Test
+  public void testColumnSchemaFileIOGetsTableDefaultProperties() {
+    // The FileIO used for column field-id resolution must see the catalog's table-default.
+    // properties with the prefix stripped, the same map the table load and refresh paths pass,
+    // and none of the unrelated catalog properties.
+    assertThat(
+            TagCatalogUtils.tableDefaultProperties(
+                Map.of(
+                    "table-default.test-key", "x",
+                    "default-base-location", "s3://bucket/path")))
+        .isEqualTo(Map.of("test-key", "x"));
   }
 
   @Test
@@ -245,7 +273,10 @@ public class TagCatalogTest {
             concurrentlyModified,
             polarisContext,
             newPassthroughView(),
-            IdempotencyRequestContext.DISABLED);
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
 
     assertThatThrownBy(
             () ->
@@ -283,7 +314,10 @@ public class TagCatalogTest {
             concurrentlyModified,
             polarisContext,
             newPassthroughView(),
-            IdempotencyRequestContext.DISABLED);
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
 
     String version = currentVersion(TAG1);
     assertThatThrownBy(() -> catalog.renameTag(TAG1, TAG2, version))
@@ -298,20 +332,291 @@ public class TagCatalogTest {
     tagCatalog.createTag(TAG1, "description", List.of("a"), List.of(TargetType.CATALOG));
 
     // Simulate a concurrent request removing the tag (or its catalog path) between this
-    // request's resolution and the delete.
+    // request's resolution and the delete. A plain drop asks the delete that is held to what it
+    // judged, whether or not it judged anything, so that is the call this stands in for.
     PolarisMetaStoreManager concurrentlyRemoved = Mockito.spy(metaStoreManager);
     Mockito.doReturn(new DropEntityResult(missingStatus, "simulated"))
         .when(concurrentlyRemoved)
-        .dropEntityIfExists(
-            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyBoolean());
+        .dropTagAndClassifiedAssignmentsIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
     TagCatalog catalog =
         new TagCatalog(
             concurrentlyRemoved,
             polarisContext,
             newPassthroughView(),
-            IdempotencyRequestContext.DISABLED);
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
 
-    assertThatThrownBy(() -> catalog.dropTag(TAG1)).isInstanceOf(NoSuchTagException.class);
+    assertThatThrownBy(() -> catalog.dropTag(TAG1, false)).isInstanceOf(NoSuchTagException.class);
+  }
+
+  @Test
+  public void testDropTagRetriesWhenTheClassificationKeepsGoingStale() {
+    tagCatalog.createTag(TAG1, "description", List.of("a"), List.of(TargetType.CATALOG));
+    TagEntity storedTag = loadStoredTag(TAG1);
+
+    // One orphaned row: the enumeration returns the row and no target entity for it, which is how
+    // a row whose target was permanently removed is recognized. The drop therefore asks for the
+    // combined delete, carrying the identity of that row.
+    TagAssignmentRecord orphanRow =
+        new TagAssignmentRecord(
+            catalogEntity.getId(), 987654321L, 0, storedTag.getCatalogId(), storedTag.getId(), "a");
+    PolarisMetaStoreManager alwaysStale = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(new LoadAllTagAssignmentTargetsResult(List.of(orphanRow), List.of()))
+        .when(alwaysStale)
+        .loadAllTargetsOnTagWithEntities(Mockito.any(), Mockito.any());
+    // Every attempt loses to a row written after it classified.
+    Mockito.doReturn(
+            new DropEntityResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, "simulated"))
+        .when(alwaysStale)
+        .dropTagAndClassifiedAssignmentsIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    TagCatalog catalog =
+        new TagCatalog(
+            alwaysStale,
+            polarisContext,
+            newPassthroughView(),
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
+
+    // A bounded number of attempts, then an answer the operation declares. The message says the
+    // assignments moved, and does not claim a live assignment was found, because none was.
+    assertThatThrownBy(() -> catalog.dropTag(TAG1, false))
+        .isInstanceOf(TagInUseException.class)
+        .hasMessageContaining("changed concurrently during every attempt");
+    Mockito.verify(alwaysStale, Mockito.times(3))
+        .dropTagAndClassifiedAssignmentsIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+
+    // and nothing was deleted
+    assertThat(loadStoredTag(TAG1)).isNotNull();
+  }
+
+  @Test
+  public void testDropTagWithNothingAssignedStillUsesTheGuardedDelete() {
+    tagCatalog.createTag(TAG1, "description", List.of("a"), List.of(TargetType.CATALOG));
+
+    // Nothing is assigned, so the classification is empty. That case used to take the generic drop,
+    // whose assignment probe and definition delete are two separate statements on JDBC, so a row
+    // committed between them was deleted unseen. It must take the guarded delete like any other.
+    PolarisMetaStoreManager alwaysStale = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(
+            new DropEntityResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, "simulated"))
+        .when(alwaysStale)
+        .dropTagAndClassifiedAssignmentsIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    TagCatalog catalog =
+        new TagCatalog(
+            alwaysStale,
+            polarisContext,
+            newPassthroughView(),
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
+
+    assertThatThrownBy(() -> catalog.dropTag(TAG1, false))
+        .isInstanceOf(TagInUseException.class)
+        .hasMessageContaining("changed concurrently during every attempt");
+
+    // every attempt asked with an empty judgement, which is the assertion the matcher makes
+    Mockito.verify(alwaysStale, Mockito.times(3))
+        .dropTagAndClassifiedAssignmentsIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.argThat(Set::isEmpty));
+    // and never the unguarded one: the backend supports assignments, so there is no fallback
+    Mockito.verify(alwaysStale, Mockito.never())
+        .dropEntityIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyBoolean());
+    assertThat(loadStoredTag(TAG1)).isNotNull();
+  }
+
+  @Test
+  public void testDropTagCarriesTheTargetStateEachRowWasJudgedFrom() {
+    tagCatalog.createTag(TAG1, "description", List.of("a"), List.of(TargetType.CATALOG));
+    TagEntity storedTag = loadStoredTag(TAG1);
+
+    // A column row whose target resolves and is not an Iceberg table, so it has no field to name
+    // and the row is inert while that target stays as it is. What the delete has to be told is the
+    // target's version, because the same row becomes live again if the target changes back.
+    PolarisBaseEntity resolvingTarget =
+        new PolarisBaseEntity.Builder()
+            .catalogId(catalogEntity.getId())
+            .id(424242L)
+            .typeCode(PolarisEntityType.NAMESPACE.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(catalogEntity.getId())
+            .name("N_inert")
+            .entityVersion(7)
+            .build();
+    TagAssignmentRecord columnRow =
+        new TagAssignmentRecord(
+            catalogEntity.getId(),
+            resolvingTarget.getId(),
+            2,
+            storedTag.getCatalogId(),
+            storedTag.getId(),
+            "a");
+    PolarisMetaStoreManager alwaysStale = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(
+            new LoadAllTagAssignmentTargetsResult(List.of(columnRow), List.of(resolvingTarget)))
+        .when(alwaysStale)
+        .loadAllTargetsOnTagWithEntities(Mockito.any(), Mockito.any());
+    Mockito.doReturn(
+            new DropEntityResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, "simulated"))
+        .when(alwaysStale)
+        .dropTagAndClassifiedAssignmentsIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    TagCatalog catalog =
+        new TagCatalog(
+            alwaysStale,
+            polarisContext,
+            newPassthroughView(),
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
+
+    assertThatThrownBy(() -> catalog.dropTag(TAG1, false))
+        .isInstanceOf(TagInUseException.class)
+        .hasMessageContaining("changed concurrently during every attempt");
+
+    @SuppressWarnings("unchecked") // ArgumentCaptor cannot name a generic type's class literal
+    ArgumentCaptor<Set<ClassifiedAssignment>> judged = ArgumentCaptor.forClass(Set.class);
+    Mockito.verify(alwaysStale, Mockito.times(3))
+        .dropTagAndClassifiedAssignmentsIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), judged.capture());
+    assertThat(judged.getValue()).hasSize(1);
+    ClassifiedAssignment carried = judged.getValue().iterator().next();
+    assertThat(carried.identity().targetId()).isEqualTo(resolvingTarget.getId());
+    assertThat(carried.identity().fieldId()).isEqualTo(2);
+    assertThat(carried.targetEntityVersion()).hasValue(7);
+    assertThat(loadStoredTag(TAG1)).isNotNull();
+  }
+
+  @Test
+  public void testDropTagFailsWhenAColumnAssignmentCannotBeJudged() {
+    tagCatalog.createTag(TAG1, "description", List.of("a"), List.of(TargetType.CATALOG));
+    TagEntity storedTag = loadStoredTag(TAG1);
+
+    // A column assignment whose table carries no current metadata location. Whether that column
+    // still exists cannot be established, and the contract is explicit that failing to read
+    // metadata is not proof of absence: the drop must fail rather than treat the row as inert.
+    PolarisBaseEntity tableWithoutMetadata =
+        new PolarisBaseEntity(
+            catalogEntity.getId(),
+            123456789L,
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            catalogEntity.getId(),
+            "T1");
+    TagAssignmentRecord columnRow =
+        new TagAssignmentRecord(
+            catalogEntity.getId(),
+            tableWithoutMetadata.getId(),
+            2,
+            storedTag.getCatalogId(),
+            storedTag.getId(),
+            "a");
+    PolarisMetaStoreManager unreadableColumn = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(
+            new LoadAllTagAssignmentTargetsResult(
+                List.of(columnRow), List.of(tableWithoutMetadata)))
+        .when(unreadableColumn)
+        .loadAllTargetsOnTagWithEntities(Mockito.any(), Mockito.any());
+    TagCatalog catalog =
+        new TagCatalog(
+            unreadableColumn,
+            polarisContext,
+            newPassthroughView(),
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
+
+    assertThatThrownBy(() -> catalog.dropTag(TAG1, false))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("no current metadata location");
+
+    // nothing changed: the definition is still there and still loadable
+    assertThat(loadStoredTag(TAG1)).isNotNull();
+    Mockito.verify(unreadableColumn, Mockito.never())
+        .dropEntityIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyBoolean());
+  }
+
+  @Test
+  public void testAssignTagConcurrentTagMissIsTagNotFound() {
+    tagCatalog.createTag(TAG1, "comment", List.of("a"), List.of(TargetType.CATALOG));
+
+    // Simulate the tag definition vanishing between resolution and the manager write.
+    PolarisMetaStoreManager concurrentlyRemoved = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(new TagAssignmentResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "simulated"))
+        .when(concurrentlyRemoved)
+        .assignTagToEntity(
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.anyInt(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any());
+    TagCatalog catalog =
+        new TagCatalog(
+            concurrentlyRemoved,
+            polarisContext,
+            newPassthroughView(),
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
+
+    assertThatThrownBy(
+            () ->
+                catalog.assignTag(
+                    TAG1, TagAttachmentTarget.builder(TargetType.CATALOG).build(), List.of("a")))
+        .isInstanceOf(NoSuchTagException.class);
+  }
+
+  @Test
+  public void testAssignTagConcurrentTargetMissIsTargetNotFound() {
+    tagCatalog.createTag(TAG1, "comment", List.of("a"), List.of(TargetType.CATALOG));
+
+    // Simulate the target vanishing between resolution and the manager write: the caller must
+    // see the target-side 404, not the tag-side one.
+    PolarisMetaStoreManager concurrentlyRemoved = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(
+            new TagAssignmentResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, "simulated"))
+        .when(concurrentlyRemoved)
+        .assignTagToEntity(
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.anyInt(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any());
+    TagCatalog catalog =
+        new TagCatalog(
+            concurrentlyRemoved,
+            polarisContext,
+            newPassthroughView(),
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
+
+    assertThatThrownBy(
+            () ->
+                catalog.assignTag(
+                    TAG1, TagAttachmentTarget.builder(TargetType.CATALOG).build(), List.of("a")))
+        .isInstanceOf(NoSuchTargetException.class);
   }
 
   @Test
@@ -379,7 +684,13 @@ public class TagCatalogTest {
     PolarisMetaStoreManager writeWatcher = Mockito.spy(metaStoreManager);
     TagCatalog catalog =
         new TagCatalog(
-            writeWatcher, polarisContext, newPassthroughView(), IdempotencyRequestContext.DISABLED);
+            writeWatcher,
+            polarisContext,
+            newPassthroughView(),
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
 
     Tag result =
         catalog.updateTag(
@@ -470,8 +781,8 @@ public class TagCatalogTest {
         tagCatalog
             .createTag(TAG1, "description", List.of("a"), List.of(TargetType.CATALOG))
             .getVersion();
-    tagCatalog.dropTag(TAG1);
-    tagCatalog.createTag(TAG1, "description", List.of("a"), List.of(TargetType.CATALOG));
+    tagCatalog.dropTag(TAG1, false);
+    tagCatalog.createTag(TAG1, "comment", List.of("a"), List.of(TargetType.CATALOG));
 
     assertThatThrownBy(
             () ->
@@ -607,7 +918,10 @@ public class TagCatalogTest {
             metaStoreManager,
             polarisContext,
             newPassthroughView(),
-            IdempotencyRequestContext.DISABLED);
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
 
     PolarisMetaStoreManager raced = Mockito.spy(metaStoreManager);
     Mockito.doAnswer(
@@ -620,7 +934,13 @@ public class TagCatalogTest {
         .updateEntityPropertiesIfNotChanged(Mockito.any(), Mockito.any(), Mockito.any());
     TagCatalog updater =
         new TagCatalog(
-            raced, polarisContext, newPassthroughView(), IdempotencyRequestContext.DISABLED);
+            raced,
+            polarisContext,
+            newPassthroughView(),
+            IdempotencyRequestContext.DISABLED,
+            null,
+            null,
+            null);
 
     assertThatThrownBy(
             () ->

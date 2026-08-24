@@ -53,6 +53,8 @@ public class TagErrorTypeResponseFilter {
 
   private static final String EXCEPTION_SUFFIX = "Exception";
 
+  private static final int BAD_REQUEST_STATUS = 400;
+
   /**
    * Wire types whose specified literal is not simply the exception class name without its suffix.
    * The contract fixes these strings, and an exception class name does not select them: a name
@@ -82,9 +84,22 @@ public class TagErrorTypeResponseFilter {
   @ServerResponseFilter
   public void rewriteTagErrorType(
       ContainerResponseContext response, SimpleResourceInfo resourceInfo, Throwable thrown) {
-    if (resourceInfo == null
-        || resourceInfo.getResourceClass() != PolarisCatalogTagApi.class
-        || !(response.getEntity() instanceof ErrorResponse error)) {
+    if (resourceInfo == null || resourceInfo.getResourceClass() != PolarisCatalogTagApi.class) {
+      return;
+    }
+    if (!(response.getEntity() instanceof ErrorResponse error)) {
+      // A body the framework could not bind to this operation's model is answered by the
+      // framework's own reader, whose payload is not this API's error envelope. A request that
+      // fails the schema is a validation error in the envelope every other answer on these routes
+      // uses, so supply it here instead of letting a foreign shape through.
+      if (response.getStatus() == BAD_REQUEST_STATUS) {
+        response.setEntity(
+            ErrorResponse.builder()
+                .responseCode(BAD_REQUEST_STATUS)
+                .withType("ValidationError")
+                .withMessage("The request body does not match the schema this operation requires")
+                .build());
+      }
       return;
     }
     if (rewriteUnreadablePageSize(response, thrown)) {

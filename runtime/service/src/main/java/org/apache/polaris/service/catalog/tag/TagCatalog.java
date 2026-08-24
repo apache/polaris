@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.tag;
 
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -25,32 +27,49 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
+import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.core.tag.ClassifiedAssignment;
+import org.apache.polaris.core.tag.TagAssignmentRecord;
 import org.apache.polaris.core.tag.TagEntity;
 import org.apache.polaris.core.tag.TagValidation;
 import org.apache.polaris.core.tag.TagVersionToken;
+import org.apache.polaris.core.tag.exceptions.NoSuchAssignmentException;
 import org.apache.polaris.core.tag.exceptions.NoSuchTagException;
+import org.apache.polaris.core.tag.exceptions.NoSuchTargetException;
+import org.apache.polaris.core.tag.exceptions.TagInUseException;
 import org.apache.polaris.core.tag.exceptions.TagVersionMismatchException;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.idempotency.EntityIdempotency;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.types.Tag;
+import org.apache.polaris.service.types.TagAttachmentTarget;
 import org.apache.polaris.service.types.TagIdentifier;
 import org.apache.polaris.service.types.TargetType;
 import org.apache.polaris.service.types.UpdateTagRequest;
@@ -71,18 +90,27 @@ public class TagCatalog {
   private final long catalogId;
   private final PolarisMetaStoreManager metaStoreManager;
   private final IdempotencyRequestContext idempotency;
+  private final StorageAccessConfigProvider storageAccessConfigProvider;
+  private final FileIOFactory fileIOFactory;
+  private final RealmConfig realmConfig;
 
   public TagCatalog(
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
-      IdempotencyRequestContext idempotency) {
+      IdempotencyRequestContext idempotency,
+      StorageAccessConfigProvider storageAccessConfigProvider,
+      FileIOFactory fileIOFactory,
+      RealmConfig realmConfig) {
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.catalogId = catalogEntity.getId();
     this.metaStoreManager = metaStoreManager;
     this.idempotency = idempotency;
+    this.storageAccessConfigProvider = storageAccessConfigProvider;
+    this.fileIOFactory = fileIOFactory;
+    this.realmConfig = realmConfig;
   }
 
   /**
@@ -404,34 +432,393 @@ public class TagCatalog {
     }
   }
 
-  public boolean dropTag(String tagName) {
+  /**
+   * How many times a plain drop classifies the definition's assignment rows before it refuses. Each
+   * attempt is lost only to an assignment write that committed while this request was deciding, so
+   * a handful of attempts settles any real race; an attempt that keeps losing has to answer rather
+   * than keep a caller waiting.
+   */
+  private static final int DROP_CLASSIFY_ATTEMPTS = 3;
+
+  public boolean dropTag(String tagName, boolean detachAll) {
     var resolvedTagPath = getResolvedPathWrapper(tagName);
     var catalogPath = resolvedTagPath.getRawParentPath();
     var tagEntity = resolvedTagPath.getRawLeafEntity();
 
-    var result =
-        metaStoreManager.dropEntityIfExists(
-            callContext.getPolarisCallContext(),
-            PolarisEntity.toCoreList(catalogPath),
-            tagEntity,
-            Map.of(),
-            false);
+    // Deciding and deleting cannot be one step: judging a column row needs the table's current
+    // schema, which is readable here and not below this layer. So the decision is taken here and
+    // the delete is held to exactly the rows it was taken on. A row that appeared in between was
+    // never judged and may be live, so that delete changes nothing and says so, and this loop
+    // decides again on fresh state rather than remove a row no one judged.
+    for (int attempt = 1; ; attempt++) {
+      // Without detach-all, only an assignment whose target is still live blocks the delete. A row
+      // whose target or column is gone is inert: nothing can read it and unassign cannot remove it,
+      // so refusing the delete over it would leave the definition undeletable forever.
+      Set<ClassifiedAssignment> inertAssignments = Set.of();
+      if (!detachAll) {
+        var remaining = classifyRemainingAssignments(tagName, tagEntity);
+        if (remaining.hasLiveAssignment()) {
+          throw new TagInUseException(
+              "Tag %s is in use: assignments exist; retry with detach-all=true to remove them",
+              tagName);
+        }
+        inertAssignments = remaining.inertAssignments();
+      }
 
+      DropEntityResult result;
+      if (detachAll) {
+        // detach-all removes every assignment whatever it names, so it carries no judgement and
+        // checks none.
+        result =
+            metaStoreManager.dropEntityIfExists(
+                callContext.getPolarisCallContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                tagEntity,
+                Map.of(),
+                true);
+      } else {
+        // Every other drop goes through the delete that is held to what this attempt judged, the
+        // empty set included. An empty set means "this definition must hold no assignment row at
+        // all", which is the same question the plain delete asks, but asked inside one transaction
+        // and under the definition-row lock. Asking it outside one is how a row written between the
+        // question and the delete used to be deleted unseen.
+        result =
+            metaStoreManager.dropTagAndClassifiedAssignmentsIfExists(
+                callContext.getPolarisCallContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                tagEntity,
+                inertAssignments);
+        if (inertAssignments.isEmpty()
+            && result.getReturnStatus() == BaseResult.ReturnStatus.TAG_ASSIGNMENTS_NOT_SUPPORTED) {
+          // A backend that cannot remove a definition together with assignments cannot be holding
+          // any either, so there is nothing for the guarded delete to protect and the plain delete
+          // it does support is the right answer. Only reachable with an empty set: a non-empty one
+          // is proof the backend holds rows.
+          result =
+              metaStoreManager.dropEntityIfExists(
+                  callContext.getPolarisCallContext(),
+                  PolarisEntity.toCoreList(catalogPath),
+                  tagEntity,
+                  Map.of(),
+                  false);
+        }
+      }
+
+      if (!result.isSuccess()) {
+        if (result.getReturnStatus() == BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED
+            && attempt < DROP_CLASSIFY_ATTEMPTS) {
+          continue;
+        }
+        switch (result.getReturnStatus()) {
+          // A concurrent request can drop the tag (or its catalog path) between this request's
+          // resolution and the delete; the contract defines a missing definition as 404.
+          case ENTITY_NOT_FOUND:
+          case CATALOG_PATH_CANNOT_BE_RESOLVED:
+            throw new NoSuchTagException(String.format("Tag does not exist: %s", tagName));
+          case TAG_HAS_ASSIGNMENTS:
+            // No drop from here reports this any more: a plain drop asks the guarded delete, which
+            // answers a row it did not judge as a concurrent modification instead. The label stays
+            // because the status is still part of the drop contract, and losing it would turn a
+            // backend that does report it into a server error.
+            throw new TagInUseException(
+                "Tag %s is in use: assignments exist; retry with detach-all=true to remove them",
+                tagName);
+          case TARGET_ENTITY_CONCURRENTLY_MODIFIED:
+            // Every attempt was decided against assignment rows that had already moved on. No row
+            // was proved live, so this does not say one exists: it says the definition's
+            // assignments
+            // would not hold still long enough to judge them. The type is the one this operation
+            // declares for a drop it will not perform.
+            throw new TagInUseException(
+                "Tag %s cannot be dropped: assignments on this definition changed concurrently"
+                    + " during every attempt; retry the drop",
+                tagName);
+          case TAG_ASSIGNMENTS_NOT_SUPPORTED:
+            if (detachAll) {
+              // A backend without assignment support cannot remove the assignments this request
+              // asks for, so it answers 501 and changes nothing; permissions were already checked.
+              throw new WebApplicationException(
+                  String.format(
+                      "This implementation cannot guarantee the detach-all=true result; no visible"
+                          + " change was made: %s",
+                      result.getExtraInformation()),
+                  Response.Status.NOT_IMPLEMENTED);
+            }
+            throw tagAssignmentsUnsupported("drop", tagName, result);
+          default:
+            throw new IllegalStateException(
+                String.format(
+                    "Failed to drop tag %s error status: %s with extraInfo: %s",
+                    tagName, result.getReturnStatus(), result.getExtraInformation()));
+        }
+      }
+      return true;
+    }
+  }
+
+  /**
+   * What the surviving assignment rows of a definition say about whether it can be deleted. When a
+   * live row is found the others no longer matter, so {@code inertAssignments} is only complete
+   * while {@code hasLiveAssignment} is false; that is the only case in which a delete follows.
+   */
+  private record RemainingAssignments(
+      boolean hasLiveAssignment, Set<ClassifiedAssignment> inertAssignments) {}
+
+  /**
+   * Reads every assignment row of the definition and reports whether any of them is still live. A
+   * row is live while its target resolves and, for a column row, while its field id still names a
+   * top-level column of that table's current schema.
+   */
+  private RemainingAssignments classifyRemainingAssignments(
+      String tagName, PolarisBaseEntity tagEntity) {
+    var result =
+        metaStoreManager.loadAllTargetsOnTagWithEntities(
+            callContext.getPolarisCallContext(), tagEntity);
     if (!result.isSuccess()) {
       switch (result.getReturnStatus()) {
-        // A concurrent request can drop the tag (or its catalog path) between this request's
-        // resolution and the delete; the contract defines a missing definition as 404.
         case ENTITY_NOT_FOUND:
-        case CATALOG_PATH_CANNOT_BE_RESOLVED:
           throw new NoSuchTagException(String.format("Tag does not exist: %s", tagName));
+        case TAG_ASSIGNMENTS_NOT_SUPPORTED:
+          // A backend that cannot store an assignment cannot be holding one, so the answer is
+          // definitively "none" rather than "unknown", and a plain drop keeps working there.
+          return new RemainingAssignments(false, Set.of());
         default:
           throw new IllegalStateException(
               String.format(
-                  "Failed to drop tag %s error status: %s with extraInfo: %s",
+                  "Failed to read the assignments of tag %s error status: %s with extraInfo: %s",
                   tagName, result.getReturnStatus(), result.getExtraInformation()));
       }
     }
-    return true;
+
+    var records = result.getAssignments();
+    if (records.isEmpty()) {
+      return new RemainingAssignments(false, Set.of());
+    }
+    var targetsById = result.getTargetEntitiesAsMap();
+    Map<Long, Schema> schemaByTableId = new HashMap<>();
+    Set<ClassifiedAssignment> inertAssignments = new LinkedHashSet<>();
+    for (var record : records) {
+      // Stopping at the first row, the way an existence probe does, cannot answer this question:
+      // an inert row says nothing about the rows after it. Stopping at the first LIVE row is a
+      // different matter, because one live assignment settles the answer on its own and reading
+      // further table metadata could not change it.
+      if (isLiveAssignment(
+          tagName, record, targetsById.get(record.getTargetId()), schemaByTableId)) {
+        return new RemainingAssignments(true, Set.of());
+      }
+      // The identity, not the record: the value is content, and a concurrent replacement of it
+      // leaves the same row, which this judgement still covers. The target's version travels with
+      // it, because the judgement rests on the target: a row is inert because of something about
+      // the target, and the same row becomes live again if that target changes back. An absent
+      // target carries no version, which is itself the state to re-check.
+      var target = targetsById.get(record.getTargetId());
+      inertAssignments.add(
+          ClassifiedAssignment.of(
+              record,
+              target == null ? OptionalLong.empty() : OptionalLong.of(target.getEntityVersion())));
+    }
+    return new RemainingAssignments(false, inertAssignments);
+  }
+
+  private boolean isLiveAssignment(
+      String tagName,
+      TagAssignmentRecord record,
+      @Nullable PolarisBaseEntity targetEntity,
+      Map<Long, Schema> schemaByTableId) {
+    if (targetEntity == null || targetEntity.getDropTimestamp() != 0) {
+      // The target id no longer resolves, or the target is soft-dropped. Ids are never reused, so a
+      // row that has lost its target can never become live again, and a replacement created under
+      // the same name is a different entity that does not inherit it. The soft-dropped half cannot
+      // occur on any current backend, where dropping an entity removes its row outright; it is
+      // written out because the answer is the same either way and a later lifecycle change should
+      // not silently turn these rows back into blockers.
+      return false;
+    }
+    if (record.getFieldId() == 0) {
+      return true;
+    }
+    if (targetEntity.getType() != PolarisEntityType.TABLE_LIKE
+        || targetEntity.getSubType() != PolarisEntitySubType.ICEBERG_TABLE) {
+      // Only an Iceberg table has field ids, so a column row on anything else cannot name a live
+      // column of it.
+      return false;
+    }
+    var tableEntity = IcebergTableLikeEntity.of(targetEntity);
+    if (tableEntity.getMetadataLocation() == null) {
+      // Being unable to read a table's metadata does not establish that its column is gone, so the
+      // row must not be judged inert on that basis: doing so would delete a definition that a live
+      // assignment may still use. The request fails instead, having changed nothing.
+      throw new IllegalStateException(
+          String.format(
+              "Cannot drop tag %s: table %s has no current metadata location, so the column"
+                  + " assignment on it cannot be judged",
+              tagName, tableEntity.getTableIdentifier()));
+    }
+    Schema schema =
+        schemaByTableId.computeIfAbsent(
+            targetEntity.getId(),
+            id ->
+                TagCatalogUtils.loadCurrentSchema(
+                    storageAccessConfigProvider,
+                    fileIOFactory,
+                    realmConfig,
+                    catalogEntity,
+                    tableEntity.getTableIdentifier(),
+                    tableEntity,
+                    resolvedEntityView.getResolvedReferenceCatalogEntity()));
+    return TagCatalogUtils.findTopLevelColumnName(schema, record.getFieldId()) != null;
+  }
+
+  public void assignTag(String tagName, TagAttachmentTarget target, List<String> values) {
+    var resolvedTagPath = getResolvedPathWrapper(tagName);
+    var tag = TagEntity.of(resolvedTagPath.getRawLeafEntity());
+    var tagCatalogPath = PolarisEntity.toCoreList(resolvedTagPath.getRawParentPath());
+
+    // A selection that names no value is invalid: an explicit null is answered 400 BadRequest, as
+    // is an empty list.
+    if (values.isEmpty()) {
+      throw new BadRequestException("values must not be empty");
+    }
+    if (values.size() > 1) {
+      throw new BadRequestException("multiple selected values are not supported");
+    }
+    String value = values.get(0);
+    if (value == null || value.isEmpty()) {
+      throw new BadRequestException("values must not contain a null or empty member");
+    }
+    TagValidation.validateValueLength(value, "A selected value");
+
+    // Resolve the target (path, subtype, column) before checking whether the definition allows
+    // its kind: a target that does not exist answers the target-level 404 even when its kind
+    // would have been rejected, and only an existing target of an excluded kind answers 400.
+    // target-types is create-only, so checking it after resolution introduces no race; the
+    // selected value is re-validated against the definition inside the persistence write.
+    var resolvedTarget = resolveAssignmentTarget(target);
+    int fieldId = resolveFieldId(target, resolvedTarget);
+    if (!tag.getTargetTypes().contains(target.getType().toString())) {
+      throw new BadRequestException(
+          "Target type %s is not allowed by tag %s", target.getType(), tag.getName());
+    }
+
+    var result =
+        metaStoreManager.assignTagToEntity(
+            callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(resolvedTarget.getRawParentPath()),
+            resolvedTarget.getRawLeafEntity(),
+            fieldId,
+            tagCatalogPath,
+            tag,
+            value);
+    if (!result.isSuccess()) {
+      switch (result.getReturnStatus()) {
+        case ENTITY_NOT_FOUND:
+          throw new NoSuchTagException(String.format("Tag no longer exists: %s", tagName));
+        case ENTITY_CANNOT_BE_RESOLVED:
+          throw new NoSuchTargetException("Target no longer exists for tag %s", tagName);
+        case TAG_ASSIGNMENTS_NOT_SUPPORTED:
+          throw tagAssignmentsUnsupported("assign", tagName, result);
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  "Failed to assign tag %s error status: %s with extraInfo: %s",
+                  tagName, result.getReturnStatus(), result.getExtraInformation()));
+      }
+    }
+  }
+
+  public void unassignTag(String tagName, TagAttachmentTarget target) {
+    var resolvedTagPath = getResolvedPathWrapper(tagName);
+    var tag = TagEntity.of(resolvedTagPath.getRawLeafEntity());
+    var tagCatalogPath = PolarisEntity.toCoreList(resolvedTagPath.getRawParentPath());
+
+    // unassign removes an existing relationship; it does not re-check target-types.
+    var resolvedTarget = resolveAssignmentTarget(target);
+    int fieldId = resolveFieldId(target, resolvedTarget);
+
+    var result =
+        metaStoreManager.unassignTagFromEntity(
+            callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(resolvedTarget.getRawParentPath()),
+            resolvedTarget.getRawLeafEntity(),
+            fieldId,
+            tagCatalogPath,
+            tag);
+    if (!result.isSuccess()) {
+      switch (result.getReturnStatus()) {
+        case TAG_ASSIGNMENT_NOT_FOUND:
+          throw new NoSuchAssignmentException(
+              "Tag assignment does not exist for tag %s on the given target", tagName);
+        case ENTITY_NOT_FOUND:
+          throw new NoSuchTagException(String.format("Tag no longer exists: %s", tagName));
+        case ENTITY_CANNOT_BE_RESOLVED:
+          throw new NoSuchTargetException("Target no longer exists for tag %s", tagName);
+        case TAG_ASSIGNMENTS_NOT_SUPPORTED:
+          throw tagAssignmentsUnsupported("unassign", tagName, result);
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  "Failed to unassign tag %s error status: %s with extraInfo: %s",
+                  tagName, result.getReturnStatus(), result.getExtraInformation()));
+      }
+    }
+  }
+
+  /**
+   * The capability reject shares one shape across drop/assign/unassign: the backend cannot perform
+   * tag-assignment operations, surfaced as a 400 with the manager's explanation.
+   */
+  private static BadRequestException tagAssignmentsUnsupported(
+      String action, String tagName, BaseResult result) {
+    return new BadRequestException(
+        "Cannot %s tag %s: %s", action, tagName, result.getExtraInformation());
+  }
+
+  private PolarisResolvedPathWrapper resolveAssignmentTarget(TagAttachmentTarget target) {
+    var resolvedTarget = TagCatalogUtils.getResolvedTargetWrapper(resolvedEntityView, target);
+    PolarisEntitySubType subType = resolvedTarget.getRawLeafEntity().getSubType();
+    if (target.getType() == TargetType.COLUMN) {
+      // v1 supports columns of Iceberg tables only: generic tables define no stable column id,
+      // and view column ids are not stable across replaces.
+      if (subType != PolarisEntitySubType.ICEBERG_TABLE) {
+        throw new BadRequestException(
+            "Column targets are supported only on Iceberg tables; %s is not", subType);
+      }
+      if (target.getColumn() == null
+          || target.getColumn().size() != 1
+          || target.getColumn().get(0) == null
+          || target.getColumn().get(0).isBlank()) {
+        throw new BadRequestException("column must contain exactly one top-level column name");
+      }
+    } else if (target.getType() == TargetType.TABLE
+        && subType != PolarisEntitySubType.ICEBERG_TABLE
+        && subType != PolarisEntitySubType.GENERIC_TABLE) {
+      // TagCatalogUtils.getResolvedTargetWrapper already excludes a view here, so this is a
+      // defensive assertion that a table target always resolves to one of the two subtypes it
+      // recognizes.
+      throw new BadRequestException(
+          "Table targets require an Iceberg or generic table; %s is not", subType);
+    } else if (target.getColumn() != null && !target.getColumn().isEmpty()) {
+      throw new BadRequestException("column is only valid for column targets");
+    }
+    return resolvedTarget;
+  }
+
+  private int resolveFieldId(
+      TagAttachmentTarget target, PolarisResolvedPathWrapper resolvedTarget) {
+    if (target.getType() != TargetType.COLUMN) {
+      return 0;
+    }
+    TableIdentifier tableIdentifier = TableIdentifier.of(target.getPath().toArray(new String[0]));
+    Schema schema =
+        TagCatalogUtils.loadCurrentSchema(
+            storageAccessConfigProvider,
+            fileIOFactory,
+            realmConfig,
+            catalogEntity,
+            resolvedEntityView,
+            tableIdentifier,
+            resolvedTarget);
+    return TagCatalogUtils.resolveTopLevelFieldId(schema, target.getColumn().get(0));
   }
 
   private PolarisResolvedPathWrapper getResolvedPathWrapper(String tagName) {
