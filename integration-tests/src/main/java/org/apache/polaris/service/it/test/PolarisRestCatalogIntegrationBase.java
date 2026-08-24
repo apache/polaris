@@ -1903,10 +1903,26 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     catalogProps.put(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "true");
     managementApi.updateCatalog(catalog, catalogProps);
 
-    assertThatThrownBy(() -> restCatalog.dropView(id)).isInstanceOf(ForbiddenException.class);
+    // DROP_WITH_PURGE_ENABLED guards client-requested table purges, not view drops.
+    assertThatCode(() -> restCatalog.dropView(id)).doesNotThrowAnyException();
+  }
 
-    catalog = managementApi.getCatalog(currentCatalogName);
-    catalogProps.put(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "false");
+  @Test
+  public void testDropViewWithDefaultPurgeViewMetadataOnDrop() {
+    restCatalog.createNamespace(Namespace.of("ns1"));
+    TableIdentifier id = TableIdentifier.of(Namespace.of("ns1"), "view1");
+    restCatalog
+        .buildView(id)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(Namespace.of("ns1"))
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    Catalog catalog = managementApi.getCatalog(currentCatalogName);
+    Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+    // Remove the purge related configs so defaults are used.
+    catalogProps.remove(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig());
+    catalogProps.remove(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig());
     managementApi.updateCatalog(catalog, catalogProps);
 
     assertThatCode(() -> restCatalog.dropView(id)).doesNotThrowAnyException();
