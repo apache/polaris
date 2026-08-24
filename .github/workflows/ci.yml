@@ -38,7 +38,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with: &setup-java-vars
           java-version: '21'
           distribution: 'temurin'
@@ -98,7 +98,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with: *setup-java-vars
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -127,7 +127,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with: *setup-java-vars
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
@@ -154,7 +154,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with: *setup-java-vars
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
@@ -181,7 +181,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with: *setup-java-vars
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -216,7 +216,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with: *setup-java-vars
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -472,7 +472,7 @@ jobs:
           S3_TEST_BACKEND: ${{ matrix.s3-backend }}
         run: docker compose --profile ${{ matrix.s3-backend }} -f regtests/docker-compose.yml up --build --exit-code-from regtest
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with: *setup-java-vars
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
@@ -551,7 +551,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -610,7 +610,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with: *setup-java-vars
       - name: Collect partial Gradle build caches
         uses: ./.github/actions/ci-incr-build-cache-prepare
