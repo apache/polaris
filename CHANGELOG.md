@@ -42,6 +42,18 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   ```
   H2 is unaffected.
 
+- Relational JDBC: schema version 6 also declares `idx_grants_realm_grantee`,
+  `idx_grants_realm_securable` and `idx_entities_catalog_id_id` on CockroachDB (see Fixes), which
+  the Postgres and H2 schemas have declared since schema v4. Fresh bootstraps get them
+  automatically; existing CockroachDB deployments, including any already at schema version 6,
+  need them created manually:
+  ```sql
+  CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee ON polaris_schema.grant_records (realm_id, grantee_id);
+  CREATE INDEX IF NOT EXISTS idx_grants_realm_securable ON polaris_schema.grant_records (realm_id, securable_id);
+  CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON polaris_schema.entities (catalog_id, id);
+  ```
+  Postgres and H2 are unaffected.
+
 ### Breaking changes
 
 - Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
@@ -95,6 +107,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   schema version 6 creates the index on `(realm_id, catalog_id, location_without_scheme)`; H2 was
   already correct. Existing deployments need a manual index recreation — see Upgrade notes.
 - A metastore failure while resolving a principal's roles during authentication now returns HTTP 503, as it already did when looking up the principal entity; previously it propagated unwrapped and was reported as HTTP 500. All three lookups now report `PolarisServiceUnavailableException` as the error `type`, where the principal entity lookup previously reported `ServiceUnavailableException` with the same status. All three also send `Retry-After: 0`; the Iceberg REST spec has a client retry a non-idempotent request only when that header is present.
+- Relational JDBC: the CockroachDB schema now declares `idx_grants_realm_grantee`,
+  `idx_grants_realm_securable` and `idx_entities_catalog_id_id` as of schema version 6; the
+  Postgres and H2 schemas have carried them since schema v4. Without `idx_grants_realm_grantee`,
+  loading the grants held by a principal, principal role or catalog role scans every grant record
+  in the realm, because the `grant_records` primary key continues with the securable columns after
+  `realm_id`. Existing CockroachDB deployments need a manual index creation — see Upgrade notes.
 
 ### Commits
 

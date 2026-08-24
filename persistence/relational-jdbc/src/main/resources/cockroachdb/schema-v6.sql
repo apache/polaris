@@ -23,6 +23,10 @@
 --    QueryGenerator.generateOverlapQuery (WHERE realm_id = ? AND catalog_id = ?). The previous
 --    definition let the optimized sibling check (OPTIMIZED_SIBLING_CHECK) use only the realm_id
 --    prefix, degrading CREATE TABLE / CREATE NAMESPACE to a realm-wide scan.
+--  * `idx_grants_realm_grantee`, `idx_grants_realm_securable` and `idx_entities_catalog_id_id`
+--    are now declared, matching PostgreSQL and H2, which have carried them since v4. Without the
+--    first, JdbcBasePersistenceImpl.loadAllGrantRecordsOnGrantee can use only the realm_id prefix
+--    of the grant_records primary key, degrading grant lookups by grantee to a realm-wide scan.
 -- Features:
 --  * Uses INT4 explicitly for all integer columns (required for CockroachDB JDBC driver)
 --  * Includes all tables: version, entities, grant_records, principal_authentication_data,
@@ -66,6 +70,7 @@ CREATE TABLE IF NOT EXISTS entities (
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
+CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON entities (catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_locations
     ON entities USING btree (realm_id, catalog_id, location_without_scheme)
     WHERE location_without_scheme IS NOT NULL;
@@ -105,6 +110,11 @@ COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
 COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
+
+CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee
+    ON grant_records (realm_id, grantee_id);
+CREATE INDEX IF NOT EXISTS idx_grants_realm_securable
+    ON grant_records (realm_id, securable_id);
 
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
     realm_id TEXT NOT NULL,
