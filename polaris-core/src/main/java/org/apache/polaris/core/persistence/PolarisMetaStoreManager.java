@@ -305,6 +305,34 @@ public interface PolarisMetaStoreManager
       @NonNull PolarisEntity renamedEntity);
 
   /**
+   * Reject a rename whose newCatalogPath is rooted in a different catalog than catalogPath.
+   * Implementations of {@link #renameEntity} should call this before persisting.
+   *
+   * <p>Moving an entity between catalogs is not a one-field change: its children, its grant
+   * records, and its policy mappings all still reference the catalog it started in, and a rename
+   * does not update any of those. A caller that wants a real cross-catalog move should get a new,
+   * explicit contract for it rather than working around this check.
+   *
+   * @param catalogPath the entity's current path, or null/empty if it is a top-level entity
+   * @param newCatalogPath the destination path, or null/empty if the entity is not being
+   *     re-parented
+   * @throws IllegalArgumentException if newCatalogPath is non-empty and its head names a different
+   *     catalog than catalogPath's head, including when catalogPath is null or empty
+   */
+  default void checkRenameStaysWithinCatalog(
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nullable List<PolarisEntityCore> newCatalogPath) {
+    if (newCatalogPath == null || newCatalogPath.isEmpty()) {
+      return;
+    }
+    if (catalogPath == null
+        || catalogPath.isEmpty()
+        || newCatalogPath.get(0).getId() != catalogPath.get(0).getId()) {
+      throw new IllegalArgumentException("Cannot rename an entity into a different catalog");
+    }
+  }
+
+  /**
    * Drop the specified entity assuming it exists
    *
    * @param callCtx call context

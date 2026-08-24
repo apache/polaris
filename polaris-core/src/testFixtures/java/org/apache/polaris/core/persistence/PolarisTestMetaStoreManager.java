@@ -2722,7 +2722,7 @@ public class PolarisTestMetaStoreManager {
                     table,
                     crossCatalogPath,
                     renamedEntityInput))
-        .isInstanceOf(RuntimeException.class);
+        .isInstanceOf(IllegalArgumentException.class);
 
     // the entity is untouched: still resolvable where it started, and absent from the target
     PolarisBaseEntity stillThere =
@@ -2758,7 +2758,7 @@ public class PolarisTestMetaStoreManager {
                     principalRole,
                     crossCatalogPath,
                     promotedInput))
-        .isInstanceOf(RuntimeException.class);
+        .isInstanceOf(IllegalArgumentException.class);
 
     Assertions.assertThat(
             this.ensureExistsByName(null, PolarisEntityType.PRINCIPAL_ROLE, "PR1").getParentId())

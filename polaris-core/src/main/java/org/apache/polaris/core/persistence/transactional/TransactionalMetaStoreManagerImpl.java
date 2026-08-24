@@ -1195,17 +1195,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             (newCatalogPath == null) || (catalogPath != null),
             "newCatalogPath_specified_without_catalogPath");
 
-    // a re-parent cannot move the entity into a different catalog: only the entity itself would be
-    // re-pointed, while its children, its grant records and its policy mappings would all keep
-    // referencing the catalog it started in
-    getDiagnostics()
-        .check(
-            newCatalogPath == null
-                || newCatalogPath.isEmpty()
-                || (catalogPath != null
-                    && !catalogPath.isEmpty()
-                    && newCatalogPath.get(0).getId() == catalogPath.get(0).getId()),
-            "cross_catalog_rename_not_supported");
+    checkRenameStaysWithinCatalog(catalogPath, newCatalogPath);
 
     // null is shorthand for saying the path isn't changing
     if (newCatalogPath == null) {
