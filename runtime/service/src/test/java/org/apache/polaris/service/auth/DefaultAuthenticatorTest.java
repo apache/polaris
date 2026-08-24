@@ -153,7 +153,10 @@ public class DefaultAuthenticatorTest {
     assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
         .isInstanceOfSatisfying(
             PolarisServiceUnavailableException.class,
-            e -> assertThat(e.getRetryAfterSeconds()).isZero());
+            e -> {
+              assertThat(e.getMessage()).isEqualTo("Service unavailable");
+              assertThat(e.getRetryAfterSeconds()).isZero();
+            });
   }
 
   @Test
@@ -174,7 +177,10 @@ public class DefaultAuthenticatorTest {
     assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
         .isInstanceOfSatisfying(
             PolarisServiceUnavailableException.class,
-            e -> assertThat(e.getRetryAfterSeconds()).isZero());
+            e -> {
+              assertThat(e.getMessage()).isEqualTo("Service unavailable");
+              assertThat(e.getRetryAfterSeconds()).isZero();
+            });
   }
 
   @Test
@@ -204,7 +210,10 @@ public class DefaultAuthenticatorTest {
     assertThatThrownBy(() -> standaloneAuthenticator.authenticate(identityFor(credentials)))
         .isInstanceOfSatisfying(
             PolarisServiceUnavailableException.class,
-            e -> assertThat(e.getRetryAfterSeconds()).isZero());
+            e -> {
+              assertThat(e.getMessage()).isEqualTo("Service unavailable");
+              assertThat(e.getRetryAfterSeconds()).isZero();
+            });
   }
 
   @Test

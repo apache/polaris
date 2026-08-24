@@ -53,6 +53,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- A metastore failure during authentication now returns a fixed `Service unavailable` message
+  instead of naming the lookup that failed; the principal lookup previously returned `Unable to
+  fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which
+  operators can match to the client error through the request id, returned by default as
+  `X-Request-ID` and printed by the default log format as `requestId`.
+
 ### Deprecations
 
 ### Fixes
