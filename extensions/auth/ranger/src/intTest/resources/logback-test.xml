@@ -29,5 +29,9 @@
   <root level="${test.log.level:-ERROR}">
     <appender-ref ref="console"/>
   </root>
+  <!--
+  Silence verbose Ranger audit lifecycle logs.
+  OFF is required since the logger logs at ERROR level.
+  -->
   <logger name="org.apache.ranger.audit.provider.AuditProviderFactory" level="OFF"/>
 </configuration>
