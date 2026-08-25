@@ -129,7 +129,7 @@ def test_quickstart_flow():
 
         # User initially has no catalog access:
         check_exception(cli(user_token)('catalogs', 'get', f'test_cli_catalog_{SALT}'),
-                        exception_str='not authorized')
+                        exception_str='Authorization denied')
 
         # Grant user access:
         check_output(
