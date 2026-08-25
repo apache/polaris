@@ -39,14 +39,30 @@ import org.jspecify.annotations.Nullable;
 public class PolicyCatalogUtils {
 
   /**
-   * The accepted {@code policyType} names, listed in rejection messages. Derived from the same
-   * registry {@link PolicyType#fromName(String)} resolves against, so the message cannot advertise
-   * a set that differs from the one actually accepted.
+   * The single point at which a client-supplied policy type name is turned into a {@link
+   * PolicyType}. Both the lookup and the list of names quoted back on rejection live here, so the
+   * message cannot advertise a set that differs from the one actually accepted.
+   *
+   * <p>{@link PolicyType#fromName(String)} resolves against the predefined types today, but its
+   * contract allows it to resolve registered custom types later. When that happens, only this
+   * method needs to learn about them.
+   *
+   * @param policyType a non-null, non-empty policy type name
+   * @return the resolved policy type
+   * @throws BadRequestException if the value does not name a known policy type
    */
-  private static final String KNOWN_POLICY_TYPE_NAMES =
-      Arrays.stream(PredefinedPolicyTypes.values())
-          .map(PolicyType::getName)
-          .collect(Collectors.joining(", "));
+  private static PolicyType lookUpPolicyType(String policyType) {
+    PolicyType resolved = PolicyType.fromName(policyType);
+    if (resolved == null) {
+      throw new BadRequestException(
+          "Unknown policy type: '%s'. Valid values are: %s",
+          policyType,
+          Arrays.stream(PredefinedPolicyTypes.values())
+              .map(PolicyType::getName)
+              .collect(Collectors.joining(", ")));
+    }
+    return resolved;
+  }
 
   /**
    * Resolves the optional {@code policyType} query parameter of the policy listing APIs into a
@@ -65,12 +81,24 @@ public class PolicyCatalogUtils {
     if (policyType == null || policyType.isEmpty()) {
       return null;
     }
-    PolicyType resolved = PolicyType.fromName(policyType);
-    if (resolved == null) {
-      throw new BadRequestException(
-          "Unknown policy type: '%s'. Valid values are: %s", policyType, KNOWN_POLICY_TYPE_NAMES);
+    return lookUpPolicyType(policyType);
+  }
+
+  /**
+   * Resolves a required policy type, as supplied in a create-policy request body.
+   *
+   * <p>Unlike {@link #resolvePolicyTypeFilter(String)}, no value here means "unspecified" and is
+   * rejected: a policy cannot be created without a type.
+   *
+   * @param policyType the requested policy type name
+   * @return the resolved policy type, never {@code null}
+   * @throws BadRequestException if the value is absent, empty, or does not name a known policy type
+   */
+  public static PolicyType resolveRequiredPolicyType(@Nullable String policyType) {
+    if (policyType == null || policyType.isEmpty()) {
+      throw new BadRequestException("Policy type is required");
     }
-    return resolved;
+    return lookUpPolicyType(policyType);
   }
 
   public static PolarisResolvedPathWrapper getResolvedPathWrapper(

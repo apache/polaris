@@ -64,6 +64,36 @@ class PolicyCatalogUtilsTest {
         .hasMessageContaining(policyType);
   }
 
+  @ParameterizedTest
+  @EnumSource(PredefinedPolicyTypes.class)
+  void testResolveRequiredPolicyTypeAcceptsKnownTypes(PredefinedPolicyTypes policyType) {
+    assertThat(PolicyCatalogUtils.resolveRequiredPolicyType(policyType.getName()))
+        .isEqualTo(policyType);
+  }
+
+  @Test
+  void testResolveRequiredPolicyTypeRejectsNull() {
+    // Unlike the listing filter, a create-policy request has no "unspecified" case.
+    assertThatThrownBy(() -> PolicyCatalogUtils.resolveRequiredPolicyType(null))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("Policy type is required");
+  }
+
+  @Test
+  void testResolveRequiredPolicyTypeRejectsEmptyValue() {
+    assertThatThrownBy(() -> PolicyCatalogUtils.resolveRequiredPolicyType(""))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("Policy type is required");
+  }
+
+  @Test
+  void testResolveRequiredPolicyTypeRejectsUnknownType() {
+    assertThatThrownBy(() -> PolicyCatalogUtils.resolveRequiredPolicyType("not-a-policy-type"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("Unknown policy type")
+        .hasMessageContaining("not-a-policy-type");
+  }
+
   @Test
   void testResolvePolicyTypeFilterRejectionListsEveryValidType() {
     assertThatThrownBy(() -> PolicyCatalogUtils.resolvePolicyTypeFilter("not-a-policy-type"))

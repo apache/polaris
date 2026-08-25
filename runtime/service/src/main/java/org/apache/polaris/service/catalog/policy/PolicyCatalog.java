@@ -38,7 +38,6 @@ import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
-import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -116,10 +115,7 @@ public class PolicyCatalog {
       throw new AlreadyExistsException("Policy already exists %s", policyIdentifier);
     }
 
-    PolicyType policyType = PolicyType.fromName(type);
-    if (policyType == null) {
-      throw new BadRequestException("Unknown policy type: %s", type);
-    }
+    PolicyType policyType = PolicyCatalogUtils.resolveRequiredPolicyType(type);
 
     entity =
         new PolicyEntity.Builder(policyIdentifier.namespace(), policyIdentifier.name(), policyType)
