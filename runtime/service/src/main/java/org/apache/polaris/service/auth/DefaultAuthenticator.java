@@ -165,8 +165,8 @@ public class DefaultAuthenticator implements Authenticator {
         throw metaStoreUnavailable(
             e,
             "Unable to resolve principal entity from credentials, principalName={} principalId={}",
-        credentials.getPrincipalName(),
-          credentials.getPrincipalId());
+            credentials.getPrincipalName(),
+            credentials.getPrincipalId());
       }
 
       if (entity == null || entity.getType() != PolarisEntityType.PRINCIPAL) {
