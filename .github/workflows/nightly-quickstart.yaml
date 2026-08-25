@@ -43,7 +43,7 @@ jobs:
   spark-quickstart:
     name: Spark Quickstart (v${{ matrix.spark_version }})
     runs-on: ubuntu-latest
-    if: github.repository == 'mansehajsingh/polaris'
+    if: github.repository == 'apache/polaris'
     strategy:
       fail-fast: false # don't block if one version fails
       matrix:
