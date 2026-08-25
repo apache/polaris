@@ -29,7 +29,7 @@ Guide testing is performed via the "entry" Python script `markdown-testing.py`,
 which can also be invoked locally.
 
 The "entry" script extracts the code blocks from a
-guide's Markdown file and write it to a temporary file as a bash script.
+guide's Markdown file and writes them to a temporary file as a bash script.
 Only `shell` code blocks are extracted, see [Spark SQL](#spark-sql-code) below. 
 
 The "entry" script then executes the generated bash script.
