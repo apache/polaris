@@ -94,22 +94,8 @@ jobs:
 
       - name: Dump service logs
         if: failure()
+        # Prints logs from all containers since the stack is torn down at the end of the job
         run: docker compose -f "$COMPOSE_FILE" logs
-
-      - name: Collect executed notebook
-        if: failure()
-        run: |
-          docker compose -f "$COMPOSE_FILE" cp \
-            jupyter:/tmp/SparkPolaris.out.ipynb \
-            SparkPolaris.out-v${{ matrix.spark_version }}.ipynb || true
-
-      - name: Archive test results
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: failure()
-        with:
-          name: spark-quickstart-v${{ matrix.spark_version }}-results
-          path: |
-            SparkPolaris.out-v${{ matrix.spark_version }}.ipynb
 
       - name: Tear down
         if: always()
