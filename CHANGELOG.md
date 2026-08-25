@@ -45,6 +45,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Breaking changes
 
 - Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
+- Authorization denials now return the generic message `Authorization denied` in client-facing
+  `ForbiddenException` responses. For Iceberg REST clients, this changes the propagated
+  `error.message` value in HTTP 403 responses.
 
 ### New Features
 
