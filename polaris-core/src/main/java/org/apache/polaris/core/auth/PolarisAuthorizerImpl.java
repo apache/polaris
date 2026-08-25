@@ -924,12 +924,25 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
-    AuthorizationPreConditions.checkCredentialRotationRequired(
-        polarisPrincipal, authzOp, realmConfig);
+    try {
+      AuthorizationPreConditions.checkCredentialRotationRequired(
+          polarisPrincipal, authzOp, realmConfig);
+    } catch (ForbiddenException e) {
+      LOGGER.debug(
+          "Authorization denied for principalName {} operation {}",
+          polarisPrincipal.getName(),
+          authzOp,
+          e);
+      throw new ForbiddenException("Authorization denied");
+    }
     boolean isRoot = getRootPrincipalName().equals(polarisPrincipal.getName());
     if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
       if (!isRoot) {
-        throw new ForbiddenException("Only Root principal(service-admin) can perform %s", authzOp);
+        LOGGER.debug(
+            "Authorization denied for principal '{}' on operation '{}': only root can reset credentials",
+            polarisPrincipal.getName(),
+            authzOp);
+        throw new ForbiddenException("Authorization denied");
       }
       LOGGER
           .atDebug()
@@ -945,12 +958,13 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             polarisPrincipal.getName(),
             authzOp,
             missingDetails);
-        throw new ForbiddenException(
-            "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
+        LOGGER.debug(
+            "Principal '{}' with activated PrincipalRoles '{}' and activated grants via '{}' is not authorized for op {}",
             polarisPrincipal.getName(),
             polarisPrincipal.getRoles(),
             activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
             authzOp);
+        throw new ForbiddenException("Authorization denied");
       }
     }
   }

@@ -54,8 +54,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
   public static final String SERVICE_TYPE = "polaris";
 
-  private static final String RANGER_AUTH_FAILED_ERROR =
-      "Principal '%s' is not authorized for op '%s'";
+  private static final String AUTHORIZATION_DENIED = "Authorization denied";
 
   private final RangerEmbeddedAuthorizer authorizer;
   private final String serviceName;
@@ -120,8 +119,11 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
         RangerPolarisOperationSemantics.forOperation(authzOp);
 
     if (semantics == null) {
-      throw new ForbiddenException(
-          RANGER_AUTH_FAILED_ERROR, polarisPrincipal.getName(), authzOp.name());
+      LOG.debug(
+          "Ranger denied authorization for principal={} operation={}: no operation semantics",
+          polarisPrincipal.getName(),
+          authzOp.name());
+      throw new ForbiddenException(AUTHORIZATION_DENIED);
     }
 
     if (LOG.isDebugEnabled()) {
@@ -137,12 +139,24 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     }
 
     try {
-      AuthorizationPreConditions.checkCredentialRotationRequired(
-          polarisPrincipal, authzOp, realmConfig);
+      try {
+        AuthorizationPreConditions.checkCredentialRotationRequired(
+            polarisPrincipal, authzOp, realmConfig);
+      } catch (ForbiddenException excp) {
+        LOG.debug(
+            "Ranger denied authorization for principal={} operation={}",
+            polarisPrincipal.getName(),
+            authzOp.name(),
+            excp);
+        throw new ForbiddenException(AUTHORIZATION_DENIED);
+      }
 
       if (!isAccessAuthorized(polarisPrincipal, authzOp, targets, secondaries)) {
-        throw new ForbiddenException(
-            RANGER_AUTH_FAILED_ERROR, polarisPrincipal.getName(), authzOp.name());
+        LOG.debug(
+            "Ranger denied authorization for principal={} operation={}",
+            polarisPrincipal.getName(),
+            authzOp.name());
+        throw new ForbiddenException(AUTHORIZATION_DENIED);
       }
     } catch (RangerAuthzException excp) {
       throw new IllegalStateException(
