@@ -21,7 +21,7 @@
 # + Jupyter notebook) end-to-end, to catch regressions that break these
 # examples outside of normal PR CI.
 
-name: Spark Quickstart Nightly
+name: Spark Plugin Quickstart Nightly
 
 on:
   schedule:
