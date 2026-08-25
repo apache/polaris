@@ -19,16 +19,16 @@
 
 # Polaris Guide Testing
 
-This repository contains tools and scripts for testing Apache Spark guides.
+This repository contains tools and scripts for testing Apache Polaris getting-started guides.
 It provides a framework for running automated tests against guide content,
 ensuring that at least the basic functionality works.
 
 ## Overview
 
-Guide testing is performed via the "entry" shell script `site_guide_ci.sh`,
+Guide testing is performed via the "entry" Python script `markdown-testing.py`,
 which can also be invoked locally.
 
-The "entry" script calls a Python tool to extract the code blocks from a
+The "entry" script extracts the code blocks from a
 guide's Markdown file and write it to a temporary file as a bash script.
 Only `shell` code blocks are extracted, see [Spark SQL](#spark-sql-code) below. 
 
