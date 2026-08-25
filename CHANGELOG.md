@@ -148,6 +148,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   directly under an allowed location, at `s3://b1/ns`, and rejected it as a custom location even
   though the request asked for none. The namespace location is now compared against the
   catalog's `default-base-location`, which is what it is derived from.
+- File cleanup tasks now issue batched object-storage deletes again. `CatalogUtil.deleteFiles`
+  batches only when the `FileIO` is an `instanceof SupportsBulkOperations`, but the `FileIO` reaching
+  the cleanup tasks is wrapped by `ExceptionMappingFileIO` and, on Azure, by
+  `WasbTranslatingFileIO`. Neither wrapper declared the capability held by the wrapped `FileIO`, so
+  the check always failed and every file was deleted individually. Both wrappers now propagate
+  `SupportsBulkOperations` when the wrapped `FileIO` supports it, which affects every storage
+  backend, since `S3FileIO`, `GCSFileIO`, `ADLSFileIO` and `HadoopFileIO` all implement
+  `DelegateFileIO`.
 
 ### Commits
 

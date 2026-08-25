@@ -19,15 +19,22 @@
 package org.apache.polaris.service.catalog.io;
 
 import java.util.Map;
+import java.util.stream.StreamSupport;
+import org.apache.iceberg.io.BulkDeletionFailureException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
+import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
 /**
  * A {@link FileIO} implementation that translates WASB paths into ABFS paths and then delegates to
  * another underlying FileIO implementation
+ *
+ * <p>Instances are created with {@link #wrap(FileIO)}, which preserves the wrapped FileIO's {@link
+ * SupportsBulkOperations} capability. Callers discover that capability with {@code instanceof}, and
+ * a plain wrapper would hide it.
  */
 public class WasbTranslatingFileIO implements FileIO {
   private final FileIO io;
@@ -35,8 +42,14 @@ public class WasbTranslatingFileIO implements FileIO {
   private static final String WASB_SCHEME = "wasb";
   private static final String ABFS_SCHEME = "abfs";
 
-  public WasbTranslatingFileIO(FileIO io) {
+  private WasbTranslatingFileIO(FileIO io) {
     this.io = io;
+  }
+
+  public static WasbTranslatingFileIO wrap(FileIO io) {
+    return io instanceof SupportsBulkOperations
+        ? new BulkWasbTranslatingFileIO(io)
+        : new WasbTranslatingFileIO(io);
   }
 
   private static String translate(String path) {
@@ -90,5 +103,25 @@ public class WasbTranslatingFileIO implements FileIO {
   @Override
   public void close() {
     io.close();
+  }
+
+  private static class BulkWasbTranslatingFileIO extends WasbTranslatingFileIO
+      implements SupportsBulkOperations {
+
+    private final SupportsBulkOperations bulkIo;
+
+    private BulkWasbTranslatingFileIO(FileIO io) {
+      super(io);
+      this.bulkIo = (SupportsBulkOperations) io;
+    }
+
+    @Override
+    public void deleteFiles(Iterable<String> paths) throws BulkDeletionFailureException {
+      bulkIo.deleteFiles(
+          () ->
+              StreamSupport.stream(paths.spliterator(), false)
+                  .map(WasbTranslatingFileIO::translate)
+                  .iterator());
+    }
   }
 }
