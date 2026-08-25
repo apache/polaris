@@ -70,6 +70,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which
   operators can match to the client error through the request id, returned by default as
   `X-Request-ID` and printed by the default log format as `requestId`.
+- `DROP_WITH_PURGE_ENABLED` now applies to Iceberg tables only. It previously also gated the
+  metadata purge that a view drop performs internally, so with its default of `false` and
+  `PURGE_VIEW_METADATA_ON_DROP` defaulting to `true`, dropping any view failed with HTTP 403 under
+  the default configuration. A view drop is now governed by `PURGE_VIEW_METADATA_ON_DROP` alone,
+  while the guard continues to protect a client-requested Iceberg table purge.
 
 ### Deprecations
 

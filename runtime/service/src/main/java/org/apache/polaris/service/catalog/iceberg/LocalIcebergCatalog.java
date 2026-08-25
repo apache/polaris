@@ -2964,7 +2964,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
 
     // Check that purge is enabled, if it is set:
-    if (catalogPath != null && !catalogPath.isEmpty() && purge) {
+    if (catalogPath != null
+        && !catalogPath.isEmpty()
+        && purge
+        && subType == PolarisEntitySubType.ICEBERG_TABLE) {
       boolean dropWithPurgeEnabled =
           realmConfig.getConfig(FeatureConfiguration.DROP_WITH_PURGE_ENABLED, catalogEntity);
       if (!dropWithPurgeEnabled) {
