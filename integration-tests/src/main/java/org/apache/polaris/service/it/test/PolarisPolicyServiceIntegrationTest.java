@@ -571,51 +571,68 @@ public class PolarisPolicyServiceIntegrationTest {
   @Test
   public void testListPoliciesWithUnknownPolicyType() {
     restCatalog.createNamespace(NS1);
-    policyApi.createPolicy(
-        currentCatalogName,
-        NS1_P1,
-        PredefinedPolicyTypes.DATA_COMPACTION,
-        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
-        "test policy");
+    try {
+      policyApi.createPolicy(
+          currentCatalogName,
+          NS1_P1,
+          PredefinedPolicyTypes.DATA_COMPACTION,
+          EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+          "test policy");
 
-    // An unknown policy type must be rejected instead of being silently dropped, which would
-    // return every policy in the namespace as if the filter had matched them.
-    try (Response res =
-        policyApi
-            .request(
-                "polaris/v1/{cat}/namespaces/{ns}/policies",
-                Map.of("cat", currentCatalogName, "ns", NS1_NAME),
-                Map.of("policyType", INVALID_POLICY_TYPE))
-            .get()) {
-      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-      Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_POLICY_TYPE);
+      // An unknown policy type must be rejected instead of being silently dropped, which would
+      // return every policy in the namespace as if the filter had matched them.
+      try (Response res =
+          policyApi
+              .request(
+                  "polaris/v1/{cat}/namespaces/{ns}/policies",
+                  Map.of("cat", currentCatalogName, "ns", NS1_NAME),
+                  Map.of("policyType", INVALID_POLICY_TYPE))
+              .get()) {
+        Assertions.assertThat(res.getStatus())
+            .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_POLICY_TYPE);
+      }
+    } finally {
+      policyApi.purge(currentCatalogName, NS1);
     }
-
-    policyApi.dropPolicy(currentCatalogName, NS1_P1);
   }
 
   @Test
   public void testGetApplicablePoliciesWithUnknownPolicyType() {
     restCatalog.createNamespace(NS1);
-    policyApi.createPolicy(
-        currentCatalogName,
-        NS1_P1,
-        PredefinedPolicyTypes.DATA_COMPACTION,
-        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
-        "test policy");
+    try {
+      policyApi.createPolicy(
+          currentCatalogName,
+          NS1_P1,
+          PredefinedPolicyTypes.DATA_COMPACTION,
+          EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+          "test policy");
+      // Attach the policy so that it is applicable to the namespace. Without this the endpoint
+      // returns an empty list regardless of the filter, and the test could not tell a rejected
+      // request from one that matched nothing.
+      PolicyAttachmentTarget namespaceTarget =
+          PolicyAttachmentTarget.builder()
+              .setType(PolicyAttachmentTarget.TypeEnum.NAMESPACE)
+              .setPath(Arrays.asList(NS1.levels()))
+              .build();
+      policyApi.attachPolicy(currentCatalogName, NS1_P1, namespaceTarget, Map.of());
 
-    try (Response res =
-        policyApi
-            .request(
-                "polaris/v1/{cat}/applicable-policies",
-                Map.of("cat", currentCatalogName),
-                Map.of("namespace", NS1_NAME, "policyType", INVALID_POLICY_TYPE))
-            .get()) {
-      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-      Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_POLICY_TYPE);
+      try (Response res =
+          policyApi
+              .request(
+                  "polaris/v1/{cat}/applicable-policies",
+                  Map.of("cat", currentCatalogName),
+                  Map.of("namespace", NS1_NAME, "policyType", INVALID_POLICY_TYPE))
+              .get()) {
+        Assertions.assertThat(res.getStatus())
+            .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        Assertions.assertThat(res.readEntity(String.class)).contains(INVALID_POLICY_TYPE);
+      }
+    } finally {
+      // The policy is attached, so purge cannot remove it: purge drops without detach-all and the
+      // policy comes back as in-use. Drop it with detach-all, as the attach tests above do.
+      policyApi.dropPolicy(currentCatalogName, NS1_P1, true);
     }
-
-    policyApi.dropPolicy(currentCatalogName, NS1_P1);
   }
 
   @Test
