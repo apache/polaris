@@ -29,4 +29,5 @@
   <root level="${test.log.level:-ERROR}">
     <appender-ref ref="console"/>
   </root>
+  <logger name="org.apache.ranger.audit.provider.AuditProviderFactory" level="OFF"/>
 </configuration>
