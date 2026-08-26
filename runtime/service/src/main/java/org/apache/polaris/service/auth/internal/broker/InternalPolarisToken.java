@@ -22,13 +22,13 @@ import com.google.common.base.Splitter;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.apache.polaris.service.auth.PolarisCredential;
+import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
 import org.immutables.value.Value;
 import org.jspecify.annotations.NonNull;
 
 /**
- * A specialized {@link PolarisCredential} used for internal authentication, when Polaris is the
- * identity provider.
+ * A specialized {@link org.apache.polaris.service.auth.PolarisCredential} produced by Polaris
+ * default internal token broker.
  *
  * <p>Such credentials are created by the Polaris service itself, from a JWT token previously issued
  * by Polaris itself.
@@ -36,7 +36,7 @@ import org.jspecify.annotations.NonNull;
  * @see JWTBroker
  */
 @PolarisImmutable
-public abstract class InternalPolarisToken implements PolarisCredential {
+public abstract class InternalPolarisToken implements InternalPolarisCredential {
 
   private static final Splitter SCOPE_SPLITTER = Splitter.on(' ').omitEmptyStrings().trimResults();
 
