@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.ranger.authz.model.RangerUserInfo;
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,31 @@ import org.junit.jupiter.api.Test;
 public class RangerUtilsTest {
 
   @Test
-  void toUserInfoIncludesUserDefinedPrincipalProperties() {
+  void toUserInfoIncludesDerivedNamespacedAttributes() {
+    PolarisPrincipal principal =
+        PolarisPrincipal.of(
+            "alice",
+            Map.of(
+                PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department",
+                "finance",
+                PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID,
+                "client-id-123",
+                PolarisPrincipalAttributeNamespaces.AUTH_PREFIX + "region",
+                "us-west"),
+            Set.of("admin"));
+
+    RangerUserInfo userInfo = RangerUtils.toUserInfo(principal);
+
+    assertThat(userInfo.getName()).isEqualTo("alice");
+    assertThat(userInfo.getRoles()).containsExactly("admin");
+    assertThat(userInfo.getAttributes())
+        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "finance")
+        .containsEntry(PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID, "client-id-123")
+        .containsEntry(PolarisPrincipalAttributeNamespaces.AUTH_PREFIX + "region", "us-west");
+  }
+
+  @Test
+  void toUserInfoDoesNotWalkPrincipalEntity() {
     PolarisPrincipal principal =
         PolarisPrincipal.of(
             "alice",
@@ -47,31 +71,20 @@ public class RangerUtilsTest {
 
     RangerUserInfo userInfo = RangerUtils.toUserInfo(principal);
 
-    assertThat(userInfo.getName()).isEqualTo("alice");
-    assertThat(userInfo.getRoles()).containsExactly("admin");
-    assertThat(userInfo.getAttributes()).containsEntry("department", "finance");
-    assertThat(userInfo.getAttributes())
-        .containsEntry(PolarisEntityConstants.getClientIdPropertyName(), "client-id-123");
+    assertThat(userInfo.getAttributes()).isEmpty();
   }
 
   @Test
-  void toUserInfoPrefersInternalPropertiesOnCollision() {
+  void toUserInfoOmitsUnnamespacedAttributes() {
     PolarisPrincipal principal =
         PolarisPrincipal.of(
             "alice",
             Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                new PrincipalEntity.Builder()
-                    .setName("alice")
-                    .setProperties(
-                        Map.of(PolarisEntityConstants.getClientIdPropertyName(), "user-value"))
-                    .setClientId("internal-value")
-                    .build()),
+                "department", "finance", PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true),
             Set.of("admin"));
 
     RangerUserInfo userInfo = RangerUtils.toUserInfo(principal);
 
-    assertThat(userInfo.getAttributes())
-        .containsEntry(PolarisEntityConstants.getClientIdPropertyName(), "internal-value");
+    assertThat(userInfo.getAttributes()).isEmpty();
   }
 }

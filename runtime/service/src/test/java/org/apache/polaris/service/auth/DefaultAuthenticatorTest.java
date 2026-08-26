@@ -40,6 +40,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -512,12 +513,16 @@ public class DefaultAuthenticatorTest {
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
-    // Then: the principal entity attribute must include the user-defined properties
+    // Then: the principal entity attribute must include the user-defined properties, but
+    // DefaultAuthenticator does not project authorizer-facing namespaced keys.
     PrincipalEntity entityAttr =
         result
             .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
             .orElseThrow();
     assertThat(entityAttr.getPropertiesAsMap()).containsEntry("department", "finance");
+    assertThat(result.getAttributes())
+        .doesNotContainKey(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")
+        .doesNotContainKey("department");
   }
 
   private PrincipalEntity createPrincipal(String name, String... roles) {

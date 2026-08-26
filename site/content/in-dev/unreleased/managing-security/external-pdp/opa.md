@@ -185,7 +185,11 @@ Polaris sends the following input structure to OPA:
 {
   "actor": {
     "principal": "user@example.com",
-    "roles": ["role1", "role2"]
+    "roles": ["role1", "role2"],
+    "attributes": {
+      "polaris.user.department": "finance",
+      "polaris.system.client_id": "abc123"
+    }
   },
   "action": "LOAD_TABLE_WITH_READ_DELEGATION",
   "resource": {
@@ -219,6 +223,7 @@ Polaris sends the following input structure to OPA:
 |-------|------|-------------|
 | `principal` | string | The principal identifier (e.g., username, service account) |
 | `roles` | array | Array of role names assigned to the principal |
+| `attributes` | object | Provenance-namespaced string attributes projected after authentication. Keys use `polaris.user.*` for user-defined principal properties, `polaris.system.*` for selected Polaris-managed facts (for example `polaris.system.client_id`), and `polaris.auth.*` for authenticator/IdP assertions. The raw `PrincipalEntity` is not included. |
 
 #### Action Field
 

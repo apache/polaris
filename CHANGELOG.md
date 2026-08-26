@@ -99,10 +99,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
-- OPA and Ranger authorizers now receive user-defined principal properties from the backing
-  `PrincipalEntity` (exposed via `PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY`), alongside
-  internal properties. Internal properties win on key collision so system-managed values such as
-  `client_id` cannot be shadowed by user input.
+- After authentication, a `SecurityIdentityAugmentor` projects selected principal facts onto
+  namespaced `PolarisPrincipal` attributes. OPA and Ranger consume those derived keys rather than
+  walking `PrincipalEntity`: `polaris.user.*` for user-defined principal properties,
+  `polaris.system.client_id` and `polaris.system.credential-rotation-required` for selected
+  internal facts, and `polaris.auth.*` when an authenticator has asserted them. The raw
+  `PrincipalEntity` is not included in the external PDP payload. A user property cannot shadow a
+  system key because the namespace is part of the attribute name.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which
