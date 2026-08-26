@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -32,6 +33,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -45,6 +47,7 @@ import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -235,6 +238,68 @@ public class IcebergCatalogAdapterTest {
         remain -= expectedSize;
       }
     }
+  }
+
+  @Test
+  void testRenameTableRejectsMissingSource() throws IOException {
+    RenameTableRequest request =
+        renameRequest("{\"destination\":{\"namespace\":[\"ns\"],\"name\":\"newtable\"}}");
+    Assertions.assertThat(request.source()).isNull();
+    Assertions.assertThatThrownBy(
+            () ->
+                catalogAdapter.renameTable(
+                    FEDERATED_CATALOG_NAME,
+                    request,
+                    null,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("source");
+  }
+
+  @Test
+  void testRenameTableRejectsMissingDestination() throws IOException {
+    RenameTableRequest request =
+        renameRequest("{\"source\":{\"namespace\":[\"ns\"],\"name\":\"oldtable\"}}");
+    Assertions.assertThat(request.destination()).isNull();
+    Assertions.assertThatThrownBy(
+            () ->
+                catalogAdapter.renameTable(
+                    FEDERATED_CATALOG_NAME,
+                    request,
+                    null,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("destination");
+  }
+
+  @Test
+  void testRenameViewRejectsMissingSource() throws IOException {
+    RenameTableRequest request =
+        renameRequest("{\"destination\":{\"namespace\":[\"ns\"],\"name\":\"newview\"}}");
+    Assertions.assertThat(request.source()).isNull();
+    Assertions.assertThatThrownBy(
+            () ->
+                catalogAdapter.renameView(
+                    FEDERATED_CATALOG_NAME,
+                    request,
+                    null,
+                    testServices.realmContext(),
+                    testServices.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("source");
+  }
+
+  /**
+   * Deserializes a rename request the same way the server does, i.e. with field-level visibility
+   * and without invoking {@link RenameTableRequest#validate()}. This is the only way to obtain a
+   * request whose {@code source} or {@code destination} is null, since the builder rejects nulls.
+   */
+  private static RenameTableRequest renameRequest(String json) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    new PolarisIcebergObjectMapperCustomizer("1M").customize(mapper);
+    return mapper.readValue(json, RenameTableRequest.class);
   }
 
   private void mockCatalogAdapter(org.apache.iceberg.catalog.Catalog catalog) {

@@ -465,7 +465,7 @@ public class IcebergCatalogAdapter
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EntityNameValidator.validateIdentifier(renameTableRequest.destination());
+    validateRenameRequest(renameTableRequest);
     return withCatalog(
         securityContext,
         prefix,
@@ -652,7 +652,7 @@ public class IcebergCatalogAdapter
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EntityNameValidator.validateIdentifier(renameTableRequest.destination());
+    validateRenameRequest(renameTableRequest);
     return withCatalog(
         securityContext,
         prefix,
@@ -660,6 +660,24 @@ public class IcebergCatalogAdapter
           catalog.renameView(renameTableRequest);
           return Response.status(Response.Status.NO_CONTENT).build();
         });
+  }
+
+  /**
+   * Validates a rename request before it reaches the catalog. The {@code source} and {@code
+   * destination} identifiers are optional in the wire format (bean validation is disabled for the
+   * Iceberg REST models), so a missing identifier must be rejected here with a 400 rather than
+   * surfacing later as an opaque {@link NullPointerException}. Only the destination is subject to
+   * the entity-name character policy; the source is left unchecked so that objects created before
+   * the policy existed can still be renamed away.
+   */
+  private static void validateRenameRequest(RenameTableRequest renameTableRequest) {
+    if (renameTableRequest.source() == null) {
+      throw new IllegalArgumentException("Rename request is missing the source identifier");
+    }
+    if (renameTableRequest.destination() == null) {
+      throw new IllegalArgumentException("Rename request is missing the destination identifier");
+    }
+    EntityNameValidator.validateIdentifier(renameTableRequest.destination());
   }
 
   @Override
