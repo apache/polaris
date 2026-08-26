@@ -23,6 +23,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 import com.google.common.collect.ImmutableMap;
 import jakarta.inject.Inject;
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -2490,7 +2492,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   private IcebergCatalogHandler newHandlerWithEntityLevelFiltering(
       Predicate<String> denyIfLeafName) {
     PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(principalEntity, Set.of(PRINCIPAL_ROLE1));
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of(PRINCIPAL_ROLE1));
 
     PolarisAuthorizer filteringAuthorizer =
         new PolarisAuthorizerImpl(realmConfig) {
@@ -2529,7 +2538,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   private IcebergCatalogHandler newFederatedHandlerWithEntityLevelFiltering(
       Predicate<String> denyIfLeafName) throws Exception {
     PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(principalEntity, Set.of(PRINCIPAL_ROLE1));
+        PolarisPrincipal.of(
+            principalEntity.getName(),
+            Map.of(
+                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
+                principalEntity,
+                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
+                true),
+            Set.of(PRINCIPAL_ROLE1));
 
     PolarisAuthorizer filteringAuthorizer =
         new PolarisAuthorizerImpl(realmConfig) {
@@ -2612,7 +2628,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     Assertions.assertThat(
             newHandlerWithEntityLevelFiltering("ns2"::equals)
-                .listNamespaces(Namespace.of())
+                .listNamespaces(Namespace.of(), null, null)
                 .namespaces())
         .contains(NS1)
         .doesNotContain(NS2);
@@ -2627,7 +2643,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_LIST));
 
     Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("table2"::equals).listTables(NS1A).identifiers())
+            newHandlerWithEntityLevelFiltering("table2"::equals)
+                .listTables(NS1A, null, null)
+                .identifiers())
         .contains(TABLE_NS1A_1)
         .doesNotContain(TABLE_NS1A_2);
   }
@@ -2641,7 +2659,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.VIEW_LIST));
 
     Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("view2"::equals).listViews(NS1A).identifiers())
+            newHandlerWithEntityLevelFiltering("view2"::equals)
+                .listViews(NS1A, null, null)
+                .identifiers())
         .contains(VIEW_NS1A_1)
         .doesNotContain(VIEW_NS1A_2);
   }
@@ -2707,15 +2727,19 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // Even though the authorizer denies "table2"/"ns2"/"view2", the flag is off so all entities
     // are returned.
     Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("table2"::equals).listTables(NS1A).identifiers())
+            newHandlerWithEntityLevelFiltering("table2"::equals)
+                .listTables(NS1A, null, null)
+                .identifiers())
         .contains(TABLE_NS1A_1, TABLE_NS1A_2);
     Assertions.assertThat(
             newHandlerWithEntityLevelFiltering("ns2"::equals)
-                .listNamespaces(Namespace.of())
+                .listNamespaces(Namespace.of(), null, null)
                 .namespaces())
         .contains(NS1, NS2);
     Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("view2"::equals).listViews(NS1A).identifiers())
+            newHandlerWithEntityLevelFiltering("view2"::equals)
+                .listViews(NS1A, null, null)
+                .identifiers())
         .contains(VIEW_NS1A_1, VIEW_NS1A_2);
   }
 

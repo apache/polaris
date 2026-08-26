@@ -45,8 +45,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.apache.iceberg.BaseMetadataTable;
@@ -92,6 +92,7 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -102,6 +103,7 @@ import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.collection.MutableAttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -120,9 +122,6 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
-import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.rest.NamespaceUtils;
-import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -276,19 +275,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
   }
 
-  public ListNamespacesResponse listNamespaces(Namespace parent) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
-    authorizeBasicNamespaceOperationOrThrow(op, parent);
-
-    ListNamespacesResponse response =
-        catalogHandlerUtils().listNamespaces(namespaceCatalog, parent);
-    if (!isEntityLevelListFilteringEnabled()) {
-      return response;
-    }
-    List<Namespace> visible = filterNamespaces(response.namespaces(), op);
-    return ListNamespacesResponse.builder().addAll(visible).build();
-  }
-
   public ListNamespacesResponse listNamespaces(
       Namespace parent, String pageToken, Integer pageSize) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
@@ -421,18 +407,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
-  }
-
-  public ListTablesResponse listTables(Namespace namespace) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
-    authorizeBasicNamespaceOperationOrThrow(op, namespace);
-
-    ListTablesResponse response = catalogHandlerUtils().listTables(baseCatalog, namespace);
-    if (!isEntityLevelListFilteringEnabled()) {
-      return response;
-    }
-    List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
-    return ListTablesResponse.builder().addAll(visible).build();
   }
 
   /**
@@ -1621,18 +1595,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
   }
 
-  public ListTablesResponse listViews(Namespace namespace) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
-    authorizeBasicNamespaceOperationOrThrow(op, namespace);
-
-    ListTablesResponse response = catalogHandlerUtils().listViews(viewCatalog, namespace);
-    if (!isEntityLevelListFilteringEnabled()) {
-      return response;
-    }
-    List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
-    return ListTablesResponse.builder().addAll(visible).build();
-  }
-
   public LoadViewResponse createView(Namespace namespace, CreateViewRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_VIEW;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
@@ -1897,8 +1859,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
     filterManifest.resolveAll();
 
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(filterManifest);
+    AuthorizationState authzState = new AuthorizationState(filterManifest);
 
     var principal = polarisPrincipal();
     List<T> resolvable = new ArrayList<>();

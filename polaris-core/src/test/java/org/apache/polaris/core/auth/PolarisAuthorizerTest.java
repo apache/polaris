@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.Set;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -109,7 +111,7 @@ public class PolarisAuthorizerTest {
   @Test
   void defaultBatchReturnsOneDecisionPerRequestInOrder() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of("table2"));
-    AuthorizationState state = new AuthorizationState();
+    AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
     List<AuthorizationRequest> requests =
         List.of(requestForTable("table1"), requestForTable("table2"), requestForTable("table3"));
 
@@ -130,7 +132,7 @@ public class PolarisAuthorizerTest {
     // The first request is denied. The contract requires every later request to still be
     // evaluated and to receive its own decision.
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of("table1"));
-    AuthorizationState state = new AuthorizationState();
+    AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
     List<AuthorizationRequest> requests =
         List.of(requestForTable("table1"), requestForTable("table2"), requestForTable("table3"));
 
@@ -146,7 +148,7 @@ public class PolarisAuthorizerTest {
   @Test
   void defaultBatchEvaluatesEveryRequestExactlyOnceAndInOrder() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
-    AuthorizationState state = new AuthorizationState();
+    AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
     List<AuthorizationRequest> requests =
         List.of(requestForTable("table1"), requestForTable("table2"), requestForTable("table3"));
 
@@ -160,7 +162,7 @@ public class PolarisAuthorizerTest {
   @Test
   void defaultBatchDeniesEveryRequestWhenNoneAreAllowed() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of("table1", "table2"));
-    AuthorizationState state = new AuthorizationState();
+    AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
     List<AuthorizationRequest> requests =
         List.of(requestForTable("table1"), requestForTable("table2"));
 
@@ -172,7 +174,7 @@ public class PolarisAuthorizerTest {
   @Test
   void defaultBatchWithNoRequestsReturnsEmptyListWithoutDelegating() {
     RecordingAuthorizer authorizer = new RecordingAuthorizer(Set.of());
-    AuthorizationState state = new AuthorizationState();
+    AuthorizationState state = new AuthorizationState(mock(PolarisResolutionManifest.class));
 
     List<AuthorizationDecision> decisions = authorizer.authorize(state, List.of());
 
@@ -190,13 +192,15 @@ public class PolarisAuthorizerTest {
             .map(
                 request ->
                     new RecordingAuthorizer(Set.of("table2"))
-                        .authorize(new AuthorizationState(), request)
+                        .authorize(
+                            new AuthorizationState(mock(PolarisResolutionManifest.class)), request)
                         .isAllowed())
             .toList();
 
     List<Boolean> batched =
         new RecordingAuthorizer(Set.of("table2"))
-            .authorize(new AuthorizationState(), requests).stream()
+                .authorize(new AuthorizationState(mock(PolarisResolutionManifest.class)), requests)
+                .stream()
                 .map(AuthorizationDecision::isAllowed)
                 .toList();
 
