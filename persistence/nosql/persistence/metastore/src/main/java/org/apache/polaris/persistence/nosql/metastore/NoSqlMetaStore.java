@@ -1235,37 +1235,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     // byId() resolves the reference before fetching, so collecting the references first defers the
     // fetches without adding index work.
-    var targetObjs = new ObjBase[targets.size()];
-    var accesses = new HashMap<GrantTargetType, IndexedContainerAccess<?>>();
-    // fetchMany requires the ids to be distinct, and the same target can be referenced by more
-    // than one grant, so each reference is fetched once and copied to every occurrence.
-    var refOccurrences = new LinkedHashMap<ObjRef, List<Integer>>();
-    for (int i = 0; i < targets.size(); i++) {
-      var target = targets.get(i);
-      var access =
-          accesses.computeIfAbsent(
-              new GrantTargetType(target.catalogId(), target.typeCode()),
-              key -> memoizedIndexedAccess.indexedAccess(key.catalogId(), key.typeCode()));
-      var objRef = access.objRefById(target.id());
-      if (objRef.isPresent()) {
-        refOccurrences.computeIfAbsent(objRef.get(), key -> new ArrayList<>()).add(i);
-      } else {
-        // The root container is the only access that cannot yield a reference without fetching.
-        targetObjs[i] = access.byId(target.id()).orElse(null);
-      }
-    }
-
-    var distinctRefs = new ArrayList<>(refOccurrences.keySet());
-    for (int start = 0; start < distinctRefs.size(); start += FETCH_PAGE_SIZE) {
-      var batch =
-          distinctRefs.subList(start, Math.min(start + FETCH_PAGE_SIZE, distinctRefs.size()));
-      var objs = persistence.fetchMany(ObjBase.class, batch.toArray(ObjRef[]::new));
-      for (int i = 0; i < batch.size(); i++) {
-        for (int occurrence : refOccurrences.get(batch.get(i))) {
-          targetObjs[occurrence] = objs[i];
-        }
-      }
-    }
+    var targetObjs = resolveGrantTargetObjs(targets);
 
     for (int i = 0; i < targets.size(); i++) {
       var target = targets.get(i);
@@ -1398,6 +1368,45 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                     aclEntryConsumer.handle(securableAndGrantee, entry.granted());
                   });
             });
+  }
+
+  /**
+   * Resolves each grant target to its object, fetching in batches. Returns an array parallel to
+   * {@code targets}, with {@code null} for targets that no longer exist.
+   */
+  private ObjBase[] resolveGrantTargetObjs(List<GrantTarget> targets) {
+    var targetObjs = new ObjBase[targets.size()];
+    var accesses = new HashMap<GrantTargetType, IndexedContainerAccess<?>>();
+    // fetchMany requires the ids to be distinct, and the same target can be referenced by more
+    // than one grant, so each reference is fetched once and copied to every occurrence.
+    var refOccurrences = new LinkedHashMap<ObjRef, List<Integer>>();
+    for (int i = 0; i < targets.size(); i++) {
+      var target = targets.get(i);
+      var access =
+          accesses.computeIfAbsent(
+              new GrantTargetType(target.catalogId(), target.typeCode()),
+              key -> memoizedIndexedAccess.indexedAccess(key.catalogId(), key.typeCode()));
+      var objRef = access.objRefById(target.id());
+      if (objRef.isPresent()) {
+        refOccurrences.computeIfAbsent(objRef.get(), key -> new ArrayList<>()).add(i);
+      } else {
+        // The root container is the only access that cannot yield a reference without fetching.
+        targetObjs[i] = access.byId(target.id()).orElse(null);
+      }
+    }
+
+    var distinctRefs = new ArrayList<>(refOccurrences.keySet());
+    for (int start = 0; start < distinctRefs.size(); start += FETCH_PAGE_SIZE) {
+      var batch =
+          distinctRefs.subList(start, Math.min(start + FETCH_PAGE_SIZE, distinctRefs.size()));
+      var objs = persistence.fetchMany(ObjBase.class, batch.toArray(ObjRef[]::new));
+      for (int i = 0; i < batch.size(); i++) {
+        for (int occurrence : refOccurrences.get(batch.get(i))) {
+          targetObjs[occurrence] = objs[i];
+        }
+      }
+    }
+    return targetObjs;
   }
 
   record GrantTarget(
