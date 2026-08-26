@@ -28,9 +28,9 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.ranger.authz.model.RangerAccessInfo;
@@ -128,19 +128,8 @@ public class RangerUtils {
   }
 
   private static Map<String, Object> getUserAttributes(PolarisPrincipal principal) {
-    Map<String, String> properties =
-        principal
-            .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
-            .map(
-                entity -> {
-                  Map<String, String> merged = new HashMap<>(entity.getPropertiesAsMap());
-                  // Internal properties win on collision so system-managed values cannot be
-                  // shadowed by user-supplied properties.
-                  merged.putAll(entity.getInternalPropertiesAsMap());
-                  return merged;
-                })
-            .orElse(Collections.emptyMap());
-
-    return properties.isEmpty() ? Collections.emptyMap() : new HashMap<>(properties);
+    Map<String, String> derived =
+        PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal);
+    return derived.isEmpty() ? Collections.emptyMap() : new HashMap<>(derived);
   }
 }

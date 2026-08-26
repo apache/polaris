@@ -175,6 +175,13 @@ keys, or other secrets in table or view properties.
 | POLICY_ATTACH | Enables policy to be attached to entities. |
 | POLICY_DETACH | Enables policy to be detached from entities. |
 
+### Principal privileges
+
+| Privilege | Description |
+| --------- | ----------- |
+| PRINCIPAL_READ_PROPERTIES | Enables reading principal properties. |
+| PRINCIPAL_WRITE_PROPERTIES | Enables configuring principal properties. When user-defined principal properties are forwarded to external authorizers as `polaris.user.*` attributes, this privilege allows modifying user-supplied ABAC attributes. |
+
 ## RBAC example
 
 The following diagram illustrates how RBAC works in Polaris and

@@ -65,6 +65,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- After authentication, a `SecurityIdentityAugmentor` projects selected principal facts onto
+  namespaced `PolarisPrincipal` attributes. OPA and Ranger consume those derived keys rather than
+  walking `PrincipalEntity`: `polaris.user.*` for user-defined principal properties,
+  `polaris.system.client_id` and `polaris.system.credential-rotation-required` for selected
+  internal facts, and `polaris.auth.*` when an authenticator has asserted them. The raw
+  `PrincipalEntity` is not included in the external PDP payload. A user property cannot shadow a
+  system key because the namespace is part of the attribute name.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which
@@ -186,10 +193,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   root principal already exists. Existing credentials are never returned or altered.
 - Authorization failure messages (HTTP 403 / `ForbiddenException` from `PolarisAuthorizerImpl`) now log the specific missing privilege(s) and the entity each was checked against server-side (at `INFO` level), e.g. `missing TABLE_CREATE on NAMESPACE 'ns1'`. The client-facing 403 response remains a generic message to avoid leaking authorization metadata to untrusted clients. Operators can correlate client errors to server logs using the existing `X-Request-ID` header (present in default log MDC as `requestId`).
 - The field `clientSecret` of the Polaris management API type `ResetPrincipalRequest` is now using `format: password`. This does not change the wire format, but code generated from the OpenAPI may require downstream changes.
-- OPA and Ranger authorizers now receive user-defined principal properties from the backing
-  `PrincipalEntity` (exposed via `PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY`), alongside
-  internal properties. Internal properties win on key collision so system-managed values such as
-  `client_id` cannot be shadowed by user input.
 
 ### Deprecations
 - The `currentKmsKey` and `allowedKmsKeys` AWS storage configuration properties are deprecated. Use `encryptionKeys` instead.
