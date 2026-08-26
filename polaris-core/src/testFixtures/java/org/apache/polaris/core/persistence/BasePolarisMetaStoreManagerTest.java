@@ -41,15 +41,19 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -286,6 +290,181 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testGrantRecordWriteIsIdempotent() {
     polarisTestMetaStoreManager.testGrantRecordWriteIsIdempotent();
+  }
+
+  @Test
+  protected void testCommitTransactionBatchCreatesEntityAndGrant() {
+    PolarisMetaStoreManager manager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    TaskEntity task = createTask("changeset-create", 900L);
+    PolarisGrantRecord grant = new PolarisGrantRecord(0L, task.getId(), 0L, 1L, 3);
+    EntitiesResult result =
+        manager.commitTransactionBatch(
+            callCtx,
+            new MetaStoreChangeSet.Builder()
+                .addCreate(null, task)
+                .addGrantRecordCreate(grant)
+                .build());
+    Assumptions.assumeThat(result.getReturnStatus())
+        .isNotEqualTo(BaseResult.ReturnStatus.CHANGE_SET_ATOMICITY_UNSUPPORTED);
+    Assertions.assertThat(result.isSuccess()).isTrue();
+    Assertions.assertThat(
+            manager
+                .loadEntity(callCtx, task.getCatalogId(), task.getId(), task.getType())
+                .getEntity())
+        .isNotNull()
+        .extracting(PolarisBaseEntity::getName)
+        .isEqualTo("changeset-create");
+    Assertions.assertThat(
+            callCtx.getMetaStore().lookupGrantRecord(callCtx, 0L, task.getId(), 0L, 1L, 3))
+        .isNotNull();
+  }
+
+  @Test
+  protected void testCommitTransactionBatchRollsBackEarlierMutationsOnLaterFailure() {
+    PolarisMetaStoreManager manager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    TaskEntity existing = createTask("changeset-existing", 901L);
+    EntitiesResult created =
+        manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.ofCreate(null, existing));
+    Assumptions.assumeThat(created.getReturnStatus())
+        .isNotEqualTo(BaseResult.ReturnStatus.CHANGE_SET_ATOMICITY_UNSUPPORTED);
+    Assertions.assertThat(created.isSuccess()).isTrue();
+
+    PolarisBaseEntity persisted =
+        manager
+            .loadEntity(callCtx, existing.getCatalogId(), existing.getId(), existing.getType())
+            .getEntity();
+    Assertions.assertThat(persisted).isNotNull();
+    // Simulate a concurrent writer so the original CAS baseline is stale. entityVersion 0 is
+    // coerced back to 1 by PolarisBaseEntity, so we bump the stored entity instead of subtracting.
+    PolarisBaseEntity concurrent =
+        new PolarisBaseEntity.Builder(persisted)
+            .entityVersion(persisted.getEntityVersion() + 1)
+            .build();
+    callCtx.getMetaStore().writeEntity(callCtx, concurrent, false, persisted);
+    PolarisBaseEntity update =
+        new PolarisBaseEntity.Builder(persisted).name("changeset-renamed").build();
+    TaskEntity rolledBack = createTask("changeset-rolled-back", 902L);
+    PolarisGrantRecord grant = new PolarisGrantRecord(0L, rolledBack.getId(), 0L, 1L, 3);
+
+    EntitiesResult failed =
+        manager.commitTransactionBatch(
+            callCtx,
+            new MetaStoreChangeSet.Builder()
+                .addCreate(null, rolledBack)
+                .addUpdate(null, update, persisted)
+                .addGrantRecordCreate(grant)
+                .build());
+    Assertions.assertThat(failed.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    Assertions.assertThat(
+            manager
+                .loadEntity(
+                    callCtx, rolledBack.getCatalogId(), rolledBack.getId(), rolledBack.getType())
+                .getEntity())
+        .isNull();
+    Assertions.assertThat(
+            callCtx.getMetaStore().lookupGrantRecord(callCtx, 0L, rolledBack.getId(), 0L, 1L, 3))
+        .isNull();
+    PolarisBaseEntity afterFailure =
+        manager
+            .loadEntity(callCtx, existing.getCatalogId(), existing.getId(), existing.getType())
+            .getEntity();
+    Assertions.assertThat(afterFailure.getName()).isEqualTo("changeset-existing");
+  }
+
+  @Test
+  protected void testCommitTransactionBatchMapsAlreadyExistsConflict() {
+    PolarisMetaStoreManager manager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    TaskEntity task = createTask("changeset-dup", 903L);
+    EntitiesResult created =
+        manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.ofCreate(null, task));
+    Assumptions.assumeThat(created.getReturnStatus())
+        .isNotEqualTo(BaseResult.ReturnStatus.CHANGE_SET_ATOMICITY_UNSUPPORTED);
+    Assertions.assertThat(created.isSuccess()).isTrue();
+
+    TaskEntity duplicate = createTask("changeset-dup", 904L);
+    EntitiesResult conflict =
+        manager.commitTransactionBatch(callCtx, MetaStoreChangeSet.ofCreate(null, duplicate));
+    Assertions.assertThat(conflict.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
+  }
+
+  @Test
+  protected void testCommitTransactionBatchDuplicateGrantDoesNotAbort() {
+    PolarisMetaStoreManager manager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    TaskEntity task = createTask("changeset-grant-dup", 905L);
+    PolarisGrantRecord grant = new PolarisGrantRecord(0L, task.getId(), 0L, 1L, 3);
+    EntitiesResult created =
+        manager.commitTransactionBatch(
+            callCtx,
+            new MetaStoreChangeSet.Builder()
+                .addCreate(null, task)
+                .addGrantRecordCreate(grant)
+                .build());
+    Assumptions.assumeThat(created.getReturnStatus())
+        .isNotEqualTo(BaseResult.ReturnStatus.CHANGE_SET_ATOMICITY_UNSUPPORTED);
+    Assertions.assertThat(created.isSuccess()).isTrue();
+
+    PolarisBaseEntity persisted =
+        manager.loadEntity(callCtx, task.getCatalogId(), task.getId(), task.getType()).getEntity();
+    PolarisBaseEntity update =
+        new PolarisBaseEntity.Builder(persisted).name("changeset-grant-dup-updated").build();
+    EntitiesResult retried =
+        manager.commitTransactionBatch(
+            callCtx,
+            new MetaStoreChangeSet.Builder()
+                .addUpdate(null, update, persisted)
+                .addGrantRecordCreate(grant)
+                .build());
+    Assertions.assertThat(retried.isSuccess()).isTrue();
+    PolarisBaseEntity after =
+        manager.loadEntity(callCtx, task.getCatalogId(), task.getId(), task.getType()).getEntity();
+    Assertions.assertThat(after.getName()).isEqualTo("changeset-grant-dup-updated");
+    Assertions.assertThat(
+            callCtx.getMetaStore().lookupGrantRecord(callCtx, 0L, task.getId(), 0L, 1L, 3))
+        .isNotNull();
+  }
+
+  @Test
+  protected void testApplyChangeSetBestEffortRejectsGrantMutations() {
+    PolarisMetaStoreManager manager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    PolarisGrantRecord grant = new PolarisGrantRecord(0L, 1L, 0L, 2L, 3);
+    EntitiesResult result =
+        manager.applyChangeSetBestEffort(
+            callCtx, new MetaStoreChangeSet.Builder().addGrantRecordCreate(grant).build());
+    Assertions.assertThat(result.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.CHANGE_SET_ATOMICITY_UNSUPPORTED);
+  }
+
+  @Test
+  protected void testApplyChangeSetBestEffortAppliesCreatesSequentially() {
+    PolarisMetaStoreManager manager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    TaskEntity first = createTask("best-effort-create-1", 906L);
+    TaskEntity second = createTask("best-effort-create-2", 907L);
+
+    EntitiesResult result =
+        manager.applyChangeSetBestEffort(
+            callCtx,
+            MetaStoreChangeSet.ofBatch(
+                List.of(new EntityWithPath(null, first), new EntityWithPath(null, second)),
+                List.of()));
+    Assertions.assertThat(result.isSuccess()).isTrue();
+    Assertions.assertThat(
+            manager
+                .loadEntity(callCtx, first.getCatalogId(), first.getId(), first.getType())
+                .getEntity())
+        .isNotNull();
+    Assertions.assertThat(
+            manager
+                .loadEntity(callCtx, second.getCatalogId(), second.getId(), second.getType())
+                .getEntity())
+        .isNotNull();
   }
 
   /** test entity rename */

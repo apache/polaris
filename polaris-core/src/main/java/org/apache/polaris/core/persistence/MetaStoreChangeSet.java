@@ -35,8 +35,8 @@ import org.jspecify.annotations.Nullable;
  * with a single entry, allowing them to ride on top of the same atomic commit path.
  *
  * <p>This is intentionally minimal: it supports creates, CAS-updates, and grant-record
- * creates/deletes. Entity deletes are deferred to a follow-up change that will also carry the
- * catalog path needed by the non-atomic fallback path.
+ * creates/deletes. {@link #toMutations()} flattens the grouped fields into the ordered SPI list.
+ * Entity deletes are deferred to a follow-up.
  */
 public record MetaStoreChangeSet(
     @NonNull List<EntityWithPath> creates,
@@ -84,6 +84,33 @@ public record MetaStoreChangeSet(
         && updates.isEmpty()
         && grantRecordsToCreate.isEmpty()
         && grantRecordsToDelete.isEmpty();
+  }
+
+  /**
+   * Flatten this change set into the ordered SPI mutation list: creates, then updates, then grant
+   * creates, then grant deletes. Callers that need CAS-prepared entity payloads should run {@code
+   * prepareToPersist*} before constructing the corresponding {@link PersistenceMutation}.
+   */
+  public @NonNull List<PersistenceMutation> toMutations() {
+    List<PersistenceMutation> mutations =
+        new ArrayList<>(
+            creates.size()
+                + updates.size()
+                + grantRecordsToCreate.size()
+                + grantRecordsToDelete.size());
+    for (EntityWithPath create : creates) {
+      mutations.add(PersistenceMutation.createEntity(create.entity()));
+    }
+    for (EntityWithPath update : updates) {
+      mutations.add(PersistenceMutation.updateEntity(update.entity(), update.originalEntity()));
+    }
+    for (PolarisGrantRecord grant : grantRecordsToCreate) {
+      mutations.add(PersistenceMutation.createGrant(grant));
+    }
+    for (PolarisGrantRecord grant : grantRecordsToDelete) {
+      mutations.add(PersistenceMutation.deleteGrant(grant));
+    }
+    return List.copyOf(mutations);
   }
 
   /** Returns a new builder pre-populated with this changeset's contents. */

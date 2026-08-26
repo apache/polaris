@@ -51,9 +51,8 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
-import org.apache.polaris.core.persistence.EntityMutation;
-import org.apache.polaris.core.persistence.GrantMutation;
 import org.apache.polaris.core.persistence.MetaStoreChangeSet;
+import org.apache.polaris.core.persistence.PersistenceMutation;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
@@ -1179,53 +1178,25 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   @Override
   public @NonNull EntitiesResult commitTransactionBatch(
       @NonNull PolarisCallContext callCtx, @NonNull MetaStoreChangeSet changeSet) {
-    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
-    return ms.runInTransaction(callCtx, () -> this.commitTransactionBatch(callCtx, ms, changeSet));
-  }
-
-  private @NonNull EntitiesResult commitTransactionBatch(
-      @NonNull PolarisCallContext callCtx,
-      @NonNull TransactionalPersistence ms,
-      @NonNull MetaStoreChangeSet changeSet) {
     if (changeSet.isEmpty()) {
       return new EntitiesResult(Page.fromItems(List.of()));
     }
-
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
     List<EntityWithPath> creates = changeSet.creates();
     List<EntityWithPath> updates = changeSet.updates();
     getDiagnostics().checkNotNull(creates, "unexpected_null_creates");
     getDiagnostics().checkNotNull(updates, "unexpected_null_updates");
-
-    List<EntityMutation> entityMutations = new ArrayList<>(creates.size() + updates.size());
-    for (EntityWithPath create : creates) {
-      entityMutations.add(
-          EntityMutation.create(
-              prepareToPersistNewEntity(
-                  callCtx, ms, new PolarisBaseEntity.Builder(create.entity()).build())));
+    try {
+      return ms.runInTransaction(
+          callCtx,
+          () -> {
+            List<PersistenceMutation> mutations = prepareChangeSetMutations(callCtx, ms, changeSet);
+            ms.commitChangeSetInCurrentTxn(callCtx, mutations);
+            return entitiesResultFromMutations(mutations);
+          });
+    } catch (RuntimeException e) {
+      return mapChangeSetConflicts(e);
     }
-    for (EntityWithPath update : updates) {
-      entityMutations.add(
-          EntityMutation.update(
-              prepareToPersistEntityAfterChange(
-                  callCtx,
-                  ms,
-                  new PolarisBaseEntity.Builder(update.entity()).build(),
-                  false,
-                  update.entity()),
-              update.originalEntity()));
-    }
-    List<GrantMutation> grantMutations =
-        new ArrayList<>(
-            changeSet.grantRecordsToCreate().size() + changeSet.grantRecordsToDelete().size());
-    for (PolarisGrantRecord grant : changeSet.grantRecordsToCreate()) {
-      grantMutations.add(GrantMutation.create(grant));
-    }
-    for (PolarisGrantRecord grant : changeSet.grantRecordsToDelete()) {
-      grantMutations.add(GrantMutation.delete(grant));
-    }
-
-    ms.commitChangeSet(callCtx, entityMutations, grantMutations);
-    return new EntitiesResult(Page.fromItems(List.of()));
   }
 
   /**

@@ -120,6 +120,9 @@ public class BaseResult {
 
     // policy has mappings and cannot be dropped
     POLICY_HAS_MAPPINGS(16),
+
+    // the backend cannot atomically apply this change set; no mutations were applied
+    CHANGE_SET_ATOMICITY_UNSUPPORTED(17),
     ;
 
     // code for the enum

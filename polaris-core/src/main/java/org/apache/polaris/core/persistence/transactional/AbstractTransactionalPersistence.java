@@ -35,9 +35,9 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.ChangeSetCommitStatus;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
-import org.apache.polaris.core.persistence.EntityMutation;
-import org.apache.polaris.core.persistence.GrantMutation;
+import org.apache.polaris.core.persistence.PersistenceMutation;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -278,51 +278,47 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public boolean supportsAtomicMixedCommit() {
-    return true;
+  public @NonNull ChangeSetCommitStatus commitChangeSet(
+      @NonNull PolarisCallContext callCtx, @NonNull List<PersistenceMutation> mutations) {
+    if (mutations.isEmpty()) {
+      return ChangeSetCommitStatus.APPLIED;
+    }
+    runActionInTransaction(callCtx, () -> this.commitChangeSetInCurrentTxn(callCtx, mutations));
+    return ChangeSetCommitStatus.APPLIED;
   }
 
   /** {@inheritDoc} */
   @Override
-  public void commitChangeSet(
-      @NonNull PolarisCallContext callCtx,
-      @NonNull List<EntityMutation> entityMutations,
-      @NonNull List<GrantMutation> grantMutations) {
-    runActionInTransaction(
-        callCtx,
-        () -> {
-          for (EntityMutation em : entityMutations) {
-            switch (em.type()) {
-              case CREATE -> {
-                this.checkConditionsForWriteEntityInCurrentTxn(callCtx, em.entity(), null);
-                boolean nameOrParentChanged = true;
-                this.writeEntityInCurrentTxn(callCtx, em.entity(), nameOrParentChanged, null);
-              }
-              case UPDATE -> {
-                PolarisBaseEntity originalEntity = em.originalEntity();
-                if (originalEntity == null) {
-                  throw new IllegalArgumentException(
-                      "UPDATE mutation missing originalEntity for entity id "
-                          + em.entity().getId());
-                }
-                this.checkConditionsForWriteEntityInCurrentTxn(
-                    callCtx, em.entity(), originalEntity);
-                boolean nameOrParentChanged =
-                    !em.entity().getName().equals(originalEntity.getName())
-                        || em.entity().getParentId() != originalEntity.getParentId();
-                this.writeEntityInCurrentTxn(
-                    callCtx, em.entity(), nameOrParentChanged, originalEntity);
-              }
-              case DELETE -> this.deleteEntityInCurrentTxn(callCtx, em.entity());
-            }
+  public void commitChangeSetInCurrentTxn(
+      @NonNull PolarisCallContext callCtx, @NonNull List<PersistenceMutation> mutations) {
+    for (PersistenceMutation mutation : mutations) {
+      if (mutation instanceof PersistenceMutation.Entity em) {
+        switch (em.operation()) {
+          case CREATE -> {
+            this.checkConditionsForWriteEntityInCurrentTxn(callCtx, em.entity(), null);
+            this.writeEntityInCurrentTxn(callCtx, em.entity(), true, null);
           }
-          for (GrantMutation gm : grantMutations) {
-            switch (gm.type()) {
-              case CREATE -> this.writeToGrantRecordsInCurrentTxn(callCtx, gm.grantRecord());
-              case DELETE -> this.deleteFromGrantRecordsInCurrentTxn(callCtx, gm.grantRecord());
-            }
+          case UPDATE -> {
+            PolarisBaseEntity originalEntity =
+                Preconditions.checkNotNull(em.originalEntity(), "UPDATE missing originalEntity");
+            this.checkConditionsForWriteEntityInCurrentTxn(callCtx, em.entity(), originalEntity);
+            boolean nameOrParentChanged =
+                !em.entity().getName().equals(originalEntity.getName())
+                    || em.entity().getParentId() != originalEntity.getParentId();
+            this.writeEntityInCurrentTxn(callCtx, em.entity(), nameOrParentChanged, originalEntity);
           }
-        });
+          case DELETE -> this.deleteEntityInCurrentTxn(callCtx, em.entity());
+        }
+      } else if (mutation instanceof PersistenceMutation.Grant gm) {
+        switch (gm.operation()) {
+          case CREATE -> this.writeToGrantRecordsInCurrentTxn(callCtx, gm.grantRecord());
+          case DELETE -> this.deleteFromGrantRecordsInCurrentTxn(callCtx, gm.grantRecord());
+          case UPDATE -> throw new IllegalArgumentException("GRANT_RECORD does not support UPDATE");
+        }
+      } else {
+        throw new IllegalArgumentException("Unsupported persistence mutation: " + mutation);
+      }
+    }
   }
 
   @Override

@@ -26,6 +26,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
@@ -162,56 +163,77 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     return new GenerateEntityIdResult(ms.generateNewId(callCtx));
   }
 
-  /** Persists a merged (entities, originalEntities) batch within the caller's transaction. */
-  @FunctionalInterface
-  protected interface BatchWriteAction {
-    void write(List<PolarisBaseEntity> entities, List<PolarisBaseEntity> originalEntities);
+  /**
+   * Convert a manager-level change set into SPI mutations, filling persistence-owned fields on
+   * entity creates and updates.
+   */
+  protected @NonNull List<PersistenceMutation> prepareChangeSetMutations(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull MetaStoreChangeSet changeSet) {
+    List<PersistenceMutation> mutations =
+        new ArrayList<>(
+            changeSet.creates().size()
+                + changeSet.updates().size()
+                + changeSet.grantRecordsToCreate().size()
+                + changeSet.grantRecordsToDelete().size());
+    for (EntityWithPath create : changeSet.creates()) {
+      mutations.add(
+          PersistenceMutation.createEntity(
+              prepareToPersistNewEntity(
+                  callCtx, ms, new PolarisBaseEntity.Builder(create.entity()).build())));
+    }
+    for (EntityWithPath update : changeSet.updates()) {
+      mutations.add(
+          PersistenceMutation.updateEntity(
+              prepareToPersistEntityAfterChange(
+                  callCtx,
+                  ms,
+                  new PolarisBaseEntity.Builder(update.entity()).build(),
+                  false,
+                  update.entity()),
+              update.originalEntity()));
+    }
+    for (PolarisGrantRecord grant : changeSet.grantRecordsToCreate()) {
+      mutations.add(PersistenceMutation.createGrant(grant));
+    }
+    for (PolarisGrantRecord grant : changeSet.grantRecordsToDelete()) {
+      mutations.add(PersistenceMutation.deleteGrant(grant));
+    }
+    return mutations;
   }
 
   /**
-   * Merges {@code creates} and CAS {@code updates} into a single write call. Creates land at
-   * indices with a null originalEntity; updates land at indices with the prior entity state.
+   * Map backend conflict exceptions onto the existing {@link EntitiesResult} statuses used by
+   * {@link #createEntityIfNotExists} and {@link
+   * PolarisMetaStoreManager#updateEntitiesPropertiesIfNotChanged}.
    */
-  protected @NonNull EntitiesResult commitTransactionBatchViaWriteEntities(
-      @NonNull PolarisCallContext callCtx,
-      @NonNull BasePersistence ms,
-      @NonNull List<EntityWithPath> creates,
-      @NonNull List<EntityWithPath> updates,
-      @NonNull BatchWriteAction write) {
-    List<PolarisBaseEntity> mergedEntities = new ArrayList<>(creates.size() + updates.size());
-    List<PolarisBaseEntity> mergedOriginals = new ArrayList<>(creates.size() + updates.size());
-
-    for (EntityWithPath create : creates) {
-      mergedEntities.add(
-          prepareToPersistNewEntity(
-              callCtx, ms, new PolarisBaseEntity.Builder(create.entity()).build()));
-      mergedOriginals.add(null);
-    }
-    for (EntityWithPath update : updates) {
-      mergedEntities.add(
-          prepareToPersistEntityAfterChange(
-              callCtx,
-              ms,
-              new PolarisBaseEntity.Builder(update.entity()).build(),
-              false,
-              update.entity()));
-      mergedOriginals.add(update.originalEntity());
-    }
-
-    try {
-      write.write(mergedEntities, mergedOriginals);
-    } catch (EntityAlreadyExistsException e) {
+  protected @NonNull EntitiesResult mapChangeSetConflicts(@NonNull RuntimeException e) {
+    if (e instanceof EntityAlreadyExistsException eaee) {
+      PolarisBaseEntity existing = eaee.getExistingEntity();
       return new EntitiesResult(
           BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
-          String.format(
-              "Existing entity id: '%s', type %s subtype %s",
-              e.getExistingEntity().getId(),
-              e.getExistingEntity().getTypeCode(),
-              e.getExistingEntity().getSubTypeCode()));
-    } catch (RetryOnConcurrencyException e) {
+          existing == null
+              ? e.getMessage()
+              : String.format(
+                  "Existing entity id: '%s', type %s subtype %s",
+                  existing.getId(), existing.getTypeCode(), existing.getSubTypeCode()));
+    }
+    if (e instanceof RetryOnConcurrencyException) {
       return new EntitiesResult(
           BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
     }
-    return new EntitiesResult(Page.fromItems(mergedEntities));
+    throw e;
+  }
+
+  protected @NonNull EntitiesResult entitiesResultFromMutations(
+      @NonNull List<PersistenceMutation> mutations) {
+    List<PolarisBaseEntity> entities = new ArrayList<>();
+    for (PersistenceMutation mutation : mutations) {
+      if (mutation instanceof PersistenceMutation.Entity entityMutation) {
+        entities.add(entityMutation.entity());
+      }
+    }
+    return new EntitiesResult(Page.fromItems(entities));
   }
 }

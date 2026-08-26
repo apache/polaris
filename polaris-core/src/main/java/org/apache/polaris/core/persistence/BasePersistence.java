@@ -131,35 +131,33 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nullable List<PolarisBaseEntity> originalEntities);
 
   /**
-   * Commit a mixed set of entity and grant-record mutations atomically.
+   * Attempt to commit {@code mutations} atomically, in the given order.
    *
-   * <p>Backends that implement this method guarantee that either all mutations in the change set
-   * are applied durably, or none of them are. For {@link EntityMutation#type()} {@code UPDATE}, the
-   * backend must compare the persisted entity against {@link EntityMutation#originalEntity()} and
-   * fail the whole change set if any original entity does not match.
+   * <p>Atomicity is decided for <em>this</em> change set, not as a backend-wide capability. If the
+   * backend can apply every item in one atomic step (the records are co-located behind one
+   * transactional store, every kind is supported, and CAS preconditions hold), it does so and
+   * returns {@link ChangeSetCommitStatus#APPLIED}. If it cannot — mixed stores, an unsupported
+   * record kind, or no transactional primitive — it returns {@link
+   * ChangeSetCommitStatus#UNSUPPORTED} and must not apply any mutation.
    *
-   * <p>Backends that cannot provide this guarantee should leave the default implementation in
-   * place. The manager layer will fall back to individual {@link #writeEntity}, {@link
-   * #deleteEntity}, {@link #writeToGrantRecords}, and {@link #deleteFromGrantRecords} calls.
+   * <p>This method must not silently sequence individual writes. Best-effort sequencing is a
+   * separate manager contract ({@link PolarisMetaStoreManager#applyChangeSetBestEffort}).
+   *
+   * <p>For {@link PersistenceMutation.Entity} {@code UPDATE}, the backend must compare the
+   * persisted entity against {@link PersistenceMutation.Entity#originalEntity()} and fail the whole
+   * change set if any original entity does not match.
+   *
+   * <p>Conflicts are reported by throwing {@link EntityAlreadyExistsException} or {@link
+   * RetryOnConcurrencyException}. The default implementation returns {@link
+   * ChangeSetCommitStatus#UNSUPPORTED} for a non-empty change set.
    *
    * @param callCtx call context
-   * @param entityMutations entity creates/updates/deletes to commit atomically
-   * @param grantMutations grant-record creates/deletes to commit atomically
+   * @param mutations ordered mutations to commit atomically
+   * @return {@link ChangeSetCommitStatus#APPLIED} or {@link ChangeSetCommitStatus#UNSUPPORTED}
    */
-  default void commitChangeSet(
-      @NonNull PolarisCallContext callCtx,
-      @NonNull List<EntityMutation> entityMutations,
-      @NonNull List<GrantMutation> grantMutations) {
-    throw new UnsupportedOperationException(
-        "Backend does not support atomic mixed commits; use individual operations");
-  }
-
-  /**
-   * Returns true if this backend supports {@link #commitChangeSet} for atomic mixed entity and
-   * grant-record mutations.
-   */
-  default boolean supportsAtomicMixedCommit() {
-    return false;
+  default @NonNull ChangeSetCommitStatus commitChangeSet(
+      @NonNull PolarisCallContext callCtx, @NonNull List<PersistenceMutation> mutations) {
+    return mutations.isEmpty() ? ChangeSetCommitStatus.APPLIED : ChangeSetCommitStatus.UNSUPPORTED;
   }
 
   /**

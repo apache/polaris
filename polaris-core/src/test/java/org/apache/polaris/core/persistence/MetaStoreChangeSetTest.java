@@ -115,5 +115,7 @@ public class MetaStoreChangeSetTest {
     assertThat(changeSet.creates()).hasSize(1);
     assertThat(changeSet.updates()).hasSize(1);
     assertThat(changeSet.updates().get(0).originalEntity()).isEqualTo(original);
+    assertThat(changeSet.toMutations()).hasSize(2);
+    assertThat(changeSet.toMutations().get(0)).isInstanceOf(PersistenceMutation.Entity.class);
   }
 }

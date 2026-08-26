@@ -30,8 +30,8 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.persistence.EntityMutation;
-import org.apache.polaris.core.persistence.GrantMutation;
+import org.apache.polaris.core.persistence.ChangeSetCommitStatus;
+import org.apache.polaris.core.persistence.PersistenceMutation;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,8 +67,11 @@ public class TreeMapCommitChangeSetTest {
   }
 
   @Test
-  public void testSupportsAtomicMixedCommit() {
-    assertThat(persistence.supportsAtomicMixedCommit()).isTrue();
+  public void testCommitChangeSetReturnsApplied() {
+    assertThat(
+            persistence.commitChangeSet(
+                callCtx, List.of(PersistenceMutation.createEntity(entity(1L, "catalog", 1)))))
+        .isEqualTo(ChangeSetCommitStatus.APPLIED);
   }
 
   @Test
@@ -76,8 +79,13 @@ public class TreeMapCommitChangeSetTest {
     PolarisBaseEntity catalog = entity(1L, "catalog", 1);
     PolarisGrantRecord grant = new PolarisGrantRecord(0L, 1L, 0L, 2L, 3);
 
-    persistence.commitChangeSet(
-        callCtx, List.of(EntityMutation.create(catalog)), List.of(GrantMutation.create(grant)));
+    assertThat(
+            persistence.commitChangeSet(
+                callCtx,
+                List.of(
+                    PersistenceMutation.createEntity(catalog),
+                    PersistenceMutation.createGrant(grant))))
+        .isEqualTo(ChangeSetCommitStatus.APPLIED);
 
     PolarisBaseEntity loaded =
         persistence.lookupEntity(
@@ -88,13 +96,47 @@ public class TreeMapCommitChangeSetTest {
   }
 
   @Test
+  public void testCommitChangeSetRollsBackEarlierMutationsOnLaterFailure() {
+    PolarisBaseEntity catalog = entity(1L, "catalog", 1);
+    persistence.writeEntity(callCtx, catalog, true, null);
+
+    PolarisBaseEntity newEntity = entity(2L, "other", 1);
+    PolarisGrantRecord grant = new PolarisGrantRecord(0L, 2L, 0L, 3L, 3);
+    PolarisBaseEntity staleOriginal = entity(1L, "catalog", 1);
+    PolarisBaseEntity concurrent = entity(1L, "catalog", 2);
+    persistence.writeEntity(callCtx, concurrent, false, catalog);
+    PolarisBaseEntity updateAttempt = entity(1L, "catalog-renamed", 2);
+
+    assertThatThrownBy(
+            () ->
+                persistence.commitChangeSet(
+                    callCtx,
+                    List.of(
+                        PersistenceMutation.createEntity(newEntity),
+                        PersistenceMutation.createGrant(grant),
+                        PersistenceMutation.updateEntity(updateAttempt, staleOriginal))))
+        .isInstanceOf(RetryOnConcurrencyException.class);
+
+    assertThat(
+            persistence.lookupEntity(
+                callCtx, newEntity.getCatalogId(), newEntity.getId(), newEntity.getTypeCode()))
+        .isNull();
+    assertThat(persistence.lookupGrantRecord(callCtx, 0L, 2L, 0L, 3L, 3)).isNull();
+    PolarisBaseEntity loaded =
+        persistence.lookupEntity(
+            callCtx, catalog.getCatalogId(), catalog.getId(), catalog.getTypeCode());
+    assertThat(loaded.getName()).isEqualTo("catalog");
+    assertThat(loaded.getEntityVersion()).isEqualTo(2);
+  }
+
+  @Test
   public void testCommitChangeSetUpdateRequiresOriginalEntity() {
     PolarisBaseEntity catalog = entity(1L, "catalog", 1);
     persistence.writeEntity(callCtx, catalog, true, null);
 
     PolarisBaseEntity updated = entity(1L, "catalog-renamed", 2);
     persistence.commitChangeSet(
-        callCtx, List.of(EntityMutation.update(updated, catalog)), List.of());
+        callCtx, List.of(PersistenceMutation.updateEntity(updated, catalog)));
 
     PolarisBaseEntity loaded =
         persistence.lookupEntity(
@@ -108,7 +150,6 @@ public class TreeMapCommitChangeSetTest {
     PolarisBaseEntity catalog = entity(1L, "catalog", 1);
     persistence.writeEntity(callCtx, catalog, true, null);
 
-    // Simulate a concurrent modification by bumping the version directly.
     PolarisBaseEntity concurrent = entity(1L, "catalog", 2);
     persistence.writeEntity(callCtx, concurrent, false, catalog);
 
@@ -116,7 +157,7 @@ public class TreeMapCommitChangeSetTest {
     assertThatThrownBy(
             () ->
                 persistence.commitChangeSet(
-                    callCtx, List.of(EntityMutation.update(updateAttempt, catalog)), List.of()))
+                    callCtx, List.of(PersistenceMutation.updateEntity(updateAttempt, catalog))))
         .isInstanceOf(RetryOnConcurrencyException.class);
   }
 
@@ -125,9 +166,10 @@ public class TreeMapCommitChangeSetTest {
     PolarisBaseEntity catalog = entity(1L, "catalog", 1);
     PolarisGrantRecord grant = new PolarisGrantRecord(0L, 1L, 0L, 2L, 3);
     persistence.commitChangeSet(
-        callCtx, List.of(EntityMutation.create(catalog)), List.of(GrantMutation.create(grant)));
+        callCtx,
+        List.of(PersistenceMutation.createEntity(catalog), PersistenceMutation.createGrant(grant)));
 
-    persistence.commitChangeSet(callCtx, List.of(), List.of(GrantMutation.delete(grant)));
+    persistence.commitChangeSet(callCtx, List.of(PersistenceMutation.deleteGrant(grant)));
 
     assertThat(persistence.lookupGrantRecord(callCtx, 0L, 1L, 0L, 2L, 3)).isNull();
   }

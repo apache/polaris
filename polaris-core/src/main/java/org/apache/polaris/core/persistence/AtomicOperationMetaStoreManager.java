@@ -323,16 +323,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     PolarisBaseEntity updatedSecurableEntity =
         securableEntity.withGrantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1);
 
-    if (ms.supportsAtomicMixedCommit()) {
-      // Atomic path: commit grant + version bumps in one transaction
-      ms.commitChangeSet(
-          callCtx,
-          List.of(
-              EntityMutation.update(updatedGranteeEntity, granteeEntity),
-              EntityMutation.update(updatedSecurableEntity, securableEntity)),
-          List.of(GrantMutation.create(grantRecord)));
-    } else {
-      // Fallback: individual operations (eventual consistency)
+    ChangeSetCommitStatus status =
+        ms.commitChangeSet(
+            callCtx,
+            List.of(
+                PersistenceMutation.updateEntity(updatedGranteeEntity, granteeEntity),
+                PersistenceMutation.updateEntity(updatedSecurableEntity, securableEntity),
+                PersistenceMutation.createGrant(grantRecord)));
+    if (status == ChangeSetCommitStatus.UNSUPPORTED) {
       ms.writeToGrantRecords(callCtx, grantRecord);
       ms.writeEntity(callCtx, updatedGranteeEntity, false, granteeEntity);
       ms.writeEntity(callCtx, updatedSecurableEntity, false, securableEntity);
@@ -403,16 +401,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     PolarisBaseEntity updatedRefreshSecurable =
         refreshSecurable.withGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1);
 
-    if (ms.supportsAtomicMixedCommit()) {
-      // Atomic path: commit grant delete + version bumps in one transaction
-      ms.commitChangeSet(
-          callCtx,
-          List.of(
-              EntityMutation.update(updatedRefreshGrantee, refreshGrantee),
-              EntityMutation.update(updatedRefreshSecurable, refreshSecurable)),
-          List.of(GrantMutation.delete(grantRecord)));
-    } else {
-      // Fallback: individual operations
+    ChangeSetCommitStatus status =
+        ms.commitChangeSet(
+            callCtx,
+            List.of(
+                PersistenceMutation.updateEntity(updatedRefreshGrantee, refreshGrantee),
+                PersistenceMutation.updateEntity(updatedRefreshSecurable, refreshSecurable),
+                PersistenceMutation.deleteGrant(grantRecord)));
+    if (status == ChangeSetCommitStatus.UNSUPPORTED) {
       ms.deleteFromGrantRecords(callCtx, grantRecord);
       ms.writeEntity(callCtx, updatedRefreshGrantee, false, refreshGrantee);
       ms.writeEntity(callCtx, updatedRefreshSecurable, false, refreshSecurable);
@@ -994,57 +990,18 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     getDiagnostics().checkNotNull(updates, "unexpected_null_updates");
 
     BasePersistence ms = callCtx.getMetaStore();
-    if (ms.supportsAtomicMixedCommit()) {
-      // Build entity mutations; grant mutations are handled directly by the backend.
-      List<EntityMutation> entityMutations = new ArrayList<>(creates.size() + updates.size());
-      for (EntityWithPath create : creates) {
-        entityMutations.add(
-            EntityMutation.create(
-                prepareToPersistNewEntity(
-                    callCtx, ms, new PolarisBaseEntity.Builder(create.entity()).build())));
+    List<PersistenceMutation> mutations = prepareChangeSetMutations(callCtx, ms, changeSet);
+    try {
+      ChangeSetCommitStatus status = ms.commitChangeSet(callCtx, mutations);
+      if (status == ChangeSetCommitStatus.UNSUPPORTED) {
+        return new EntitiesResult(
+            BaseResult.ReturnStatus.CHANGE_SET_ATOMICITY_UNSUPPORTED,
+            "Backend cannot atomically apply this change set");
       }
-      for (EntityWithPath update : updates) {
-        entityMutations.add(
-            EntityMutation.update(
-                prepareToPersistEntityAfterChange(
-                    callCtx,
-                    ms,
-                    new PolarisBaseEntity.Builder(update.entity()).build(),
-                    false,
-                    update.entity()),
-                update.originalEntity()));
-      }
-      List<GrantMutation> grantMutations =
-          new ArrayList<>(
-              changeSet.grantRecordsToCreate().size() + changeSet.grantRecordsToDelete().size());
-      for (PolarisGrantRecord grant : changeSet.grantRecordsToCreate()) {
-        grantMutations.add(GrantMutation.create(grant));
-      }
-      for (PolarisGrantRecord grant : changeSet.grantRecordsToDelete()) {
-        grantMutations.add(GrantMutation.delete(grant));
-      }
-      ms.commitChangeSet(callCtx, entityMutations, grantMutations);
-      return new EntitiesResult(Page.fromItems(List.of()));
+    } catch (RuntimeException e) {
+      return mapChangeSetConflicts(e);
     }
-
-    // Fallback: individual operations (not atomic across the batch)
-    EntitiesResult result =
-        commitTransactionBatchViaWriteEntities(
-            callCtx,
-            ms,
-            creates,
-            updates,
-            (entities, originals) -> ms.writeEntities(callCtx, entities, originals));
-    if (!result.isSuccess()) {
-      return result;
-    }
-    for (PolarisGrantRecord grant : changeSet.grantRecordsToCreate()) {
-      ms.writeToGrantRecords(callCtx, grant);
-    }
-    for (PolarisGrantRecord grant : changeSet.grantRecordsToDelete()) {
-      ms.deleteFromGrantRecords(callCtx, grant);
-    }
-    return result;
+    return entitiesResultFromMutations(mutations);
   }
 
   /** {@inheritDoc} */

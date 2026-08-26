@@ -34,7 +34,6 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEventManager;
-import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -214,25 +213,81 @@ public interface PolarisMetaStoreManager
       @NonNull List<PolarisEntityCore> principalRoles);
 
   /**
-   * Commit a batch of entity creates, updates, deletes, and grant-record changes atomically.
+   * Commit a change set atomically.
    *
-   * <p>This is the primary mutation path for multi-entity changes. Single-entity operations are
-   * thin wrappers that build a {@link MetaStoreChangeSet} with one entry and delegate here.
+   * <p>This is the atomic mutation path. It asks {@link BasePersistence#commitChangeSet} to apply
+   * the change set in one step. If the backend returns {@link ChangeSetCommitStatus#UNSUPPORTED},
+   * this method returns {@link BaseResult.ReturnStatus#CHANGE_SET_ATOMICITY_UNSUPPORTED} and does
+   * not sequence individual writes. Best-effort sequencing is {@link #applyChangeSetBestEffort}.
    *
-   * <p>The default implementation falls back to calling individual per-entity/per-grant methods in
-   * sequence and is therefore not atomic. Concrete implementations should override this to provide
-   * the atomic guarantee when the backend supports {@link
-   * BasePersistence#supportsAtomicMixedCommit()}.
+   * <p>Conflicts that the backend reports as {@link EntityAlreadyExistsException} or {@link
+   * RetryOnConcurrencyException} are mapped to {@link
+   * BaseResult.ReturnStatus#ENTITY_ALREADY_EXISTS} and {@link
+   * BaseResult.ReturnStatus#TARGET_ENTITY_CONCURRENTLY_MODIFIED} respectively, matching {@link
+   * #createEntityIfNotExists} and {@link #updateEntitiesPropertiesIfNotChanged}.
    *
    * @param callCtx call context
    * @param changeSet the set of mutations to commit
-   * @return result indicating success or failure
+   * @return result indicating success, a mapped conflict, or unsupported atomicity
    */
   default @NonNull EntitiesResult commitTransactionBatch(
       @NonNull PolarisCallContext callCtx, @NonNull MetaStoreChangeSet changeSet) {
+    if (changeSet.isEmpty()) {
+      return new EntitiesResult(Page.fromItems(List.of()));
+    }
     BasePersistence ms = callCtx.getMetaStore();
+    try {
+      ChangeSetCommitStatus status = ms.commitChangeSet(callCtx, changeSet.toMutations());
+      if (status == ChangeSetCommitStatus.UNSUPPORTED) {
+        return new EntitiesResult(
+            BaseResult.ReturnStatus.CHANGE_SET_ATOMICITY_UNSUPPORTED,
+            "Backend cannot atomically apply this change set");
+      }
+    } catch (EntityAlreadyExistsException e) {
+      PolarisBaseEntity existing = e.getExistingEntity();
+      return new EntitiesResult(
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
+          existing == null
+              ? e.getMessage()
+              : String.format(
+                  "Existing entity id: '%s', type %s subtype %s",
+                  existing.getId(), existing.getTypeCode(), existing.getSubTypeCode()));
+    } catch (RetryOnConcurrencyException e) {
+      return new EntitiesResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
+    }
+    return new EntitiesResult(Page.fromItems(List.of()));
+  }
 
-    // Creates
+  /**
+   * Apply a change set by sequencing existing per-record manager operations. This is not atomic.
+   *
+   * <p>Creates go through {@link #createEntityIfNotExists} and updates through {@link
+   * #updateEntitiesPropertiesIfNotChanged}, so each call honors the existing {@link
+   * BasePersistence#writeEntities} CREATE-xor-UPDATE constraint. Phase 1 does not apply grant
+   * mutations here: {@link BasePersistence#writeToGrantRecords} is not implemented by backends such
+   * as NoSQL that store grants outside that SPI. Callers that need grants must use {@link
+   * #commitTransactionBatch} on a backend that can apply the change set atomically, override this
+   * method, or use the dedicated grant/revoke APIs.
+   *
+   * @param callCtx call context
+   * @param changeSet the set of mutations to apply
+   * @return result indicating success or failure of the first operation that fails
+   */
+  default @NonNull EntitiesResult applyChangeSetBestEffort(
+      @NonNull PolarisCallContext callCtx, @NonNull MetaStoreChangeSet changeSet) {
+    if (changeSet.isEmpty()) {
+      return new EntitiesResult(Page.fromItems(List.of()));
+    }
+    if (!changeSet.grantRecordsToCreate().isEmpty()
+        || !changeSet.grantRecordsToDelete().isEmpty()) {
+      return new EntitiesResult(
+          BaseResult.ReturnStatus.CHANGE_SET_ATOMICITY_UNSUPPORTED,
+          "Best-effort change sets do not apply grant mutations; use commitTransactionBatch when"
+              + " the backend can apply this change set atomically, or the dedicated grant/revoke"
+              + " APIs");
+    }
+
     for (EntityWithPath create : changeSet.creates()) {
       EntityResult result = createEntityIfNotExists(callCtx, create.catalogPath(), create.entity());
       if (!result.isSuccess()) {
@@ -240,22 +295,8 @@ public interface PolarisMetaStoreManager
       }
     }
 
-    // CAS-updates
     if (!changeSet.updates().isEmpty()) {
-      EntitiesResult result = updateEntitiesPropertiesIfNotChanged(callCtx, changeSet.updates());
-      if (!result.isSuccess()) {
-        return result;
-      }
-    }
-
-    // Grant creates
-    for (PolarisGrantRecord grant : changeSet.grantRecordsToCreate()) {
-      ms.writeToGrantRecords(callCtx, grant);
-    }
-
-    // Grant deletes
-    for (PolarisGrantRecord grant : changeSet.grantRecordsToDelete()) {
-      ms.deleteFromGrantRecords(callCtx, grant);
+      return updateEntitiesPropertiesIfNotChanged(callCtx, changeSet.updates());
     }
 
     return new EntitiesResult(Page.fromItems(List.of()));

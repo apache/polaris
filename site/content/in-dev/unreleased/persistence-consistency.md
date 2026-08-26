@@ -47,25 +47,32 @@ transaction.
 The fix is not to add operation-specific multi-object methods to the SPI, nor
 to wrap an entire REST request in a single database transaction. Instead,
 Polaris introduces a backend-agnostic **change set** primitive that lets a
-manager-level operation express a group of related entity and grant-record
-mutations, and asks the backend to commit the whole group atomically when it
-can.
+manager-level operation express an ordered list of related mutations. The
+backend reports a per-change-set outcome: either the whole list is applied
+atomically, or the backend cannot apply that list atomically and applies
+nothing.
+
+Atomicity depends on the storage placement resolved for a specific change set.
+The contract does not assume that entity records, grant records, or a later
+record family are co-located behind one transactional backend.
 
 ## Consistency contract
 
 ### What callers can assume
 
 A `PolarisMetaStoreManager` implementation may execute a single manager-level
-operation as a logical change set. When it does so:
+operation as a logical change set. When it calls `commitTransactionBatch`:
 
-* All entity and grant-record mutations in the change set are committed
-  together, or none of them are.
+* The backend either commits every mutation in the change set together, or
+  reports that it cannot do so for this change set.
+* A successful atomic commit is all-or-nothing. If a later mutation fails, earlier
+  mutations in the same change set are not visible.
 * The backend validates the change set against the state that existed when the
   change set was built. In particular, CAS updates succeed only if the entity
   still matches the original entity the caller supplied.
-* If the backend cannot commit the change set atomically, it must fall back to
-  individual `BasePersistence` operations and preserve the existing documented
-  atomicity of each individual call.
+* If the backend returns `UNSUPPORTED` for this change set, no mutation was
+  applied. Callers that want best-effort sequencing use
+  `applyChangeSetBestEffort`, which is a separate contract.
 
 Callers must not assume that unrelated change sets are ordered or atomic with
 respect to each other. For example, changes in catalog A and catalog B do not
@@ -74,13 +81,23 @@ have to be globally atomic.
 ### What the persistence SPI guarantees
 
 `BasePersistence` continues to guarantee that each single-method call is
-atomic where its Javadoc says so. In addition, backends that implement the new
-`commitChangeSet` method guarantee that the whole list of entity and
-grant-record mutations passed to it is applied atomically.
+atomic where its Javadoc says so. In addition, `commitChangeSet` takes one
+ordered list of `PersistenceMutation` items and returns a per-change-set
+outcome:
 
-Backends that do not implement `commitChangeSet` throw from the default method.
-The manager layer is responsible for detecting this and falling back to
-individual `BasePersistence` operations.
+* `APPLIED` — every mutation was committed in one atomic step.
+* `UNSUPPORTED` — this backend cannot atomically apply this change set. No
+  mutation was applied.
+
+`commitChangeSet` does not fall back to individual writes. A composite backend
+must not claim cross-store atomicity; it returns `UNSUPPORTED` for a change set
+whose records are not co-located.
+
+Conflicts are reported by throwing `EntityAlreadyExistsException` or
+`RetryOnConcurrencyException`. The manager maps those to the existing
+`EntitiesResult` statuses (`ENTITY_ALREADY_EXISTS` and
+`TARGET_ENTITY_CONCURRENTLY_MODIFIED`). `CHANGE_SET_ATOMICITY_UNSUPPORTED`
+means the backend declined the change set without applying anything.
 
 ### What a change set is not
 
@@ -92,39 +109,52 @@ to external authorizers.
 
 ## Change-set primitive
 
-### Entity and grant-record mutations
+### Persistence mutations
 
-An `EntityMutation` describes one entity change and carries:
+`PersistenceMutation` is one item in the ordered SPI list. Each item carries:
 
-* `entity` — the entity to create, update, or delete.
-* `originalEntity` — the state the caller read before modifying the entity.
-  Required for `UPDATE`; `null` for `CREATE` and `DELETE`.
-* `type` — `CREATE`, `UPDATE`, or `DELETE`.
-
-A `GrantMutation` describes one grant-record change and carries:
-
-* `grantRecord` — the grant record to create or delete.
-* `type` — `CREATE` or `DELETE`.
+* `kind` — the durable record family (`ENTITY`, `GRANT_RECORD`; later families
+  such as policy mappings or secrets add a kind without widening
+  `BasePersistence`).
+* `operation` — `CREATE`, `UPDATE`, or `DELETE`.
+* target, payload, and preconditions — supplied by the kind-specific record:
+  * `PersistenceMutation.Entity` — target is the entity identity, payload is
+    `entity`, preconditions are `originalEntity` (required for `UPDATE`).
+  * `PersistenceMutation.Grant` — target and payload are the grant-record
+    primary key; there are no preconditions. Duplicate creates are a no-op.
 
 ### Manager-level change set
 
-`MetaStoreChangeSet` groups a set of `EntityMutation` and `GrantMutation`
-records. It is the unit of work passed to the manager-level
-`commitTransactionBatch` method.
+`MetaStoreChangeSet` groups entity creates, CAS updates, and grant-record
+creates/deletes and flattens them to an ordered `PersistenceMutation` list via
+`toMutations()`. It is the unit of work passed to:
+
+* `commitTransactionBatch` — atomic, or `CHANGE_SET_ATOMICITY_UNSUPPORTED`.
+* `applyChangeSetBestEffort` — sequences existing per-record manager
+  operations. Creates and updates are separate writes so they honor the
+  `writeEntities` CREATE-xor-UPDATE constraint. Phase 1 does not apply grant
+  mutations on this path, because backends such as NoSQL store grants outside
+  `BasePersistence#writeToGrantRecords`.
 
 ### Backend-level change set
 
-`BasePersistence#commitChangeSet(List<EntityMutation>, List<GrantMutation>)`
-is the backend hook. A backend that supports it applies all mutations in one
-atomic step. It reports conflicts by throwing a concurrency exception, not by
+`BasePersistence#commitChangeSet(List<PersistenceMutation>)` is the backend
+hook. A backend that can apply the list atomically does so and returns
+`APPLIED`. It reports conflicts by throwing a concurrency exception, not by
 partially applying the change set.
+
+Transactional backends expose `commitChangeSetInCurrentTxn` so the manager can
+own the transaction boundary. `commitChangeSet` opens a transaction and
+delegates to that primitive; it must not be called from inside an already-open
+transaction.
 
 ### Optimistic concurrency (CAS)
 
-`EntityMutation.UPDATE` uses the `originalEntity` as the CAS baseline. The
-backend commit succeeds only if the persisted entity still matches the
-baseline. If the entity has changed concurrently, the backend reports a
-conflict and the manager operation decides whether to retry, fail, or reconcile.
+`PersistenceMutation.Entity` `UPDATE` uses `originalEntity` as the CAS
+baseline. The backend commit succeeds only if the persisted entity still
+matches the baseline. If the entity has changed concurrently, the backend
+reports a conflict and the manager operation decides whether to retry, fail, or
+reconcile.
 
 This makes the change set suitable for operations such as rename validation
 and grant-record version bumps, where the caller must ensure that the entities
@@ -148,16 +178,17 @@ or reconciliation logic.
 
 The work is expected to land in roughly this order:
 
-1. **SPI foundation** — add CAS-aware `EntityMutation`, `GrantMutation`, and
-   `BasePersistence#commitChangeSet`; implement the method in all non-test
-   backends; add the corresponding manager-level `MetaStoreChangeSet` and
-   `commitTransactionBatch` wiring. This phase does not refactor existing
-   manager operations.
+1. **SPI foundation** — add CAS-aware `PersistenceMutation` and
+   `BasePersistence#commitChangeSet` with a per-change-set `APPLIED` or
+   `UNSUPPORTED` outcome; implement the method in JDBC and TreeMap; add the
+   corresponding manager-level `MetaStoreChangeSet`, `commitTransactionBatch`,
+   and `applyChangeSetBestEffort` wiring. This phase does not implement
+   routing or cross-store coordination.
 2. **Operation migration** — migrate `createCatalog`, `dropEntity`,
    `renameEntity`, and grant/revoke paths to build a single change set per
    logical operation. Each migrated operation becomes atomic on backends that
-   support `commitChangeSet` and degrades gracefully to the existing
-   single-call behavior on backends that do not.
+   return `APPLIED` and uses existing per-record APIs when the backend returns
+   `UNSUPPORTED`.
 3. **Authorization integration** — ensure that RBAC authorization checks that
    must be consistent with the persistence commit are performed inside the
    change-set window, and document how external authorizers (OPA, Ranger) fit

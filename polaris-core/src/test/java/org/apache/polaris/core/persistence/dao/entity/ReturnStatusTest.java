@@ -45,7 +45,8 @@ public class ReturnStatusTest {
         Arguments.of(14, BaseResult.ReturnStatus.POLICY_MAPPING_NOT_FOUND),
         Arguments.of(15, BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS),
         Arguments.of(16, BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS),
-        Arguments.of(17, null));
+        Arguments.of(17, BaseResult.ReturnStatus.CHANGE_SET_ATOMICITY_UNSUPPORTED),
+        Arguments.of(18, null));
   }
 
   @ParameterizedTest
