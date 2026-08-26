@@ -717,7 +717,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     var few = loadGrantsForGrantee(UUID.randomUUID().toString(), 5);
     var many = loadGrantsForGrantee(UUID.randomUUID().toString(), 25);
 
-    soft.assertThat(many.fetchMany()).describedAs("grant targets are bulk-fetched").isPositive();
+    soft.assertThat(many.bulkFetches()).describedAs("grant targets are bulk-fetched").isPositive();
     soft.assertThat(many)
         .describedAs("every kind of backend round-trip is independent of the grant count")
         .isEqualTo(few);
@@ -772,7 +772,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
 
     return new FetchCounts(
         counterValue(counters, "fetch"),
-        counterValue(counters, "fetchMany"),
+        counterValue(counters, "bucketizedBulkFetches"),
         counterValue(counters, "fetchReference"));
   }
 
@@ -799,5 +799,5 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
             });
   }
 
-  private record FetchCounts(int fetch, int fetchMany, int fetchReference) {}
+  private record FetchCounts(int fetch, int bulkFetches, int fetchReference) {}
 }

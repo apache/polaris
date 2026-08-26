@@ -54,7 +54,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1379,7 +1378,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     var accesses = new HashMap<GrantTargetType, IndexedContainerAccess<?>>();
     // fetchMany requires the ids to be distinct, and the same target can be referenced by more
     // than one grant, so each reference is fetched once and copied to every occurrence.
-    var refOccurrences = new LinkedHashMap<ObjRef, List<Integer>>();
+    var refOccurrences = new HashMap<ObjRef, List<Integer>>();
     for (int i = 0; i < targets.size(); i++) {
       var target = targets.get(i);
       var access =
@@ -1395,17 +1394,15 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       }
     }
 
-    var distinctRefs = new ArrayList<>(refOccurrences.keySet());
-    for (int start = 0; start < distinctRefs.size(); start += FETCH_PAGE_SIZE) {
-      var batch =
-          distinctRefs.subList(start, Math.min(start + FETCH_PAGE_SIZE, distinctRefs.size()));
-      var objs = persistence.fetchMany(ObjBase.class, batch.toArray(ObjRef[]::new));
-      for (int i = 0; i < batch.size(); i++) {
-        for (int occurrence : refOccurrences.get(batch.get(i))) {
-          targetObjs[occurrence] = objs[i];
-        }
-      }
-    }
+    persistence
+        .bucketizedBulkFetches(refOccurrences.keySet().stream(), ObjBase.class)
+        .forEach(
+            obj -> {
+              var occurrences = refOccurrences.get(objRef(obj));
+              for (var occurrence : occurrences) {
+                targetObjs[occurrence] = obj;
+              }
+            });
     return targetObjs;
   }
 
