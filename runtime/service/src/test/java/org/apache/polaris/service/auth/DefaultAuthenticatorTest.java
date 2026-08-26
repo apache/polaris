@@ -533,7 +533,8 @@ public class DefaultAuthenticatorTest {
     Mockito.when(jwt.getName()).thenReturn(PRINCIPAL_NAME);
     Mockito.when(jwt.getRawToken()).thenReturn("raw.jwt.token");
 
-    PolarisCredential credentials = PolarisCredential.of("ext-user", Set.of("ext-role1", "ext-role2"));
+    PolarisCredential credentials =
+        PolarisCredential.of("ext-user", Set.of("ext-role1", "ext-role2"));
     SecurityIdentity jwtIdentity =
         QuarkusSecurityIdentity.builder()
             .setAnonymous(false)
