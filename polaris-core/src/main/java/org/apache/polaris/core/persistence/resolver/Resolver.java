@@ -30,6 +30,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -831,6 +833,13 @@ public class Resolver {
    * principal is assumed to exist and to be valid; neither it nor its roles are read from the
    * metastore. Synthetic entities carry negative sentinel ids (so they never collide with real,
    * positive entity ids) and empty grant records.
+   *
+   * <p>TODO: synthetic principal and roles are a temporary workaround for external principals,
+   * until external authorizers change their implementation of {@link
+   * org.apache.polaris.core.auth.PolarisAuthorizer#resolveAuthorizationInputs(AuthorizationState,
+   * AuthorizationRequest)} to avoid calling {@link PolarisResolutionManifest#resolveAll()}, and
+   * instead only resolve the securables that are actually needed for authorization, cf. {@link
+   * PolarisResolutionManifest#resolveSelections(Set)}.
    */
   private ResolverStatus resolveExternalCallerPrincipalAndPrincipalRoles(
       boolean resolvePrincipalRoles) {
@@ -841,17 +850,19 @@ public class Resolver {
             .build();
     this.resolvedCallerPrincipal =
         new ResolvedPolarisEntity(syntheticPrincipal, List.of(), List.of());
-    this.addToResolved(this.resolvedCallerPrincipal);
+    // Register by ID only: synthetic entities must not be indexed by name, or they would shadow
+    // real stored entities with the same name in subsequent resolveByName() lookups.
+    this.resolvedEntriesById.put(EXTERNAL_PRINCIPAL_ID, this.resolvedCallerPrincipal);
 
     this.resolvedCallerPrincipalRoles = new ArrayList<>();
     if (resolvePrincipalRoles) {
       long roleId = EXTERNAL_PRINCIPAL_ROLE_ID_BASE;
       for (String roleName : polarisPrincipal.getRoles()) {
         PrincipalRoleEntity syntheticRole =
-            new PrincipalRoleEntity.Builder().setId(roleId--).setName(roleName).build();
+            new PrincipalRoleEntity.Builder().setId(roleId).setName(roleName).build();
         ResolvedPolarisEntity resolvedRole =
             new ResolvedPolarisEntity(syntheticRole, List.of(), List.of());
-        this.addToResolved(resolvedRole);
+        this.resolvedEntriesById.put(roleId--, resolvedRole);
         this.resolvedCallerPrincipalRoles.add(resolvedRole);
       }
     }

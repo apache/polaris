@@ -106,6 +106,56 @@ public class ResolverTest extends BaseResolverTest {
   }
 
   @Test
+  public void testExternalCallerPrincipalNameDoesNotShadowStoredPrincipal() {
+    // P1 is a stored principal created in setupTest(); use the same name for the external caller.
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of(
+                "P1", Map.of(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true), Set.of()),
+            null,
+            null);
+    resolver.addEntityByName(PolarisEntityType.PRINCIPAL, "P1");
+
+    ResolverStatus status = resolver.resolveAll();
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+
+    // Must return the real stored P1, not the synthetic sentinel with id -1.
+    ResolvedPolarisEntity resolved = resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, "P1");
+    Assertions.assertThat(resolved).isNotNull();
+    Assertions.assertThat(resolved.getEntity().getId()).isEqualTo(P1.getId());
+    Assertions.assertThat(resolved.getEntity().getId()).isPositive();
+  }
+
+  @Test
+  public void testExternalCallerRoleNameDoesNotShadowStoredPrincipalRole() {
+    // PR1 is a stored principal role created in setupTest(); use the same name as an external role.
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of(
+                "ext-user",
+                Map.of(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true),
+                Set.of("PR1")),
+            null,
+            null);
+    resolver.addOptionalEntityByName(PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+
+    ResolverStatus status = resolver.resolveAll();
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+
+    // Must return the real stored PR1, not the synthetic sentinel with a negative id.
+    ResolvedPolarisEntity resolved =
+        resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+    Assertions.assertThat(resolved).isNotNull();
+    Assertions.assertThat(resolved.getEntity().getId()).isPositive();
+  }
+
+  @Test
   public void testResolveSelectionsSkipsCallerPrincipalForReferenceCatalog() {
     Resolver resolver =
         new Resolver(
