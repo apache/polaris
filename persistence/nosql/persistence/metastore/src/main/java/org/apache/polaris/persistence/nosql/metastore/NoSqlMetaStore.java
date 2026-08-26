@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1236,7 +1237,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     // fetches without adding index work.
     var targetObjs = new ObjBase[targets.size()];
     var accesses = new HashMap<GrantTargetType, IndexedContainerAccess<?>>();
-    var toFetch = new ArrayList<GrantTargetRef>();
+    // fetchMany requires the ids to be distinct, and the same target can be referenced by more
+    // than one grant, so each reference is fetched once and copied to every occurrence.
+    var refOccurrences = new LinkedHashMap<ObjRef, List<Integer>>();
     for (int i = 0; i < targets.size(); i++) {
       var target = targets.get(i);
       var access =
@@ -1245,20 +1248,22 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               key -> memoizedIndexedAccess.indexedAccess(key.catalogId(), key.typeCode()));
       var objRef = access.objRefById(target.id());
       if (objRef.isPresent()) {
-        toFetch.add(new GrantTargetRef(i, objRef.get()));
+        refOccurrences.computeIfAbsent(objRef.get(), key -> new ArrayList<>()).add(i);
       } else {
         // The root container is the only access that cannot yield a reference without fetching.
         targetObjs[i] = access.byId(target.id()).orElse(null);
       }
     }
 
-    for (int start = 0; start < toFetch.size(); start += FETCH_PAGE_SIZE) {
-      var batch = toFetch.subList(start, Math.min(start + FETCH_PAGE_SIZE, toFetch.size()));
-      var objs =
-          persistence.fetchMany(
-              ObjBase.class, batch.stream().map(GrantTargetRef::objRef).toArray(ObjRef[]::new));
+    var distinctRefs = new ArrayList<>(refOccurrences.keySet());
+    for (int start = 0; start < distinctRefs.size(); start += FETCH_PAGE_SIZE) {
+      var batch =
+          distinctRefs.subList(start, Math.min(start + FETCH_PAGE_SIZE, distinctRefs.size()));
+      var objs = persistence.fetchMany(ObjBase.class, batch.toArray(ObjRef[]::new));
       for (int i = 0; i < batch.size(); i++) {
-        targetObjs[batch.get(i).index()] = objs[i];
+        for (int occurrence : refOccurrences.get(batch.get(i))) {
+          targetObjs[occurrence] = objs[i];
+        }
       }
     }
 
@@ -1403,8 +1408,6 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       int typeCode) {}
 
   record GrantTargetType(long catalogId, int typeCode) {}
-
-  record GrantTargetRef(int index, ObjRef objRef) {}
 
   static class GrantRecordsCollector implements AclEntryHandler {
     final List<PolarisGrantRecord> grantRecords = new ArrayList<>();
