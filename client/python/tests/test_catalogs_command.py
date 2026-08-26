@@ -969,3 +969,31 @@ class TestCatalogsCommand(CLITestBase):
         mock_client.get_catalog.assert_called_with("foo")
         mock_iceberg_api.list_namespaces.assert_called_with(prefix="foo", parent=None)
         mock_policy_api.get_applicable_policies.assert_called_with(prefix="foo")
+
+    @patch("apache_polaris.cli.command.catalogs.IcebergCatalogAPI")
+    @patch("apache_polaris.cli.command.catalogs.PolicyAPI")
+    def test_catalog_summary_with_paginate(
+        self, mock_policy_api_class: MagicMock, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="foo",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path", additional_properties={}
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3", allowed_locations=[]
+            ),
+        )
+        mock_client.list_catalog_roles.return_value.roles = []
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        empty_page = MagicMock(namespaces=[], next_page_token=None)
+        mock_iceberg_api.list_namespaces.return_value = empty_page
+        mock_policy_api = mock_policy_api_class.return_value
+        mock_policy_api.get_applicable_policies.return_value.applicable_policies = []
+        self.mock_execute(mock_client, ["--page-size", "10",  "catalogs", "summarize", "foo"])
+        mock_client.get_catalog.assert_called_with("foo")
+        mock_iceberg_api.list_namespaces.assert_called_with(prefix="foo", parent=None, page_size=10, page_token=None)
+        mock_policy_api.get_applicable_policies.assert_called_with(prefix="foo")

@@ -247,6 +247,7 @@ class Arguments:
     REALM = "realm"
     HEADER = "header"
     IDENTIFIER = "identifier"
+    PAGE_SIZE = "page_size"
 
 
 class Hints:
@@ -279,6 +280,10 @@ class Hints:
         "A key to remove from a properties map. If the key already does not exist then"
         " no action is taken for the specified key. Multiple can be provided by specifying"
         " this option more than once"
+    )
+    PAGE_SIZE = (
+        "Upper bound on the number of entries returned per API request where pagination is supported."
+        " If not set, fetches all results in a single API request"
     )
 
     # Entities Hints

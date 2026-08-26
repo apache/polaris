@@ -109,6 +109,7 @@ class Command(ABC):
                 catalog_external_id=options_get(Arguments.CATALOG_EXTERNAL_ID),
                 catalog_signing_region=options_get(Arguments.CATALOG_SIGNING_REGION),
                 catalog_signing_name=options_get(Arguments.CATALOG_SIGNING_NAME),
+                page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.PRINCIPALS:
             from apache_polaris.cli.command.principals import PrincipalsCommand
@@ -186,6 +187,7 @@ class Command(ABC):
                 ),
                 location=options_get(Arguments.LOCATION),
                 properties=properties,
+                page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.PROFILES:
             from apache_polaris.cli.command.profiles import ProfilesCommand
@@ -221,6 +223,7 @@ class Command(ABC):
                 subcommand,
                 setup_config=options_get(Arguments.SETUP_CONFIG),
                 dry_run=options_get(Arguments.DRY_RUN),
+                page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.TABLES:
             from apache_polaris.cli.command.tables import TableCommand
@@ -233,6 +236,7 @@ class Command(ABC):
                     Arguments.NAMESPACE, lambda x: x.split(".") if x else None
                 ),
                 table_name=options_get(Arguments.TABLE),
+                page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.VIEWS:
             from apache_polaris.cli.command.views import ViewCommand
@@ -245,6 +249,7 @@ class Command(ABC):
                     Arguments.NAMESPACE, lambda x: x.split(".") if x else None
                 ),
                 view_name=options_get(Arguments.VIEW),
+                page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.GENERIC_TABLES:
             from apache_polaris.cli.command.generic_tables import GenericTableCommand
@@ -265,6 +270,7 @@ class Command(ABC):
                 options_get(Arguments.IDENTIFIER),
                 catalog_name=options_get(Arguments.CATALOG),
                 type_filter=options_get(Arguments.TYPE),
+                page_size=options_get(Arguments.PAGE_SIZE),
             )
         elif options.command == Commands.REPL:
             from apache_polaris.cli.command.repl import ReplCommand

@@ -56,6 +56,7 @@ Global Options:
   --profile PROFILE              Polaris profile name
   --proxy PROXY                  Proxy URL
   --debug                        Enable debug mode
+  --page-size PAGE_SIZE          Upper bound on the number of entries returned per API request where pagination is supported. If not set, fetches all results in a single API request
 ```
 
 `COMMAND` must be one of the following:

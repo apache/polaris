@@ -57,7 +57,11 @@ from apache_polaris.sdk.management import (
     IcebergRestConnectionConfigInfo,
     AwsIamServiceIdentityInfo,
 )
-from apache_polaris.cli.command.utils import get_catalog_api_client, format_timestamp
+from apache_polaris.cli.command.utils import (
+    get_catalog_api_client,
+    format_timestamp,
+    paginate,
+)
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
 
@@ -123,6 +127,7 @@ class CatalogsCommand(Command):
     catalog_external_id: Optional[str] = None
     catalog_signing_region: Optional[str] = None
     catalog_signing_name: Optional[str] = None
+    page_size: Optional[int] = None
 
     def __post_init__(self) -> None:
         if self.properties is None:
@@ -626,8 +631,15 @@ class CatalogsCommand(Command):
 
         def count_entities(func: Callable, ns_str: str) -> int:
             try:
-                resp = func(prefix=catalog_name, namespace=ns_str)
-                return len(resp.identifiers or [])
+                total = 0
+                for resp in paginate(
+                    func,
+                    page_size=self.page_size,
+                    prefix=catalog_name,
+                    namespace=ns_str,
+                ):
+                    total += len(resp.identifiers or [])
+                return total
             except Exception as e:
                 print(
                     f"Warning: Could not list entity for namespace {ns_str}: {e}",
@@ -635,17 +647,22 @@ class CatalogsCommand(Command):
                 return 0
 
         def recursive(parent: Optional[str] = None) -> Tuple[int, int, int]:
-            ns_resp = catalog_api.list_namespaces(prefix=catalog_name, parent=parent)
-            namespaces = ns_resp.namespaces or []
-            total_ns, total_tables, total_views = len(namespaces), 0, 0
-            for ns in namespaces:
-                ns_str = UNIT_SEPARATOR.join(ns)
-                total_tables += count_entities(catalog_api.list_tables, ns_str)
-                total_views += count_entities(catalog_api.list_views, ns_str)
-                ns_cnt, tables_cnt, views_cnt = recursive(ns_str)
-                total_ns += ns_cnt
-                total_tables += tables_cnt
-                total_views += views_cnt
+            total_ns, total_tables, total_views = 0, 0, 0
+            for resp in paginate(
+                catalog_api.list_namespaces,
+                page_size=self.page_size,
+                prefix=catalog_name,
+                parent=parent,
+            ):
+                for ns in resp.namespaces or []:
+                    total_ns += 1
+                    ns_str = UNIT_SEPARATOR.join(ns)
+                    total_tables += count_entities(catalog_api.list_tables, ns_str)
+                    total_views += count_entities(catalog_api.list_views, ns_str)
+                    ns_cnt, tables_cnt, views_cnt = recursive(ns_str)
+                    total_ns += ns_cnt
+                    total_tables += tables_cnt
+                    total_views += views_cnt
             return total_ns, total_tables, total_views
 
         return recursive()

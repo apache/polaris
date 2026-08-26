@@ -109,6 +109,35 @@ class TestViewsCommand(CLITestBase):
         )
 
     @patch("apache_polaris.cli.command.views.IcebergCatalogAPI")
+    def test_view_list_with_paginate(self, mock_iceberg_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        ids = [MagicMock(to_json=MagicMock(return_value="{}")) for _ in range(2)]
+        page1 = MagicMock(identifiers=[ids[0]], next_page_token="token")
+        page2 = MagicMock(identifiers=[ids[1]], next_page_token=None)
+        mock_iceberg_api.list_views.side_effect = [page1, page2]
+        self.mock_execute(
+            mock_client,
+            [
+                "views",
+                "list",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--page-size",
+                "1",
+            ],
+        )
+        self.assertEqual(mock_iceberg_api.list_views.call_count, 2)
+        mock_iceberg_api.list_views.assert_any_call(
+            prefix="my-catalog", namespace="ns1", page_size=1, page_token=None
+        )
+        mock_iceberg_api.list_views.assert_any_call(
+            prefix="my-catalog", namespace="ns1", page_size=1, page_token="token"
+        )
+
+    @patch("apache_polaris.cli.command.views.IcebergCatalogAPI")
     def test_view_get(self, mock_iceberg_api_class: MagicMock) -> None:
         mock_client = self.build_mock_client()
         mock_iceberg_api = mock_iceberg_api_class.return_value

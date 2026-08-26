@@ -93,6 +93,24 @@ class TestFindCommand(CLITestBase):
             Parser.parse(["find", "my-entity", "--type", "invalid-type"])
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
+    @patch("apache_polaris.cli.command.find.IcebergCatalogAPI")
+    def test_find_with_paginate(self, mock_iceberg_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_catalog = MagicMock()
+        mock_catalog.name = "my-catalog"
+        mock_client.get_catalog.return_value = mock_catalog
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        mock_iceberg_api.list_namespaces.return_value = MagicMock(
+            namespaces=[], next_page_token=None
+        )
+        self.mock_execute(
+            mock_client,
+            ["--page-size", "10", "find", "my_table", "--catalog", "my-catalog", "--type", "table"],
+        )
+        mock_iceberg_api.list_namespaces.assert_called_with(
+            prefix="my-catalog", page_size=10, page_token=None
+        )
+
     def test_find_summary(self) -> None:
         mock_client = self.build_mock_client()
         mock_principal = MagicMock()
