@@ -34,11 +34,13 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
@@ -584,13 +586,22 @@ public class DefaultAuthenticatorTest {
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
 
-    // Then: the principal entity attribute must include the user-defined properties
+    // Then: the principal entity attribute must include the user-defined properties, but
+    // DefaultAuthenticator does not project authorizer-facing namespaced keys.
     PrincipalEntity entityAttr =
         result
             .getAttributes()
             .getOptional(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
             .orElseThrow();
     assertThat(entityAttr.getPropertiesAsMap()).containsEntry("department", "finance");
+    assertThat(
+            result
+                .getAttributes()
+                .containsKey(
+                    PolarisPrincipalAttributeNamespaces.stringKey(
+                        PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")))
+        .isFalse();
+    assertThat(result.getAttributes().containsKey(new AttributeKey<>("department"))).isFalse();
   }
 
   private PrincipalEntity createPrincipal(String name, String... roles) {

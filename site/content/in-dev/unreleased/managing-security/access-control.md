@@ -243,6 +243,13 @@ privileges must be granted at namespace or catalog scope.
 Grant revocation uses the same request body with `POST` to the role's grants endpoint.
 The existing role-grants listing returns grants with their model, namespace, or catalog scope.
 
+### Principal privileges
+
+| Privilege | Description |
+| --------- | ----------- |
+| PRINCIPAL_READ_PROPERTIES | Enables reading principal properties. |
+| PRINCIPAL_WRITE_PROPERTIES | Enables configuring principal properties. When user-defined principal properties are forwarded to external authorizers as `polaris.user.*` attributes, this privilege allows modifying user-supplied ABAC attributes. |
+
 ## RBAC example
 
 The following diagram illustrates how RBAC works in Polaris and

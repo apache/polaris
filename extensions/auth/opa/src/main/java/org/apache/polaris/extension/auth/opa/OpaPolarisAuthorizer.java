@@ -24,10 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -48,7 +45,7 @@ import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
 import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
@@ -290,23 +287,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     return ImmutableActor.builder()
         .principal(principal.getName())
         .addAllRoles(principal.getRoles())
-        .putAllAttributes(extractPrincipalAttributes(principal))
+        .putAllAttributes(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal))
         .build();
-  }
-
-  private static Map<String, String> extractPrincipalAttributes(PolarisPrincipal principal) {
-    return principal
-        .getAttributes()
-        .getOptional(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
-        .map(
-            entity -> {
-              Map<String, String> attributes = new HashMap<>(entity.getPropertiesAsMap());
-              // Internal properties win on collision so system-managed values cannot be shadowed
-              // by user-supplied properties.
-              attributes.putAll(entity.getInternalPropertiesAsMap());
-              return attributes;
-            })
-        .orElse(Collections.emptyMap());
   }
 
   private ImmutableContext buildContext() {
