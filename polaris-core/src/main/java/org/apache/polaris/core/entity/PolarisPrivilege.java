@@ -256,6 +256,12 @@ public enum PolarisPrivilege {
       PolarisEntityType.TABLE_LIKE,
       List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
       PolarisEntityType.CATALOG_ROLE),
+  TAG_CREATE(103, PolarisEntityType.CATALOG),
+  TAG_READ(104, PolarisEntityType.TAG),
+  TAG_DROP(105, PolarisEntityType.TAG),
+  TAG_WRITE(106, PolarisEntityType.TAG),
+  TAG_LIST(107, PolarisEntityType.CATALOG),
+  TAG_FULL_METADATA(108, PolarisEntityType.TAG),
   ;
 
   /**

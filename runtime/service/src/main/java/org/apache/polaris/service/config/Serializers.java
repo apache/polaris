@@ -40,12 +40,14 @@ import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
+import org.apache.polaris.service.types.TargetType;
 
 public final class Serializers {
   private Serializers() {}
 
   public static void registerSerializers(ObjectMapper mapper) {
     SimpleModule module = new SimpleModule();
+    module.addDeserializer(TargetType.class, new TargetTypeDeserializer());
     module.addDeserializer(CreateCatalogRequest.class, new CreateCatalogRequestDeserializer());
     module.addDeserializer(CreatePrincipalRequest.class, new CreatePrincipalRequestDeserializer());
     module.addDeserializer(
@@ -59,6 +61,24 @@ public final class Serializers {
     module.addDeserializer(AddGrantRequest.class, new AddGrantRequestDeserializer());
     module.addDeserializer(RevokeGrantRequest.class, new RevokeGrantRequestDeserializer());
     mapper.registerModule(module);
+  }
+
+  /**
+   * Deserializer for {@link TargetType}: maps the declared wire values and turns an unknown member
+   * into null, so server-side validation rejects it with the documented error type instead of
+   * surfacing a deserialization failure.
+   */
+  public static final class TargetTypeDeserializer extends JsonDeserializer<TargetType> {
+    @Override
+    public TargetType deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+      String text = p.getValueAsString();
+      for (TargetType targetType : TargetType.values()) {
+        if (targetType.toString().equals(text)) {
+          return targetType;
+        }
+      }
+      return null;
+    }
   }
 
   /**

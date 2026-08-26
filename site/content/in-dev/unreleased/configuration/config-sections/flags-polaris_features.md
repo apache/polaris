@@ -356,6 +356,15 @@ When enabled, allows RBAC operations to create synthetic entities for entities i
 
 ---
 
+##### `polaris.features."ENABLE_TAG_STORE"`
+
+If true, the tag-store endpoints are enabled. Disabled by default: enable it on deployments backed by the JDBC or in-memory metastores. The NoSQL metastore does not support tags yet.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING"`
 
 If set to true, require that principals must rotate their credentials before being used for anything else.

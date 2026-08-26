@@ -122,6 +122,9 @@ public class TestEntityObjMappings {
         // TODO: SEMANTIC_MODEL is not yet mapped by the NoSQL backend; drop this filter once its
         //  mapping is added.
         .filter(t -> t != PolarisEntityType.SEMANTIC_MODEL)
+        // TODO: TAG is not yet mapped by the NoSQL backend; drop this filter once its
+        // mapping exists.
+        .filter(t -> t != PolarisEntityType.TAG)
         .flatMap(
             t -> {
               var subTypes =
