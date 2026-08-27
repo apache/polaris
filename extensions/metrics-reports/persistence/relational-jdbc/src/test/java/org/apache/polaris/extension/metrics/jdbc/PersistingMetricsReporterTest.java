@@ -154,7 +154,7 @@ class PersistingMetricsReporterTest {
     assertThat(logAppender.list)
         .anySatisfy(
             event -> {
-              assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
               assertThat(event.getFormattedMessage())
                   .contains("Failed to persist scan metrics for catalog.ns.t");
               assertThat(event.getThrowableProxy()).isNotNull();
@@ -169,7 +169,7 @@ class PersistingMetricsReporterTest {
     assertThat(logAppender.list)
         .anySatisfy(
             event -> {
-              assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+              assertThat(event.getLevel()).isEqualTo(Level.WARN);
               assertThat(event.getFormattedMessage())
                   .contains("Failed to persist commit metrics for catalog.ns.t");
               assertThat(event.getThrowableProxy()).isNotNull();
@@ -183,7 +183,7 @@ class PersistingMetricsReporterTest {
     newReporter(persistence).reportMetric(scanEnvelope());
 
     verify(persistence).writeScanReport(any(ScanMetricsRecord.class));
-    assertThat(logAppender.list).noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.ERROR));
+    assertThat(logAppender.list).noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.WARN));
   }
 
   @Test
@@ -193,6 +193,6 @@ class PersistingMetricsReporterTest {
     newReporter(persistence).reportMetric(commitEnvelope());
 
     verify(persistence).writeCommitReport(any(CommitMetricsRecord.class));
-    assertThat(logAppender.list).noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.ERROR));
+    assertThat(logAppender.list).noneMatch(event -> event.getLevel().isGreaterOrEqual(Level.WARN));
   }
 }
