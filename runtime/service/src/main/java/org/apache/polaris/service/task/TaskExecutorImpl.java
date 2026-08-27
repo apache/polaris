@@ -83,10 +83,11 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   @Nullable private final Tracer tracer;
+  private final TaskHandlerConfiguration taskConfiguration;
 
   @SuppressWarnings("unused") // Required by CDI
   protected TaskExecutorImpl() {
-    this(null, null, null, null, null, null, null, null, null, null, null);
+    this(null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   @Inject
@@ -102,7 +103,8 @@ public class TaskExecutorImpl implements TaskExecutor {
       PolarisEventMetadataFactory eventMetadataFactory,
       @Nullable Tracer tracer,
       PolarisPrincipalHolder polarisPrincipalHolder,
-      PolarisPrincipal polarisPrincipal) {
+      PolarisPrincipal polarisPrincipal,
+      TaskHandlerConfiguration taskConfiguration) {
     this.executor = executor;
     this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -113,6 +115,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     this.tracer = tracer;
     this.polarisPrincipalHolder = polarisPrincipalHolder;
     this.polarisPrincipal = polarisPrincipal;
+    this.taskConfiguration = taskConfiguration;
 
     if (errorHandler != null && errorHandler.isResolvable()) {
       this.errorHandler = Optional.of(errorHandler.get());
@@ -127,10 +130,14 @@ public class TaskExecutorImpl implements TaskExecutor {
         new TableCleanupTaskHandler(this, clock, metaStoreManagerFactory, fileIOSupplier));
     addTaskHandler(
         new ManifestFileCleanupTaskHandler(
-            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+            fileIOSupplier,
+            Executors.newVirtualThreadPerTaskExecutor(),
+            taskConfiguration.fileDeletionTimeout()));
     addTaskHandler(
         new BatchFileCleanupTaskHandler(
-            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+            fileIOSupplier,
+            Executors.newVirtualThreadPerTaskExecutor(),
+            taskConfiguration.fileDeletionTimeout()));
   }
 
   /**
