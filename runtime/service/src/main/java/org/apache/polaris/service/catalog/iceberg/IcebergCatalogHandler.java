@@ -808,7 +808,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     } catch (Exception e) {
       // Metrics reporting is best-effort telemetry: a failing reporter must never break the client
       // request that produced the report.
-      LOGGER.error(
+      LOGGER.warn(
           "Failed to report {} metrics for {}; dropping the report", metricType, identifier, e);
     }
   }
