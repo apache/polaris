@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.RealmConfig;
@@ -504,5 +506,22 @@ public class TaskExecutorImplTest {
 
     // We verify at least the first call happened (throw leads to exception path).
     assertThat(handlerCalls.get()).isGreaterThanOrEqualTo(1);
+  }
+
+  @Test
+  void fileDeletionTimeoutIsTerminalAndNotRetried() {
+    // Ordinary failures are retried; a stalled-deletion timeout is terminal for the current
+    // execution so it is not retried in-process against the still-stalled endpoint.
+    assertThat(TaskExecutorImpl.isRetryable(new RuntimeException("transient"))).isTrue();
+    assertThat(
+            TaskExecutorImpl.isRetryable(
+                new FileDeletionTimeoutException("timed out", new TimeoutException())))
+        .isFalse();
+    // The timeout may be wrapped by the CompletableFuture machinery before reaching the retry path.
+    assertThat(
+            TaskExecutorImpl.isRetryable(
+                new CompletionException(
+                    new FileDeletionTimeoutException("timed out", new TimeoutException()))))
+        .isFalse();
   }
 }

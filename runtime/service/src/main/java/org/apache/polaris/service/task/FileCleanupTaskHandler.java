@@ -63,9 +63,9 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
   /**
    * Blocks until the given deletion stage completes, bounded by the configured {@link
    * TaskHandlerConfiguration#fileDeletionTimeout()}. On timeout the wait is abandoned and a {@link
-   * RuntimeException} is thrown so the task follows the normal retry path instead of pinning the
-   * task-executor thread indefinitely (e.g. behind a stalled object-store endpoint). A zero or
-   * negative timeout waits indefinitely, preserving the previous behavior.
+   * FileDeletionTimeoutException} is thrown; this is a terminal failure that releases the
+   * task-executor thread without triggering an in-process retry against the still-stalled endpoint.
+   * A zero or negative timeout waits indefinitely, preserving the previous behavior.
    *
    * @param deletion the aggregate deletion stage to await
    * @param description human-readable description of the work, used in the timeout message
@@ -81,8 +81,10 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
       // Only the wait is abandoned: the in-flight deletes keep running on the deletion executor
       // and cannot be interrupted (CompletableFuture.cancel ignores mayInterruptIfRunning and does
       // not propagate to the upstream runAsync tasks). Releasing this task-executor thread is the
-      // goal; the deletes are idempotent, so a later retry is safe.
-      throw new RuntimeException(
+      // goal. A timeout is terminal for this execution rather than retried in-process, because an
+      // immediate retry would only stack more deletions onto the same stalled endpoint; the deletes
+      // are idempotent, so re-running the task later is safe.
+      throw new FileDeletionTimeoutException(
           "Timed out after " + fileDeletionTimeout + " waiting for " + description, e);
     } catch (ExecutionException e) {
       throw new RuntimeException("Failed while waiting for " + description, e);
