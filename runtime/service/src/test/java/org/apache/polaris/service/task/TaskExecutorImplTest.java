@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.PolarisCallContext;
@@ -52,6 +53,26 @@ import org.mockito.Mockito;
 
 /** Unit tests for TaskExecutorImpl */
 public class TaskExecutorImplTest {
+
+  private static TaskHandlerConfiguration taskHandlerConfiguration() {
+    return new TaskHandlerConfiguration() {
+      @Override
+      public int maxConcurrentTasks() {
+        return -1;
+      }
+
+      @Override
+      public int maxQueuedTasks() {
+        return -1;
+      }
+
+      @Override
+      public Duration fileDeletionTimeout() {
+        return Duration.ofHours(1);
+      }
+    };
+  }
+
   @Test
   void testEventsAreEmitted() {
     String realm = "myrealm";
@@ -91,7 +112,8 @@ public class TaskExecutorImplTest {
             testServices.eventMetadataFactory(),
             null,
             new PolarisPrincipalHolder(),
-            testServices.principal());
+            testServices.principal(),
+            taskHandlerConfiguration());
 
     executor.addTaskHandler(
         new TaskHandler() {
@@ -162,7 +184,8 @@ public class TaskExecutorImplTest {
             testServices.eventMetadataFactory(),
             null,
             new PolarisPrincipalHolder(),
-            testServices.principal());
+            testServices.principal(),
+            taskHandlerConfiguration());
 
     // No handlers registered
     assertThatThrownBy(
@@ -211,7 +234,8 @@ public class TaskExecutorImplTest {
             testServices.eventMetadataFactory(),
             null,
             new PolarisPrincipalHolder(),
-            testServices.principal());
+            testServices.principal(),
+            taskHandlerConfiguration());
 
     executor.addTaskHandler(
         new TaskHandler() {
@@ -274,7 +298,8 @@ public class TaskExecutorImplTest {
             testServices.eventMetadataFactory(),
             null,
             new PolarisPrincipalHolder(),
-            testServices.principal());
+            testServices.principal(),
+            taskHandlerConfiguration());
 
     executor.addTaskHandler(
         new TaskHandler() {
@@ -382,7 +407,8 @@ public class TaskExecutorImplTest {
             testServices.eventMetadataFactory(),
             null,
             new PolarisPrincipalHolder(),
-            testServices.principal());
+            testServices.principal(),
+            taskHandlerConfiguration());
 
     executor.addTaskHandler(
         new TaskHandler() {
@@ -451,7 +477,8 @@ public class TaskExecutorImplTest {
             testServices.eventMetadataFactory(),
             null,
             new PolarisPrincipalHolder(),
-            testServices.principal());
+            testServices.principal(),
+            taskHandlerConfiguration());
 
     executor.addTaskHandler(
         new TaskHandler() {

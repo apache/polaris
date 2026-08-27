@@ -20,6 +20,7 @@ package org.apache.polaris.service.task;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import java.time.Duration;
 
 @ConfigMapping(prefix = "polaris.tasks")
 public interface TaskHandlerConfiguration {
@@ -29,4 +30,13 @@ public interface TaskHandlerConfiguration {
 
   @WithDefault("-1")
   int maxQueuedTasks();
+
+  /**
+   * Maximum time a file-cleanup task will wait for its asynchronous object-store deletions to
+   * complete before giving up and failing the task (which then follows the normal retry path). This
+   * bounds the task-executor thread so that a stalled storage endpoint cannot pin it indefinitely.
+   * A zero or negative value disables the deadline and waits indefinitely.
+   */
+  @WithDefault("PT1H")
+  Duration fileDeletionTimeout();
 }
