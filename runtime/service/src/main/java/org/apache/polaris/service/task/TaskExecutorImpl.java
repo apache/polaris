@@ -196,12 +196,35 @@ public class TaskExecutorImpl implements TaskExecutor {
               if (previousError != null) {
                 t.addSuppressed(previousError);
               }
-              LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
+              if (!isRetryable(t)) {
+                LOGGER.warn(
+                    "Task entity id {} failed with a terminal error; leaving it for later recovery"
+                        + " instead of retrying",
+                    taskEntityId,
+                    t);
+                return CompletableFuture.<Void>failedFuture(t);
+              }
+              LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
+  }
+
+  /**
+   * Determines whether a failed task attempt should be retried in-process. Most failures are
+   * transient and worth retrying, but a {@link FileDeletionTimeoutException} means an object-store
+   * deletion is stalled; retrying would only stack more (uncancellable) deletions onto the same
+   * endpoint, so such failures are treated as terminal for the current execution.
+   */
+  static boolean isRetryable(Throwable t) {
+    for (Throwable cause = t; cause != null; cause = cause.getCause()) {
+      if (cause instanceof FileDeletionTimeoutException) {
+        return false;
+      }
+    }
+    return true;
   }
 
   protected void handleTask(

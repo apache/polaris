@@ -35,13 +35,13 @@ class FileCleanupTaskHandlerTest {
 
   @Test
   void awaitCompletionFailsWhenDeletionStalls() {
-    // A stalled deletion must free the waiting thread with a timeout failure rather than block
-    // forever. Note this only abandons the wait; the in-flight deletes cannot be interrupted.
+    // A stalled deletion must free the waiting thread with a terminal timeout failure rather than
+    // block forever. Note this only abandons the wait; the in-flight deletes cannot be interrupted.
     CompletableFuture<Void> neverCompletes = new CompletableFuture<>();
     assertThatThrownBy(
             () ->
                 handler(Duration.ofMillis(50)).awaitCompletion(neverCompletes, "stalled deletion"))
-        .isInstanceOf(RuntimeException.class)
+        .isInstanceOf(FileDeletionTimeoutException.class)
         .hasMessageContaining("Timed out")
         .hasMessageContaining("stalled deletion");
   }
