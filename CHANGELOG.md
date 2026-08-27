@@ -105,6 +105,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   and table names as `%20` instead of `+` (apache/iceberg#15989). Polaris decodes path segments
   per RFC 3986 and has always treated `+` as a literal character, so the server behaves the same for
   all clients.
+- The entity cache now also weighs the grant records of cached entities, so `ENTITY_CACHE_WEIGHER_TARGET`
+  accounts for them. Entities with many grants weigh more, which can lead to more evictions than before
+  with the same configured value. The description of `ENTITY_CACHE_WEIGHER_TARGET` now documents that
+  its weights approximate bytes.
 
 ### Deprecations
 
@@ -229,6 +233,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The MongoDB readiness check is now shown in `/q/health` only when the NoSQL MongoDB backend is
   selected. Other persistence backends no longer show the unused check. MongoDB deployments keep
   readiness monitoring without configuration changes.
+- Fixed an unbounded memory growth in the in-memory entity cache that could lead to out-of-memory
+  errors: lookups by name no longer hold entities outside the cache's weight and expiry limits.
 
 ### Commits
 

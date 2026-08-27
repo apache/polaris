@@ -88,6 +88,7 @@ dependencies {
   testFixturesApi(libs.commons.lang3)
   testFixturesApi(libs.threeten.extra)
   testFixturesApi(platform(libs.jackson.bom))
+  testImplementation(libs.awaitility)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
   testFixturesApi(libs.jakarta.ws.rs.api)
 
