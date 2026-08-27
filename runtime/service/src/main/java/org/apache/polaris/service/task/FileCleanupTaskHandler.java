@@ -78,10 +78,10 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
         deletion.get(fileDeletionTimeout.toMillis(), TimeUnit.MILLISECONDS);
       }
     } catch (TimeoutException e) {
-      // The in-flight deletes keep running on the (virtual-thread) deletion executor; abandoning
-      // the wait only releases this task-executor thread. Deletes are idempotent, so a later retry
-      // is safe.
-      deletion.cancel(true);
+      // Only the wait is abandoned: the in-flight deletes keep running on the deletion executor
+      // and cannot be interrupted (CompletableFuture.cancel ignores mayInterruptIfRunning and does
+      // not propagate to the upstream runAsync tasks). Releasing this task-executor thread is the
+      // goal; the deletes are idempotent, so a later retry is safe.
       throw new RuntimeException(
           "Timed out after " + fileDeletionTimeout + " waiting for " + description, e);
     } catch (ExecutionException e) {
