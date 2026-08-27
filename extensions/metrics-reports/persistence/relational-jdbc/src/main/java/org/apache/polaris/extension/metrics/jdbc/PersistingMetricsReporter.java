@@ -47,6 +47,9 @@ import org.slf4j.LoggerFactory;
  * <p>Converts the Iceberg {@link ScanReport}/{@link CommitReport} carried by the {@link
  * MetricsReportEnvelope} to backend-agnostic SPI records via {@link MetricsRecordConverter}, then
  * delegates to {@link MetricsPersistence} for durable storage.
+ *
+ * <p>Metrics reporting is best-effort telemetry: persistence failures are logged and the report is
+ * dropped. This reporter must never fail the client request that produced the report.
  */
 @RequestScoped
 @Identifier("persisting")
@@ -93,12 +96,22 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
                 .otelTraceId(otelTraceId)
                 .otelSpanId(otelSpanId)
                 .build();
-        metricsPersistence.writeScanReport(record);
-        LOGGER.debug(
-            "Persisted scan metrics for {}.{} (reportId={})",
-            envelope.catalogName(),
-            envelope.table(),
-            record.reportId());
+        try {
+          metricsPersistence.writeScanReport(record);
+          LOGGER.debug(
+              "Persisted scan metrics for {}.{} (reportId={})",
+              envelope.catalogName(),
+              envelope.table(),
+              record.reportId());
+        } catch (Exception e) {
+          // Metrics reporting is best-effort telemetry; a persistence failure must not fail the
+          // client request that produced the report.
+          LOGGER.error(
+              "Failed to persist scan metrics for {}.{}; dropping the report",
+              envelope.catalogName(),
+              envelope.table(),
+              e);
+        }
       }
       case COMMIT -> {
         CommitMetricsRecord record =
@@ -111,12 +124,22 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
                 .otelTraceId(otelTraceId)
                 .otelSpanId(otelSpanId)
                 .build();
-        metricsPersistence.writeCommitReport(record);
-        LOGGER.debug(
-            "Persisted commit metrics for {}.{} (reportId={})",
-            envelope.catalogName(),
-            envelope.table(),
-            record.reportId());
+        try {
+          metricsPersistence.writeCommitReport(record);
+          LOGGER.debug(
+              "Persisted commit metrics for {}.{} (reportId={})",
+              envelope.catalogName(),
+              envelope.table(),
+              record.reportId());
+        } catch (Exception e) {
+          // Metrics reporting is best-effort telemetry; a persistence failure must not fail the
+          // client request that produced the report.
+          LOGGER.error(
+              "Failed to persist commit metrics for {}.{}; dropping the report",
+              envelope.catalogName(),
+              envelope.table(),
+              e);
+        }
       }
     }
   }
