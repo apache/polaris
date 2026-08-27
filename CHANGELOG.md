@@ -39,6 +39,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
+- JDBC per-realm entity caches are now instrumented so cache sizing can be tuned
+  against real workloads. Check the telemetry documentation for more details on new metrics.
 
 ### Changes
 

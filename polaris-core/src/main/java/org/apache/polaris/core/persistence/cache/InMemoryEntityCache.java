@@ -424,7 +424,10 @@ public class InMemoryEntityCache implements EntityCache {
   }
 
   /**
-   * Get a cache entity entry given the id of the entity
+   * Get a cache entity entry given the id of the entity.
+   *
+   * <p>Records cache metrics; use {@code byId.asMap().get(entityId)} directly to elide metric
+   * collection.
    *
    * @param entityId entity id
    * @return the cache entry or null if not found
@@ -434,7 +437,10 @@ public class InMemoryEntityCache implements EntityCache {
   }
 
   /**
-   * Get a cache entity entry given the name key of the entity
+   * Get a cache entity entry given the name key of the entity.
+   *
+   * <p>Records cache metrics; use {@code byName.get(entityNameKey)} directly to elide metric
+   * collection.
    *
    * @param entityNameKey entity name key
    * @return the cache entry or null if not found
@@ -479,7 +485,10 @@ public class InMemoryEntityCache implements EntityCache {
     // the existingCacheEntry to be the older of the two for purposes of invalidation to make
     // sure when we replaceCacheEntry we're also removing the old name if it's no longer valid
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(entityToValidate);
-    ResolvedPolarisEntity existingCacheEntryByName = this.getEntityByName(nameKey);
+    // the caller passed an id, not a name. The entry found here may still end up being the one
+    // returned, but no caller issued a lookup by name, so this probe must not record one: use
+    // byName.get(...) directly rather than getEntityByName(...)
+    ResolvedPolarisEntity existingCacheEntryByName = byName.get(nameKey);
     if (existingCacheEntryByName != null
         && existingCacheEntry != null
         && isNewer(existingCacheEntry, existingCacheEntryByName)) {

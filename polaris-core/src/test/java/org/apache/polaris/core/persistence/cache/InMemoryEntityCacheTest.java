@@ -380,6 +380,52 @@ public class InMemoryEntityCacheTest {
   }
 
   @Test
+  void testRefreshDoesNotRecordLookupsByName() {
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    InMemoryEntityCache cache = allocateInstrumentedCache(meterRegistry, "testRealm");
+
+    // load the catalog, which is one lookup by name and a miss
+    EntityCacheByNameKey catalogName = new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test");
+    PolarisBaseEntity catalog =
+        cache.getOrLoadEntityByName(this.callCtx, catalogName).cacheEntry().getEntity();
+    assertThat(byNameCount(meterRegistry, "hit")).isEqualTo(0.0d);
+    assertThat(byNameCount(meterRegistry, "miss")).isEqualTo(1.0d);
+    assertThat(byIdCount(meterRegistry, "hit")).isEqualTo(0.0d);
+
+    // refreshing probes the byName index for a stale name key, but the caller looked the entity up
+    // by id: that probe is bookkeeping and must leave the by-name counters where they are
+    assertThat(
+            cache.getAndRefreshIfNeeded(
+                this.callCtx,
+                catalog,
+                catalog.getEntityVersion(),
+                catalog.getGrantRecordsVersion()))
+        .isNotNull();
+    assertThat(byNameCount(meterRegistry, "hit")).isEqualTo(0.0d);
+    assertThat(byNameCount(meterRegistry, "miss")).isEqualTo(1.0d);
+
+    // the lookup by id that the same call performs is a real one and is recorded, which also shows
+    // that the refresh above actually reached the cache
+    assertThat(byIdCount(meterRegistry, "hit")).isEqualTo(1.0d);
+  }
+
+  private double byNameCount(SimpleMeterRegistry meterRegistry, String result) {
+    return meterRegistry
+        .get(InMemoryEntityCache.METER_CACHE_GETS_BY_NAME)
+        .tag("result", result)
+        .counter()
+        .count();
+  }
+
+  private double byIdCount(SimpleMeterRegistry meterRegistry, String result) {
+    return meterRegistry
+        .get(InMemoryEntityCache.METER_CACHE_GETS_BY_ID)
+        .tag("result", result)
+        .counter()
+        .count();
+  }
+
+  @Test
   void testGetOrLoadEntityByName() {
     // get a new cache
     InMemoryEntityCache cache = this.allocateNewCache();
