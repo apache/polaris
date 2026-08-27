@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.extensions.lineage;
 
-/** Handler boundary for lineage operations used by transport-layer adapters. */
-public interface PolarisLineageHandler {
+/** Internal scaffolding for lineage operations. */
+interface PolarisLineageHandler {
   LineageGraph query(LineageQueryRequest request);
 }

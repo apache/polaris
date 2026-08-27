@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Normalized response model for lineage queries.
+ * Internal response model for lineage queries.
  *
  * <p>The neighbor lists are filtered according to the {@linkplain LineageQueryRequest#direction()
  * requested direction}:
@@ -39,9 +39,8 @@ import java.util.Objects;
  * direction within the requested scope. An empty unrequested list means that direction was not
  * queried. Populating an unrequested list violates this contract.
  */
-public record LineageGraph(
-    LineageNode node, List<LineageNode> upstream, List<LineageNode> downstream) {
-  public LineageGraph {
+record LineageGraph(LineageNode node, List<LineageNode> upstream, List<LineageNode> downstream) {
+  LineageGraph {
     Objects.requireNonNull(node, "node must be non-null");
     upstream = List.copyOf(Objects.requireNonNull(upstream, "upstream must be non-null"));
     downstream = List.copyOf(Objects.requireNonNull(downstream, "downstream must be non-null"));

@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.extensions.lineage;
 
-/** Node kinds surfaced by normalized lineage queries. */
-public enum LineageNodeType {
+/** Internal node kinds used by lineage queries. */
+enum LineageNodeType {
   DATASET,
   COLUMN
 }

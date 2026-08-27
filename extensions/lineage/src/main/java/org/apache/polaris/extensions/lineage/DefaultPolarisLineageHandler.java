@@ -23,11 +23,11 @@ import jakarta.inject.Inject;
 import java.util.Objects;
 
 @RequestScoped
-public class DefaultPolarisLineageHandler implements PolarisLineageHandler {
+class DefaultPolarisLineageHandler implements PolarisLineageHandler {
   private final LineageConfiguration configuration;
 
   @Inject
-  public DefaultPolarisLineageHandler(LineageConfiguration configuration) {
+  DefaultPolarisLineageHandler(LineageConfiguration configuration) {
     this.configuration = Objects.requireNonNull(configuration, "configuration must be non-null");
   }
 

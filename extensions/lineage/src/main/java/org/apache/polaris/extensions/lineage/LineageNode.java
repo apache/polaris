@@ -21,21 +21,21 @@ package org.apache.polaris.extensions.lineage;
 import java.util.List;
 import java.util.Objects;
 
-/** A node returned in a lineage query response. */
-public record LineageNode(
+/** An internal node used in a lineage query response. */
+record LineageNode(
     String id,
     LineageNodeType type,
     LineageData data,
     boolean opaque,
     List<LineageFieldMapping> fieldMappings) {
-  public LineageNode {
+  LineageNode {
     Objects.requireNonNull(id, "id must be non-null");
     Objects.requireNonNull(type, "type must be non-null");
     fieldMappings =
         List.copyOf(Objects.requireNonNull(fieldMappings, "fieldMappings must be non-null"));
   }
 
-  public LineageNode(String id, LineageNodeType type, LineageData data, boolean opaque) {
+  LineageNode(String id, LineageNodeType type, LineageData data, boolean opaque) {
     this(id, type, data, opaque, List.of());
   }
 }

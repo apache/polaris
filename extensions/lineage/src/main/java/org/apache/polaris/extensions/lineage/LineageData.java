@@ -22,8 +22,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 
-/** Dataset metadata returned in a lineage query response. */
-public record LineageData(
+/** Internal dataset metadata used in a lineage query response. */
+record LineageData(
     OptionalLong catalogId,
     long datasetId,
     String namespace,
@@ -31,14 +31,14 @@ public record LineageData(
     Optional<String> entitySubType,
     long createdAt,
     long updatedAt) {
-  public LineageData {
+  LineageData {
     Objects.requireNonNull(catalogId, "catalogId must be non-null");
     Objects.requireNonNull(namespace, "namespace must be non-null");
     Objects.requireNonNull(name, "name must be non-null");
     Objects.requireNonNull(entitySubType, "entitySubType must be non-null");
   }
 
-  public LineageData(
+  LineageData(
       long catalogId,
       long datasetId,
       String namespace,

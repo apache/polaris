@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.extensions.lineage;
 
-/** Supported query granularities for lineage lookups. */
-public enum LineageGranularity {
+/** Internal query granularities for lineage lookups. */
+enum LineageGranularity {
   DATASET,
   COLUMN
 }

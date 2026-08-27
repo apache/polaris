@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.extensions.lineage;
 
-/** Supported directions for lineage queries. */
-public enum LineageDirection {
+/** Internal directions for lineage queries. */
+enum LineageDirection {
   UPSTREAM,
   DOWNSTREAM,
   BOTH

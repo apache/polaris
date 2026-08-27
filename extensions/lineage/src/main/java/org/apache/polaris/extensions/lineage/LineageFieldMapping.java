@@ -20,9 +20,9 @@ package org.apache.polaris.extensions.lineage;
 
 import java.util.Objects;
 
-/** A source-to-target field mapping returned for column-granularity queries. */
-public record LineageFieldMapping(String sourceField, String targetField) {
-  public LineageFieldMapping {
+/** An internal source-to-target field mapping for column-granularity queries. */
+record LineageFieldMapping(String sourceField, String targetField) {
+  LineageFieldMapping {
     Objects.requireNonNull(sourceField, "sourceField must be non-null");
     Objects.requireNonNull(targetField, "targetField must be non-null");
   }

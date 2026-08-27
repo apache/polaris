@@ -20,10 +20,10 @@ package org.apache.polaris.extensions.lineage;
 
 import java.util.Objects;
 
-/** Request model for normalized lineage lookups. */
-public record LineageQueryRequest(
+/** Internal request model for lineage lookups. */
+record LineageQueryRequest(
     String nodeId, LineageDirection direction, LineageGranularity granularity) {
-  public LineageQueryRequest {
+  LineageQueryRequest {
     Objects.requireNonNull(nodeId, "nodeId must be non-null");
     Objects.requireNonNull(direction, "direction must be non-null");
     Objects.requireNonNull(granularity, "granularity must be non-null");
