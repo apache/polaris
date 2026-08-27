@@ -794,16 +794,23 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     MetricType metricType =
         request.report() instanceof ScanReport ? MetricType.SCAN : MetricType.COMMIT;
-    metricsReporter()
-        .reportMetric(
-            new MetricsReportEnvelope(
-                catalogName(),
-                catalogId,
-                identifier,
-                tableId,
-                metricType,
-                request.report(),
-                clock().instant()));
+    try {
+      metricsReporter()
+          .reportMetric(
+              new MetricsReportEnvelope(
+                  catalogName(),
+                  catalogId,
+                  identifier,
+                  tableId,
+                  metricType,
+                  request.report(),
+                  clock().instant()));
+    } catch (Exception e) {
+      // Metrics reporting is best-effort telemetry: a failing reporter must never break the client
+      // request that produced the report.
+      LOGGER.error(
+          "Failed to report {} metrics for {}; dropping the report", metricType, identifier, e);
+    }
   }
 
   /**

@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -33,6 +34,7 @@ import static org.mockito.Mockito.when;
 
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -49,9 +51,14 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.expressions.Expressions;
+import org.apache.iceberg.metrics.ImmutableScanReport;
+import org.apache.iceberg.metrics.ScanMetrics;
+import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
@@ -114,6 +121,8 @@ class IcebergCatalogHandlerTest {
       mock(StorageAccessConfigProvider.class);
   private final PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
   private final CatalogHandlerUtils catalogHandlerUtils = mock(CatalogHandlerUtils.class);
+  private final IcebergMetricsReporter metricsReporter = mock(IcebergMetricsReporter.class);
+  private final Clock clock = mock(Clock.class);
 
   @BeforeEach
   void setUp() {
@@ -172,8 +181,8 @@ class IcebergCatalogHandlerTest {
         .catalogHandlerUtils(catalogHandlerUtils)
         .storageAccessConfigProvider(storageAccessConfigProvider)
         .eventAttributeMap(mock(MutableAttributeMap.class))
-        .metricsReporter(mock(IcebergMetricsReporter.class))
-        .clock(mock(Clock.class))
+        .metricsReporter(metricsReporter)
+        .clock(clock)
         .accessDelegationModeResolver(accessDelegationModeResolver)
         .idempotencyRequestContext(idempotencyRequestContext)
         .build();
@@ -625,6 +634,47 @@ class IcebergCatalogHandlerTest {
         .withMetadataLocation(TABLE_LOCATION + "/metadata/00002-fake.metadata.json")
         .discardChanges()
         .build();
+  }
+
+  /**
+   * Metrics reporting is best-effort: a throwing {@link IcebergMetricsReporter} must not fail the
+   * client request after authorization has already succeeded.
+   */
+  @Test
+  void reportMetricsReporterFailureDoesNotPropagate() {
+    PolarisEntity leafEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity.Builder()
+                .id(42L)
+                .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+                .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+                .name(TABLE2.name())
+                .build());
+    when(resolvedPath.getRawLeafEntity()).thenReturn(leafEntity);
+    when(catalogEntity.getId()).thenReturn(7L);
+    when(clock.instant()).thenReturn(Instant.parse("2026-01-01T00:00:00Z"));
+    when(localCatalogFactory.createCatalog(any())).thenReturn(mock(Catalog.class));
+    doThrow(new RuntimeException("simulated reporter failure"))
+        .when(metricsReporter)
+        .reportMetric(any());
+
+    ReportMetricsRequest request =
+        ReportMetricsRequest.of(
+            ImmutableScanReport.builder()
+                .tableName(TABLE2.name())
+                .snapshotId(123L)
+                .schemaId(456)
+                .projectedFieldIds(List.of(1, 2, 3))
+                .projectedFieldNames(List.of("f1", "f2", "f3"))
+                .filter(Expressions.alwaysTrue())
+                .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+                .build());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.reportMetrics(TABLE2, request)).doesNotThrowAnyException();
+    verify(metricsReporter).reportMetric(any());
   }
 
   @Test
