@@ -106,7 +106,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
         } catch (Exception e) {
           // Metrics reporting is best-effort telemetry; a persistence failure must not fail the
           // client request that produced the report.
-          LOGGER.error(
+          LOGGER.warn(
               "Failed to persist scan metrics for {}.{}; dropping the report",
               envelope.catalogName(),
               envelope.table(),
@@ -134,7 +134,7 @@ public class PersistingMetricsReporter implements IcebergMetricsReporter {
         } catch (Exception e) {
           // Metrics reporting is best-effort telemetry; a persistence failure must not fail the
           // client request that produced the report.
-          LOGGER.error(
+          LOGGER.warn(
               "Failed to persist commit metrics for {}.{}; dropping the report",
               envelope.catalogName(),
               envelope.table(),
