@@ -23,6 +23,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -93,36 +94,36 @@ public class JWTBroker implements TokenBroker {
   }
 
   private VerifiedToken verifyInternal(String token) {
+    // Only JWT cryptographic/claim failures are mapped to NotAuthorizedException. Persistence
+    // failures while loading secrets must surface as service unavailable, not as bad credentials.
+    final DecodedJWT decodedJWT;
     try {
-      DecodedJWT decodedJWT = verifier.verify(token);
-      String clientId = decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString();
-      String credentialsVersion = decodedJWT.getClaim(CLAIM_KEY_CREDENTIALS_VERSION).asString();
-      PolarisPrincipalSecrets secrets =
-          assertCredentialsVersionCurrent(clientId, credentialsVersion);
-      return new VerifiedToken(
-          InternalPolarisToken.of(
-              decodedJWT.getSubject(),
-              decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
-              clientId,
-              decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString()),
-          secrets,
-          credentialsVersion);
-
-    } catch (NotAuthorizedException e) {
-      throw e;
+      decodedJWT = verifier.verify(token);
     } catch (Exception e) {
       throw (NotAuthorizedException)
           new NotAuthorizedException("Failed to verify the token").initCause(e);
     }
+    String clientId = decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString();
+    String credentialsVersion = decodedJWT.getClaim(CLAIM_KEY_CREDENTIALS_VERSION).asString();
+    PolarisPrincipalSecrets secrets = assertCredentialsVersionCurrent(clientId, credentialsVersion);
+    return new VerifiedToken(
+        InternalPolarisToken.of(
+            decodedJWT.getSubject(),
+            decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
+            clientId,
+            decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString()),
+        secrets,
+        credentialsVersion);
   }
 
   /**
    * Loads the principal's secrets and rejects tokens that were minted against a credentials
-   * generation that is no longer current. If the secrets cannot be loaded, the principal is
-   * effectively gone and the token is rejected - this applies to legacy tokens too. Accepts the
-   * main or secondary generation fingerprint so dual-secret rotate grace matches client-secret
-   * matching. Tokens minted before credentials binding (no claim) skip the generation check so
-   * existing clients are not broken on upgrade; they remain unbound until expiry.
+   * generation that is no longer current. If the secrets cannot be loaded because the principal is
+   * gone, the token is rejected - this applies to legacy tokens too. Accepts the main or secondary
+   * generation fingerprint so dual-secret rotate grace matches client-secret matching. Tokens
+   * minted before credentials binding (no claim) skip the generation check on bearer verify so
+   * existing clients are not broken on upgrade; they remain unbound until expiry. Token exchange
+   * rejects claim-less tokens separately so they cannot be re-minted onto the current generation.
    *
    * @return the loaded principal secrets (callers can reuse them to avoid a second load)
    */
@@ -131,8 +132,14 @@ public class JWTBroker implements TokenBroker {
     if (clientId == null || clientId.isBlank()) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
-    PrincipalSecretsResult secretsResult =
-        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
+    final PrincipalSecretsResult secretsResult;
+    try {
+      secretsResult = metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
+    } catch (RuntimeException e) {
+      // Transient backend failure must not look like an authentication failure.
+      LOGGER.error("Unable to load principal secrets during token verify", e);
+      throw new ServiceUnavailableException("Unable to load principal secrets");
+    }
     if (!secretsResult.isSuccess() || secretsResult.getPrincipalSecrets() == null) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
@@ -162,9 +169,16 @@ public class JWTBroker implements TokenBroker {
     VerifiedToken verified;
     try {
       // verifyInternal enforces credentials-version binding (rejects after rotate/reset).
+      // Persistence failures propagate as ServiceUnavailableException and must not become
+      // invalid_client.
       verified = verifyInternal(subjectToken);
     } catch (NotAuthorizedException e) {
       LOGGER.error("Failed to verify the token", e.getCause());
+      return TokenResponse.of(OAuthError.invalid_client);
+    }
+    // Claim-less (pre-binding) tokens may still be used as bearers until they expire, but exchange
+    // must not re-mint them onto the current credentials generation with a fresh lifetime.
+    if (verified.subjectCredentialsVersion() == null) {
       return TokenResponse.of(OAuthError.invalid_client);
     }
     InternalPolarisToken decodedToken = verified.token();
@@ -189,12 +203,8 @@ public class JWTBroker implements TokenBroker {
     }
     // Secrets were already loaded during verify; reuse them instead of a second read. Keep the
     // subject token's credentials generation: no base credentials are re-checked on this path, so
-    // the re-minted token must not outlive the generation it was verified against. Only legacy
-    // tokens (no claim) are bound to the current main generation (one-time upgrade transition).
-    String credentialsVersion =
-        verified.subjectCredentialsVersion() != null
-            ? verified.subjectCredentialsVersion()
-            : verified.principalSecrets().getCredentialsVersion();
+    // the re-minted token must not outlive the generation it was verified against.
+    String credentialsVersion = verified.subjectCredentialsVersion();
     String tokenString =
         generateTokenString(
             decodedToken.getPrincipalName(),

@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.Optional;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.DigestUtils;
@@ -44,8 +45,8 @@ import org.mockito.Mockito;
  * Internal JWTs are bound to the salted credentials-version fingerprint of the secret generation
  * they were minted with (main or secondary). One rotate keeps the previous main hash as secondary
  * so client secrets and their bound tokens remain valid for that grace generation; a further
- * rotate/reset invalidates both. Tokens without the claim stay valid until expiry for upgrade
- * compatibility.
+ * rotate/reset invalidates both. Tokens without the claim stay valid on bearer verify until expiry
+ * for upgrade compatibility, but token exchange rejects them.
  */
 public class JWTBrokerCredentialsBindingTest {
 
@@ -214,7 +215,8 @@ public class JWTBrokerCredentialsBindingTest {
   }
 
   @Test
-  void legacyTokenExchangeBindsToCurrentMainGeneration() {
+  void legacyTokenExchangeIsRejected() {
+    // Claim-less tokens must not be re-minted via exchange onto the current generation.
     TokenResponse exchanged =
         broker.generateFromToken(
             TokenType.ACCESS_TOKEN,
@@ -222,20 +224,57 @@ public class JWTBrokerCredentialsBindingTest {
             TokenRequestValidator.TOKEN_EXCHANGE,
             SCOPE,
             TokenType.ACCESS_TOKEN);
-    assertThat(exchanged.getError()).isNull();
-    // Legacy tokens carry no claim, so the re-minted token is bound to the current main
-    // generation (one-time upgrade transition).
-    assertThat(
-            JWT.decode(exchanged.getAccessToken())
-                .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
-                .asString())
-        .isEqualTo(secrets.getCredentialsVersion());
+    assertThat(exchanged.getError()).isEqualTo(OAuthError.invalid_client);
   }
 
   @Test
   void verifyAcceptsLegacyTokenWithoutCredentialsVersionClaim() {
     String legacy = legacyToken();
     assertThat(broker.verify(legacy).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+  }
+
+  @Test
+  void verifySurfacesPersistenceFailureAsServiceUnavailable() {
+    TokenResponse response =
+        broker.generateFromClientSecrets(
+            CLIENT_ID,
+            MAIN_SECRET,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            SCOPE,
+            TokenType.ACCESS_TOKEN);
+    assertThat(response.getError()).isNull();
+
+    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
+        .thenThrow(new RuntimeException("simulated metastore outage"));
+    assertThatThrownBy(() -> broker.verify(response.getAccessToken()))
+        .isInstanceOf(ServiceUnavailableException.class)
+        .hasMessageContaining("Unable to load principal secrets");
+  }
+
+  @Test
+  void tokenExchangeSurfacesPersistenceFailureAsServiceUnavailable() {
+    TokenResponse original =
+        broker.generateFromClientSecrets(
+            CLIENT_ID,
+            MAIN_SECRET,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            SCOPE,
+            TokenType.ACCESS_TOKEN);
+    assertThat(original.getError()).isNull();
+
+    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
+        .thenThrow(new RuntimeException("simulated metastore outage"));
+
+    assertThatThrownBy(
+            () ->
+                broker.generateFromToken(
+                    TokenType.ACCESS_TOKEN,
+                    original.getAccessToken(),
+                    TokenRequestValidator.TOKEN_EXCHANGE,
+                    SCOPE,
+                    TokenType.ACCESS_TOKEN))
+        .isInstanceOf(ServiceUnavailableException.class)
+        .hasMessageContaining("Unable to load principal secrets");
   }
 
   @Test
