@@ -80,6 +80,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Async file-cleanup tasks now bound how long they wait for object-store deletions via the new `polaris.tasks.file-deletion-timeout` (default 1h), so a stalled storage endpoint can no longer pin a task-executor thread indefinitely; on timeout the task fails and follows the normal retry path.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
   error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg

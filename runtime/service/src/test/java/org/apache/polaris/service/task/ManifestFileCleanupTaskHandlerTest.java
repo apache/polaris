@@ -27,6 +27,7 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -73,7 +74,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
   private ManifestFileCleanupTaskHandler newManifestFileCleanupTaskHandler(FileIO fileIO) {
     Mockito.when(taskFileIOSupplier.apply(Mockito.any(), Mockito.any())).thenReturn(fileIO);
-    return new ManifestFileCleanupTaskHandler(taskFileIOSupplier, executor);
+    return new ManifestFileCleanupTaskHandler(taskFileIOSupplier, executor, Duration.ofMinutes(5));
   }
 
   @Test
