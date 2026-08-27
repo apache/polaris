@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.task;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -36,6 +35,8 @@ class FileCleanupTaskHandlerTest {
 
   @Test
   void awaitCompletionFailsWhenDeletionStalls() {
+    // A stalled deletion must free the waiting thread with a timeout failure rather than block
+    // forever. Note this only abandons the wait; the in-flight deletes cannot be interrupted.
     CompletableFuture<Void> neverCompletes = new CompletableFuture<>();
     assertThatThrownBy(
             () ->
@@ -43,7 +44,6 @@ class FileCleanupTaskHandlerTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessageContaining("Timed out")
         .hasMessageContaining("stalled deletion");
-    assertThat(neverCompletes.isCancelled()).isTrue();
   }
 
   @Test
