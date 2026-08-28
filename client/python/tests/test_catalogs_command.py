@@ -47,6 +47,29 @@ class TestCatalogsCommand(CLITestBase):
             ),
             "--default-base-location",
         )
+        # External catalogs also require --storage-type and --default-base-location.
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                ["catalogs", "create", "my-catalog", "--type", "external"],
+            ),
+            "--storage-type",
+        )
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--type",
+                    "external",
+                    "--storage-type",
+                    "file",
+                ],
+            ),
+            "--default-base-location",
+        )
         # Missing catalog name
         for sub in ["delete", "get", "update", "summarize"]:
             with self.subTest(subcommand=sub):
@@ -114,6 +137,10 @@ class TestCatalogsCommand(CLITestBase):
                     "my-catalog",
                     "--type",
                     "external",
+                    "--storage-type",
+                    "file",
+                    "--default-base-location",
+                    "dbl",
                     "--catalog-connection-type",
                     "iceberg-rest",
                     "--catalog-authentication-type",
@@ -134,6 +161,10 @@ class TestCatalogsCommand(CLITestBase):
                     "my-catalog",
                     "--type",
                     "external",
+                    "--storage-type",
+                    "file",
+                    "--default-base-location",
+                    "dbl",
                     "--catalog-connection-type",
                     "iceberg-rest",
                     "--catalog-authentication-type",
@@ -156,6 +187,29 @@ class TestCatalogsCommand(CLITestBase):
         self.assertEqual(cmd.properties, {})
         self.assertEqual(cmd.hierarchical, False)
         self.assertEqual(cmd.sts_unavailable, False)
+
+    def test_deprecated_kms_options_warn(self) -> None:
+        cmd = CatalogsCommand(
+            catalogs_subcommand=Subcommands.CREATE,
+            catalog_name="s3-catalog",
+            storage_type="s3",
+            default_base_location="s3://bucket/path",
+            current_kms_key="current-key",
+            allowed_kms_keys=["allowed-key"],
+        )
+
+        with self.assertLogs(
+            "apache_polaris.cli.command.catalogs", level="WARNING"
+        ) as logs:
+            cmd.validate()
+
+        self.assertEqual(
+            logs.output,
+            [
+                "WARNING:apache_polaris.cli.command.catalogs:--current-kms-key is deprecated; use --encryption-key instead.",
+                "WARNING:apache_polaris.cli.command.catalogs:--allowed-kms-key is deprecated; use --encryption-key instead.",
+            ],
+        )
 
     def test_catalog_create_s3_options(self) -> None:
         mock_client = self.build_mock_client()

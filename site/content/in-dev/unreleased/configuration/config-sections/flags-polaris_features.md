@@ -274,7 +274,7 @@ When enabled, a managed location generated for a table or view created without a
 
 ##### `polaris.features."DROP_WITH_PURGE_ENABLED"`
 
-If set to true, allows tables to be dropped with the purge parameter set to true.
+If set to true, allows Iceberg tables to be dropped with the purge parameter set to true.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -313,6 +313,15 @@ When true, enables finer grained update table privileges which are passed to the
 ##### `polaris.features."ENABLE_GENERIC_TABLES"`
 
 If true, the generic-tables endpoints are enabled
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
+##### `polaris.features."ENABLE_OPENLINEAGE_INGEST"`
+
+If true, the OpenLineage ingest endpoints are enabled and advertised to clients in the catalog configuration response during endpoint discovery. If false, the endpoints return 501 Not Implemented and are not advertised. The routes are always mounted when the OpenLineage extension is assembled into the server; this flag is the runtime switch that turns the feature on or off.
 
 - **Type:** `Boolean`
 - **Default:** `true`

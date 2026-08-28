@@ -22,6 +22,7 @@ package org.apache.polaris.core.storage.aws;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
+import java.util.List;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,11 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class AwsStorageConfigurationInfoTest {
+
+  private static final String ALLOWED_KMS_KEY_ARN =
+      "arn:aws:kms:us-east-1:012345678901:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  private static final String DECRYPTION_KEY_ARN =
+      "arn:aws:kms:us-east-1:012345678901:key/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
   @Test
   public void testStsEndpoint() {
@@ -136,6 +142,29 @@ public class AwsStorageConfigurationInfoTest {
     assertThat(newBuilder().kmsUnavailable(null).build().getKmsUnavailable()).isNull();
     assertThat(newBuilder().kmsUnavailable(false).build().getKmsUnavailable()).isFalse();
     assertThat(newBuilder().kmsUnavailable(true).build().getKmsUnavailable()).isTrue();
+  }
+
+  @Test
+  @SuppressWarnings("deprecation")
+  public void testEffectiveEncryptionKeysIncludeDeprecatedProperties() {
+    assertThat(
+            newBuilder()
+                .currentKmsKey(ALLOWED_KMS_KEY_ARN)
+                .allowedKmsKeys(List.of(DECRYPTION_KEY_ARN))
+                .build()
+                .getEffectiveEncryptionKeys())
+        .containsExactly(DECRYPTION_KEY_ARN, ALLOWED_KMS_KEY_ARN);
+  }
+
+  @Test
+  public void testDecryptionKeysMayOverlapEncryptionKeys() {
+    assertThat(
+            newBuilder()
+                .encryptionKeys(List.of(ALLOWED_KMS_KEY_ARN))
+                .decryptionKeys(List.of(ALLOWED_KMS_KEY_ARN, "provider-specific-key"))
+                .build()
+                .getDecryptionKeys())
+        .containsExactly(ALLOWED_KMS_KEY_ARN, "provider-specific-key");
   }
 
   @ParameterizedTest

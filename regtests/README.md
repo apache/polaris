@@ -43,7 +43,7 @@ follows:
   :polaris-server:assemble \
   :polaris-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
-S3_TEST_BACKEND=minio docker compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+S3_TEST_BACKEND=rustfs docker compose --profile rustfs -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
 In this setup, a Polaris container will be started in a docker-compose group, using the image
@@ -132,22 +132,18 @@ AZURE_BLOB_TEST_BASE=abfss://<container-name>@<storage-account-name>.blob.core.w
 into the `credentials` folder. Then specify the name of the file in your .env file - do not change the
 path, as `/tmp/credentials` is the folder on the container where the credentials file will be mounted.
 
-## Local S3-compatible Storage (MinIO or RustFS)
+## Local S3-compatible Storage (RustFS)
 
 Regression tests support local S3-compatible storage as an alternative to real AWS S3.
 
-Currently supported backends:
-- **MinIO** (Default)
-- **RustFS**
+The supported local backend is **RustFS**.
 
 ### Running with Local Backend
 
 The `docker-compose` setup use **Docker Compose Profiles** to manage these backends.
 
 ```shell
-# Run with MinIO (default)
-S3_TEST_BACKEND=minio docker compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
-# Run with RustFS
+# Run with RustFS (default)
 S3_TEST_BACKEND=rustfs docker compose --profile rustfs -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
@@ -169,18 +165,6 @@ Local backends use hardcoded test credentials:
 
 These are configured automatically in both storage backends and the Polaris service during testing.
 
-### Configuration
-
-When running locally, you can access the storage console:
-- **MINIO_ENDPOINT** - http://localhost:9001
-
-### Limitations
-
-MinIO mode has some differences from AWS mode:
-- **KMS policy limitation**: MinIO supports KMS for server-side encryption, but its STS policy evaluator does not support KMS ARNs as resource identifiers in IAM policies. Polaris includes KMS key resources when subscoping credentials via STS AssumeRole, which MinIO rejects. The catalog is therefore configured with `kmsUnavailable=true` to omit KMS resources from the inline policy.
-- **Path-style access**: MinIO uses path-style S3 access (`http://endpoint/bucket/key`) instead of virtual-hosted style.
-
-MinIO does support STS AssumeRole on the same port as S3, so the full credential vending flow (vended credentials with session tokens) works identically to AWS.
 
 ## Fixing a failed test due to incorrect expected output
 
