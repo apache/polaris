@@ -117,6 +117,34 @@ Finally, two additional span attributes are added to all request parent spans:
 - `polaris.realm`: The unique identifier of the realm. Always set (unless the request failed because
   of a realm resolution error).
 
+### Slow startup in non-GCP Kubernetes clusters
+
+Polaris carries the GCP resource detector (`GCPResourceProvider`) on its classpath via a transitive
+dependency on GCS support. OpenTelemetry's autoconfigure runs resource providers during Quarkus
+startup even when tracing is disabled, so if `metadata.google.internal` resolves but silently drops
+packets (common in kind, k3d, minikube, and OrbStack Kubernetes), the `main` thread blocks for
+~135s waiting for a TCP connect timeout. Under the Helm chart's default liveness probe the pod
+crash-loops before startup completes.
+
+**Symptom:** no `started in` log line for ~135s, with no error or stack trace. A `SIGQUIT` thread
+dump shows `GCPMetadataConfig.fetchAttribute` on the `main` thread.
+
+**Helm chart:** when `tracing.enabled: false` (the default), the chart automatically sets
+`OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS` to skip the GCP detector. No action is needed.
+
+If you enable tracing but run on a non-GCP cluster, add the following to your Helm values:
+
+```yaml
+tracing:
+  disabledResourceProviders: "io.opentelemetry.contrib.gcp.resource.GCPResourceProvider"
+```
+
+Or set the environment variable directly:
+
+```shell
+OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS=io.opentelemetry.contrib.gcp.resource.GCPResourceProvider
+```
+
 ### Troubleshooting Traces
 
 If the server is unable to publish traces, check first for a log warning message like the following:
