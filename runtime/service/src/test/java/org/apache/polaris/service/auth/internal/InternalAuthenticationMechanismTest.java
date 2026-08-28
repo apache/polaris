@@ -32,6 +32,7 @@ import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.ws.rs.ServiceUnavailableException;
+import java.time.Duration;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -44,6 +45,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
 public class InternalAuthenticationMechanismTest {
+
+  private static final Duration AWAIT_TIMEOUT = Duration.ofSeconds(5);
 
   private InternalAuthenticationMechanism mechanism;
   private AuthenticationRealmConfiguration configuration;
@@ -82,7 +85,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isNull();
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isNull();
     verify(tokenBroker, never()).verify(any());
   }
 
@@ -94,7 +97,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isNull();
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isNull();
     verify(tokenBroker, never()).verify(any());
   }
 
@@ -106,7 +109,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isNull();
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isNull();
     verify(tokenBroker, never()).verify(any());
   }
 
@@ -125,7 +128,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThatThrownBy(() -> result.await().indefinitely())
+    assertThatThrownBy(() -> result.await().atMost(AWAIT_TIMEOUT))
         .isInstanceOf(AuthenticationFailedException.class)
         .hasCause(cause);
     verify(tokenBroker).verify("invalidToken");
@@ -147,7 +150,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isNull();
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isNull();
     verify(tokenBroker).verify("invalidToken");
     verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
   }
@@ -167,7 +170,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThatThrownBy(() -> result.await().indefinitely()).isSameAs(cause);
+    assertThatThrownBy(() -> result.await().atMost(AWAIT_TIMEOUT)).isSameAs(cause);
     verify(tokenBroker).verify("someToken");
     verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
   }
@@ -187,7 +190,7 @@ public class InternalAuthenticationMechanismTest {
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
 
-    assertThat(result.await().indefinitely()).isSameAs(securityIdentity);
+    assertThat(result.await().atMost(AWAIT_TIMEOUT)).isSameAs(securityIdentity);
     verify(tokenBroker).verify("validToken");
     verify(identityProviderManager).authenticate(any(InternalAuthenticationRequest.class));
   }
