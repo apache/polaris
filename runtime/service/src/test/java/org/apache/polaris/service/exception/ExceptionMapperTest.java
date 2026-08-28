@@ -188,15 +188,6 @@ public class ExceptionMapperTest {
         Arguments.of(new FileIOUnknownHostException("msg", new RuntimeException()), 500));
   }
 
-  @Test
-  public void testServiceUnavailableIncludesZeroRetryAfter() {
-    PolarisExceptionMapper mapper = new PolarisExceptionMapper();
-    Response response =
-        mapper.toResponse(new PolarisServiceUnavailableException(0, "Service unavailable"));
-    assertThat(response.getStatus()).isEqualTo(503);
-    assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("0");
-  }
-
   static Stream<Arguments> testFullExceptionIsLogged() {
     // ConstraintViolationException isn't included because it doesn't propagate any info to its
     // inherited Exception

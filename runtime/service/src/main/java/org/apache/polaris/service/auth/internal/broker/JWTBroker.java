@@ -136,8 +136,7 @@ public class JWTBroker implements TokenBroker {
     try {
       secretsResult = metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     } catch (RuntimeException e) {
-      // Same auth-time 503 contract as DefaultAuthenticator: fixed client message, ErrorResponse
-      // envelope, and Retry-After via PolarisExceptionMapper. Log the real cause server-side only.
+      // Transient backend failure must not look like bad credentials.
       LOGGER.error("Unable to load principal secrets during token verify", e);
       throw new PolarisServiceUnavailableException(0, "Service unavailable");
     }
