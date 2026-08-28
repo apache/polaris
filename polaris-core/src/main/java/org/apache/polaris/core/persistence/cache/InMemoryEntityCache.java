@@ -20,7 +20,18 @@ package org.apache.polaris.core.persistence.cache;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.RemovalListener;
+import com.github.benmanes.caffeine.cache.stats.CacheStats;
+import com.github.benmanes.caffeine.cache.stats.StatsCounter;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.binder.BaseUnits;
+import io.micrometer.core.instrument.binder.cache.CaffeineStatsCounter;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,6 +43,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -57,13 +69,36 @@ import org.slf4j.LoggerFactory;
 public class InMemoryEntityCache implements EntityCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryEntityCache.class);
   public static final int MAX_CACHE_REFRESH_ATTEMPTS = 100;
+
+  // These meters are registered per cache instance and hence carry the per-instance tags, for
+  // example the realm. Their names must stay specific to the entity cache: registering a name that
+  // another cache already registered with a different set of tag keys does not fail loudly, the
+  // Prometheus registry simply omits the conflicting series from the scrape.
+  public static final String METER_CACHE_CAPACITY = "polaris.entity-cache.capacity";
+  public static final String METER_CACHE_WEIGHT = "polaris.entity-cache.weight-reported";
+  public static final String METER_CACHE_ENTRIES = "polaris.entity-cache.entries";
+  public static final String METER_CACHE_GETS_BY_NAME = "polaris.entity-cache.gets.by-name";
+  public static final String METER_CACHE_GETS_BY_ID = "polaris.entity-cache.gets.by-id";
+
+  public static final String CACHE_NAME = "polaris-entities";
+
   private final PolarisDiagnostics diagnostics;
   private final PolarisMetaStoreManager polarisMetaStoreManager;
   private final Cache<Long, ResolvedPolarisEntity> byId;
   private final AbstractMap<EntityCacheByNameKey, ResolvedPolarisEntity> byName;
+  private final Optional<MeterRegistry> meterRegistry;
+  private final List<Meter> meters = new ArrayList<>();
+  private final Optional<Counter> byNameHits;
+  private final Optional<Counter> byNameMisses;
+
+  // Micrometer holds a gauge's target weakly, so the target must be something this cache keeps
+  // alive itself. Caffeine's Policy.Eviction is not that: it is reachable only through internals
+  // Caffeine happens to memoize. Using this field as the target also keeps 'this' out of the gauge,
+  // so a cache dropped without close() can still be collected.
+  private final LongSupplier weightSupplier;
 
   /**
-   * Constructor. Cache can be private or shared
+   * Constructor for an uninstrumented cache. Cache can be private or shared
    *
    * @param polarisMetaStoreManager the meta store manager implementation
    */
@@ -71,7 +106,27 @@ public class InMemoryEntityCache implements EntityCache {
       @NonNull PolarisDiagnostics diagnostics,
       @NonNull RealmConfig realmConfig,
       @NonNull PolarisMetaStoreManager polarisMetaStoreManager) {
+    this(diagnostics, realmConfig, polarisMetaStoreManager, Optional.empty(), Tags.empty());
+  }
+
+  /**
+   * Constructor. Cache can be private or shared. Meters are only registered if a {@link
+   * MeterRegistry} is present.
+   *
+   * @param polarisMetaStoreManager the meta store manager implementation
+   * @param meterRegistry the registry to report cache metrics to, if any
+   * @param extraTags tags identifying this particular cache instance, for example the realm. Only
+   *     applied to the meters that are specific to the entity cache, see {@link
+   *     #registerMeters(MeterRegistry, Iterable, long)}
+   */
+  public InMemoryEntityCache(
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull RealmConfig realmConfig,
+      @NonNull PolarisMetaStoreManager polarisMetaStoreManager,
+      Optional<MeterRegistry> meterRegistry,
+      Iterable<Tag> extraTags) {
     this.diagnostics = diagnostics;
+    this.meterRegistry = meterRegistry;
 
     // by name cache
     this.byName = new ConcurrentHashMap<>();
@@ -102,11 +157,157 @@ public class InMemoryEntityCache implements EntityCache {
       byIdBuilder.softValues();
     }
 
+    // Caffeine's own statistics are reported without the extra tags: 'cache.gets' and friends are
+    // shared with the other Caffeine caches of this service, which report them tagged with 'cache'
+    // only, and a registry requires the same tag keys for a given meter name. Those meters are
+    // therefore aggregated over all realms, and the hit ratio of a single realm is recovered from
+    // the by-id counters registered alongside them.
+    Optional<StatsCounter> statsCounter = meterRegistry.map(reg -> statsCounter(reg, extraTags));
+    statsCounter.ifPresent(counter -> byIdBuilder.recordStats(() -> counter));
+
     // use a Caffeine cache to purge entries when those have not been used for a long time.
     this.byId = byIdBuilder.build();
 
+    var eviction = byId.policy().eviction().orElseThrow();
+    this.weightSupplier = () -> eviction.weightedSize().orElse(0L);
+
+    this.byNameHits = byNameLookupCounter(extraTags, "hit");
+    this.byNameMisses = byNameLookupCounter(extraTags, "miss");
+    meterRegistry.ifPresent(reg -> registerMeters(reg, extraTags, weigherTarget));
+
     // remember the meta store manager
     this.polarisMetaStoreManager = polarisMetaStoreManager;
+  }
+
+  /**
+   * Registers the meters that Caffeine's own statistics do not cover: the configured capacity, the
+   * currently reported weight and the number of entries in either index. These meter names are
+   * specific to the entity cache, hence they can carry the per-instance {@code extraTags}.
+   */
+  private void registerMeters(MeterRegistry reg, Iterable<Tag> extraTags, long weigherTarget) {
+    meters.add(
+        Gauge.builder(METER_CACHE_CAPACITY, "", x -> weigherTarget)
+            .description("Total capacity of the entity cache, in approximate bytes.")
+            .tag("cache", CACHE_NAME)
+            .tags(extraTags)
+            .baseUnit(BaseUnits.BYTES)
+            .register(reg));
+    meters.add(
+        Gauge.builder(METER_CACHE_WEIGHT, weightSupplier, LongSupplier::getAsLong)
+            .description("Current reported weight of the entity cache, in approximate bytes.")
+            .tag("cache", CACHE_NAME)
+            .tags(extraTags)
+            .baseUnit(BaseUnits.BYTES)
+            .register(reg));
+    meters.add(
+        Gauge.builder(METER_CACHE_ENTRIES, byId, Cache::estimatedSize)
+            .description("Number of entries in the entity cache.")
+            .tag("cache", CACHE_NAME)
+            .tag("index", "by-id")
+            .tags(extraTags)
+            .register(reg));
+    meters.add(
+        Gauge.builder(METER_CACHE_ENTRIES, byName, Map::size)
+            .description("Number of entries in the entity cache.")
+            .tag("cache", CACHE_NAME)
+            .tag("index", "by-name")
+            .tags(extraTags)
+            .register(reg));
+  }
+
+  /**
+   * Counts lookups in the {@code byName} index, which is not a Caffeine cache and hence not covered
+   * by {@link CaffeineStatsCounter}. Empty if there is no registry.
+   */
+  private Optional<Counter> byNameLookupCounter(Iterable<Tag> extraTags, String result) {
+    return meterRegistry.map(
+        reg ->
+            lookupCounter(
+                reg,
+                METER_CACHE_GETS_BY_NAME,
+                "Entity cache lookups by name. Caffeine's own 'cache.gets' only covers lookups by"
+                    + " id.",
+                extraTags,
+                result));
+  }
+
+  /**
+   * Reports Caffeine's statistics for the {@code byId} index and additionally counts its lookups
+   * under an entity cache specific name. Caffeine's own 'cache.gets' cannot carry the per-instance
+   * tags, so it alone does not tell the hit ratio of a single realm apart from the others'.
+   */
+  private StatsCounter statsCounter(MeterRegistry reg, Iterable<Tag> extraTags) {
+    String description =
+        "Entity cache lookups by id. Unlike Caffeine's own 'cache.gets', which is shared with the"
+            + " other caches of this service, this counter is reported per cache instance.";
+    return new TaggedStatsCounter(
+        new CaffeineStatsCounter(reg, CACHE_NAME),
+        lookupCounter(reg, METER_CACHE_GETS_BY_ID, description, extraTags, "hit"),
+        lookupCounter(reg, METER_CACHE_GETS_BY_ID, description, extraTags, "miss"));
+  }
+
+  /** Registers a lookup counter of this cache instance, so that {@link #close()} removes it. */
+  private Counter lookupCounter(
+      MeterRegistry reg, String name, String description, Iterable<Tag> extraTags, String result) {
+    Counter counter =
+        Counter.builder(name)
+            .description(description)
+            .tag("cache", CACHE_NAME)
+            .tag("result", result)
+            .tags(extraTags)
+            .register(reg);
+    meters.add(counter);
+    return counter;
+  }
+
+  /**
+   * Records everything Caffeine reports through {@code delegate} and, in addition, the hits and
+   * misses on the per-instance counters. Only the lookup counts are duplicated: loads and evictions
+   * stay with the delegate.
+   */
+  private record TaggedStatsCounter(CaffeineStatsCounter delegate, Counter hits, Counter misses)
+      implements StatsCounter {
+    @Override
+    public void recordHits(int count) {
+      delegate.recordHits(count);
+      hits.increment(count);
+    }
+
+    @Override
+    public void recordMisses(int count) {
+      delegate.recordMisses(count);
+      misses.increment(count);
+    }
+
+    @Override
+    public void recordLoadSuccess(long loadTime) {
+      delegate.recordLoadSuccess(loadTime);
+    }
+
+    @Override
+    public void recordLoadFailure(long loadTime) {
+      delegate.recordLoadFailure(loadTime);
+    }
+
+    @Override
+    public void recordEviction(int weight, RemovalCause cause) {
+      delegate.recordEviction(weight, cause);
+    }
+
+    @Override
+    public CacheStats snapshot() {
+      return delegate.snapshot();
+    }
+  }
+
+  /**
+   * Removes the meters registered for this cache instance. The Caffeine statistics are left in
+   * place: they are registered without the per-instance tags and are hence shared with the caches
+   * of other realms.
+   */
+  @Override
+  public void close() {
+    meterRegistry.ifPresent(reg -> meters.forEach(reg::remove));
   }
 
   /**
@@ -136,10 +337,11 @@ public class InMemoryEntityCache implements EntityCache {
     // compute name key
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
 
-    // get old value if one exist
-    ResolvedPolarisEntity oldCacheEntry = this.byId.getIfPresent(cacheEntry.getEntity().getId());
+    // get the old value if one exists. This probe is bookkeeping rather than a cache lookup,
+    // so use asMap() which does not record stats.
+    ResolvedPolarisEntity oldCacheEntry = this.byId.asMap().get(cacheEntry.getEntity().getId());
 
-    // put new entry, only if really newer one
+    // put new entry, only if it really is a newer one
     this.byId
         .asMap()
         .merge(
@@ -222,7 +424,10 @@ public class InMemoryEntityCache implements EntityCache {
   }
 
   /**
-   * Get a cache entity entry given the id of the entity
+   * Get a cache entity entry given the id of the entity.
+   *
+   * <p>Records cache metrics; use {@code byId.asMap().get(entityId)} directly to elide metric
+   * collection.
    *
    * @param entityId entity id
    * @return the cache entry or null if not found
@@ -232,14 +437,23 @@ public class InMemoryEntityCache implements EntityCache {
   }
 
   /**
-   * Get a cache entity entry given the name key of the entity
+   * Get a cache entity entry given the name key of the entity.
+   *
+   * <p>Records cache metrics; use {@code byName.get(entityNameKey)} directly to elide metric
+   * collection.
    *
    * @param entityNameKey entity name key
    * @return the cache entry or null if not found
    */
   public @Nullable ResolvedPolarisEntity getEntityByName(
       @NonNull EntityCacheByNameKey entityNameKey) {
-    return byName.get(entityNameKey);
+    ResolvedPolarisEntity entry = byName.get(entityNameKey);
+    if (entry != null) {
+      byNameHits.ifPresent(Counter::increment);
+    } else {
+      byNameMisses.ifPresent(Counter::increment);
+    }
+    return entry;
   }
 
   /**
@@ -271,7 +485,10 @@ public class InMemoryEntityCache implements EntityCache {
     // the existingCacheEntry to be the older of the two for purposes of invalidation to make
     // sure when we replaceCacheEntry we're also removing the old name if it's no longer valid
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(entityToValidate);
-    ResolvedPolarisEntity existingCacheEntryByName = this.getEntityByName(nameKey);
+    // the caller passed an id, not a name. The entry found here may still end up being the one
+    // returned, but no caller issued a lookup by name, so this probe must not record one: use
+    // byName.get(...) directly rather than getEntityByName(...)
+    ResolvedPolarisEntity existingCacheEntryByName = byName.get(nameKey);
     if (existingCacheEntryByName != null
         && existingCacheEntry != null
         && isNewer(existingCacheEntry, existingCacheEntryByName)) {

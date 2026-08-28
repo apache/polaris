@@ -20,8 +20,11 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.apache.polaris.core.auth.AuthBootstrapUtil.createPolarisPrincipalForRealm;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
@@ -73,6 +76,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
 
+  private static final String TAG_REALM = "realm_id";
+
   // Stateful per-realm cache — InMemoryEntityCache accumulates entries across requests
   private final Map<String, EntityCache> entityCacheMap = new ConcurrentHashMap<>();
 
@@ -87,6 +92,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisDiagnostics diagnostics;
   @Inject DatasourceOperations datasourceOperations;
   @Inject RealmConfigurationSource realmConfigurationSource;
+  @Inject @Any Instance<MeterRegistry> meterRegistry;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -229,8 +235,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
-      // Evict all cached state for this realm
-      entityCacheMap.remove(realm);
+      // Evict all cached state for this realm, including the meters registered for it
+      EntityCache purgedCache = entityCacheMap.remove(realm);
+      if (purgedCache != null) {
+        purgedCache.close();
+      }
       schemaVersionCache.remove(realm);
       verifiedRealms.remove(realm);
     }
@@ -258,7 +267,12 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         realmId,
         k -> {
           PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
-          return new InMemoryEntityCache(diagnostics, realmConfig, metaStoreManager);
+          return new InMemoryEntityCache(
+              diagnostics,
+              realmConfig,
+              metaStoreManager,
+              meterRegistry.stream().findAny(),
+              Tags.of(TAG_REALM, realmId));
         });
   }
 
