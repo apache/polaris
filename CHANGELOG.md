@@ -46,6 +46,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Helm chart: when tracing is disabled (default), the `OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS` environment variable is now set to `io.opentelemetry.contrib.gcp.resource.GCPResourceProvider`, preventing the OpenTelemetry GCP resource detector from blocking Polaris startup for ~135s in environments where `metadata.google.internal` resolves to a silently-dropping address (local Kubernetes, Docker, etc.).
+- Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
+- Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
+  error envelope (`{\"error\": {...}}`) instead of a flat `{\"code\", \"message\"}` body, so Iceberg
+  clients can parse the response rather than failing on an off-schema shape.
 - Python CLI `setup export` now writes each catalog's `policies` as a list of
   `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
   with the same name in different namespaces. The new export format cannot be applied by older CLI
