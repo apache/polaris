@@ -23,9 +23,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -48,8 +50,10 @@ import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.credentials.Credential;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -82,7 +86,10 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -93,6 +100,7 @@ import org.apache.polaris.service.metrics.IcebergMetricsReporter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 class IcebergCatalogHandlerTest {
 
@@ -100,6 +108,8 @@ class IcebergCatalogHandlerTest {
   private static final Namespace NS1 = Namespace.of("ns1");
   private static final TableIdentifier TABLE2 = TableIdentifier.of(NS1, "table2");
   private static final String TABLE_LOCATION = "s3://fake-bucket/tables/table2";
+  private static final Schema SCHEMA =
+      new Schema(Types.NestedField.required(1, "id", Types.IntegerType.get()));
 
   private final PolarisResolutionManifest resolutionManifest =
       mock(PolarisResolutionManifest.class);
@@ -114,6 +124,11 @@ class IcebergCatalogHandlerTest {
       mock(StorageAccessConfigProvider.class);
   private final PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
   private final CatalogHandlerUtils catalogHandlerUtils = mock(CatalogHandlerUtils.class);
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider =
+      mock(PolarisStorageIntegrationProvider.class);
+  private final PolarisStorageIntegration storageIntegration =
+      mock(PolarisStorageIntegration.class);
+  private final ReservedProperties reservedProperties = mock(ReservedProperties.class);
 
   @BeforeEach
   void setUp() {
@@ -124,6 +139,9 @@ class IcebergCatalogHandlerTest {
             .build();
     when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
         .thenReturn(storageAccessConfig);
+    when(reservedProperties.removeReservedProperties(
+            org.mockito.ArgumentMatchers.<Map<String, String>>any()))
+        .thenReturn(Map.of());
   }
 
   @SuppressWarnings({"unchecked"})
@@ -168,15 +186,102 @@ class IcebergCatalogHandlerTest {
         .prefixParser(mock(CatalogPrefixParser.class))
         .resolverFactory(mock(ResolverFactory.class))
         .localCatalogFactory(localCatalogFactory)
-        .reservedProperties(mock(ReservedProperties.class))
+        .reservedProperties(reservedProperties)
         .catalogHandlerUtils(catalogHandlerUtils)
         .storageAccessConfigProvider(storageAccessConfigProvider)
+        .storageIntegrationProvider(storageIntegrationProvider)
         .eventAttributeMap(mock(MutableAttributeMap.class))
         .metricsReporter(mock(IcebergMetricsReporter.class))
         .clock(mock(Clock.class))
         .accessDelegationModeResolver(accessDelegationModeResolver)
         .idempotencyRequestContext(idempotencyRequestContext)
         .build();
+  }
+
+  @Test
+  void createTableStagedDoesNotPrepareStorageWhenValidationFails() {
+    TableIdentifier tableIdentifier = TableIdentifier.of(NS1, "new_table");
+    String requestedLocation = "gs://bucket/requested/new_table";
+    String transformedLocation = "gs://bucket/transformed/new_table";
+    when(realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION, catalogEntity))
+        .thenReturn(true);
+
+    LocalIcebergCatalog polarisCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(polarisCatalog);
+    when(polarisCatalog.tableExists(tableIdentifier)).thenReturn(false);
+    when(polarisCatalog.transformTableLikeLocation(eq(tableIdentifier), eq(requestedLocation)))
+        .thenReturn(transformedLocation);
+    doThrow(new BadRequestException("location rejected"))
+        .when(polarisCatalog)
+        .validateStagedTableCreate(eq(tableIdentifier), any(TableMetadata.class));
+
+    when(resolvedPath.getRawFullPath()).thenReturn(List.of());
+    when(storageIntegrationProvider.getStorageIntegration(any())).thenReturn(storageIntegration);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    CreateTableRequest request =
+        CreateTableRequest.builder()
+            .withName(tableIdentifier.name())
+            .withLocation(requestedLocation)
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                handler.createTableStaged(
+                    NS1, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("location rejected");
+
+    verify(storageIntegration, never()).prepareLocations(any());
+  }
+
+  @Test
+  void createTableStagedPreparesTransformedLocationAfterValidation() {
+    TableIdentifier tableIdentifier = TableIdentifier.of(NS1, "new_table");
+    String requestedLocation = "gs://bucket/requested/new_table";
+    String transformedLocation = "gs://bucket/transformed/new_table";
+    when(realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION, catalogEntity))
+        .thenReturn(true);
+
+    LocalIcebergCatalog polarisCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(polarisCatalog);
+    when(polarisCatalog.tableExists(tableIdentifier)).thenReturn(false);
+    when(polarisCatalog.transformTableLikeLocation(eq(tableIdentifier), eq(requestedLocation)))
+        .thenReturn(transformedLocation);
+    when(resolvedPath.getRawFullPath()).thenReturn(List.of());
+    when(storageIntegrationProvider.getStorageIntegration(any())).thenReturn(storageIntegration);
+    when(accessDelegationModeResolver.resolve(any(), any())).thenReturn(Optional.empty());
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+    CreateTableRequest request =
+        CreateTableRequest.builder()
+            .withName(tableIdentifier.name())
+            .withLocation(requestedLocation)
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    handler.createTableStaged(
+        NS1, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
+
+    InOrder inOrder = inOrder(polarisCatalog, storageIntegration);
+    inOrder.verify(polarisCatalog).validateStagedTableCreate(eq(tableIdentifier), any());
+    inOrder
+        .verify(storageIntegration)
+        .prepareLocations(
+            argThat(
+                locations ->
+                    locations.containsAll(
+                        List.of(
+                            transformedLocation,
+                            transformedLocation + "/metadata",
+                            transformedLocation + "/data"))));
   }
 
   private Catalog mockRegisterTableCatalog(boolean overwrite) {
