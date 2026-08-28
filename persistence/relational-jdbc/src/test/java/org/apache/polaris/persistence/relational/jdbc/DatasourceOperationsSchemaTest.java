@@ -47,8 +47,12 @@ class DatasourceOperationsSchemaTest {
     return JdbcConnectionPool.create(url, "sa", "");
   }
 
+  /**
+   * Loads the script a fresh bootstrap would actually run, so that a schema version bump keeps
+   * exercising the invariant that the latest bootstrap path selects no schema of its own.
+   */
   private static InputStream openSchemaScript() {
-    return DatasourceOperations.class.getClassLoader().getResourceAsStream("h2/schema-v5.sql");
+    return DatabaseType.H2.openInitScriptResource(DatabaseType.H2.getLatestSchemaVersion());
   }
 
   /** The schema holding the ENTITIES table, as reported by the database catalog. */
@@ -75,7 +79,8 @@ class DatasourceOperationsSchemaTest {
     ops.executeScript(openSchemaScript());
 
     // Unqualified queries resolve against the schema selected by the datasource.
-    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false)).isEqualTo(5);
+    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false))
+        .isEqualTo(DatabaseType.H2.getLatestSchemaVersion());
     // H2 case-folds the unquoted identifier to uppercase.
     assertThat(schemaContainingEntitiesTable(dataSource)).isEqualTo("CUSTOM_POLARIS");
   }
@@ -91,7 +96,8 @@ class DatasourceOperationsSchemaTest {
 
     ops.executeScript(openSchemaScript());
 
-    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false)).isEqualTo(5);
+    assertThat(JdbcBasePersistenceImpl.loadSchemaVersion(ops, false))
+        .isEqualTo(DatabaseType.H2.getLatestSchemaVersion());
     // Without a datasource-selected schema, tables land in the database's default schema.
     assertThat(schemaContainingEntitiesTable(dataSource)).isEqualTo("PUBLIC");
   }
