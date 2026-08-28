@@ -172,11 +172,15 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
           queryOpa(
               buildOpaAuthorizationInput(request.principal(), operation, targets, secondaries));
       if (!allowed) {
-        return AuthorizationDecision.deny(
-            "OPA denied authorization for principal="
-                + request.principal().getName()
-                + " operation="
-                + operation);
+        LOGGER.debug(
+            "OPA denied authorization for principal={} operation={} targets={} secondaries={} realm={} requestId={}",
+            request.principal().getName(),
+            operation,
+            targets,
+            secondaries,
+            realm,
+            requestId);
+        return AuthorizationDecision.deny("OPA denied authorization");
       }
     }
     return AuthorizationDecision.allow();
