@@ -34,9 +34,9 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.Collections;
 import java.util.Set;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.PolarisCredential;
@@ -94,9 +94,9 @@ class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
     PolarisCredential token;
     try {
       token = tokenBroker.verify(credential);
-    } catch (ServiceUnavailableException e) {
-      // Preserve metastore/transient failures from token verify; do not treat them as bad
-      // credentials or fall through to another auth mechanism.
+    } catch (PolarisServiceUnavailableException e) {
+      // Preserve auth-time metastore failures from token verify (503 + ErrorResponse +
+      // Retry-After); do not treat them as bad credentials or fall through to another mechanism.
       return Uni.createFrom().failure(e);
     } catch (Exception e) {
       return configuration.type() == AuthenticationType.MIXED

@@ -23,7 +23,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.ws.rs.ServiceUnavailableException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -33,6 +32,7 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.DefaultAuthenticator;
@@ -136,9 +136,10 @@ public class JWTBroker implements TokenBroker {
     try {
       secretsResult = metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     } catch (RuntimeException e) {
-      // Transient backend failure must not look like an authentication failure.
+      // Same auth-time 503 contract as DefaultAuthenticator: fixed client message, ErrorResponse
+      // envelope, and Retry-After via PolarisExceptionMapper. Log the real cause server-side only.
       LOGGER.error("Unable to load principal secrets during token verify", e);
-      throw new ServiceUnavailableException("Unable to load principal secrets");
+      throw new PolarisServiceUnavailableException(0, "Service unavailable");
     }
     if (!secretsResult.isSuccess() || secretsResult.getPrincipalSecrets() == null) {
       throw new NotAuthorizedException("Failed to verify the token");
@@ -169,7 +170,7 @@ public class JWTBroker implements TokenBroker {
     VerifiedToken verified;
     try {
       // verifyInternal enforces credentials-version binding (rejects after rotate/reset).
-      // Persistence failures propagate as ServiceUnavailableException and must not become
+      // Persistence failures propagate as PolarisServiceUnavailableException and must not become
       // invalid_client.
       verified = verifyInternal(subjectToken);
     } catch (NotAuthorizedException e) {

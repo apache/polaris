@@ -25,13 +25,13 @@ import static org.mockito.Mockito.when;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.Optional;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.DigestUtils;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
@@ -247,8 +247,12 @@ public class JWTBrokerCredentialsBindingTest {
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenThrow(new RuntimeException("simulated metastore outage"));
     assertThatThrownBy(() -> broker.verify(response.getAccessToken()))
-        .isInstanceOf(ServiceUnavailableException.class)
-        .hasMessageContaining("Unable to load principal secrets");
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            e -> {
+              assertThat(e.getMessage()).isEqualTo("Service unavailable");
+              assertThat(e.getRetryAfterSeconds()).isZero();
+            });
   }
 
   @Test
@@ -273,8 +277,12 @@ public class JWTBrokerCredentialsBindingTest {
                     TokenRequestValidator.TOKEN_EXCHANGE,
                     SCOPE,
                     TokenType.ACCESS_TOKEN))
-        .isInstanceOf(ServiceUnavailableException.class)
-        .hasMessageContaining("Unable to load principal secrets");
+        .isInstanceOfSatisfying(
+            PolarisServiceUnavailableException.class,
+            e -> {
+              assertThat(e.getMessage()).isEqualTo("Service unavailable");
+              assertThat(e.getRetryAfterSeconds()).isZero();
+            });
   }
 
   @Test

@@ -31,9 +31,9 @@ import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
-import jakarta.ws.rs.ServiceUnavailableException;
 import java.time.Duration;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.PolarisCredential;
@@ -164,8 +164,8 @@ public class InternalAuthenticationMechanismTest {
     when(routingContext.request()).thenReturn(mock(io.vertx.core.http.HttpServerRequest.class));
     when(routingContext.request().getHeader("Authorization")).thenReturn("Bearer someToken");
 
-    ServiceUnavailableException cause =
-        new ServiceUnavailableException("Unable to load principal secrets");
+    PolarisServiceUnavailableException cause =
+        new PolarisServiceUnavailableException(0, "Service unavailable");
     when(tokenBroker.verify("someToken")).thenThrow(cause);
 
     Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
