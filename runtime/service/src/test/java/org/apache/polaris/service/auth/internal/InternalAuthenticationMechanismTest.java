@@ -31,6 +31,7 @@ import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
+import jakarta.ws.rs.ServiceUnavailableException;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -40,6 +41,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 public class InternalAuthenticationMechanismTest {
 
@@ -147,6 +149,26 @@ public class InternalAuthenticationMechanismTest {
 
     assertThat(result.await().indefinitely()).isNull();
     verify(tokenBroker).verify("invalidToken");
+    verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = AuthenticationType.class,
+      names = {"INTERNAL", "MIXED"})
+  public void testAuthenticatePropagatesServiceUnavailable(AuthenticationType type) {
+    when(configuration.type()).thenReturn(type);
+    when(routingContext.request()).thenReturn(mock(io.vertx.core.http.HttpServerRequest.class));
+    when(routingContext.request().getHeader("Authorization")).thenReturn("Bearer someToken");
+
+    ServiceUnavailableException cause =
+        new ServiceUnavailableException("Unable to load principal secrets");
+    when(tokenBroker.verify("someToken")).thenThrow(cause);
+
+    Uni<SecurityIdentity> result = mechanism.authenticate(routingContext, identityProviderManager);
+
+    assertThatThrownBy(() -> result.await().indefinitely()).isSameAs(cause);
+    verify(tokenBroker).verify("someToken");
     verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
   }
 
