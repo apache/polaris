@@ -224,7 +224,7 @@ Spark will lose access to the table:
 ```
 INSERT INTO quickstart_table VALUES (1, 'some data');
 
-org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
+org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Authorization denied
 ```
 
 ### Connecting with Trino
@@ -272,7 +272,7 @@ Trino will lose access to the table:
 ```sql
 SELECT * FROM iceberg.quickstart_schema.quickstart_table;
 
-org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
+org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Authorization denied
 ```
 
 ### Connecting with PyIceberg

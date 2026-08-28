@@ -25,9 +25,13 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
+  Logger LOGGER = LoggerFactory.getLogger(PolarisAuthorizer.class);
+
   /**
    * Resolve authorizer-specific inputs before authorization.
    *
@@ -62,8 +66,8 @@ public interface PolarisAuthorizer {
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     AuthorizationDecision decision = authorize(authzState, request);
     if (!decision.isAllowed()) {
-      String message = decision.getMessage().orElse("Authorization denied");
-      throw new ForbiddenException("%s", message);
+      decision.getMessage().ifPresent(message -> LOGGER.debug("Authorization denied: {}", message));
+      throw new ForbiddenException("Authorization denied");
     }
   }
 

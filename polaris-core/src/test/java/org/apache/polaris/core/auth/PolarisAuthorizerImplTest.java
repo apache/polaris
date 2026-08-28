@@ -385,9 +385,7 @@ public class PolarisAuthorizerImplTest {
                     null))
         .isInstanceOf(ForbiddenException.class)
         // Client-facing message is generic (no missing privilege details).
-        .hasMessage(
-            "Principal 'alice' with activated PrincipalRoles '[reader]'"
-                + " and activated grants via '[]' is not authorized for op CREATE_TABLE_DIRECT")
+        .hasMessage("Authorization denied")
         .hasMessageNotContaining("TABLE_CREATE")
         .hasMessageNotContaining("NAMESPACE");
     // Server-side log contains the detailed missing privilege info (verified via log capture
@@ -412,9 +410,7 @@ public class PolarisAuthorizerImplTest {
                     null))
         .isInstanceOf(ForbiddenException.class)
         // Generic client message.
-        .hasMessage(
-            "Principal 'alice' with activated PrincipalRoles '[reader]'"
-                + " and activated grants via '[]' is not authorized for op CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION")
+        .hasMessage("Authorization denied")
         // No privilege details leaked to client.
         .hasMessageNotContaining("TABLE_CREATE")
         .hasMessageNotContaining("TABLE_WRITE_DATA");
@@ -439,9 +435,7 @@ public class PolarisAuthorizerImplTest {
                     List.of(dstNamespace)))
         .isInstanceOf(ForbiddenException.class)
         // Generic client message.
-        .hasMessage(
-            "Principal 'alice' with activated PrincipalRoles '[reader]'"
-                + " and activated grants via '[]' is not authorized for op RENAME_TABLE")
+        .hasMessage("Authorization denied")
         // No secondary details leaked to client.
         .hasMessageNotContaining("TABLE_DROP")
         .hasMessageNotContaining("TABLE_LIST")

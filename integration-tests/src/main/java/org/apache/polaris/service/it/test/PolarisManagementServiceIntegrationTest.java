@@ -1028,7 +1028,7 @@ public class PolarisManagementServiceIntegrationTest {
           .isNotNull()
           .extracting(ErrorResponse::message)
           .asString()
-          .contains("must rotate credentials first");
+          .isEqualTo("Authorization denied");
     }
 
     // Now try to rotate using the principal's token.
