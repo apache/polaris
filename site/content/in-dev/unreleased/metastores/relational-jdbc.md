@@ -78,6 +78,16 @@ By default, Polaris stores its tables in a schema named `POLARIS_SCHEMA`. The sc
 
 The schema must exist before Polaris connects: Polaris does not issue `CREATE SCHEMA`, since that is a privileged operation best performed by a database administrator. Setting up a fresh deployment is therefore a two-step procedure: a DBA first creates the schema (for example `CREATE SCHEMA polaris_schema;`), then the [Admin Tool]({{% ref "../admin-tool" %}}) bootstraps the realm using a datasource configured with the same schema. The database user Polaris runs with needs `USAGE` (and, for bootstrap, `CREATE`) privileges on that schema only.
 
+{{< alert important >}}
+**Upgrading an existing deployment:** if your JDBC URL already sets `currentSchema`, check it
+before upgrading. Earlier versions qualified every query with `POLARIS_SCHEMA`, so the setting had
+no effect on where Polaris read and wrote. It is now what selects the schema, and a value in the
+URL takes precedence over the shipped default — so an upgrade can point Polaris away from its
+existing tables, and a subsequent bootstrap would create a second, empty set of tables in the other
+schema. Either remove the setting from the URL, or point it at the schema that already holds your
+Polaris tables. Deployments that never set `currentSchema` are unaffected.
+{{< /alert >}}
+
 ## Bootstrapping Polaris
 
 Before using Polaris with the Relational JDBC backend, you must bootstrap the metastore to create the necessary schema and initial realm. This is done using the [Admin Tool]({{% ref "../admin-tool" %}}).

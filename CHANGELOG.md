@@ -62,7 +62,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   must create the schema (by default `CREATE SCHEMA polaris_schema;` on PostgreSQL) before running
   the admin tool's `bootstrap` command. Existing deployments are unaffected — their schema already
   exists, and the shipped `currentSchema` default (`POLARIS_SCHEMA`) preserves the previous
-  behavior on upgrade.
+  behavior on upgrade — with one exception:
+
+  If your JDBC URL already sets `currentSchema`, check it before upgrading. Polaris previously
+  qualified every query with `POLARIS_SCHEMA`, so the setting was ignored; it now selects the
+  schema Polaris reads and writes, and the JDBC driver gives a value in the URL precedence over
+  the shipped default. An upgrade would otherwise point Polaris away from its existing tables,
+  and a subsequent `bootstrap` would create a second, empty set of tables in the other schema.
+  Either remove the setting from the URL, or point it at the schema that already holds your
+  Polaris tables.
 
 ### New Features
 
