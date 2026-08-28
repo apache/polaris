@@ -305,7 +305,7 @@ public class SemanticModelCatalog {
    */
   private void resolveAndValidateSources(JsonNode semanticModel) {
     if (!semanticModel.isArray()) {
-      return;
+      throw new BadRequestException("Field 'semantic_model' must be a JSON array");
     }
 
     for (int modelIdx = 0; modelIdx < semanticModel.size(); modelIdx++) {
