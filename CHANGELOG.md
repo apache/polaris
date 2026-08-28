@@ -115,11 +115,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   Such a location parses to an empty path and previously triggered a `StringIndexOutOfBoundsException`
   while building the access-boundary rules; GCS now handles it like the AWS integration.
 - Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
-
 - Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its
   catalog path disappears after resolution and before the deletion is persisted.
 - Return HTTP 404 instead of 500 when a policy or its catalog path disappears after resolution and before deletion.
-
 - Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
@@ -129,6 +127,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   policy, and namespace-privilege entries. This preserves namespace levels that contain dots during
   `setup apply`; apply remains compatible with existing dot-delimited configurations. Older CLI
   versions cannot apply the new export format.
+- Helm chart: when tracing is disabled (default), the `OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS` environment variable is now set to `io.opentelemetry.contrib.gcp.resource.GCPResourceProvider`, preventing the OpenTelemetry GCP resource detector from blocking Polaris startup for ~135s in environments where `metadata.google.internal` resolves to a silently-dropping address (local Kubernetes, Docker, etc.).
 - Python CLI `setup export` now writes each catalog's `policies` as a list of
   `{name, namespace, ...}` entries instead of the previous name-keyed mapping, preserving policies
   with the same name in different namespaces. The new export format cannot be applied by older CLI
