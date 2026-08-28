@@ -34,6 +34,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Breaking changes
 
 - Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.
+- OPA authorization inputs now reflect the intent-based authorization SPI more directly. Resource
+  targets and parent paths no longer include Polaris's internal synthetic `ROOT` container. For
+  example, catalog targets now have empty parent paths, root-scoped operations such as
+  `LIST_CATALOGS` no longer include a synthetic `ROOT` target. Existing Rego policies that depend
+  on the previous synthetic root target or root parent path may need to be updated.
+- Authorization requests with multiple intents are now evaluated one intent at a time. OPA
+  deployments will observe this as separate OPA queries per intent, so existing Rego policies that
+  depend on the previous combined-intent input shape may need to be updated.
 
 ### New Features
 
