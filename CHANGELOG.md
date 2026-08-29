@@ -95,7 +95,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `LIST_PAGINATION_MAX_PAGE_SIZE` (default `100`, overridable per catalog via
   `polaris.config.list-pagination-max-page-size`). A request for a larger page is reduced to the
   maximum rather than rejected, since the Iceberg REST specification treats the requested page size
-  as an upper bound.
+  as an upper bound. For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED`
+  is true, since with pagination disabled the requested page size is ignored and the full result set
+  is returned; for federated catalogs it always applies, because Polaris paginates those listings
+  itself.
 
 ### Deprecations
 
