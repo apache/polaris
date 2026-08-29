@@ -134,9 +134,11 @@ Once a tenant is enabled, you can optionally advertise the authorization server 
 
 ```properties
 quarkus.oidc.resource-metadata.enabled=true
-quarkus.oidc.resource-metadata.resource=https://catalog.example.com
+quarkus.oidc.resource-metadata.resource=https://catalog.example.com/api/catalog
 quarkus.oidc.resource-metadata.authorization-server=https://auth.example.com/realms/polaris
 ```
+
+This applies to the default single-tenant configuration. When using named OIDC tenants, resource metadata is configured per-tenant under `quarkus.oidc.<tenant-name>.resource-metadata.*`.
 
 Alternatively, it is possible to use multiple named tenants. Each OIDC-named tenant is then configured with standard Quarkus settings: 
 

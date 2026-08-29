@@ -40,6 +40,11 @@ class OAuthProtectedResourceMetadataTest {
 
   static final String AUTH_SERVER_URL = "https://auth.example.com/realms/polaris";
 
+  // The catalog resource URI that clients would use to derive the well-known path.
+  // RFC 9728: GET /.well-known/oauth-protected-resource<path> where <path> is the
+  // path component of the resource URI.
+  static final String CATALOG_RESOURCE = "https://catalog.example.com/api/catalog";
+
   public static class ResourceMetadataProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
@@ -58,15 +63,19 @@ class OAuthProtectedResourceMetadataTest {
           // and ResourceMetadataHandler never registers the route.
           Map.entry("quarkus.oidc.jwks.resolve-early", "false"),
           Map.entry("quarkus.oidc.resource-metadata.enabled", "true"),
+          Map.entry("quarkus.oidc.resource-metadata.resource", CATALOG_RESOURCE),
           Map.entry("quarkus.oidc.resource-metadata.authorization-server", AUTH_SERVER_URL));
     }
   }
 
   @Test
   void wellKnownEndpointAdvertisesAuthorizationServer() {
+    // RFC 9728 section 4: the well-known URI is formed by inserting
+    // /.well-known/oauth-protected-resource before the path component of the resource URI.
+    // A client starting from CATALOG_RESOURCE derives this path automatically.
     String body =
         given()
-            .get("/.well-known/oauth-protected-resource")
+            .get("/.well-known/oauth-protected-resource/api/catalog")
             .then()
             .statusCode(200)
             .extract()
@@ -74,7 +83,7 @@ class OAuthProtectedResourceMetadataTest {
             .asString();
 
     JsonPath json = JsonPath.from(body);
-    assertThat(json.getString("resource")).isNotNull();
+    assertThat(json.getString("resource")).isEqualTo(CATALOG_RESOURCE);
     assertThat(json.getList("authorization_servers", String.class))
         .containsExactly(AUTH_SERVER_URL);
   }
