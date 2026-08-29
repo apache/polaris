@@ -21,6 +21,7 @@ package org.apache.polaris.core.auth;
 import java.security.Principal;
 import java.util.Set;
 import org.apache.polaris.core.collection.AttributeMap;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /** Represents a {@link Principal} in the Polaris system. */
@@ -44,7 +45,7 @@ public interface PolarisPrincipal extends Principal {
   }
 
   /** Returns the principal attributes. */
-  AttributeMap getAttributes();
+  ImmutableAttributeMap getAttributes();
 
   /**
    * Returns the set of activated principal role names.
