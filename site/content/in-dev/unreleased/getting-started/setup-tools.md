@@ -40,7 +40,7 @@ If you already have an Apache Polaris environment, you can export its current st
 polaris setup export --client-id ${CLIENT_ID} --client-secret ${CLIENT_SECRET} > polaris_bootstrap.yaml
 ```
 
-This generates a readable YAML file containing principals, principal roles, catalogs, and their associated namespaces and catalog roles. User-defined properties on principals and catalog roles are preserved in the exported configuration.
+This generates a readable YAML file containing principals, principal roles, catalogs, and their associated namespaces and catalog roles. User-defined properties on principals, principal roles, and catalog roles are preserved in the exported configuration. Namespace paths are exported as lists of levels so that a dot within one level is distinct from a nested namespace. `setup apply` also accepts the legacy dot-delimited form, but use level lists when a namespace level contains a dot.
 
 ## Applying a Configuration
 
@@ -61,6 +61,9 @@ principals:
 
 principal_roles:
   - quickstart_user_role
+  - name: analytics_role
+    properties:
+      owner: data-platform
 
 # ==================================
 #     Catalog-Specific Entities
@@ -101,6 +104,6 @@ polaris setup apply --client-id ${CLIENT_ID} --client-secret ${CLIENT_SECRET} si
 The current implementation focuses on simplifying initial setup, with a few limitations to be aware of:
 
 - **Non-declarative updates**: The command is create-only. If an entity already exists, it will be skipped rather than updated. There is no state reconciliation yet.
+- **Namespace arguments outside setup**: Namespace level lists are supported only in setup configurations. Legacy setup strings and other CLI commands interpret dots as level separators, so they cannot address a single namespace level containing a dot.
 - **Policy attachment export**: Policy attachments are not included in `setup export` due to performance considerations. However, they can still be defined in YAML and applied during `setup apply`.
 - **External catalog testing**: Support for external catalogs (e.g., Hive Metastore) exists, but full end-to-end testing has not yet been completed. It is recommended to validate configurations in a non-production environment first.
-

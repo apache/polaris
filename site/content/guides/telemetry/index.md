@@ -19,6 +19,7 @@
 #
 linkTitle: "Telemetry: Prometheus and Jaeger"
 title: "Getting Started with Apache Polaris, Prometheus and Jaeger"
+description: "Includes Prometheus and Jaeger to collect metrics and traces from Polaris; automatically creates a demo catalog."
 weight: 100
 tags:
    - telemetry

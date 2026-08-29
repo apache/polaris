@@ -61,7 +61,7 @@ class JdbcBootstrapUtilsTest {
 
     // Act & Assert
     assertEquals(
-        5,
+        6,
         JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
             DatabaseType.POSTGRES, currentVersion, -1, hasRealms));
     assertEquals(
@@ -97,10 +97,12 @@ class JdbcBootstrapUtilsTest {
     "3, true, 3",
     "4, true, 4",
     "5, true, 5",
-    "2, false, 5",
-    "3, false, 5",
-    "4, false, 5",
-    "5, false, 5"
+    "6, true, 6",
+    "2, false, 6",
+    "3, false, 6",
+    "4, false, 6",
+    "5, false, 6",
+    "6, false, 6"
   })
   void getVersion_whenExistingDbAndAutoDetect(
       int currentVersion, boolean hasRealms, int expectedVersion) {

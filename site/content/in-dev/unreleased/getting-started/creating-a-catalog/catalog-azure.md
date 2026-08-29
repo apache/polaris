@@ -23,7 +23,7 @@ type: docs
 weight: 300
 ---
 
-For the `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) there are few `azure` only options
+For the `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) there are a few `azure`-only options
 
 ```text
 --storage-type azure

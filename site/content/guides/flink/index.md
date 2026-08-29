@@ -19,6 +19,7 @@
 #
 linkTitle: "Client: Apache Flink"
 title: "Getting Started with Apache Polaris and Apache Flink"
+description: "Uses Apache Flink as the stream processing engine and RustFS for S3-compatible object storage, with Polaris as the Iceberg REST Catalog."
 tags:
   - flink
 weight: 400
