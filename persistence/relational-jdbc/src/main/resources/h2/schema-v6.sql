@@ -22,9 +22,6 @@
 --    `idx_locations` index. H2 already indexes (realm_id, catalog_id, location_without_scheme), so
 --    the index definition here is unchanged.
 
-CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
-SET SCHEMA POLARIS_SCHEMA;
-
 CREATE TABLE IF NOT EXISTS version (
     version_key VARCHAR PRIMARY KEY,
     version_value INTEGER NOT NULL

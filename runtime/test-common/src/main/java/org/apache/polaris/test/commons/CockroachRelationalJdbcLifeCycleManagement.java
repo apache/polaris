@@ -22,6 +22,9 @@ import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpec
 
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Map;
 import org.testcontainers.cockroachdb.CockroachContainer;
 
@@ -53,6 +56,9 @@ public class CockroachRelationalJdbcLifeCycleManagement
 
     context.containerNetworkId().ifPresent(cockroach::withNetworkMode);
     cockroach.start();
+    // Polaris does not create its schema; create it here (the DBA step) so the datasource's
+    // configured currentSchema (POLARIS_SCHEMA by default) resolves.
+    createPolarisSchema();
 
     // CockroachDB uses PostgreSQL JDBC driver and wire protocol
     // Explicitly configure database type as cockroachdb for proper identification
@@ -73,6 +79,15 @@ public class CockroachRelationalJdbcLifeCycleManagement
         cockroach.getPassword(),
         "quarkus.datasource.jdbc.initial-size",
         "10");
+  }
+
+  private void createPolarisSchema() {
+    try (Connection connection = cockroach.createConnection("");
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA");
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to create the Polaris schema", e);
+    }
   }
 
   @Override

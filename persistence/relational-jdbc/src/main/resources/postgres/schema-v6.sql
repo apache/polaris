@@ -22,9 +22,6 @@
 --    definition let the optimized sibling check (OPTIMIZED_SIBLING_CHECK) use only the realm_id
 --    prefix, degrading CREATE TABLE / CREATE NAMESPACE to a realm-wide scan.
 
-CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
-SET search_path TO POLARIS_SCHEMA;
-
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,
     version_value INTEGER NOT NULL
