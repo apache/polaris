@@ -1236,6 +1236,12 @@ For general information on persistence in Polaris, see the &lt;a href="https://p
  &lt;td&gt;The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta).&lt;/td&gt;
  &lt;/tr&gt;
  &lt;tr&gt;
+ &lt;td&gt;persistence.relationalJdbc.additionalProperties&lt;/td&gt;
+ &lt;td&gt;object&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;{&amp;quot;currentSchema&amp;quot;:&amp;quot;POLARIS_SCHEMA&amp;quot;}&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Additional JDBC connection properties passed to the datasource driver as &lt;code&gt;quarkus.datasource.jdbc.additional-jdbc-properties.&amp;lt;name&amp;gt;&lt;/code&gt;. The default sets &lt;code&gt;currentSchema&lt;/code&gt;, which on PostgreSQL and CockroachDB selects the database schema (namespace) holding the Polaris tables; that schema must exist before Polaris connects (creating it is a DBA task) and is passed to the driver unquoted, so the database applies its usual identifier case folding. Note that &lt;code&gt;currentSchema&lt;/code&gt; is PostgreSQL/CockroachDB-specific and is silently ignored by other drivers such as MySQL, where the schema is instead the database named in the JDBC URL. Add further entries to customize other driver properties.&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
  &lt;td&gt;persistence.relationalJdbc.secret.name&lt;/td&gt;
  &lt;td&gt;string&lt;/td&gt;
  &lt;td&gt;&lt;code&gt;&amp;quot;&amp;quot;&lt;/code&gt;&lt;/td&gt;

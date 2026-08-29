@@ -34,6 +34,10 @@ services:
       - type: bind
         source: ${ASSETS_PATH}/postgres/postgresql.conf
         target: /etc/postgresql/postgresql.conf
+      # Create the Polaris schema on first init: Polaris does not create it itself
+      - type: bind
+        source: ${ASSETS_PATH}/postgres/create-polaris-schema.sql
+        target: /docker-entrypoint-initdb.d/create-polaris-schema.sql
     command:
       - "postgres"
       - "-c"
