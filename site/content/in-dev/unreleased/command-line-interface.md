@@ -172,6 +172,7 @@ options:
 Command Options:
   --type {internal,external}                                           The type of catalog [INTERNAL, EXTERNAL]
   --storage-type {s3,azure,gcs,file}                                   (Required) The storage type [S3, AZURE, GCS, FILE]
+  --storage-name STORAGE_NAME                                          An optional name referencing a server-side storage configuration
   --default-base-location DEFAULT_BASE_LOCATION                        (Required) Default base location for the catalog
   --allowed-location ALLOWED_LOCATION                                  An allowed location for files tracked by the catalog
   --property PROPERTY                                                  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once. Do not put passwords, tokens, access keys, or other secrets into the client-visible catalog properties.
