@@ -258,7 +258,7 @@ class CatalogsCommand(Command):
                 raise CliError(
                     "Storage type 'azure' supports the options"
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)},"
-                    f" {Argument.to_flag_name(Arguments.MULTI_TENANT_APP_NAME)}"
+                    f" {Argument.to_flag_name(Arguments.MULTI_TENANT_APP_NAME)},"
                     f" {Argument.to_flag_name(Arguments.CONSENT_URL)}, and"
                     f" {Argument.to_flag_name(Arguments.STORAGE_NAME)}"
                 )
@@ -531,7 +531,7 @@ class CatalogsCommand(Command):
                 self._has_aws_storage_info()
                 or self._has_azure_storage_info()
                 or self._has_gcs_storage_info()
-                or self.allowed_locations
+                or self.allowed_locations if not None
                 or self.storage_name
             ):
                 # We must first reconstitute local storage-config related settings from the existing
