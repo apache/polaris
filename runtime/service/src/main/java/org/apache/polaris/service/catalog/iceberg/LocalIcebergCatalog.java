@@ -697,7 +697,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     if (!realmConfig.getConfig(
         BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
-      validateNamespaceLocation(entity, resolvedParent);
+      validateNamespaceUsesDefaultLocation(entity, resolvedParent);
     }
     EntityResult result =
         getMetaStoreManager()
@@ -894,7 +894,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     if (!realmConfig.getConfig(
         BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
       if (properties.containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)) {
-        validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
+        validateNamespaceUsesDefaultLocation(NamespaceEntity.of(entity), resolvedEntities);
       }
     }
 
@@ -1434,8 +1434,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  /** Checks whether the location of a namespace is valid given its parent */
-  private void validateNamespaceLocation(
+  /** Checks that a namespace sits at the default location derived from its parent. */
+  private void validateNamespaceUsesDefaultLocation(
       NamespaceEntity namespace, PolarisResolvedPathWrapper resolvedParent) {
     StorageLocation namespaceLocation =
         StorageLocation.of(

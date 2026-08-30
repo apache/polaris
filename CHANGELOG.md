@@ -113,7 +113,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   loading the grants held by a principal, principal role or catalog role scans every grant record
   in the realm, because the `grant_records` primary key continues with the securable columns after
   `realm_id`. Existing CockroachDB deployments need a manual index creation — see Upgrade notes.
-- Creating a namespace without an explicit location no longer fails with HTTP 400 when the catalog's `default-base-location` is nested under an allowed location rather than being equal to one. The derived location is now validated against the location it is derived from.
+- Creating a namespace without an explicit location no longer fails with HTTP 400 when the
+  catalog's `default-base-location` sits inside an allowed location instead of being one of
+  them. For example, with allowed location `s3://b1` and `default-base-location` `s3://b1/d1`,
+  `CREATE NAMESPACE ns` places the namespace at `s3://b1/d1/ns`, but the check expected it
+  directly under an allowed location, at `s3://b1/ns`, and rejected it as a custom location even
+  though the request asked for none. The namespace location is now compared against the
+  catalog's `default-base-location`, which is what it is derived from.
 
 ### Commits
 
