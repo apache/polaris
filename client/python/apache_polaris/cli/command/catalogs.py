@@ -531,8 +531,8 @@ class CatalogsCommand(Command):
                 self._has_aws_storage_info()
                 or self._has_azure_storage_info()
                 or self._has_gcs_storage_info()
-                or self.allowed_locations if not None
-                or self.storage_name
+                or self.allowed_locations
+                or self.storage_name is not None
             ):
                 # We must first reconstitute local storage-config related settings from the existing
                 # catalog to properly construct the complete updated storage-config
