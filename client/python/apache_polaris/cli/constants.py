@@ -283,7 +283,8 @@ class Hints:
     )
     PAGE_SIZE = (
         "Upper bound on the number of entries returned per API request where pagination is supported."
-        " If not set, fetches all results in a single API request"
+        " Requires the server-side LIST_PAGINATION_ENABLED feature flag."
+        " If not set, fetches all results in a single API request."
     )
 
     # Entities Hints
