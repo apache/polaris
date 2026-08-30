@@ -31,6 +31,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- Token verification now loads principal secrets once per Bearer-token request (previously signature-only validation). High-traffic deployments should expect additional read load on the principal-secrets table.
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
   has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
