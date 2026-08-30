@@ -96,26 +96,28 @@ public class JWTBroker implements TokenBroker {
   private VerifiedToken verifyInternal(String token) {
     // Only JWT cryptographic/claim failures are mapped to NotAuthorizedException. Persistence
     // failures while loading secrets must surface as service unavailable, not as bad credentials.
+    // The token construction is inside the try as well: a well-signed token that misses a
+    // mandatory claim (subject, principalId, clientId, scope) must not surface as a raw NPE.
     final DecodedJWT decodedJWT;
+    final InternalPolarisToken internalToken;
     try {
       decodedJWT = verifier.verify(token);
+      internalToken =
+          InternalPolarisToken.of(
+              decodedJWT.getSubject(),
+              decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
+              decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString(),
+              decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString());
     } catch (Exception e) {
       throw (NotAuthorizedException)
           new NotAuthorizedException("Failed to verify the token").initCause(e);
     }
-    String clientId = decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString();
+    String clientId = internalToken.getClientId();
     String credentialsVersion = decodedJWT.getClaim(CLAIM_KEY_CREDENTIALS_VERSION).asString();
     // The verify path only needs the generation check to run; the binding outcome matters only on
     // the exchange path, which enforces it via the returned flag.
     boolean boundToCredentialsGeneration = validateCredentialsVersion(clientId, credentialsVersion);
-    return new VerifiedToken(
-        InternalPolarisToken.of(
-            decodedJWT.getSubject(),
-            decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
-            clientId,
-            decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString()),
-        boundToCredentialsGeneration,
-        credentialsVersion);
+    return new VerifiedToken(internalToken, boundToCredentialsGeneration, credentialsVersion);
   }
 
   /**
