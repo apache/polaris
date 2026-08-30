@@ -71,6 +71,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   and a subsequent `bootstrap` would create a second, empty set of tables in the other schema.
   Either remove the setting from the URL, or point it at the schema that already holds your
   Polaris tables.
+- Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. Clients that keep exchanging long-lived tokens (including during a rolling upgrade, where a not-yet-restarted node may still mint claim-less tokens) will see the exchange rejected with `invalid_grant` once all servers run the new version.
 
 ### New Features
 
@@ -235,7 +236,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - OPA authorizer now includes the realm identifier in the authorization context sent to OPA (`input.context.realm`). This ensures OPA policies can enforce tenant isolation across realms, preventing potential collisions if identical principal or resource names exist in different realms.
 - Management API delete operations for principals, principal roles, catalog roles, and catalogs now return error messages that match the actual failure reason (for example, concurrent modification no longer reports a misleading protected-entity message).
 - Python CLI `setup apply` now defaults to an `INTERNAL` catalog type when the `type` field is left blank or null in the setup config, instead of crashing with `AttributeError`
-- Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the token). Claim-less tokens cannot be exchanged; secrets-load failures during verify return service unavailable.
+- Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the token). Secrets-load failures during verify return service unavailable.
 
 ## [1.6.0]
 

@@ -210,7 +210,7 @@ public class JWTBrokerCredentialsBindingTest {
                 .asString())
         .isEqualTo(originalClaim)
         .isNotEqualTo(secrets.getCredentialsVersion());
-    // The secrets loaded during verify are reused for re-minting: no second metastore read.
+    // The secrets are loaded once during verify; the exchange does not read the metastore again.
     Mockito.verify(metaStore, Mockito.times(1)).loadPrincipalSecrets(callContext, CLIENT_ID);
   }
 
@@ -224,7 +224,7 @@ public class JWTBrokerCredentialsBindingTest {
             TokenRequestValidator.TOKEN_EXCHANGE,
             SCOPE,
             TokenType.ACCESS_TOKEN);
-    assertThat(exchanged.getError()).isEqualTo(OAuthError.invalid_client);
+    assertThat(exchanged.getError()).isEqualTo(OAuthError.invalid_grant);
   }
 
   @Test
