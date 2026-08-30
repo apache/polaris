@@ -156,6 +156,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   UPDATE polaris_schema.version SET version_value = 5 WHERE version_key = 'version';
   ```
   See the Relational JDBC metastore documentation for details.
+- New privilege `CATALOG_READ_CONFIG` (authorizable operation `GET_CATALOG_CONFIG`) is available for
+  the Iceberg REST `GET /v1/config` endpoint. Endpoint hard-gating is **off by default** behind
+  `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"`. Grant `CATALOG_READ_CONFIG` (or a
+  catalog-level content privilege that subsumes it) before enabling the flag. Ranger currently maps
+  both config operations to the existing `catalog-properties-read` access type — do not enable the
+  flag for Ranger until a dedicated `catalog-config-read` access type exists (or accept that coarse
+  mapping). The default is expected to flip to `true` and the flag to be removed in subsequent
+  releases. Table- or namespace-scoped grants alone do not satisfy the catalog-path check used for
+  this privilege once enforcement is on.
 
 ### Breaking changes
 
@@ -211,7 +220,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Deprecated `ALLOW_EXTERNAL_TABLE_LOCATION`. Use `ALLOW_EXTERNAL_METADATA_FILE_LOCATION` for external metadata file locations, including catalog config `polaris.config.allow.external.metadata.file.location`.
 
 ### Fixes
-
+- Iceberg REST `GET /v1/config` no longer discloses catalog properties (`defaults`) without the
+  `CATALOG_READ_PROPERTIES` privilege (operation `GET_CATALOG_CONFIG_PROPERTIES`), matching
+  management-plane `getCatalog`. Callers without that privilege still receive `prefix`, endpoints,
+  and other bootstrap fields. Previously any authenticated principal who knew a warehouse name
+  could read client-visible catalog properties.
 - The NoSQL persistence commit log (`Commits.commitLog`) no longer stops early when a commit's recent-ancestor tail is shorter than the internal fetch page size. With a `polaris.persistence.reference-previous-head-count` smaller than the page size, the natural-order commit log previously truncated at the first short tail because trailing null entries in the fetch page were treated as end-of-history, which could also drop still-referenced objects during maintenance.
 - Python CLI REPL now shows a clear "Syntax error" message for malformed input instead of a generic "unexpected error" message.
 - Python CLI `setup apply` now exits with an error after any setup operation fails, while still attempting the remaining operations. Previously, individual failures were logged but the command reported success and exited with status 0.

@@ -155,9 +155,10 @@ keys, or other secrets in table or view properties.
 | Privilege | Description |
 | -----------------------| ----------- |
 | CATALOG_MANAGE_ACCESS | Includes the ability to grant or revoke privileges on objects in a catalog to catalog roles, and the ability to grant or revoke catalog roles to or from principal roles. |
-| CATALOG_MANAGE_CONTENT | Enables full management of content for the catalog. This privilege encompasses the following privileges:<ul><li>CATALOG_MANAGE_METADATA</li><li>TABLE_FULL_METADATA</li><li>NAMESPACE_FULL_METADATA</li><li>VIEW_FULL_METADATA</li><li>TABLE_WRITE_DATA</li><li>TABLE_READ_DATA</li><li>CATALOG_READ_PROPERTIES</li><li>CATALOG_WRITE_PROPERTIES</li></ul> |
+| CATALOG_MANAGE_CONTENT | Enables full management of content for the catalog. This privilege encompasses the following privileges:<ul><li>CATALOG_MANAGE_METADATA</li><li>TABLE_FULL_METADATA</li><li>NAMESPACE_FULL_METADATA</li><li>VIEW_FULL_METADATA</li><li>TABLE_WRITE_DATA</li><li>TABLE_READ_DATA</li><li>CATALOG_READ_PROPERTIES</li><li>CATALOG_WRITE_PROPERTIES</li><li>CATALOG_READ_CONFIG</li></ul> |
 | CATALOG_MANAGE_METADATA | Enables full management of the catalog, catalog roles, namespaces, and tables.  |
-| CATALOG_READ_PROPERTIES | Enables listing catalogs and reading properties of the catalog. |
+| CATALOG_READ_CONFIG | Enables calling the Iceberg REST catalog configuration endpoint (`GET /v1/config`) when `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"` is true (default false). This privilege is also implied by any catalog-content privilege (namespace, table, or view privileges) granted at catalog level, so principals that can use the catalog through the REST API can still initialize REST clients once enforcement is enabled. Ranger currently maps both config operations to `catalog-properties-read`; do not enable the enforcement flag for Ranger until a dedicated `catalog-config-read` access type exists (or accept that coarse mapping). |
+| CATALOG_READ_PROPERTIES | Enables listing catalogs and reading properties of the catalog. Catalog properties are only included in `GET /v1/config` responses for principals holding this privilege. |
 | CATALOG_WRITE_PROPERTIES | Enables configuring catalog properties. |
 | CATALOG_ATTACH_POLICY | Enables attaching policy to a catalog. |
 | CATALOG_DETACH_POLICY | Enables detaching policy from a catalog. |

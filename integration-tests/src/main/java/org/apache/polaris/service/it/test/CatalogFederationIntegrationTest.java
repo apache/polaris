@@ -101,6 +101,14 @@ public class CatalogFederationIntegrationTest {
           .setPrivilege(CatalogPrivilege.CATALOG_MANAGE_CONTENT)
           .build();
 
+  // Granted separately from defaultCatalogGrant: RBAC tests revoke defaultCatalogGrant, and the
+  // Spark client still needs GET /v1/config to bootstrap against the federated catalog.
+  private static final CatalogGrant catalogReadConfigGrant =
+      CatalogGrant.builder()
+          .setType(GrantResource.TypeEnum.CATALOG)
+          .setPrivilege(CatalogPrivilege.CATALOG_READ_CONFIG)
+          .build();
+
   @TempDir static java.nio.file.Path warehouseDir;
 
   private PrincipalWithCredentials newUserCredentials;
@@ -228,6 +236,7 @@ public class CatalogFederationIntegrationTest {
     managementApi.createCatalogRole(federatedCatalogName, federatedCatalogRoleName);
 
     managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, catalogReadConfigGrant);
     CatalogRole externalCatalogAdminRole =
         managementApi.getCatalogRole(federatedCatalogName, federatedCatalogRoleName);
     managementApi.grantCatalogRoleToPrincipalRole(
