@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
@@ -56,6 +57,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
@@ -115,12 +117,29 @@ public class ExceptionMapperTest {
   }
 
   @Test
-  public void testServiceUnavailableWithRetryAfter() {
+  public void testCloudExceptionWithNullMessageDoesNotNpe() {
+    // Regression: containsAnyAccessDeniedHint used to dereference a null message. A cloud
+    // exception with a null message reached the unguarded call in mapCloudExceptionToResponseCode,
+    // NPE'd, and that NPE escaped toResponse -> generic 500 with no Iceberg envelope.
+    assertThat(IcebergExceptionMapper.containsAnyAccessDeniedHint(null)).isFalse();
+
+    StorageException nullMessageCloudException = new StorageException(0, null);
+    assertThat(nullMessageCloudException.getMessage()).isNull();
+
+    Optional<Integer> code =
+        IcebergExceptionMapper.mapCloudExceptionToResponseCode(nullMessageCloudException);
+    assertThat(code).contains(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"3, 3", "0, 0", "-1, 0"})
+  public void testServiceUnavailableRetryAfter(int retryAfterSeconds, String expectedHeader) {
     PolarisExceptionMapper mapper = new PolarisExceptionMapper();
     Response response =
-        mapper.toResponse(new PolarisServiceUnavailableException(3, "transient conflict"));
+        mapper.toResponse(
+            new PolarisServiceUnavailableException(retryAfterSeconds, "transient conflict"));
     assertThat(response.getStatus()).isEqualTo(503);
-    assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo("3");
+    assertThat(response.getHeaderString(HttpHeaders.RETRY_AFTER)).isEqualTo(expectedHeader);
   }
 
   @Test

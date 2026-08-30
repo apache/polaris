@@ -274,7 +274,7 @@ When enabled, a managed location generated for a table or view created without a
 
 ##### `polaris.features."DROP_WITH_PURGE_ENABLED"`
 
-If set to true, allows tables to be dropped with the purge parameter set to true.
+If set to true, allows Iceberg tables to be dropped with the purge parameter set to true.
 
 - **Type:** `Boolean`
 - **Default:** `false`

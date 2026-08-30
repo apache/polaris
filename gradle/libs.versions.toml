@@ -24,9 +24,9 @@ iceberg = "1.11.0" # Ensure to update the iceberg version in regtests and gettin
 immutables = "2.12.2"
 jmh = "1.37"
 picocli = "4.7.7"
-quarkus = "3.38.3"
+quarkus = "3.39.1"
 ranger = "2.9.0"
-ranger-graalvm = "25.2.4"
+ranger-graalvm = "25.3.4.1"
 scala212 = "2.12.21"
 scala213 = "2.13.18"
 spark35 = "3.5.6"
@@ -56,7 +56,7 @@ checkstyle = { module = "com.puppycrawl.tools:checkstyle", version.ref = "checks
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.50.0" } # required by the polaris-java plugin
-google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.95.0" }
+google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.96.0" }
 floci-testcontainers = { module = "io.floci:testcontainers-floci", version = "2.15.0" }
 graalvm-js-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "ranger-graalvm" }
 graalvm-polyglot-js = { module = "org.graalvm.polyglot:js", version.ref = "ranger-graalvm" }

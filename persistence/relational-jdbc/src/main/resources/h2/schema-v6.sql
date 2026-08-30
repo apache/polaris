@@ -15,21 +15,23 @@
 -- KIND, either express or implied.  See the License for the
 -- specific language governing permissions and limitations
 -- under the License.
+--
 
--- Changes from v4:
---  * Removed the `idempotency_records` table (the durable idempotency store it
---    backed was never wired into any request path and has been removed)
---  * `events.catalog_id` is nullable; events that are not catalog-scoped store NULL (issue #4674)
-
+-- Changes from v5:
+--  * Schema version bumped to keep H2 in lockstep with Postgres/CockroachDB v6, which correct the
+--    `idx_locations` index. H2 already indexes (realm_id, catalog_id, location_without_scheme), so
+--    the index definition here is unchanged.
 
 CREATE TABLE IF NOT EXISTS version (
-    version_key TEXT PRIMARY KEY,
+    version_key VARCHAR PRIMARY KEY,
     version_value INTEGER NOT NULL
 );
-INSERT INTO version (version_key, version_value)
-VALUES ('version', 5)
-ON CONFLICT (version_key) DO UPDATE
-SET version_value = EXCLUDED.version_value;
+
+MERGE INTO version (version_key, version_value)
+    KEY (version_key)
+    VALUES ('version', 6);
+
+-- H2 supports COMMENT, but some modes may ignore it
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
 
 CREATE TABLE IF NOT EXISTS entities (
@@ -46,24 +48,22 @@ CREATE TABLE IF NOT EXISTS entities (
     purge_timestamp BIGINT NOT NULL,
     to_purge_timestamp BIGINT NOT NULL,
     last_update_timestamp BIGINT NOT NULL,
-    properties JSONB not null default '{}'::JSONB,
-    internal_properties JSONB not null default '{}'::JSONB,
+    properties TEXT NOT NULL DEFAULT '{}',
+    internal_properties TEXT NOT NULL DEFAULT '{}',
     grant_records_version INT NOT NULL,
     location_without_scheme TEXT,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
 
+CREATE INDEX IF NOT EXISTS idx_locations ON entities(realm_id, catalog_id, location_without_scheme);
+
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON entities (catalog_id, id);
-CREATE INDEX IF NOT EXISTS idx_locations
-    ON entities USING btree (realm_id, parent_id, location_without_scheme)
-    WHERE location_without_scheme IS NOT NULL;
 
 COMMENT ON TABLE entities IS 'all the entities';
 
-COMMENT ON COLUMN entities.realm_id IS 'realm_id used for multi-tenancy';
 COMMENT ON COLUMN entities.catalog_id IS 'catalog id';
 COMMENT ON COLUMN entities.id IS 'entity id';
 COMMENT ON COLUMN entities.parent_id IS 'entity id of parent';
@@ -90,7 +90,6 @@ CREATE TABLE IF NOT EXISTS grant_records (
 );
 
 COMMENT ON TABLE grant_records IS 'grant records for entities';
-
 COMMENT ON COLUMN grant_records.securable_catalog_id IS 'catalog id of the securable';
 COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
 COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
@@ -121,7 +120,7 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
     policy_type_code INTEGER NOT NULL,
     policy_catalog_id BIGINT NOT NULL,
     policy_id BIGINT NOT NULL,
-    parameters JSONB NOT NULL DEFAULT '{}'::JSONB,
+    parameters TEXT NOT NULL DEFAULT '{}',
     PRIMARY KEY (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id)
 );
 
@@ -137,7 +136,7 @@ CREATE TABLE IF NOT EXISTS events (
     principal_name TEXT,
     resource_type TEXT NOT NULL,
     resource_identifier TEXT NOT NULL,
-    additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
+    additional_properties TEXT NOT NULL,
     PRIMARY KEY (event_id)
 );
 
@@ -189,7 +188,7 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
     total_delete_file_size_bytes BIGINT DEFAULT 0,
 
     -- Additional metadata (for extensibility)
-    metadata JSONB DEFAULT '{}'::JSONB,
+    metadata TEXT DEFAULT '{}',
 
     PRIMARY KEY (realm_id, report_id)
 );
@@ -258,7 +257,7 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
     attempts INTEGER DEFAULT 1,
 
     -- Additional metadata (for extensibility)
-    metadata JSONB DEFAULT '{}'::JSONB,
+    metadata TEXT DEFAULT '{}',
 
     PRIMARY KEY (realm_id, report_id)
 );

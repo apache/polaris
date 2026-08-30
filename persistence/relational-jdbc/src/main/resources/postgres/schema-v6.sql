@@ -16,18 +16,18 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
--- Changes from v4:
---  * Removed the `idempotency_records` table (the durable idempotency store it
---    backed was never wired into any request path and has been removed)
---  * `events.catalog_id` is nullable; events that are not catalog-scoped store NULL (issue #4674)
-
+-- Changes from v5:
+--  * `idx_locations` now leads with `catalog_id` instead of `parent_id`, matching the predicate in
+--    QueryGenerator.generateOverlapQuery (WHERE realm_id = ? AND catalog_id = ?). The previous
+--    definition let the optimized sibling check (OPTIMIZED_SIBLING_CHECK) use only the realm_id
+--    prefix, degrading CREATE TABLE / CREATE NAMESPACE to a realm-wide scan.
 
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,
     version_value INTEGER NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 5)
+VALUES ('version', 6)
 ON CONFLICT (version_key) DO UPDATE
 SET version_value = EXCLUDED.version_value;
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS entities (
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON entities (catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_locations
-    ON entities USING btree (realm_id, parent_id, location_without_scheme)
+    ON entities USING btree (realm_id, catalog_id, location_without_scheme)
     WHERE location_without_scheme IS NOT NULL;
 
 COMMENT ON TABLE entities IS 'all the entities';

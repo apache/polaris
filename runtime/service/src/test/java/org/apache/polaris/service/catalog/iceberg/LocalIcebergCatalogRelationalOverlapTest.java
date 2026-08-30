@@ -53,7 +53,10 @@ public class LocalIcebergCatalogRelationalOverlapTest
       overrides.put("quarkus.datasource.db-kind", "h2");
       overrides.put(
           "quarkus.datasource.jdbc.url",
-          "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+          "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;INIT=CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA");
+      // H2 ignores the currentSchema connection property, so select POLARIS_SCHEMA on every
+      // connection, matching the schema the persistence layer expects.
+      overrides.put("quarkus.datasource.jdbc.new-connection-sql", "SET SCHEMA POLARIS_SCHEMA");
       return overrides;
     }
   }
