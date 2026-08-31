@@ -21,11 +21,19 @@ package org.apache.polaris.service.task;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
@@ -38,6 +46,7 @@ import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /** Unit tests for TaskExecutorImpl */
 public class TaskExecutorImplTest {
@@ -229,6 +238,92 @@ public class TaskExecutorImplTest {
     PolarisEvent afterEvent =
         testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
     assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS)).isEqualTo(false);
+  }
+
+  @Test
+  void failedBatchCleanupRemainsRetryable() throws IOException {
+    String realm = "myrealm";
+    TestServices services = TestServices.builder().realmContext(() -> realm).build();
+    PolarisCallContext context = services.newCallContext();
+    PolarisMetaStoreManager store = services.metaStoreManager();
+    AtomicBoolean failDeletion = new AtomicBoolean(true);
+    InMemoryFileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void deleteFile(String path) {
+            if (failDeletion.get()) {
+              throw new IllegalStateException("delete failed");
+            }
+            super.deleteFile(path);
+          }
+
+          @Override
+          public void close() {
+            // Keep the files available across task attempts.
+          }
+        };
+    String file = UUID.randomUUID() + ".metadata.json";
+    fileIO.newOutputFile(file).create().close();
+    TaskFileIOSupplier supplier = Mockito.mock(TaskFileIOSupplier.class);
+    Mockito.when(supplier.apply(Mockito.any(), Mockito.any())).thenReturn(fileIO);
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .setName("batch-cleanup-task")
+            .setId(store.generateNewEntityId(context).getId())
+            .setCreateTimestamp(services.clock().millis())
+            .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
+            .withData(
+                new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
+                    TableIdentifier.of("db", "table"),
+                    List.of(file),
+                    BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+            .build();
+    assertThat(store.createEntityIfNotExists(context, null, task).isSuccess()).isTrue();
+    InMemoryEventCollector events = (InMemoryEventCollector) services.polarisEventDispatcher();
+    PolarisEventMetadata metadata = PolarisEventMetadata.builder().realmId(realm).build();
+
+    try (var deletionExecutor = Executors.newSingleThreadExecutor()) {
+      TaskExecutorImpl executor =
+          new TaskExecutorImpl(
+              Runnable::run,
+              null,
+              services.clock(),
+              services.metaStoreManagerFactory(),
+              supplier,
+              new RealmContextHolder(),
+              services.polarisEventDispatcher(),
+              services.eventMetadataFactory(),
+              null,
+              new PolarisPrincipalHolder(),
+              services.principal());
+      executor.addTaskHandler(new BatchFileCleanupTaskHandler(supplier, deletionExecutor));
+
+      assertThatThrownBy(() -> executor.handleTask(task.getId(), context, metadata, 1))
+          .hasRootCauseInstanceOf(IllegalStateException.class)
+          .hasRootCauseMessage("delete failed");
+      assertThat(TaskUtils.exists(file, fileIO)).isTrue();
+      assertThat(store.loadEntity(context, 0L, task.getId(), PolarisEntityType.TASK).getEntity())
+          .isNotNull();
+      assertThat(
+              events
+                  .getLatest(PolarisEventType.AFTER_ATTEMPT_TASK)
+                  .attributes()
+                  .getRequired(EventAttributes.TASK_SUCCESS))
+          .isFalse();
+
+      failDeletion.set(false);
+      executor.handleTask(task.getId(), context, metadata, 2);
+
+      assertThat(TaskUtils.exists(file, fileIO)).isFalse();
+      assertThat(store.loadEntity(context, 0L, task.getId(), PolarisEntityType.TASK).getEntity())
+          .isNull();
+      assertThat(
+              events
+                  .getLatest(PolarisEventType.AFTER_ATTEMPT_TASK)
+                  .attributes()
+                  .getRequired(EventAttributes.TASK_SUCCESS))
+          .isTrue();
+    }
   }
 
   @Test

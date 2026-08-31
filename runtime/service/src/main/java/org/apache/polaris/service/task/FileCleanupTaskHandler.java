@@ -21,10 +21,12 @@ package org.apache.polaris.service.task;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.SupportsBulkOperations;
+import org.apache.iceberg.util.Tasks;
+import org.apache.iceberg.util.ThreadPools;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -162,7 +164,26 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
       return CompletableFuture.failedFuture(e);
     }
     return CompletableFuture.runAsync(
-            () -> CatalogUtil.deleteFiles(fileIO, files, type, isConcurrent), executorService)
+            () -> {
+              // CatalogUtil.deleteFiles suppresses failures, preventing retries and causing
+              // unfinished cleanup tasks to be dropped as successful.
+              if (fileIO instanceof SupportsBulkOperations bulkIO) {
+                bulkIO.deleteFiles(files);
+              } else {
+                Tasks.foreach(files)
+                    .executeWith(isConcurrent ? ThreadPools.getWorkerPool() : null)
+                    .noRetry() // The batch retry below owns the retry budget.
+                    .run(
+                        file -> {
+                          try {
+                            fileIO.deleteFile(file);
+                          } catch (NotFoundException nfe) {
+                            // Already removed, including by an earlier attempt of this batch.
+                          }
+                        });
+              }
+            },
+            executorService)
         .exceptionallyComposeAsync(
             newEx -> {
               LOGGER
