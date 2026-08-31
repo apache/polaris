@@ -191,6 +191,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Batch file cleanup now retries storage deletion failures and keeps failed tasks persisted,
+  instead of reporting success and dropping tasks while metadata files remain undeleted.
 - The Iceberg REST `/config` response now advertises the
   `GET /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials` endpoint, which Polaris
   already served. Clients that check advertised endpoints before refreshing vended credentials can
