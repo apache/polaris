@@ -702,7 +702,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     if (!realmConfig.getConfig(
         BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
-      validateNamespaceLocation(entity, resolvedParent);
+      validateNamespaceUsesDefaultLocation(entity, resolvedParent);
     }
     EntityResult result =
         getMetaStoreManager()
@@ -899,7 +899,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     if (!realmConfig.getConfig(
         BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
       if (properties.containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)) {
-        validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
+        validateNamespaceUsesDefaultLocation(NamespaceEntity.of(entity), resolvedEntities);
       }
     }
 
@@ -1439,8 +1439,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  /** Checks whether the location of a namespace is valid given its parent */
-  private void validateNamespaceLocation(
+  /** Checks that a namespace sits at the default location derived from its parent. */
+  private void validateNamespaceUsesDefaultLocation(
       NamespaceEntity namespace, PolarisResolvedPathWrapper resolvedParent) {
     StorageLocation namespaceLocation =
         StorageLocation.of(
@@ -1462,24 +1462,19 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         throw new IllegalArgumentException(
             "Cannot create namespace without a parent storage configuration");
       }
-      List<StorageLocation> defaultLocations =
-          parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
-              .filter(java.util.Objects::nonNull)
-              .map(
-                  l ->
-                      StorageLocation.ensureTrailingSlash(
-                          StorageLocation.ensureTrailingSlash(l) + namespace.getName()))
-              .map(StorageLocation::of)
-              .toList();
-      if (!defaultLocations.contains(namespaceLocation)) {
+      String parentLocation = resolveLocationForPath(diagnostics, List.of(parent));
+      StorageLocation defaultLocation =
+          StorageLocation.of(
+              StorageLocation.ensureTrailingSlash(
+                  StorageLocation.ensureTrailingSlash(parentLocation) + namespace.getName()));
+      if (!defaultLocation.equals(namespaceLocation)) {
         throw new IllegalArgumentException(
             "Namespace "
                 + namespace.getName()
                 + " has a custom location, "
-                + "which is not enabled. Expected a location in: ["
-                + String.join(
-                    ", ", defaultLocations.stream().map(StorageLocation::toString).toList())
-                + "]. Got location: "
+                + "which is not enabled. Expected location: ["
+                + defaultLocation
+                + "]. Got location: ["
                 + namespaceLocation
                 + "]");
       }

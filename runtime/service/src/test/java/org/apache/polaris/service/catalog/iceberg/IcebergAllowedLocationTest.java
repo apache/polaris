@@ -678,6 +678,58 @@ public class IcebergAllowedLocationTest {
         .hasMessageContaining("Invalid locations");
   }
 
+  @Test
+  void testCreateNamespaceWhenBaseLocationIsNestedInsideAllowedLocation(@TempDir Path tmpDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .build();
+
+    String allowedLocation = tmpDir.toAbsolutePath().toUri().toString();
+    String catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(allowedLocation));
+
+    CreateNamespaceRequest derivedLocationRequest =
+        CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build();
+    try (Response response =
+        services
+            .restApi()
+            .createNamespace(
+                catalog,
+                derivedLocationRequest,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    // A caller-specified location must still be rejected.
+    Map<String, String> customLocation = new HashMap<>();
+    customLocation.put("location", allowedLocation + "elsewhere");
+    CreateNamespaceRequest customLocationRequest =
+        CreateNamespaceRequest.builder()
+            .withNamespace(Namespace.of("ns2"))
+            .setProperties(customLocation)
+            .build();
+    assertThatThrownBy(
+            () ->
+                services
+                    .restApi()
+                    .createNamespace(
+                        catalog,
+                        customLocationRequest,
+                        IDEMPOTENCY_KEY,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+  }
+
   private void createCatalog(
       TestServices services,
       Map<String, String> catalogConfig,
