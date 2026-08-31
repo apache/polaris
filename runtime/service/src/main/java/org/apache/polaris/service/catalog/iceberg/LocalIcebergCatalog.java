@@ -510,6 +510,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     return newTableOps(tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
+  /**
+   * Please note: This method does NOT return the catalog's default warehouse location. It returns
+   * the table-like entity's location, derived from its namespace or the catalog warehouse. The
+   * method name is inherited from Iceberg and cannot be changed by this implementation.
+   */
   @Override
   protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
     String prefixedLocation = applyDefaultLocationObjectStoragePrefix(tableIdentifier, null);
