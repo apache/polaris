@@ -530,6 +530,7 @@ class TestSetupCommand(CLITestBase):
 
         catalog = command._export_catalogs(mock_client)[0]
 
+        self.assertNotIn("storage_name", catalog)
         self.assertEqual(
             catalog["namespaces"],
             [{"name": ["parent"]}, {"name": ["parent", "child"]}],
@@ -875,7 +876,7 @@ class TestSetupCommand(CLITestBase):
         self.assertEqual(mock_stdout.getvalue(), "")
 
     @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
-    def test_setup_export_s3_catalog_round_trips_sts_and_internal_endpoints(
+    def test_setup_export_s3_catalog_round_trips_storage_details(
         self, mock_catalog_api: MagicMock
     ) -> None:
         mock_catalog_api.return_value.list_namespaces.return_value = []
@@ -893,6 +894,7 @@ class TestSetupCommand(CLITestBase):
             ),
             storage_config_info=AwsStorageConfigInfo(
                 storage_type="S3",
+                storage_name="analytics-prod",
                 allowed_locations=["s3://bucket/path"],
                 role_arn="arn:aws:iam::123456789012:user/QuickstartUser",
                 endpoint="https://s3.us-west-2.amazonaws.com",
@@ -909,6 +911,7 @@ class TestSetupCommand(CLITestBase):
         exported = export_command._export_catalogs(mock_client)
 
         self.assertEqual(len(exported), 1)
+        self.assertEqual(exported[0]["storage_name"], "analytics-prod")
         self.assertEqual(
             exported[0]["endpoint_internal"],
             "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
@@ -924,6 +927,7 @@ class TestSetupCommand(CLITestBase):
 
         apply_client.create_catalog.assert_called_once()
         created = apply_client.create_catalog.call_args[0][0].catalog
+        self.assertEqual(created.storage_config_info.storage_name, "analytics-prod")
         self.assertEqual(
             created.storage_config_info.endpoint_internal,
             "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",

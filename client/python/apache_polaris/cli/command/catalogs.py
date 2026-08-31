@@ -81,6 +81,7 @@ class CatalogsCommand(Command):
     catalog_type: Optional[str] = None
     default_base_location: Optional[str] = None
     storage_type: Optional[str] = None
+    storage_name: Optional[str] = None
     allowed_locations: Optional[List[str]] = None
     role_arn: Optional[str] = None
     external_id: Optional[str] = None
@@ -317,6 +318,7 @@ class CatalogsCommand(Command):
         if self.storage_type == StorageType.S3.value:
             config = AwsStorageConfigInfo(
                 storage_type=self.storage_type.upper(),
+                storage_name=self.storage_name,
                 allowed_locations=self.allowed_locations,
                 role_arn=self.role_arn,
                 external_id=self.external_id,
@@ -336,6 +338,7 @@ class CatalogsCommand(Command):
         elif self.storage_type == StorageType.AZURE.value:
             config = AzureStorageConfigInfo(
                 storage_type=self.storage_type.upper(),
+                storage_name=self.storage_name,
                 allowed_locations=self.allowed_locations,
                 tenant_id=self.tenant_id,
                 multi_tenant_app_name=self.multi_tenant_app_name,
@@ -345,12 +348,14 @@ class CatalogsCommand(Command):
         elif self.storage_type == StorageType.GCS.value:
             config = GcpStorageConfigInfo(
                 storage_type=self.storage_type.upper(),
+                storage_name=self.storage_name,
                 allowed_locations=self.allowed_locations,
                 gcs_service_account=self.service_account,
             )
         elif self.storage_type == StorageType.FILE.value:
             config = StorageConfigInfo(
                 storage_type=self.storage_type.upper(),
+                storage_name=self.storage_name,
                 allowed_locations=self.allowed_locations,
             )
         return config
