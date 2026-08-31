@@ -244,8 +244,9 @@ class CatalogsCommand(Command):
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_DECRYPTION)},"
                     f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)},"
                     f" {Argument.to_flag_name(Arguments.STS_UNAVAILABLE)},"
-                    f" {Argument.to_flag_name(Arguments.KMS_UNAVAILABLE)}, and"
-                    f" {Argument.to_flag_name(Arguments.PATH_STYLE_ACCESS)}"
+                    f" {Argument.to_flag_name(Arguments.KMS_UNAVAILABLE)},"
+                    f" {Argument.to_flag_name(Arguments.PATH_STYLE_ACCESS)}, and"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_NAME)}"
                 )
         elif self.storage_type == StorageType.AZURE.value:
             if not self.tenant_id:
@@ -257,14 +258,16 @@ class CatalogsCommand(Command):
                 raise CliError(
                     "Storage type 'azure' supports the options"
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)},"
-                    f" {Argument.to_flag_name(Arguments.MULTI_TENANT_APP_NAME)}, and"
-                    f" {Argument.to_flag_name(Arguments.CONSENT_URL)}"
+                    f" {Argument.to_flag_name(Arguments.MULTI_TENANT_APP_NAME)},"
+                    f" {Argument.to_flag_name(Arguments.CONSENT_URL)}, and"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_NAME)}"
                 )
         elif self.storage_type == StorageType.GCS.value:
             if self._has_aws_storage_info() or self._has_azure_storage_info():
                 raise CliError(
                     "Storage type 'gcs' supports the storage credential"
-                    f" {Argument.to_flag_name(Arguments.SERVICE_ACCOUNT)}"
+                    f" {Argument.to_flag_name(Arguments.SERVICE_ACCOUNT)} and"
+                    f" {Argument.to_flag_name(Arguments.STORAGE_NAME)}"
                 )
         elif self.storage_type == StorageType.FILE.value:
             if (
@@ -529,6 +532,7 @@ class CatalogsCommand(Command):
                 or self._has_azure_storage_info()
                 or self._has_gcs_storage_info()
                 or self.allowed_locations
+                or self.storage_name is not None
             ):
                 # We must first reconstitute local storage-config related settings from the existing
                 # catalog to properly construct the complete updated storage-config
@@ -538,6 +542,8 @@ class CatalogsCommand(Command):
                 # _build_storage_config_info helper; instead, each allowed updatable field defined
                 # in option_tree.py should be applied individually against the existing
                 # storage_config_info here.
+                if self.storage_name:
+                    updated_storage_info.storage_name = self.storage_name
                 if self.allowed_locations:
                     updated_storage_info.allowed_locations = (
                         updated_storage_info.allowed_locations or []

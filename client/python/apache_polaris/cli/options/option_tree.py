@@ -236,6 +236,11 @@ class OptionTree:
                             choices=[st.value for st in StorageType],
                         ),
                         Argument(
+                            Arguments.STORAGE_NAME,
+                            str,
+                            "An optional name referencing a server-side storage configuration",
+                        ),
+                        Argument(
                             Arguments.DEFAULT_BASE_LOCATION,
                             str,
                             "(Required) Default base location for the catalog",
@@ -395,6 +400,11 @@ class OptionTree:
                     Subcommands.UPDATE,
                     hint="Update properties of a catalog",
                     args=[
+                        Argument(
+                            Arguments.STORAGE_NAME,
+                            str,
+                            "A new storage name referencing a server-side storage configuration",
+                        ),
                         Argument(
                             Arguments.DEFAULT_BASE_LOCATION,
                             str,

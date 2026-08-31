@@ -53,6 +53,7 @@ class Command(ABC):
                 catalog_type=options_get(Arguments.TYPE),
                 default_base_location=options_get(Arguments.DEFAULT_BASE_LOCATION),
                 storage_type=options_get(Arguments.STORAGE_TYPE),
+                storage_name=options_get(Arguments.STORAGE_NAME),
                 allowed_locations=options_get(Arguments.ALLOWED_LOCATION),
                 role_arn=options_get(Arguments.ROLE_ARN),
                 external_id=options_get(Arguments.EXTERNAL_ID),
