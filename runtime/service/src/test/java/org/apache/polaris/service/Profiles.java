@@ -74,7 +74,11 @@ public final class Profiles {
           "polaris.storage.gcp.token",
           "token",
           "polaris.storage.gcp.lifespan",
-          "PT1H");
+          "PT1H",
+          "polaris.storage.r2.access-key",
+          "r2-it-dummy-key",
+          "polaris.storage.r2.secret-key",
+          "r2-it-dummy-secret");
     }
   }
 
