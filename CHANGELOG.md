@@ -101,6 +101,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Internal bearer authentication now returns service unavailable errors (HTTP 503) when token verification hits a metastore failure, instead of treating it as bad credentials.
+- `TokenBroker.verify` now returns `null` for tokens not issued by Polaris (checked via the issuer claim without signature verification) instead of failing with an authentication error, so mixed-mode deployments delegate foreign tokens to the external authentication mechanism. A Polaris-issued token that fails verification still fails authentication, now in MIXED mode as well.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
   error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg

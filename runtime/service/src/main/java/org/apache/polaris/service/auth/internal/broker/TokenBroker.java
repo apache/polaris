@@ -52,6 +52,13 @@ public interface TokenBroker {
       final String scope,
       TokenType requestedTokenType);
 
-  /** Decodes and verifies the token, then returns the associated {@link PolarisCredential}. */
+  /**
+   * Decodes and verifies the token, then returns the associated {@link PolarisCredential}.
+   *
+   * @return the credential for a valid Polaris-issued token, or {@code null} when the token was not
+   *     issued by Polaris (foreign tokens are left to other authentication mechanisms)
+   * @throws org.apache.iceberg.exceptions.NotAuthorizedException if the token is Polaris-issued but
+   *     invalid
+   */
   PolarisCredential verify(String token);
 }

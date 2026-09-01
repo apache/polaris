@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth.internal.broker;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import com.google.common.annotations.VisibleForTesting;
@@ -91,7 +92,24 @@ public class JWTBroker implements TokenBroker {
 
   @Override
   public PolarisCredential verify(String token) {
+    // Cheap pre-check without cryptographic verification: tokens not issued by Polaris are not
+    // ours to verify; return null so the caller can delegate to other mechanisms (mixed mode).
+    if (!isPolarisToken(token)) {
+      return null;
+    }
     return verifyInternal(token).token();
+  }
+
+  /**
+   * Checks the issuer claim without verifying the signature. Undecodable tokens cannot be
+   * Polaris-issued, so they count as foreign.
+   */
+  private static boolean isPolarisToken(String token) {
+    try {
+      return ISSUER_KEY.equals(JWT.decode(token).getIssuer());
+    } catch (JWTDecodeException e) {
+      return false;
+    }
   }
 
   private VerifiedToken verifyInternal(String token) {

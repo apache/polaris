@@ -36,7 +36,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Collections;
 import java.util.Set;
-import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.PolarisCredential;
@@ -94,19 +93,17 @@ class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
     PolarisCredential token;
     try {
       token = tokenBroker.verify(credential);
-    } catch (PolarisServiceUnavailableException e) {
-      // Preserve auth-time metastore failures from token verify so they keep the shared 503
-      // contract (ErrorResponse + Retry-After) instead of looking like bad credentials or falling
-      // through to another auth mechanism.
-      return Uni.createFrom().failure(e);
     } catch (Exception e) {
-      return configuration.type() == AuthenticationType.MIXED
-          ? Uni.createFrom().nullItem() // let other auth mechanisms handle it
-          : Uni.createFrom().failure(new AuthenticationFailedException(e)); // stop here
+      // No special cases: invalid Polaris tokens and transient failures alike propagate as-is.
+      return Uni.createFrom().failure(e);
     }
 
     if (token == null) {
-      return Uni.createFrom().nullItem();
+      // Not a Polaris-issued token: delegate to other mechanisms in MIXED mode, fail otherwise.
+      return configuration.type() == AuthenticationType.MIXED
+          ? Uni.createFrom().nullItem() // let other auth mechanisms handle it
+          : Uni.createFrom()
+              .failure(new AuthenticationFailedException("Failed to verify the token"));
     }
 
     return identityProviderManager.authenticate(
