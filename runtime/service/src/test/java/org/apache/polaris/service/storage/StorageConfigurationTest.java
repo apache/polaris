@@ -540,4 +540,26 @@ public class StorageConfigurationTest {
     assertThat(resolver.resolve("prod")).contains(new R2ParentToken("nk", "ns"));
     assertThat(resolver.resolve(null)).isEmpty();
   }
+
+  /**
+   * The bean warns about a half-set default entry at construction; the resolution behaviour is
+   * unchanged either way. Both halves of the branch are exercised so the warning cannot throw.
+   */
+  @Test
+  void r2ResolverBeanTreatsEitherHalfSetDefaultAsAbsent() {
+    R2ParentTokenResolver missingSecret =
+        new R2ParentTokenResolverImpl(
+            r2Config(Optional.of("only-key"), Optional.empty(), Map.of("prod", named("nk", "ns"))));
+    assertThat(missingSecret.resolve(null)).isEmpty();
+    assertThat(missingSecret.resolve("prod")).contains(new R2ParentToken("nk", "ns"));
+
+    R2ParentTokenResolver missingKey =
+        new R2ParentTokenResolverImpl(
+            r2Config(Optional.empty(), Optional.of("only-secret"), Map.of()));
+    assertThat(missingKey.resolve(null)).isEmpty();
+
+    R2ParentTokenResolver bothSet =
+        new R2ParentTokenResolverImpl(r2Config(Optional.of("dk"), Optional.of("ds"), Map.of()));
+    assertThat(bothSet.resolve(null)).contains(new R2ParentToken("dk", "ds"));
+  }
 }

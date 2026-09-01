@@ -18,11 +18,14 @@
  */
 package org.apache.polaris.service.catalog.validation;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.StorageType;
 import org.jspecify.annotations.Nullable;
@@ -80,10 +83,7 @@ enum StorageTypeFileIO {
    */
   static StorageTypeFileIO fromFileIoImplementation(
       String fileIoImplementation, @Nullable StorageType preferred) {
-    List<StorageTypeFileIO> candidates = FILE_IO_TO_STORAGE_TYPES.get(fileIoImplementation);
-    if (candidates == null || candidates.isEmpty()) {
-      throw new IllegalArgumentException("Unknown FileIO implementation: " + fileIoImplementation);
-    }
+    List<StorageTypeFileIO> candidates = candidatesFor(fileIoImplementation);
     if (preferred != null) {
       for (StorageTypeFileIO candidate : candidates) {
         if (candidate.name().equals(preferred.name())) {
@@ -92,6 +92,36 @@ enum StorageTypeFileIO {
       }
     }
     return candidates.get(0);
+  }
+
+  /**
+   * Whether the realm allows a storage type that uses this FileIO class.
+   *
+   * <p>Several storage types can share a FileIO class: S3 and R2 both use {@code S3FileIO}. When
+   * the caller knows the catalog's storage type, only that type counts. When it does not — a
+   * table-level or namespace-level {@code io-impl} carries no storage type — the FileIO is allowed
+   * as long as the realm enables at least one of the types that use it. Without that, a realm
+   * supporting only R2 would reject {@code S3FileIO}, which is the FileIO R2 itself uses.
+   */
+  static boolean supportedInRealm(
+      String fileIoImplementation, @Nullable StorageType preferred, RealmConfig realmConfig) {
+    List<StorageTypeFileIO> candidates =
+        preferred == null
+            ? candidatesFor(fileIoImplementation)
+            : List.of(fromFileIoImplementation(fileIoImplementation, preferred));
+    List<String> supported = realmConfig.getConfig(SUPPORTED_CATALOG_STORAGE_TYPES);
+    return candidates.stream()
+        .anyMatch(
+            candidate ->
+                !candidate.validateAllowedStorageType() || supported.contains(candidate.name()));
+  }
+
+  private static List<StorageTypeFileIO> candidatesFor(String fileIoImplementation) {
+    List<StorageTypeFileIO> candidates = FILE_IO_TO_STORAGE_TYPES.get(fileIoImplementation);
+    if (candidates == null || candidates.isEmpty()) {
+      throw new IllegalArgumentException("Unknown FileIO implementation: " + fileIoImplementation);
+    }
+    return candidates;
   }
 
   private static final Map<String, List<StorageTypeFileIO>> FILE_IO_TO_STORAGE_TYPES;

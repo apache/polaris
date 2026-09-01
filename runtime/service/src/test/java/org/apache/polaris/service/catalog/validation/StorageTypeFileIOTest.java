@@ -126,4 +126,45 @@ class StorageTypeFileIOTest {
   void r2IsASafeStorageType() {
     assertThat(IcebergPropertiesValidation.safeStorageType("R2")).isTrue();
   }
+
+  @Test
+  void r2OnlyRealmAcceptsS3FileIoWithoutAStorageConfig() {
+    // validateIcebergProperties has no storage config to prefer a type with, so S3FileIO resolves
+    // to S3. An R2-only realm must still accept it: it is the FileIO R2 uses.
+    assertThatCode(
+            () ->
+                IcebergPropertiesValidation.validateIcebergProperties(
+                    realmConfigSupporting("R2"),
+                    Map.of(CatalogProperties.FILE_IO_IMPL, S3_FILE_IO)))
+        .doesNotThrowAnyException();
+    assertThat(StorageTypeFileIO.supportedInRealm(S3_FILE_IO, null, realmConfigSupporting("R2")))
+        .isTrue();
+  }
+
+  @Test
+  void fileOnlyRealmStillRejectsS3FileIoWithoutAStorageConfig() {
+    assertThatThrownBy(
+            () ->
+                IcebergPropertiesValidation.validateIcebergProperties(
+                    realmConfigSupporting("FILE"),
+                    Map.of(CatalogProperties.FILE_IO_IMPL, S3_FILE_IO)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("not supported");
+    assertThat(StorageTypeFileIO.supportedInRealm(S3_FILE_IO, null, realmConfigSupporting("FILE")))
+        .isFalse();
+  }
+
+  @Test
+  void aKnownStorageTypeStillNarrowsTheCheck() {
+    // With the catalog's type in hand, only that type counts: an S3 catalog in an R2-only realm
+    // stays rejected even though S3FileIO is acceptable to R2.
+    assertThat(
+            StorageTypeFileIO.supportedInRealm(
+                S3_FILE_IO, StorageType.S3, realmConfigSupporting("R2")))
+        .isFalse();
+    assertThat(
+            StorageTypeFileIO.supportedInRealm(
+                S3_FILE_IO, StorageType.R2, realmConfigSupporting("R2")))
+        .isTrue();
+  }
 }

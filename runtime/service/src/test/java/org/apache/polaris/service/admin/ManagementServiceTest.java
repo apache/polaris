@@ -207,6 +207,178 @@ public class ManagementServiceTest {
         .hasMessageStartingWith("Cannot modify R2 jurisdiction");
   }
 
+  /** A resolver that only knows the named entry "prod", as a server with one named token would. */
+  private static TestServices r2ServicesKnowingOnlyProd() {
+    return TestServices.builder()
+        .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("R2")))
+        .r2ParentTokenResolver(
+            name ->
+                "prod".equals(name) ? Optional.of(new R2ParentToken("k", "s")) : Optional.empty())
+        .build();
+  }
+
+  @Test
+  public void testCreateR2CatalogFailsForUnknownStorageName() {
+    TestServices onlyProd = r2ServicesKnowingOnlyProd();
+    Catalog catalog = r2Catalog("r2-unknown-name", r2Config().setStorageName("missing").build());
+    assertThatThrownBy(
+            () ->
+                onlyProd
+                    .catalogsApi()
+                    .createCatalog(
+                        new CreateCatalogRequest(catalog),
+                        onlyProd.realmContext(),
+                        onlyProd.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("for storage name 'missing'");
+  }
+
+  @Test
+  public void testUpdateR2CatalogFailsWhenStorageNameBecomesUnknown() {
+    TestServices onlyProd = r2ServicesKnowingOnlyProd();
+    String name = "r2-rename-storage";
+    try (Response response =
+        onlyProd
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(
+                    r2Catalog(name, r2Config().setStorageName("prod").build())),
+                onlyProd.realmContext(),
+                onlyProd.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched;
+    try (Response response =
+        onlyProd
+            .catalogsApi()
+            .getCatalog(name, onlyProd.realmContext(), onlyProd.securityContext())) {
+      fetched = (Catalog) response.getEntity();
+    }
+    UpdateCatalogRequest changeStorageName =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://r2-bucket/base/" + name),
+            r2Config().setStorageName("missing").build());
+    assertThatThrownBy(
+            () ->
+                onlyProd
+                    .catalogsApi()
+                    .updateCatalog(
+                        name,
+                        changeStorageName,
+                        onlyProd.realmContext(),
+                        onlyProd.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("for storage name 'missing'");
+  }
+
+  @Test
+  public void testCreateR2CatalogFailsWhenR2IsNotASupportedStorageType() {
+    // The class-level services support S3, GCS and AZURE but not R2.
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .createCatalog(
+                        new CreateCatalogRequest(r2Catalog("r2-unsupported", r2Config().build())),
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unsupported storage type");
+  }
+
+  @Test
+  public void testUpdateR2CatalogAllowsAddingAnAllowedLocation() {
+    TestServices withToken =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("R2")))
+            .r2ParentTokenResolver(name -> Optional.of(new R2ParentToken("k", "s")))
+            .build();
+    String name = "r2-add-location";
+    try (Response response =
+        withToken
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(r2Catalog(name, r2Config().build())),
+                withToken.realmContext(),
+                withToken.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched;
+    try (Response response =
+        withToken
+            .catalogsApi()
+            .getCatalog(name, withToken.realmContext(), withToken.securityContext())) {
+      fetched = (Catalog) response.getEntity();
+    }
+    // accountId and jurisdiction are unchanged, so the immutability check must not fire.
+    UpdateCatalogRequest addLocation =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://r2-bucket/base/" + name),
+            r2Config()
+                .setAllowedLocations(List.of("s3://r2-bucket/base/", "s3://r2-bucket/extra/"))
+                .build());
+    try (Response response =
+        withToken
+            .catalogsApi()
+            .updateCatalog(
+                name, addLocation, withToken.realmContext(), withToken.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      Catalog updated = (Catalog) response.getEntity();
+      assertThat(updated.getStorageConfigInfo().getAllowedLocations())
+          .containsExactlyInAnyOrder("s3://r2-bucket/base/", "s3://r2-bucket/extra/");
+    }
+  }
+
+  @Test
+  public void testUpdateR2CatalogAccountIdAllowedWithFeatureFlag() {
+    TestServices flagEnabled =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("R2"),
+                    "ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES",
+                    Boolean.TRUE))
+            .r2ParentTokenResolver(name -> Optional.of(new R2ParentToken("k", "s")))
+            .build();
+    String name = "r2-flagged-account";
+    try (Response response =
+        flagEnabled
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(r2Catalog(name, r2Config().build())),
+                flagEnabled.realmContext(),
+                flagEnabled.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched;
+    try (Response response =
+        flagEnabled
+            .catalogsApi()
+            .getCatalog(name, flagEnabled.realmContext(), flagEnabled.securityContext())) {
+      fetched = (Catalog) response.getEntity();
+    }
+    String newAccount = "ffffffffffffffffffffffffffffffff";
+    UpdateCatalogRequest changeAccount =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://r2-bucket/base/" + name),
+            r2Config().setAccountId(newAccount).build());
+    try (Response response =
+        flagEnabled
+            .catalogsApi()
+            .updateCatalog(
+                name, changeAccount, flagEnabled.realmContext(), flagEnabled.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      Catalog updated = (Catalog) response.getEntity();
+      assertThat(updated.getStorageConfigInfo())
+          .isInstanceOf(R2StorageConfigInfo.class)
+          .hasFieldOrPropertyWithValue("accountId", newAccount);
+    }
+  }
+
   @Test
   public void testCreateCatalogWithDisallowedStorageConfig() {
     FileStorageConfigInfo fileStorage =

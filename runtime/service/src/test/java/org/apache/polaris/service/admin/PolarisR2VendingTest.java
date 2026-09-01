@@ -21,20 +21,25 @@ package org.apache.polaris.service.admin;
 import static org.apache.polaris.core.entity.PolarisEntityConstants.ENTITY_BASE_LOCATION;
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.ws.rs.core.Response;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -173,7 +178,7 @@ public class PolarisR2VendingTest {
   }
 
   @Test
-  public void vendedLoadTableCarriesScopedR2Credentials() {
+  public void vendedLoadTableCarriesScopedR2Credentials() throws Exception {
     String cat = "r2vend";
     createCatalog(cat);
     createNamespace(cat, "ns");
@@ -191,11 +196,20 @@ public class PolarisR2VendingTest {
 
     DecodedJWT jwt = decode(config.get("s3.session-token"));
     assertThat(jwt.getAudience()).containsExactly(ACCOUNT + ".r2.cloudflarestorage.com");
+    assertThat(jwt.getIssuer()).isEqualTo(PARENT_KEY);
+    assertThat(jwt.getSubject()).isEqualTo(ACCOUNT);
     assertThat(jwt.getClaim("bucket").asString()).isEqualTo("r2-bucket");
     assertThat(jwt.getClaim("scope").asString()).isEqualTo("object-read-write");
     assertThat(jwt.getClaim("paths").asMap().get("prefixPaths"))
         .asInstanceOf(InstanceOfAssertFactories.LIST)
         .containsExactly("base/" + cat + "/ns/t1/");
+
+    // The advertised expiry is the exp claim, to the second.
+    assertThat(Long.parseLong(config.get("s3.session-token-expires-at-ms")) / 1000)
+        .isEqualTo(jwt.getExpiresAtAsInstant().getEpochSecond());
+    // The temporary secret is the SHA-256 hex of the raw JWT, so a client can derive nothing else.
+    assertThat(config.get("s3.secret-access-key"))
+        .isEqualTo(sha256Hex(rawJwt(config.get("s3.session-token"))));
 
     LoadTableResponse second = loadTableVended(cat, "ns", "t1");
     assertThat(second.config().get("s3.session-token")).isEqualTo(config.get("s3.session-token"));
@@ -220,8 +234,140 @@ public class PolarisR2VendingTest {
                 null,
                 services.realmContext(),
                 services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       LoadTableResponse resp = response.readEntity(LoadTableResponse.class);
-      assertThat(resp.config()).doesNotContainKeys("s3.secret-access-key", "s3.session-token");
+      assertThat(resp.config())
+          .doesNotContainKeys("s3.secret-access-key", "s3.session-token", "s3.access-key-id")
+          .containsEntry("s3.endpoint", "https://" + ACCOUNT + ".r2.cloudflarestorage.com")
+          .containsEntry("client.region", "auto");
     }
+  }
+
+  /**
+   * A table whose locations span two buckets can never get a credential, because an R2 temporary
+   * credential binds to exactly one bucket. Polaris needs a credential to write the first metadata
+   * file, so the rejection lands on create and the table is never persisted. The message names both
+   * buckets; it carries no table name because at create time the resolved path's leaf is still the
+   * namespace ({@code StorageAccessConfigProvider#buildCredentialVendingContext} only sets {@code
+   * tableName} for a TABLE_LIKE leaf). The table-named form of the message is covered by {@code
+   * R2CredentialsStorageIntegrationTest.multiBucketRejectionNamesTheTable}.
+   */
+  @Test
+  public void vendingAcrossTwoBucketsIsRejected() {
+    // The class-level services forbid unstructured locations, so this catalog needs its own
+    // services with the feature enabled to accept a write.data.path outside the table prefix.
+    Supplier<FileIOFactory> fileIOFactorySupplier =
+        () -> (FileIOFactory) (accessConfig, ioImplClassName, properties) -> new InMemoryFileIO();
+    TestServices unstructured =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_UNSTRUCTURED_TABLE_LOCATION", "true",
+                    "ALLOW_TABLE_LOCATION_OVERLAP", "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES", List.of("R2")))
+            .fileIOFactorySupplier(fileIOFactorySupplier)
+            .r2ParentTokenResolver(
+                name -> Optional.of(new R2ParentToken(PARENT_KEY, PARENT_SECRET)))
+            .build();
+
+    String cat = "r2twobuckets";
+    StorageConfigInfo config =
+        R2StorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.R2)
+            .setAccountId(ACCOUNT)
+            .setAllowedLocations(List.of(BASE + "/" + cat, "s3://other/"))
+            .build();
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            cat,
+            CatalogProperties.builder()
+                .setDefaultBaseLocation(BASE + "/" + cat)
+                .addProperty("polaris.config.allow.unstructured.table.location", "true")
+                .build(),
+            1725487592064L,
+            1725487592064L,
+            1,
+            config);
+    try (Response response =
+        unstructured
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                unstructured.realmContext(),
+                unstructured.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+
+    Map<String, String> namespaceProperties = new HashMap<>();
+    namespaceProperties.put(ENTITY_BASE_LOCATION, BASE + "/" + cat + "/ns");
+    try (Response response =
+        unstructured
+            .restApi()
+            .createNamespace(
+                cat,
+                CreateNamespaceRequest.builder()
+                    .withNamespace(Namespace.of("ns"))
+                    .setProperties(namespaceProperties)
+                    .build(),
+                IDEMPOTENCY_KEY,
+                unstructured.realmContext(),
+                unstructured.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    // The table lives under r2-bucket but writes its data under the second bucket.
+    CreateTableRequest createTable =
+        CreateTableRequest.builder()
+            .withName("t1")
+            .withLocation(BASE + "/" + cat + "/ns/t1")
+            .withSchema(SCHEMA)
+            .setProperty("write.data.path", "s3://other/x/")
+            .build();
+    // TestServices.restApi() is a bare POJO, so the failure surfaces as a thrown exception.
+    assertThatThrownBy(
+            () ->
+                unstructured
+                    .restApi()
+                    .createTable(
+                        cat,
+                        "ns",
+                        createTable,
+                        null,
+                        IDEMPOTENCY_KEY,
+                        unstructured.realmContext(),
+                        unstructured.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("r2-bucket")
+        .hasMessageContaining("other")
+        .hasMessageContaining("one bucket per table");
+
+    // The table was never created, so a vended load cannot reach a two-bucket credential either.
+    assertThatThrownBy(
+            () ->
+                unstructured
+                    .restApi()
+                    .loadTable(
+                        cat,
+                        "ns",
+                        "t1",
+                        "vended-credentials",
+                        null,
+                        "ALL",
+                        null,
+                        unstructured.realmContext(),
+                        unstructured.securityContext()))
+        .isInstanceOf(NoSuchTableException.class);
+  }
+
+  private static String rawJwt(String sessionToken) {
+    String decoded = new String(Base64.getDecoder().decode(sessionToken), StandardCharsets.UTF_8);
+    return decoded.substring(R2TemporaryCredentialSigner.SESSION_TOKEN_PREFIX.length());
+  }
+
+  private static String sha256Hex(String value) throws NoSuchAlgorithmException {
+    return HexFormat.of()
+        .formatHex(
+            MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
   }
 }

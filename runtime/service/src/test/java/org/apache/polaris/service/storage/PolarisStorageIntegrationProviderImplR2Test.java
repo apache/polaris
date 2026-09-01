@@ -25,13 +25,19 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.r2.R2CredentialsStorageIntegration;
 import org.apache.polaris.core.storage.r2.R2ParentToken;
@@ -72,5 +78,14 @@ class PolarisStorageIntegrationProviderImplR2Test {
             .build();
     PolarisStorageIntegration integration = provider.getStorageIntegration(List.of(catalog));
     assertThat(integration).isInstanceOf(R2CredentialsStorageIntegration.class);
+
+    StorageAccessConfig accessConfig =
+        integration.getStorageAccessConfig(
+            List.of(
+                new LocationGrant(Set.of("s3://bucket/x/"), Set.of(PolarisStorageActions.READ))),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+    assertThat(accessConfig.credentials())
+        .containsEntry(StorageAccessProperty.R2_KEY_ID.getPropertyName(), "k");
   }
 }

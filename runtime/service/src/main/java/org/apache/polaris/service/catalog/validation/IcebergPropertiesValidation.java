@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.validation;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_INSECURE_STORAGE_TYPES;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_SPECIFYING_FILE_IO_IMPL;
-import static org.apache.polaris.core.config.FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES;
 
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
@@ -65,12 +64,10 @@ public class IcebergPropertiesValidation {
     }
 
     if (ioImpl != null) {
-      var storageType =
-          StorageTypeFileIO.fromFileIoImplementation(
-              ioImpl,
-              storageConfigurationInfo == null ? null : storageConfigurationInfo.getStorageType());
-      if (storageType.validateAllowedStorageType()
-          && !realmConfig.getConfig(SUPPORTED_CATALOG_STORAGE_TYPES).contains(storageType.name())) {
+      var preferred =
+          storageConfigurationInfo == null ? null : storageConfigurationInfo.getStorageType();
+      var storageType = StorageTypeFileIO.fromFileIoImplementation(ioImpl, preferred);
+      if (!StorageTypeFileIO.supportedInRealm(ioImpl, preferred, realmConfig)) {
         throw new ValidationException(
             "File IO implementation '%s', as storage type '%s' is not supported",
             ioImpl, storageType);
