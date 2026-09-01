@@ -39,6 +39,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.r2.R2StorageConfigurationInfo;
 import org.immutables.value.Value;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -63,6 +64,7 @@ import tools.jackson.databind.json.JsonMapper;
   @JsonSubTypes.Type(value = AzureStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = GcpStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = FileStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = R2StorageConfigurationInfo.class),
 })
 @JsonIgnoreProperties(ignoreUnknown = true)
 public abstract class PolarisStorageConfigurationInfo {
@@ -207,6 +209,7 @@ public abstract class PolarisStorageConfigurationInfo {
     AZURE(List.of("abfs://", "wasb://", "abfss://", "wasbs://")),
     GCS("gs://"),
     FILE("file://"),
+    R2(List.of("s3://", "s3a://")),
     ;
 
     private final List<String> prefixes;

@@ -140,6 +140,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case GCS -> gcpFactory.apply((GcpStorageConfigurationInfo) storageConfig);
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);
       case FILE -> FILE_INTEGRATION;
+      // TODO(P2 Task 5): dispatch to an R2 credential-vending integration.
+      case R2 -> throw new UnsupportedOperationException("R2 dispatch is added in a later commit");
     };
   }
 

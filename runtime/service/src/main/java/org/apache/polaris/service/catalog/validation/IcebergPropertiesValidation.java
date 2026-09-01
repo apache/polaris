@@ -65,7 +65,10 @@ public class IcebergPropertiesValidation {
     }
 
     if (ioImpl != null) {
-      var storageType = StorageTypeFileIO.fromFileIoImplementation(ioImpl);
+      var storageType =
+          StorageTypeFileIO.fromFileIoImplementation(
+              ioImpl,
+              storageConfigurationInfo == null ? null : storageConfigurationInfo.getStorageType());
       if (storageType.validateAllowedStorageType()
           && !realmConfig.getConfig(SUPPORTED_CATALOG_STORAGE_TYPES).contains(storageType.name())) {
         throw new ValidationException(

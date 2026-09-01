@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.r2.R2StorageConfigurationInfo;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
@@ -108,6 +109,21 @@ public class PolarisStorageConfigurationInfoTest {
                 .tenantId("tenant-id")
                 .build(),
             "{\"@type\":\"AzureStorageConfigurationInfo\",\"allowedLocations\":[\"abfs://foo@bar.baz/\",\"abfss://boo@meep.buzz/\"],\"tenantId\":\"tenant-id\",\"storageType\":\"AZURE\",\"fileIoImplClassName\":\"org.apache.iceberg.azure.adlsv2.ADLSFileIO\"}"),
+        //
+        arguments(
+            R2StorageConfigurationInfo.builder()
+                .addAllowedLocations("s3://foo/bar", "s3://no/where")
+                .accountId("0123456789abcdef0123456789abcdef")
+                .build(),
+            "{\"@type\":\"R2StorageConfigurationInfo\",\"storageType\":\"R2\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"accountId\":\"0123456789abcdef0123456789abcdef\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+        arguments(
+            R2StorageConfigurationInfo.builder()
+                .addAllowedLocations("s3://foo/bar")
+                .accountId("0123456789abcdef0123456789abcdef")
+                .jurisdiction("eu")
+                .storageName("my-r2")
+                .build(),
+            "{\"@type\":\"R2StorageConfigurationInfo\",\"storageType\":\"R2\",\"allowedLocations\":[\"s3://foo/bar\"],\"storageName\":\"my-r2\",\"accountId\":\"0123456789abcdef0123456789abcdef\",\"jurisdiction\":\"eu\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         //
         arguments(
             FileStorageConfigurationInfo.builder()
