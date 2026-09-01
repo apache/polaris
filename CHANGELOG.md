@@ -54,6 +54,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   ```
   Postgres and H2 are unaffected.
 
+- The default `SUPPORTED_CATALOG_STORAGE_TYPES` now includes `R2`. Deployments that override the
+  list are unaffected, and creating an R2 catalog still requires `polaris.storage.r2.*` on the
+  server.
+
 ### Breaking changes
 
 - Concurrent table commits that hit a stale sequence number now return a retryable `409` instead of a fatal `400`, for both single-table commits and `commitTransaction`.

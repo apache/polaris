@@ -55,7 +55,7 @@ in catalog properties.
 
 ### Storage Type
 
-All catalogs in Polaris are associated with a _storage type_. Valid Storage Types are `S3`, `Azure`, and `GCS`. The `FILE` type is also additionally available for testing. Each of these types relates to a different storage provider where data within the catalog may reside. Depending on the storage type, various other configurations may be set for a catalog including credentials to be used when accessing data inside the catalog.
+All catalogs in Polaris are associated with a _storage type_. Valid Storage Types are `S3`, `Azure`, `GCS`, and `R2`. The `FILE` type is also additionally available for testing. Each of these types relates to a different storage provider where data within the catalog may reside. Depending on the storage type, various other configurations may be set for a catalog including credentials to be used when accessing data inside the catalog.
 
 For details on how to use Storage Types in the REST API, see [the StorageConfigInfo OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 

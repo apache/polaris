@@ -50,8 +50,9 @@ polaris.storage.r2.research.secret-key=...
 
 Deliver the secret through a secret config source or environment variables
 (`POLARIS_STORAGE_R2_SECRET_KEY`), not a checked-in properties file. Avoid a storage name equal to
-`access-key` or `secret-key`; it would collide with the default entry. Polaris logs a warning when
-static storage credentials are configured; for R2 this is the only supported path.
+`access-key` or `secret-key`; it would collide with the default entry. Unlike S3, R2 has no ambient
+credential chain, so a static server-side parent token is the only supported path. Polaris logs a
+warning at startup if only one half of the key pair is set.
 
 Add `R2` to `SUPPORTED_CATALOG_STORAGE_TYPES` if your deployment overrides the default list.
 
@@ -86,8 +87,9 @@ With `X-Iceberg-Access-Delegation: vended-credentials`, `loadTable` returns
 `s3.access-key-id` (the parent key id), `s3.secret-access-key`, `s3.session-token`,
 `s3.session-token-expires-at-ms`, `s3.endpoint`, `s3.path-style-access=true`,
 `client.region=auto`, and `client.refresh-credentials-endpoint`. Every client that can load a
-table learns the parent key id; the secret and token are per table. See the generated reference
-`storage-r2`.
+table learns the parent key id; the secret and token are per table. For the full property reference
+and client compatibility, see
+[Vended Credentials Reference — Cloudflare R2]({{% ref "../../vended-credentials#cloudflare-r2" %}}).
 
 Clients that honor `client.refresh-credentials-endpoint` never observe expiry. Clients that do not
 hold a credential valid for `STORAGE_CREDENTIAL_DURATION_SECONDS` from mint time. Polaris caches

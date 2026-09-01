@@ -28,6 +28,7 @@ The following Object Storage providers can be configured as storage backends for
 - [S3 compatible object stores]({{< ref "s3.md" >}})
 - [Google Cloud Storage]({{< ref "catalog-gcs.md" >}})
 - [Azure Blob Storage]({{< ref "catalog-azure.md" >}})
+- [Cloudflare R2]({{< ref "catalog-r2.md" >}})
 - Local file system (By default for testing only)
 
 Catalogs may also be created from [migrating existing Iceberg catalogs]({{< ref "catalog-migration.md" >}}).

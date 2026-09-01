@@ -33,7 +33,7 @@ Applies to the STS client pool and to Iceberg S3 clients created for table opera
 | `polaris.storage.aws.secret-key` |  | `string` | The AWS secret key to use for authentication. If not present, the default credentials  provider chain will be used.  |
 | `polaris.storage.aws.`_`<storage>`_`.access-key` |  | `string` | The AWS access key to use for authentication when using named storages.  |
 | `polaris.storage.aws.`_`<storage>`_`.secret-key` |  | `string` | The AWS secret key to use for authentication when using named storages.  |
-| `polaris.storage.r2.access-key` |  | `string` | Access key id of the default R2 parent API token. The parent token must carry Object Read & Write permission on every bucket the catalogs use; a temporary credential cannot exceed it.  |
+| `polaris.storage.r2.access-key` |  | `string` | Access key id of the default R2 parent API token. The parent token must carry Object Read and  Write permission on every bucket the catalogs use; a temporary credential cannot exceed it.  |
 | `polaris.storage.r2.secret-key` |  | `string` | Secret access key of the default R2 parent API token.  |
 | `polaris.storage.r2.`_`<storage>`_`.access-key` |  | `string` | Access key id of the R2 parent API token for catalogs with this `storageName`.  |
 | `polaris.storage.r2.`_`<storage>`_`.secret-key` |  | `string` | Secret access key of the R2 parent API token for catalogs with this `storageName`.  |

@@ -20,7 +20,7 @@
 title: Creating a catalog on Cloudflare R2
 linkTitle: R2
 type: docs
-weight: 200
+weight: 400
 ---
 
 For the `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) there are few `r2` only options
@@ -51,4 +51,4 @@ polaris \
 
 Before creating an R2 catalog, an administrator must configure a server-side parent API token
 for Polaris to mint temporary credentials from; see
-[Configuring Polaris for Production — Cloudflare R2]({{% ref "../../configuring-polaris-for-production/configuring-cloudflare-r2-cloud-storage-specific" %}}).
+[Configuring Polaris for Production — Cloudflare R2]({{% ref "../../configuration/configuring-polaris-for-production/configuring-cloudflare-r2-cloud-storage-specific" %}}).

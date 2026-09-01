@@ -71,6 +71,19 @@ authorized to access and supports optional service account impersonation.
 
 {{% include-config-section "storage-gcs" %}}
 
+## Cloudflare R2
+
+Polaris mints the temporary credential locally, with no call to Cloudflare: it signs a JWT with the
+server-side parent API token and derives the temporary secret from that JWT. The token is scoped to
+one bucket and to the table's key prefixes, with scope `object-read-only` when the caller may only
+read and list, or `object-read-write` when the caller may write or delete. An R2 temporary
+credential binds to a single bucket, so all of one table's locations must sit in one bucket. The
+endpoint is `https://<accountId>.r2.cloudflarestorage.com`, or
+`https://<accountId>.<jurisdiction>.r2.cloudflarestorage.com` when the catalog sets a jurisdiction;
+Polaris also emits `client.region=auto` and `s3.path-style-access=true`.
+
+{{% include-config-section "storage-r2" %}}
+
 ## Credential refresh
 
 When a client requests vended credentials by setting the `X-Iceberg-Access-Delegation` header to
@@ -91,6 +104,12 @@ Iceberg SDK each client uses.
 | Apache Spark (Iceberg 1.7.x)       | ADLS / Blob  | `adls.sas-token.<account-name>`                                |
 | PyIceberg (via `adlfs` / `fsspec`) | ADLS / Blob  | `adls.sas-token`, `adls.account-name`                          |
 | Apache Spark / PyIceberg           | GCS          | `gcs.oauth2.token`                                             |
+| Apache Spark / PyIceberg           | R2           | `s3.access-key-id`, `s3.secret-access-key`, `s3.session-token` |
 
 Polaris emits **all applicable forms simultaneously**, so no client-specific Polaris configuration
 is required to switch between the clients listed above.
+
+R2 speaks the S3 API, so R2 needs no client beyond the S3 ones above. Alongside the three S3
+credential properties, Polaris emits `s3.endpoint`, `s3.path-style-access=true` and
+`client.region=auto`, which R2 requires; a client that ignores `s3.endpoint` sends the request to
+AWS instead of R2.

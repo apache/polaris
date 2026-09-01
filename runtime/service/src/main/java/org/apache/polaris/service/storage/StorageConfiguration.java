@@ -108,7 +108,7 @@ public interface StorageConfiguration extends S3AccessConfig {
 
   interface R2StorageConfig {
     /**
-     * Access key id of the default R2 parent API token. The parent token must carry Object Read &
+     * Access key id of the default R2 parent API token. The parent token must carry Object Read and
      * Write permission on every bucket the catalogs use; a temporary credential cannot exceed it.
      */
     @WithName("access-key")

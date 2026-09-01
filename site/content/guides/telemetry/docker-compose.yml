@@ -38,7 +38,7 @@ services:
       quarkus.otel.resource.attributes[1]: polaris.env=dev
 
       polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
-      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\",\"R2\"]"
       polaris.readiness.ignore-severe-issues: "true"
       # Custom metrics (added to all requests)
       polaris.metrics.tags.app: polaris-getting-started

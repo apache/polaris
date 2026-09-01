@@ -96,7 +96,7 @@ tasks.named<QuarkusDev>("quarkusDev") {
       "-Dquarkus.console.color=true",
       "-Dquarkus.observability.lgtm.enabled=false",
       "-Dpolaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"=true",
-      "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",
+      "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\",\"R2\"]",
       "-Dpolaris.readiness.ignore-severe-issues=true",
       "-Dpolaris.features.\"DROP_WITH_PURGE_ENABLED\"=true",
     )

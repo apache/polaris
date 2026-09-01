@@ -128,10 +128,7 @@ public abstract class PolarisRestCatalogR2IntegrationTestBase
     return new String[] {bucket, key + suffix};
   }
 
-  /**
-   * The June proof, as a permanent assertion: a table's credential cannot write under another
-   * table.
-   */
+  /** A table's vended credential must not be able to write under a sibling table's prefix. */
   @Test
   public void vendedCredentialIsScopedToItsTablePrefix() {
     Namespace ns = Namespace.of("r2scope");
