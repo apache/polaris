@@ -29,6 +29,7 @@ from apache_polaris.cli.constants import Subcommands, UNIT_SEPARATOR
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.sdk.catalog.exceptions import NotFoundException
 from apache_polaris.sdk.management import (
+    R2StorageConfigInfo,
     PolarisCatalog,
     CatalogProperties,
     FileStorageConfigInfo,
@@ -239,6 +240,32 @@ class TestSetupCommand(CLITestBase):
         mock_client.list_catalog_roles.assert_not_called()
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
+    def test_setup_apply_r2_options(self, mock_isfile: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_isfile.return_value = True
+        setup_yaml = (
+            "catalogs:\n"
+            "  - name: r2-catalog\n"
+            "    storage_type: r2\n"
+            "    default_base_location: s3://r2-bucket/warehouse\n"
+            "    account_id: 0123456789abcdef0123456789abcdef\n"
+            "    jurisdiction: eu"
+        )
+        with patch(
+            "apache_polaris.cli.command.setup.open", mock_open(read_data=setup_yaml)
+        ):
+            self.mock_execute(mock_client, ["setup", "apply", "config.yaml"])
+        mock_client.create_catalog.assert_called_once()
+        call_args = mock_client.create_catalog.call_args[0][0]
+        self.assertEqual(call_args.catalog.name, "r2-catalog")
+        self.assertEqual(call_args.catalog.storage_config_info.storage_type, "R2")
+        self.assertEqual(
+            call_args.catalog.storage_config_info.account_id,
+            "0123456789abcdef0123456789abcdef",
+        )
+        self.assertEqual(call_args.catalog.storage_config_info.jurisdiction, "eu")
+
+    @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_reports_missing_external_catalog_connection(
         self, mock_isfile: MagicMock
     ) -> None:
@@ -437,6 +464,44 @@ class TestSetupCommand(CLITestBase):
             catalog_role_request.catalog_role.properties,
             catalog_role_properties,
         )
+
+    @patch(
+        "apache_polaris.cli.command.setup.open", new_callable=mock_open, read_data="{}"
+    )
+    @patch("apache_polaris.cli.command.setup.os.path.isfile")
+    def test_setup_export_r2(
+        self, mock_isfile: MagicMock, mock_file: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_isfile.return_value = True
+        mock_catalog = MagicMock()
+        mock_catalog.name = "r2_catalog"
+        mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="r2_catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://r2-bucket/warehouse",
+                additional_properties={},
+            ),
+            storage_config_info=R2StorageConfigInfo(
+                storage_type="R2",
+                allowed_locations=["s3://r2-bucket/warehouse"],
+                account_id="0123456789abcdef0123456789abcdef",
+                jurisdiction="eu",
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = MagicMock(roles=[])
+        with patch(
+            "apache_polaris.cli.command.setup.IcebergCatalogAPI"
+        ) as mock_catalog_api:
+            mock_catalog_api.return_value.list_namespaces.return_value.namespaces = []
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+                self.mock_execute(mock_client, ["setup", "export"])
+        output = mock_stdout.getvalue()
+        self.assertIn("account_id: 0123456789abcdef0123456789abcdef", output)
+        self.assertIn("jurisdiction: eu", output)
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_apply_treats_null_type_as_internal(

@@ -64,6 +64,8 @@ class Command(ABC):
                 hierarchical=options_get(Arguments.HIERARCHICAL),
                 consent_url=options_get(Arguments.CONSENT_URL),
                 service_account=options_get(Arguments.SERVICE_ACCOUNT),
+                account_id=options_get(Arguments.ACCOUNT_ID),
+                jurisdiction=options_get(Arguments.JURISDICTION),
                 catalog_name=options_get(Arguments.CATALOG),
                 properties={} if properties is None else properties,
                 set_properties={} if set_properties is None else set_properties,

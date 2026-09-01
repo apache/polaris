@@ -387,6 +387,14 @@ class SetupCommand(Command):
                     catalog_info.update(
                         {k: v for k, v in gcs_info.items() if v is not None and v != []}
                     )
+                elif storage_type.lower() == StorageType.R2.value:
+                    r2_info = {
+                        "account_id": c.storage_config_info.account_id,
+                        "jurisdiction": c.storage_config_info.jurisdiction,
+                    }
+                    catalog_info.update(
+                        {k: v for k, v in r2_info.items() if v is not None and v != []}
+                    )
                 # Serialize connection info for external catalogs
                 if c.type.lower() == CatalogType.EXTERNAL.value:
                     catalog_info.update(
@@ -857,6 +865,8 @@ class SetupCommand(Command):
             "allowed_kms_keys",
             "encryption_keys",
             "decryption_keys",
+            "account_id",
+            "jurisdiction",
         ]
         return {
             key: catalog_data.get(key)
@@ -1021,6 +1031,8 @@ class SetupCommand(Command):
                         multi_tenant_app_name=command_args.get("multi_tenant_app_name"),
                         consent_url=command_args.get("consent_url"),
                         service_account=command_args.get("service_account"),
+                        account_id=command_args.get("account_id"),
+                        jurisdiction=command_args.get("jurisdiction"),
                         hierarchical=command_args.get("hierarchical"),
                         endpoint=command_args.get("endpoint"),
                         endpoint_internal=command_args.get("endpoint_internal"),

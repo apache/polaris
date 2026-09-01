@@ -22,13 +22,14 @@ from enum import Enum
 
 class StorageType(Enum):
     """
-    Represents a Storage Type within the Polaris API -- `s3`, `azure`, `gcs`, or `file`.
+    Represents a Storage Type within the Polaris API -- `s3`, `azure`, `gcs`, `file`, or `r2`.
     """
 
     S3 = "s3"
     AZURE = "azure"
     GCS = "gcs"
     FILE = "file"
+    R2 = "r2"
 
 
 class CatalogType(Enum):
@@ -202,6 +203,8 @@ class Arguments:
     PARENT = "parent"
     LOCATION = "location"
     REGION = "region"
+    ACCOUNT_ID = "account_id"
+    JURISDICTION = "jurisdiction"
     PROFILE = "profile"
     PROXY = "proxy"
     DEBUG = "debug"
@@ -320,6 +323,11 @@ class Hints:
     )
     ## GCP
     GCS_SERVICE_ACCOUNT = "The service account to use when connecting to GCS"
+    ## R2
+    R2_ACCOUNT_ID = "(Required) The Cloudflare account id (32 hex characters) that owns the R2 buckets"
+    R2_JURISDICTION = (
+        "The R2 jurisdiction (eu, fedramp, or us); omit for the default location"
+    )
 
     # Federation Hints
     EXTERNAL_CATALOG_URI = "The URI of the external catalog"

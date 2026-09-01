@@ -45,6 +45,7 @@ from apache_polaris.sdk.management import (
     AwsStorageConfigInfo,
     AzureStorageConfigInfo,
     GcpStorageConfigInfo,
+    R2StorageConfigInfo,
     PolarisCatalog,
     CatalogProperties,
     BearerAuthenticationParameters,
@@ -92,6 +93,8 @@ class CatalogsCommand(Command):
     hierarchical: Optional[bool] = None
     consent_url: Optional[str] = None
     service_account: Optional[str] = None
+    account_id: Optional[str] = None
+    jurisdiction: Optional[str] = None
     catalog_name: Optional[str] = None
     properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
     set_properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
@@ -229,7 +232,11 @@ class CatalogsCommand(Command):
                 )
 
         if self.storage_type == StorageType.S3.value:
-            if self._has_azure_storage_info() or self._has_gcs_storage_info():
+            if (
+                self._has_azure_storage_info()
+                or self._has_gcs_storage_info()
+                or self._has_r2_storage_info()
+            ):
                 raise CliError(
                     f"Storage type 's3' supports the options"
                     f" {Argument.to_flag_name(Arguments.ROLE_ARN)},"
@@ -254,7 +261,11 @@ class CatalogsCommand(Command):
                     "Missing required argument for storage type 'azure': "
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)}"
                 )
-            if self._has_aws_storage_info() or self._has_gcs_storage_info():
+            if (
+                self._has_aws_storage_info()
+                or self._has_gcs_storage_info()
+                or self._has_r2_storage_info()
+            ):
                 raise CliError(
                     "Storage type 'azure' supports the options"
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)},"
@@ -263,17 +274,38 @@ class CatalogsCommand(Command):
                     f" {Argument.to_flag_name(Arguments.STORAGE_NAME)}"
                 )
         elif self.storage_type == StorageType.GCS.value:
-            if self._has_aws_storage_info() or self._has_azure_storage_info():
+            if (
+                self._has_aws_storage_info()
+                or self._has_azure_storage_info()
+                or self._has_r2_storage_info()
+            ):
                 raise CliError(
                     "Storage type 'gcs' supports the storage credential"
                     f" {Argument.to_flag_name(Arguments.SERVICE_ACCOUNT)} and"
                     f" {Argument.to_flag_name(Arguments.STORAGE_NAME)}"
+                )
+        elif self.storage_type == StorageType.R2.value:
+            if not self.account_id:
+                raise CliError(
+                    "Missing required argument for storage type 'r2': "
+                    f" {Argument.to_flag_name(Arguments.ACCOUNT_ID)}"
+                )
+            if (
+                self._has_aws_storage_info()
+                or self._has_azure_storage_info()
+                or self._has_gcs_storage_info()
+            ):
+                raise CliError(
+                    "Storage type 'r2' supports the options"
+                    f" {Argument.to_flag_name(Arguments.ACCOUNT_ID)} and"
+                    f" {Argument.to_flag_name(Arguments.JURISDICTION)}"
                 )
         elif self.storage_type == StorageType.FILE.value:
             if (
                 self._has_aws_storage_info()
                 or self._has_azure_storage_info()
                 or self._has_gcs_storage_info()
+                or self._has_r2_storage_info()
             ):
                 raise CliError(
                     "Storage type 'file' does not support any additional options"
@@ -307,6 +339,9 @@ class CatalogsCommand(Command):
 
     def _has_gcs_storage_info(self) -> bool:
         return bool(self.service_account)
+
+    def _has_r2_storage_info(self) -> bool:
+        return bool(self.account_id or self.jurisdiction)
 
     @staticmethod
     def _require_s3(storage_info: StorageConfigInfo, flag: str) -> None:
@@ -354,6 +389,13 @@ class CatalogsCommand(Command):
                 storage_name=self.storage_name,
                 allowed_locations=self.allowed_locations,
                 gcs_service_account=self.service_account,
+            )
+        elif self.storage_type == StorageType.R2.value:
+            config = R2StorageConfigInfo(
+                storage_type=self.storage_type.upper(),
+                allowed_locations=self.allowed_locations,
+                account_id=self.account_id,
+                jurisdiction=self.jurisdiction,
             )
         elif self.storage_type == StorageType.FILE.value:
             config = StorageConfigInfo(

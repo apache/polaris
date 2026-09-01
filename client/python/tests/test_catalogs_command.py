@@ -21,6 +21,7 @@ from unittest.mock import patch, MagicMock
 from cli_test_utils import CLITestBase
 from apache_polaris.cli.command.catalogs import CatalogsCommand
 from apache_polaris.cli.constants import Subcommands
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
@@ -1011,3 +1012,55 @@ class TestCatalogsCommand(CLITestBase):
         mock_client.get_catalog.assert_called_with("foo")
         mock_iceberg_api.list_namespaces.assert_called_with(prefix="foo", parent=None)
         mock_policy_api.get_applicable_policies.assert_called_with(prefix="foo")
+
+    def test_catalog_create_r2(self) -> None:
+        mock_client = self.build_mock_client()
+        self.mock_execute(
+            mock_client,
+            [
+                "catalogs", "create", "r2-catalog",
+                "--storage-type", "r2",
+                "--default-base-location", "s3://r2-bucket/warehouse",
+                "--account-id", "0123456789abcdef0123456789abcdef",
+                "--jurisdiction", "eu",
+            ],
+        )
+        mock_client.create_catalog.assert_called_once()
+        request = mock_client.create_catalog.call_args[0][0]
+        config = request.catalog.storage_config_info
+        self.assertEqual(config.storage_type, "R2")
+        self.assertEqual(config.account_id, "0123456789abcdef0123456789abcdef")
+        self.assertEqual(config.jurisdiction, "eu")
+
+    def test_catalog_create_r2_requires_account_id(self) -> None:
+        mock_client = self.build_mock_client()
+        with self.assertRaises(CliError) as ctx:
+            self.mock_execute(
+                mock_client,
+                ["catalogs", "create", "r2-catalog", "--storage-type", "r2",
+                 "--default-base-location", "s3://r2-bucket/warehouse"],
+            )
+        self.assertIn("--account-id", str(ctx.exception))
+
+    def test_catalog_create_r2_rejects_s3_options(self) -> None:
+        mock_client = self.build_mock_client()
+        with self.assertRaises(CliError) as ctx:
+            self.mock_execute(
+                mock_client,
+                ["catalogs", "create", "r2-catalog", "--storage-type", "r2",
+                 "--default-base-location", "s3://r2-bucket/warehouse",
+                 "--account-id", "0123456789abcdef0123456789abcdef",
+                 "--role-arn", "arn:aws:iam::123456789012:role/x"],
+            )
+        self.assertIn("Storage type 'r2'", str(ctx.exception))
+
+    def test_catalog_create_s3_rejects_r2_options(self) -> None:
+        mock_client = self.build_mock_client()
+        with self.assertRaises(CliError):
+            self.mock_execute(
+                mock_client,
+                ["catalogs", "create", "s3-catalog", "--storage-type", "s3",
+                 "--default-base-location", "s3://bucket/warehouse",
+                 "--role-arn", "arn:aws:iam::123456789012:role/x",
+                 "--account-id", "0123456789abcdef0123456789abcdef"],
+            )

@@ -231,7 +231,7 @@ class OptionTree:
                         Argument(
                             Arguments.STORAGE_TYPE,
                             str,
-                            "(Required) The storage type [S3, AZURE, GCS, FILE]",
+                            "(Required) The storage type [S3, AZURE, GCS, FILE, R2]",
                             lower=True,
                             choices=[st.value for st in StorageType],
                         ),
@@ -361,6 +361,18 @@ class OptionTree:
                             str,
                             Hints.GCS_SERVICE_ACCOUNT,
                             group="GCP Storage Options",
+                        ),
+                        Argument(
+                            Arguments.ACCOUNT_ID,
+                            str,
+                            Hints.R2_ACCOUNT_ID,
+                            group="Cloudflare R2 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.JURISDICTION,
+                            str,
+                            Hints.R2_JURISDICTION,
+                            group="Cloudflare R2 Storage Options",
                         ),
                         Argument(
                             Arguments.PROPERTY,
