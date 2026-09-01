@@ -113,6 +113,28 @@ public class CatalogSerializationTest {
                 + "}}");
   }
 
+  @Test
+  public void testR2StorageConfigRoundTrip() {
+    R2StorageConfigInfo config =
+        R2StorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.R2)
+            .setAccountId("0123456789abcdef0123456789abcdef")
+            .setJurisdiction("eu")
+            .setAllowedLocations(List.of("s3://bucket/prefix/"))
+            .build();
+
+    String json = mapper.writeValueAsString(config);
+
+    assertThat(json).contains("\"storageType\":\"R2\"").contains("\"accountId\"");
+
+    StorageConfigInfo back = mapper.readValue(json, StorageConfigInfo.class);
+
+    assertThat(back).isInstanceOf(R2StorageConfigInfo.class);
+    assertThat(((R2StorageConfigInfo) back).getAccountId())
+        .isEqualTo("0123456789abcdef0123456789abcdef");
+    assertThat(((R2StorageConfigInfo) back).getJurisdiction()).isEqualTo("eu");
+  }
+
   private static Stream<Arguments> catalogTestCases() {
     Stream<Arguments> basicCases =
         Stream.of(

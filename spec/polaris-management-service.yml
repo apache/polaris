@@ -1103,12 +1103,13 @@ components:
             - GCS
             - AZURE
             - FILE
+            - R2
           description: The cloud provider type this storage is built on. FILE is supported for testing purposes only
         allowedLocations:
           type: array
           items:
             type: string
-          example: "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
+          example: "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/], for R2 [s3://bucketname/prefix/]"
         storageName:
           type: string
           description: An optional name referencing a server-side storage configuration
@@ -1121,6 +1122,7 @@ components:
           AZURE: "#/components/schemas/AzureStorageConfigInfo"
           GCS: "#/components/schemas/GcpStorageConfigInfo"
           FILE: "#/components/schemas/FileStorageConfigInfo"
+          R2: "#/components/schemas/R2StorageConfigInfo"
 
     AwsStorageConfigInfo:
       type: object
@@ -1204,6 +1206,30 @@ components:
               type: boolean
               description: >-
                 if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
+
+    R2StorageConfigInfo:
+      type: object
+      description: cloudflare r2 storage configuration info
+      allOf:
+        - $ref: '#/components/schemas/StorageConfigInfo'
+        - type: object
+          properties:
+            accountId:
+              type: string
+              pattern: '^[0-9a-f]{32}$'
+              description: >-
+                the Cloudflare account id that owns the R2 buckets. The S3 endpoint host and the
+                audience of vended credentials are derived from it.
+              example: "0123456789abcdef0123456789abcdef"
+            jurisdiction:
+              type: string
+              description: >-
+                optional R2 jurisdiction (`eu`, `fedramp`, or `us`). When set, the endpoint host is
+                `<accountId>.<jurisdiction>.r2.cloudflarestorage.com`. A bucket's jurisdiction
+                cannot be changed after creation.
+              example: "eu"
+          required:
+            - accountId
 
     AzureStorageConfigInfo:
       type: object
