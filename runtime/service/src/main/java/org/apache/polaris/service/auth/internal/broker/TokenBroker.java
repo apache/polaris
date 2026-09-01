@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth.internal.broker;
 
 import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.types.TokenType;
+import org.jspecify.annotations.Nullable;
 
 /** A broker for generating and verifying tokens. */
 public interface TokenBroker {
@@ -60,5 +61,5 @@ public interface TokenBroker {
    * @throws org.apache.iceberg.exceptions.NotAuthorizedException if the token is Polaris-issued but
    *     invalid
    */
-  PolarisCredential verify(String token);
+  @Nullable PolarisCredential verify(String token);
 }
