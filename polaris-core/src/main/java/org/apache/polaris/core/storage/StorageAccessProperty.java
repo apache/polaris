@@ -81,6 +81,48 @@ public enum StorageAccessProperty {
       false,
       StorageType.AWS),
 
+  R2_KEY_ID(
+      String.class,
+      "s3.access-key-id",
+      "access key id of the vended R2 temporary credential (the parent token's key id)",
+      true,
+      StorageType.R2),
+  R2_SECRET_KEY(
+      String.class,
+      "s3.secret-access-key",
+      "secret access key of the vended R2 temporary credential (derived from the signed JWT)",
+      true,
+      StorageType.R2),
+  R2_TOKEN(
+      String.class,
+      "s3.session-token",
+      "session token of the vended R2 temporary credential (base64 of `jwt/` + signed JWT)",
+      true,
+      StorageType.R2),
+  R2_SESSION_TOKEN_EXPIRES_AT_MS(
+      String.class,
+      "s3.session-token-expires-at-ms",
+      "expiration time of the R2 temporary credential, in milliseconds since the Unix epoch",
+      true,
+      true,
+      StorageType.R2),
+  R2_ENDPOINT(
+      String.class,
+      "s3.endpoint",
+      "R2 S3 endpoint derived from the account id and jurisdiction",
+      false,
+      StorageType.R2),
+  R2_PATH_STYLE_ACCESS(
+      Boolean.class, "s3.path-style-access", "always true for R2", false, StorageType.R2),
+  R2_CLIENT_REGION(String.class, "client.region", "always `auto` for R2", false, StorageType.R2),
+  R2_REFRESH_CREDENTIALS_ENDPOINT(
+      String.class,
+      AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
+      "catalog endpoint the client can call to refresh vended credentials before they expire",
+      false,
+      false,
+      StorageType.R2),
+
   GCS_ACCESS_TOKEN(
       String.class, "gcs.oauth2.token", "downscoped OAuth2 access token", true, StorageType.GCS),
   GCS_ACCESS_TOKEN_EXPIRES_AT_MS(
@@ -146,7 +188,8 @@ public enum StorageAccessProperty {
   public enum StorageType {
     AWS,
     AZURE,
-    GCS
+    GCS,
+    R2
   }
 
   private final Class<?> valueType;
