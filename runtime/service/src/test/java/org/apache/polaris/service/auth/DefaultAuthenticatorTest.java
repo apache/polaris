@@ -55,6 +55,7 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
 import org.apache.polaris.service.auth.external.ExternalPolarisCredential;
 import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
+import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -551,6 +552,39 @@ public class DefaultAuthenticatorTest {
     assertThat(result.getAttribute(PolarisPrincipal.JWT_ATTRIBUTE_KEY, String.class))
         .hasValue("raw.jwt.token");
     Mockito.verifyNoInteractions(metaStoreManagerSpy);
+  }
+
+  @Test
+  void testCustomBrokerCredentialTreatedAsInternal() {
+    // A custom TokenBroker that returns a plain PolarisCredential (neither
+    // InternalPolarisCredential nor ExternalPolarisCredential) must still be treated as internal,
+    // i.e. resolved against the metastore.
+    TokenBroker customBroker = Mockito.mock(TokenBroker.class);
+    Mockito.when(customBroker.verify("token"))
+        .thenReturn(
+            new PolarisCredential() {
+              @Override
+              public String getPrincipalName() {
+                return PRINCIPAL_NAME;
+              }
+
+              @Override
+              public Set<String> getPrincipalRoles() {
+                return Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL);
+              }
+            });
+
+    PolarisCredential credentials = customBroker.verify("token");
+    assertThat(credentials)
+        .isNotInstanceOf(InternalPolarisCredential.class)
+        .isNotInstanceOf(ExternalPolarisCredential.class);
+
+    // When: authenticating with the plain credential
+    PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
+
+    // Then: the principal is resolved from the metastore, just like before the external-principal
+    // change, with its roles derived from the backing entity's grants
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
   }
 
   private PrincipalEntity createPrincipal(String name, String... roles) {
