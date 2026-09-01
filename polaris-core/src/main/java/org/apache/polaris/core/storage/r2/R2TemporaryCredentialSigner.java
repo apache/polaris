@@ -26,6 +26,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -59,7 +60,28 @@ public final class R2TemporaryCredentialSigner {
       List<String> prefixes,
       String scope,
       Duration ttl,
-      Instant now) {}
+      Instant now) {
+    @Override
+    public String toString() {
+      return "Request{parentKeyId="
+          + parentKeyId
+          + ", parentSecret=<redacted>, accountId="
+          + accountId
+          + ", audienceHost="
+          + audienceHost
+          + ", bucket="
+          + bucket
+          + ", prefixes="
+          + prefixes
+          + ", scope="
+          + scope
+          + ", ttl="
+          + ttl
+          + ", now="
+          + now
+          + "}";
+    }
+  }
 
   public record Credential(
       String accessKeyId, String secretAccessKey, String sessionToken, Instant expiresAt) {
@@ -70,13 +92,17 @@ public final class R2TemporaryCredentialSigner {
   }
 
   public static Credential sign(Request request) {
-    Instant expiresAt = request.now().plus(request.ttl());
+    // java-jwt writes iat and exp as whole seconds, so truncate here and let the advertised
+    // expiresAt match the exp claim exactly rather than carrying sub-second precision the token
+    // does not have.
+    Instant now = request.now().truncatedTo(ChronoUnit.SECONDS);
+    Instant expiresAt = now.plus(request.ttl());
     JWTCreator.Builder builder =
         JWT.create()
             .withSubject(request.accountId())
             .withIssuer(request.parentKeyId())
             .withAudience(request.audienceHost())
-            .withIssuedAt(request.now())
+            .withIssuedAt(now)
             .withExpiresAt(expiresAt)
             .withClaim("bucket", request.bucket())
             .withClaim("scope", request.scope());

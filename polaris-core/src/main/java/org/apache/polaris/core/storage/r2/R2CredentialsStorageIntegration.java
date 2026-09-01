@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -40,6 +41,8 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Vends Cloudflare R2 temporary credentials scoped to one bucket and the table's key prefixes.
@@ -48,6 +51,9 @@ import org.jspecify.annotations.Nullable;
  */
 public class R2CredentialsStorageIntegration
     extends CachingStorageIntegration<R2StorageConfigurationInfo> {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(R2CredentialsStorageIntegration.class);
 
   private static final Set<PolarisStorageActions> WRITE_ACTIONS =
       EnumSet.of(
@@ -76,19 +82,12 @@ public class R2CredentialsStorageIntegration
     R2ParentToken token =
         parentTokenResolver
             .resolve(config.getStorageName())
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        config.getStorageName() == null
-                            ? "No default R2 parent token is configured on the server"
-                            : "R2 storage name '"
-                                + config.getStorageName()
-                                + "' is not configured on the server"));
+            .orElseThrow(() -> noParentToken(config.getStorageName(), context));
     Duration ttl = Duration.ofSeconds(realmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS));
     return R2StorageCredentialCacheKey.of(
         context.realm().orElse(""),
         config,
-        singleBucket(grants),
+        singleBucket(grants, context),
         normalizedPrefixes(grants),
         scopeFor(grants),
         token.accessKeyId(),
@@ -98,6 +97,22 @@ public class R2CredentialsStorageIntegration
         token.secretAccessKey(),
         clock,
         realmConfig());
+  }
+
+  /**
+   * Reports a vend attempt against a storage name the server holds no parent token for. Logs at
+   * ERROR because the catalog exists but cannot vend, which an operator has to fix.
+   */
+  private static IllegalArgumentException noParentToken(
+      @Nullable String storageName, CredentialVendingContext context) {
+    LOGGER.error(
+        "No R2 parent token for storage name {} (catalog {})",
+        storageName,
+        context.catalogName().orElse("<none>"));
+    return new IllegalArgumentException(
+        storageName == null
+            ? "No default R2 parent token is configured on the server"
+            : "R2 storage name '" + storageName + "' is not configured on the server");
   }
 
   /** Mint a fresh {@link StorageAccessConfig} for the given key. Called by the cache on miss. */
@@ -130,24 +145,61 @@ public class R2CredentialsStorageIntegration
     return builder.build();
   }
 
-  /** The single bucket all grants refer to; an R2 temporary credential binds to exactly one. */
-  static String singleBucket(List<LocationGrant> grants) {
-    Set<String> buckets =
-        grants.stream()
-            .flatMap(g -> g.locations().stream())
-            .map(loc -> StorageUri.parse(loc).authority())
-            .collect(Collectors.toCollection(TreeSet::new));
+  /**
+   * The single bucket all grants refer to; an R2 temporary credential binds to exactly one. Names
+   * the table in the failure message whenever the context carries one, because the fix is to give
+   * that table a location layout confined to one bucket.
+   */
+  static String singleBucket(List<LocationGrant> grants, CredentialVendingContext context) {
+    Set<String> buckets = new TreeSet<>();
+    for (LocationGrant grant : grants) {
+      for (String location : grant.locations()) {
+        String bucket = StorageUri.parse(location).authority();
+        if (bucket == null) {
+          throw new IllegalArgumentException(
+              "R2 location '"
+                  + location
+                  + "'"
+                  + forTable(context)
+                  + " names no bucket; R2 locations must be s3://<bucket>/<prefix>");
+        }
+        buckets.add(bucket);
+      }
+    }
     if (buckets.size() != 1) {
       throw new IllegalArgumentException(
-          "R2 credentials are scoped to one bucket, but the grants span " + buckets);
+          "R2 credentials are scoped to one bucket, but the grants"
+              + forTable(context)
+              + " span "
+              + buckets
+              + "; use one bucket per table");
     }
     return buckets.iterator().next();
+  }
+
+  /**
+   * {@code " for table <catalog>.<namespace>.<table>"} when the context identifies a table, else
+   * the empty string.
+   */
+  private static String forTable(CredentialVendingContext context) {
+    return context
+        .tableName()
+        .map(
+            table ->
+                " for table "
+                    + Stream.of(context.catalogName(), context.namespace(), Optional.of(table))
+                        .flatMap(Optional::stream)
+                        .collect(Collectors.joining(".")))
+        .orElse("");
   }
 
   /**
    * Key prefixes for the {@code paths.prefixPaths} claim: no leading slash, exactly one trailing
    * slash, deduplicated, sorted. An empty result means at least one grant is at bucket root, and
    * the credential is scoped to the whole bucket.
+   *
+   * <p>Combining several grants unions their locations: every location under the single bucket
+   * contributes a prefix, whatever actions its own grant carries.
    */
   static List<String> normalizedPrefixes(List<LocationGrant> grants) {
     TreeSet<String> prefixes = new TreeSet<>();
@@ -169,6 +221,11 @@ public class R2CredentialsStorageIntegration
     return List.copyOf(prefixes);
   }
 
+  /**
+   * The single R2 scope covering all grants. R2 attaches one scope to the whole credential, so a
+   * WRITE, DELETE or ALL action in any grant yields {@code object-read-write} for every prefix;
+   * only an all-read set yields {@code object-read-only}.
+   */
   static String scopeFor(List<LocationGrant> grants) {
     boolean write =
         grants.stream().flatMap(g -> g.actions().stream()).anyMatch(WRITE_ACTIONS::contains);

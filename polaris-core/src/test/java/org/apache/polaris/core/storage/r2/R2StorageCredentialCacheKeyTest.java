@@ -22,15 +22,19 @@ import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONF
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.auth0.jwt.JWT;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -51,14 +55,24 @@ class R2StorageCredentialCacheKeyTest {
 
   private static R2StorageCredentialCacheKey key(
       List<String> prefixes, String scope, String secret, Optional<String> refresh) {
+    return key(CONFIG, prefixes, scope, secret, R2ParentToken.fingerprint(secret), refresh);
+  }
+
+  private static R2StorageCredentialCacheKey key(
+      R2StorageConfigurationInfo config,
+      List<String> prefixes,
+      String scope,
+      String secret,
+      String fingerprint,
+      Optional<String> refresh) {
     return R2StorageCredentialCacheKey.of(
         "realm",
-        CONFIG,
+        config,
         "bucket",
         prefixes,
         scope,
         "parent-key",
-        R2ParentToken.fingerprint(secret),
+        fingerprint,
         Duration.ofSeconds(3600),
         refresh,
         secret,
@@ -75,6 +89,36 @@ class R2StorageCredentialCacheKeyTest {
         key(List.of("p/"), "object-read-only", "s2", Optional.empty());
     assertThat(a).isEqualTo(sameData).hasSameHashCodeAs(sameData);
     assertThat(a).isNotEqualTo(rotated);
+
+    // The secret itself is auxiliary: two keys that differ only in it stay equal, which is what
+    // makes the fingerprint the thing that has to change on rotation.
+    R2StorageCredentialCacheKey secretOnlyDifference =
+        key(CONFIG, List.of("p/"), "object-read-only", "s1", "deadbeef", Optional.empty());
+    R2StorageCredentialCacheKey otherSecretSameFingerprint =
+        key(CONFIG, List.of("p/"), "object-read-only", "s2", "deadbeef", Optional.empty());
+    assertThat(secretOnlyDifference)
+        .isEqualTo(otherSecretSameFingerprint)
+        .hasSameHashCodeAs(otherSecretSameFingerprint);
+  }
+
+  @Test
+  void loadUsesTheJurisdictionEndpointAndAudience() {
+    R2StorageConfigurationInfo eu =
+        R2StorageConfigurationInfo.builder()
+            .accountId(ACCOUNT)
+            .jurisdiction("eu")
+            .addAllowedLocations("s3://bucket/")
+            .build();
+    StorageAccessConfig cfg =
+        key(eu, List.of("wh/t1/"), "object-read-write", "secret", "deadbeef", Optional.empty())
+            .load();
+    String expectedHost = ACCOUNT + ".eu.r2.cloudflarestorage.com";
+    assertThat(cfg.extraProperties()).containsEntry("s3.endpoint", "https://" + expectedHost);
+
+    String sessionToken = cfg.credentials().get(StorageAccessProperty.R2_TOKEN.getPropertyName());
+    String decoded = new String(Base64.getDecoder().decode(sessionToken), StandardCharsets.UTF_8);
+    String jwt = decoded.substring(R2TemporaryCredentialSigner.SESSION_TOKEN_PREFIX.length());
+    assertThat(JWT.decode(jwt).getAudience()).containsExactly(expectedHost);
   }
 
   @Test
@@ -167,7 +211,8 @@ class R2StorageCredentialCacheKeyTest {
             R2CredentialsStorageIntegration.singleBucket(
                 List.of(
                     new LocationGrant(
-                        Set.of("s3://b/x/", "s3a://b/y/"), Set.of(PolarisStorageActions.READ)))))
+                        Set.of("s3://b/x/", "s3a://b/y/"), Set.of(PolarisStorageActions.READ))),
+                CredentialVendingContext.empty()))
         .isEqualTo("b");
     assertThatThrownBy(
             () ->
@@ -175,9 +220,23 @@ class R2StorageCredentialCacheKeyTest {
                     List.of(
                         new LocationGrant(
                             Set.of("s3://b1/x/", "s3://b2/y/"),
-                            Set.of(PolarisStorageActions.READ)))))
+                            Set.of(PolarisStorageActions.READ))),
+                    CredentialVendingContext.empty()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("b1")
         .hasMessageContaining("b2");
+  }
+
+  @Test
+  void locationWithoutABucketIsRejected() {
+    assertThatThrownBy(
+            () ->
+                R2CredentialsStorageIntegration.singleBucket(
+                    List.of(
+                        new LocationGrant(Set.of("s3:///x/"), Set.of(PolarisStorageActions.READ))),
+                    CredentialVendingContext.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("s3:///x/")
+        .hasMessageContaining("names no bucket");
   }
 }

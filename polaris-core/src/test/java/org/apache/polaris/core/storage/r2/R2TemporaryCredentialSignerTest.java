@@ -32,6 +32,8 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class R2TemporaryCredentialSignerTest {
 
@@ -94,18 +96,20 @@ class R2TemporaryCredentialSignerTest {
     assertThat(cred.secretAccessKey()).isEqualTo(HexFormat.of().formatHex(digest));
   }
 
-  @Test
-  void usesJurisdictionHostAsAudience() {
+  static List<String> knownJurisdictions() {
+    return R2StorageConfigurationInfo.KNOWN_JURISDICTIONS;
+  }
+
+  @ParameterizedTest
+  @MethodSource("knownJurisdictions")
+  void usesJurisdictionHostAsAudience(String jurisdiction) {
+    String host = ACCOUNT + "." + jurisdiction + ".r2.cloudflarestorage.com";
     R2TemporaryCredentialSigner.Credential cred =
         R2TemporaryCredentialSigner.sign(
-            request(
-                ACCOUNT + ".eu.r2.cloudflarestorage.com",
-                List.of("p/"),
-                R2TemporaryCredentialSigner.SCOPE_OBJECT_READ_ONLY));
-    assertThat(verify(cred.sessionToken()).getAudience())
-        .containsExactly(ACCOUNT + ".eu.r2.cloudflarestorage.com");
-    assertThat(verify(cred.sessionToken()).getClaim("scope").asString())
-        .isEqualTo("object-read-only");
+            request(host, List.of("p/"), R2TemporaryCredentialSigner.SCOPE_OBJECT_READ_ONLY));
+    DecodedJWT jwt = verify(cred.sessionToken());
+    assertThat(jwt.getAudience()).containsExactly(host);
+    assertThat(jwt.getClaim("scope").asString()).isEqualTo("object-read-only");
   }
 
   @Test
@@ -155,5 +159,41 @@ class R2TemporaryCredentialSignerTest {
   void noneResolverResolvesNothing() {
     assertThat(R2ParentTokenResolver.none().resolve(null)).isEmpty();
     assertThat(R2ParentTokenResolver.none().resolve("x")).isEmpty();
+  }
+
+  @Test
+  void requestToStringOmitsTheParentSecret() {
+    R2TemporaryCredentialSigner.Request request =
+        request(
+            ACCOUNT + ".r2.cloudflarestorage.com",
+            List.of("p/"),
+            R2TemporaryCredentialSigner.SCOPE_OBJECT_READ_ONLY);
+    assertThat(request.toString()).doesNotContain(PARENT_SECRET).contains(PARENT_KEY, "my-bucket");
+  }
+
+  @Test
+  void advertisedExpiryMatchesTheExpClaimExactly() {
+    // A now() with sub-second precision: java-jwt floors exp to whole seconds, so the credential
+    // must advertise the truncated value rather than the caller's millisecond instant.
+    Instant nowWithMillis = NOW.plusMillis(750);
+    R2TemporaryCredentialSigner.Credential cred =
+        R2TemporaryCredentialSigner.sign(
+            new R2TemporaryCredentialSigner.Request(
+                PARENT_KEY,
+                PARENT_SECRET,
+                ACCOUNT,
+                ACCOUNT + ".r2.cloudflarestorage.com",
+                "my-bucket",
+                List.of("p/"),
+                R2TemporaryCredentialSigner.SCOPE_OBJECT_READ_ONLY,
+                Duration.ofSeconds(3600),
+                nowWithMillis));
+
+    DecodedJWT jwt = verify(cred.sessionToken());
+    assertThat(cred.expiresAt().getNano()).isZero();
+    assertThat(cred.expiresAt().getEpochSecond())
+        .isEqualTo(jwt.getExpiresAtAsInstant().getEpochSecond());
+    assertThat(cred.expiresAt()).isEqualTo(NOW.plusSeconds(3600));
+    assertThat(jwt.getIssuedAtAsInstant()).isEqualTo(NOW);
   }
 }

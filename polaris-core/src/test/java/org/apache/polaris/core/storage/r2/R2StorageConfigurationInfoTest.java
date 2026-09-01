@@ -22,8 +22,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
+import java.util.List;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class R2StorageConfigurationInfoTest {
 
@@ -44,15 +47,24 @@ class R2StorageConfigurationInfoTest {
     assertThat(info.getJurisdiction()).isNull();
   }
 
-  @Test
-  void derivesJurisdictionEndpointHost() {
+  static List<String> knownJurisdictions() {
+    return R2StorageConfigurationInfo.KNOWN_JURISDICTIONS;
+  }
+
+  @ParameterizedTest
+  @MethodSource("knownJurisdictions")
+  void derivesJurisdictionEndpointHost(String jurisdiction) {
     R2StorageConfigurationInfo info =
         R2StorageConfigurationInfo.builder()
             .accountId(ACCOUNT)
-            .jurisdiction("eu")
+            .jurisdiction(jurisdiction)
             .addAllowedLocations("s3a://bucket/")
             .build();
-    assertThat(info.getEndpointHost()).isEqualTo(ACCOUNT + ".eu.r2.cloudflarestorage.com");
+    assertThat(info.getEndpointHost())
+        .isEqualTo(ACCOUNT + "." + jurisdiction + ".r2.cloudflarestorage.com");
+    assertThat(info.getEndpointUri())
+        .isEqualTo(
+            URI.create("https://" + ACCOUNT + "." + jurisdiction + ".r2.cloudflarestorage.com"));
   }
 
   @Test

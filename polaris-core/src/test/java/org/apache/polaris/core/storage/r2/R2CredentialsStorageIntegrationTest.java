@@ -44,6 +44,10 @@ class R2CredentialsStorageIntegrationTest {
 
   private static final String ACCOUNT = "0123456789abcdef0123456789abcdef";
   private static final RealmConfig REALM_CONFIG = new RealmConfigImpl(EMPTY_CONFIG, () -> "realm");
+
+  // Fixed at the current second, not at a literal past instant: StorageCredentialCache computes an
+  // entry's TTL from (expirationTime - System.currentTimeMillis()) / 2, so credentials minted from
+  // a clock in the past land in the cache already expired. See expiredCredentialIsNotReused.
   private static final Clock CLOCK =
       Clock.fixed(Instant.now().truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC);
   private static final R2StorageConfigurationInfo CONFIG =
@@ -119,5 +123,45 @@ class R2CredentialsStorageIntegrationTest {
                     grants, Optional.empty(), CredentialVendingContext.empty()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("one bucket");
+  }
+
+  @Test
+  void multiBucketRejectionNamesTheTable() {
+    R2CredentialsStorageIntegration integration =
+        new R2CredentialsStorageIntegration(RESOLVER, CLOCK, null, CONFIG, REALM_CONFIG);
+    List<LocationGrant> grants =
+        List.of(
+            new LocationGrant(
+                Set.of("s3://bucket/a/", "s3://other/b/"), Set.of(PolarisStorageActions.READ)));
+    CredentialVendingContext context =
+        CredentialVendingContext.builder()
+            .realm(Optional.of("realm"))
+            .catalogName(Optional.of("c"))
+            .namespace(Optional.of("ns"))
+            .tableName(Optional.of("t"))
+            .build();
+    assertThatThrownBy(() -> integration.getStorageAccessConfig(grants, Optional.empty(), context))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("c.ns.t")
+        .hasMessageContaining("bucket")
+        .hasMessageContaining("other");
+  }
+
+  @Test
+  void expiredCredentialIsNotReused() {
+    // A clock two hours behind the wall clock mints credentials whose expiry is already past, so
+    // StorageCredentialCache computes a zero TTL and the second call has to mint again.
+    Clock stale = Clock.fixed(Instant.now().minus(2, ChronoUnit.HOURS), ZoneOffset.UTC);
+    StorageCredentialCacheConfig cacheConfig = () -> 10_000;
+    StorageCredentialCache cache = new StorageCredentialCache(cacheConfig);
+    R2CredentialsStorageIntegration integration =
+        new R2CredentialsStorageIntegration(RESOLVER, stale, cache, CONFIG, REALM_CONFIG);
+    StorageAccessConfig first =
+        integration.getStorageAccessConfig(
+            GRANTS, Optional.empty(), CredentialVendingContext.empty());
+    StorageAccessConfig second =
+        integration.getStorageAccessConfig(
+            GRANTS, Optional.empty(), CredentialVendingContext.empty());
+    assertThat(second).isNotSameAs(first);
   }
 }
