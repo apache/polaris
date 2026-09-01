@@ -171,11 +171,11 @@ options:
 
 Command Options:
   --type {internal,external}                                           The type of catalog [INTERNAL, EXTERNAL]
-  --storage-type {s3,azure,gcs,file}                                   (Required) The storage type [S3, AZURE, GCS, FILE]
+  --storage-type {s3,azure,gcs,file,r2}                                (Required) The storage type [S3, AZURE, GCS, FILE, R2]
   --storage-name STORAGE_NAME                                          An optional name referencing a server-side storage configuration
   --default-base-location DEFAULT_BASE_LOCATION                        (Required) Default base location for the catalog
   --allowed-location ALLOWED_LOCATION                                  An allowed location for files tracked by the catalog
-  --property PROPERTY                                                  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once. Do not put passwords, tokens, access keys, or other secrets into the client-visible catalog properties.
+  --property PROPERTY                                                  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once. Catalog properties are client-visible defaults. Do not put passwords, tokens, access keys, or other secrets in them.
 
 AWS S3 Storage Options:
   --endpoint ENDPOINT                                                  The S3 endpoint to use when connecting to S3
@@ -201,6 +201,10 @@ Azure Storage Options:
 GCP Storage Options:
   --service-account SERVICE_ACCOUNT                                    The service account to use when connecting to GCS
 
+Cloudflare R2 Storage Options:
+  --account-id ACCOUNT_ID                                              (Required) The Cloudflare account id (32 hex characters) that owns the R2 buckets
+  --jurisdiction JURISDICTION                                          The R2 jurisdiction (eu, fedramp, or us); omit for the default location
+
 External Catalog Federation: General Options:
   --catalog-connection-type {hadoop,iceberg-rest,hive}                 External catalog type [ICEBERG-REST, HADOOP, HIVE]
   --iceberg-remote-catalog-name ICEBERG_REMOTE_CATALOG_NAME            The remote catalog name when federating to an Iceberg REST catalog
@@ -225,7 +229,7 @@ External Catalog Federation: Bearer Token Options:
 External Catalog Federation: AWS SigV4 Options:
   --catalog-role-arn CATALOG_ROLE_ARN                                  The AWS IAM role ARN assumed by Polaris when signing requests
   --catalog-role-session-name CATALOG_ROLE_SESSION_NAME                The role session name to be used by the SigV4 protocol for signing requests
-  --catalog-external-id CATALOG_EXTERNAL_ID                            An optional external ID used to establish an AWS trust relationship
+  --catalog-external-id CATALOG_EXTERNAL_ID                            An optional external ID used to establish a AWS trust relationship
   --catalog-signing-region CATALOG_SIGNING_REGION                      Region to be used by the SigV4 protocol for signing requests
   --catalog-signing-name CATALOG_SIGNING_NAME                          The service name to be used by the SigV4 protocol for signing requests
 ```

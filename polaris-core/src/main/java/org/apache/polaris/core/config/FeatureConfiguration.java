@@ -772,7 +772,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If set to true, resolve AWS credentials based on the storageName field "
                   + "of the storage configuration. "
-                  + "When disabled, the default AWS credentials are used for all storages.")
+                  + "When disabled, the default AWS credentials are used for all storages. "
+                  + "Applies to S3 storage only; R2 storage always resolves its parent token "
+                  + "by storageName because R2 has no default credential chain.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -782,7 +784,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If set to true, allows unrestricted changes to storage configuration role "
                   + "properties when updating a catalog, including changing the AWS account ID, "
-                  + "role ARN, external ID, or Azure tenant ID. When false (default), these "
+                  + "role ARN, external ID, or Azure tenant ID, or R2 account ID and "
+                  + "jurisdiction. When false (default), these "
                   + "changes are restricted: new values can be set when none were previously "
                   + "configured, but existing values cannot be changed to different ones.")
           .defaultValue(false)
