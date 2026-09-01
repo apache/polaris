@@ -40,6 +40,7 @@ import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.R2StorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -53,6 +54,7 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.r2.R2StorageConfigurationInfo;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -163,6 +165,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
             .setAllowedLocations(gcpConfigModel.getAllowedLocations())
             .setStorageName(gcpConfigModel.getStorageName())
+            .build();
+      }
+      if (configInfo instanceof R2StorageConfigurationInfo r2Config) {
+        return R2StorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.R2)
+            .setAllowedLocations(r2Config.getAllowedLocations())
+            .setStorageName(r2Config.getStorageName())
+            .setAccountId(r2Config.getAccountId())
+            .setJurisdiction(r2Config.getJurisdiction())
             .build();
       }
       if (configInfo instanceof FileStorageConfigurationInfo fileConfigModel) {
@@ -385,6 +396,16 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .storageName(storageConfigModel.getStorageName())
                     .gcpServiceAccount(
                         ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
+                    .build();
+            break;
+          case R2:
+            R2StorageConfigInfo r2ConfigModel = (R2StorageConfigInfo) storageConfigModel;
+            config =
+                R2StorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
+                    .accountId(r2ConfigModel.getAccountId())
+                    .jurisdiction(r2ConfigModel.getJurisdiction())
                     .build();
             break;
           case FILE:

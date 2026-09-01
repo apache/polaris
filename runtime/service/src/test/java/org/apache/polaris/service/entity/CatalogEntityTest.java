@@ -38,6 +38,7 @@ import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.R2StorageConfigInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -108,6 +109,26 @@ public class CatalogEntityTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefixes");
+  }
+
+  @Test
+  public void testInvalidAllowedLocationPrefixR2() {
+    R2StorageConfigInfo config =
+        R2StorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.R2)
+            .setAccountId("0123456789abcdef0123456789abcdef")
+            .setAllowedLocations(List.of("gs://not-r2/"))
+            .build();
+    Assertions.assertThatThrownBy(
+            () ->
+                new CatalogEntity.Builder()
+                    .setName("bad-r2")
+                    .setDefaultBaseLocation("gs://not-r2/")
+                    .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
+                    .setStorageConfigurationInfo(realmConfig, config)
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Location prefix not allowed");
   }
 
   @Test
@@ -606,6 +627,11 @@ public class CatalogEntityTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
             .setTenantId("test-tenant")
             .setAllowedLocations(List.of("abfss://test@example.dfs.core.windows.net/"));
+    R2StorageConfigInfo.Builder r2 =
+        R2StorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.R2)
+            .setAccountId("0123456789abcdef0123456789abcdef")
+            .setAllowedLocations(List.of("s3://r2-bucket/warehouse/"));
     return Stream.of(
         Arguments.of(b.build()),
         Arguments.of(b.setExternalId("ex1").build()),
@@ -615,7 +641,10 @@ public class CatalogEntityTest {
         Arguments.of(b.setPathStyleAccess(true).build()),
         Arguments.of(b.setStorageName("my-storage").build()),
         Arguments.of(a.build()),
-        Arguments.of(a.setHierarchical(true).build()));
+        Arguments.of(a.setHierarchical(true).build()),
+        Arguments.of(r2.build()),
+        Arguments.of(r2.setJurisdiction("eu").build()),
+        Arguments.of(r2.setStorageName("r2-primary").build()));
   }
 
   @Test
