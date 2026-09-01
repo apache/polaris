@@ -305,6 +305,16 @@ public class PolarisAdminService {
    * PolarisPrincipal}.
    */
   private boolean isSelfEntity(PolarisEntity entity) {
+    // External principals are not backed by the metastore, so they can never be the stored target
+    // entity: a name match would be an accidental collision, not genuine self-service. Denying the
+    // shortcut forces such callers through the authorizer.
+    boolean externalPrincipal =
+        polarisPrincipal
+            .getAttribute(PolarisPrincipal.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, Boolean.class)
+            .orElse(false);
+    if (externalPrincipal) {
+      return false;
+    }
     // Entity name is unique for (realm_id, catalog_id, parent_id, type_code),
     // which is reduced to (realm_id, type_code) for top-level entities;
     // so there can be only one principal with a given name inside any realm.
