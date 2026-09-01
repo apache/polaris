@@ -222,15 +222,18 @@ public class AwsCredentialsStorageIntegration
               .externalId(awsStorageConfig.getExternalId())
               .roleArn(awsStorageConfig.getRoleARN())
               .roleSessionName(roleSessionName)
-              .policy(
-                  policyString(
-                          awsStorageConfig,
-                          key.allowedReadLocations(),
-                          key.allowedListLocations(),
-                          key.allowedWriteLocations(),
-                          region)
-                      .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
+
+      if (!Boolean.TRUE.equals(awsStorageConfig.getNoInlinePolicy())) {
+        request.policy(
+            policyString(
+                    awsStorageConfig,
+                    key.allowedReadLocations(),
+                    key.allowedListLocations(),
+                    key.allowedWriteLocations(),
+                    region)
+                .toJson());
+      }
 
       List<Tag> sessionTags = key.sessionTags();
       if (!sessionTags.isEmpty()) {
