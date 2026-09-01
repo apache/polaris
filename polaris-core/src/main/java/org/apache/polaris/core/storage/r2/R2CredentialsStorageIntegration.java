@@ -107,7 +107,7 @@ public class R2CredentialsStorageIntegration
       @Nullable String storageName, CredentialVendingContext context) {
     LOGGER.error(
         "No R2 parent token for storage name {} (catalog {})",
-        storageName,
+        storageName == null ? "<default>" : storageName,
         context.catalogName().orElse("<none>"));
     return new IllegalArgumentException(
         storageName == null
