@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Supplier;
+import org.apache.polaris.core.storage.r2.R2ParentToken;
+import org.apache.polaris.core.storage.r2.R2ParentTokenResolver;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
@@ -52,6 +54,25 @@ public class StorageConfigurationTest {
   private static final String STORAGE_ACCESS_KEY = "storage-access-key";
   private static final String STORAGE_SECRET_KEY = "storage-secret-key";
   private static final Duration TEST_TOKEN_LIFESPAN = Duration.ofMinutes(20);
+
+  private static StorageConfiguration.R2StorageConfig emptyR2Config() {
+    return new StorageConfiguration.R2StorageConfig() {
+      @Override
+      public Optional<String> accessKey() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<String> secretKey() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Map<String, StorageConfiguration.R2NamedStorageConfig> storages() {
+        return Map.of();
+      }
+    };
+  }
 
   private StorageConfiguration configWithAwsCredentialsAndGcpToken() {
     return new StorageConfiguration() {
@@ -73,6 +94,11 @@ public class StorageConfigurationTest {
             return Map.of();
           }
         };
+      }
+
+      @Override
+      public R2StorageConfig r2() {
+        return emptyR2Config();
       }
 
       @Override
@@ -147,6 +173,11 @@ public class StorageConfigurationTest {
             return Map.of();
           }
         };
+      }
+
+      @Override
+      public R2StorageConfig r2() {
+        return emptyR2Config();
       }
 
       @Override
@@ -233,6 +264,11 @@ public class StorageConfigurationTest {
                 });
           }
         };
+      }
+
+      @Override
+      public R2StorageConfig r2() {
+        return emptyR2Config();
       }
 
       @Override
@@ -388,5 +424,120 @@ public class StorageConfigurationTest {
     assertThat(credentialsProvider.resolveCredentials().accessKeyId()).isEqualTo(TEST_ACCESS_KEY);
     assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
         .isEqualTo(TEST_SECRET_KEY);
+  }
+
+  private static StorageConfiguration r2Config(
+      Optional<String> defaultKey,
+      Optional<String> defaultSecret,
+      Map<String, StorageConfiguration.R2NamedStorageConfig> named) {
+    StorageConfiguration.R2StorageConfig r2 =
+        new StorageConfiguration.R2StorageConfig() {
+          @Override
+          public Optional<String> accessKey() {
+            return defaultKey;
+          }
+
+          @Override
+          public Optional<String> secretKey() {
+            return defaultSecret;
+          }
+
+          @Override
+          public Map<String, StorageConfiguration.R2NamedStorageConfig> storages() {
+            return named;
+          }
+        };
+    return new StorageConfiguration() {
+      @Override
+      public AwsStorageConfig aws() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public R2StorageConfig r2() {
+        return r2;
+      }
+
+      @Override
+      public Optional<String> gcpAccessToken() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> gcpAccessTokenLifespan() {
+        return Optional.empty();
+      }
+
+      @Override
+      public OptionalInt clientsCacheMaxSize() {
+        return OptionalInt.empty();
+      }
+
+      @Override
+      public OptionalInt maxHttpConnections() {
+        return OptionalInt.empty();
+      }
+
+      @Override
+      public Optional<Duration> readTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionAcquisitionTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionMaxIdleTime() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionTimeToLive() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Boolean> expectContinueEnabled() {
+        return Optional.empty();
+      }
+    };
+  }
+
+  private static StorageConfiguration.R2NamedStorageConfig named(String key, String secret) {
+    return new StorageConfiguration.R2NamedStorageConfig() {
+      @Override
+      public String accessKey() {
+        return key;
+      }
+
+      @Override
+      public String secretKey() {
+        return secret;
+      }
+    };
+  }
+
+  @Test
+  void r2ResolverUsesDefaultEntryWhenNoStorageName() {
+    R2ParentTokenResolver resolver =
+        r2Config(Optional.of("dk"), Optional.of("ds"), Map.of()).r2ParentTokenResolver();
+    assertThat(resolver.resolve(null)).contains(new R2ParentToken("dk", "ds"));
+    assertThat(resolver.resolve("missing")).isEmpty();
+  }
+
+  @Test
+  void r2ResolverUsesNamedEntryAndTreatsHalfSetDefaultAsAbsent() {
+    R2ParentTokenResolver resolver =
+        r2Config(Optional.of("only-key"), Optional.empty(), Map.of("prod", named("nk", "ns")))
+            .r2ParentTokenResolver();
+    assertThat(resolver.resolve("prod")).contains(new R2ParentToken("nk", "ns"));
+    assertThat(resolver.resolve(null)).isEmpty();
   }
 }

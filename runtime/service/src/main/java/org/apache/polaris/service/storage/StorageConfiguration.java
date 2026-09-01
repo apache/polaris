@@ -31,6 +31,8 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.apache.polaris.core.storage.r2.R2ParentToken;
+import org.apache.polaris.core.storage.r2.R2ParentTokenResolver;
 import org.apache.polaris.docs.ConfigDocs;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.slf4j.LoggerFactory;
@@ -48,6 +50,15 @@ public interface StorageConfiguration extends S3AccessConfig {
 
   @WithName("aws")
   AwsStorageConfig aws();
+
+  /**
+   * Cloudflare R2 parent tokens used to mint temporary credentials for {@code R2} catalogs. A
+   * catalog without a {@code storageName} uses the default {@code access-key}/{@code secret-key}; a
+   * catalog with a {@code storageName} uses {@code polaris.storage.r2.<storageName>.*}. There is no
+   * ambient credential chain for R2, so an unconfigured catalog cannot vend.
+   */
+  @WithName("r2")
+  R2StorageConfig r2();
 
   /**
    * @deprecated Use {@link #aws()}.{@link AwsStorageConfig#accessKey() accessKey()} instead.
@@ -93,6 +104,53 @@ public interface StorageConfiguration extends S3AccessConfig {
     /** The AWS secret key to use for authentication when using named storages. */
     @WithName("secret-key")
     String secretKey();
+  }
+
+  interface R2StorageConfig {
+    /**
+     * Access key id of the default R2 parent API token. The parent token must carry Object Read &
+     * Write permission on every bucket the catalogs use; a temporary credential cannot exceed it.
+     */
+    @WithName("access-key")
+    Optional<String> accessKey();
+
+    /** Secret access key of the default R2 parent API token. */
+    @WithName("secret-key")
+    Optional<String> secretKey();
+
+    @WithParentName
+    @ConfigDocs.ConfigPropertyName("storage")
+    Map<String, R2NamedStorageConfig> storages();
+  }
+
+  interface R2NamedStorageConfig {
+    /** Access key id of the R2 parent API token for catalogs with this {@code storageName}. */
+    @WithName("access-key")
+    String accessKey();
+
+    /** Secret access key of the R2 parent API token for catalogs with this {@code storageName}. */
+    @WithName("secret-key")
+    String secretKey();
+  }
+
+  /**
+   * Resolver over {@link #r2()}: named entry when the catalog has a {@code storageName}, default
+   * entry otherwise. An entry counts as present only when both keys are set.
+   */
+  default R2ParentTokenResolver r2ParentTokenResolver() {
+    return storageName -> {
+      if (storageName != null) {
+        R2NamedStorageConfig named = r2().storages().get(storageName);
+        if (named == null || named.accessKey() == null || named.secretKey() == null) {
+          return Optional.empty();
+        }
+        return Optional.of(new R2ParentToken(named.accessKey(), named.secretKey()));
+      }
+      if (r2().accessKey().isPresent() && r2().secretKey().isPresent()) {
+        return Optional.of(new R2ParentToken(r2().accessKey().get(), r2().secretKey().get()));
+      }
+      return Optional.empty();
+    };
   }
 
   /**

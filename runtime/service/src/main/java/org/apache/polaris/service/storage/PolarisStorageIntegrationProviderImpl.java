@@ -47,6 +47,9 @@ import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.r2.R2CredentialsStorageIntegration;
+import org.apache.polaris.core.storage.r2.R2ParentTokenResolver;
+import org.apache.polaris.core.storage.r2.R2StorageConfigurationInfo;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -65,11 +68,13 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final Function<GcpStorageConfigurationInfo, GcpCredentialsStorageIntegration> gcpFactory;
   private final Function<AzureStorageConfigurationInfo, AzureCredentialsStorageIntegration>
       azureFactory;
+  private final Function<R2StorageConfigurationInfo, R2CredentialsStorageIntegration> r2Factory;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
   public PolarisStorageIntegrationProviderImpl(
       StorageConfiguration storageConfiguration,
+      R2ParentTokenResolver r2ParentTokenResolver,
       StsClientProvider stsClientProvider,
       RealmConfig realmConfig,
       Clock clock,
@@ -101,12 +106,36 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
     this.azureFactory =
         storageConfig -> new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
+    this.r2Factory =
+        storageConfig ->
+            new R2CredentialsStorageIntegration(
+                r2ParentTokenResolver, clock, cache, storageConfig, realmConfig);
   }
 
   public PolarisStorageIntegrationProviderImpl(
       StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> stsCredentials,
       Supplier<GoogleCredentials> gcpCredsProvider,
+      StorageCredentialCache cache,
+      RealmConfig realmConfig,
+      PolarisDiagnostics diagnostics) {
+    this(
+        stsClientProvider,
+        stsCredentials,
+        gcpCredsProvider,
+        R2ParentTokenResolver.none(),
+        Clock.systemUTC(),
+        cache,
+        realmConfig,
+        diagnostics);
+  }
+
+  public PolarisStorageIntegrationProviderImpl(
+      StsClientProvider stsClientProvider,
+      Optional<AwsCredentialsProvider> stsCredentials,
+      Supplier<GoogleCredentials> gcpCredsProvider,
+      R2ParentTokenResolver r2ParentTokenResolver,
+      Clock clock,
       StorageCredentialCache cache,
       RealmConfig realmConfig,
       PolarisDiagnostics diagnostics) {
@@ -123,6 +152,10 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
     this.azureFactory =
         storageConfig -> new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
+    this.r2Factory =
+        storageConfig ->
+            new R2CredentialsStorageIntegration(
+                r2ParentTokenResolver, clock, cache, storageConfig, realmConfig);
   }
 
   @Override
@@ -139,9 +172,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case S3 -> awsFactory.apply((AwsStorageConfigurationInfo) storageConfig);
       case GCS -> gcpFactory.apply((GcpStorageConfigurationInfo) storageConfig);
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);
+      case R2 -> r2Factory.apply((R2StorageConfigurationInfo) storageConfig);
       case FILE -> FILE_INTEGRATION;
-      // TODO(P2 Task 5): dispatch to an R2 credential-vending integration.
-      case R2 -> throw new UnsupportedOperationException("R2 dispatch is added in a later commit");
     };
   }
 

@@ -69,6 +69,7 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
+import org.apache.polaris.core.storage.r2.R2ParentTokenResolver;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
@@ -145,7 +146,8 @@ public record TestServices(
     PolarisEventDispatcher polarisEventDispatcher,
     PolarisEventMetadataFactory eventMetadataFactory,
     StorageAccessConfigProvider storageAccessConfigProvider,
-    IdempotencyRequestContext idempotencyRequestContext) {
+    IdempotencyRequestContext idempotencyRequestContext,
+    R2ParentTokenResolver r2ParentTokenResolver) {
 
   public PolarisCatalogsApi catalogsApi() {
     return catalogsApiSupplier.get();
@@ -184,6 +186,7 @@ public record TestServices(
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
     private UnaryOperator<PolarisMetaStoreManager> metaStoreManagerDecorator =
         UnaryOperator.identity();
+    private R2ParentTokenResolver r2ParentTokenResolver = R2ParentTokenResolver.none();
     private final PolarisEventMetadataFactory eventMetadataFactory =
         new PolarisEventMetadataFactory() {
           @Override
@@ -243,6 +246,11 @@ public record TestServices(
       return this;
     }
 
+    public Builder r2ParentTokenResolver(R2ParentTokenResolver r2ParentTokenResolver) {
+      this.r2ParentTokenResolver = r2ParentTokenResolver;
+      return this;
+    }
+
     public TestServices build() {
       RealmConfigurationSource configurationSource = (rc, name) -> config.get(name);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
@@ -267,6 +275,8 @@ public record TestServices(
               (destination) -> stsClient,
               Optional.empty(),
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())),
+              r2ParentTokenResolver,
+              clock,
               storageCredentialCache,
               realmConfig,
               diagnostics);
@@ -588,7 +598,8 @@ public record TestServices(
           polarisEventDispatcher,
           eventMetadataFactory,
           storageAccessConfigProvider,
-          idempotencyRequestContext);
+          idempotencyRequestContext,
+          r2ParentTokenResolver);
     }
   }
 
