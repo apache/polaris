@@ -69,6 +69,7 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalRoles;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
+import org.apache.polaris.core.admin.model.R2StorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
@@ -322,6 +323,35 @@ public class PolarisManagementServiceIntegrationTest {
           .isInstanceOf(GcpStorageConfigInfo.class)
           .hasFieldOrPropertyWithValue("gcsServiceAccount", "my-sa")
           .hasFieldOrPropertyWithValue("allowedLocations", List.of("gs://my-bucket/path/to/data"));
+    }
+  }
+
+  @Test
+  public void testCreateCatalogWithR2StorageConfig() {
+    R2StorageConfigInfo r2ConfigModel =
+        R2StorageConfigInfo.builder()
+            .setAccountId("0123456789abcdef0123456789abcdef")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.R2)
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(client.newEntityName("my-catalog"))
+            .setProperties(new CatalogProperties("s3://my-r2-bucket/path/to/data"))
+            .setStorageConfigInfo(r2ConfigModel)
+            .build();
+
+    managementApi.createCatalog(catalog);
+
+    try (Response response =
+        managementApi.request("v1/catalogs/{cat}", Map.of("cat", catalog.getName())).get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog catResponse = response.readEntity(Catalog.class);
+      assertThat(catResponse.getStorageConfigInfo())
+          .isInstanceOf(R2StorageConfigInfo.class)
+          .hasFieldOrPropertyWithValue("accountId", "0123456789abcdef0123456789abcdef")
+          .hasFieldOrPropertyWithValue(
+              "allowedLocations", List.of("s3://my-r2-bucket/path/to/data"));
     }
   }
 

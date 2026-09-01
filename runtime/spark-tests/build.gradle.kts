@@ -158,7 +158,7 @@ fun Test.configureSparkIntegrationTestTask(
         "quarkus.log.file.enabled" to "true",
         "quarkus.log.file.path" to logsDir.get().asFile.resolve("polaris.log").absolutePath,
         "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"" to
-          "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",
+          "[\"FILE\",\"S3\",\"GCS\",\"AZURE\",\"R2\"]",
         "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"" to "true",
         "polaris.features.\"DROP_WITH_PURGE_ENABLED\"" to "true",
         "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"" to "true",

@@ -906,6 +906,7 @@ features:
     - S3
     - GCS
     - AZURE
+    - R2
     # - FILE  # Not recommended for production use.
 
   # -- Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of
