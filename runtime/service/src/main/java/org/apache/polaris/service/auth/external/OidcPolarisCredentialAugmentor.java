@@ -100,7 +100,7 @@ public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor
           principalMapper.mapPrincipalId(identity).stream().boxed().findFirst().orElse(null);
       credential = InternalPolarisCredential.of(principalId, principalName, principalRoles);
     } else {
-      credential = PolarisCredential.of(principalName, principalRoles);
+      credential = ExternalPolarisCredential.of(principalName, principalRoles);
     }
     // Note: we don't change the identity roles here, this will be done later on
     // by the AuthenticatingAugmentor, which will also validate them.

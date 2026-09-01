@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisAdminServiceTestSupport;
+import org.apache.polaris.service.auth.external.ExternalPolarisCredential;
 import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
@@ -516,7 +517,7 @@ public class DefaultAuthenticatorTest {
 
   @Test
   void testExternalPrincipal() {
-    // Given: a plain PolarisCredential (not InternalPolarisCredential) carries name + roles,
+    // Given: an ExternalPolarisCredential carries name + roles,
     // so the authenticator takes the external path with no metastore lookup
     PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
     DefaultAuthenticator sa = newStandaloneAuthenticator(metaStoreManagerSpy);
@@ -525,7 +526,7 @@ public class DefaultAuthenticatorTest {
     Mockito.when(jwt.getRawToken()).thenReturn("raw.jwt.token");
 
     PolarisCredential credentials =
-        PolarisCredential.of("ext-user", Set.of("ext-role1", "ext-role2"));
+        ExternalPolarisCredential.of("ext-user", Set.of("ext-role1", "ext-role2"));
     SecurityIdentity jwtIdentity =
         QuarkusSecurityIdentity.builder()
             .setAnonymous(false)

@@ -155,7 +155,7 @@ class OidcPolarisCredentialAugmentorTest {
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
     assertThat(result.getCredential(PolarisCredential.class))
-        .isEqualTo(PolarisCredential.of("alice", Set.of("MAPPED_ROLE1")));
+        .isEqualTo(ExternalPolarisCredential.of("alice", Set.of("MAPPED_ROLE1")));
     // the identity roles should not change, since this is done by the ActiveRolesAugmentor
     assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
   }

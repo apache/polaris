@@ -42,6 +42,7 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.service.auth.external.ExternalPolarisCredential;
 import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.jspecify.annotations.Nullable;
@@ -122,57 +123,63 @@ public class DefaultAuthenticator implements Authenticator {
   /**
    * Resolves the principal entity based on the provided credentials.
    *
-   * <p>When the credentials implement {@link InternalPolarisCredential}, this method attempts to
-   * load the principal entity using either the principal ID or the principal name from the
-   * credentials. If neither is available, nor if the principal entity can be found, it throws a
-   * {@link AuthenticationFailedException}.
+   * <p>When the credentials implement {@link ExternalPolarisCredential}, they represent an
+   * externally-managed principal: no metastore lookup is performed and {@code null} is returned. It
+   * throws {@link AuthenticationFailedException} if the principal name is not available in the
+   * credentials.
    *
-   * <p>Otherwise, the credentials are treated as external: no metastore lookup is performed and
-   * {@code null} is returned. It throws {@link AuthenticationFailedException} if the principal name
-   * is not available in the credentials.
+   * <p>Otherwise, the credentials are treated as internal — this includes both {@link
+   * InternalPolarisCredential} and any plain {@link PolarisCredential} returned by a custom token
+   * broker. This method attempts to load the principal entity using either the principal ID (only
+   * available on {@link InternalPolarisCredential}) or the principal name from the credentials. If
+   * neither is available, nor if the principal entity can be found, it throws a {@link
+   * AuthenticationFailedException}.
    */
   @Nullable
   protected PrincipalEntity resolvePrincipalEntity(PolarisCredential credentials) {
 
-    PrincipalEntity entity = null;
-
-    if (credentials instanceof InternalPolarisCredential internalCreds) {
-
-      try {
-        // If the principal id is present, prefer to use it to load the principal entity,
-        // otherwise, use the principal name to load the entity.
-        if (internalCreds.getPrincipalId() != null && internalCreds.getPrincipalId() > 0) {
-          entity =
-              metaStoreManager
-                  .findPrincipalById(
-                      callContext.getPolarisCallContext(), internalCreds.getPrincipalId())
-                  .orElse(null);
-        } else if (internalCreds.getPrincipalName() != null) {
-          entity =
-              metaStoreManager
-                  .findPrincipalByName(
-                      callContext.getPolarisCallContext(), internalCreds.getPrincipalName())
-                  .orElse(null);
-        }
-      } catch (Exception e) {
-        throw metaStoreUnavailable(
-            e,
-            "Unable to resolve principal entity from credentials, principalName={} principalId={}",
-            internalCreds.getPrincipalName(),
-            internalCreds.getPrincipalId());
-      }
-
-      if (entity == null || entity.getType() != PolarisEntityType.PRINCIPAL) {
-        LOGGER.warn("Failed to resolve principal from credentials={}", credentials);
-        throw new AuthenticationFailedException("Unable to authenticate");
-      }
-
-    } else {
-
-      String principalName = credentials.getPrincipalName();
-      if (principalName == null) {
+    if (credentials instanceof ExternalPolarisCredential) {
+      if (credentials.getPrincipalName() == null) {
         throw new AuthenticationFailedException("Invalid credential");
       }
+      return null;
+    }
+
+    // Internal principal: the credentials must resolve to a backing entity in the metastore.
+    // The principal id is only carried by InternalPolarisCredential; plain PolarisCredentials
+    // (e.g. from custom token brokers) are resolved by name.
+    Long principalId =
+        credentials instanceof InternalPolarisCredential internalCreds
+            ? internalCreds.getPrincipalId()
+            : null;
+    String principalName = credentials.getPrincipalName();
+
+    PrincipalEntity entity = null;
+    try {
+      // If the principal id is present, prefer to use it to load the principal entity,
+      // otherwise, use the principal name to load the entity.
+      if (principalId != null && principalId > 0) {
+        entity =
+            metaStoreManager
+                .findPrincipalById(callContext.getPolarisCallContext(), principalId)
+                .orElse(null);
+      } else if (principalName != null) {
+        entity =
+            metaStoreManager
+                .findPrincipalByName(callContext.getPolarisCallContext(), principalName)
+                .orElse(null);
+      }
+    } catch (Exception e) {
+      throw metaStoreUnavailable(
+          e,
+          "Unable to resolve principal entity from credentials, principalName={} principalId={}",
+          principalName,
+          principalId);
+    }
+
+    if (entity == null || entity.getType() != PolarisEntityType.PRINCIPAL) {
+      LOGGER.warn("Failed to resolve principal from credentials={}", credentials);
+      throw new AuthenticationFailedException("Unable to authenticate");
     }
 
     return entity;
