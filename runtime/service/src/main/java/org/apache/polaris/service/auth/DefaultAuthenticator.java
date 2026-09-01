@@ -142,6 +142,7 @@ public class DefaultAuthenticator implements Authenticator {
 
     if (credentials instanceof ExternalPolarisCredential) {
       if (credentials.getPrincipalName() == null) {
+        LOGGER.warn("Failed to resolve external principal, no principal name in credentials");
         throw new AuthenticationFailedException("Invalid credential");
       }
       return null;

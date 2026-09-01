@@ -94,6 +94,8 @@ public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor
       PrincipalRolesMapper rolesMapper) {
     String principalName = principalMapper.mapPrincipalName(identity).orElse(null);
     Set<String> principalRoles = rolesMapper.mapPrincipalRoles(identity);
+    // Note: we build the credential even if it doesn't contain enough data to authenticate;
+    // DefaultAuthenticator will reject it later on.
     PolarisCredential credential;
     if (authConfig.principalMode() == PrincipalMode.INTERNAL) {
       Long principalId =
