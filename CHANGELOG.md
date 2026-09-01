@@ -158,6 +158,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   directly under an allowed location, at `s3://b1/ns`, and rejected it as a custom location even
   though the request asked for none. The namespace location is now compared against the
   catalog's `default-base-location`, which is what it is derived from.
+- Updating a namespace's properties no longer fails with HTTP 400 when the request restates the
+  namespace's own default location. With custom namespace locations disabled, the update validated
+  the namespace's *pre-update* entity against the namespace *itself* as its own parent, so the
+  expected default was computed as `<namespace location>/<namespace name>` and never matched. Any
+  `updateNamespaceProperties` carrying the base-location property was rejected, and the expected
+  location named in the error was wrong even when the rejection itself was correct.
 - Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the
   token). Credential-generation is enforced on token exchange; bearer verify is signature and claims
   only. Secrets-load failures during exchange return service unavailable.
