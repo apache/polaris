@@ -17,4 +17,19 @@ specific language governing permissions and limitations
 under the License.
 */}}
 
-{{- partial "githubPolarisUrl.html" (dict "page" . "path" (.Get 0)) -}}
+{{/*
+Returns a dict describing the git ref for the current page's release version:
+  - ref:        "main" for unreleased, or "apache-polaris-{ver}{incubating}" for a release
+  - isReleased: false for unreleased, true for a release
+
+Usage: {{ $gitRef := partial "polarisGitRef.html" . }}
+*/}}
+
+{{- $ver := partial "releaseVersion.html" . -}}
+{{- $result := dict "isReleased" false "ref" "main" -}}
+{{- if ne $ver "[unreleased]" -}}
+{{- $incubating := partial "incubatingSuffix.html" $ver -}}
+{{- $ref := printf "apache-polaris-%s%s" $ver $incubating -}}
+{{- $result = dict "isReleased" true "ref" $ref -}}
+{{- end -}}
+{{- return $result -}}
