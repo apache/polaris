@@ -46,11 +46,6 @@ public interface InternalPolarisCredential extends PolarisCredential {
         .build();
   }
 
-  /** The principal name, or null if unknown. Used for principal lookups by name. */
-  @Nullable // switch from non-nullable to nullable
-  @Override
-  String getPrincipalName();
-
   /** The principal id, or null if unknown. Used for principal lookups by id. */
   @Nullable Long getPrincipalId();
 }

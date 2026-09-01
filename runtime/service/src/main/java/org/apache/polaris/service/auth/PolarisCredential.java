@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import io.quarkus.security.credential.Credential;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A Quarkus Security {@link Credential} exposing Polaris-specific attributes.
@@ -33,8 +34,12 @@ import java.util.Set;
  */
 public interface PolarisCredential extends Credential {
 
-  /** The principal name. */
-  String getPrincipalName();
+  /**
+   * The principal name, or null if the credential does not carry one. A name is not guaranteed to
+   * be present here; it is the authenticator's responsibility to validate it and reject credentials
+   * that lack a required name.
+   */
+  @Nullable String getPrincipalName();
 
   /** The principal roles, or empty if the principal has no roles. */
   Set<String> getPrincipalRoles();

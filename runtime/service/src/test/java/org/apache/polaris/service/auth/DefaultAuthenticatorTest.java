@@ -555,6 +555,27 @@ public class DefaultAuthenticatorTest {
   }
 
   @Test
+  void testExternalPrincipalWithoutName() {
+    // Given: an ExternalPolarisCredential with no principal name (e.g. an id-only OIDC mapping)
+    PolarisMetaStoreManager metaStoreManagerSpy = Mockito.spy(metaStoreManager);
+    DefaultAuthenticator sa = newStandaloneAuthenticator(metaStoreManagerSpy);
+    JsonWebToken jwt = Mockito.mock(JsonWebToken.class);
+    PolarisCredential credentials = ExternalPolarisCredential.of(null, Set.of("ext-role1"));
+    SecurityIdentity jwtIdentity =
+        QuarkusSecurityIdentity.builder()
+            .setAnonymous(false)
+            .setPrincipal(jwt)
+            .addCredential(credentials)
+            .build();
+
+    // When / Then: the missing name is rejected as an authentication failure, with no metastore
+    // lookup
+    assertThatThrownBy(() -> sa.authenticate(jwtIdentity))
+        .isInstanceOf(AuthenticationFailedException.class);
+    Mockito.verifyNoInteractions(metaStoreManagerSpy);
+  }
+
+  @Test
   void testCustomBrokerCredentialTreatedAsInternal() {
     // A custom TokenBroker that returns a plain PolarisCredential (neither
     // InternalPolarisCredential nor ExternalPolarisCredential) must still be treated as internal,

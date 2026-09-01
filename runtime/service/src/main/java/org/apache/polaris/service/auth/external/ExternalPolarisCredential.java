@@ -21,6 +21,7 @@ package org.apache.polaris.service.auth.external;
 import java.util.Set;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.auth.PolarisCredential;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Sub-interface of {@link PolarisCredential}s that represents externally-managed principals, i.e.,
@@ -38,7 +39,7 @@ import org.apache.polaris.service.auth.PolarisCredential;
 @PolarisImmutable
 public interface ExternalPolarisCredential extends PolarisCredential {
 
-  static ExternalPolarisCredential of(String principalName, Set<String> principalRoles) {
+  static ExternalPolarisCredential of(@Nullable String principalName, Set<String> principalRoles) {
     return ImmutableExternalPolarisCredential.builder()
         .principalName(principalName)
         .principalRoles(principalRoles)
