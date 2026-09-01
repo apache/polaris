@@ -599,8 +599,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
    * @deprecated since 1.8.0, for removal. Polaris now always appends a trailing slash to table and
    *     namespace base locations, so this flag no longer changes behavior. The configuration key is
    *     retained only so existing catalog properties and feature-config entries continue to be
-   *     accepted (and ignored) instead of rejected; a production-readiness warning is emitted when
-   *     it is explicitly set to {@code false}. Scheduled for removal in a future release.
+   *     accepted (and ignored) instead of rejected. A production-readiness warning is emitted when
+   *     it is explicitly set to {@code false} in the server feature configuration — the {@code
+   *     polaris.features} defaults or a realm override — since that is the surface {@code
+   *     ProductionReadinessChecks} inspects at startup; the equivalent per-catalog property ({@code
+   *     polaris.config.add-trailing-slash-to-location}) is accepted and ignored without a warning.
+   *     Scheduled for removal in a future release.
    */
   @Deprecated(since = "1.8.0", forRemoval = true)
   public static final FeatureConfiguration<Boolean> ADD_TRAILING_SLASH_TO_LOCATION =

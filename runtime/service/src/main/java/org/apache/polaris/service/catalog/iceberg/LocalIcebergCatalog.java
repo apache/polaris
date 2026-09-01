@@ -880,10 +880,17 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     PolarisEntity updatedEntity =
         new PolarisEntity.Builder(entity).setProperties(newProperties).build();
 
+    // Compare normalized (slash-terminated) locations so that merely normalizing a legacy
+    // slash-less location does not count as a move. Otherwise an unrelated property update on a
+    // namespace stored before Polaris always appended a slash would flip locationChanged to true
+    // and run the overlap check against the namespace's own still-persisted slash-less row (which
+    // the optimized sibling check does not exclude), wrongly rejecting the update. A genuine move
+    // still differs after normalization and is validated.
     boolean locationChanged =
         !Objects.equal(
-            NamespaceEntity.of(entity).getBaseLocation(),
-            NamespaceEntity.of(updatedEntity).getBaseLocation());
+            StorageLocation.ensureTrailingSlash(NamespaceEntity.of(entity).getBaseLocation()),
+            StorageLocation.ensureTrailingSlash(
+                NamespaceEntity.of(updatedEntity).getBaseLocation()));
 
     if (locationChanged
         && !realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {

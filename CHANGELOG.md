@@ -44,7 +44,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Deprecations
 
-- Deprecated the `ADD_TRAILING_SLASH_TO_LOCATION` feature flag (catalog config `polaris.config.add-trailing-slash-to-location`). Polaris now always appends a trailing slash to table and namespace base locations, so the flag no longer has any effect. The key is still accepted for compatibility but ignored, and a startup warning is emitted if it is set to `false`. It will be removed in a future release.
+- Deprecated the `ADD_TRAILING_SLASH_TO_LOCATION` feature flag; Polaris now always appends a trailing slash to table and namespace base locations, so the key is accepted-but-ignored (a startup warning is emitted only when it is `false` in `polaris.features` defaults or realm overrides) and will be removed in a future release.
 
 ### Fixes
 

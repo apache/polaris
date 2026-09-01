@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -30,7 +31,9 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -120,8 +123,76 @@ public class LocalIcebergCatalogRelationalOverlapTest
         .hasMessageContaining("conflicts with existing table or namespace");
   }
 
+  /**
+   * Regression for the {@code setProperties} normalization path. A namespace stored before Polaris
+   * always appended a trailing slash keeps a slash-less location. Updating an unrelated property
+   * must not be rejected: previously the slash-only normalization flipped {@code locationChanged}
+   * to true and ran the overlap check, which under the optimized sibling check matched the
+   * namespace's own still-persisted slash-less row (it does not exclude the current entity). The
+   * update must succeed and the stored location must be re-normalized to end with a slash. Kept
+   * JDBC-specific because it depends on the optimized sibling check backed by {@code
+   * QueryGenerator}.
+   */
+  @Test
+  public void testNamespacePropertyUpdateNormalizesLegacySlashlessLocation() {
+    Namespace ns = Namespace.of("ns-legacy-slashless");
+    // Let Polaris derive the location (custom namespace locations are disabled in this profile).
+    catalog().createNamespace(ns);
+
+    // On create Polaris stores the location slash-terminated.
+    String created = storedNamespaceBaseLocation(ns);
+    assertThat(created).endsWith("/");
+
+    // Simulate a row written before that normalization existed.
+    stripStoredNamespaceBaseLocationTrailingSlash(ns);
+    String legacy = storedNamespaceBaseLocation(ns);
+    assertThat(legacy).doesNotEndWith("/");
+    assertThat(created).isEqualTo(legacy + "/");
+
+    // Updating a non-location property must succeed (not be flagged as a self-overlap) and must
+    // re-normalize the stored location.
+    assertThatCode(() -> catalog().setProperties(ns, Map.of("some-key", "some-value")))
+        .doesNotThrowAnyException();
+    assertThat(storedNamespaceBaseLocation(ns)).endsWith("/");
+  }
+
   private String storedTableBaseLocation(Namespace ns, TableIdentifier table) {
     return IcebergTableLikeEntity.of(readStoredTableLike(ns, table)).getBaseLocation();
+  }
+
+  private String storedNamespaceBaseLocation(Namespace ns) {
+    return NamespaceEntity.of(readStoredNamespace(ns)).getBaseLocation();
+  }
+
+  private PolarisEntity readStoredNamespace(Namespace ns) {
+    EntityResult result =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(PolarisEntity.toCore(catalogEntity)),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            ns.level(0));
+    assertThat(result.isSuccess()).isTrue();
+    return PolarisEntity.of(result.getEntity());
+  }
+
+  /**
+   * Rewrites the stored base location of {@code ns} without its trailing slash, simulating a
+   * namespace written before Polaris always appended one.
+   */
+  private void stripStoredNamespaceBaseLocationTrailingSlash(Namespace ns) {
+    PolarisEntity nsEntity = readStoredNamespace(ns);
+    Map<String, String> properties = new HashMap<>(nsEntity.getPropertiesAsMap());
+    String baseLocation = properties.get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+    assertThat(baseLocation).endsWith("/");
+    properties.put(
+        PolarisEntityConstants.ENTITY_BASE_LOCATION,
+        baseLocation.substring(0, baseLocation.length() - 1));
+    PolarisEntity stripped = new PolarisEntity.Builder(nsEntity).setProperties(properties).build();
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext, List.of(PolarisEntity.toCore(catalogEntity)), stripped);
+    assertThat(result.isSuccess()).isTrue();
   }
 
   /**
