@@ -20,22 +20,18 @@ package org.apache.polaris.service.auth;
 
 import io.quarkus.security.credential.Credential;
 import java.util.Set;
-import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * A Quarkus Security {@link Credential} exposing Polaris-specific attributes.
  *
+ * <p>Unless a credential implements {@link
+ * org.apache.polaris.service.auth.external.ExternalPolarisCredential}, it is treated as internal by
+ * the authenticator and requires a backing principal entity in the Polaris metastore.
+ *
  * @see org.apache.polaris.service.auth.internal.InternalPolarisCredential
+ * @see org.apache.polaris.service.auth.external.ExternalPolarisCredential
  */
-@PolarisImmutable
 public interface PolarisCredential extends Credential {
-
-  static PolarisCredential of(String principalName, Set<String> principalRoles) {
-    return ImmutablePolarisCredential.builder()
-        .principalName(principalName)
-        .principalRoles(principalRoles)
-        .build();
-  }
 
   /** The principal name. */
   String getPrincipalName();

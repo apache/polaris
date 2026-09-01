@@ -24,14 +24,15 @@ import org.apache.polaris.service.auth.PolarisCredential;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Sub-interface of {@link PolarisCredential}s that represent internally-managed principals, i.e.,
+ * Sub-interface of {@link PolarisCredential}s that represents internally-managed principals, i.e.,
  * principals that have a backing entity in the Polaris metastore.
  *
- * <p>When the authenticator receives a credential that implements this interface, it will look up
- * the principal entity in the metastore and require it to exist.
+ * <p>The authenticator treats <em>any</em> credential as internal (and requires a backing entity)
+ * unless it implements {@link org.apache.polaris.service.auth.external.ExternalPolarisCredential}.
  *
- * <p>Custom token brokers that produce credentials for internally-managed principals should
- * implement this interface so that those credentials are not silently misclassified as external.
+ * <p>This interface adds the principal id, so that credentials issued by Polaris itself can be
+ * resolved by id rather than by name; custom token brokers that already know the principal id
+ * should implement it to benefit from id-based lookups.
  */
 @PolarisImmutable
 public interface InternalPolarisCredential extends PolarisCredential {
