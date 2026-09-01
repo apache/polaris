@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.storage;
 
+import io.quarkus.runtime.Startup;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
@@ -27,7 +28,12 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** CDI adapter exposing {@link StorageConfiguration#r2ParentTokenResolver()} as a bean. */
+/**
+ * CDI adapter exposing {@link StorageConfiguration#r2ParentTokenResolver()} as a bean. Eager
+ * ({@link Startup}) so the half-set-token warning below is logged at boot, not on the first R2
+ * request.
+ */
+@Startup
 @ApplicationScoped
 public class R2ParentTokenResolverImpl implements R2ParentTokenResolver {
 
