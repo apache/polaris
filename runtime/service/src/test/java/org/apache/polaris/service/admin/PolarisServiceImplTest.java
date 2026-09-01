@@ -41,6 +41,7 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.r2.R2ParentTokenResolver;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -91,7 +92,11 @@ public class PolarisServiceImplTest {
             reservedProperties);
     polarisService =
         new PolarisServiceImpl(
-            realmConfig, reservedProperties, adminService, serviceIdentityProvider);
+            realmConfig,
+            reservedProperties,
+            adminService,
+            serviceIdentityProvider,
+            R2ParentTokenResolver.none());
   }
 
   @Test

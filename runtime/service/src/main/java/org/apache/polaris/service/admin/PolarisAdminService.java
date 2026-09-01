@@ -131,6 +131,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.r2.R2StorageConfigurationInfo;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -992,6 +993,21 @@ public class PolarisAdminService {
         throw new BadRequestException(
             "Cannot modify TenantId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
+      }
+    } else if (currentStorageConfig instanceof R2StorageConfigurationInfo currentR2
+        && newStorageConfig instanceof R2StorageConfigurationInfo newR2) {
+
+      if (!allowUnrestrictedRoleChanges) {
+        if (!Objects.equals(currentR2.getAccountId(), newR2.getAccountId())) {
+          throw new BadRequestException(
+              "Cannot modify R2 account id in storage config from %s to %s",
+              currentStorageConfig, newStorageConfig);
+        }
+        if (!Objects.equals(currentR2.getJurisdiction(), newR2.getJurisdiction())) {
+          throw new BadRequestException(
+              "Cannot modify R2 jurisdiction in storage config from %s to %s",
+              currentStorageConfig, newStorageConfig);
+        }
       }
     }
   }

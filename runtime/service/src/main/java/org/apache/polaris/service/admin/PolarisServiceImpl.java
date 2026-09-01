@@ -55,6 +55,7 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalRoles;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
+import org.apache.polaris.core.admin.model.R2StorageConfigInfo;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -75,6 +76,7 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
+import org.apache.polaris.core.storage.r2.R2ParentTokenResolver;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
@@ -94,17 +96,20 @@ public class PolarisServiceImpl
   private final ReservedProperties reservedProperties;
   private final PolarisAdminService adminService;
   private final ServiceIdentityProvider serviceIdentityProvider;
+  private final R2ParentTokenResolver r2ParentTokenResolver;
 
   @Inject
   public PolarisServiceImpl(
       RealmConfig realmConfig,
       ReservedProperties reservedProperties,
       PolarisAdminService adminService,
-      ServiceIdentityProvider serviceIdentityProvider) {
+      ServiceIdentityProvider serviceIdentityProvider,
+      R2ParentTokenResolver r2ParentTokenResolver) {
     this.realmConfig = realmConfig;
     this.reservedProperties = reservedProperties;
     this.adminService = adminService;
     this.serviceIdentityProvider = serviceIdentityProvider;
+    this.r2ParentTokenResolver = r2ParentTokenResolver;
   }
 
   private static Response toResponse(BaseResult result, Response.Status successStatus) {
@@ -160,6 +165,20 @@ public class PolarisServiceImpl
         if (s3Config.getStsUnavailable() != null) {
           throw new IllegalArgumentException("Explicitly disabling STS is not allowed.");
         }
+      }
+    }
+
+    if (storageConfigInfo instanceof R2StorageConfigInfo r2Config) {
+      if (r2ParentTokenResolver.resolve(r2Config.getStorageName()).isEmpty()) {
+        throw new IllegalArgumentException(
+            r2Config.getStorageName() == null
+                ? "No default R2 parent token is configured on the server"
+                    + " (polaris.storage.r2.access-key / secret-key)"
+                : "No R2 parent token is configured for storage name '"
+                    + r2Config.getStorageName()
+                    + "' (polaris.storage.r2."
+                    + r2Config.getStorageName()
+                    + ".access-key / secret-key)");
       }
     }
   }

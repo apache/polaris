@@ -572,7 +572,11 @@ public record TestServices(
                     reservedProperties);
             return new PolarisCatalogsApi(
                 new PolarisServiceImpl(
-                    realmConfig, reservedProperties, adminService, serviceIdentityProvider));
+                    realmConfig,
+                    reservedProperties,
+                    adminService,
+                    serviceIdentityProvider,
+                    r2ParentTokenResolver));
           };
 
       return new TestServices(

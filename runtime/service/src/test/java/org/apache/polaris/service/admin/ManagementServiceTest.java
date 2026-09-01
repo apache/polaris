@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.Response;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -41,6 +42,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.R2StorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
@@ -56,6 +58,7 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
+import org.apache.polaris.core.storage.r2.R2ParentToken;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
@@ -82,6 +85,126 @@ public class ManagementServiceTest {
                     "ENABLE_CATALOG_FEDERATION",
                     Boolean.TRUE))
             .build();
+  }
+
+  private static final String R2_ACCOUNT = "0123456789abcdef0123456789abcdef";
+
+  private static Catalog r2Catalog(String name, R2StorageConfigInfo storageConfig) {
+    return new Catalog(
+        Catalog.TypeEnum.INTERNAL,
+        name,
+        new CatalogProperties("s3://r2-bucket/base/" + name),
+        1725487592064L,
+        1725487592064L,
+        1,
+        storageConfig);
+  }
+
+  private static R2StorageConfigInfo.Builder r2Config() {
+    return R2StorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.R2)
+        .setAccountId(R2_ACCOUNT)
+        .setAllowedLocations(List.of("s3://r2-bucket/base/"));
+  }
+
+  @Test
+  public void testCreateR2CatalogFailsWithoutParentToken() {
+    TestServices noToken =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("R2")))
+            .build();
+    assertThatThrownBy(
+            () ->
+                noToken
+                    .catalogsApi()
+                    .createCatalog(
+                        new CreateCatalogRequest(r2Catalog("r2-no-token", r2Config().build())),
+                        noToken.realmContext(),
+                        noToken.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("R2 parent token");
+  }
+
+  @Test
+  public void testCreateR2CatalogSucceedsWithParentToken() {
+    TestServices withToken =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("R2")))
+            .r2ParentTokenResolver(name -> Optional.of(new R2ParentToken("k", "s")))
+            .build();
+    try (Response response =
+        withToken
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(r2Catalog("r2-ok", r2Config().build())),
+                withToken.realmContext(),
+                withToken.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    try (Response response =
+        withToken
+            .catalogsApi()
+            .getCatalog("r2-ok", withToken.realmContext(), withToken.securityContext())) {
+      Catalog fetched = (Catalog) response.getEntity();
+      assertThat(fetched.getStorageConfigInfo())
+          .isInstanceOf(R2StorageConfigInfo.class)
+          .hasFieldOrPropertyWithValue("accountId", R2_ACCOUNT);
+    }
+  }
+
+  @Test
+  public void testUpdateR2CatalogRejectsAccountIdAndJurisdictionChanges() {
+    TestServices withToken =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("R2")))
+            .r2ParentTokenResolver(name -> Optional.of(new R2ParentToken("k", "s")))
+            .build();
+    String name = "r2-immutable";
+    try (Response response =
+        withToken
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(r2Catalog(name, r2Config().build())),
+                withToken.realmContext(),
+                withToken.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched;
+    try (Response response =
+        withToken
+            .catalogsApi()
+            .getCatalog(name, withToken.realmContext(), withToken.securityContext())) {
+      fetched = (Catalog) response.getEntity();
+    }
+    UpdateCatalogRequest changeAccount =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://r2-bucket/base/" + name),
+            r2Config().setAccountId("ffffffffffffffffffffffffffffffff").build());
+    assertThatThrownBy(
+            () ->
+                withToken
+                    .catalogsApi()
+                    .updateCatalog(
+                        name, changeAccount, withToken.realmContext(), withToken.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageStartingWith("Cannot modify R2 account id");
+    UpdateCatalogRequest changeJurisdiction =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://r2-bucket/base/" + name),
+            r2Config().setJurisdiction("eu").build());
+    assertThatThrownBy(
+            () ->
+                withToken
+                    .catalogsApi()
+                    .updateCatalog(
+                        name,
+                        changeJurisdiction,
+                        withToken.realmContext(),
+                        withToken.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageStartingWith("Cannot modify R2 jurisdiction");
   }
 
   @Test
