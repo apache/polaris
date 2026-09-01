@@ -17,7 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Configuring Polaris for Production — Cloudflare R2
+title: Configuring Cloudflare R2 Storage
+linkTitle: Configuring Cloudflare R2 Storage
 type: docs
 weight: 630
 ---
