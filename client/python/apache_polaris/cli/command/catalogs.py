@@ -17,6 +17,8 @@
 # under the License.
 #
 
+import re
+
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import (
@@ -289,6 +291,11 @@ class CatalogsCommand(Command):
                 raise CliError(
                     "Missing required argument for storage type 'r2': "
                     f" {Argument.to_flag_name(Arguments.ACCOUNT_ID)}"
+                )
+            if not re.fullmatch(r"[0-9a-f]{32}", self.account_id):
+                raise CliError(
+                    f"{Argument.to_flag_name(Arguments.ACCOUNT_ID)} must be 32"
+                    " lowercase hex characters"
                 )
             if (
                 self._has_aws_storage_info()

@@ -324,7 +324,7 @@ class Hints:
     ## GCP
     GCS_SERVICE_ACCOUNT = "The service account to use when connecting to GCS"
     ## R2
-    R2_ACCOUNT_ID = "(Required) The Cloudflare account id (32 hex characters) that owns the R2 buckets"
+    R2_ACCOUNT_ID = "(Required) The Cloudflare account id (32 lowercase hex characters) that owns the R2 buckets"
     R2_JURISDICTION = (
         "The R2 jurisdiction (eu, fedramp, or us); omit for the default location"
     )
@@ -352,7 +352,7 @@ class Hints:
         "The role session name to be used by the SigV4 protocol for signing requests"
     )
     SIGV4_EXTERNAL_ID = (
-        "An optional external ID used to establish a AWS trust relationship"
+        "An optional external ID used to establish an AWS trust relationship"
     )
     SIGV4_SIGNING_REGION = (
         "Region to be used by the SigV4 protocol for signing requests"

@@ -1018,11 +1018,17 @@ class TestCatalogsCommand(CLITestBase):
         self.mock_execute(
             mock_client,
             [
-                "catalogs", "create", "r2-catalog",
-                "--storage-type", "r2",
-                "--default-base-location", "s3://r2-bucket/warehouse",
-                "--account-id", "0123456789abcdef0123456789abcdef",
-                "--jurisdiction", "eu",
+                "catalogs",
+                "create",
+                "r2-catalog",
+                "--storage-type",
+                "r2",
+                "--default-base-location",
+                "s3://r2-bucket/warehouse",
+                "--account-id",
+                "0123456789abcdef0123456789abcdef",
+                "--jurisdiction",
+                "eu",
             ],
         )
         mock_client.create_catalog.assert_called_once()
@@ -1037,8 +1043,15 @@ class TestCatalogsCommand(CLITestBase):
         with self.assertRaises(CliError) as ctx:
             self.mock_execute(
                 mock_client,
-                ["catalogs", "create", "r2-catalog", "--storage-type", "r2",
-                 "--default-base-location", "s3://r2-bucket/warehouse"],
+                [
+                    "catalogs",
+                    "create",
+                    "r2-catalog",
+                    "--storage-type",
+                    "r2",
+                    "--default-base-location",
+                    "s3://r2-bucket/warehouse",
+                ],
             )
         self.assertIn("--account-id", str(ctx.exception))
 
@@ -1047,20 +1060,83 @@ class TestCatalogsCommand(CLITestBase):
         with self.assertRaises(CliError) as ctx:
             self.mock_execute(
                 mock_client,
-                ["catalogs", "create", "r2-catalog", "--storage-type", "r2",
-                 "--default-base-location", "s3://r2-bucket/warehouse",
-                 "--account-id", "0123456789abcdef0123456789abcdef",
-                 "--role-arn", "arn:aws:iam::123456789012:role/x"],
+                [
+                    "catalogs",
+                    "create",
+                    "r2-catalog",
+                    "--storage-type",
+                    "r2",
+                    "--default-base-location",
+                    "s3://r2-bucket/warehouse",
+                    "--account-id",
+                    "0123456789abcdef0123456789abcdef",
+                    "--role-arn",
+                    "arn:aws:iam::123456789012:role/x",
+                ],
             )
         self.assertIn("Storage type 'r2'", str(ctx.exception))
 
     def test_catalog_create_s3_rejects_r2_options(self) -> None:
         mock_client = self.build_mock_client()
-        with self.assertRaises(CliError):
+        with self.assertRaises(CliError) as ctx:
             self.mock_execute(
                 mock_client,
-                ["catalogs", "create", "s3-catalog", "--storage-type", "s3",
-                 "--default-base-location", "s3://bucket/warehouse",
-                 "--role-arn", "arn:aws:iam::123456789012:role/x",
-                 "--account-id", "0123456789abcdef0123456789abcdef"],
+                [
+                    "catalogs",
+                    "create",
+                    "s3-catalog",
+                    "--storage-type",
+                    "s3",
+                    "--default-base-location",
+                    "s3://bucket/warehouse",
+                    "--role-arn",
+                    "arn:aws:iam::123456789012:role/x",
+                    "--account-id",
+                    "0123456789abcdef0123456789abcdef",
+                ],
             )
+        self.assertIn("Storage type 's3'", str(ctx.exception))
+
+    def test_catalog_create_r2_rejects_uppercase_account_id(self) -> None:
+        mock_client = self.build_mock_client()
+        with self.assertRaises(CliError) as ctx:
+            self.mock_execute(
+                mock_client,
+                [
+                    "catalogs",
+                    "create",
+                    "r2-catalog",
+                    "--storage-type",
+                    "r2",
+                    "--default-base-location",
+                    "s3://r2-bucket/warehouse",
+                    "--account-id",
+                    "0123456789ABCDEF0123456789ABCDEF",
+                ],
+            )
+        self.assertIn(
+            "--account-id must be 32 lowercase hex characters", str(ctx.exception)
+        )
+        mock_client.create_catalog.assert_not_called()
+
+    def test_catalog_create_r2_rejects_non_hex_account_id(self) -> None:
+        mock_client = self.build_mock_client()
+        with self.assertRaises(CliError) as ctx:
+            self.mock_execute(
+                mock_client,
+                [
+                    "catalogs",
+                    "create",
+                    "r2-catalog",
+                    "--storage-type",
+                    "r2",
+                    "--default-base-location",
+                    "s3://r2-bucket/warehouse",
+                    "--account-id",
+                    "not-hex",
+                ],
+            )
+        self.assertIn(
+            "--account-id must be 32 lowercase hex characters", str(ctx.exception)
+        )
+        mock_client.create_catalog.assert_not_called()
