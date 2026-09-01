@@ -24,8 +24,18 @@ import org.apache.polaris.service.it.env.RestCatalogConfig;
 import org.apache.polaris.service.it.test.PolarisRestCatalogR2IntegrationTestBase;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+/**
+ * Runs the shared REST catalog suite against a real Cloudflare R2 bucket.
+ *
+ * <p>The server under test needs the R2 parent token in {@code polaris.storage.r2.access-key} and
+ * {@code polaris.storage.r2.secret-key}. The launched server inherits this JVM's environment, so
+ * exporting {@code POLARIS_STORAGE_R2_ACCESS_KEY} and {@code POLARIS_STORAGE_R2_SECRET_KEY} is the
+ * only supported way to supply it. Never pass the parent token as a Quarkus config override: for
+ * {@link QuarkusIntegrationTest} every override becomes a {@code -Dkey=value} argument on the
+ * launched server's command line, and the launcher prints that command line to test output.
+ */
 @QuarkusIntegrationTest
-@TestProfile(R2CredentialVendingProfile.class)
+@TestProfile(CredentialVendingProfile.class)
 @EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_R2_PATH", matches = ".+")
 @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
 public class RestCatalogR2IT extends PolarisRestCatalogR2IntegrationTestBase {}

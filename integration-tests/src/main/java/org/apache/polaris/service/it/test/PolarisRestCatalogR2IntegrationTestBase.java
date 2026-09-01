@@ -35,13 +35,18 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
  * Runs the shared REST catalog suite against a real Cloudflare R2 bucket. Enabled by the cloudTest
- * subclass only when the INTEGRATION_TEST_R2_* environment is present. The server under test needs
- * polaris.storage.r2.access-key / secret-key (see R2CredentialVendingProfile).
+ * subclass only when the INTEGRATION_TEST_R2_* environment is present.
+ *
+ * <p>The server under test needs polaris.storage.r2.access-key / secret-key. Supply the parent
+ * token through the environment (POLARIS_STORAGE_R2_ACCESS_KEY, POLARIS_STORAGE_R2_SECRET_KEY),
+ * never through a Quarkus config override: the integration-test launcher turns overrides into
+ * command-line arguments and prints them.
  */
 public abstract class PolarisRestCatalogR2IntegrationTestBase
     extends PolarisRestCatalogIntegrationBase {
@@ -78,8 +83,21 @@ public abstract class PolarisRestCatalogR2IntegrationTestBase
         .put("s3.endpoint", endpoint())
         .put("s3.path-style-access", "true")
         .put("client.region", "auto")
-        .put("s3.access-key-id", System.getenv("POLARIS_STORAGE_R2_ACCESS_KEY"))
-        .put("s3.secret-access-key", System.getenv("POLARIS_STORAGE_R2_SECRET_KEY"));
+        .put("s3.access-key-id", requiredEnv("POLARIS_STORAGE_R2_ACCESS_KEY"))
+        .put("s3.secret-access-key", requiredEnv("POLARIS_STORAGE_R2_SECRET_KEY"));
+  }
+
+  /**
+   * Reads an environment variable the R2 suite cannot run without. Fails with the variable name
+   * rather than letting a null reach the caller.
+   */
+  private static String requiredEnv(String name) {
+    String value = System.getenv(name);
+    if (value == null || value.isEmpty()) {
+      throw new IllegalStateException(
+          "Environment variable " + name + " must be set to run the R2 integration tests");
+    }
+    return value;
   }
 
   private static S3Client clientFor(Map<String, String> vended) {
@@ -96,12 +114,15 @@ public abstract class PolarisRestCatalogR2IntegrationTestBase
         .build();
   }
 
+  /**
+   * Splits an s3:// location into bucket and key prefix. A location with no path has an empty key.
+   */
   private static String[] bucketAndKey(String location, String suffix) {
     String noScheme = location.substring(location.indexOf("://") + 3);
     int slash = noScheme.indexOf('/');
-    String bucket = noScheme.substring(0, slash);
-    String key = noScheme.substring(slash + 1);
-    if (!key.endsWith("/")) {
+    String bucket = slash < 0 ? noScheme : noScheme.substring(0, slash);
+    String key = slash < 0 ? "" : noScheme.substring(slash + 1);
+    if (!key.isEmpty() && !key.endsWith("/")) {
       key = key + "/";
     }
     return new String[] {bucket, key + suffix};
@@ -132,14 +153,23 @@ public abstract class PolarisRestCatalogR2IntegrationTestBase
           PutObjectRequest.builder().bucket(ownTarget[0]).key(ownTarget[1]).build(),
           RequestBody.fromString("ok"));
 
-      String[] otherTarget = bucketAndKey(loadedB.tableMetadata().location(), "probe.txt");
-      assertThatThrownBy(
-              () ->
-                  asA.putObject(
-                      PutObjectRequest.builder().bucket(otherTarget[0]).key(otherTarget[1]).build(),
-                      RequestBody.fromString("nope")))
-          .isInstanceOf(S3Exception.class)
-          .satisfies(e -> assertThat(((S3Exception) e).statusCode()).isEqualTo(403));
+      try {
+        String[] otherTarget = bucketAndKey(loadedB.tableMetadata().location(), "probe.txt");
+        assertThatThrownBy(
+                () ->
+                    asA.putObject(
+                        PutObjectRequest.builder()
+                            .bucket(otherTarget[0])
+                            .key(otherTarget[1])
+                            .build(),
+                        RequestBody.fromString("nope")))
+            .isInstanceOf(S3Exception.class)
+            .satisfies(e -> assertThat(((S3Exception) e).statusCode()).isEqualTo(403));
+      } finally {
+        // Leave the bucket as we found it, whether or not the assertion above held.
+        asA.deleteObject(
+            DeleteObjectRequest.builder().bucket(ownTarget[0]).key(ownTarget[1]).build());
+      }
     }
   }
 }
