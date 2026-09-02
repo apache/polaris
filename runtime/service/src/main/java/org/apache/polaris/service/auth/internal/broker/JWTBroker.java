@@ -56,8 +56,9 @@ public class JWTBroker implements TokenBroker {
   /**
    * Credentials-generation fingerprint bound to the principal's current credentials version (see
    * {@link PolarisPrincipalSecrets#getCredentialsVersion()}). When secrets are rotated or reset,
-   * the version changes and tokens carrying a prior value are rejected on verify. The claim name is
-   * collision-resistant per RFC 7519.
+   * the version changes and tokens carrying a prior value are rejected on token exchange. Bearer
+   * verify checks only the JWT signature and claims. The claim name is collision-resistant per RFC
+   * 7519.
    */
   @VisibleForTesting static final String CLAIM_KEY_CREDENTIALS_VERSION = "polaris-cv";
 
@@ -94,10 +95,9 @@ public class JWTBroker implements TokenBroker {
   }
 
   private VerifiedToken verifyInternal(String token) {
-    // Only JWT cryptographic/claim failures are mapped to NotAuthorizedException. Persistence
-    // failures while loading secrets must surface as service unavailable, not as bad credentials.
-    // The token construction is inside the try as well: a well-signed token that misses a
-    // mandatory claim (subject, principalId, clientId, scope) must not surface as a raw NPE.
+    // Bearer verify is signature + claims only — no metastore IO. Credential-generation binding is
+    // enforced on the token-exchange path. Token construction stays inside the try: a well-signed
+    // token that misses a mandatory claim must not surface as a raw NPE.
     final DecodedJWT decodedJWT;
     final InternalPolarisToken internalToken;
     try {
@@ -112,49 +112,30 @@ public class JWTBroker implements TokenBroker {
       throw (NotAuthorizedException)
           new NotAuthorizedException("Failed to verify the token").initCause(e);
     }
-    String clientId = internalToken.getClientId();
     String credentialsVersion = decodedJWT.getClaim(CLAIM_KEY_CREDENTIALS_VERSION).asString();
-    // The verify path only needs the generation check to run; the binding outcome matters only on
-    // the exchange path, which enforces it via the returned flag.
-    boolean boundToCredentialsGeneration = validateCredentialsVersion(clientId, credentialsVersion);
-    return new VerifiedToken(internalToken, boundToCredentialsGeneration, credentialsVersion);
+    return new VerifiedToken(internalToken, credentialsVersion);
   }
 
   /**
-   * Loads the principal's secrets and rejects tokens that were minted against a credentials
-   * generation that is no longer current. If the secrets cannot be loaded because the principal is
-   * gone, the token is rejected - this applies to legacy tokens too. Accepts the main or secondary
-   * generation fingerprint so dual-secret rotate grace matches client-secret matching. Tokens
-   * minted before credentials binding (no claim) skip the generation check on bearer verify so
-   * existing clients are not broken on upgrade; they remain unbound until expiry. Token exchange
-   * rejects claim-less tokens separately so they cannot be re-minted onto the current generation.
-   *
-   * @return true when the token carries a credentials-generation claim that was validated against
-   *     the current generation; false when the token carries no claim (legacy, unbound). Callers
-   *     that only verify ignore the flag; the exchange path requires it to be true.
+   * Loads principal secrets and rejects a credentials-generation claim that is no longer current.
+   * Accepts the main or secondary generation fingerprint so dual-secret rotate grace matches
+   * client-secret matching. Used only on the token-exchange path.
    */
-  private boolean validateCredentialsVersion(String clientId, String credentialsVersion) {
-    if (clientId == null || clientId.isBlank()) {
-      throw new NotAuthorizedException("Failed to verify the token");
-    }
+  private void requireCredentialsVersionCurrent(String clientId, String credentialsVersion) {
     final PrincipalSecretsResult secretsResult;
     try {
       secretsResult = metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     } catch (RuntimeException e) {
       // Transient backend failure must not look like bad credentials.
-      LOGGER.error("Unable to load principal secrets during token verify", e);
+      LOGGER.error("Unable to load principal secrets during token exchange", e);
       throw new PolarisServiceUnavailableException(0, "Service unavailable");
     }
     if (!secretsResult.isSuccess() || secretsResult.getPrincipalSecrets() == null) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
-    if (credentialsVersion == null) {
-      return false;
-    }
     if (!secretsResult.getPrincipalSecrets().matchesCredentialsVersion(credentialsVersion)) {
       throw new NotAuthorizedException("Failed to verify the token");
     }
-    return true;
   }
 
   @Override
@@ -175,9 +156,6 @@ public class JWTBroker implements TokenBroker {
     }
     VerifiedToken verified;
     try {
-      // verifyInternal enforces credentials-version binding (rejects after rotate/reset).
-      // Persistence failures propagate as PolarisServiceUnavailableException and must not become
-      // invalid_client.
       verified = verifyInternal(subjectToken);
     } catch (NotAuthorizedException e) {
       LOGGER.error("Failed to verify the token", e.getCause());
@@ -186,8 +164,16 @@ public class JWTBroker implements TokenBroker {
     // Claim-less (pre-binding) tokens may still be used as bearer tokens until they expire, but
     // exchange must not re-mint them onto the current credentials generation with a fresh
     // lifetime; per RFC 6749 section 5.2 the subject grant is invalid in that case.
-    if (!verified.boundToCredentialsGeneration()) {
+    String credentialsVersion = verified.subjectCredentialsVersion();
+    if (credentialsVersion == null) {
       return TokenResponse.of(OAuthError.invalid_grant);
+    }
+    try {
+      // Credential-generation binding is enforced only here (not on bearer verify).
+      requireCredentialsVersionCurrent(verified.token().getClientId(), credentialsVersion);
+    } catch (NotAuthorizedException e) {
+      LOGGER.error("Failed to validate credentials generation for token exchange", e.getCause());
+      return TokenResponse.of(OAuthError.invalid_client);
     }
     InternalPolarisToken decodedToken = verified.token();
     Optional<PrincipalEntity> principalLookup =
@@ -209,9 +195,8 @@ public class JWTBroker implements TokenBroker {
       }
       tokenScope = scope;
     }
-    // Keep the subject token's credentials generation: no base credentials are re-checked on this
-    // path, so the re-minted token must not outlive the generation it was verified against.
-    String credentialsVersion = verified.subjectCredentialsVersion();
+    // Keep the subject token's credentials generation so the re-minted token does not outlive the
+    // generation it was exchanged against.
     String tokenString =
         generateTokenString(
             decodedToken.getPrincipalName(),
@@ -313,13 +298,10 @@ public class JWTBroker implements TokenBroker {
   private record AuthenticatedPrincipal(PrincipalEntity entity, String credentialsVersion) {}
 
   /**
-   * Result of token verification. {@code boundToCredentialsGeneration} is true when the token
-   * carries a credentials-generation claim that matched the current generation; false for legacy
-   * tokens without the claim. {@code subjectCredentialsVersion} is the token's
-   * credentials-generation claim, or {@code null} for legacy tokens without it.
+   * Result of JWT verification (signature + claims only). {@code subjectCredentialsVersion} is the
+   * token's credentials-generation claim, or {@code null} for legacy tokens without it. Binding is
+   * enforced later on the exchange path.
    */
   private record VerifiedToken(
-      InternalPolarisToken token,
-      boolean boundToCredentialsGeneration,
-      @Nullable String subjectCredentialsVersion) {}
+      InternalPolarisToken token, @Nullable String subjectCredentialsVersion) {}
 }

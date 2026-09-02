@@ -20,20 +20,20 @@ package org.apache.polaris.service.auth.internal.broker;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.util.Optional;
-import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.DigestUtils;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
@@ -42,11 +42,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /**
- * Internal JWTs are bound to the salted credentials-version fingerprint of the secret generation
- * they were minted with (main or secondary). One rotate keeps the previous main hash as secondary
- * so client secrets and their bound tokens remain valid for that grace generation; a further
- * rotate/reset invalidates both. Tokens without the claim stay valid on bearer verify until expiry
- * for upgrade compatibility, but token exchange rejects them.
+ * Credential-generation binding ({@code polaris-cv}) is enforced on token exchange only. Bearer
+ * verify is signature + claims only: stale-generation and claim-less tokens still verify until
+ * expiry by design. Exchange rejects claim-less and stale-generation subject tokens.
  */
 public class JWTBrokerCredentialsBindingTest {
 
@@ -107,11 +105,18 @@ public class JWTBrokerCredentialsBindingTest {
             TokenRequestValidator.CLIENT_CREDENTIALS,
             SCOPE,
             TokenType.ACCESS_TOKEN);
+    Mockito.clearInvocations(metaStore);
+
     assertThat(broker.verify(response.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    // Bearer verify is signature/claims only — no secrets load on the hot path.
+    verify(metaStore, never()).loadPrincipalSecrets(callContext, CLIENT_ID);
   }
 
   @Test
-  void verifyStillSucceedsAfterOneRotateViaSecondaryGrace() {
+  void verifyAcceptsStaleGenerationBearerTokenUntilExpiry() {
+    // Intended: after credentials advance past the token's generation, bearer verify still
+    // succeeds until expiry. Only exchange rejects. Do not "fix" this back to verify-time
+    // rejection.
     TokenResponse response =
         broker.generateFromClientSecrets(
             CLIENT_ID,
@@ -121,33 +126,12 @@ public class JWTBrokerCredentialsBindingTest {
             TokenType.ACCESS_TOKEN);
     String accessToken = response.getAccessToken();
 
-    // After one rotate, previous main becomes secondary; dual-secret grace keeps the JWT valid.
+    secrets.rotateSecrets(secrets.getMainSecretHash());
     secrets.rotateSecrets(secrets.getMainSecretHash());
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenReturn(new PrincipalSecretsResult(secrets));
 
     assertThat(broker.verify(accessToken).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
-  }
-
-  @Test
-  void verifyFailsAfterSecondRotate() {
-    TokenResponse response =
-        broker.generateFromClientSecrets(
-            CLIENT_ID,
-            MAIN_SECRET,
-            TokenRequestValidator.CLIENT_CREDENTIALS,
-            SCOPE,
-            TokenType.ACCESS_TOKEN);
-    String accessToken = response.getAccessToken();
-
-    secrets.rotateSecrets(secrets.getMainSecretHash());
-    secrets.rotateSecrets(secrets.getMainSecretHash());
-    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
-        .thenReturn(new PrincipalSecretsResult(secrets));
-
-    assertThatThrownBy(() -> broker.verify(accessToken))
-        .isInstanceOf(NotAuthorizedException.class)
-        .hasMessageContaining("Failed to verify the token");
   }
 
   @Test
@@ -198,8 +182,7 @@ public class JWTBrokerCredentialsBindingTest {
             SCOPE,
             TokenType.ACCESS_TOKEN);
     assertThat(exchanged.getError()).isNull();
-    // No base credentials are re-checked on exchange, so the re-minted token keeps the subject
-    // token's (previous) generation instead of being upgraded to the current main generation.
+    // Re-minted token keeps the subject token's generation (secondary grace), not the new main.
     String originalClaim =
         JWT.decode(original.getAccessToken())
             .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
@@ -210,8 +193,8 @@ public class JWTBrokerCredentialsBindingTest {
                 .asString())
         .isEqualTo(originalClaim)
         .isNotEqualTo(secrets.getCredentialsVersion());
-    // The secrets are loaded once during verify; the exchange does not read the metastore again.
-    Mockito.verify(metaStore, Mockito.times(1)).loadPrincipalSecrets(callContext, CLIENT_ID);
+    // Secrets load happens once on the exchange path (not during bearer verify).
+    verify(metaStore, Mockito.times(1)).loadPrincipalSecrets(callContext, CLIENT_ID);
   }
 
   @Test
@@ -229,30 +212,21 @@ public class JWTBrokerCredentialsBindingTest {
 
   @Test
   void verifyAcceptsLegacyTokenWithoutCredentialsVersionClaim() {
+    // Intended upgrade soft-landing: claim-less bearers verify until expiry; exchange rejects.
     String legacy = legacyToken();
     assertThat(broker.verify(legacy).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    verify(metaStore, never()).loadPrincipalSecrets(callContext, CLIENT_ID);
   }
 
   @Test
-  void verifySurfacesPersistenceFailureAsServiceUnavailable() {
-    TokenResponse response =
-        broker.generateFromClientSecrets(
-            CLIENT_ID,
-            MAIN_SECRET,
-            TokenRequestValidator.CLIENT_CREDENTIALS,
-            SCOPE,
-            TokenType.ACCESS_TOKEN);
-    assertThat(response.getError()).isNull();
+  void legacyTokenWithoutClaimIsNotBoundByRotateOnVerify() {
+    String legacy = legacyToken();
 
+    secrets.rotateSecrets(secrets.getMainSecretHash());
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
-        .thenThrow(new RuntimeException("simulated metastore outage"));
-    assertThatThrownBy(() -> broker.verify(response.getAccessToken()))
-        .isInstanceOfSatisfying(
-            PolarisServiceUnavailableException.class,
-            e -> {
-              assertThat(e.getMessage()).isEqualTo("Service unavailable");
-              assertThat(e.getRetryAfterSeconds()).isZero();
-            });
+        .thenReturn(new PrincipalSecretsResult(secrets));
+
+    assertThat(broker.verify(legacy).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
   }
 
   @Test
@@ -286,17 +260,6 @@ public class JWTBrokerCredentialsBindingTest {
   }
 
   @Test
-  void legacyTokenWithoutClaimIsNotBoundByRotate() {
-    String legacy = legacyToken();
-
-    secrets.rotateSecrets(secrets.getMainSecretHash());
-    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
-        .thenReturn(new PrincipalSecretsResult(secrets));
-
-    assertThat(broker.verify(legacy).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
-  }
-
-  @Test
   void newTokenAfterRotateUsesNewMainVersion() {
     secrets.rotateSecrets(secrets.getMainSecretHash());
     String newMain = secrets.getMainSecret();
@@ -320,7 +283,7 @@ public class JWTBrokerCredentialsBindingTest {
   }
 
   @Test
-  void tokenMintedWithSecondarySecretIsBoundToSecondaryGeneration() {
+  void tokenMintedWithSecondarySecretKeepsSecondaryGenerationOnExchangeUntilDropped() {
     // After one rotate, the previous main secret still authenticates via secondary grace.
     secrets.rotateSecrets(secrets.getMainSecretHash());
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
@@ -338,28 +301,34 @@ public class JWTBrokerCredentialsBindingTest {
         JWT.decode(response.getAccessToken())
             .getClaim(JWTBroker.CLAIM_KEY_CREDENTIALS_VERSION)
             .asString();
-    // Bound to the generation of the secondary secret that matched, not the new main generation.
     assertThat(claim).isNotEqualTo(secrets.getCredentialsVersion());
     assertThat(secrets.matchesCredentialsVersion(claim)).isTrue();
+    // Bearer verify does not consult secrets generation.
     assertThat(broker.verify(response.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
 
-    // A second rotate drops the secondary generation: the token dies with the credentials.
+    // Exchange still succeeds while secondary grace holds.
+    TokenResponse exchangedWhileGrace =
+        broker.generateFromToken(
+            TokenType.ACCESS_TOKEN,
+            response.getAccessToken(),
+            TokenRequestValidator.TOKEN_EXCHANGE,
+            SCOPE,
+            TokenType.ACCESS_TOKEN);
+    assertThat(exchangedWhileGrace.getError()).isNull();
+
+    // A second rotate drops the secondary generation: bearer verify still passes; exchange fails.
     secrets.rotateSecrets(secrets.getMainSecretHash());
     when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
         .thenReturn(new PrincipalSecretsResult(secrets));
-    assertThatThrownBy(() -> broker.verify(response.getAccessToken()))
-        .isInstanceOf(NotAuthorizedException.class)
-        .hasMessageContaining("Failed to verify the token");
-  }
-
-  @Test
-  void verifyFailsForLegacyTokenWhenSecretsNotLoadable() {
-    // The principal is effectively gone: even a legacy (claim-less) token must be rejected.
-    when(metaStore.loadPrincipalSecrets(callContext, CLIENT_ID))
-        .thenReturn(new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null));
-    assertThatThrownBy(() -> broker.verify(legacyToken()))
-        .isInstanceOf(NotAuthorizedException.class)
-        .hasMessageContaining("Failed to verify the token");
+    assertThat(broker.verify(response.getAccessToken()).getPrincipalId()).isEqualTo(PRINCIPAL_ID);
+    TokenResponse exchangedAfterDrop =
+        broker.generateFromToken(
+            TokenType.ACCESS_TOKEN,
+            response.getAccessToken(),
+            TokenRequestValidator.TOKEN_EXCHANGE,
+            SCOPE,
+            TokenType.ACCESS_TOKEN);
+    assertThat(exchangedAfterDrop.getError()).isEqualTo(OAuthError.invalid_client);
   }
 
   private String legacyToken() {

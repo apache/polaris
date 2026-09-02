@@ -31,7 +31,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
-- Token verification now loads principal secrets once per Bearer-token request (previously signature-only validation). High-traffic deployments should expect additional read load on the principal-secrets table.
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
   has no automated schema migrations, existing Postgres/CockroachDB deployments keep the old,
@@ -237,7 +236,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - OPA authorizer now includes the realm identifier in the authorization context sent to OPA (`input.context.realm`). This ensures OPA policies can enforce tenant isolation across realms, preventing potential collisions if identical principal or resource names exist in different realms.
 - Management API delete operations for principals, principal roles, catalog roles, and catalogs now return error messages that match the actual failure reason (for example, concurrent modification no longer reports a misleading protected-entity message).
 - Python CLI `setup apply` now defaults to an `INTERNAL` catalog type when the `type` field is left blank or null in the setup config, instead of crashing with `AttributeError`
-- Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the token). Secrets-load failures during verify return service unavailable.
+- Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the token). Credential-generation is enforced on token exchange; bearer verify is signature and claims only. Secrets-load failures during exchange return service unavailable.
 
 ## [1.6.0]
 
