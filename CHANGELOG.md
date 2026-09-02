@@ -96,6 +96,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Python client deserialization and CLI `setup export` now preserve the remote catalog name and
+  warehouse for Iceberg REST, Hadoop, and Hive external catalogs.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
   error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
