@@ -240,55 +240,49 @@ public class IcebergCatalogAdapterTest {
     }
   }
 
-  @Test
-  void testRenameTableRejectsMissingSource() throws IOException {
-    RenameTableRequest request =
-        renameRequest("{\"destination\":{\"namespace\":[\"ns\"],\"name\":\"newtable\"}}");
-    Assertions.assertThat(request.source()).isNull();
+  static Stream<Arguments> renameRequestsMissingIdentifier() {
+    // operation x which identifier is omitted; the request carries only the other identifier.
+    return Stream.of(
+        Arguments.of(
+            "table", "source", "{\"destination\":{\"namespace\":[\"ns\"],\"name\":\"newtable\"}}"),
+        Arguments.of(
+            "table", "destination", "{\"source\":{\"namespace\":[\"ns\"],\"name\":\"oldtable\"}}"),
+        Arguments.of(
+            "view", "source", "{\"destination\":{\"namespace\":[\"ns\"],\"name\":\"newview\"}}"),
+        Arguments.of(
+            "view", "destination", "{\"source\":{\"namespace\":[\"ns\"],\"name\":\"oldview\"}}"));
+  }
+
+  @ParameterizedTest(name = "rename {0} missing {1} -> 400")
+  @MethodSource("renameRequestsMissingIdentifier")
+  void testRenameRejectsMissingIdentifier(String operation, String missing, String json)
+      throws IOException {
+    RenameTableRequest request = renameRequest(json);
+    if ("source".equals(missing)) {
+      Assertions.assertThat(request.source()).isNull();
+    } else {
+      Assertions.assertThat(request.destination()).isNull();
+    }
     Assertions.assertThatThrownBy(
-            () ->
+            () -> {
+              if ("table".equals(operation)) {
                 catalogAdapter.renameTable(
                     FEDERATED_CATALOG_NAME,
                     request,
                     null,
                     testServices.realmContext(),
-                    testServices.securityContext()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("source");
-  }
-
-  @Test
-  void testRenameTableRejectsMissingDestination() throws IOException {
-    RenameTableRequest request =
-        renameRequest("{\"source\":{\"namespace\":[\"ns\"],\"name\":\"oldtable\"}}");
-    Assertions.assertThat(request.destination()).isNull();
-    Assertions.assertThatThrownBy(
-            () ->
-                catalogAdapter.renameTable(
-                    FEDERATED_CATALOG_NAME,
-                    request,
-                    null,
-                    testServices.realmContext(),
-                    testServices.securityContext()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("destination");
-  }
-
-  @Test
-  void testRenameViewRejectsMissingSource() throws IOException {
-    RenameTableRequest request =
-        renameRequest("{\"destination\":{\"namespace\":[\"ns\"],\"name\":\"newview\"}}");
-    Assertions.assertThat(request.source()).isNull();
-    Assertions.assertThatThrownBy(
-            () ->
+                    testServices.securityContext());
+              } else {
                 catalogAdapter.renameView(
                     FEDERATED_CATALOG_NAME,
                     request,
                     null,
                     testServices.realmContext(),
-                    testServices.securityContext()))
+                    testServices.securityContext());
+              }
+            })
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("source");
+        .hasMessageContaining(missing);
   }
 
   /**
