@@ -177,6 +177,16 @@ class SemanticModelCatalogTest {
   }
 
   @Test
+  void createRejectsUnresolvedSourceInObjectDocument() {
+    String objectDocument =
+        "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"sales.missing\"}]}";
+    assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(objectDocument)))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("/semantic_model/datasets/0/source")
+        .hasMessageContaining("sales.missing");
+  }
+
+  @Test
   void createRejectsDatasetWithoutSource() {
     String noSource = "[{\"name\":\"m\",\"datasets\":[{\"name\":\"d\"}]}]";
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(noSource)))
