@@ -678,6 +678,56 @@ class IcebergCatalogHandlerTest {
   }
 
   @Test
+  void reportMetricsDropsWhenResolvedLeafMissing() {
+    when(resolvedPath.getRawLeafEntity()).thenReturn(null);
+    when(catalogEntity.getId()).thenReturn(7L);
+    when(clock.instant()).thenReturn(Instant.parse("2026-01-01T00:00:00Z"));
+    when(localCatalogFactory.createCatalog(any())).thenReturn(mock(Catalog.class));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.reportMetrics(TABLE2, scanMetricsRequest()))
+        .doesNotThrowAnyException();
+    verify(metricsReporter, never()).reportMetric(any());
+  }
+
+  @Test
+  void reportMetricsDropsWhenResolvedLeafIsNotTableLike() {
+    PolarisEntity namespaceLeaf =
+        new PolarisEntity(
+            new PolarisBaseEntity.Builder()
+                .id(99L)
+                .typeCode(PolarisEntityType.NAMESPACE.getCode())
+                .name("ns1")
+                .build());
+    when(resolvedPath.getRawLeafEntity()).thenReturn(namespaceLeaf);
+    when(catalogEntity.getId()).thenReturn(7L);
+    when(clock.instant()).thenReturn(Instant.parse("2026-01-01T00:00:00Z"));
+    when(localCatalogFactory.createCatalog(any())).thenReturn(mock(Catalog.class));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.reportMetrics(TABLE2, scanMetricsRequest()))
+        .doesNotThrowAnyException();
+    verify(metricsReporter, never()).reportMetric(any());
+  }
+
+  private static ReportMetricsRequest scanMetricsRequest() {
+    return ReportMetricsRequest.of(
+        ImmutableScanReport.builder()
+            .tableName(TABLE2.name())
+            .snapshotId(123L)
+            .schemaId(456)
+            .projectedFieldIds(List.of(1, 2, 3))
+            .projectedFieldNames(List.of("f1", "f2", "f3"))
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .build());
+  }
+
+  @Test
   void filterResponseToSnapshotsRefsPreservesMetadataLocation() {
     TableMetadata metadata = loadedTwoSnapshotTableMetadata();
     assertThat(metadata.snapshots()).hasSize(2);

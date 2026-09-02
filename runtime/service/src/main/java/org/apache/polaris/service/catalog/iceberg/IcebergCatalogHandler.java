@@ -773,41 +773,44 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   public void reportMetrics(TableIdentifier identifier, ReportMetricsRequest request) {
-
+    MetricType metricType =
+        request.report() instanceof ScanReport ? MetricType.SCAN : MetricType.COMMIT;
     PolarisAuthorizableOperation op =
-        request.report() instanceof ScanReport
+        metricType == MetricType.SCAN
             ? PolarisAuthorizableOperation.REPORT_READ_METRICS
             : PolarisAuthorizableOperation.REPORT_WRITE_METRICS;
 
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
-    // Get catalog and table IDs from resolved entities (already resolved during authorization)
-    CatalogEntity catalogEntity = getResolvedCatalogEntity();
-    long catalogId = catalogEntity.getId();
-
-    // Get the table ID from the resolved path
-    PolarisResolvedPathWrapper resolvedTable =
-        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier));
-    PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
-    long tableId = tableEntity.getId();
-
-    MetricType metricType =
-        request.report() instanceof ScanReport ? MetricType.SCAN : MetricType.COMMIT;
+    // Metrics reporting is best-effort telemetry: resolution/reporting failures must never break
+    // the client request. Authorization above still fails closed.
     try {
+      CatalogEntity catalogEntity = getResolvedCatalogEntity();
+      long catalogId = catalogEntity.getId();
+
+      PolarisResolvedPathWrapper resolvedTable =
+          resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier));
+      PolarisEntity tableEntity = resolvedTable == null ? null : resolvedTable.getRawLeafEntity();
+      if (tableEntity == null || tableEntity.getType() != PolarisEntityType.TABLE_LIKE) {
+        LOGGER.warn(
+            "Dropping {} metrics for {}; resolved leaf is missing or not TABLE_LIKE",
+            metricType,
+            identifier);
+        return;
+      }
+
       metricsReporter()
           .reportMetric(
               new MetricsReportEnvelope(
                   catalogName(),
                   catalogId,
                   identifier,
-                  tableId,
+                  tableEntity.getId(),
                   metricType,
                   request.report(),
                   clock().instant()));
     } catch (Exception e) {
-      // Metrics reporting is best-effort telemetry: a failing reporter must never break the client
-      // request that produced the report.
       LOGGER.warn(
           "Failed to report {} metrics for {}; dropping the report", metricType, identifier, e);
     }
