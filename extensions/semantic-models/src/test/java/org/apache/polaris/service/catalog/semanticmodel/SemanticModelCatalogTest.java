@@ -177,12 +177,13 @@ class SemanticModelCatalogTest {
   }
 
   @Test
-  void createRejectsObjectDocument() {
+  void createRejectsUnresolvedSourceInObjectDocument() {
     String objectDocument =
         "{\"name\":\"m\",\"datasets\":[{\"name\":\"d\",\"source\":\"sales.missing\"}]}";
     assertThatThrownBy(() -> catalog.createSemanticModel(IDENTIFIER, doc(objectDocument)))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageContaining("must be a JSON array");
+        .hasMessageContaining("/semantic_model/datasets/0/source")
+        .hasMessageContaining("sales.missing");
   }
 
   @Test

@@ -304,25 +304,33 @@ public class SemanticModelCatalog {
    * to the offending dataset.
    */
   private void resolveAndValidateSources(JsonNode semanticModel) {
+    if (semanticModel.isObject()) {
+      resolveAndValidateModelSources(semanticModel, "/semantic_model");
+      return;
+    }
     if (!semanticModel.isArray()) {
-      throw new BadRequestException("Field 'semantic_model' must be a JSON array");
+      return;
     }
 
     for (int modelIdx = 0; modelIdx < semanticModel.size(); modelIdx++) {
-      JsonNode datasets = semanticModel.get(modelIdx).get("datasets");
-      if (datasets == null || !datasets.isArray()) {
-        continue;
+      resolveAndValidateModelSources(
+          semanticModel.get(modelIdx), String.format("/semantic_model/%d", modelIdx));
+    }
+  }
+
+  private void resolveAndValidateModelSources(JsonNode model, String modelPointer) {
+    JsonNode datasets = model.get("datasets");
+    if (datasets == null || !datasets.isArray()) {
+      return;
+    }
+    for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
+      String pointer = String.format("%s/datasets/%d/source", modelPointer, datasetIdx);
+      JsonNode source = datasets.get(datasetIdx).get("source");
+      if (source == null || !source.isTextual()) {
+        throw new BadRequestException(
+            "Semantic model dataset at %s must define a string 'source'", pointer);
       }
-      for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
-        String pointer =
-            String.format("/semantic_model/%d/datasets/%d/source", modelIdx, datasetIdx);
-        JsonNode source = datasets.get(datasetIdx).get("source");
-        if (source == null || !source.isTextual()) {
-          throw new BadRequestException(
-              "Semantic model dataset at %s must define a string 'source'", pointer);
-        }
-        resolveSourceOrThrow(source.asText(), pointer);
-      }
+      resolveSourceOrThrow(source.asText(), pointer);
     }
   }
 

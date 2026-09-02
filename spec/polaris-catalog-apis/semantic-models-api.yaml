@@ -287,10 +287,10 @@ components:
           example: "0.1.1"
         semantic_model:
           type: string
-          description: The Apache Ossie semantic model serialized as a JSON array string.
+          description: The Apache Ossie semantic model serialized as a JSON string.
       example:
         version: "0.1.1"
-        semantic_model: '[{"name":"tpcds_retail_model","description":"retail analytics","datasets":[{"name":"store_sales","source":"public.store_sales","primary_key":["ss_item_sk","ss_ticket_number"]}],"metrics":[{"name":"total_sales","expression":{"dialects":[{"dialect":"ANSI_SQL","expression":"SUM(ss_ext_sales_price)"}]}}]}]'
+        semantic_model: '{"name":"tpcds_retail_model","description":"retail analytics","datasets":[{"name":"store_sales","source":"public.store_sales","primary_key":["ss_item_sk","ss_ticket_number"]}],"metrics":[{"name":"total_sales","expression":{"dialects":[{"dialect":"ANSI_SQL","expression":"SUM(ss_ext_sales_price)"}]}}]}'
 
     SemanticModelIdentifier:
       type: object
