@@ -32,6 +32,7 @@ from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
     FileStorageConfigInfo,
+    AzureStorageConfigInfo,
     AwsStorageConfigInfo,
 )
 from apache_polaris.sdk.catalog import GetNamespaceResponse
@@ -80,6 +81,21 @@ class TestSetupCommand(CLITestBase):
 
         self.assertEqual(command._failure_count, 0)
         mock_client.create_principal_role.assert_called_once()
+
+    def test_setup_apply_skips_principal_role_without_name(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.list_principal_roles.return_value.roles = []
+        command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+
+        with self.assertLogs(
+            "apache_polaris.cli.command.setup", level="WARNING"
+        ) as logs:
+            command._create_principal_roles(
+                mock_client, [{"properties": {"team": "analytics"}}]
+            )
+
+        mock_client.create_principal_role.assert_not_called()
+        self.assertIn("Skipping principal role with no name", logs.output[0])
 
     @patch("apache_polaris.cli.command.setup.os.path.isfile")
     def test_setup_dry_run_reports_lookup_failures(
@@ -308,6 +324,7 @@ class TestSetupCommand(CLITestBase):
 
     def test_setup_exported_entity_properties_round_trip_through_apply(self) -> None:
         principal_properties = {"owner": "data-platform"}
+        principal_role_properties = {"team": "analytics"}
         catalog_role_properties = {"purpose": "migration"}
         export_client = self.build_mock_client()
         export_client.list_principals.return_value = SimpleNamespace(
@@ -320,6 +337,18 @@ class TestSetupCommand(CLITestBase):
         )
         export_client.list_principal_roles_assigned.return_value = SimpleNamespace(
             roles=[]
+        )
+        export_client.list_principal_roles.return_value = SimpleNamespace(
+            roles=[
+                SimpleNamespace(
+                    name="viewer-role",
+                    properties=None,
+                ),
+                SimpleNamespace(
+                    name="analytics-role",
+                    properties=principal_role_properties,
+                ),
+            ]
         )
         export_client.list_catalog_roles.return_value = SimpleNamespace(
             roles=[
@@ -339,6 +368,7 @@ class TestSetupCommand(CLITestBase):
 
         exported = {
             "principals": export_command._export_principals(export_client),
+            "principal_roles": export_command._export_principal_roles(export_client),
             "catalog_roles": export_command._export_catalog_roles_for_catalog(
                 export_client, "catalog"
             ),
@@ -350,12 +380,23 @@ class TestSetupCommand(CLITestBase):
             principal_properties,
         )
         self.assertEqual(
+            loaded["principal_roles"],
+            [
+                {
+                    "name": "analytics-role",
+                    "properties": principal_role_properties,
+                },
+                "viewer-role",
+            ],
+        )
+        self.assertEqual(
             loaded["catalog_roles"]["catalog-reader"]["properties"],
             catalog_role_properties,
         )
 
         apply_client = self.build_mock_client()
         apply_client.list_principals.return_value = SimpleNamespace(principals=[])
+        apply_client.list_principal_roles.return_value = SimpleNamespace(roles=[])
         apply_client.list_catalog_roles.return_value = SimpleNamespace(roles=[])
         apply_client.create_principal.return_value = SimpleNamespace(
             credentials=SimpleNamespace(
@@ -367,6 +408,10 @@ class TestSetupCommand(CLITestBase):
 
         with patch("sys.stdout", new_callable=io.StringIO):
             apply_command._create_principals(apply_client, loaded["principals"])
+        apply_command._create_principal_roles(
+            apply_client,
+            loaded["principal_roles"],
+        )
         apply_command._create_catalog_roles(
             apply_client,
             "catalog",
@@ -374,11 +419,20 @@ class TestSetupCommand(CLITestBase):
         )
 
         principal_request = apply_client.create_principal.call_args.args[0]
+        principal_role_requests = [
+            call.args[0] for call in apply_client.create_principal_role.call_args_list
+        ]
         catalog_role_request = apply_client.create_catalog_role.call_args.args[1]
         self.assertEqual(
             principal_request.principal.properties,
             principal_properties,
         )
+        self.assertEqual(
+            principal_role_requests[0].principal_role.properties,
+            principal_role_properties,
+        )
+        self.assertEqual(principal_role_requests[1].principal_role.name, "viewer-role")
+        self.assertEqual(principal_role_requests[1].principal_role.properties, {})
         self.assertEqual(
             catalog_role_request.catalog_role.properties,
             catalog_role_properties,
@@ -477,17 +531,19 @@ class TestSetupCommand(CLITestBase):
         catalog = command._export_catalogs(mock_client)[0]
 
         self.assertEqual(
-            catalog["namespaces"], [{"name": "parent"}, {"name": "parent.child"}]
+            catalog["namespaces"],
+            [{"name": ["parent"]}, {"name": ["parent", "child"]}],
         )
         self.assertEqual(
             catalog["policies"],
-            {
-                "child-policy": {
-                    "namespace": "parent.child",
+            [
+                {
+                    "name": "child-policy",
+                    "namespace": ["parent", "child"],
                     "type": "data-compaction",
                     "content": '{"max-age":7}',
                 }
-            },
+            ],
         )
         self.assertEqual(
             catalog_api.list_namespaces.call_args_list,
@@ -508,6 +564,46 @@ class TestSetupCommand(CLITestBase):
                     namespace=f"parent{UNIT_SEPARATOR}child",
                 ),
             ]
+        )
+
+    @patch("apache_polaris.cli.command.setup.NamespacesCommand")
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_exported_dotted_namespace_levels_round_trip_without_colliding(
+        self,
+        mock_catalog_api_class: MagicMock,
+        mock_namespaces_command: MagicMock,
+    ) -> None:
+        catalog_api = mock_catalog_api_class.return_value
+        catalog_api.load_namespace_metadata.return_value = GetNamespaceResponse(
+            namespace=["finance.us"], properties={}
+        )
+        catalog_api.list_namespaces.return_value = SimpleNamespace(namespaces=[])
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+
+        exported = export_command._export_namespaces_for_catalog(
+            MagicMock(), "catalog", [["finance.us"], ["finance", "us"]]
+        )
+        loaded = yaml.safe_load(yaml.safe_dump({"namespaces": exported}))
+
+        apply_command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        apply_command._create_namespaces(MagicMock(), "catalog", loaded["namespaces"])
+
+        self.assertEqual(
+            exported,
+            [{"name": ["finance.us"]}, {"name": ["finance", "us"]}],
+        )
+        self.assertEqual(
+            [
+                namespace_call.kwargs["namespace"]
+                for namespace_call in mock_namespaces_command.call_args_list
+            ],
+            [["finance"], ["finance", "us"], ["finance.us"]],
         )
 
     @patch("apache_polaris.cli.command.setup.PolicyAPI")
@@ -551,6 +647,159 @@ class TestSetupCommand(CLITestBase):
 
         request = policy_api.create_policy.call_args.kwargs["create_policy_request"]
         self.assertEqual(request.content, policy_content)
+
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    def test_setup_export_preserves_policies_across_ambiguous_namespace_names(
+        self, mock_policy_api_class: MagicMock
+    ) -> None:
+        policy_api = mock_policy_api_class.return_value
+        policy_api.list_policies.side_effect = lambda prefix, namespace: (
+            SimpleNamespace(
+                identifiers=(
+                    [SimpleNamespace(name="retention")]
+                    if namespace in {"finance.us", f"finance{UNIT_SEPARATOR}us"}
+                    else []
+                )
+            )
+        )
+        policy_api.load_policy.side_effect = [
+            SimpleNamespace(
+                policy=SimpleNamespace(
+                    content='{"max-age":7}',
+                    policy_type="system.snapshot-expiry",
+                    description=None,
+                )
+            ),
+            SimpleNamespace(
+                policy=SimpleNamespace(
+                    content='{"max-age":30}',
+                    policy_type="system.snapshot-expiry",
+                    description=None,
+                )
+            ),
+            NotFoundException(),
+            NotFoundException(),
+        ]
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported_policies = export_command._export_policies_for_catalog(
+            MagicMock(), "catalog", [["finance.us"], ["finance", "us"]]
+        )
+        loaded_config = yaml.safe_load(yaml.safe_dump({"policies": exported_policies}))
+
+        apply_command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            _catalog_api=MagicMock(),
+        )
+        apply_command._create_policies_and_attachments(
+            MagicMock(),
+            "catalog",
+            loaded_config["policies"],
+        )
+
+        self.assertEqual(
+            [
+                (
+                    create_call.kwargs["namespace"],
+                    create_call.kwargs["create_policy_request"].name,
+                    create_call.kwargs["create_policy_request"].content,
+                )
+                for create_call in policy_api.create_policy.call_args_list
+            ],
+            [
+                ("finance.us", "retention", '{"max-age":7}'),
+                (f"finance{UNIT_SEPARATOR}us", "retention", '{"max-age":30}'),
+            ],
+        )
+
+    def test_setup_exported_namespace_privileges_round_trip_without_colliding(
+        self,
+    ) -> None:
+        export_client = self.build_mock_client()
+        export_client.list_catalog_roles.return_value = SimpleNamespace(
+            roles=[SimpleNamespace(name="reader", properties={})]
+        )
+        export_client.list_assignee_principal_roles_for_catalog_role.return_value = (
+            SimpleNamespace(roles=[])
+        )
+        export_client.list_grants_for_catalog_role.return_value = SimpleNamespace(
+            grants=[
+                SimpleNamespace(
+                    type="namespace",
+                    namespace=["finance.us"],
+                    privilege=SimpleNamespace(value="TABLE_READ_DATA"),
+                ),
+                SimpleNamespace(
+                    type="namespace",
+                    namespace=["finance", "us"],
+                    privilege=SimpleNamespace(value="TABLE_WRITE_DATA"),
+                ),
+            ]
+        )
+        export_command = SetupCommand(setup_subcommand=Subcommands.EXPORT)
+
+        exported = export_command._export_catalog_roles_for_catalog(
+            export_client, "catalog"
+        )
+        loaded = yaml.safe_load(yaml.safe_dump(exported))
+
+        apply_client = self.build_mock_client()
+        apply_client.list_catalog_roles.return_value = SimpleNamespace(
+            roles=[SimpleNamespace(name="reader")]
+        )
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+        apply_command._create_catalog_roles(apply_client, "catalog", loaded)
+
+        self.assertEqual(
+            exported["reader"]["privileges"]["namespace"],
+            [
+                {
+                    "namespace": ["finance", "us"],
+                    "privileges": ["TABLE_WRITE_DATA"],
+                },
+                {
+                    "namespace": ["finance.us"],
+                    "privileges": ["TABLE_READ_DATA"],
+                },
+            ],
+        )
+        self.assertEqual(
+            [
+                (
+                    grant_call.args[2].grant.namespace,
+                    grant_call.args[2].grant.privilege.value,
+                )
+                for grant_call in apply_client.add_grant_to_catalog_role.call_args_list
+            ],
+            [
+                (["finance", "us"], "TABLE_WRITE_DATA"),
+                (["finance.us"], "TABLE_READ_DATA"),
+            ],
+        )
+
+    def test_setup_apply_accepts_legacy_namespace_privilege_mapping(self) -> None:
+        apply_client = self.build_mock_client()
+        apply_client.list_catalog_roles.return_value = SimpleNamespace(
+            roles=[SimpleNamespace(name="reader")]
+        )
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+
+        apply_command._create_catalog_roles(
+            apply_client,
+            "catalog",
+            {
+                "reader": {
+                    "privileges": {"namespace": {"finance.us": ["TABLE_READ_DATA"]}}
+                }
+            },
+        )
+
+        grant = apply_client.add_grant_to_catalog_role.call_args.args[2].grant
+        self.assertEqual(grant.namespace, ["finance", "us"])
+        self.assertEqual(grant.privilege.value, "TABLE_READ_DATA")
 
     def test_setup_export_reports_top_level_read_failures(self) -> None:
         for method_name in (
@@ -661,7 +910,8 @@ class TestSetupCommand(CLITestBase):
 
         self.assertEqual(len(exported), 1)
         self.assertEqual(
-            exported[0]["endpoint_internal"], "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com"
+            exported[0]["endpoint_internal"],
+            "https://bucket.vpce-1a2b3c4d-5e6f.s3.us-west-2.vpce.amazonaws.com",
         )
         self.assertEqual(exported[0]["sts_endpoint"], "https://sts.amazonaws.com")
 
@@ -681,3 +931,53 @@ class TestSetupCommand(CLITestBase):
         self.assertEqual(
             created.storage_config_info.sts_endpoint, "https://sts.amazonaws.com"
         )
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_export_azure_catalog_round_trips_hierarchical(
+        self, mock_catalog_api: MagicMock
+    ) -> None:
+        mock_catalog_api.return_value.list_namespaces.return_value = []
+        mock_catalog = MagicMock()
+        mock_catalog.name = "my_catalog"
+        mock_client = self.build_mock_client()
+        mock_client.list_catalogs.return_value.catalogs = [mock_catalog]
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="my_catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/",
+                additional_properties={},
+            ),
+            storage_config_info=AzureStorageConfigInfo(
+                storage_type="AZURE",
+                allowed_locations=[
+                    "abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/"
+                ],
+                tenant_id="12345678-1234-1234-1234-123456789abc",
+                multi_tenant_app_name="QuickstartAzureApp",
+                consent_url="https://login.microsoftonline.com/consent",
+                hierarchical=True,
+            ),
+        )
+        mock_client.list_catalog_roles.return_value = MagicMock(roles=[])
+
+        export_command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT,
+            _catalog_api=MagicMock(),
+        )
+        exported = export_command._export_catalogs(mock_client)
+
+        self.assertEqual(len(exported), 1)
+        self.assertEqual(exported[0]["hierarchical"], True)
+
+        loaded = yaml.safe_load(yaml.safe_dump({"catalogs": exported}))
+
+        apply_client = self.build_mock_client()
+        apply_client.list_catalogs.return_value.catalogs = []
+        apply_command = SetupCommand(setup_subcommand=Subcommands.APPLY)
+        apply_command._create_catalogs(apply_client, loaded["catalogs"])
+
+        apply_client.create_catalog.assert_called_once()
+        created = apply_client.create_catalog.call_args[0][0].catalog
+        self.assertEqual(created.storage_config_info.hierarchical, True)

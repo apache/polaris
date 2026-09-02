@@ -30,13 +30,13 @@ dependencies {
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
+    api(project(":polaris-api-openlineage-service"))
 
     api(project(":polaris-container-spec-helper"))
     api(project(":polaris-floci-aws-testcontainer"))
     api(project(":polaris-floci-az-testcontainer"))
     api(project(":polaris-floci-gcp-testcontainer"))
     api(project(":polaris-keycloak-testcontainer"))
-    api(project(":polaris-minio-testcontainer"))
     api(project(":polaris-rustfs-testcontainer"))
     api(project(":polaris-immutables"))
     api(project(":polaris-misc-types"))
@@ -104,6 +104,7 @@ dependencies {
     api(project(":polaris-extensions-federation-hive"))
     api(project(":polaris-extensions-metrics-reports"))
     api(project(":polaris-extensions-metrics-reports-jdbc"))
+    api(project(":polaris-extensions-openlineage"))
     api(project(":polaris-extensions-semantic-models"))
     api(project(":polaris-hms-testcontainer"))
 

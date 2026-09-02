@@ -47,7 +47,7 @@ If set to true (the default), Polaris honors a `location` (and the `write.data.p
 
 ##### `polaris.features."ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG"`
 
-If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. passthrough-facade catalogs may contain leftover entities when syncing with source catalog.In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.
+If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. passthrough-facade catalogs may contain leftover entities when syncing with source catalog. In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -142,7 +142,7 @@ If set to true (default), Polaris will permit S3 storage configurations to have 
 
 ##### `polaris.features."ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS"`
 
-If set to true (default), Polaris will allow setting or changing catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs.If set to false, Polaris will disallow setting or changing the above catalog property
+If set to true (default), Polaris will allow setting or changing catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs. If set to false, Polaris will disallow setting or changing the above catalog property
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -216,7 +216,7 @@ Initial delay in milliseconds before first retry for Azure API requests. Delay d
 
 ##### `polaris.features."AZURE_RETRY_JITTER_FACTOR"`
 
-Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. The jitter is applied as a random percentage of the computed exponential backoff delay. For example, 0.5 means up to 50%% random jitter will be added to each retry delay. Helps prevent thundering herd when multiple requests fail simultaneously.
+Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. The jitter is applied as a random percentage of the computed exponential backoff delay. For example, 0.5 means up to 50% random jitter will be added to each retry delay. Helps prevent thundering herd when multiple requests fail simultaneously.
 
 - **Type:** `Double`
 - **Default:** `0.5`
@@ -274,7 +274,7 @@ When enabled, a managed location generated for a table or view created without a
 
 ##### `polaris.features."DROP_WITH_PURGE_ENABLED"`
 
-If set to true, allows tables to be dropped with the purge parameter set to true.
+If set to true, allows Iceberg tables to be dropped with the purge parameter set to true.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -313,6 +313,15 @@ When true, enables finer grained update table privileges which are passed to the
 ##### `polaris.features."ENABLE_GENERIC_TABLES"`
 
 If true, the generic-tables endpoints are enabled
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
+##### `polaris.features."ENABLE_OPENLINEAGE_INGEST"`
+
+If true, the OpenLineage ingest endpoints are enabled and advertised to clients in the catalog configuration response during endpoint discovery. If false, the endpoints return 501 Not Implemented and are not advertised. The routes are always mounted when the OpenLineage extension is assembled into the server; this flag is the runtime switch that turns the feature on or off.
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -533,7 +542,7 @@ How long to store storage credentials in the local cache. This should be less th
 
 ##### `polaris.features."STORAGE_CREDENTIAL_DURATION_SECONDS"`
 
-The duration of time that vended storage credentials are valid for. Support for longer (or shorter) durations is dependent on the storage provider. GCS current does not respect this value.
+The duration of time that vended storage credentials are valid for. Support for longer (or shorter) durations is dependent on the storage provider. GCS currently does not respect this value.
 
 - **Type:** `Integer`
 - **Default:** `3600`

@@ -19,6 +19,7 @@
 #
 linkTitle: "Storage: Ceph"
 title: "Getting Started with Apache Polaris and Ceph"
+description: "Uses a single-node Ceph cluster with RADOS Gateway (RGW) for S3-compatible object storage."
 weight: 200
 tags:
   - ceph

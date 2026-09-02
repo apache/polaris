@@ -33,7 +33,7 @@ The default build includes drivers for the PostgreSQL and NoSQL (MongoDB) backen
 
 ## Usage
 
-Please make sure the admin tool and Polaris server are with the same version before using it.
+Please make sure the admin tool and Polaris server are at the same version before using it.
 To run the standalone JAR, use the following command:
 
 If you downloaded the [binary distribution]({{% ref "getting-started/binary-distribution" %}}), you
@@ -77,7 +77,10 @@ See the [Metastores]({{% ref "metastores" %}}) section for more information on c
 database connection. See [Configuration Reference]({{% ref "configuration/configuration-reference"
 %}}) for the full list of configuration options.
 
-Note: Polaris will always create the schema `polaris_schema` during bootstrap under the configured database.
+Note: Polaris does not create the database schema. The schema (by default `polaris_schema`, selected
+through the JDBC driver's `currentSchema` connection property) must already exist before bootstrapping;
+creating it is a database-administrator task. See the [Metastores]({{% ref "metastores" %}}) section for
+details.
 
 ## Bootstrapping Realms and Principal Credentials
 
@@ -227,7 +230,7 @@ NoSQL maintenance is run using the `nosql maintenance-run` command.
 Maintenance covers the deletion of stale database entries.
 
 {{< alert note >}}
-It is recommended to run the `nosql maintenance-run` command regulary, for example, once per day.
+It is recommended to run the `nosql maintenance-run` command regularly, for example, once per day.
 {{< /alert >}}
 
 The output shows a bunch of configuration options, most of which are automatically determined by the tool.

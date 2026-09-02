@@ -183,8 +183,10 @@ AWS S3 Storage Options:
   --no-sts                                                             Indicates that Polaris should not use STS (e.g. if STS is not available)
   --no-kms                                                             Indicates that Polaris should not use KMS (e.g. if KMS is not available)
   --path-style-access                                                  Whether to use path-style-access for S3
-  --current-kms-key CURRENT_KMS_KEY                                    The AWS KMS key ARN to be used for encrypting new S3 data
-  --allowed-kms-key ALLOWED_KMS_KEY                                    AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)
+  --current-kms-key CURRENT_KMS_KEY                                    Deprecated. Use --encryption-key instead
+  --allowed-kms-key ALLOWED_KMS_KEY                                    Deprecated. Use --encryption-key instead
+  --encryption-key ENCRYPTION_KEY                                      AWS KMS key identifier(s) that this catalog and its clients may use to encrypt S3 data; these keys are also granted decryption permissions (zero or more)
+  --decryption-key DECRYPTION_KEY                                      AWS KMS key identifier(s) that this catalog and its clients may use to decrypt S3 data (zero or more)
   --role-arn ROLE_ARN                                                  A role ARN to use when connecting to S3
   --region REGION                                                      The region to use when connecting to S3
   --external-id EXTERNAL_ID                                            The external ID to use when connecting to S3
@@ -1688,6 +1690,8 @@ polaris setup apply setup-config.yaml
 
 The `export` subcommand retrieves the current Polaris configuration and outputs it in a YAML format. This output is compatible with the apply subcommand, allowing you to easily back up, migrate, or recreate your Polaris environment.
 
+Exported policies are represented as a list with explicit `name` and `namespace` fields so policies with the same name in different namespaces are preserved. The `apply` subcommand also accepts the legacy policy mapping keyed by name, but that format cannot represent duplicate policy names because YAML mapping keys must be unique.
+
 ```
 usage: polaris setup export [-h] [options]
 
@@ -1728,7 +1732,7 @@ The `tables` command is used to manage Iceberg tables within a Polaris Catalog.
 
 #### list
 
-The `list` subcommand is used to list tables within a namesace from a given catalog.
+The `list` subcommand is used to list tables within a namespace from a given catalog.
 
 ```
 usage: polaris tables list [-h] [options]
@@ -1773,7 +1777,7 @@ polaris tables get my_table --catalog my_catalog --namespace ns1
 
 #### summarize
 
-The `summarize` subcommand provides a detail overview of a table.
+The `summarize` subcommand provides a detailed overview of a table.
 
 ```
 usage: polaris tables summarize [-h] [options] TABLE_NAME
@@ -1832,7 +1836,7 @@ The `views` command is used to manage Iceberg views within a Polaris Catalog.
 
 #### list
 
-The `list` subcommand is used to list views within a namesace from a given catalog.
+The `list` subcommand is used to list views within a namespace from a given catalog.
 
 ```
 usage: polaris views list [-h] [options]
@@ -1877,7 +1881,7 @@ polaris views get my_view --catalog my_catalog --namespace ns1
 
 #### summarize
 
-The `summarize` subcommand provides a detail overview of a view.
+The `summarize` subcommand provides a detailed overview of a view.
 
 ```
 usage: polaris views summarize [-h] [options] VIEW_NAME
@@ -1896,12 +1900,12 @@ Command Options:
 ##### Examples
 
 ```
-polaris view summarize my_view --catalog my_catalog --namespace ns1
+polaris views summarize my_view --catalog my_catalog --namespace ns1
 ```
 
 #### delete
 
-The `delete` subcommand drop a view from catalog.
+The `delete` subcommand drops a view from the catalog.
 
 ```
 usage: polaris views delete [-h] [options] VIEW_NAME
@@ -1923,10 +1927,6 @@ Command Options:
 polaris views delete my_view --catalog my_catalog --namespace ns1
 ```
 
-
-
-
-
 ### Generic Tables
 
 The `generic-tables` command is used to manage generic tables within a Polaris Catalog.
@@ -1939,7 +1939,7 @@ The `generic-tables` command is used to manage generic tables within a Polaris C
 
 #### list
 
-The `list` subcommand is used to list generic tables within a namesace from a given catalog.
+The `list` subcommand is used to list generic tables within a namespace from a given catalog.
 
 ```
 usage: polaris generic-tables list [-h] [options]
@@ -1960,7 +1960,7 @@ polaris generic-tables list
 
 #### get
 
-The `get` subcommand retrieves the generic tables metadata for a specific generic table.
+The `get` subcommand retrieves the generic table metadata for a specific generic table.
 
 ```
 usage: polaris generic-tables get [-h] [options] GENERIC_TABLE_NAME
@@ -1984,7 +1984,7 @@ polaris generic-tables get my_generic_table --catalog my_catalog --namespace ns1
 
 #### delete
 
-The `delete` subcommand drop a generic table from catalog.
+The `delete` subcommand drops a generic table from the catalog.
 
 ```
 usage: polaris generic-tables delete [-h] [options] GENERIC_TABLE_NAME

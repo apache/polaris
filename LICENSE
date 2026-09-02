@@ -326,10 +326,6 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/test/java/tests/smallrye/SomeEnum.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/VeryNested.java
 * tools/container-spec-helper/src/main/java/org/apache/polaris/containerspec/ContainerSpecHelper.java
-* tools/testcontainers/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/Minio.java
-* tools/testcontainers/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/MinioAccess.java
-* tools/testcontainers/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/MinioContainer.java
-* tools/testcontainers/minio-testcontainer/src/main/java/org/apache/polaris/test/minio/MinioExtension.java
 * tools/testcontainers/rustfs-testcontainer/src/main/java/org/apache/polaris/test/rustfs/Rustfs.java
 * tools/testcontainers/rustfs-testcontainer/src/main/java/org/apache/polaris/test/rustfs/RustfsAccess.java
 * tools/testcontainers/rustfs-testcontainer/src/main/java/org/apache/polaris/test/rustfs/RustfsContainer.java

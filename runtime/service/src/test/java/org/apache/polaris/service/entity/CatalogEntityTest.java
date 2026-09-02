@@ -282,6 +282,38 @@ public class CatalogEntityTest {
   }
 
   @Test
+  @SuppressWarnings("deprecation")
+  public void testDeprecatedKmsKeysMigratedToEncryptionKeys() {
+    String baseLocation = "s3://my-bucket/data/";
+    String currentKmsKey =
+        "arn:aws:kms:us-east-1:012345678901:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    String allowedKmsKey =
+        "arn:aws:kms:us-east-1:012345678901:key/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+    AwsStorageConfigInfo awsStorageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setCurrentKmsKey(currentKmsKey)
+            .setAllowedKmsKeys(List.of(allowedKmsKey))
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .build();
+    Catalog awsCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("name")
+            .setProperties(new CatalogProperties(baseLocation))
+            .setStorageConfigInfo(awsStorageConfigModel)
+            .build();
+
+    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, awsCatalog);
+    AwsStorageConfigInfo response =
+        (AwsStorageConfigInfo) entity.asCatalog().getStorageConfigInfo();
+
+    assertThat(response.getCurrentKmsKey()).isNull();
+    assertThat(response.getAllowedKmsKeys()).containsExactly(allowedKmsKey, currentKmsKey);
+    assertThat(response.getEncryptionKeys()).containsExactly(allowedKmsKey, currentKmsKey);
+  }
+
+  @Test
   public void testExplicitAllowedLocationsWithBaseInside_storedAsIs() {
     // User supplied explicit allowed-locations containing the default-base-location: store the
     // list as-is. No silent additions to the user-supplied perimeter.
@@ -384,13 +416,14 @@ public class CatalogEntityTest {
   }
 
   @Test
+  @SuppressWarnings("deprecation")
   public void testCatalogTypeDefaultsToInternal() {
     String baseLocation = "s3://test-bucket/path";
     AwsStorageConfigInfo storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/test-role")
             .setExternalId("externalId")
-            .setCurrentKmsKey("arn:aws:kms:us-east-1:012345678901:key/444343245")
+            .setEncryptionKeys(List.of("arn:aws:kms:us-east-1:012345678901:key/444343245"))
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(baseLocation))
@@ -399,22 +432,27 @@ public class CatalogEntityTest {
         new CatalogEntity.Builder()
             .setName("test-catalog")
             .setDefaultBaseLocation(baseLocation)
-            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel)
             .build();
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
-    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getCurrentKmsKey())
-        .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
+    AwsStorageConfigInfo response = (AwsStorageConfigInfo) catalog.getStorageConfigInfo();
+    assertThat(response.getCurrentKmsKey()).isNull();
+    assertThat(response.getAllowedKmsKeys())
+        .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
+    assertThat(response.getEncryptionKeys())
+        .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test
+  @SuppressWarnings("deprecation")
   public void testCatalogTypeExternalPreserved() {
     String baseLocation = "s3://test-bucket/path";
     AwsStorageConfigInfo storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/test-role")
-            .setCurrentKmsKey("arn:aws:kms:us-east-1:012345678901:key/444343245")
+            .setEncryptionKeys(List.of("arn:aws:kms:us-east-1:012345678901:key/444343245"))
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -425,13 +463,17 @@ public class CatalogEntityTest {
             .setName("test-external-catalog")
             .setDefaultBaseLocation(baseLocation)
             .setCatalogType(Catalog.TypeEnum.EXTERNAL.name())
-            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel)
             .build();
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
-    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getCurrentKmsKey())
-        .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
+    AwsStorageConfigInfo response = (AwsStorageConfigInfo) catalog.getStorageConfigInfo();
+    assertThat(response.getCurrentKmsKey()).isNull();
+    assertThat(response.getAllowedKmsKeys())
+        .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
+    assertThat(response.getEncryptionKeys())
+        .containsExactly("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test
@@ -450,7 +492,7 @@ public class CatalogEntityTest {
             .setName("test-internal-catalog")
             .setDefaultBaseLocation(baseLocation)
             .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
-            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel)
             .build();
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
@@ -486,9 +528,7 @@ public class CatalogEntityTest {
             .setDefaultBaseLocation(config.getAllowedLocations().getFirst())
             .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
             .setStorageConfigurationInfo(
-                realmConfig,
-                MAPPER.readValue(configStr, StorageConfigInfo.class),
-                config.getAllowedLocations().getFirst())
+                realmConfig, MAPPER.readValue(configStr, StorageConfigInfo.class))
             .build();
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
@@ -524,7 +564,7 @@ public class CatalogEntityTest {
             .setName("test-catalog")
             .setCatalogType(Catalog.TypeEnum.EXTERNAL.name())
             .setDefaultBaseLocation(baseLocation)
-            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel)
             .setConnectionConfigInfoDpoWithSecrets(
                 icebergRestConnectionConfigInfoModel, null, new AwsIamServiceIdentityInfoDpo(null))
             .build();
@@ -603,8 +643,7 @@ public class CatalogEntityTest {
                             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
                             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                             .setAllowedLocations(List.of(allowed))
-                            .build(),
-                        base)
+                            .build())
                     .build())
         .doesNotThrowAnyException();
   }
@@ -623,8 +662,7 @@ public class CatalogEntityTest {
                             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                             .setAllowedLocations(
                                 List.of("s3://bucket-a/", "s3://bucket-b/warehouse/"))
-                            .build(),
-                        "s3://bucket-b/warehouse/data")
+                            .build())
                     .build())
         .doesNotThrowAnyException();
   }
@@ -642,8 +680,7 @@ public class CatalogEntityTest {
                             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
                             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                             .setAllowedLocations(List.of("s3://bucket/"))
-                            .build(),
-                        "s3://other-bucket/data")
+                            .build())
                     .build())
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("s3://other-bucket/data")
@@ -663,8 +700,7 @@ public class CatalogEntityTest {
                             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
                             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                             .setAllowedLocations(List.of("s3://bucket/"))
-                            .build(),
-                        "gs://bucket/data")
+                            .build())
                     .build())
         .isInstanceOf(BadRequestException.class);
   }

@@ -21,7 +21,7 @@ import logging
 import yaml
 import json
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List, Any, Set
+from typing import Dict, Optional, List, Any, Set, Union
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
@@ -84,6 +84,18 @@ class SetupCommand(Command):
         if self._catalog_api is None:
             self._catalog_api = get_catalog_api_client(api)
         return self._catalog_api
+
+    @staticmethod
+    def _namespace_parts(namespace: Any) -> Optional[List[str]]:
+        if isinstance(namespace, str):
+            return namespace.split(".")
+        if (
+            isinstance(namespace, list)
+            and namespace
+            and all(isinstance(part, str) and part for part in namespace)
+        ):
+            return namespace
+        return None
 
     def _get_existing_principals(self, api: PolarisDefaultApi) -> Set[str]:
         """Fetch and cache the set of existing principal names."""
@@ -188,10 +200,18 @@ class SetupCommand(Command):
             self._record_failure("Failed to export principals")
         return principals_map
 
-    def _export_principal_roles(self, api: PolarisDefaultApi) -> List[str]:
-        """Export all principal role names."""
+    def _export_principal_roles(
+        self, api: PolarisDefaultApi
+    ) -> List[Union[str, Dict[str, Any]]]:
+        """Export all principal roles."""
         try:
-            return sorted([role.name for role in api.list_principal_roles().roles])
+            roles = sorted(api.list_principal_roles().roles, key=lambda role: role.name)
+            return [
+                {"name": role.name, "properties": role.properties}
+                if role.properties
+                else role.name
+                for role in roles
+            ]
         except Exception:
             self._record_failure("Failed to export principal roles")
             return []
@@ -332,6 +352,14 @@ class SetupCommand(Command):
                         if hasattr(c.storage_config_info, "allowed_kms_keys")
                         and c.storage_config_info.allowed_kms_keys
                         else [],
+                        "encryption_keys": sorted(c.storage_config_info.encryption_keys)
+                        if hasattr(c.storage_config_info, "encryption_keys")
+                        and c.storage_config_info.encryption_keys
+                        else [],
+                        "decryption_keys": sorted(c.storage_config_info.decryption_keys)
+                        if hasattr(c.storage_config_info, "decryption_keys")
+                        and c.storage_config_info.decryption_keys
+                        else [],
                     }
                     catalog_info.update(
                         {k: v for k, v in s3_info.items() if v is not None and v != []}
@@ -341,6 +369,7 @@ class SetupCommand(Command):
                         "tenant_id": c.storage_config_info.tenant_id,
                         "multi_tenant_app_name": c.storage_config_info.multi_tenant_app_name,
                         "consent_url": c.storage_config_info.consent_url,
+                        "hierarchical": c.storage_config_info.hierarchical,
                     }
                     catalog_info.update(
                         {
@@ -419,17 +448,23 @@ class SetupCommand(Command):
                     ]
                     if catalog_privs:
                         privileges["catalog"] = sorted(catalog_privs)
-                    ns_privs: Dict[str, List[str]] = {}
+                    ns_privs: Dict[tuple[str, ...], List[str]] = {}
                     for p in privs:
                         if p.type.lower() == "namespace":
-                            ns_name = ".".join(p.namespace)
-                            if ns_name not in ns_privs:
-                                ns_privs[ns_name] = []
-                            ns_privs[ns_name].append(p.privilege.value)
-                    for ns_name in ns_privs:
-                        ns_privs[ns_name] = sorted(ns_privs[ns_name])
+                            namespace = tuple(p.namespace)
+                            if namespace not in ns_privs:
+                                ns_privs[namespace] = []
+                            ns_privs[namespace].append(p.privilege.value)
                     if ns_privs:
-                        privileges["namespace"] = ns_privs
+                        privileges["namespace"] = [
+                            {
+                                "namespace": list(namespace),
+                                "privileges": sorted(namespace_privileges),
+                            }
+                            for namespace, namespace_privileges in sorted(
+                                ns_privs.items()
+                            )
+                        ]
                     if privileges:
                         role_info["privileges"] = privileges
                 roles_map[r.name] = role_info
@@ -466,11 +501,10 @@ class SetupCommand(Command):
         catalog_api = IcebergCatalogAPI(catalog_api_client)
         try:
             for ns in namespaces:
-                ns_name = ".".join(ns)
                 ns_details = catalog_api.load_namespace_metadata(
                     prefix=catalog_name, namespace=UNIT_SEPARATOR.join(ns)
                 )
-                ns_info: Dict[str, Any] = {"name": ns_name}
+                ns_info: Dict[str, Any] = {"name": ns}
                 if ns_details.properties:
                     ns_info["properties"] = ns_details.properties
                 namespaces_list.append(ns_info)
@@ -485,15 +519,14 @@ class SetupCommand(Command):
         api: PolarisDefaultApi,
         catalog_name: str,
         namespaces: List[List[str]],
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """Export all policies for a given catalog."""
-        policies_map: Dict[str, Any] = {}
+        policies_list: List[Dict[str, Any]] = []
         catalog_api_client = self._get_catalog_api(api)
         try:
             policy_api = PolicyAPI(catalog_api_client)
             for ns in namespaces:
-                ns_name = ".".join(ns)
-                namespace_str = ns_name.replace(".", UNIT_SEPARATOR)
+                namespace_str = UNIT_SEPARATOR.join(ns)
                 policies = policy_api.list_policies(
                     prefix=catalog_name, namespace=namespace_str
                 ).identifiers
@@ -514,18 +547,19 @@ class SetupCommand(Command):
                         except json.JSONDecodeError:
                             compact_content = policy_obj.content
                     policy_info = {
-                        "namespace": ns_name,
+                        "name": p.name,
+                        "namespace": ns,
                         "type": policy_obj.policy_type,
                         "content": compact_content,
                     }
                     if policy_obj.description:
                         policy_info["description"] = policy_obj.description
-                    policies_map[p.name] = policy_info
+                    policies_list.append(policy_info)
         except Exception:
             self._record_failure(
                 f"Failed to export policies for catalog '{catalog_name}'"
             )
-        return policies_map
+        return policies_list
 
     def _load_setup_config(self) -> Dict[str, Any]:
         """Load and cache the setup configuration from a YAML file."""
@@ -733,7 +767,7 @@ class SetupCommand(Command):
     def _create_principal_roles(
         self,
         api: PolarisDefaultApi,
-        principal_roles_config: List[str],
+        principal_roles_config: List[Union[str, Dict[str, Any]]],
         dry_run: bool = False,
     ) -> None:
         """Create principal roles."""
@@ -743,7 +777,21 @@ class SetupCommand(Command):
             return
         self._get_existing_principal_roles(api)
 
-        for role_name in principal_roles_config:
+        for role_item in principal_roles_config:
+            role_name: Optional[str]
+            role_data: Dict[str, Any]
+            if isinstance(role_item, str):
+                role_name = role_item
+                role_data = {}
+            elif isinstance(role_item, dict):
+                role_name = role_item.get("name")
+                role_data = role_item
+            else:
+                logger.warning(f"Skipping invalid principal role entry: {role_item}")
+                continue
+            if not role_name:
+                logger.warning("Skipping principal role with no name")
+                continue
             if (
                 self._existing_principal_roles is not None
                 and role_name in self._existing_principal_roles
@@ -753,7 +801,12 @@ class SetupCommand(Command):
                 )
                 continue
             if dry_run:
-                self._log_dry_run("create", "principal role", role_name)
+                self._log_dry_run(
+                    "create",
+                    "principal role",
+                    role_name,
+                    {"properties": role_data.get("properties")},
+                )
                 if self._existing_principal_roles is not None:
                     self._existing_principal_roles.add(role_name)
             else:
@@ -762,6 +815,7 @@ class SetupCommand(Command):
                     cmd = PrincipalRolesCommand(
                         principal_roles_subcommand=Subcommands.CREATE,
                         principal_role_name=role_name,
+                        properties=role_data.get("properties"),
                     )
                     cmd.validate()
                     cmd.execute(api)
@@ -788,6 +842,7 @@ class SetupCommand(Command):
             "tenant_id",
             "multi_tenant_app_name",
             "consent_url",
+            "hierarchical",
             "service_account",
             "endpoint",
             "endpoint_internal",
@@ -797,6 +852,8 @@ class SetupCommand(Command):
             "path_style_access",
             "current_kms_key",
             "allowed_kms_keys",
+            "encryption_keys",
+            "decryption_keys",
         ]
         return {
             key: catalog_data.get(key)
@@ -969,6 +1026,8 @@ class SetupCommand(Command):
                         path_style_access=command_args.get("path_style_access"),
                         current_kms_key=command_args.get("current_kms_key"),
                         allowed_kms_keys=command_args.get("allowed_kms_keys"),
+                        encryption_keys=command_args.get("encryption_keys"),
+                        decryption_keys=command_args.get("decryption_keys"),
                         catalog_connection_type=command_args.get(
                             "catalog_connection_type"
                         ),
@@ -1114,7 +1173,17 @@ class SetupCommand(Command):
                 self._grant_privilege(
                     api, catalog_name, role_name, "catalog", priv, dry_run=dry_run
                 )
-            for ns_name, privs in privileges_to_grant.get("namespace", {}).items():
+            namespace_privileges = privileges_to_grant.get("namespace", {})
+            namespace_privilege_entries = (
+                namespace_privileges.items()
+                if isinstance(namespace_privileges, dict)
+                else (
+                    (entry.get("namespace"), entry.get("privileges", []))
+                    for entry in namespace_privileges
+                    if isinstance(entry, dict)
+                )
+            )
+            for namespace, privs in namespace_privilege_entries:
                 for priv in privs:
                     self._grant_privilege(
                         api,
@@ -1122,7 +1191,7 @@ class SetupCommand(Command):
                         role_name,
                         "namespace",
                         priv,
-                        namespace=ns_name,
+                        namespace=namespace,
                         dry_run=dry_run,
                     )
         logger.info(
@@ -1136,7 +1205,7 @@ class SetupCommand(Command):
         catalog_role_name: str,
         level: str,
         privilege: str,
-        namespace: Optional[str] = None,
+        namespace: Optional[Union[str, List[str]]] = None,
         dry_run: bool = False,
     ) -> None:
         """Helper to grant a single privilege."""
@@ -1160,6 +1229,7 @@ class SetupCommand(Command):
                 logger.warning(f"Unsupported privilege level '{level}'")
                 return
 
+            namespace_parts = self._namespace_parts(namespace)
             cmd = PrivilegesCommand(
                 privileges_subcommand=privileges_subcommand,
                 action=Actions.GRANT,
@@ -1167,9 +1237,7 @@ class SetupCommand(Command):
                 privilege=privilege,
                 catalog_role_name=catalog_role_name,
                 catalog_name=catalog_name,
-                namespace=namespace.split(".")
-                if level == "namespace" and namespace
-                else None,
+                namespace=namespace_parts if level == "namespace" else None,
             )
             cmd.validate()
             cmd.execute(api)
@@ -1188,70 +1256,70 @@ class SetupCommand(Command):
         logger.info(f"--- Processing namespaces for catalog: {catalog_name} ---")
         catalog_api_client = self._get_catalog_api(api)
         catalog_api = IcebergCatalogAPI(catalog_api_client)
-        existing_namespaces: Set[str] = set()
-        listed_parents: Set[str] = set()
+        existing_namespaces: Set[tuple[str, ...]] = set()
+        listed_parents: Set[tuple[str, ...]] = set()
 
-        listed_parents.add("")
-        all_namespaces_to_create = set()
-        namespace_data_map = {}
+        listed_parents.add(())
+        all_namespaces_to_create: Set[tuple[str, ...]] = set()
+        namespace_data_map: Dict[tuple[str, ...], Dict[str, Any]] = {}
         for ns_item in namespaces_config:
-            ns_name: Optional[str]
+            namespace: Any
             ns_data: Dict[str, Any]
-            if isinstance(ns_item, str):
-                ns_name = ns_item
+            if isinstance(ns_item, (str, list)):
+                namespace = ns_item
                 ns_data = {}
             elif isinstance(ns_item, dict):
-                ns_name = ns_item.get("name")
+                namespace = ns_item.get("name")
                 ns_data = ns_item
             else:
                 logger.warning(f"Skipping invalid namespace entry: {ns_item}")
                 continue
-            if not ns_name:
+            parsed_parts = self._namespace_parts(namespace)
+            if not parsed_parts:
                 logger.warning(
                     f"Skipping namespace with no name in catalog '{catalog_name}'"
                 )
                 continue
+            namespace_key = tuple(parsed_parts)
             # Store data for the full namespace path
-            namespace_data_map[ns_name] = ns_data
+            namespace_data_map[namespace_key] = ns_data
             # Add the full namespace and all its parents to the set
-            parts = ns_name.split(".")
-            for i in range(len(parts)):
-                parent_ns_name = ".".join(parts[: i + 1])
-                all_namespaces_to_create.add(parent_ns_name)
-        sorted_namespaces = sorted(list(all_namespaces_to_create))
-        for ns_name in sorted_namespaces:
-            parts = ns_name.split(".")
-            if len(parts) > 1:
-                parent_ns = ".".join(parts[:-1])
+            for i in range(len(parsed_parts)):
+                all_namespaces_to_create.add(namespace_key[: i + 1])
+        for namespace_key in sorted(all_namespaces_to_create):
+            ns_name = ".".join(namespace_key)
+            if len(namespace_key) > 1:
+                parent = namespace_key[:-1]
+                parent_ns = ".".join(parent)
                 if (
                     not dry_run
-                    and parent_ns in existing_namespaces
-                    and parent_ns not in listed_parents
+                    and parent in existing_namespaces
+                    and parent not in listed_parents
                 ):
                     try:
                         sub_ns = catalog_api.list_namespaces(
-                            prefix=catalog_name, parent=UNIT_SEPARATOR.join(parts[:-1])
+                            prefix=catalog_name, parent=UNIT_SEPARATOR.join(parent)
                         ).namespaces
                         for ns in sub_ns:
-                            existing_namespaces.add(".".join(ns))
-                            listed_parents.add(parent_ns)
+                            existing_namespaces.add(tuple(ns))
+                            listed_parents.add(parent)
                     except Exception:
                         self._record_failure(
                             f"Failed to list sub-namespaces for '{parent_ns}'"
                         )
 
-            if ns_name in existing_namespaces:
+            if namespace_key in existing_namespaces:
                 logger.info(
                     f"Skipping creation for already existing namespace '{ns_name}' in catalog '{catalog_name}'"
                 )
                 continue
             # Get data if it exists for this specific namespace, otherwise empty
-            ns_data = namespace_data_map.get(ns_name, {})
+            ns_data = namespace_data_map.get(namespace_key, {})
             if dry_run:
                 self._log_dry_run(
                     "create", "namespace", ns_name, {"catalog": catalog_name, **ns_data}
                 )
-                existing_namespaces.add(ns_name)
+                existing_namespaces.add(namespace_key)
             else:
                 try:
                     logger.info(
@@ -1260,7 +1328,7 @@ class SetupCommand(Command):
                     cmd = NamespacesCommand(
                         namespaces_subcommand=Subcommands.CREATE,
                         catalog=catalog_name,
-                        namespace=ns_name.split("."),
+                        namespace=list(namespace_key),
                         location=ns_data.get("location"),
                         properties=ns_data.get("properties"),
                     )
@@ -1269,12 +1337,12 @@ class SetupCommand(Command):
                     logger.info(
                         f"Namespace '{ns_name}' created successfully in catalog '{catalog_name}'."
                     )
-                    existing_namespaces.add(ns_name)
+                    existing_namespaces.add(namespace_key)
                 except ConflictException:
                     logger.info(
                         f"Namespace '{ns_name}' already exists in catalog '{catalog_name}'."
                     )
-                    existing_namespaces.add(ns_name)
+                    existing_namespaces.add(namespace_key)
                 except Exception:
                     self._record_failure(
                         f"Failed to create namespace '{ns_name}' in catalog '{catalog_name}'"
@@ -1287,24 +1355,33 @@ class SetupCommand(Command):
         self,
         api: PolarisDefaultApi,
         catalog_name: str,
-        policies_config: Dict[str, Any],
+        policies_config: Union[Dict[str, Any], List[Dict[str, Any]]],
         dry_run: bool = False,
     ) -> None:
         """Create policies and attach them."""
         logger.info(f"--- Processing policies for catalog: {catalog_name} ---")
         catalog_api_client = self._get_catalog_api(api)
         policy_api = PolicyAPI(catalog_api_client)
-        for policy_name, policy_data in policies_config.items():
+        policy_entries = (
+            policies_config.items()
+            if isinstance(policies_config, dict)
+            else ((policy.get("name"), policy) for policy in policies_config)
+        )
+        for policy_name, policy_data in policy_entries:
+            if not policy_name:
+                logger.warning("Skipping policy due to missing name.")
+                continue
             ns_name = policy_data.get("namespace")
-            if not ns_name:
+            namespace_parts = self._namespace_parts(ns_name)
+            if not namespace_parts:
                 logger.warning(
                     f"Skipping policy '{policy_name}' due to missing namespace."
                 )
                 continue
+            namespace_str = UNIT_SEPARATOR.join(namespace_parts)
             # Check if policy exists
             policy_exists = False
             try:
-                namespace_str = ns_name.replace(".", UNIT_SEPARATOR)
                 policy_api.load_policy(
                     prefix=catalog_name,
                     namespace=namespace_str,
@@ -1376,7 +1453,7 @@ class SetupCommand(Command):
                                 policy_content_str = json.dumps(json.load(f))
                         policy_api.create_policy(
                             prefix=catalog_name,
-                            namespace=ns_name.replace(".", UNIT_SEPARATOR),
+                            namespace=namespace_str,
                             create_policy_request=CreatePolicyRequest(
                                 name=policy_name,
                                 type=policy_data["type"],
@@ -1416,7 +1493,7 @@ class SetupCommand(Command):
                         cmd = PoliciesCommand(
                             policies_subcommand=Subcommands.ATTACH,
                             catalog_name=catalog_name,
-                            namespace=ns_name,
+                            namespace=namespace_parts,
                             policy_name=policy_name,
                             attachment_type=attachment_type,
                             attachment_path=attachment_path,

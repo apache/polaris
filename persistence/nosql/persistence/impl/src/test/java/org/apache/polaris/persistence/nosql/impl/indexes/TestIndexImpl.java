@@ -411,7 +411,7 @@ public class TestIndexImpl {
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList()).isEmpty();
 
-    soft.assertThat(segment.add(indexElement(keyD, id4))).isTrue();
+    soft.assertThat(segment.add(indexElement(keyD, id4))).isEqualTo(IndexSpi.AddResult.NEW_KEY);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList()).containsExactly(keyD);
     soft.assertThat(asHex(segment.serialize()))
@@ -420,7 +420,7 @@ public class TestIndexImpl {
                 + "01"
                 + serializedD);
 
-    soft.assertThat(segment.add(indexElement(keyB, id2))).isTrue();
+    soft.assertThat(segment.add(indexElement(keyB, id2))).isEqualTo(IndexSpi.AddResult.NEW_KEY);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList()).containsExactly(keyB, keyD);
     soft.assertThat(asHex(segment.serialize()))
@@ -431,7 +431,7 @@ public class TestIndexImpl {
                 + "04" // strip
                 + serializedD);
 
-    soft.assertThat(segment.add(indexElement(keyC, id3))).isTrue();
+    soft.assertThat(segment.add(indexElement(keyC, id3))).isEqualTo(IndexSpi.AddResult.NEW_KEY);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList()).containsExactly(keyB, keyC, keyD);
     soft.assertThat(asHex(segment.serialize()))
@@ -444,7 +444,7 @@ public class TestIndexImpl {
                 + "04" // strip
                 + serializedD);
 
-    soft.assertThat(segment.add(indexElement(keyE, id1))).isTrue();
+    soft.assertThat(segment.add(indexElement(keyE, id1))).isEqualTo(IndexSpi.AddResult.NEW_KEY);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList()).containsExactly(keyB, keyC, keyD, keyE);
     soft.assertThat(asHex(segment.serialize()))
@@ -459,7 +459,7 @@ public class TestIndexImpl {
                 + "04" // strip
                 + serializedE);
 
-    soft.assertThat(segment.add(indexElement(keyA, id1))).isTrue();
+    soft.assertThat(segment.add(indexElement(keyA, id1))).isEqualTo(IndexSpi.AddResult.NEW_KEY);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList()).containsExactly(keyA, keyB, keyC, keyD, keyE);
     soft.assertThat(asHex(segment.serialize()))
@@ -476,7 +476,7 @@ public class TestIndexImpl {
                 + "04" // strip
                 + serializedE);
 
-    soft.assertThat(segment.add(indexElement(keyExB, id2))).isTrue();
+    soft.assertThat(segment.add(indexElement(keyExB, id2))).isEqualTo(IndexSpi.AddResult.NEW_KEY);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList()).containsExactly(keyA, keyB, keyC, keyD, keyE, keyExB);
     soft.assertThat(asHex(segment.serialize()))
@@ -495,7 +495,7 @@ public class TestIndexImpl {
                 + "02" // strip
                 + serializedExB);
 
-    soft.assertThat(segment.add(indexElement(keyExD, id3))).isTrue();
+    soft.assertThat(segment.add(indexElement(keyExD, id3))).isEqualTo(IndexSpi.AddResult.NEW_KEY);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList())
         .containsExactly(keyA, keyB, keyC, keyD, keyE, keyExB, keyExD);
@@ -517,7 +517,7 @@ public class TestIndexImpl {
                 + "02" // strip
                 + serializedExD);
 
-    soft.assertThat(segment.add(indexElement(keyEyC, id4))).isTrue();
+    soft.assertThat(segment.add(indexElement(keyEyC, id4))).isEqualTo(IndexSpi.AddResult.NEW_KEY);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList())
         .containsExactly(keyA, keyB, keyC, keyD, keyE, keyExB, keyExD, keyEyC);
@@ -541,7 +541,7 @@ public class TestIndexImpl {
                 + "03" // strip
                 + serializedEyC);
 
-    soft.assertThat(segment.add(indexElement(keyExC, id1))).isTrue();
+    soft.assertThat(segment.add(indexElement(keyExC, id1))).isEqualTo(IndexSpi.AddResult.NEW_KEY);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList())
         .containsExactly(keyA, keyB, keyC, keyD, keyE, keyExB, keyExC, keyExD, keyEyC);
@@ -569,7 +569,7 @@ public class TestIndexImpl {
     soft.assertThat(segment.getElement(keyExC)).isEqualTo(indexElement(keyExC, id1));
 
     // Re-add with a BIGGER serialized object-id
-    soft.assertThat(segment.add(indexElement(keyExC, id2))).isFalse();
+    soft.assertThat(segment.add(indexElement(keyExC, id2))).isEqualTo(IndexSpi.AddResult.UPDATED);
     soft.assertThat(reSerialize.apply(segment)).isEqualTo(segment);
     soft.assertThat(segment.asKeyList())
         .containsExactly(keyA, keyB, keyC, keyD, keyE, keyExB, keyExC, keyExD, keyEyC);

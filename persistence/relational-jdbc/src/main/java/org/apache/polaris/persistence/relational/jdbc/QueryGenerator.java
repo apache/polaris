@@ -39,6 +39,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * Utility class to generate parameterized SQL queries (SELECT, INSERT, UPDATE, DELETE). Ensures
  * consistent SQL generation and protects against injection by managing parameters separately.
+ *
+ * <p>Generated queries reference tables by their unqualified names; the schema holding the Polaris
+ * tables is selected through the datasource configuration (for example the PostgreSQL driver's
+ * {@code currentSchema} connection property), so the persistence code is agnostic of it.
  */
 public class QueryGenerator {
 
@@ -153,8 +157,7 @@ public class QueryGenerator {
     List<Object> params =
         Arrays.asList(
             entity.getId(), entity.getCatalogId(), entity.getId(), entity.getCatalogId(), realmId);
-    return new PreparedQuery(
-        "DELETE FROM " + getFullyQualifiedTableName(ModelGrantRecord.TABLE_NAME) + where, params);
+    return new PreparedQuery("DELETE FROM " + ModelGrantRecord.TABLE_NAME + where, params);
   }
 
   /**
@@ -221,14 +224,7 @@ public class QueryGenerator {
     finalValues.add(realmId);
     String columns = String.join(", ", finalColumns);
     String placeholders = finalColumns.stream().map(c -> "?").collect(Collectors.joining(", "));
-    String sql =
-        "INSERT INTO "
-            + getFullyQualifiedTableName(tableName)
-            + " ("
-            + columns
-            + ") VALUES ("
-            + placeholders
-            + ")";
+    String sql = "INSERT INTO " + tableName + " (" + columns + ") VALUES (" + placeholders + ")";
     return new PreparedQuery(sql, finalValues);
   }
 
@@ -249,8 +245,7 @@ public class QueryGenerator {
     List<Object> bindingParams = new ArrayList<>(values);
     QueryFragment where = generateWhereClause(new HashSet<>(allColumns), whereClause, Map.of());
     String setClause = allColumns.stream().map(c -> c + " = ?").collect(Collectors.joining(", "));
-    String sql =
-        "UPDATE " + getFullyQualifiedTableName(tableName) + " SET " + setClause + where.sql();
+    String sql = "UPDATE " + tableName + " SET " + setClause + where.sql();
     bindingParams.addAll(where.parameters());
     return new PreparedQuery(sql, bindingParams);
   }
@@ -268,8 +263,7 @@ public class QueryGenerator {
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
     QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
-    return new PreparedQuery(
-        "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
+    return new PreparedQuery("DELETE FROM " + tableName + where.sql(), where.parameters());
   }
 
   private static PreparedQuery generateSelectQuery(
@@ -289,12 +283,7 @@ public class QueryGenerator {
     if (limit != null && limit <= 0) {
       throw new IllegalArgumentException("Limit must be positive");
     }
-    String sql =
-        "SELECT "
-            + String.join(", ", columnNames)
-            + " FROM "
-            + getFullyQualifiedTableName(tableName)
-            + filter;
+    String sql = "SELECT " + String.join(", ", columnNames) + " FROM " + tableName + filter;
     if (orderByColumn != null) {
       sql += " ORDER BY " + orderByColumn + " ASC";
     }
@@ -362,7 +351,7 @@ public class QueryGenerator {
 
   @VisibleForTesting
   static PreparedQuery generateVersionQuery() {
-    return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
+    return new PreparedQuery("SELECT version_value FROM VERSION", List.of());
   }
 
   /**
@@ -374,17 +363,14 @@ public class QueryGenerator {
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
     QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
-    String sql =
-        "SELECT 1 FROM " + getFullyQualifiedTableName(tableName) + where.sql() + " LIMIT 1";
+    String sql = "SELECT 1 FROM " + tableName + where.sql() + " LIMIT 1";
     return new PreparedQuery(sql, where.parameters());
   }
 
   @VisibleForTesting
   static PreparedQuery generateEntityTableExistQuery() {
     return new PreparedQuery(
-        String.format(
-            "SELECT * FROM %s LIMIT 1", getFullyQualifiedTableName(ModelEntity.TABLE_NAME)),
-        List.of());
+        String.format("SELECT * FROM %s LIMIT 1", ModelEntity.TABLE_NAME), List.of());
   }
 
   /**
@@ -459,10 +445,5 @@ public class QueryGenerator {
             where.sql(),
             null);
     return new PreparedQuery(query.sql(), where.parameters());
-  }
-
-  static String getFullyQualifiedTableName(String tableName) {
-    // TODO: make schema name configurable.
-    return "POLARIS_SCHEMA." + tableName;
   }
 }

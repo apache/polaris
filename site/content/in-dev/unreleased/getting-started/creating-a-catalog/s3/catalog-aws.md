@@ -23,7 +23,7 @@ type: docs
 weight: 100
 ---
 
-When creating a catalog based on AWS S3 storage only the `role-arn` is a required parameter. However, usually
+When creating a catalog based on AWS S3 storage, only the `role-arn` is a required parameter. However, usually
 one also provides the `region` and
 [external-id](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html).
 
