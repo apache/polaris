@@ -210,7 +210,8 @@ class IcebergCatalogHandlerTest {
 
   private static boolean hasOperation(
       AuthorizationRequest request, PolarisAuthorizableOperation operation) {
-    return request != null && request.intents().getFirst().getOperation().equals(operation);
+    return request != null
+        && request.intents().stream().anyMatch(intent -> intent.getOperation().equals(operation));
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})
@@ -319,6 +320,18 @@ class IcebergCatalogHandlerTest {
     verify(catalog).registerTable(TABLE2, TABLE_LOCATION, true);
     assertThat(response.credentials()).hasSize(1);
     assertVendedActions(PolarisStorageActions.READ, PolarisStorageActions.LIST);
+    ArgumentCaptor<AuthorizationRequest> resolveRequestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
+    verify(authorizer).resolveAuthorizationInputs(any(), resolveRequestCaptor.capture());
+    assertThat(
+            resolveRequestCaptor.getValue().intents().stream()
+                .map(intent -> intent.getOperation())
+                .toList())
+        .containsExactly(
+            PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+            PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+            PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+            PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION);
   }
 
   @Test

@@ -267,16 +267,29 @@ public abstract class CatalogHandler {
             List.of(
                 new SingleTargetAuthorizationIntent(
                     overwriteOp, PolarisSecurableMapper.tableLike(catalogName(), identifier))));
+    AuthorizationRequest fallbackRequest =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    fallbackOp, PolarisSecurableMapper.namespace(catalogName(), namespace))));
+    // Resolve every intent that may be authorized from this shared AuthorizationState. A
+    // request-selective authorizer may use the operation, not just the target securable, to decide
+    // what inputs to resolve.
+    AuthorizationRequest resolutionRequest =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(overwriteRequest.intents().getFirst(), fallbackRequest.intents().getFirst()));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer().resolveAuthorizationInputs(authorizationState, overwriteRequest);
+    authorizer().resolveAuthorizationInputs(authorizationState, resolutionRequest);
     authorizeResolvedRegisterTableOverwriteOrThrow(
-        authorizationState, overwriteRequest, fallbackOp, identifier);
+        authorizationState, overwriteRequest, fallbackRequest, identifier);
   }
 
   protected void authorizeResolvedRegisterTableOverwriteOrThrow(
       AuthorizationState authorizationState,
       AuthorizationRequest overwriteRequest,
-      PolarisAuthorizableOperation fallbackOp,
+      AuthorizationRequest fallbackRequest,
       TableIdentifier identifier) {
     if (resolutionManifest == null) {
       throw new IllegalStateException(
@@ -307,12 +320,6 @@ public abstract class CatalogHandler {
       if (namespaceTarget == null) {
         throw noSuchNamespaceException(namespace);
       }
-      AuthorizationRequest fallbackRequest =
-          new AuthorizationRequest(
-              polarisPrincipal(),
-              List.of(
-                  new SingleTargetAuthorizationIntent(
-                      fallbackOp, PolarisSecurableMapper.namespace(catalogName(), namespace))));
       authorizer().authorize(authorizationState, fallbackRequest).throwIfDenied();
     }
 
