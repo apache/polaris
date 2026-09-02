@@ -194,9 +194,20 @@ public class R2CredentialsStorageIntegration
   }
 
   /**
-   * Key prefixes for the {@code paths.prefixPaths} claim: no leading slash, exactly one trailing
-   * slash, deduplicated, sorted. An empty result means at least one grant is at bucket root, and
-   * the credential is scoped to the whole bucket.
+   * Key prefixes for the {@code paths.prefixPaths} claim, deduplicated and sorted. A prefix is the
+   * grant location's raw path minus exactly one leading slash, with one trailing slash added only
+   * when the path has none.
+   *
+   * <p>The prefix must stay byte-identical to the path the location validators compared, because
+   * those validators do not normalize: {@code S3Location.isChildOf} and the table-overlap check are
+   * raw {@code startsWith} comparisons. Doubled slashes are therefore preserved and never
+   * collapsed, and trailing slashes are never trimmed. Collapsing {@code bucket//sibling/} to
+   * {@code sibling/} would hand out a credential over the real {@code sibling/} table, which
+   * Polaris never authorized.
+   *
+   * <p>An empty result scopes the credential to the whole bucket, so it is returned only when a
+   * grant is literally at bucket root ({@code s3://bucket} or {@code s3://bucket/}) — a path that
+   * is empty after one leading slash comes off.
    *
    * <p>Combining several grants unions their locations: every location under the single bucket
    * contributes a prefix, whatever actions its own grant carries.
@@ -206,16 +217,13 @@ public class R2CredentialsStorageIntegration
     for (LocationGrant grant : grants) {
       for (String location : grant.locations()) {
         String path = StorageUri.parse(location).rawPath();
-        while (path.startsWith("/")) {
+        if (path.startsWith("/")) {
           path = path.substring(1);
-        }
-        while (path.endsWith("/")) {
-          path = path.substring(0, path.length() - 1);
         }
         if (path.isEmpty()) {
           return List.of();
         }
-        prefixes.add(path + "/");
+        prefixes.add(path.endsWith("/") ? path : path + "/");
       }
     }
     return List.copyOf(prefixes);

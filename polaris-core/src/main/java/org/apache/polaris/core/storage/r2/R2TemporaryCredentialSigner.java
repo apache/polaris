@@ -48,8 +48,10 @@ public final class R2TemporaryCredentialSigner {
   private R2TemporaryCredentialSigner() {}
 
   /**
-   * @param prefixes normalized key prefixes (no leading slash, one trailing slash); empty means the
-   *     whole bucket and omits the {@code paths} claim
+   * @param prefixes key prefixes as {@code R2CredentialsStorageIntegration.normalizedPrefixes}
+   *     produces them: the grant path minus one leading slash, trailing slash present, doubled
+   *     slashes intact. Only an empty list means the whole bucket, and it omits the {@code paths}
+   *     claim; a prefix of {@code "/"} is a real prefix and keeps the claim.
    */
   public record Request(
       String parentKeyId,

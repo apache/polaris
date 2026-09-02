@@ -124,6 +124,21 @@ class R2TemporaryCredentialSignerTest {
   }
 
   @Test
+  void aSingleSlashPrefixStillEmitsThePathsClaim() {
+    // The prefix for a grant at s3://bucket// is "/", which is not the whole bucket. Only an empty
+    // prefix list omits the claim, so this credential stays scoped to keys under the doubled slash.
+    R2TemporaryCredentialSigner.Credential cred =
+        R2TemporaryCredentialSigner.sign(
+            request(
+                ACCOUNT + ".r2.cloudflarestorage.com",
+                List.of("/"),
+                R2TemporaryCredentialSigner.SCOPE_OBJECT_READ_ONLY));
+    assertThat(verify(cred.sessionToken()).getClaim("paths").asMap())
+        .containsEntry("prefixPaths", List.of("/"))
+        .containsEntry("objectPaths", List.of());
+  }
+
+  @Test
   void differentSecretsProduceDifferentDerivedSecrets() {
     R2TemporaryCredentialSigner.Request a =
         request(

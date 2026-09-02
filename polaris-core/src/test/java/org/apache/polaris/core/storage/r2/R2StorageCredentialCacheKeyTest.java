@@ -40,6 +40,9 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class R2StorageCredentialCacheKeyTest {
 
@@ -202,6 +205,35 @@ class R2StorageCredentialCacheKeyTest {
                 List.of(
                     new LocationGrant(
                         Set.of("s3://b", "s3://b/x/"), Set.of(PolarisStorageActions.READ)))))
+        .isEmpty();
+  }
+
+  /**
+   * The prefix handed to the signer must be what the location validators compared, minus the one
+   * leading slash {@code rawPath()} always carries. Collapsing {@code //} or trimming trailing
+   * slashes would widen the credential past the location Polaris authorized.
+   */
+  @ParameterizedTest
+  @CsvSource({
+    "s3://b/x/, x/",
+    "s3://b/x, x/",
+    "s3://b//x/, /x/",
+    "s3://b/x//, x//",
+    "s3://b//, /",
+  })
+  void prefixKeepsTheGrantPathByteForByte(String location, String expected) {
+    assertThat(
+            R2CredentialsStorageIntegration.normalizedPrefixes(
+                List.of(new LocationGrant(Set.of(location), Set.of(PolarisStorageActions.READ)))))
+        .containsExactly(expected);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"s3://b", "s3://b/"})
+  void onlyTheBucketRootScopesToTheWholeBucket(String location) {
+    assertThat(
+            R2CredentialsStorageIntegration.normalizedPrefixes(
+                List.of(new LocationGrant(Set.of(location), Set.of(PolarisStorageActions.READ)))))
         .isEmpty();
   }
 

@@ -54,6 +54,7 @@ import org.apache.polaris.core.storage.r2.R2TemporaryCredentialSigner;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 public class PolarisR2VendingTest {
@@ -62,6 +63,7 @@ public class PolarisR2VendingTest {
   private static final String PARENT_KEY = "parent-key-id";
   private static final String PARENT_SECRET = "parent-secret-for-tests";
   private static final String BASE = "s3://r2-bucket/base";
+  private static final String BUCKET_ROOT = "s3://r2-bucket";
   private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
 
   private final TestServices services;
@@ -244,6 +246,24 @@ public class PolarisR2VendingTest {
   }
 
   /**
+   * The class-level services forbid unstructured locations, so a test that needs a {@code
+   * write.data.path} outside the table prefix builds its own services with the feature enabled.
+   */
+  private static TestServices unstructuredServices() {
+    Supplier<FileIOFactory> fileIOFactorySupplier =
+        () -> (FileIOFactory) (accessConfig, ioImplClassName, properties) -> new InMemoryFileIO();
+    return TestServices.builder()
+        .config(
+            Map.of(
+                "ALLOW_UNSTRUCTURED_TABLE_LOCATION", "true",
+                "ALLOW_TABLE_LOCATION_OVERLAP", "true",
+                "SUPPORTED_CATALOG_STORAGE_TYPES", List.of("R2")))
+        .fileIOFactorySupplier(fileIOFactorySupplier)
+        .r2ParentTokenResolver(name -> Optional.of(new R2ParentToken(PARENT_KEY, PARENT_SECRET)))
+        .build();
+  }
+
+  /**
    * A table whose locations span two buckets can never get a credential, because an R2 temporary
    * credential binds to exactly one bucket. Polaris needs a credential to write the first metadata
    * file, so the rejection lands on create and the table is never persisted. The message names both
@@ -254,21 +274,7 @@ public class PolarisR2VendingTest {
    */
   @Test
   public void vendingAcrossTwoBucketsIsRejected() {
-    // The class-level services forbid unstructured locations, so this catalog needs its own
-    // services with the feature enabled to accept a write.data.path outside the table prefix.
-    Supplier<FileIOFactory> fileIOFactorySupplier =
-        () -> (FileIOFactory) (accessConfig, ioImplClassName, properties) -> new InMemoryFileIO();
-    TestServices unstructured =
-        TestServices.builder()
-            .config(
-                Map.of(
-                    "ALLOW_UNSTRUCTURED_TABLE_LOCATION", "true",
-                    "ALLOW_TABLE_LOCATION_OVERLAP", "true",
-                    "SUPPORTED_CATALOG_STORAGE_TYPES", List.of("R2")))
-            .fileIOFactorySupplier(fileIOFactorySupplier)
-            .r2ParentTokenResolver(
-                name -> Optional.of(new R2ParentToken(PARENT_KEY, PARENT_SECRET)))
-            .build();
+    TestServices unstructured = unstructuredServices();
 
     String cat = "r2twobuckets";
     StorageConfigInfo config =
@@ -358,6 +364,159 @@ public class PolarisR2VendingTest {
                         unstructured.realmContext(),
                         unstructured.securityContext()))
         .isInstanceOf(NoSuchTableException.class);
+  }
+
+  /**
+   * A catalog whose single allowed location is the bucket root, the layout the bucket-per-namespace
+   * design describes. Namespaces sit directly under {@code s3://r2-bucket/}, because {@code
+   * LocalIcebergCatalog.validateNamespaceLocation} derives the only permitted namespace location
+   * from the allowed locations, not from the default base location.
+   */
+  private static void createBucketRootCatalog(TestServices svc, String cat) {
+    StorageConfigInfo config =
+        R2StorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.R2)
+            .setAccountId(ACCOUNT)
+            .setAllowedLocations(List.of(BUCKET_ROOT + "/"))
+            .build();
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            cat,
+            CatalogProperties.builder()
+                .setDefaultBaseLocation(BUCKET_ROOT)
+                .addProperty("polaris.config.allow.unstructured.table.location", "true")
+                .build(),
+            1725487592064L,
+            1725487592064L,
+            1,
+            config);
+    try (Response response =
+        svc.catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog), svc.realmContext(), svc.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+  }
+
+  private static void createNamespaceAt(
+      TestServices svc, String cat, String namespace, String location) {
+    Map<String, String> properties = new HashMap<>();
+    properties.put(ENTITY_BASE_LOCATION, location);
+    try (Response response =
+        svc.restApi()
+            .createNamespace(
+                cat,
+                CreateNamespaceRequest.builder()
+                    .withNamespace(Namespace.of(namespace))
+                    .setProperties(properties)
+                    .build(),
+                IDEMPOTENCY_KEY,
+                svc.realmContext(),
+                svc.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  private static Response createTableAt(
+      TestServices svc,
+      String cat,
+      String namespace,
+      String table,
+      String location,
+      @Nullable String writeDataPath) {
+    CreateTableRequest.Builder request =
+        CreateTableRequest.builder().withName(table).withLocation(location).withSchema(SCHEMA);
+    if (writeDataPath != null) {
+      request.setProperty("write.data.path", writeDataPath);
+    }
+    return svc.restApi()
+        .createTable(
+            cat,
+            namespace,
+            request.build(),
+            null,
+            IDEMPOTENCY_KEY,
+            svc.realmContext(),
+            svc.securityContext());
+  }
+
+  private static List<String> prefixPaths(TestServices svc, String cat, String ns, String table) {
+    try (Response response =
+        svc.restApi()
+            .loadTable(
+                cat,
+                ns,
+                table,
+                "vended-credentials",
+                null,
+                "ALL",
+                null,
+                svc.realmContext(),
+                svc.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      LoadTableResponse loaded = response.readEntity(LoadTableResponse.class);
+      DecodedJWT jwt = decode(loaded.config().get("s3.session-token"));
+      assertThat(jwt.getClaim("paths").isMissing())
+          .describedAs("paths claim present, so the credential is not whole-bucket")
+          .isFalse();
+      @SuppressWarnings("unchecked")
+      List<String> paths = (List<String>) jwt.getClaim("paths").asMap().get("prefixPaths");
+      return paths;
+    }
+  }
+
+  /**
+   * A {@code write.data.path} with a doubled slash passes the raw {@code startsWith} location
+   * validators, which see {@code r2-bucket//ns/victim/} as neither a child of nor a parent of the
+   * real {@code r2-bucket/ns/victim/}. The vended prefix must therefore keep that leading slash:
+   * collapsing it would hand the attacker's table a credential over the victim's objects. Before
+   * this was fixed the claim read {@code ["ns/attacker/", "ns/victim/"]}.
+   */
+  @Test
+  public void doubledSlashDataPathKeepsItsLeadingSlashInTheVendedPrefix() {
+    TestServices svc = unstructuredServices();
+    String cat = "r2sibling";
+    createBucketRootCatalog(svc, cat);
+    createNamespaceAt(svc, cat, "ns", BUCKET_ROOT + "/ns");
+    try (Response response =
+        createTableAt(svc, cat, "ns", "victim", BUCKET_ROOT + "/ns/victim", null)) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+    try (Response response =
+        createTableAt(
+            svc,
+            cat,
+            "ns",
+            "attacker",
+            BUCKET_ROOT + "/ns/attacker",
+            BUCKET_ROOT + "//ns/victim/")) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    assertThat(prefixPaths(svc, cat, "ns", "attacker"))
+        .containsExactly("/ns/victim/", "ns/attacker/")
+        .doesNotContain("ns/victim/");
+  }
+
+  /**
+   * {@code s3://r2-bucket//} is the bucket root plus one key segment that is itself empty, not the
+   * bucket root. Its prefix is {@code "/"}, and the credential keeps a {@code paths} claim rather
+   * than degenerating to whole-bucket access. Before this was fixed the claim was absent, which is
+   * how the signer spells whole-bucket.
+   */
+  @Test
+  public void doubledSlashAtBucketRootDoesNotWidenToTheWholeBucket() {
+    TestServices svc = unstructuredServices();
+    String cat = "r2rootslash";
+    createBucketRootCatalog(svc, cat);
+    createNamespaceAt(svc, cat, "ns", BUCKET_ROOT + "/ns");
+    try (Response response =
+        createTableAt(svc, cat, "ns", "t1", BUCKET_ROOT + "/ns/t1", BUCKET_ROOT + "//")) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    assertThat(prefixPaths(svc, cat, "ns", "t1")).containsExactly("/", "ns/t1/");
   }
 
   private static String rawJwt(String sessionToken) {
