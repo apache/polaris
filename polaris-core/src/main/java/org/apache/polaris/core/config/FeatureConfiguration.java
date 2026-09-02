@@ -608,12 +608,26 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  /**
+   * @deprecated since 1.8.0, for removal. Polaris now always appends a trailing slash to table and
+   *     namespace base locations, so this flag no longer changes behavior. The configuration key is
+   *     retained only so existing catalog properties and feature-config entries continue to be
+   *     accepted (and ignored) instead of rejected. A production-readiness warning is emitted when
+   *     it is explicitly set to {@code false} in the server feature configuration — the {@code
+   *     polaris.features} defaults or a realm override — since that is the surface {@code
+   *     ProductionReadinessChecks} inspects at startup; the equivalent per-catalog property ({@code
+   *     polaris.config.add-trailing-slash-to-location}) is accepted and ignored without a warning.
+   *     Scheduled for removal in a future release.
+   */
+  @Deprecated(since = "1.8.0", forRemoval = true)
   public static final FeatureConfiguration<Boolean> ADD_TRAILING_SLASH_TO_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ADD_TRAILING_SLASH_TO_LOCATION")
           .catalogConfig("polaris.config.add-trailing-slash-to-location")
           .description(
-              "When set, the base location for a table or namespace will have `/` added as a suffix if not present")
+              "Deprecated and ignored: Polaris always appends a trailing slash to table and "
+                  + "namespace base locations. Retained so existing configuration remains accepted "
+                  + "rather than rejected.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 
@@ -638,9 +652,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "views, and namespaces. This is not a bypass mode, but enabling or disabling "
                   + "it can change overlap-detection coverage for non-standard location layouts. "
                   + "Only enable it when the required index and backfill state is known to be "
-                  + "correct. For correct results, locations should end with a slash; see "
-                  + "ADD_TRAILING_SLASH_TO_LOCATION. Supported by the JDBC and NoSQL metastore "
-                  + "implementations.")
+                  + "correct. Locations written by Polaris always end with a slash; locations "
+                  + "stored by older versions without one are still handled. Supported by the "
+                  + "JDBC and NoSQL metastore implementations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
