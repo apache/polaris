@@ -18,25 +18,15 @@
  */
 package org.apache.polaris.service.task;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import java.time.Duration;
-
-@ConfigMapping(prefix = "polaris.tasks")
-public interface TaskHandlerConfiguration {
-
-  @WithDefault("-1")
-  int maxConcurrentTasks();
-
-  @WithDefault("-1")
-  int maxQueuedTasks();
-
-  /**
-   * Maximum time a file-cleanup task will wait for its asynchronous object-store deletions to
-   * complete before giving up and failing the task (which then follows the normal retry path). This
-   * bounds the task-executor thread so that a stalled storage endpoint cannot pin it indefinitely.
-   * A zero or negative value disables the deadline and waits indefinitely.
-   */
-  @WithDefault("PT1H")
-  Duration fileDeletionTimeout();
+/**
+ * Signals that a file-cleanup task exceeded its configured deletion timeout. This is treated as a
+ * terminal failure for the current execution: the task is not retried in-process, because an
+ * immediate retry would only pile a fresh generation of deletions onto an already-stalled endpoint
+ * (the previous deletions keep running and cannot be interrupted). The task entity is left in place
+ * for the lease-based recovery path rather than being dropped.
+ */
+class FileDeletionTimeoutException extends RuntimeException {
+  FileDeletionTimeoutException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

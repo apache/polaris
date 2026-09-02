@@ -83,10 +83,11 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   @Nullable private final Tracer tracer;
+  private final TaskHandlerConfiguration taskConfiguration;
 
   @SuppressWarnings("unused") // Required by CDI
   protected TaskExecutorImpl() {
-    this(null, null, null, null, null, null, null, null, null, null, null);
+    this(null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   @Inject
@@ -102,7 +103,8 @@ public class TaskExecutorImpl implements TaskExecutor {
       PolarisEventMetadataFactory eventMetadataFactory,
       @Nullable Tracer tracer,
       PolarisPrincipalHolder polarisPrincipalHolder,
-      PolarisPrincipal polarisPrincipal) {
+      PolarisPrincipal polarisPrincipal,
+      TaskHandlerConfiguration taskConfiguration) {
     this.executor = executor;
     this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -113,6 +115,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     this.tracer = tracer;
     this.polarisPrincipalHolder = polarisPrincipalHolder;
     this.polarisPrincipal = polarisPrincipal;
+    this.taskConfiguration = taskConfiguration;
 
     if (errorHandler != null && errorHandler.isResolvable()) {
       this.errorHandler = Optional.of(errorHandler.get());
@@ -127,10 +130,14 @@ public class TaskExecutorImpl implements TaskExecutor {
         new TableCleanupTaskHandler(this, clock, metaStoreManagerFactory, fileIOSupplier));
     addTaskHandler(
         new ManifestFileCleanupTaskHandler(
-            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+            fileIOSupplier,
+            Executors.newVirtualThreadPerTaskExecutor(),
+            taskConfiguration.fileDeletionTimeout()));
     addTaskHandler(
         new BatchFileCleanupTaskHandler(
-            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+            fileIOSupplier,
+            Executors.newVirtualThreadPerTaskExecutor(),
+            taskConfiguration.fileDeletionTimeout()));
   }
 
   /**
@@ -189,12 +196,35 @@ public class TaskExecutorImpl implements TaskExecutor {
               if (previousError != null) {
                 t.addSuppressed(previousError);
               }
-              LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
+              if (!isRetryable(t)) {
+                LOGGER.warn(
+                    "Task entity id {} failed with a terminal error; leaving it for later recovery"
+                        + " instead of retrying",
+                    taskEntityId,
+                    t);
+                return CompletableFuture.<Void>failedFuture(t);
+              }
+              LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
+  }
+
+  /**
+   * Determines whether a failed task attempt should be retried in-process. Most failures are
+   * transient and worth retrying, but a {@link FileDeletionTimeoutException} means an object-store
+   * deletion is stalled; retrying would only stack more (uncancellable) deletions onto the same
+   * endpoint, so such failures are treated as terminal for the current execution.
+   */
+  static boolean isRetryable(Throwable t) {
+    for (Throwable cause = t; cause != null; cause = cause.getCause()) {
+      if (cause instanceof FileDeletionTimeoutException) {
+        return false;
+      }
+    }
+    return true;
   }
 
   protected void handleTask(
