@@ -29,4 +29,4 @@ well as for Polaris binary distributions.&lt;/p&gt;
 &lt;p&gt;Feature configurations for Polaris. These are stable, user-facing settings.&lt;/p&gt;
 &lt;h5 id="polarisfeaturesadd_trailing_slash_to_location" id="polarisfeaturesadd_trailing_slash_to_location"&gt;&lt;code&gt;polaris.features.&amp;quot;ADD_TRAILING_SLASH_TO_LOCATION&amp;quot;&lt;/code&gt;&lt;a class="heading-anchor" href="#polarisfeaturesadd_trailing_slash_to_location" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h5&gt;
-&lt;p&gt;When set, the base location for a table or namespace will have &lt;code&gt;/&lt;/code&gt; added as a suffix if not present&lt;/p&gt;</description></item></channel></rss>
+&lt;p&gt;Deprecated and ignored: Polaris always appends a trailing slash to table and namespace base locations. Retained so existing configuration remains accepted rather than rejected.&lt;/p&gt;</description></item></channel></rss>
