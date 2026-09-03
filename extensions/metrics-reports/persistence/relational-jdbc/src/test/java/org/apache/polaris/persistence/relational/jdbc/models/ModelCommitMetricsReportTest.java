@@ -144,6 +144,9 @@ public class ModelCommitMetricsReportTest {
 
   @Test
   public void testZeroDurationRoundTripsAsZeroNotEmpty() {
+    // Also pins the known Polaris 1.7.0 compatibility limitation documented on
+    // getTotalDurationMs(): a stored 0 is always read back as a real zero, even for rows
+    // written by that release where 0 could have meant "unknown duration".
     ModelCommitMetricsReport report =
         ImmutableModelCommitMetricsReport.builder()
             .from(createTestReport())

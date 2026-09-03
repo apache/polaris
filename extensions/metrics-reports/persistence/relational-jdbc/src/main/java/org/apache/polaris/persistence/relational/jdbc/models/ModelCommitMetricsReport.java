@@ -161,6 +161,14 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   long getTotalFileSizeBytes();
 
+  /**
+   * Known compatibility limitation: Polaris 1.7.0 always wrote this column as {@code 0} for both
+   * a genuine zero-duration commit and an unknown duration, and its read path treated every
+   * stored {@code 0} as "unknown". Rows written by that release are indistinguishable here and
+   * are read back as a real {@code 0L} rather than {@link Optional#empty()} in {@link
+   * #toRecord()}. Only rows written after this fix (which persists {@code NULL} for "unknown")
+   * round-trip unambiguously.
+   */
   @Nullable Long getTotalDurationMs();
 
   int getAttempts();
@@ -284,6 +292,11 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .build();
   }
 
+  /**
+   * See {@link #getTotalDurationMs()} for a known ambiguity affecting rows written by Polaris
+   * 1.7.0: a stored {@code 0} is reported here as {@code Optional.of(0L)} even though some of
+   * those rows actually meant "unknown duration" under that release's semantics.
+   */
   default CommitMetricsRecord toRecord() {
     return CommitMetricsRecord.builder()
         .reportId(getReportId())
