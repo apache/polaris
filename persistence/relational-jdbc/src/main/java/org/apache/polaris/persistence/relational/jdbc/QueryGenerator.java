@@ -420,9 +420,11 @@ public class QueryGenerator {
     prefixTerms.add(normalizedLocation + "/");
 
     for (String prefix : prefixTerms) {
-      // Skip "/" and "//" produced from empty path segments around the scheme separator; those
-      // are not meaningful storage locations. "///" (the root of file: URIs) is kept.
-      if (prefix.length() < 3 && isSlashOnly(prefix)) {
+      // Skip only "/", which can never be a meaningful storage location. "//" is kept: in
+      // ALLOW_NAMESPACE_CUSTOM_LOCATION mode a namespace location may be a bare scheme root like
+      // s3:// (persisted as "//"), and it is a valid ancestor of locations below it. "///" (the
+      // root of file: URIs) is kept for the same reason.
+      if (isSlashOnly(prefix) && prefix.length() < 2) {
         continue;
       }
       conditions.add("location_without_scheme = ?");
