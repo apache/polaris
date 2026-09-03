@@ -696,7 +696,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     if (!realmConfig.getConfig(
         BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
-      validateNamespaceUsesDefaultLocation(entity, resolvedParent);
+      if (metadata.containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)) {
+        validateNamespaceUsesDefaultLocation(entity, resolvedParent);
+      }
     }
     EntityResult result =
         getMetaStoreManager()
