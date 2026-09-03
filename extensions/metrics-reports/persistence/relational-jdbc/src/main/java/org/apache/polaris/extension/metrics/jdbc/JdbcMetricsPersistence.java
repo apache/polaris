@@ -112,7 +112,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
       @NonNull PageToken pageToken) {
     String realmId = realmContext.getRealmIdentifier();
     String scope =
-        scopeKey(metricType, catalogId, tableIds, snapshotId, timestampFrom, timestampTo);
+        scopeKey(realmId, metricType, catalogId, tableIds, snapshotId, timestampFrom, timestampTo);
     try {
       if (metricType == MetricType.COMMIT) {
         PreparedQuery query =
@@ -159,10 +159,12 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
   }
 
   /**
-   * Builds a stable fingerprint of the query scope (metric type, catalog, tables, and filters).
-   * Used to reject a pagination cursor that was produced by a different query.
+   * Builds a stable fingerprint of the query scope (realm, metric type, catalog, tables, and
+   * filters). Used to reject a pagination cursor that was produced by a different query,
+   * including one issued against a different realm.
    */
   private static String scopeKey(
+      String realmId,
       MetricType metricType,
       long catalogId,
       List<Long> tableIds,
@@ -170,7 +172,9 @@ public class JdbcMetricsPersistence implements MetricsPersistence, MetricsQueryS
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo) {
     List<Long> sortedTableIds = tableIds.stream().sorted().collect(Collectors.toList());
-    return metricType
+    return realmId
+        + "|"
+        + metricType
         + "|"
         + catalogId
         + "|"

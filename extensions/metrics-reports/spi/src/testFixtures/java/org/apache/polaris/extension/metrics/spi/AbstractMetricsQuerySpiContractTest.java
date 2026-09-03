@@ -240,6 +240,51 @@ public abstract class AbstractMetricsQuerySpiContractTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
+  @Test
+  void crossRealmCursorReplayIsRejected() {
+    assumeTrue(supportsPersistence(), "backend does not persist data");
+    String realmA = realm();
+    String realmB = realm();
+
+    Instant base = Instant.now();
+    writeScan(realmA, scanRecord(UUID.randomUUID().toString(), CATALOG_ID, TABLE_ID, base));
+    writeScan(
+        realmA,
+        scanRecord(UUID.randomUUID().toString(), CATALOG_ID, TABLE_ID, base.minusSeconds(1)));
+    ScanMetricsRecord recordB =
+        scanRecord(UUID.randomUUID().toString(), CATALOG_ID, TABLE_ID, Instant.now());
+    writeScan(realmB, recordB);
+
+    Page<? extends MetricsRecordIdentity> firstPage =
+        querySpi(realmA)
+            .listReports(
+                MetricsQuerySpi.MetricType.SCAN,
+                CATALOG_ID,
+                List.of(TABLE_ID),
+                null,
+                null,
+                null,
+                PageToken.fromLimit(1));
+    assertThat(firstPage.encodedResponseToken()).isNotNull();
+
+    // A cursor minted while listing realm A must not be honored when replayed against realm B,
+    // even though catalog/table ids are identical: otherwise realm B's query would apply realm
+    // A's keyset predicate to realm B's result set.
+    PageToken replayedToken = PageToken.build(firstPage.encodedResponseToken(), 1, () -> true);
+    assertThatThrownBy(
+            () ->
+                querySpi(realmB)
+                    .listReports(
+                        MetricsQuerySpi.MetricType.SCAN,
+                        CATALOG_ID,
+                        List.of(TABLE_ID),
+                        null,
+                        null,
+                        null,
+                        replayedToken))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
   private static String realm() {
     return "realm-" + UUID.randomUUID();
   }
