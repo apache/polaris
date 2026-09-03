@@ -64,15 +64,20 @@ public final class MetricsModelUtils {
     }
   }
 
-  public static List<String> parseJsonArray(String json) {
-    if (json == null || json.isEmpty()) {
+  /**
+   * Parses a projected-field-names value written either by this reader (a JSON array) or by
+   * Polaris 1.7.0, which persisted it as a comma-delimited string. JSON is tried first; a value
+   * that isn't valid JSON is assumed to be the legacy comma-delimited format rather than treated
+   * as empty, so pre-upgrade rows keep their field names.
+   */
+  public static List<String> parseJsonArray(String value) {
+    if (value == null || value.isEmpty()) {
       return List.of();
     }
     try {
-      return OBJECT_MAPPER.readValue(json, new TypeReference<List<String>>() {});
+      return OBJECT_MAPPER.readValue(value, new TypeReference<List<String>>() {});
     } catch (JsonProcessingException e) {
-      LOGGER.warn("Failed to parse JSON array: {}", e.getMessage());
-      return List.of();
+      return List.of(value.split(",", -1));
     }
   }
 }
