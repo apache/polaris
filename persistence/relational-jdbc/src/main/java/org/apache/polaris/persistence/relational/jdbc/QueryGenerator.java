@@ -424,7 +424,7 @@ public class QueryGenerator {
       // ALLOW_NAMESPACE_CUSTOM_LOCATION mode a namespace location may be a bare scheme root like
       // s3:// (persisted as "//"), and it is a valid ancestor of locations below it. "///" (the
       // root of file: URIs) is kept for the same reason.
-      if (isSlashOnly(prefix) && prefix.length() < 2) {
+      if ("/".equals(prefix)) {
         continue;
       }
       conditions.add("location_without_scheme = ?");
@@ -453,20 +453,6 @@ public class QueryGenerator {
             where.sql(),
             null);
     return new PreparedQuery(query.sql(), where.parameters());
-  }
-
-  /** True when {@code value} is non-empty and contains only {@code /} characters. */
-  @VisibleForTesting
-  static boolean isSlashOnly(String value) {
-    if (value == null || value.isEmpty()) {
-      return false;
-    }
-    for (int i = 0; i < value.length(); i++) {
-      if (value.charAt(i) != '/') {
-        return false;
-      }
-    }
-    return true;
   }
 
   static String getFullyQualifiedTableName(String tableName) {
