@@ -120,7 +120,7 @@ public class EntityNameLookupRecord implements Identifiable {
 
   @Override
   public String toString() {
-    return "PolarisEntitiesActiveRecord{"
+    return "EntityNameLookupRecord{"
         + "catalogId="
         + catalogId
         + ", id="
