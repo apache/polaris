@@ -181,8 +181,10 @@ public class PolarisPrincipalSecrets {
    * Credentials-generation fingerprint corresponding to the secret that matches {@code
    * potentialSecret}: the main generation when it matches the main secret hash, the secondary
    * generation when it matches the secondary secret hash, or empty when it matches neither. Newly
-   * minted tokens carry this fingerprint in the {@code polaris-cv} claim; credential-generation is
-   * enforced on token exchange, while bearer verify checks only the JWT signature and claims.
+   * minted tokens carry this fingerprint in the {@code polaris-cv} claim. That claim gates
+   * <em>token-exchange</em> eligibility against the current (and secondary) generation; bearer
+   * verify checks only the JWT signature and claims, so a token remains usable as a bearer until
+   * JWT expiry even after its generation is no longer current.
    *
    * <p>Comparisons are constant-time, as in {@link #matchesCredentialsVersion(String)}.
    */

@@ -30,9 +30,7 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.util.Map;
@@ -40,7 +38,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.ErrorResponseParser;
-import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventType;
@@ -83,11 +80,6 @@ public class RateLimiterFilterTest {
           .put("polaris.rate-limiter.token-bucket.type", "default")
           .put("polaris.metrics.tags.environment", "prod")
           .put("polaris.realm-context.realms", "POLARIS,POLARIS2")
-          // Bootstrapping both realms with known credentials so each realm can mint its own
-          // access token. Tokens are bound to per-realm secret hashes and cannot be shared.
-          .put(
-              "polaris.bootstrap.credentials",
-              "POLARIS,test-admin,test-secret;POLARIS2,test-admin2,test-secret2")
           .put("polaris.metrics.realm-id-tag.enable-in-api-metrics", "true")
           .put("polaris.metrics.realm-id-tag.enable-in-http-metrics", "true")
           .put("polaris.authentication.token-broker.type", "symmetric-key")
@@ -146,14 +138,10 @@ public class RateLimiterFilterTest {
       requestAsserter.accept(Status.TOO_MANY_REQUESTS);
     }
 
-    // Ensure that a different realm identifier gets a separate limit. Access tokens are
-    // bound to per-realm principal secrets, so mint a token for POLARIS2 rather than reusing
-    // the POLARIS admin token (which would correctly return 401 after credentials binding).
+    // Ensure that a different realm identifier gets a separate limit
     MockRateLimiter.allowProceed = true;
-    String polaris2Token =
-        obtainAccessTokenForRealm(polarisEndpoints, "POLARIS2", "test-admin2", "test-secret2");
     Consumer<Status> requestAsserter2 =
-        constructRequestAsserter(polarisEndpoints, polaris2Token, "POLARIS2");
+        constructRequestAsserter(polarisEndpoints, adminToken, "POLARIS2");
     requestAsserter2.accept(Status.OK);
   }
 
@@ -254,28 +242,5 @@ public class RateLimiterFilterTest {
         assertThat(response).returns(status.getStatusCode(), Response::getStatus);
       }
     };
-  }
-
-  /**
-   * Mints an access token in the given realm using client credentials. Realm must be bootstrapped
-   * with those credentials (see {@link Profile}).
-   */
-  private static String obtainAccessTokenForRealm(
-      PolarisApiEndpoints endpoints, String realm, String clientId, String clientSecret) {
-    MultivaluedHashMap<String, String> form = new MultivaluedHashMap<>();
-    form.add("grant_type", "client_credentials");
-    form.add("client_id", clientId);
-    form.add("client_secret", clientSecret);
-    form.add("scope", "PRINCIPAL_ROLE:ALL");
-    try (Client httpClient = ClientBuilder.newBuilder().build();
-        Response response =
-            httpClient
-                .target(String.format("%s/v1/oauth/tokens", endpoints.catalogApiEndpoint()))
-                .request(MediaType.APPLICATION_JSON_TYPE)
-                .header("Polaris-Realm", realm)
-                .post(Entity.form(form))) {
-      assertThat(response.getStatus()).isEqualTo(Status.OK.getStatusCode());
-      return response.readEntity(OAuthTokenResponse.class).token();
-    }
   }
 }

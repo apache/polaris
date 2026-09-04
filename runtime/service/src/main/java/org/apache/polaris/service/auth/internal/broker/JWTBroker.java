@@ -54,11 +54,11 @@ public class JWTBroker implements TokenBroker {
   private static final String CLAIM_KEY_SCOPE = "scope";
 
   /**
-   * Credentials-generation fingerprint bound to the principal's current credentials version (see
-   * {@link PolarisPrincipalSecrets#getCredentialsVersion()}). When secrets are rotated or reset,
-   * the version changes and tokens carrying a prior value are rejected on token exchange. Bearer
-   * verify checks only the JWT signature and claims. The claim name is collision-resistant per RFC
-   * 7519.
+   * Credentials-generation fingerprint carried on newly minted tokens (see {@link
+   * PolarisPrincipalSecrets#getCredentialsVersion()}). When secrets are rotated or reset, the
+   * version changes and tokens carrying a prior value are rejected on <em>token exchange</em> only.
+   * Bearer verify checks only the JWT signature and claims, so those tokens remain usable as
+   * bearers until JWT expiry. The claim name is collision-resistant per RFC 7519.
    */
   @VisibleForTesting static final String CLAIM_KEY_CREDENTIALS_VERSION = "polaris-cv";
 
@@ -195,8 +195,8 @@ public class JWTBroker implements TokenBroker {
       }
       tokenScope = scope;
     }
-    // Keep the subject token's credentials generation so the re-minted token does not outlive the
-    // generation it was exchanged against.
+    // Preserve the subject token's credentials generation on the re-minted token so later exchanges
+    // keep checking the same generation fingerprint.
     String tokenString =
         generateTokenString(
             decodedToken.getPrincipalName(),
