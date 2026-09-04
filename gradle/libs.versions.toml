@@ -63,7 +63,7 @@ graalvm-polyglot-js = { module = "org.graalvm.polyglot:js", version.ref = "range
 graalvm-polyglot-polyglot = { module = "org.graalvm.polyglot:polyglot", version.ref = "ranger-graalvm" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.70.0" }
 guava = { module = "com.google.guava:guava", version = "33.7.1-jre" }
-h2 = { module = "com.h2database:h2", version = "2.4.240" }
+h2 = { module = "com.h2database:h2", version = "2.5.250" }
 hadoop-aws = { module = "org.apache.hadoop:hadoop-aws", version.ref = "hadoop" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
 hadoop-client-runtime = { module = "org.apache.hadoop:hadoop-client-runtime", version.ref = "hadoop" }
