@@ -2672,6 +2672,120 @@ public class PolarisTestMetaStoreManager {
     this.renameEntity(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N5), "T7");
   }
 
+  /**
+   * A rename cannot move an entity into a different catalog. The metastore managers compute the
+   * target catalog id from the head of newCatalogPath for the name-collision pre-check, but they
+   * only ever re-point parentId when they persist, so accepting such a call would store an entity
+   * whose catalog_id and parent_id disagree. No REST surface can express this, so the manager is
+   * called directly here.
+   */
+  public void testRenameAcrossCatalogsIsRejected() {
+    PolarisBaseEntity sourceCatalog = this.createTestCatalog("test");
+
+    // createTestCatalog also creates realm-wide principals and principal roles under fixed names,
+    // so it cannot run a second time. The target catalog only needs a namespace to aim at.
+    PolarisBaseEntity targetCatalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "rename_target");
+    CreateCatalogResult targetCreated =
+        polarisMetaStoreManager.createCatalog(this.polarisCallContext, targetCatalog, List.of());
+    Assertions.assertThat(targetCreated).isNotNull();
+    targetCatalog = targetCreated.getCatalog();
+    PolarisBaseEntity targetN1 =
+        this.createEntity(List.of(targetCatalog), PolarisEntityType.NAMESPACE, "N1");
+
+    PolarisBaseEntity sourceN1 =
+        this.ensureExistsByName(List.of(sourceCatalog), PolarisEntityType.NAMESPACE, "N1");
+    PolarisBaseEntity sourceN1N2 =
+        this.ensureExistsByName(
+            List.of(sourceCatalog, sourceN1), PolarisEntityType.NAMESPACE, "N2");
+    List<PolarisEntityCore> sourcePath = List.of(sourceCatalog, sourceN1, sourceN1N2);
+    PolarisBaseEntity table =
+        this.ensureExistsByName(
+            sourcePath, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, "T1");
+
+    List<PolarisEntityCore> crossCatalogPath = List.of(targetCatalog, targetN1);
+
+    PolarisEntity renamedEntityInput =
+        new PolarisEntity(new PolarisBaseEntity.Builder(table).parentId(targetN1.getId()).build());
+
+    Assertions.assertThatThrownBy(
+            () ->
+                polarisMetaStoreManager.renameEntity(
+                    this.polarisCallContext,
+                    sourcePath,
+                    table,
+                    crossCatalogPath,
+                    renamedEntityInput))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    // the entity is untouched: still resolvable where it started, and absent from the target
+    PolarisBaseEntity stillThere =
+        this.ensureExistsByName(
+            sourcePath, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, "T1");
+    Assertions.assertThat(stillThere.getCatalogId()).isEqualTo(table.getCatalogId());
+    Assertions.assertThat(stillThere.getParentId()).isEqualTo(table.getParentId());
+
+    EntityResult inTarget =
+        polarisMetaStoreManager.readEntityByName(
+            this.polarisCallContext,
+            crossCatalogPath,
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            "T1");
+    Assertions.assertThat(inTarget.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+
+    // A top-level entity has an empty catalog path, which the javadoc calls out as a legal shape.
+    // Giving it a non-empty newCatalogPath is the same move: it would persist catalog id 0 next to
+    // a parent that lives inside a catalog. An empty path is used rather than null so the check
+    // under test is reached, since two of the managers reject a null catalogPath earlier.
+    PolarisBaseEntity principalRole =
+        this.ensureExistsByName(null, PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+    PolarisEntity promotedInput =
+        new PolarisEntity(
+            new PolarisBaseEntity.Builder(principalRole).parentId(targetN1.getId()).build());
+    Assertions.assertThatThrownBy(
+            () ->
+                polarisMetaStoreManager.renameEntity(
+                    this.polarisCallContext,
+                    List.of(),
+                    principalRole,
+                    crossCatalogPath,
+                    promotedInput))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    Assertions.assertThat(
+            this.ensureExistsByName(null, PolarisEntityType.PRINCIPAL_ROLE, "PR1").getParentId())
+        .isEqualTo(principalRole.getParentId());
+
+    // The same move in the other direction. An empty newCatalogPath names the top-level realm
+    // scope, which is not the catalog this table lives in, so it is the same inconsistency again:
+    // the row would keep its catalog id while its parent moved outside every catalog. A null
+    // newCatalogPath is different and stays allowed, since it means no re-parenting was asked for.
+    PolarisEntity demotedInput =
+        new PolarisEntity(new PolarisBaseEntity.Builder(table).parentId(0L).build());
+    Assertions.assertThatThrownBy(
+            () ->
+                polarisMetaStoreManager.renameEntity(
+                    this.polarisCallContext, sourcePath, table, List.of(), demotedInput))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    Assertions.assertThat(
+            this.ensureExistsByName(
+                    sourcePath,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ANY_SUBTYPE,
+                    "T1")
+                .getParentId())
+        .isEqualTo(table.getParentId());
+  }
+
   /** Play with looking up entities */
   public void testLookup() {
     // load all principals
