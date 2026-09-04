@@ -843,6 +843,10 @@ class TestCatalogsCommand(CLITestBase):
         self.assertEqual(call_args.catalog.properties.default_base_location, "dbl")
         self.assertEqual(
             call_args.catalog.properties.additional_properties,
+            {},
+        )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.properties,
             {"header.x-goog-user-project": "my-billing-project"},
         )
 

@@ -27,6 +27,7 @@ from apache_polaris.cli.constants import (
     Arguments,
     AuthenticationType,
     ServiceIdentityType,
+    GCP_QUOTA_PROJECT_HEADER,
     UNIT_SEPARATOR,
 )
 from apache_polaris.cli.options.option_tree import Argument
@@ -375,6 +376,7 @@ class CatalogsCommand(Command):
         if self.catalog_type != CatalogType.EXTERNAL.value:
             return None
 
+        assert self.properties is not None
         auth_params = None
         if self.catalog_authentication_type == AuthenticationType.OAUTH.value:
             auth_params = OAuthClientCredentialsParameters(
@@ -432,12 +434,19 @@ class CatalogsCommand(Command):
                 warehouse=self.hadoop_warehouse,
             )
         elif self.catalog_connection_type == CatalogConnectionType.ICEBERG.value:
+            connection_properties = {}
+            if self.catalog_authentication_type == AuthenticationType.GCP.value:
+                quota_project = self.properties.get(GCP_QUOTA_PROJECT_HEADER)
+                if quota_project is not None:
+                    connection_properties[GCP_QUOTA_PROJECT_HEADER] = quota_project
+
             config = IcebergRestConnectionConfigInfo(
                 connection_type=self.catalog_connection_type.upper().replace("-", "_"),
                 uri=self.catalog_uri,
                 authentication_parameters=auth_params,
                 service_identity=service_identity,
                 remote_catalog_name=self.iceberg_remote_catalog_name,
+                properties=connection_properties,
             )
         elif self.catalog_connection_type == CatalogConnectionType.HIVE.value:
             config = HiveConnectionConfigInfo(
@@ -456,6 +465,13 @@ class CatalogsCommand(Command):
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_type = cast(str, self.catalog_type)
         catalog_name = cast(str, self.catalog_name)
+        assert self.properties is not None
+        catalog_properties = dict(self.properties)
+        if (
+            self.catalog_connection_type == CatalogConnectionType.ICEBERG.value
+            and self.catalog_authentication_type == AuthenticationType.GCP.value
+        ):
+            catalog_properties.pop(GCP_QUOTA_PROJECT_HEADER, None)
 
         if self.catalogs_subcommand == Subcommands.CREATE:
             storage_config = self._build_storage_config_info()
@@ -468,7 +484,7 @@ class CatalogsCommand(Command):
                         storage_config_info=storage_config,
                         properties=CatalogProperties(
                             default_base_location=self.default_base_location,
-                            additional_properties=self.properties,
+                            additional_properties=catalog_properties,
                         ),
                         connection_config_info=connection_config,
                     )
