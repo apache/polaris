@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.metrics;
+package org.apache.polaris.spi.substrate.metrics;
 
 import com.google.common.annotations.Beta;
 import org.jspecify.annotations.NonNull;

@@ -40,7 +40,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
-import org.apache.polaris.service.metrics.IcebergMetricsReporter;
+import org.apache.polaris.spi.substrate.metrics.IcebergMetricsReporter;
 
 @RequestScoped
 public class IcebergCatalogHandlerFactory {
