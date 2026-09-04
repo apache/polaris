@@ -449,11 +449,36 @@ tests:
           value: Always
 
   # spec.template.spec.containers[0].env
-  - it: should not set container env by default
+  - it: should set OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS by default when tracing is disabled
     template: deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS
+            value: "io.opentelemetry.contrib.gcp.resource.GCPResourceProvider"
+  - it: should not set OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS when tracing is enabled
+    template: deployment.yaml
+    set:
+      tracing:
+        enabled: true
+        endpoint: "http://otlp-collector:4317"
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].env
+  - it: should set OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS when tracing is enabled and disabledResourceProviders is set
+    template: deployment.yaml
+    set:
+      tracing:
+        enabled: true
+        endpoint: "http://otlp-collector:4317"
+        disabledResourceProviders: "io.opentelemetry.contrib.gcp.resource.GCPResourceProvider"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS
+            value: "io.opentelemetry.contrib.gcp.resource.GCPResourceProvider"
   - it: should set container env
     template: deployment.yaml
     set:
@@ -1211,11 +1236,17 @@ tests:
             configMapRef:
               name: polaris-env-configmap
 
-  - it: should not set any environment variables by default
+  - it: should set OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS as the only env var by default
     template: deployment.yaml
     asserts:
-      - notExists:
+      - lengthEqual:
           path: spec.template.spec.containers[0].env
+          count: 1
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS
+            value: "io.opentelemetry.contrib.gcp.resource.GCPResourceProvider"
 
   - it: should not set envFrom by default
     template: deployment.yaml
