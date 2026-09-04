@@ -1,0 +1,1159 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+paths:
+
+  /polaris/v1/{prefix}/tags:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+
+    post:
+      tags:
+        - Tag API
+      summary: Create a tag definition in the catalog
+      operationId: createTag
+      description: |
+        Creates a tag definition within the catalog identified by {prefix}.
+
+        A tag definition gives a classification a name, a set of allowed values, and the target kinds it may
+        classify. Tag assignments later select exactly one value from the definition's current allowed-values
+        list and attach it to a catalog, namespace, table-like, or column target.
+
+        User provides the following inputs when creating a tag definition
+        - `name` (REQUIRED): The name of the tag definition. It is unique within the catalog.
+        - `allowed-values` (REQUIRED): The values an assignment may select. The list must be non-empty, and
+          every member must be a unique, non-empty string. Matching is exact and case-sensitive.
+        - `target-types` (REQUIRED): The target kinds this definition may classify, directly or through
+          inheritance. The list is a set; it must be non-empty and free of duplicates. It cannot be changed
+          after creation.
+        - `comment` (OPTIONAL): Text that explains the classification.
+
+        Upon successful creation, the new tag definition's version will be 0.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTagRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/CreateTagResponse'
+        400:
+          description: |
+            Bad Request - BadRequestException: the allowed-values list is invalid or the
+            target-types list is missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                InvalidAllowedValues:
+                  $ref: '#/components/examples/AllowedValuesInvalidError'
+                InvalidTargetTypes:
+                  $ref: '#/components/examples/TargetTypesInvalidError'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The catalog identified by {prefix} does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        409:
+          description: Conflict - A tag definition with the same name already exists in the catalog
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TagAlreadyExists:
+                  $ref: '#/components/examples/TagAlreadyExistsError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    get:
+      tags:
+        - Tag API
+      summary: List tag definition names in the catalog
+      operationId: listTags
+      description: Return the tag definition names in the catalog identified by {prefix}, with pagination.
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+      responses:
+        200:
+          $ref: '#/components/responses/ListTagsResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The catalog identified by {prefix} does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/tags/{tag-name}:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '#/components/parameters/tag-name'
+
+    get:
+      tags:
+        - Tag API
+      summary: Load a tag definition
+      operationId: loadTag
+      description: |
+        Load a tag definition from the catalog.
+
+        The response contains the definition's name, comment, allowed values, target types, and current
+        version. For more details, refer to the definition of the `Tag` model.
+      responses:
+        200:
+          $ref: '#/components/responses/LoadTagResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The tag definition does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TagToGetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    put:
+      tags:
+        - Tag API
+      summary: Update a tag definition
+      operationId: updateTag
+      description: |
+        A definition's name, comment, and allowed-values list can be updated. Omitted
+        mutable fields are unchanged. A present, non-null allowed-values list replaces
+        the complete list; an explicit JSON null for allowed-values is treated as
+        omitted. target-types is create-only; a non-null value is rejected, while an
+        explicit JSON null is treated as omitted.
+
+        Changing allowed-values never rewrites existing assignments. An assignment
+        whose stored value was removed from the list remains readable until it is
+        replaced or unassigned; only later writes are checked against the new list.
+
+        current-tag-version is required. The update will only succeed if it matches
+        the definition's current version in the catalog. Upon a successful
+        state-changing update the version increments; a request producing no state
+        change returns the current definition and version unchanged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTagRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/UpdateTagResponse'
+        400:
+          description: |
+            Bad Request - BadRequestException: a non-null target-types was supplied on update (it is create-only), or an
+            allowed-values list is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TargetTypesImmutable:
+                  $ref: '#/components/examples/TargetTypesImmutableError'
+                InvalidAllowedValues:
+                  $ref: '#/components/examples/AllowedValuesInvalidError'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The tag definition does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TagToUpdateDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+        409:
+          description: |
+            Conflict - the supplied current-tag-version does not match the definition's current
+            version (TagVersionMismatchException); the definition was concurrently modified after
+            validation (CommitConflictException, retryable); or the new name collides with an
+            existing definition (AlreadyExistsException). For a stale version or a concurrent
+            modification, reload the definition and retry with the returned version; for a name
+            collision, pick another name.
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TagVersionMismatch:
+                  $ref: '#/components/examples/TagVersionMismatchError'
+                TagConcurrentlyModified:
+                  $ref: '#/components/examples/TagCommitConflictError'
+                TagAlreadyExists:
+                  $ref: '#/components/examples/TagAlreadyExistsError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    delete:
+      tags:
+        - Tag API
+      summary: Drop a tag definition from the catalog
+      operationId: dropTag
+      description: |
+        Remove a tag definition from the catalog.
+
+        Without detach-all=true, a definition can be deleted only when no assignments use it. To remove the
+        definition along with all of its assignments, set detach-all to true; callers then see every
+        assignment and the definition removed, or no change.
+
+        The definition is permanently deleted and its name is released.
+      parameters:
+        - name: detach-all
+          in: query
+          required: false
+          description: |
+            When set to true, the dropTag operation will also delete every assignment of this tag definition
+            across the catalog.
+          schema:
+            type: boolean
+            default: false
+          example: false
+      responses:
+        204:
+          description: Success, no content
+        400:
+          description: Bad Request - assignments of this tag definition remain and detach-all is not set to true
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TagInUse:
+                  $ref: '#/components/examples/TagInUseError'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The tag definition does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TagToDeleteDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/tags/{tag-name}/mappings:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '#/components/parameters/tag-name'
+
+    put:
+      tags:
+        - Tag API
+      summary: Assign a tag value to a target
+      operationId: assignTag
+      description: |
+        Create or replace the assignment of this tag definition on one target.
+
+        The request body carries a structured target and the selected values. In v1 the values list must
+        contain exactly one value, and that value must appear in the definition's current allowed-values
+        list. The target kind must appear in the definition's target-types list. Reassigning the same tag on
+        the same target replaces the stored value.
+
+        Tags can be assigned to different levels:
+        1. **Column level:** one top-level column of an Iceberg table.
+        2. **Table-like level:** an Iceberg table or a generic table. Iceberg views are not supported in v1;
+           view support can be added later without API changes.
+        3. **Namespace level:** a namespace.
+        4. **Catalog level:** the catalog identified by {prefix}.
+
+        The target must be inside the catalog identified by {prefix}. Polaris resolves request names to
+        durable identifiers before storing an assignment, so a rename that preserves the underlying entity
+        keeps the assignment, while dropping and recreating the same name does not.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignTagRequest'
+      responses:
+        204:
+          description: Success, no content
+        400:
+          description: |
+            Bad Request - BadRequestException: the target is unsupported or malformed, the target kind
+            is excluded by the definition's target-types, the values list is
+            malformed, more than one value was selected, or the selected
+            value is not currently allowed
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                UnsupportedTarget:
+                  $ref: '#/components/examples/UnsupportedTargetError'
+                TargetTypeNotAllowed:
+                  $ref: '#/components/examples/TargetTypeNotAllowedError'
+                InvalidValues:
+                  $ref: '#/components/examples/ValuesInvalidError'
+                MultipleValuesNotSupported:
+                  $ref: '#/components/examples/MultipleValuesNotSupportedError'
+                ValueNotAllowed:
+                  $ref: '#/components/examples/ValueInvalidError'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - the tag definition, the target, or the named column does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TagToAssignDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+                TargetToAssignDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTargetError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    post:
+      tags:
+        - Tag API
+      summary: Remove the assignment of a tag from a target
+      operationId: unassignTag
+      description: |
+        Remove the existing assignment of this tag definition from one target.
+
+        The request body carries the same structured target used by assignTag. The operation removes an
+        existing assignment; it does not re-check the definition's target-types. The target must be inside
+        the catalog identified by {prefix} and must resolve from the request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnassignTagRequest'
+      responses:
+        204:
+          description: Success, no content
+        400:
+          description: |
+            Bad Request - BadRequestException: the target is unsupported or malformed
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                UnsupportedTarget:
+                  $ref: '#/components/examples/UnsupportedTargetError'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: |
+            Not Found - the tag definition, the target, the named column, or the assignment itself does not
+            exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TagToUnassignDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+                TargetToUnassignDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTargetError'
+                AssignmentToRemoveDoesNotExist:
+                  $ref: '#/components/examples/NoSuchAssignmentError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/tags/{tag-name}/objects:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '#/components/parameters/tag-name'
+
+    get:
+      tags:
+        - Tag API
+      summary: List targets that carry a direct assignment of a tag
+      operationId: listObjectsByTag
+      description: |
+        A reverse lookup that starts from one tag definition and returns targets with their own direct
+        assignment, with pagination.
+
+        Without `value`, every direct assignment of the tag is returned. With `value`, only direct
+        assignments containing that exact, case-sensitive string are returned. Targets that only inherit the
+        tag are not returned, so `apply-method` in this response is never `INHERITED`.
+      parameters:
+        - name: value
+          in: query
+          required: false
+          description: |
+            Return only direct assignments whose selected values contain this exact, case-sensitive string.
+          schema:
+            type: string
+          example: "confidential"
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+      responses:
+        200:
+          $ref: '#/components/responses/ListObjectsByTagResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The tag definition does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TagToListDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTagError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/object-tags:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+
+    get:
+      tags:
+        - Tag API
+      summary: Get the tags of a catalog, namespace, table, or column
+      operationId: getObjectTags
+      description: |
+        Retrieves the tags of one target. The target is named with query parameters; the required
+        combination depends on the target kind:
+
+        - Catalog:
+          - Neither `namespace`, `target-name`, nor `column` should be set.
+        - Namespace:
+          - The `namespace` parameter is required to specify the identifier.
+        - Table-like:
+          - The `namespace` and `target-name` parameters are required.
+        - Column:
+          - The `namespace`, `target-name`, and `column` parameters are required.
+
+        Every other parameter combination is rejected; the server never guesses a target kind.
+
+        The optional `view` parameter selects the read:
+
+        - `direct` (the default when `view` is omitted) returns only assignments stored on the queried
+          target.
+        - `effective` reads the target and its parents, then returns the final result for each tag
+          definition. Among the assignments a definition allows, the closest one wins: column, then table,
+          then the nearest namespace, then the catalog. Values from different levels are never combined.
+
+        A tag definition appears in the result only when the queried target kind is listed in its
+        target-types. An effective read returns the complete result or fails; it never returns a partial
+        hierarchy or falls back to a direct read.
+      parameters:
+        - name: namespace
+          in: query
+          required: false
+          description:
+            A namespace identifier as a single string.
+            Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+          schema:
+            type: string
+          examples:
+            singlepart_namespace:
+              value: "accounting"
+            multipart_namespace:
+              value: "accounting%1Ftax"
+        - name: target-name
+          in: query
+          required: false
+          description: |
+            Name of the target table. In v1 this is an Iceberg table or a generic table; Iceberg views are
+            not supported.
+          schema:
+            type: string
+          example: "test_table"
+        - name: column
+          in: query
+          required: false
+          description: |
+            Name of one top-level column in the table named by target-name. Column targets are supported on
+            Iceberg tables only in v1.
+          schema:
+            type: string
+          example: "email"
+        - name: view
+          in: query
+          required: false
+          description: |
+            Which read to perform. Omitting this parameter is the same as `direct`.
+          schema:
+            type: string
+            default: direct
+            enum:
+              - direct
+              - effective
+          example: "effective"
+      responses:
+        200:
+          $ref: '#/components/responses/GetObjectTagsResponse'
+        400:
+          description: |
+            Bad Request - BadRequestException: the query parameter combination does not name one of the supported target kinds,
+            or names an unsupported target such as an Iceberg view or a generic-table column
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                UnsupportedTarget:
+                  $ref: '#/components/examples/UnsupportedTargetError'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - the target path or the named column does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TargetToReadDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTargetError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+components:
+  parameters:
+    tag-name:
+      name: tag-name
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/TagName'
+
+  schemas:
+
+    TagName:
+      type: string
+      description:
+        A tag definition name. It is unique within the catalog. A valid tag name should only consist of
+        uppercase and lowercase letters (A-Z, a-z), digits (0-9), hyphens (-), underscores (_).
+      pattern: '^[A-Za-z0-9\-_]+$'
+      example: 'sensitivity'
+
+    TargetType:
+      type: string
+      description: |
+        The kind of target a tag applies to:
+        1. catalog: the catalog identified by {prefix}.
+        2. namespace: a namespace.
+        3. table-like: an individual table. In v1 this is an Iceberg table or a generic table; Iceberg views
+           are not supported and can be added later without API changes.
+        4. column: one top-level column of an Iceberg table. Generic-table columns are not supported because
+           v1 defines no stable column identifier for them.
+      enum:
+        - catalog
+        - namespace
+        - table-like
+        - column
+      example: table-like
+
+    Tag:
+      type: object
+      description: |
+        A tag definition in Apache Polaris gives a classification a name, a set of allowed values, and the
+        target kinds it may classify. Tag assignments select one value from the definition and attach it to
+        a catalog, namespace, table-like, or column target; reads can then return direct or inherited
+        classifications for a target.
+
+        The tag object includes
+        - **name:** The classification name, unique within the catalog.
+        - **comment:** Optional text that explains the classification.
+        - **allowed-values:** The values an assignment may select. Matching is exact and case-sensitive.
+          Changing this list never rewrites existing assignments; an assignment whose stored value was
+          removed from the list remains readable until it is replaced or unassigned.
+        - **target-types:** The target kinds this definition may classify, directly or through inheritance.
+          This list is immutable after creation.
+        - **version:** An opaque, server-managed token that prevents a stale update from overwriting a newer
+          one. It starts at 0 and increments on each successful state-changing update; a request
+          producing no state change leaves it unchanged. It does not provide definition history.
+      required:
+        - name
+        - allowed-values
+        - target-types
+        - version
+      properties:
+        name:
+          $ref: '#/components/schemas/TagName'
+        comment:
+          type: string
+        allowed-values:
+          type: array
+          items:
+            type: string
+          description: |
+            The values an assignment may select. The v1 server requires at least one non-empty member.
+        target-types:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/TargetType'
+        version:
+          type: integer
+
+    TagIdentifier:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          $ref: '#/components/schemas/TagName'
+
+    CreateTagRequest:
+      type: object
+      required:
+        - name
+        - allowed-values
+        - target-types
+      properties:
+        name:
+          $ref: '#/components/schemas/TagName'
+        comment:
+          type: string
+        allowed-values:
+          type: array
+          items:
+            type: string
+        target-types:
+          type: array
+          items:
+            $ref: '#/components/schemas/TargetType'
+
+    UpdateTagRequest:
+      type: object
+      description: |
+        An update request. Omitted mutable fields are unchanged. A present, non-null
+        allowed-values list replaces the complete list; an explicit JSON null for
+        allowed-values is treated as omitted. target-types is create-only; a non-null
+        value is rejected, while an explicit JSON null is treated as omitted.
+        current-tag-version is required and must match the definition's current version.
+      required:
+        - current-tag-version
+      properties:
+        name:
+          $ref: '#/components/schemas/TagName'
+        comment:
+          type: string
+        allowed-values:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: |
+            A present, non-null list replaces the complete allowed-values list. An explicit JSON null
+            is treated as omitted.
+        target-types:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/TargetType'
+          description: |
+            Create-only. A non-null value is rejected with 400 BadRequestException. An explicit JSON
+            null is treated as omitted.
+        current-tag-version:
+          type: integer
+
+    LoadTagResponse:
+      type: object
+      required:
+        - tag
+      properties:
+        tag:
+          $ref: '#/components/schemas/Tag'
+
+    ListTagsResponse:
+      type: object
+      required:
+        - identifiers
+      properties:
+        next-page-token:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+        identifiers:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/TagIdentifier'
+
+    TagAttachmentTarget:
+      type: object
+      description: |
+        One catalog object or top-level Iceberg column, named by an assignment request. The server never
+        guesses a target kind: a field combination that does not match `type` is rejected.
+
+        The fields per target type are:
+
+        | type | path | column |
+        |------|------|--------|
+        | catalog | absent | absent |
+        | namespace | one or more namespace levels | absent |
+        | table-like | namespace levels followed by the table name | absent |
+        | column | namespace levels followed by the containing table name | one top-level column name |
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/TargetType'
+        path:
+          type: array
+          items:
+            type: string
+          description: |
+            A list representing the hierarchical path to the target, ordered from the namespace level down
+            to the entity.
+
+            If the target is catalog, the path should be either empty or not set.
+          example: ["NS1", "NS2", "test_table_1"]
+        column:
+          type: array
+          items:
+            type: string
+          description: |
+            For column targets only, the name of one top-level column in the table named by path. More than
+            one column segment is invalid in v1.
+          example: ["email"]
+
+    AssignTagRequest:
+      type: object
+      required:
+        - target
+        - values
+      properties:
+        target:
+          $ref: '#/components/schemas/TagAttachmentTarget'
+        values:
+          type: array
+          items:
+            type: string
+          description: |
+            The selected values. The v1 server requires exactly one member, and it must appear in the
+            definition's current allowed-values list. The list shape leaves room for later value forms.
+          example: ["confidential"]
+
+    UnassignTagRequest:
+      type: object
+      required:
+        - target
+      properties:
+        target:
+          $ref: '#/components/schemas/TagAttachmentTarget'
+
+    ObjectTag:
+      type: object
+      description: |
+        One tag of the queried target, as returned by getObjectTags.
+
+        - **tag:** The tag definition name.
+        - **values:** The selected values. v1 returns exactly one item.
+        - **apply-method:** How the classification applies to the target being read. v1 defines two
+          well-known values: `MANUAL` (the ordinary assignment operation created this direct assignment) and
+          `INHERITED` (the winning assignment is stored on a parent target). The field is an open string:
+          implementations may return other documented direct methods, and clients must accept unknown
+          values.
+        - **assigned-at:** The target that stores the winning assignment. For a direct result this is the
+          queried target; for an inherited result it is the parent that stores the assignment.
+      required:
+        - tag
+        - values
+        - apply-method
+        - assigned-at
+      properties:
+        tag:
+          $ref: '#/components/schemas/TagIdentifier'
+        values:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        apply-method:
+          type: string
+          example: "MANUAL"
+        assigned-at:
+          $ref: '#/components/schemas/TagAttachmentTarget'
+
+    GetObjectTagsResponse:
+      type: object
+      required:
+        - object-tags
+      properties:
+        object-tags:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ObjectTag'
+
+    TaggedObject:
+      type: object
+      description: |
+        One direct assignment of the named tag definition, as returned by listObjectsByTag. apply-method is
+        never `INHERITED` in this response.
+      required:
+        - target
+        - values
+        - apply-method
+      properties:
+        target:
+          $ref: '#/components/schemas/TagAttachmentTarget'
+        values:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        apply-method:
+          type: string
+          example: "MANUAL"
+
+    ListObjectsByTagResponse:
+      type: object
+      required:
+        - objects
+      properties:
+        next-page-token:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+        objects:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/TaggedObject'
+
+  responses:
+    CreateTagResponse:
+      description: Tag definition result after creating a tag definition
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadTagResponse'
+
+    LoadTagResponse:
+      description: Tag definition result when loading a tag definition
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadTagResponse'
+
+    UpdateTagResponse:
+      description:
+        Response used when a tag definition is successfully updated
+
+        The updated definition is returned in the tag field
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadTagResponse'
+
+    ListTagsResponse:
+      description: a list of tag definition identifiers
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListTagsResponse'
+          examples:
+            ListTagsResponseNonEmpty:
+              $ref: '#/components/examples/ListTagsNonEmptyExample'
+            ListTagsResponseEmpty:
+              $ref: '#/components/examples/ListTagsEmptyExample'
+
+    GetObjectTagsResponse:
+      description: The direct or effective tags of the queried target
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetObjectTagsResponse'
+          examples:
+            GetObjectTagsResponseEffective:
+              $ref: '#/components/examples/GetObjectTagsEffectiveExample'
+
+    ListObjectsByTagResponse:
+      description: A page of targets that carry a direct assignment of the named tag definition
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListObjectsByTagResponse'
+          examples:
+            ListObjectsByTagResponseNonEmpty:
+              $ref: '#/components/examples/ListObjectsByTagNonEmptyExample'
+
+  examples:
+    NoSuchTagError:
+      summary: The requested tag definition does not exist
+      value: {
+        "error": {
+          "message": "The given tag definition does not exist",
+          "type": "NoSuchTagException",
+          "code": 404
+        }
+      }
+
+    TagAlreadyExistsError:
+      summary: A tag definition with the requested name already exists
+      value: {
+        "error": {
+          "message": "A tag definition with the given name already exists in the catalog",
+          "type": "AlreadyExistsException",
+          "code": 409
+        }
+      }
+
+    TagVersionMismatchError:
+      summary: The definition version doesn't match the current-tag-version
+      value: {
+        "error": {
+          "message": "The tag definition version doesn't match the current-tag-version",
+          "type": "TagVersionMismatchException",
+          "code": 409
+        }
+      }
+
+    TagCommitConflictError:
+      summary: The definition was concurrently modified; retry
+      value: {
+        "error": {
+          "message": "Concurrent modification on tag 'sensitivity'; retry later",
+          "type": "CommitConflictException",
+          "code": 409
+        }
+      }
+    TagInUseError:
+      summary: Assignments of the tag definition remain
+      value: {
+        "error": {
+          "message": "The tag definition is assigned to one or more targets and detach-all is not set to true",
+          "type": "TagInUseException",
+          "code": 400
+        }
+      }
+
+    NoSuchTargetError:
+      summary: The requested target does not exist
+      value: {
+        "error": {
+          "message": "The given target path or column does not exist",
+          "type": "NoSuchTargetException",
+          "code": 404
+        }
+      }
+
+    NoSuchAssignmentError:
+      summary: The requested assignment does not exist on the target
+      value: {
+        "error": {
+          "message": "The given tag is not assigned to the given target",
+          "type": "NoSuchMappingException",
+          "code": 404
+        }
+      }
+
+    UnsupportedTargetError:
+      summary: The requested target is unsupported or malformed
+      value: {
+        "error": {
+          "message": "The given target is not supported in v1 or does not match its declared type",
+          "type": "BadRequestException",
+          "code": 400
+        }
+      }
+
+    TargetTypeNotAllowedError:
+      summary: The target kind is excluded by the definition's target-types
+      value: {
+        "error": {
+          "message": "The target kind is not listed in the tag definition's target-types",
+          "type": "BadRequestException",
+          "code": 400
+        }
+      }
+
+    AllowedValuesInvalidError:
+      summary: The allowed-values list is invalid
+      value: {
+        "error": {
+          "message": "allowed-values must be a non-empty list of unique, non-empty strings",
+          "type": "BadRequestException",
+          "code": 400
+        }
+      }
+
+    TargetTypesInvalidError:
+      summary: The target-types list is missing or invalid
+      value: {
+        "error": {
+          "message": "target-types must be a non-empty list of unique, known target types",
+          "type": "BadRequestException",
+          "code": 400
+        }
+      }
+
+    TargetTypesImmutableError:
+      summary: target-types cannot be changed after creation
+      value: {
+        "error": {
+          "message": "A non-null target-types value cannot be supplied on update because target-types is create-only",
+          "type": "BadRequestException",
+          "code": 400
+        }
+      }
+
+    ValuesInvalidError:
+      summary: The selected values list is invalid
+      value: {
+        "error": {
+          "message": "values must be a non-empty list of unique, non-empty strings",
+          "type": "BadRequestException",
+          "code": 400
+        }
+      }
+
+    MultipleValuesNotSupportedError:
+      summary: More than one selected value
+      value: {
+        "error": {
+          "message": "v1 supports exactly one selected value per assignment",
+          "type": "BadRequestException",
+          "code": 400
+        }
+      }
+
+    ValueInvalidError:
+      summary: The selected value is not currently allowed
+      value: {
+        "error": {
+          "message": "The selected value is not in the tag definition's current allowed-values list",
+          "type": "BadRequestException",
+          "code": 400
+        }
+      }
+
+    ListTagsNonEmptyExample:
+      summary: A non-empty list of tag definition identifiers
+      value:
+        identifiers:
+          - name: sensitivity
+          - name: retention
+
+    ListTagsEmptyExample:
+      summary: An empty list for a catalog with no tag definitions
+      value:
+        identifiers: [ ]
+
+    GetObjectTagsEffectiveExample:
+      summary: An effective read of a column that inherits one tag and carries one direct tag
+      value:
+        object-tags:
+          - tag:
+              name: sensitivity
+            values:
+              - confidential
+            apply-method: MANUAL
+            assigned-at:
+              type: column
+              path:
+                - sales
+                - customers
+              column:
+                - email
+          - tag:
+              name: retention
+            values:
+              - short
+            apply-method: INHERITED
+            assigned-at:
+              type: namespace
+              path:
+                - sales
+
+    ListObjectsByTagNonEmptyExample:
+      summary: A page of direct assignments of one tag definition
+      value:
+        objects:
+          - target:
+              type: table-like
+              path:
+                - sales
+                - customers
+            values:
+              - internal
+            apply-method: MANUAL
+          - target:
+              type: column
+              path:
+                - sales
+                - customers
+              column:
+                - email
+            values:
+              - confidential
+            apply-method: MANUAL
