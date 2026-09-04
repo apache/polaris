@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
+import static org.apache.polaris.core.config.FeatureConfiguration.ENABLE_ENTITY_LEVEL_LIST_FILTERING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
@@ -45,6 +46,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogUtil;
@@ -89,9 +93,12 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.StructuredLogKeys;
+import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
@@ -111,6 +118,7 @@ import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -272,13 +280,26 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
+    boolean filterEnabled = isEntityLevelListFilteringEnabled();
+
     if (isFederated) {
-      return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
+      ListNamespacesResponse response =
+          catalogHandlerUtils().listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
+      if (!filterEnabled) {
+        return response;
+      }
+      List<Namespace> visible = filterNamespaces(response.namespaces(), op);
+      return ListNamespacesResponse.builder()
+          .addAll(visible)
+          .nextPageToken(response.nextPageToken())
+          .build();
     } else {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
+      List<Namespace> items =
+          filterEnabled ? filterNamespaces(results.items(), op) : results.items();
       return ListNamespacesResponse.builder()
-          .addAll(results.items())
+          .addAll(items)
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
@@ -363,16 +384,41 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
+    boolean filterEnabled = isEntityLevelListFilteringEnabled();
+
     if (isFederated) {
-      return catalogHandlerUtils().listTables(baseCatalog, namespace, pageToken, pageSize);
+      ListTablesResponse response =
+          catalogHandlerUtils().listTables(baseCatalog, namespace, pageToken, pageSize);
+      if (!filterEnabled) {
+        return response;
+      }
+      List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
+      return ListTablesResponse.builder()
+          .addAll(visible)
+          .nextPageToken(response.nextPageToken())
+          .build();
     } else {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
+      List<TableIdentifier> items =
+          filterEnabled ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
-          .addAll(results.items())
+          .addAll(items)
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
+  }
+
+  /**
+   * Create a table.
+   *
+   * @param namespace the namespace to create the table in
+   * @param request the table creation request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
+  public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
+    return createTableDirect(
+        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
   }
 
   public void authorizeCreateTableDirect(
@@ -1519,9 +1565,20 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
+    boolean filterEnabled = isEntityLevelListFilteringEnabled();
+
     if (isFederated) {
       if (baseCatalog instanceof ViewCatalog viewCatalog) {
-        return catalogHandlerUtils().listViews(viewCatalog, namespace, pageToken, pageSize);
+        ListTablesResponse response =
+            catalogHandlerUtils().listViews(viewCatalog, namespace, pageToken, pageSize);
+        if (!filterEnabled) {
+          return response;
+        }
+        List<TableIdentifier> visible = filterTableIdentifiers(response.identifiers(), op);
+        return ListTablesResponse.builder()
+            .addAll(visible)
+            .nextPageToken(response.nextPageToken())
+            .build();
       }
       throw new BadRequestException(
           "Unsupported operation: listViews with baseCatalog type: %s",
@@ -1529,8 +1586,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     } else {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
       var results = ((LocalIcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
+      List<TableIdentifier> items =
+          filterEnabled ? filterTableIdentifiers(results.items(), op) : results.items();
       return ListTablesResponse.builder()
-          .addAll(results.items())
+          .addAll(items)
           .nextPageToken(results.encodedResponseToken())
           .build();
     }
@@ -1777,5 +1836,111 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return ImmutableLoadCredentialsResponse.builder()
         .credentials(loadTableResponse.credentials())
         .build();
+  }
+
+  private boolean isEntityLevelListFilteringEnabled() {
+    return realmConfig().getConfig(ENABLE_ENTITY_LEVEL_LIST_FILTERING, getResolvedCatalogEntity());
+  }
+
+  private <T> List<T> filterEntities(
+      List<T> entities,
+      Function<T, ResolverPath> toResolverPath,
+      Function<T, PolarisSecurable> toSecurable,
+      PolarisAuthorizableOperation op) {
+    if (entities.isEmpty()) {
+      return entities;
+    }
+    PolarisResolutionManifest filterManifest = newResolutionManifest();
+    List<ResolverPath> paths = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      ResolverPath path = toResolverPath.apply(entity);
+      paths.add(path);
+      filterManifest.addPath(path);
+    }
+    filterManifest.resolveAll();
+
+    AuthorizationState authzState = new AuthorizationState(filterManifest);
+
+    var principal = polarisPrincipal();
+    List<T> resolvable = new ArrayList<>();
+    List<AuthorizationRequest> requests = new ArrayList<>();
+    int pathIndex = 0;
+    for (T entity : entities) {
+      // Look the path up under the same key addPath registered it with, so the lookup key
+      // cannot drift from the registered one.
+      ResolverPath path = paths.get(pathIndex++);
+      if (filterManifest.getResolvedPath(ResolvedPathKey.of(path), true) != null) {
+        resolvable.add(entity);
+        requests.add(
+            new AuthorizationRequest(
+                principal,
+                List.of(new SingleTargetAuthorizationIntent(op, toSecurable.apply(entity)))));
+      }
+    }
+
+    List<AuthorizationDecision> decisions = authorizer().authorize(authzState, requests);
+    return IntStream.range(0, resolvable.size())
+        .filter(i -> decisions.get(i).isAllowed())
+        .mapToObj(resolvable::get)
+        .toList();
+  }
+
+  /**
+   * Returns a namespace as a {@link PolarisSecurable} rooted at {@link #catalogName()}.
+   *
+   * <p>The path is: {@code [CATALOG, NAMESPACE, ...NAMESPACE]} — one NAMESPACE segment per level.
+   */
+  private PolarisSecurable namespacePolarisSecurable(Namespace ns) {
+    PathSegment catalogSegment = new PathSegment(PolarisEntityType.CATALOG, catalogName());
+    PathSegment[] nsSegments =
+        Arrays.stream(ns.levels())
+            .map(level -> new PathSegment(PolarisEntityType.NAMESPACE, level))
+            .toArray(PathSegment[]::new);
+    return PolarisSecurable.of(catalogSegment, nsSegments);
+  }
+
+  /**
+   * Returns a table/view identifier as a {@link PolarisSecurable} rooted at {@link #catalogName()}.
+   *
+   * <p>The path is: {@code [CATALOG, NAMESPACE..., TABLE_LIKE]}.
+   */
+  private PolarisSecurable tableLikePolarisSecurable(TableIdentifier id) {
+    PathSegment catalogSegment = new PathSegment(PolarisEntityType.CATALOG, catalogName());
+    PathSegment[] rest =
+        Stream.concat(
+                Arrays.stream(id.namespace().levels())
+                    .map(level -> new PathSegment(PolarisEntityType.NAMESPACE, level)),
+                Stream.of(new PathSegment(PolarisEntityType.TABLE_LIKE, id.name())))
+            .toArray(PathSegment[]::new);
+    return PolarisSecurable.of(catalogSegment, rest);
+  }
+
+  /**
+   * Filters {@code namespaces} to those the caller is authorized to see under {@code op}.
+   *
+   * <p>Creates a single manifest for all child namespaces, resolves it once, and batch-authorizes.
+   * Namespaces that cannot be resolved (e.g. deleted between list and filter) are excluded
+   * silently.
+   */
+  private List<Namespace> filterNamespaces(
+      List<Namespace> namespaces, PolarisAuthorizableOperation op) {
+    return filterEntities(
+        namespaces,
+        ns -> new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE, true),
+        this::namespacePolarisSecurable,
+        op);
+  }
+
+  private List<TableIdentifier> filterTableIdentifiers(
+      List<TableIdentifier> identifiers, PolarisAuthorizableOperation op) {
+    return filterEntities(
+        identifiers,
+        id ->
+            new ResolverPath(
+                PolarisCatalogHelpers.tableIdentifierToList(id),
+                PolarisEntityType.TABLE_LIKE,
+                true),
+        this::tableLikePolarisSecurable,
+        op);
   }
 }
