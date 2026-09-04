@@ -1001,7 +1001,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             (newCatalogPath == null) || (catalogPath != null),
             "newCatalogPath_specified_without_catalogPath");
 
-    checkRenameStaysWithinCatalog(catalogPath, newCatalogPath);
+    RenameEntityUtil.checkRenameStaysWithinCatalog(entityToRename, newCatalogPath);
 
     // null is shorthand for saying the path isn't changing
     if (newCatalogPath == null) {

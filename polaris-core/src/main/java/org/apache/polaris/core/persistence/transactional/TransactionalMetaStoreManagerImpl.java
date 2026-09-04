@@ -54,6 +54,7 @@ import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
+import org.apache.polaris.core.persistence.RenameEntityUtil;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -1195,7 +1196,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             (newCatalogPath == null) || (catalogPath != null),
             "newCatalogPath_specified_without_catalogPath");
 
-    checkRenameStaysWithinCatalog(catalogPath, newCatalogPath);
+    RenameEntityUtil.checkRenameStaysWithinCatalog(entityToRename, newCatalogPath);
 
     // null is shorthand for saying the path isn't changing
     if (newCatalogPath == null) {

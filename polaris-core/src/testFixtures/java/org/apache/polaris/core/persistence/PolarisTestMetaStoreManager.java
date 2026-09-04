@@ -2763,6 +2763,27 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(
             this.ensureExistsByName(null, PolarisEntityType.PRINCIPAL_ROLE, "PR1").getParentId())
         .isEqualTo(principalRole.getParentId());
+
+    // The same move in the other direction. An empty newCatalogPath names the top-level realm
+    // scope, which is not the catalog this table lives in, so it is the same inconsistency again:
+    // the row would keep its catalog id while its parent moved outside every catalog. A null
+    // newCatalogPath is different and stays allowed, since it means no re-parenting was asked for.
+    PolarisEntity demotedInput =
+        new PolarisEntity(new PolarisBaseEntity.Builder(table).parentId(0L).build());
+    Assertions.assertThatThrownBy(
+            () ->
+                polarisMetaStoreManager.renameEntity(
+                    this.polarisCallContext, sourcePath, table, List.of(), demotedInput))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    Assertions.assertThat(
+            this.ensureExistsByName(
+                    sourcePath,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ANY_SUBTYPE,
+                    "T1")
+                .getParentId())
+        .isEqualTo(table.getParentId());
   }
 
   /** Play with looking up entities */
