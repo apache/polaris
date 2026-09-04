@@ -149,6 +149,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   directly under an allowed location, at `s3://b1/ns`, and rejected it as a custom location even
   though the request asked for none. The namespace location is now compared against the
   catalog's `default-base-location`, which is what it is derived from.
+- Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the
+  token). Credential-generation is enforced on token exchange; bearer verify is signature and claims
+  only. Secrets-load failures during exchange return service unavailable.
 
 ### Commits
 
@@ -236,7 +239,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - OPA authorizer now includes the realm identifier in the authorization context sent to OPA (`input.context.realm`). This ensures OPA policies can enforce tenant isolation across realms, preventing potential collisions if identical principal or resource names exist in different realms.
 - Management API delete operations for principals, principal roles, catalog roles, and catalogs now return error messages that match the actual failure reason (for example, concurrent modification no longer reports a misleading protected-entity message).
 - Python CLI `setup apply` now defaults to an `INTERNAL` catalog type when the `type` field is left blank or null in the setup config, instead of crashing with `AttributeError`
-- Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the token). Credential-generation is enforced on token exchange; bearer verify is signature and claims only. Secrets-load failures during exchange return service unavailable.
 
 ## [1.6.0]
 
