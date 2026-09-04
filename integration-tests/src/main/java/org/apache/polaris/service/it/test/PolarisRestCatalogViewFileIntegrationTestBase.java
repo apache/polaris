@@ -20,7 +20,6 @@ package org.apache.polaris.service.it.test;
 
 import java.lang.reflect.Field;
 import java.nio.file.Path;
-import java.util.List;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -45,8 +44,7 @@ public abstract class PolarisRestCatalogViewFileIntegrationTestBase
     }
     return FileStorageConfigInfo.builder()
         .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-        .setAllowedLocations(
-            List.of(baseLocation, baseLocation + "/" + System.getenv("USER") + "/path/to/data"))
+        .setAllowedLocations(allowedLocations(baseLocation))
         .build();
   }
 
