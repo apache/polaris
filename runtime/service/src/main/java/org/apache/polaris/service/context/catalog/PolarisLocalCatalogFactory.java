@@ -33,6 +33,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.TableMetadataCache;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
@@ -56,6 +57,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
   private final PolarisMetaStoreManager metaStoreManager;
   private final CallContext callContext;
   private final PolarisPrincipal principal;
+  private final TableMetadataCache tableMetadataCache;
   private final IdempotencyRequestContext idempotencyRequestContext;
 
   @Inject
@@ -70,6 +72,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisPrincipal principal,
+      TableMetadataCache tableMetadataCache,
       IdempotencyRequestContext idempotencyRequestContext) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
@@ -81,6 +84,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
     this.metaStoreManager = metaStoreManager;
     this.callContext = callContext;
     this.principal = principal;
+    this.tableMetadataCache = tableMetadataCache;
     this.idempotencyRequestContext = idempotencyRequestContext;
   }
 
@@ -106,6 +110,7 @@ public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
             fileIOFactory,
             polarisEventDispatcher,
             eventMetadataFactory,
+            tableMetadataCache,
             idempotencyRequestContext);
 
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
