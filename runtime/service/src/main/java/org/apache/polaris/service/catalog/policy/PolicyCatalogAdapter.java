@@ -92,7 +92,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    PolicyType type = policyType != null ? PolicyType.fromName(policyType) : null;
+    PolicyType type = PolicyCatalogUtils.resolvePolicyTypeFilter(policyType);
     PolicyCatalogHandler handler = newHandler(securityContext, prefix);
     ListPoliciesResponse response = handler.listPolicies(ns, type);
     return Response.ok(response).build();
@@ -191,7 +191,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
         namespace != null
             ? NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR)
             : null;
-    PolicyType type = policyType != null ? PolicyType.fromName(policyType) : null;
+    PolicyType type = PolicyCatalogUtils.resolvePolicyTypeFilter(policyType);
     PolicyCatalogHandler handler = newHandler(securityContext, prefix);
     GetApplicablePoliciesResponse response = handler.getApplicablePolicies(ns, targetName, type);
     return Response.ok(response).build();
