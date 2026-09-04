@@ -56,6 +56,61 @@ class TestTablesCommand(CLITestBase):
         )
 
     @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    def test_table_list_with_paginate(self, mock_iceberg_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        ids = [MagicMock(to_json=MagicMock(return_value="{}")) for _ in range(3)]
+        page1 = MagicMock(identifiers=ids[:2], next_page_token="token")
+        page2 = MagicMock(identifiers=[ids[2]], next_page_token=None)
+        mock_iceberg_api.list_tables.side_effect = [page1, page2]
+        self.mock_execute(
+            mock_client,
+            [
+                "tables",
+                "list",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+                "--page-size",
+                "2",
+            ],
+        )
+        self.assertEqual(mock_iceberg_api.list_tables.call_count, 2)
+        mock_iceberg_api.list_tables.assert_any_call(
+            prefix="my-catalog", namespace="ns1", page_size=2, page_token=None
+        )
+        mock_iceberg_api.list_tables.assert_any_call(
+            prefix="my-catalog", namespace="ns1", page_size=2, page_token="token"
+        )
+
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    def test_table_list_paginated_root_arg_position(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        id1 = MagicMock(to_json=MagicMock(return_value="{}"))
+        page = MagicMock(identifiers=[id1], next_page_token=None)
+        mock_iceberg_api.list_tables.return_value = page
+        self.mock_execute(
+            mock_client,
+            [
+                "--page-size",
+                "50",
+                "tables",
+                "list",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+            ],
+        )
+        mock_iceberg_api.list_tables.assert_called_once_with(
+            prefix="my-catalog", namespace="ns1", page_size=50, page_token=None
+        )
+
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
     def test_table_get(self, mock_iceberg_api_class: MagicMock) -> None:
         mock_client = self.build_mock_client()
         mock_iceberg_api = mock_iceberg_api_class.return_value

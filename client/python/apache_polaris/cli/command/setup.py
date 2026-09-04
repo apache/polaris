@@ -50,7 +50,11 @@ from apache_polaris.cli.command.catalog_roles import CatalogRolesCommand
 from apache_polaris.cli.command.namespaces import NamespacesCommand
 from apache_polaris.cli.command.privileges import PrivilegesCommand
 from apache_polaris.cli.command.policies import PoliciesCommand
-from apache_polaris.cli.command.utils import crawl_namespace, get_catalog_api_client
+from apache_polaris.cli.command.utils import (
+    crawl_namespace,
+    get_catalog_api_client,
+    paginate,
+)
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -71,6 +75,7 @@ class SetupCommand(Command):
     setup_subcommand: str
     setup_config: Optional[str] = None
     dry_run: bool = False
+    page_size: Optional[int] = None
     _config_cache: Optional[Dict[str, Any]] = None
     _existing_principal_roles: Optional[Set[str]] = None
     _existing_catalog_roles: Optional[Dict[str, Set[str]]] = None
@@ -488,6 +493,7 @@ class SetupCommand(Command):
                     f"Failed to export {label}"
                 ),
                 entity_type_filter=EntityType.NAMESPACE.value,
+                page_size=self.page_size,
             )
         )
 
@@ -1301,12 +1307,15 @@ class SetupCommand(Command):
                     and parent not in listed_parents
                 ):
                     try:
-                        sub_ns = catalog_api.list_namespaces(
-                            prefix=catalog_name, parent=UNIT_SEPARATOR.join(parent)
-                        ).namespaces
-                        for ns in sub_ns:
-                            existing_namespaces.add(tuple(ns))
-                            listed_parents.add(parent)
+                        for resp in paginate(
+                            catalog_api.list_namespaces,
+                            page_size=self.page_size,
+                            prefix=catalog_name,
+                            parent=UNIT_SEPARATOR.join(parent),
+                        ):
+                            for ns in resp.namespaces or []:
+                                existing_namespaces.add(tuple(ns))
+                                listed_parents.add(parent)
                     except Exception:
                         self._record_failure(
                             f"Failed to list sub-namespaces for '{parent_ns}'"

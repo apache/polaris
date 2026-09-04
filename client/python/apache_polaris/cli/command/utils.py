@@ -28,6 +28,29 @@ from apache_polaris.sdk.catalog.configuration import Configuration
 from apache_polaris.sdk.management import PolarisDefaultApi
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.cli.constants import UNIT_SEPARATOR, EntityType
+from apache_polaris.cli.exceptions import CliError
+
+
+def paginate(
+    list_function: Callable[..., Any], page_size: Optional[int] = None, **kwargs: Any
+) -> Generator[Any, None, None]:
+    """
+    Yield responses from a paginated list endpoint.
+
+    When page_size is None, a full response is fetched within a single request.
+    """
+    if page_size is not None and page_size < 1:
+        raise CliError(f"page-size must be a positive integer, got: {page_size}")
+    if page_size is None:
+        yield list_function(**kwargs)
+        return
+    page_token: Optional[str] = None
+    while True:
+        resp = list_function(page_size=page_size, page_token=page_token, **kwargs)
+        yield resp
+        page_token = getattr(resp, "next_page_token", None)
+        if not page_token:
+            return
 
 
 def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:
@@ -159,9 +182,10 @@ def crawl_namespace(
     start_ns: Optional[List[str]] = None,
     on_error: Optional[Callable[[str, Exception], None]] = None,
     entity_type_filter: Optional[str] = None,
+    page_size: Optional[int] = None,
 ) -> Generator[Tuple[EntityType, List[str]], None, None]:
     """
-    Iterator BFS to crawl namespaces into (type, path_list)
+    Iterator BFS to crawl namespaces into (type, path_list).
     """
     visited = set()
     queue: Deque[List[str]] = deque()
@@ -169,9 +193,13 @@ def crawl_namespace(
         queue.append(start_ns)
     else:
         try:
-            resp = catalog_api.list_namespaces(prefix=catalog_name)
-            for ns in resp.namespaces or []:
-                queue.append(ns)
+            for resp in paginate(
+                catalog_api.list_namespaces,
+                page_size=page_size,
+                prefix=catalog_name,
+            ):
+                for ns in resp.namespaces or []:
+                    queue.append(ns)
         except Exception as e:
             if on_error:
                 on_error(f"Root Namespace ({catalog_name})", e)
@@ -187,30 +215,45 @@ def crawl_namespace(
         # List tables
         if not entity_type_filter or entity_type_filter == EntityType.TABLE.value:
             try:
-                resp = catalog_api.list_tables(prefix=catalog_name, namespace=ns_str)
-                for table in resp.identifiers or []:
-                    # Ensure the listed table is in the same namespace
-                    if table.namespace == current_ns:
-                        yield EntityType.TABLE, table.namespace + [table.name]
+                for resp in paginate(
+                    catalog_api.list_tables,
+                    page_size=page_size,
+                    prefix=catalog_name,
+                    namespace=ns_str,
+                ):
+                    for table in resp.identifiers or []:
+                        # Ensure the listed table is in the same namespace
+                        if table.namespace == current_ns:
+                            yield EntityType.TABLE, table.namespace + [table.name]
             except Exception as e:
                 if on_error:
                     on_error(f"Tables in {catalog_name}.{ns_display}", e)
         # List views:
         if not entity_type_filter or entity_type_filter == EntityType.VIEW.value:
             try:
-                resp = catalog_api.list_views(prefix=catalog_name, namespace=ns_str)
-                for view in resp.identifiers or []:
-                    # Ensure the listed view is in the same namespace
-                    if view.namespace == current_ns:
-                        yield EntityType.VIEW, view.namespace + [view.name]
+                for resp in paginate(
+                    catalog_api.list_views,
+                    page_size=page_size,
+                    prefix=catalog_name,
+                    namespace=ns_str,
+                ):
+                    for view in resp.identifiers or []:
+                        # Ensure the listed view is in the same namespace
+                        if view.namespace == current_ns:
+                            yield EntityType.VIEW, view.namespace + [view.name]
             except Exception as e:
                 if on_error:
                     on_error(f"Views in {catalog_name}.{ns_display}", e)
         # List sub-namespaces
         try:
-            resp = catalog_api.list_namespaces(prefix=catalog_name, parent=ns_str)
-            for ns in resp.namespaces or []:
-                queue.append(ns)
+            for resp in paginate(
+                catalog_api.list_namespaces,
+                page_size=page_size,
+                prefix=catalog_name,
+                parent=ns_str,
+            ):
+                for ns in resp.namespaces or []:
+                    queue.append(ns)
         except Exception as e:
             if on_error:
                 on_error(f"Sub-namespaces of {catalog_name}.{ns_display}", e)
