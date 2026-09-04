@@ -36,6 +36,7 @@ import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,12 +56,15 @@ public class SigV4ConnectionCredentialVendorTest {
   private SigV4ConnectionCredentialVendor vendor;
   private StsClient mockStsClient;
   private ServiceIdentityProvider mockServiceIdentityProvider;
+  private UserSecretsManager mockSecretsManager;
   private AtomicReference<StsClientProvider.StsDestination> capturedDestination;
 
   @BeforeEach
   void setup() {
     mockStsClient = mock(StsClient.class);
     mockServiceIdentityProvider = Mockito.mock(ServiceIdentityProvider.class);
+    mockSecretsManager = Mockito.mock(UserSecretsManager.class);
+    when(mockSecretsManager.readSecret(any(SecretReference.class))).thenReturn("static-secret-key");
     capturedDestination = new AtomicReference<>();
 
     // Mock STS AssumeRole response
@@ -93,7 +97,8 @@ public class SigV4ConnectionCredentialVendorTest {
               capturedDestination.set(destination);
               return mockStsClient;
             },
-            mockServiceIdentityProvider);
+            mockServiceIdentityProvider,
+            mockSecretsManager);
   }
 
   @Test
@@ -238,6 +243,156 @@ public class SigV4ConnectionCredentialVendorTest {
     Mockito.verify(mockStsClient).assumeRole(requestCaptor.capture());
 
     Assertions.assertThat(requestCaptor.getValue().policy()).isEqualTo(customPolicy);
+  }
+
+  @Test
+  public void testStaticCredentialsBypassStsEntirely() {
+    // No role to assume and no STS to call, so the static keys are used for signing as-is.
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            null,
+            null,
+            null,
+            "example-region",
+            "custom-service",
+            null,
+            "static-access-key-id",
+            new SecretReference("urn:polaris-secret:test:my-realm:sigv4", Map.of()));
+
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
+
+    ConnectionCredentials credentials = vendor.getConnectionCredentials(connectionConfig);
+
+    // Long-lived keys: no session token, no expiry
+    Assertions.assertThat(credentials.credentials())
+        .containsEntry(
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "static-access-key-id")
+        .containsEntry(
+            CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(), "static-secret-key")
+        .hasSize(2);
+    Assertions.assertThat(credentials.expiresAt()).isEmpty();
+
+    Mockito.verifyNoInteractions(mockStsClient);
+    // No service identity needed either
+    Mockito.verifyNoInteractions(mockServiceIdentityProvider);
+  }
+
+  @Test
+  public void testRoleArnStillUsedWhenNoStaticCredentials() {
+    // The STS path must remain the behaviour when only a role is given
+    ServiceIdentityInfoDpo serviceIdentity =
+        new AwsIamServiceIdentityInfoDpo(
+            new SecretReference("urn:polaris-secret:test:my-realm:AWS_IAM", Map.of()));
+
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/customer-role",
+            null,
+            null,
+            "us-west-2",
+            "glue",
+            null,
+            null,
+            null);
+
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        createConnectionConfig(authParams, serviceIdentity);
+
+    ConnectionCredentials credentials = vendor.getConnectionCredentials(connectionConfig);
+
+    Assertions.assertThat(credentials.credentials())
+        .containsEntry(
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "assumed-access-key-id")
+        .hasSize(3);
+    Mockito.verify(mockStsClient).assumeRole(any(AssumeRoleRequest.class));
+  }
+
+  @Test
+  public void testRejectsNeitherRoleArnNorStaticCredentials() {
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, null, null, null, null, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("roleArn");
+  }
+
+  @Test
+  public void testRejectsAccessKeyIdWithoutSecret() {
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, "static-access-key-id", null, null, null, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("secretAccessKey");
+  }
+
+  @Test
+  public void testRejectsRoleArnTogetherWithStaticCredentials() {
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    "arn:aws:iam::123456789012:role/customer-role",
+                    "key-id",
+                    "secret",
+                    null,
+                    null,
+                    null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("mutually exclusive");
+  }
+
+  /**
+   * The persistence object is also the deserialization entry point, so it has to read back records
+   * written before these fields existed — including ones whose roleArn was persisted empty.
+   */
+  @Test
+  public void testDeserializationStaysLenient() {
+    Assertions.assertThatNoException()
+        .isThrownBy(
+            () ->
+                new SigV4AuthenticationParametersDpo(
+                    "", null, null, "us-west-2", "glue", null, null, null));
+  }
+
+  /** A blank string is not a credential; it must be treated the same as absent. */
+  @Test
+  public void testRejectsBlankStaticCredentials() {
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, "key-id", "", null, null, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("must be provided together");
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    "", "", "", null, null, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("roleArn");
+  }
+
+  /** roleSessionName, externalId and sessionPolicy only shape an STS request. */
+  @Test
+  public void testRejectsStsOnlyParametersWithStaticCredentials() {
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, "key-id", "secret", "a-session", null, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("role assumption only");
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, "key-id", "secret", null, "an-external-id", null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("role assumption only");
+    Assertions.assertThatThrownBy(
+            () ->
+                SigV4AuthenticationParametersDpo.validateAuthenticationParameters(
+                    null, "key-id", "secret", null, null, "{}"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("role assumption only");
   }
 
   @Test

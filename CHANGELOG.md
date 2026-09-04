@@ -74,6 +74,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- SigV4 catalog federation now accepts static credentials (`accessKeyId` / `secretAccessKey`) as an alternative to `roleArn`. This makes SigV4-compatible catalogs that are not AWS reachable, since they have no IAM role to assume and no AWS STS endpoint. The two forms are mutually exclusive, as are `roleSessionName` / `externalId` / `sessionPolicy`, which shape an STS request and are rejected alongside static credentials rather than silently ignored. The secret access key is offloaded to the configured secrets manager rather than stored on the catalog.
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
