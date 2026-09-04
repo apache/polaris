@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationPreConditions;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -76,15 +77,23 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
-   * Resolves authorization inputs using {@code resolveAll()} for backward compatibility.
+   * Resolves authorization inputs using {@code resolveSelections()} to resolve only the securables
+   * required for Ranger authorization.
    *
-   * <p>This scope is intentionally broad for now and will be narrowed in a future refactoring to
-   * resolve only the selections required by Ranger authorization.
+   * <p>Unlike {@code resolveAll()}, this avoids resolving the caller principal and principal roles,
+   * which are not needed by Ranger-based authorization and removes the need for synthetic principal
+   * entities for external principals.
    */
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
+    authzState
+        .getResolutionManifest()
+        .resolveSelections(
+            Set.of(
+                Resolvable.REFERENCE_CATALOG,
+                Resolvable.REQUESTED_PATHS,
+                Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
   }
 
   @Override
