@@ -56,10 +56,23 @@ public interface TokenBroker {
   /**
    * Decodes and verifies the token, then returns the associated {@link PolarisCredential}.
    *
-   * @return the credential for a valid Polaris-issued token, or {@code null} when the token was not
-   *     issued by Polaris (foreign tokens are left to other authentication mechanisms)
-   * @throws org.apache.iceberg.exceptions.NotAuthorizedException if the token is Polaris-issued but
-   *     invalid
+   * <p>Outcomes the caller relies on:
+   *
+   * <ul>
+   *   <li>{@code null} — the token is not recognized by this broker (for example it does not claim
+   *       to be Polaris-issued). In MIXED mode the authentication mechanism may delegate to other
+   *       mechanisms; otherwise authentication fails.
+   *   <li>a credential — the token is recognized and valid.
+   *   <li>{@link org.apache.iceberg.exceptions.NotAuthorizedException} — the token is recognized as
+   *       Polaris-issued but fails verification (invalid signature, claims, and so on). Callers
+   *       must not treat this as “not recognized”; it stops MIXED fallback.
+   *   <li>{@link org.apache.polaris.core.exceptions.PolarisServiceUnavailableException} — a
+   *       transient failure while verifying (for example metastore unavailable). Propagate so
+   *       clients see the shared HTTP 503 contract rather than an authentication failure.
+   * </ul>
+   *
+   * @return the credential for a valid token recognized by this broker, or {@code null} when the
+   *     token is not recognized
    */
   @Nullable PolarisCredential verify(String token);
 }
