@@ -103,6 +103,15 @@ for (sparkVersion in sparkVersions) {
     )
     if (first) {
       first = false
+      // Register the integration test module for the first scala version of each spark version,
+      // only if the integration directory exists (e.g., v4.0 has it, v3.5 does not).
+      val integrationDir = file("${polarisSparkDir}/v${sparkVersion}/integration")
+      if (integrationDir.exists()) {
+        polarisProject(
+          "polaris-spark-${sparkVersion}_${scalaVersion}-integration",
+          integrationDir,
+        )
+      }
     }
     // Skip all duplicated spark client projects while using IntelliJ IDE.
     // This is to avoid problems during dependency analysis and sync when
