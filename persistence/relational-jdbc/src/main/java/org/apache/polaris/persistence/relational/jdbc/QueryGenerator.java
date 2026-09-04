@@ -381,9 +381,8 @@ public class QueryGenerator {
    *
    * <p>Equality terms are generated for each prefix of the location in both slash-terminated and
    * non-slash-terminated forms so that ancestors stored with or without a trailing slash are both
-   * matched. Prefix terms that consist only of {@code /} characters (other than {@code ///}, the
-   * root of {@code file:} URIs) are skipped, as they are artifacts of scheme stripping, not
-   * meaningful storage locations.
+   * matched. The lone {@code /} prefix is skipped (not a meaningful storage location); {@code //}
+   * and {@code ///} are retained so scheme-root ancestors remain visible to the overlap check.
    *
    * @param realmId A realm to search within
    * @param schemaVersion The schema version of entities table to query
