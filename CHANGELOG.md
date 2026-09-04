@@ -148,6 +148,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   directly under an allowed location, at `s3://b1/ns`, and rejected it as a custom location even
   though the request asked for none. The namespace location is now compared against the
   catalog's `default-base-location`, which is what it is derived from.
+- JDBC optimized location-overlap queries no longer include the slash-only prefix term `/`, an artifact of stripping the URI scheme (e.g. `s3://bucket/path` → `//bucket/path`) that can never be a meaningful storage location. The scheme-root terms `//` and `///` are retained because custom namespace locations may live at a bare scheme root (e.g. `s3://`) and are valid ancestors of locations below them.
 
 ### Commits
 

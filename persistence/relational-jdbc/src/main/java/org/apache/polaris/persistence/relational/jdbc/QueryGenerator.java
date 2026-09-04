@@ -381,7 +381,8 @@ public class QueryGenerator {
    *
    * <p>Equality terms are generated for each prefix of the location in both slash-terminated and
    * non-slash-terminated forms so that ancestors stored with or without a trailing slash are both
-   * matched.
+   * matched. The lone {@code /} prefix is skipped (not a meaningful storage location); {@code //}
+   * and {@code ///} are retained so scheme-root ancestors remain visible to the overlap check.
    *
    * @param realmId A realm to search within
    * @param schemaVersion The schema version of entities table to query
@@ -418,6 +419,13 @@ public class QueryGenerator {
     prefixTerms.add(normalizedLocation + "/");
 
     for (String prefix : prefixTerms) {
+      // Skip only "/", which can never be a meaningful storage location. "//" is kept: in
+      // ALLOW_NAMESPACE_CUSTOM_LOCATION mode a namespace location may be a bare scheme root like
+      // s3:// (persisted as "//"), and it is a valid ancestor of locations below it. "///" (the
+      // root of file: URIs) is kept for the same reason.
+      if ("/".equals(prefix)) {
+        continue;
+      }
       conditions.add("location_without_scheme = ?");
       parameters.add(prefix);
     }
@@ -427,7 +435,6 @@ public class QueryGenerator {
     // //bucket/ns/tA_backup).
     conditions.add("location_without_scheme LIKE ?");
     parameters.add(StorageLocation.ensureTrailingSlash(locationWithoutScheme) + "%");
-
     String locationClause = String.join(" OR ", conditions);
     String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";
 
@@ -445,5 +452,10 @@ public class QueryGenerator {
             where.sql(),
             null);
     return new PreparedQuery(query.sql(), where.parameters());
+  }
+
+  static String getFullyQualifiedTableName(String tableName) {
+    // TODO: make schema name configurable.
+    return "POLARIS_SCHEMA." + tableName;
   }
 }
