@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.service.catalog.io;
 
+import com.google.common.collect.Iterables;
 import java.util.Map;
-import java.util.stream.StreamSupport;
 import org.apache.iceberg.io.BulkDeletionFailureException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
@@ -117,11 +117,7 @@ public class WasbTranslatingFileIO implements FileIO {
 
     @Override
     public void deleteFiles(Iterable<String> paths) throws BulkDeletionFailureException {
-      bulkIo.deleteFiles(
-          () ->
-              StreamSupport.stream(paths.spliterator(), false)
-                  .map(WasbTranslatingFileIO::translate)
-                  .iterator());
+      bulkIo.deleteFiles(Iterables.transform(paths, WasbTranslatingFileIO::translate));
     }
   }
 }
