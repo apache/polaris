@@ -72,26 +72,31 @@ EXCLUDE_EXTENSIONS = [
 logger = logging.getLogger(__name__)
 
 
+COMMON_GENERATOR_ARGS = [
+    "--skip-validate-spec",
+    "--ignore-file-override",
+    str(OPEN_API_GENERATOR_IGNORE),
+    "--global-property=apiDocs=false,modelDocs=false,modelTests=false,apiTests=false",
+    "--additional-properties=generateSourceCodeOnly=true",
+    PYTHON_VERSION,
+]
+
+
 def generate_polaris_management_client() -> None:
     subprocess.check_call(
         [
             "openapi-generator-cli",
             "generate",
             "-i",
-            POLARIS_MANAGEMENT_SPEC,
+            str(POLARIS_MANAGEMENT_SPEC),
             "-g",
             "python",
             "-o",
             str(CLIENT_DIR),
             PACKAGE_NAME_POLARIS_MANAGEMENT,
             "--additional-properties=apiNamePrefix=polaris",
-            PYTHON_VERSION,
-            "--additional-properties=generateSourceCodeOnly=true",
-            "--skip-validate-spec",
-            "--ignore-file-override",
-            OPEN_API_GENERATOR_IGNORE,
-            "--global-property=apiDocs=false,modelDocs=false,modelTests=false,apiTests=false",
-        ],
+        ]
+        + COMMON_GENERATOR_ARGS,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -103,20 +108,15 @@ def generate_polaris_catalog_client() -> None:
             "openapi-generator-cli",
             "generate",
             "-i",
-            POLARIS_CATALOG_SPEC,
+            str(POLARIS_CATALOG_SPEC),
             "-g",
             "python",
             "-o",
             str(CLIENT_DIR),
             PACKAGE_NAME_POLARIS_CATALOG,
             "--additional-properties=apiNameSuffix=",
-            PYTHON_VERSION,
-            "--additional-properties=generateSourceCodeOnly=true",
-            "--skip-validate-spec",
-            "--ignore-file-override",
-            OPEN_API_GENERATOR_IGNORE,
-            "--global-property=apiDocs=false,modelDocs=false,modelTests=false,apiTests=false",
-        ],
+        ]
+        + COMMON_GENERATOR_ARGS,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -128,7 +128,7 @@ def generate_iceberg_catalog_client() -> None:
             "openapi-generator-cli",
             "generate",
             "-i",
-            ICEBERG_CATALOG_SPEC,
+            str(ICEBERG_CATALOG_SPEC),
             "-g",
             "python",
             "-o",
@@ -136,13 +136,8 @@ def generate_iceberg_catalog_client() -> None:
             PACKAGE_NAME_POLARIS_CATALOG,
             "--additional-properties=apiNameSuffix=",
             "--additional-properties=apiNamePrefix=Iceberg",
-            PYTHON_VERSION,
-            "--additional-properties=generateSourceCodeOnly=true",
-            "--skip-validate-spec",
-            "--ignore-file-override",
-            OPEN_API_GENERATOR_IGNORE,
-            "--global-property=apiDocs=false,modelDocs=false,modelTests=false,apiTests=false",
-        ],
+        ]
+        + COMMON_GENERATOR_ARGS,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -251,6 +246,7 @@ def build() -> None:
     generate_polaris_catalog_client()
     generate_iceberg_catalog_client()
     fix_catalog_models_init()
+    fix_literal_typing_conflict()
     prepend_licenses()
 
 
@@ -295,6 +291,33 @@ def fix_catalog_models_init() -> None:
     with open(init_py, "w") as f:
         f.write("\n".join(sorted(imports)))
     logger.info("Catalog models __init__.py fixed.")
+
+
+def fix_literal_typing_conflict() -> None:
+    """
+    Fix a naming conflict in generated OneOf wrapper files where both the model class
+    `Literal` (from apache_polaris.sdk.catalog.models.literal) and `typing_extensions.Literal`
+    are imported, causing `typing_extensions.Literal` to shadow the model class.  The
+    `typing_extensions.Literal` type is never used as a bare annotation in these OneOf files
+    (it would need arguments, e.g. Literal["foo"]), so removing it from the import is safe.
+    """
+    logger.info("Fixing Literal typing conflict in generated files...")
+    models_dir = CLIENT_DIR / "apache_polaris" / "sdk" / "catalog" / "models"
+    conflict_model_import = (
+        "from apache_polaris.sdk.catalog.models.literal import Literal"
+    )
+    for py_file in models_dir.glob("*.py"):
+        content = py_file.read_text()
+        if conflict_model_import not in content:
+            continue
+        new_content = content.replace(
+            "from typing_extensions import Literal, Self",
+            "from typing_extensions import Self",
+        )
+        if new_content != content:
+            py_file.write_text(new_content)
+            logger.info(f"Fixed Literal conflict in {py_file.name}")
+    logger.info("Literal typing conflict fix complete.")
 
 
 def main() -> None:

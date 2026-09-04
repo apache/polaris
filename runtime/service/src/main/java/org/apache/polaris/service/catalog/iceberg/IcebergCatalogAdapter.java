@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -264,25 +265,19 @@ public class IcebergCatalogAdapter
         catalog -> Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest)).build());
   }
 
-  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
-    // Parse the access delegation modes - validation will happen after mode resolution
-    // in IcebergCatalogHandler.resolveAccessDelegationModes()
-    return AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
-  }
-
   @Override
   public Response createTable(
       String prefix,
       String namespace,
       CreateTableRequest createTableRequest,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     createTableRequest.validate();
     validateIcebergProperties(realmConfig, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+        AccessDelegationMode.fromProtocolValuesList(accessDelegationModes);
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, createTableRequest.name()));
@@ -332,14 +327,14 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String table,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       String ifNoneMatchString,
       String snapshots,
       String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+        AccessDelegationMode.fromProtocolValuesList(accessDelegationModes);
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
@@ -431,7 +426,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       RegisterTableRequest registerTableRequest,
-      String accessDelegationMode,
+      List<String> accessDelegationModes,
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -441,7 +436,7 @@ public class IcebergCatalogAdapter
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, registerTableRequest.name());
     EntityNameValidator.validateIdentifier(tableIdentifier);
     EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+        AccessDelegationMode.fromProtocolValuesList(accessDelegationModes);
     return withCatalog(
         securityContext,
         prefix,

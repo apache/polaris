@@ -118,8 +118,8 @@ public final class EventAttributes {
   // Used internally only. Not for external usage.
   public static final AttributeKey<List<TableMetadata>> TABLE_METADATAS =
       new AttributeKey<>("table_metadatas");
-  public static final AttributeKey<String> ACCESS_DELEGATION_MODE =
-      new AttributeKey<>("access_delegation_mode");
+  public static final AttributeKey<List<String>> ACCESS_DELEGATION_MODES =
+      new AttributeKey<>("access_delegation_modes");
   public static final AttributeKey<String> IF_NONE_MATCH_STRING =
       new AttributeKey<>("if_none_match_string");
   public static final AttributeKey<String> SNAPSHOTS = new AttributeKey<>("snapshots");
