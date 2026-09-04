@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -38,7 +37,6 @@ import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -55,9 +53,6 @@ import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
 import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
@@ -177,72 +172,18 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
           queryOpa(
               buildOpaAuthorizationInput(request.principal(), operation, targets, secondaries));
       if (!allowed) {
-        return AuthorizationDecision.deny(
-            "OPA denied authorization for principal="
-                + request.principal().getName()
-                + " operation="
-                + operation);
+        LOGGER.debug(
+            "OPA denied authorization for principal={} operation={} targets={} secondaries={} realm={} requestId={}",
+            request.principal().getName(),
+            operation,
+            targets,
+            secondaries,
+            realm,
+            requestId);
+        return AuthorizationDecision.deny("OPA denied authorization");
       }
     }
     return AuthorizationDecision.allow();
-  }
-
-  /**
-   * Authorizes a single target and secondary entity for the given principal and operation.
-   *
-   * <p>Delegates to the multi-target version for consistency.
-   *
-   * @param polarisPrincipal the principal requesting authorization
-   * @param activatedEntities the set of activated entities (roles, etc.)
-   * @param authzOp the operation to authorize
-   * @param target the main target entity
-   * @param secondary the secondary entity (if any)
-   * @throws ForbiddenException if authorization is denied by OPA
-   */
-  @Override
-  public void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary) {
-    authorizeOrThrow(
-        polarisPrincipal,
-        activatedEntities,
-        authzOp,
-        target == null ? null : List.of(target),
-        secondary == null ? null : List.of(secondary));
-  }
-
-  /**
-   * Authorizes one or more target and secondary entities for the given principal and operation.
-   *
-   * <p>Sends the authorization context to OPA and throws if not allowed.
-   *
-   * @param polarisPrincipal the principal requesting authorization
-   * @param activatedEntities the set of activated entities (roles, etc.)
-   * @param authzOp the operation to authorize
-   * @param targets the list of main target entities
-   * @param secondaries the list of secondary entities (if any)
-   * @throws ForbiddenException if authorization is denied by OPA
-   */
-  @Override
-  public void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries) {
-    boolean allowed =
-        queryOpa(
-            buildOpaAuthorizationInput(
-                polarisPrincipal,
-                authzOp,
-                toResourceEntitiesFromResolvedPaths(targets),
-                toResourceEntitiesFromResolvedPaths(secondaries)));
-    if (!allowed) {
-      throw new ForbiddenException("OPA denied authorization");
-    }
   }
 
   /**
@@ -379,47 +320,6 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     }
     builder.parents(parents);
     return builder.build();
-  }
-
-  private ResourceEntity buildResourceEntity(PolarisResolvedPathWrapper path) {
-    // Currently, authorizeOrThrow still evaluate through resolved paths, including
-    // root-scoped operations that may surface a resolved ROOT leaf. Preserve that legacy
-    // behavior for compatibility until those callers migrate to the intent-based flow.
-    ResolvedPolarisEntity resolvedLeaf = path.getResolvedLeafEntity();
-    PathSegment leaf =
-        new PathSegment(resolvedLeaf.getEntity().getType(), resolvedLeaf.getEntity().getName());
-    List<ResourceEntity> parents = new ArrayList<>();
-    List<ResolvedPolarisEntity> resolvedParents = path.getResolvedParentPath();
-    if (resolvedParents != null) {
-      for (ResolvedPolarisEntity resolvedParent : resolvedParents) {
-        parents.add(
-            ImmutableResourceEntity.builder()
-                .type(resolvedParent.getEntity().getType().name())
-                .name(resolvedParent.getEntity().getName())
-                .build());
-      }
-    }
-    return ImmutableResourceEntity.builder()
-        .type(leaf.entityType().name())
-        .name(leaf.name())
-        .parents(parents)
-        .build();
-  }
-
-  @NonNull
-  private List<ResourceEntity> toResourceEntitiesFromResolvedPaths(
-      @Nullable List<PolarisResolvedPathWrapper> paths) {
-    if (paths == null || paths.isEmpty()) {
-      return List.of();
-    }
-
-    List<ResourceEntity> entities = new ArrayList<>();
-    for (PolarisResolvedPathWrapper path : paths) {
-      if (path != null && path.getResolvedLeafEntity() != null) {
-        entities.add(buildResourceEntity(path));
-      }
-    }
-    return entities;
   }
 
   private List<ResourceEntity> toResourceEntitiesFromSecurable(

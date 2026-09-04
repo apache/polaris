@@ -935,18 +935,20 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation write =
         PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 
-    resolveBasicTableLikeTargetOrThrow(write, tableIdentifier);
+    ensureResolutionManifestForTable(tableIdentifier);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    resolveBasicTableLikeTargetOrThrow(authorizationState, write, tableIdentifier);
 
     Set<PolarisStorageActions> actionsRequested =
         new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
     try {
       authorizeResolvedBasicTableLikeOperationOrThrow(
-          write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+          authorizationState, write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
       // Reuse the already-resolved table view for the read-delegation fallback.
       authorizeResolvedBasicTableLikeOperationOrThrow(
-          read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+          authorizationState, read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
     return actionsRequested;
@@ -986,40 +988,98 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               PolarisEntityType.TABLE_LIKE,
               true /* optional */));
 
-      // Resolve once for the shared table target before auth fallback. Today resolution depends on
-      // the principal and target, not the register-table operation, so either delegation op is
-      // sufficient for building the manifest.
       AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-      authorizer()
-          .resolveAuthorizationInputs(
-              authorizationState,
-              new AuthorizationRequest(
-                  polarisPrincipal(),
-                  List.of(
-                      new SingleTargetAuthorizationIntent(
-                          PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
-                          PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier)))));
 
-      try {
-        if (overwrite) {
+      if (overwrite) {
+        AuthorizationRequest writeOverwriteRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+                        PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier))));
+        AuthorizationRequest writeFallbackRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+                        PolarisSecurableMapper.namespace(
+                            catalogName(), tableIdentifier.namespace()))));
+        AuthorizationRequest readOverwriteRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+                        PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier))));
+        AuthorizationRequest readFallbackRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+                        PolarisSecurableMapper.namespace(
+                            catalogName(), tableIdentifier.namespace()))));
+
+        // Resolve every write/read and overwrite/fallback intent that may be authorized from this
+        // shared AuthorizationState. A request-selective authorizer may use the operation, not just
+        // the target securable, to decide what inputs to resolve.
+        authorizer()
+            .resolveAuthorizationInputs(
+                authorizationState,
+                new AuthorizationRequest(
+                    polarisPrincipal(),
+                    List.of(
+                        writeOverwriteRequest.intents().getFirst(),
+                        writeFallbackRequest.intents().getFirst(),
+                        readOverwriteRequest.intents().getFirst(),
+                        readFallbackRequest.intents().getFirst())));
+
+        try {
           authorizeResolvedRegisterTableOverwriteOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
-              tableIdentifier);
-        } else {
-          authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION, tableIdentifier);
+              authorizationState, writeOverwriteRequest, writeFallbackRequest, tableIdentifier);
+          actionsRequested.add(PolarisStorageActions.WRITE);
+        } catch (ForbiddenException e) {
+          authorizeResolvedRegisterTableOverwriteOrThrow(
+              authorizationState, readOverwriteRequest, readFallbackRequest, tableIdentifier);
         }
-        actionsRequested.add(PolarisStorageActions.WRITE);
-      } catch (ForbiddenException e) {
-        if (overwrite) {
-          authorizeResolvedRegisterTableOverwriteOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
-              tableIdentifier);
-        } else {
+      } else {
+        AuthorizationRequest writeCreateRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+                        PolarisSecurableMapper.namespace(
+                            catalogName(), tableIdentifier.namespace()))));
+        AuthorizationRequest readCreateRequest =
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION,
+                        PolarisSecurableMapper.namespace(
+                            catalogName(), tableIdentifier.namespace()))));
+
+        // Resolve both delegation intents before authorization so the read fallback can reuse the
+        // same AuthorizationState without assuming operation-independent resolution.
+        authorizer()
+            .resolveAuthorizationInputs(
+                authorizationState,
+                new AuthorizationRequest(
+                    polarisPrincipal(),
+                    List.of(
+                        writeCreateRequest.intents().getFirst(),
+                        readCreateRequest.intents().getFirst())));
+
+        try {
           authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
-              PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION, tableIdentifier);
+              authorizationState, writeCreateRequest, tableIdentifier);
+          actionsRequested.add(PolarisStorageActions.WRITE);
+        } catch (ForbiddenException e) {
+          authorizeResolvedCreateTableLikeUnderNamespaceOperationOrThrow(
+              authorizationState, readCreateRequest, tableIdentifier);
         }
       }
 
@@ -1230,7 +1290,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         getUpdateTableAuthorizableOperations(request, getResolvedCatalogEntity());
 
     authorizeBasicTableLikeOperationsOrThrow(
-        authorizableOperations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+        authorizationState,
+        authorizableOperations,
+        PolarisEntitySubType.ICEBERG_TABLE,
+        tableIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {

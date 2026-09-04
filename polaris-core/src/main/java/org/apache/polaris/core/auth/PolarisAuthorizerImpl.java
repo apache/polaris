@@ -137,6 +137,7 @@ import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -834,7 +835,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       } else {
         throw new IllegalStateException("Unsupported authorization intent: " + intent.getClass());
       }
-      authorizeOrThrow(
+      authorizeRbacOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
           intent.getOperation(),
@@ -856,13 +857,15 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       PolarisSecurable securable,
       boolean prependRootContainer) {
     PolarisResolvedPathWrapper resolvedSecurable =
-        securable.getLeaf().entityType().isTopLevel()
-            ? resolutionManifest.getResolvedTopLevelEntity(
-                securable.getLeaf().name(), securable.getLeaf().entityType())
-            : resolutionManifest.getResolvedPath(
-                ResolvedPathKey.of(
-                    getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
-                prependRootContainer);
+        securable.getLeaf().entityType() == PolarisEntityType.CATALOG
+            ? resolutionManifest.getResolvedReferenceCatalogEntity(prependRootContainer)
+            : securable.getLeaf().entityType().isTopLevel()
+                ? resolutionManifest.getResolvedTopLevelEntity(
+                    securable.getLeaf().name(), securable.getLeaf().entityType())
+                : resolutionManifest.getResolvedPath(
+                    ResolvedPathKey.of(
+                        getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
+                    prependRootContainer);
     Preconditions.checkState(
         resolvedSecurable != null,
         "Resolved path for securable is null for entityType=%s leaf=%s parents=%s",
@@ -876,9 +879,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     // Resolver path keys are scoped within the reference catalog, so the explicit catalog
     // path segment is omitted from the PolarisSecurable path before lookup.
     return securable.getPathSegments().stream()
-        .filter(
-            segment ->
-                segment.entityType() != org.apache.polaris.core.entity.PolarisEntityType.CATALOG)
+        .filter(segment -> segment.entityType() != PolarisEntityType.CATALOG)
         .map(PathSegment::name)
         .toList();
   }
@@ -902,23 +903,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     return false;
   }
 
-  @Override
-  public void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary) {
-    authorizeOrThrow(
-        polarisPrincipal,
-        activatedEntities,
-        authzOp,
-        target == null ? null : List.of(target),
-        secondary == null ? null : List.of(secondary));
-  }
-
-  @Override
-  public void authorizeOrThrow(
+  private void authorizeRbacOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
       @NonNull PolarisAuthorizableOperation authzOp,
@@ -986,9 +971,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   /**
    * Collects every required privilege the caller is missing for the operation, without
-   * short-circuiting on the first failure. Used both by {@link #isAuthorized} (which only inspects
-   * emptiness) and by {@link #authorizeOrThrow} to log the specific missing privileges and the
-   * entities they were checked against (client-facing messages stay generic).
+   * short-circuiting on the first failure. Used by authorization checks to log the specific missing
+   * privileges and the entities they were checked against (client-facing messages stay generic).
    *
    * <p>The returned list groups target-side failures before secondary-side failures. Iteration
    * order within each group follows {@link RbacOperationSemantics#targetPrivileges()} and {@link
