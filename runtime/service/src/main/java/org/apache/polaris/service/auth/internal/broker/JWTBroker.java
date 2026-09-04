@@ -22,6 +22,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.google.common.annotations.VisibleForTesting;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -29,13 +30,16 @@ import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.DefaultAuthenticator;
 import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.apache.polaris.service.types.TokenType;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +52,15 @@ public class JWTBroker implements TokenBroker {
   private static final String CLAIM_KEY_CLIENT_ID = "client_id";
   private static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
   private static final String CLAIM_KEY_SCOPE = "scope";
+
+  /**
+   * Credentials-generation fingerprint carried on newly minted tokens (see {@link
+   * PolarisPrincipalSecrets#getCredentialsVersion()}). When secrets are rotated or reset, the
+   * version changes and tokens carrying a prior value are rejected on <em>token exchange</em> only.
+   * Bearer verify checks only the JWT signature and claims, so those tokens remain usable as
+   * bearers until JWT expiry. The claim name is collision-resistant per RFC 7519.
+   */
+  @VisibleForTesting static final String CLAIM_KEY_CREDENTIALS_VERSION = "polaris-cv";
 
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisCallContext polarisCallContext;
@@ -78,21 +91,50 @@ public class JWTBroker implements TokenBroker {
 
   @Override
   public PolarisCredential verify(String token) {
-    return verifyInternal(token);
+    return verifyInternal(token).token();
   }
 
-  private InternalPolarisToken verifyInternal(String token) {
+  private VerifiedToken verifyInternal(String token) {
+    // Bearer verify is signature + claims only — no metastore IO. Credential-generation binding is
+    // enforced on the token-exchange path. Token construction stays inside the try: a well-signed
+    // token that misses a mandatory claim must not surface as a raw NPE.
+    final DecodedJWT decodedJWT;
+    final InternalPolarisToken internalToken;
     try {
-      DecodedJWT decodedJWT = verifier.verify(token);
-      return InternalPolarisToken.of(
-          decodedJWT.getSubject(),
-          decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
-          decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString(),
-          decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString());
-
+      decodedJWT = verifier.verify(token);
+      internalToken =
+          InternalPolarisToken.of(
+              decodedJWT.getSubject(),
+              decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
+              decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString(),
+              decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString());
     } catch (Exception e) {
       throw (NotAuthorizedException)
           new NotAuthorizedException("Failed to verify the token").initCause(e);
+    }
+    String credentialsVersion = decodedJWT.getClaim(CLAIM_KEY_CREDENTIALS_VERSION).asString();
+    return new VerifiedToken(internalToken, credentialsVersion);
+  }
+
+  /**
+   * Loads principal secrets and rejects a credentials-generation claim that is no longer current.
+   * Accepts the main or secondary generation fingerprint so dual-secret rotate grace matches
+   * client-secret matching. Used only on the token-exchange path.
+   */
+  private void requireCredentialsVersionCurrent(String clientId, String credentialsVersion) {
+    final PrincipalSecretsResult secretsResult;
+    try {
+      secretsResult = metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
+    } catch (RuntimeException e) {
+      // Transient backend failure must not look like bad credentials.
+      LOGGER.error("Unable to load principal secrets during token exchange", e);
+      throw new PolarisServiceUnavailableException(0, "Service unavailable");
+    }
+    if (!secretsResult.isSuccess() || secretsResult.getPrincipalSecrets() == null) {
+      throw new NotAuthorizedException("Failed to verify the token");
+    }
+    if (!secretsResult.getPrincipalSecrets().matchesCredentialsVersion(credentialsVersion)) {
+      throw new NotAuthorizedException("Failed to verify the token");
     }
   }
 
@@ -112,13 +154,28 @@ public class JWTBroker implements TokenBroker {
     if (subjectToken == null || subjectToken.isBlank()) {
       return TokenResponse.of(OAuthError.invalid_request);
     }
-    InternalPolarisToken decodedToken;
+    VerifiedToken verified;
     try {
-      decodedToken = verifyInternal(subjectToken);
+      verified = verifyInternal(subjectToken);
     } catch (NotAuthorizedException e) {
       LOGGER.error("Failed to verify the token", e.getCause());
       return TokenResponse.of(OAuthError.invalid_client);
     }
+    // Claim-less (pre-binding) tokens may still be used as bearer tokens until they expire, but
+    // exchange must not re-mint them onto the current credentials generation with a fresh
+    // lifetime; per RFC 6749 section 5.2 the subject grant is invalid in that case.
+    String credentialsVersion = verified.subjectCredentialsVersion();
+    if (credentialsVersion == null) {
+      return TokenResponse.of(OAuthError.invalid_grant);
+    }
+    try {
+      // Credential-generation binding is enforced only here (not on bearer verify).
+      requireCredentialsVersionCurrent(verified.token().getClientId(), credentialsVersion);
+    } catch (NotAuthorizedException e) {
+      LOGGER.error("Failed to validate credentials generation for token exchange", e.getCause());
+      return TokenResponse.of(OAuthError.invalid_client);
+    }
+    InternalPolarisToken decodedToken = verified.token();
     Optional<PrincipalEntity> principalLookup =
         metaStoreManager.findPrincipalById(polarisCallContext, decodedToken.getPrincipalId());
     if (principalLookup.isEmpty()) {
@@ -138,12 +195,15 @@ public class JWTBroker implements TokenBroker {
       }
       tokenScope = scope;
     }
+    // Preserve the subject token's credentials generation on the re-minted token so later exchanges
+    // keep checking the same generation fingerprint.
     String tokenString =
         generateTokenString(
             decodedToken.getPrincipalName(),
             decodedToken.getPrincipalId(),
             decodedToken.getClientId(),
-            tokenScope);
+            tokenScope,
+            credentialsVersion);
     return TokenResponse.of(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }
@@ -163,30 +223,43 @@ public class JWTBroker implements TokenBroker {
       return TokenResponse.of(initialValidationResponse.get());
     }
 
-    Optional<PrincipalEntity> principal = findPrincipalEntity(clientId, clientSecret);
-    if (principal.isEmpty()) {
+    Optional<AuthenticatedPrincipal> authenticated =
+        authenticateWithClientSecrets(clientId, clientSecret);
+    if (authenticated.isEmpty()) {
       return TokenResponse.of(OAuthError.unauthorized_client);
     }
+    AuthenticatedPrincipal principal = authenticated.get();
     String tokenString =
-        generateTokenString(principal.get().getName(), principal.get().getId(), clientId, scope);
+        generateTokenString(
+            principal.entity().getName(),
+            principal.entity().getId(),
+            clientId,
+            scope,
+            principal.credentialsVersion());
     return TokenResponse.of(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }
 
   private String generateTokenString(
-      String principalName, long principalId, String clientId, String scope) {
+      String principalName,
+      long principalId,
+      String clientId,
+      String scope,
+      String credentialsVersion) {
     Instant now = Instant.now();
-    return JWT.create()
-        .withIssuer(ISSUER_KEY)
-        .withSubject(principalName)
-        .withIssuedAt(now)
-        .withExpiresAt(now.plus(maxTokenGenerationInSeconds, ChronoUnit.SECONDS))
-        .withJWTId(UUID.randomUUID().toString())
-        .withClaim(CLAIM_KEY_ACTIVE, true)
-        .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
-        .withClaim(CLAIM_KEY_PRINCIPAL_ID, principalId)
-        .withClaim(CLAIM_KEY_SCOPE, scopes(scope))
-        .sign(algorithm);
+    var builder =
+        JWT.create()
+            .withIssuer(ISSUER_KEY)
+            .withSubject(principalName)
+            .withIssuedAt(now)
+            .withExpiresAt(now.plus(maxTokenGenerationInSeconds, ChronoUnit.SECONDS))
+            .withJWTId(UUID.randomUUID().toString())
+            .withClaim(CLAIM_KEY_ACTIVE, true)
+            .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
+            .withClaim(CLAIM_KEY_PRINCIPAL_ID, principalId)
+            .withClaim(CLAIM_KEY_SCOPE, scopes(scope))
+            .withClaim(CLAIM_KEY_CREDENTIALS_VERSION, credentialsVersion);
+    return builder.sign(algorithm);
   }
 
   @Override
@@ -203,17 +276,32 @@ public class JWTBroker implements TokenBroker {
     return scope == null || scope.isBlank() ? DefaultAuthenticator.PRINCIPAL_ROLE_ALL : scope;
   }
 
-  private Optional<PrincipalEntity> findPrincipalEntity(String clientId, String clientSecret) {
-    // Validate the principal is present and secrets match
+  private Optional<AuthenticatedPrincipal> authenticateWithClientSecrets(
+      String clientId, String clientSecret) {
     PrincipalSecretsResult principalSecrets =
         metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
-    if (!principalSecrets.isSuccess()) {
+    if (!principalSecrets.isSuccess() || principalSecrets.getPrincipalSecrets() == null) {
       return Optional.empty();
     }
-    if (!principalSecrets.getPrincipalSecrets().matchesSecret(clientSecret)) {
+    PolarisPrincipalSecrets secrets = principalSecrets.getPrincipalSecrets();
+    // Bind the token to the generation of the secret that actually matched, so a token minted
+    // with the secondary (pre-rotation) secret expires with that generation.
+    Optional<String> credentialsVersion = secrets.getCredentialsVersionForSecret(clientSecret);
+    if (credentialsVersion.isEmpty()) {
       return Optional.empty();
     }
-    return metaStoreManager.findPrincipalById(
-        polarisCallContext, principalSecrets.getPrincipalSecrets().getPrincipalId());
+    Optional<PrincipalEntity> principal =
+        metaStoreManager.findPrincipalById(polarisCallContext, secrets.getPrincipalId());
+    return principal.map(p -> new AuthenticatedPrincipal(p, credentialsVersion.get()));
   }
+
+  private record AuthenticatedPrincipal(PrincipalEntity entity, String credentialsVersion) {}
+
+  /**
+   * Result of JWT verification (signature + claims only). {@code subjectCredentialsVersion} is the
+   * token's credentials-generation claim, or {@code null} for legacy tokens without it. Binding is
+   * enforced later on the exchange path.
+   */
+  private record VerifiedToken(
+      InternalPolarisToken token, @Nullable String subjectCredentialsVersion) {}
 }

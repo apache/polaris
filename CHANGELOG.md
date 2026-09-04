@@ -71,6 +71,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   and a subsequent `bootstrap` would create a second, empty set of tables in the other schema.
   Either remove the setting from the URL, or point it at the schema that already holds your
   Polaris tables.
+- Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
 
 ### New Features
 
@@ -148,6 +149,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   directly under an allowed location, at `s3://b1/ns`, and rejected it as a custom location even
   though the request asked for none. The namespace location is now compared against the
   catalog's `default-base-location`, which is what it is derived from.
+- Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the
+  token). Credential-generation is enforced on token exchange; bearer verify is signature and claims
+  only. Secrets-load failures during exchange return service unavailable.
 
 ### Commits
 
