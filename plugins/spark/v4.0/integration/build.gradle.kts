@@ -23,6 +23,8 @@ plugins {
   id("polaris-runtime")
 }
 
+import org.gradle.api.plugins.jvm.JvmTestSuite
+
 // get version information
 val sparkMajorVersion = "4.0"
 val scalaVersion = getAndUseScalaVersionForProject()
@@ -187,7 +189,7 @@ tasks.named<Test>("intTest").configure {
 // Bundle-jar sanity test
 testing {
   suites {
-    register("sparkBundleTest") {
+    register<JvmTestSuite>("sparkBundleTest") {
       useJUnitJupiter()
       dependencies {
         implementation(platform(libs.quarkus.bom)) {
