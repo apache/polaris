@@ -72,8 +72,37 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
       @NonNull List<LocationGrant> grants,
       @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
-    StorageCredentialCacheKey key = buildCacheKey(grants, refreshEndpoint, context);
-    return cache != null ? cache.getOrLoad(key) : key.load();
+    StorageCredentialCacheKey key = buildCacheKey(grants, Optional.empty(), context);
+    StorageAccessConfig accessConfig = cache != null ? cache.getOrLoad(key) : key.load();
+    return withRefreshEndpoint(accessConfig, refreshEndpoint);
+  }
+
+  private StorageAccessConfig withRefreshEndpoint(
+      StorageAccessConfig accessConfig, Optional<String> refreshEndpoint) {
+    if (refreshEndpoint.isEmpty()) {
+      return accessConfig;
+    }
+
+    StorageAccessProperty refreshEndpointProperty =
+        switch (storageConfig.getStorageType()) {
+          case S3 -> StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT;
+          case GCS -> StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT;
+          case AZURE -> StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT;
+          case FILE -> null;
+        };
+    if (refreshEndpointProperty == null) {
+      return accessConfig;
+    }
+
+    StorageAccessConfig.Builder builder =
+        StorageAccessConfig.builder()
+            .supportsCredentialVending(accessConfig.supportsCredentialVending());
+    accessConfig.credentials().forEach(builder::putCredential);
+    accessConfig.extraProperties().forEach(builder::putExtraProperty);
+    accessConfig.internalProperties().forEach(builder::putInternalProperty);
+    accessConfig.expiresAt().ifPresent(builder::expiresAt);
+    builder.put(refreshEndpointProperty, refreshEndpoint.orElseThrow());
+    return builder.build();
   }
 
   /**
