@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.PersistenceMutation;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -151,6 +152,13 @@ public interface TransactionalPersistence
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#writeToGrantRecords} */
   void writeToGrantRecordsInCurrentTxn(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec);
+
+  /**
+   * Apply {@link org.apache.polaris.core.persistence.BasePersistence#commitChangeSet} inside the
+   * already-open transaction. The caller owns the transaction boundary.
+   */
+  void commitChangeSetInCurrentTxn(
+      @NonNull PolarisCallContext callCtx, @NonNull List<PersistenceMutation> mutations);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#deleteEntity} */
   void deleteEntityInCurrentTxn(

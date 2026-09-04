@@ -131,6 +131,36 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nullable List<PolarisBaseEntity> originalEntities);
 
   /**
+   * Attempt to commit {@code mutations} atomically, in the given order.
+   *
+   * <p>Atomicity is decided for <em>this</em> change set, not as a backend-wide capability. If the
+   * backend can apply every item in one atomic step (the records are co-located behind one
+   * transactional store, every kind is supported, and CAS preconditions hold), it does so and
+   * returns {@link ChangeSetCommitStatus#APPLIED}. If it cannot — mixed stores, an unsupported
+   * record kind, or no transactional primitive — it returns {@link
+   * ChangeSetCommitStatus#UNSUPPORTED} and must not apply any mutation.
+   *
+   * <p>This method must not silently sequence individual writes. Best-effort sequencing is a
+   * separate manager contract ({@link PolarisMetaStoreManager#applyChangeSetBestEffort}).
+   *
+   * <p>For {@link PersistenceMutation.Entity} {@code UPDATE}, the backend must compare the
+   * persisted entity against {@link PersistenceMutation.Entity#originalEntity()} and fail the whole
+   * change set if any original entity does not match.
+   *
+   * <p>Conflicts are reported by throwing {@link EntityAlreadyExistsException} or {@link
+   * RetryOnConcurrencyException}. The default implementation returns {@link
+   * ChangeSetCommitStatus#UNSUPPORTED} for a non-empty change set.
+   *
+   * @param callCtx call context
+   * @param mutations ordered mutations to commit atomically
+   * @return {@link ChangeSetCommitStatus#APPLIED} or {@link ChangeSetCommitStatus#UNSUPPORTED}
+   */
+  default @NonNull ChangeSetCommitStatus commitChangeSet(
+      @NonNull PolarisCallContext callCtx, @NonNull List<PersistenceMutation> mutations) {
+    return mutations.isEmpty() ? ChangeSetCommitStatus.APPLIED : ChangeSetCommitStatus.UNSUPPORTED;
+  }
+
+  /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
    * record with the same PK), this is a no-op, because currently all fields of the grantRecord are
    * part of the PK. If additional non-PK attributes are added this might change.
