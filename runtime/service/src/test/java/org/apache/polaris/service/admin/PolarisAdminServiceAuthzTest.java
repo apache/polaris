@@ -29,6 +29,8 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -45,11 +47,10 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     final PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                principalEntity,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of());
     return new PolarisAdminService(
         callContext,
@@ -66,7 +67,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     final PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .build(),
             activatedPrincipalRoles);
     return PolarisAdminServiceTestSupport.newAdminService(
         callContext,

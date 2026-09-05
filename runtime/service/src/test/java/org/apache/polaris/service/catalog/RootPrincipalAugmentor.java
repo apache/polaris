@@ -26,9 +26,10 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -58,7 +59,9 @@ public class RootPrincipalAugmentor implements SecurityIdentityAugmentor {
     PolarisPrincipal principal =
         PolarisPrincipal.of(
             rootPrincipal.getName(),
-            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, rootPrincipal)
+                .build(),
             Set.of("service_admin"));
 
     return Uni.createFrom()
