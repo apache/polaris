@@ -42,9 +42,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   ```
   H2 is unaffected.
 - Relational JDBC: The per-schema-version runtime fallback has been removed. The migration to schema
-  v6 is now **required** before starting this version of Polaris. Polaris will fail to start with a
-  clear error message if the recorded schema version does not match what the binary expects. See the
-  [Relational JDBC metastore documentation] for the full upgrade path.
+  v6 is now **required** before starting this version of Polaris. The first request to any realm
+  whose recorded schema version does not match what the binary expects will fail fast with a clear
+  error message. See the [Relational JDBC metastore documentation] for the full upgrade path.
 
 [Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 

@@ -215,8 +215,8 @@ Upgrading Polaris on an existing installation requires two steps, in this order:
 
 1. **Apply schema migrations** for each schema version between your current version and the target
    version (see the migration SQL in the sections below). Schema migrations must be applied
-   **before** starting the new Polaris binary. Starting the binary with an outdated schema will
-   cause it to fail fast with an actionable error message.
+   **before** starting the new Polaris binary. The first request to any realm whose recorded schema
+   version does not match what the binary expects will fail fast with an actionable error message.
 
 2. **Bootstrap new realms** if needed. Re-bootstrapping an existing installation is not required
    unless you want to add new realms. The bootstrap command is idempotent — already-bootstrapped
@@ -237,6 +237,19 @@ CREATE INDEX IF NOT EXISTS idx_locations ON entities
     USING btree (realm_id, catalog_id, location_without_scheme)
     WHERE location_without_scheme IS NOT NULL;
 UPDATE version SET version_value = 6 WHERE version_key = 'version';
+```
+
+**CockroachDB:** In addition to the statements above, CockroachDB deployments must also create the
+following indexes, which the PostgreSQL schema has declared since v4 but were missing from the
+CockroachDB schema:
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee
+    ON grant_records (realm_id, grantee_id);
+CREATE INDEX IF NOT EXISTS idx_grants_realm_securable
+    ON grant_records (realm_id, securable_id);
+CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id
+    ON entities (catalog_id, id);
 ```
 
 ### Migration From Schema v4 to v5
@@ -315,17 +328,6 @@ UPDATE version SET version_value = 4 WHERE version_key = 'version';
 ### Migration From Schema v2 to v3
 
 ```sql
-DROP TABLE IF EXISTS policy_mapping_record;
-CREATE TABLE IF NOT EXISTS policy_mapping_record (
-    realm_id TEXT NOT NULL,
-    target_catalog_id BIGINT NOT NULL,
-    target_id BIGINT NOT NULL,
-    policy_type_code INTEGER NOT NULL,
-    policy_catalog_id BIGINT NOT NULL,
-    policy_id BIGINT NOT NULL,
-    parameters JSONB NOT NULL DEFAULT '{}',
-    PRIMARY KEY (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id)
-);
 CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
     catalog_id TEXT NOT NULL,
@@ -344,11 +346,22 @@ UPDATE version SET version_value = 3 WHERE version_key = 'version';
 
 ### Migration From Schema v1 to v2
 
+{{< alert note >}}
+Polaris 1.0.0-incubating and 1.0.1-incubating shipped without a `version` table. The statements
+below create it if absent before recording the version.
+{{< /alert >}}
+
 ```sql
 ALTER TABLE entities ADD COLUMN IF NOT EXISTS location_without_scheme TEXT;
 CREATE INDEX IF NOT EXISTS idx_locations
     ON entities USING btree (realm_id, parent_id, location_without_scheme)
     WHERE location_without_scheme IS NOT NULL;
+CREATE TABLE IF NOT EXISTS version (
+    version_key TEXT PRIMARY KEY,
+    version_value INTEGER NOT NULL
+);
+INSERT INTO version (version_key, version_value)
+    VALUES ('version', 1) ON CONFLICT (version_key) DO NOTHING;
 UPDATE version SET version_value = 2 WHERE version_key = 'version';
 ```
 
