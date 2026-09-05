@@ -73,6 +73,18 @@ public class PolarisPrincipalAttributeNamespacesTest {
   }
 
   @Test
+  void derivedStringAttributesPreservesEmptyStringValues() {
+    PolarisPrincipal principal =
+        PolarisPrincipal.of(
+            "eve",
+            Map.of(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", ""),
+            Set.of());
+
+    assertThat(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal))
+        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "");
+  }
+
+  @Test
   void derivedStringAttributesEmptyWhenNoneProjected() {
     PolarisPrincipal principal = PolarisPrincipal.of("eve", Map.of(), Set.of());
     assertThat(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal)).isEmpty();

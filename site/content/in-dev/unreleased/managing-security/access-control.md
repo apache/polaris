@@ -180,7 +180,7 @@ keys, or other secrets in table or view properties.
 | Privilege | Description |
 | --------- | ----------- |
 | PRINCIPAL_READ_PROPERTIES | Enables reading principal properties. |
-| PRINCIPAL_WRITE_PROPERTIES | Enables configuring principal properties. When user-defined principal properties are forwarded to external authorizers as `polaris.user.*` attributes, this privilege allows modifying user-supplied ABAC attributes. |
+| PRINCIPAL_WRITE_PROPERTIES | Enables configuring principal properties. User-defined principal properties are projected as `polaris.user.*` attributes after authentication. OPA receives those keys as `actor.attributes` and can use them for ABAC. Ranger copies the same keys onto `RangerUserInfo`, but Apache Ranger 2.9.0's embedded authorizer evaluates only user name, groups, and roles, so these attributes cannot currently change a Ranger policy decision. |
 
 ## RBAC example
 

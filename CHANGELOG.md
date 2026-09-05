@@ -66,12 +66,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Changes
 
 - After authentication, a `SecurityIdentityAugmentor` projects selected principal facts onto
-  namespaced `PolarisPrincipal` attributes. OPA and Ranger consume those derived keys rather than
-  walking `PrincipalEntity`: `polaris.user.*` for user-defined principal properties,
+  namespaced `PolarisPrincipal` attributes. External authorizers consume those derived keys rather
+  than walking `PrincipalEntity`: `polaris.user.*` for user-defined principal properties,
   `polaris.system.client_id` and `polaris.system.credential-rotation-required` for selected
-  internal facts, and `polaris.auth.*` when an authenticator has asserted them. The raw
-  `PrincipalEntity` is not included in the external PDP payload. A user property cannot shadow a
-  system key because the namespace is part of the attribute name.
+  internal facts, and `polaris.auth.*` when an authenticator has asserted them. OPA receives the
+  keys as `actor.attributes`. Ranger copies them onto `RangerUserInfo`, but Apache Ranger 2.9.0's
+  embedded plugin evaluates only user name, groups, and roles, so `polaris.user.*` cannot currently
+  change a Ranger policy decision. The raw `PrincipalEntity` is not included in the external PDP
+  payload. A user property cannot shadow a system key because the namespace is part of the
+  attribute name. Empty-string user property values are forwarded as empty attributes, not omitted.
 - A metastore failure during authentication now returns a fixed `Service unavailable` message
   instead of naming the lookup that failed; the principal lookup previously returned `Unable to
   fetch principal entity`. The failing lookup is still named in the server log at `ERROR`, which

@@ -223,7 +223,7 @@ Polaris sends the following input structure to OPA:
 |-------|------|-------------|
 | `principal` | string | The principal identifier (e.g., username, service account) |
 | `roles` | array | Array of role names assigned to the principal |
-| `attributes` | object | Provenance-namespaced string attributes projected after authentication. Keys use `polaris.user.*` for user-defined principal properties, `polaris.system.*` for selected Polaris-managed facts (for example `polaris.system.client_id`), and `polaris.auth.*` for authenticator/IdP assertions. The raw `PrincipalEntity` is not included. |
+| `attributes` | object | Provenance-namespaced string attributes projected after authentication. Keys use `polaris.user.*` for user-defined principal properties, `polaris.system.*` for selected Polaris-managed facts (for example `polaris.system.client_id`), and `polaris.auth.*` for authenticator/IdP assertions. The raw `PrincipalEntity` is not included. Stored user-property values are forwarded as-is, including empty strings; a missing key means the property was not set (or was null), not that it was stored as `""`. |
 
 #### Action Field
 
