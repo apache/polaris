@@ -90,11 +90,24 @@ public class StorageUtil {
     for (String potentialParent : locationStrings) {
       StorageLocation potentialParentLocation = StorageLocation.of(potentialParent);
       for (String potentialChild : locationStrings) {
-        if (!potentialParent.equals(potentialChild)) {
-          StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
-          if (potentialChildLocation.isChildOf(potentialParentLocation)) {
-            result.remove(potentialChild);
-          }
+        if (potentialParent.equals(potentialChild)) {
+          continue;
+        }
+        StorageLocation potentialChildLocation = StorageLocation.of(potentialChild);
+        boolean childIsChildOfParent = potentialChildLocation.isChildOf(potentialParentLocation);
+        boolean parentIsChildOfChild = potentialParentLocation.isChildOf(potentialChildLocation);
+        if (childIsChildOfParent && parentIsChildOfChild) {
+          // The two raw strings denote the same location once isChildOf's normalization is
+          // applied (e.g. they differ only by a trailing slash, or by an equivalent scheme like
+          // s3/s3a or abfs/abfss), rather than one being a proper sub-location of the other.
+          // Keep exactly one of them -- which one doesn't matter, downstream credential scoping
+          // strips scheme/slash the same way isChildOf does -- via a tie-break that both
+          // orderings of this pair agree on, rather than removing both sides independently.
+          String toRemove =
+              potentialParent.compareTo(potentialChild) > 0 ? potentialParent : potentialChild;
+          result.remove(toRemove);
+        } else if (childIsChildOfParent) {
+          result.remove(potentialChild);
         }
       }
     }
