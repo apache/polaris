@@ -26,4 +26,7 @@ public class PolarisTaskConstants {
   public static final String TASK_DATA = "data";
   public static final String TASK_TYPE = "taskType";
   public static final String STORAGE_LOCATION = "storageLocation";
+
+  /** Serialized encryption context used by an Iceberg cleanup task. */
+  public static final String ENCRYPTION_CONTEXT = "polaris.encryptionContext";
 }
