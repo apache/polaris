@@ -32,10 +32,13 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Set;
 import org.apache.polaris.service.auth.AuthenticatingAugmentor;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.PolarisCredential;
+import org.apache.polaris.service.auth.PrincipalMode;
 import org.apache.polaris.service.auth.external.mapping.PrincipalMapper;
 import org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
+import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /**
@@ -48,13 +51,16 @@ public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor
   // must run before the authenticating augmentor
   public static final int PRIORITY = AuthenticatingAugmentor.PRIORITY + 100;
 
+  private final AuthenticationRealmConfiguration authConfig;
   private final Instance<PrincipalMapper> principalMappers;
   private final Instance<PrincipalRolesMapper> principalRoleMappers;
 
   @Inject
   public OidcPolarisCredentialAugmentor(
+      AuthenticationRealmConfiguration authConfig,
       @Any Instance<PrincipalMapper> principalMappers,
       @Any Instance<PrincipalRolesMapper> principalRoleMappers) {
+    this.authConfig = authConfig;
     this.principalMappers = principalMappers;
     this.principalRoleMappers = principalRoleMappers;
   }
@@ -86,11 +92,18 @@ public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor
       SecurityIdentity identity,
       PrincipalMapper principalMapper,
       PrincipalRolesMapper rolesMapper) {
-    Long principalId =
-        principalMapper.mapPrincipalId(identity).stream().boxed().findFirst().orElse(null);
     String principalName = principalMapper.mapPrincipalName(identity).orElse(null);
     Set<String> principalRoles = rolesMapper.mapPrincipalRoles(identity);
-    PolarisCredential credential = PolarisCredential.of(principalId, principalName, principalRoles);
+    // Note: we build the credential even if it doesn't contain enough data to authenticate;
+    // DefaultAuthenticator will reject it later on.
+    PolarisCredential credential;
+    if (authConfig.principalMode() == PrincipalMode.INTERNAL) {
+      Long principalId =
+          principalMapper.mapPrincipalId(identity).stream().boxed().findFirst().orElse(null);
+      credential = InternalPolarisCredential.of(principalId, principalName, principalRoles);
+    } else {
+      credential = ExternalPolarisCredential.of(principalName, principalRoles);
+    }
     // Note: we don't change the identity roles here, this will be done later on
     // by the AuthenticatingAugmentor, which will also validate them.
     return QuarkusSecurityIdentity.builder(identity).addCredential(credential).build();

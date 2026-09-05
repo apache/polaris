@@ -197,6 +197,48 @@ polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$1
 
 See more examples below. 
 
+### External Principals
+
+By default, even when authentication is delegated to an external IdP, the principal named in
+the token must still correspond to a `PrincipalEntity` stored in the Polaris metastore: Polaris
+looks it up (by id or name) and derives its active roles from the grants recorded for that
+entity.
+
+**External principals** relax this requirement. When enabled for a realm, the caller is
+authenticated entirely from the token: no metastore lookup is performed, and the principal is
+never required to exist in Polaris. The principal name and roles are taken directly from the
+token via the Principal Mapping and Role Mapping configuration described above.
+
+External principals are enabled per realm:
+
+```properties
+# Global default
+polaris.authentication.principal-mode=external
+# Per-realm override
+polaris.authentication.realm1.principal-mode=external
+```
+
+{{< alert important >}}
+Unlike internal principals, an external principal's roles are used **verbatim** as they come out
+of the role mapper. The `PRINCIPAL_ROLE:` prefix convention and the `PRINCIPAL_ROLE:ALL`
+pseudo-role (which expand or filter roles against the principal's grants) do **not** apply to
+external principals, since there are no grants in the metastore to expand. **Configure the role
+mapper to emit exactly the role names your authorizer expects.**
+{{< /alert >}}
+
+Because an external principal has no metastore-backed grants, this feature has two hard
+requirements, both enforced at startup (the service refuses to boot otherwise):
+
+1. The realm's authentication `type` must not be the default (`internal`) one. Enabling external 
+   principals  with `internal` authentication is meaningless, and therefore not allowed.
+2. The authorizer must not be the default (`internal`) one. The default authorizer authorizes
+   requests using metastore-backed grants and therefore cannot authorize external principals.
+   Configure a different authorizer (for example, OPA):
+
+   ```properties
+   polaris.authorization.type=opa
+   ```
+
 ### Example JWT Mappings 
 
 #### Example 1: Custom Claim Paths 

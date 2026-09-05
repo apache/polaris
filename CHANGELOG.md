@@ -28,6 +28,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Polaris now fully supports "external" principals, that is, principals that are not backed by an 
+  entity in Polaris metastore. By enabling external principals, either globally or per-realm,
+  Polaris now skips the principal entity metastore lookup. This means that synchronizing principals 
+  between an external IDP and Polaris is not necessary anymore. To enable external principals, 
+  set the `polaris.authentication.principal-mode` option to `external`. Note: external principals
+  are not compatible with internal authentication and internal authorization; you must configure an
+  external IDP and an external PDP, such as OPA or Ranger.
 
 ### Upgrade notes
 
