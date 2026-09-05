@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.core5.http.ClassicHttpRequest;
@@ -124,15 +125,23 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
-   * Resolves authorization inputs using {@code resolveAll()} for backward compatibility.
+   * Resolves authorization inputs using {@code resolveSelections()} to resolve only the securables
+   * required for OPA authorization.
    *
-   * <p>This scope is intentionally broad for now and will be narrowed in a future refactoring to
-   * resolve only the selections required by OPA authorization.
+   * <p>Unlike {@code resolveAll()}, this avoids resolving the caller principal and principal roles,
+   * which are not needed by OPA-based authorization and removes the need for synthetic principal
+   * entities for external principals.
    */
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
+    authzState
+        .getResolutionManifest()
+        .resolveSelections(
+            Set.of(
+                Resolvable.REFERENCE_CATALOG,
+                Resolvable.REQUESTED_PATHS,
+                Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
   }
 
   @Override
