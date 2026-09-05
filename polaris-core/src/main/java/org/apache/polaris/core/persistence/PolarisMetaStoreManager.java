@@ -119,8 +119,8 @@ public interface PolarisMetaStoreManager
    * the entity are required,use {@link #listFullEntities} instead.
    *
    * @param callCtx call context
-   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
-   *     like catalogs
+   * @param catalogPath path inside a catalog. If null, the entities to list are top-level, like
+   *     catalogs. Otherwise, the path must be non-empty and start with the catalog
    * @param entityType entity type
    * @param entitySubType entity subtype. Can be the special value ANY_SUBTYPE to match any subtype.
    *     Else exact match will be performed.
@@ -139,8 +139,8 @@ public interface PolarisMetaStoreManager
    * #listFullEntitiesAll} instead.
    *
    * @param callCtx call context
-   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
-   *     like catalogs
+   * @param catalogPath path inside a catalog. If null, the entities to list are top-level, like
+   *     catalogs. Otherwise, the path must be non-empty and start with the catalog
    * @param entityType type of entities to list
    * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
    * @return paged list of matching entities
@@ -158,8 +158,8 @@ public interface PolarisMetaStoreManager
    * #listEntities} instead.
    *
    * @param callCtx call context
-   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
-   *     like catalogs
+   * @param catalogPath path inside a catalog. If null, the entities to list are top-level, like
+   *     catalogs. Otherwise, the path must be non-empty and start with the catalog
    * @param entityType type of entities to list
    * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
    * @return list of all matching entities
@@ -289,7 +289,8 @@ public interface PolarisMetaStoreManager
    * Rename an entity, potentially re-parenting it.
    *
    * @param callCtx call context
-   * @param catalogPath path to that entity. Could be an empty list of the entity is a catalog.
+   * @param catalogPath path to the entity's parent. Must be null if the entity is top-level;
+   *     otherwise, it must be non-empty and start with the catalog
    * @param entityToRename entity to rename. This entity should have been resolved by the client
    * @param newCatalogPath if not null, new catalog path
    * @param renamedEntity the new renamed entity we need to persist. We will use this argument to
@@ -308,7 +309,8 @@ public interface PolarisMetaStoreManager
    * Drop the specified entity assuming it exists
    *
    * @param callCtx call context
-   * @param catalogPath path to that entity. Could be an empty list of the entity is a catalog.
+   * @param catalogPath path to the entity's parent. Must be null if the entity is top-level;
+   *     otherwise, it must be non-empty and start with the catalog
    * @param entityToDrop entity to drop, must have been resolved by the client
    * @param cleanupProperties if not null, properties that will be persisted with the cleanup task
    * @param cleanup true if resources owned by this entity should be deleted as well
