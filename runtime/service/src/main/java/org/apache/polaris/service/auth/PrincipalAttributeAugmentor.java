@@ -92,9 +92,11 @@ public class PrincipalAttributeAugmentor implements SecurityIdentityAugmentor {
         internal.get(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE));
     for (Map.Entry<String, String> property : entity.getPropertiesAsMap().entrySet()) {
       String key = property.getKey();
-      if (key != null && !key.isBlank()) {
-        putIfPresent(
-            derived, PolarisPrincipalAttributeNamespaces.USER_PREFIX + key, property.getValue());
+      String value = property.getValue();
+      // Keep non-null stored values, including empty strings. The Principal API does not
+      // reject blank property values, so dropping them here would hide them from authorizers.
+      if (key != null && !key.isBlank() && value != null) {
+        derived.put(PolarisPrincipalAttributeNamespaces.USER_PREFIX + key, value);
       }
     }
     return derived;

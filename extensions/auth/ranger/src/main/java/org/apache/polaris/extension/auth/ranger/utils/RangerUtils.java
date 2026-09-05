@@ -52,6 +52,14 @@ public class RangerUtils {
     };
   }
 
+  /**
+   * Builds the Ranger authz-api user DTO, including derived namespaced principal attributes.
+   *
+   * <p>Apache Ranger 2.9.0's embedded authorizer constructs {@code RangerAccessRequestImpl} from
+   * the user name, groups, and roles only and does not copy {@link RangerUserInfo#getAttributes()}
+   * onto the request that policy evaluation uses. These attributes are still populated so the DTO
+   * matches the authz-api contract; they cannot currently change a Ranger policy decision.
+   */
   public static RangerUserInfo toUserInfo(PolarisPrincipal principal) {
     return new RangerUserInfo(
         principal.getName(), getUserAttributes(principal), null, principal.getRoles());

@@ -49,10 +49,27 @@ public class RangerUtilsTest {
 
     assertThat(userInfo.getName()).isEqualTo("alice");
     assertThat(userInfo.getRoles()).containsExactly("admin");
+    // Ranger 2.9.0's embedded plugin does not copy these attributes onto the access request
+    // it evaluates, so this asserts the DTO contract only. An authorization-level test that
+    // depends on polaris.user.* cannot pass until Ranger copies RangerUserInfo.attributes.
     assertThat(userInfo.getAttributes())
         .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "finance")
         .containsEntry(PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID, "client-id-123")
         .containsEntry(PolarisPrincipalAttributeNamespaces.AUTH_PREFIX + "region", "us-west");
+  }
+
+  @Test
+  void toUserInfoPreservesEmptyUserPropertyValues() {
+    PolarisPrincipal principal =
+        PolarisPrincipal.of(
+            "alice",
+            Map.of(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", ""),
+            Set.of("admin"));
+
+    RangerUserInfo userInfo = RangerUtils.toUserInfo(principal);
+
+    assertThat(userInfo.getAttributes())
+        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "");
   }
 
   @Test
