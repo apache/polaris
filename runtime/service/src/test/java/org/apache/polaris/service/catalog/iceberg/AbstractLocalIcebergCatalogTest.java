@@ -975,6 +975,118 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testCommitRejectsEncryptionKeyIdChange() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("immutable_key_commit");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, "key-1")
+            .create();
+
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            namespace.toString());
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, namespaceResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            tableId.name());
+    IcebergTableLikeEntity entity = IcebergTableLikeEntity.of(tableResult.getEntity());
+    Assertions.assertThat(entity.getInternalPropertiesAsMap())
+        .containsEntry(TableMetadataTransitionValidator.KEY_ID_PINNED_PROPERTY, "true")
+        .containsEntry(TableMetadataTransitionValidator.KEY_ID_PROPERTY, "key-1");
+    Assertions.assertThat(entity.getPropertiesAsMap())
+        .doesNotContainKeys(
+            TableMetadataTransitionValidator.KEY_ID_PINNED_PROPERTY,
+            TableMetadataTransitionValidator.KEY_ID_PROPERTY);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                table
+                    .updateProperties()
+                    .set(TableProperties.ENCRYPTION_TABLE_KEY, "key-2")
+                    .commit())
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("Cannot add, change, or remove encryption key ID after table creation");
+    Assertions.assertThat(catalog.loadTable(tableId).properties())
+        .containsEntry(TableProperties.ENCRYPTION_TABLE_KEY, "key-1");
+  }
+
+  @Test
+  public void testLoadRejectsEncryptionKeyIdAddedToPinnedPlaintextMetadata() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("immutable_key_load");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    TableMetadata modified =
+        TableMetadata.buildFrom(current)
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "key-1"))
+            .build();
+    fileIO.addFile(
+        current.metadataFileLocation(), TableMetadataParser.toJson(modified).getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(() -> catalog.loadTable(tableId))
+        .isInstanceOf(TableMetadataIntegrityException.class)
+        .hasMessageContaining("Iceberg table metadata integrity check failed for")
+        .hasMessageContaining(": encryption key ID does not match trusted catalog state");
+  }
+
+  @Test
+  public void testLoadRejectsModifiedEncryptedMetadata() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("encrypted_metadata_integrity");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, "key-1")
+            .create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    TableMetadata modified =
+        TableMetadata.buildFrom(current)
+            .setProperties(
+                Map.of(
+                    TableProperties.ENCRYPTION_TABLE_KEY,
+                    "key-1",
+                    TableProperties.COMMIT_NUM_RETRIES,
+                    "1"))
+            .build();
+    fileIO.addFile(
+        current.metadataFileLocation(), TableMetadataParser.toJson(modified).getBytes(UTF_8));
+
+    Assertions.assertThatThrownBy(() -> catalog.loadTable(tableId))
+        .isInstanceOf(TableMetadataIntegrityException.class)
+        .hasMessageContaining("metadata does not match the trusted catalog digest");
+  }
+
+  @Test
   public void testValidateNotificationWhenTableAndNamespacesDontExist() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
@@ -1654,6 +1766,143 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testUpdateNotificationRejectsEncryptionKeyIdChange() {
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("immutable_key_notification");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, "key-1")
+            .create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    String metadataLocation =
+        current.location() + "/metadata/notification-key-change.metadata.json";
+    TableMetadata candidate =
+        TableMetadata.buildFrom(current)
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "key-2"))
+            .build();
+    TableMetadataParser.write(candidate, fileIO.newOutputFile(metadataLocation));
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(metadataLocation);
+    update.setTableName(tableId.name());
+    update.setTableUuid(current.uuid());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(tableId, request))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("Cannot add, change, or remove encryption key ID after table creation");
+    Assertions.assertThat(catalog.loadTable(tableId).properties())
+        .containsEntry(TableProperties.ENCRYPTION_TABLE_KEY, "key-1");
+  }
+
+  @Test
+  public void testUpdateNotificationPinsAdmittedMetadataForMissingTable() {
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("metadata_integrity_notification_create");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    String tableLocation = STORAGE_LOCATION + "/metadata_integrity_notification_create/table/";
+    String metadataLocation = tableLocation + "metadata/v1.metadata.json";
+    TableMetadata admitted = createEncryptedSampleTableMetadata(tableLocation);
+    TableMetadataParser.write(admitted, fileIO.newOutputFile(metadataLocation));
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(metadataLocation);
+    update.setTableName(tableId.name());
+    update.setTableUuid(admitted.uuid());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    Assertions.assertThat(catalog.sendNotification(tableId, request)).isTrue();
+
+    TableMetadata modified =
+        TableMetadata.buildFrom(admitted)
+            .setProperties(
+                Map.of(
+                    TableProperties.ENCRYPTION_TABLE_KEY,
+                    "key-1",
+                    TableProperties.COMMIT_NUM_RETRIES,
+                    "1"))
+            .build();
+    TableMetadataParser.overwrite(modified, fileIO.newOutputFile(metadataLocation));
+
+    Assertions.assertThatThrownBy(() -> catalog.loadTable(tableId))
+        .isInstanceOf(TableMetadataIntegrityException.class)
+        .hasMessageContaining("metadata does not match the trusted catalog digest");
+  }
+
+  @Test
+  public void testUpdateNotificationRejectsProtectedMetadataWithoutExpectedDigest() {
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("metadata_integrity_notification");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, "key-1")
+            .create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    String metadataLocation =
+        current.location() + "/metadata/notification-readmission.metadata.json";
+    TableMetadata admitted =
+        TableMetadata.buildFrom(current)
+            .setProperties(
+                Map.of(
+                    TableProperties.ENCRYPTION_TABLE_KEY,
+                    "key-1",
+                    TableProperties.COMMIT_NUM_RETRIES,
+                    "1"))
+            .build();
+    TableMetadataParser.write(admitted, fileIO.newOutputFile(metadataLocation));
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(metadataLocation);
+    update.setTableName(tableId.name());
+    update.setTableUuid(current.uuid());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(tableId, request))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(
+            "Cannot update a protected table by notification without an authenticated expected "
+                + "metadata digest");
+    Assertions.assertThat(catalog.loadTable(tableId).properties())
+        .doesNotContainKey(TableProperties.COMMIT_NUM_RETRIES);
+  }
+
+  @Test
   public void testUpdateNotificationWhenTableExistsInDisallowedLocation() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
@@ -2297,6 +2546,15 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     return TableMetadata.newTableMetadata(schema, partitionSpec, tableLocation, ImmutableMap.of());
   }
 
+  private TableMetadata createEncryptedSampleTableMetadata(String tableLocation) {
+    TableMetadata metadata = createSampleTableMetadata(tableLocation);
+    return TableMetadata.newTableMetadata(
+        metadata.schema(),
+        metadata.spec(),
+        tableLocation,
+        Map.of(TableProperties.FORMAT_VERSION, "3", TableProperties.ENCRYPTION_TABLE_KEY, "key-1"));
+  }
+
   private ViewMetadata createSampleViewMetadata(String viewLocation) {
     return ViewMetadata.builder()
         .setLocation(viewLocation)
@@ -2440,6 +2698,141 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             () -> catalog.registerTable(TABLE, "metadata_location_without_slashes"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid metadata file location");
+  }
+
+  @Test
+  public void testRegisterTableOverwriteRejectsEncryptionKeyIdChange() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("immutable_key_register");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, "key-1")
+            .create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    String metadataLocation = current.location() + "/metadata/register-key-change.metadata.json";
+    TableMetadata candidate =
+        TableMetadata.buildFrom(current)
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "key-2"))
+            .build();
+    TableMetadataParser.write(candidate, fileIO.newOutputFile(metadataLocation));
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(tableId, metadataLocation, true))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("Cannot add, change, or remove encryption key ID after table creation");
+    Assertions.assertThat(catalog.loadTable(tableId).properties())
+        .containsEntry(TableProperties.ENCRYPTION_TABLE_KEY, "key-1");
+  }
+
+  @Test
+  public void testRegisterTableRejectsEncryptionPropertiesInFormatV2Metadata() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("incompatible_encryption_register");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    String tableLocation = STORAGE_LOCATION + "/incompatible-encryption-register/table";
+    String metadataLocation = tableLocation + "/metadata/v1.metadata.json";
+    TableMetadata incompatibleMetadata =
+        TableMetadata.buildFrom(createSampleTableMetadata(tableLocation))
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "key-1"))
+            .build();
+    Assertions.assertThat(incompatibleMetadata.formatVersion()).isEqualTo(2);
+    TableMetadataParser.write(incompatibleMetadata, fileIO.newOutputFile(metadataLocation));
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(tableId, metadataLocation))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid properties for v2")
+        .hasMessageContaining(TableProperties.ENCRYPTION_TABLE_KEY);
+    Assertions.assertThat(catalog.tableExists(tableId)).isFalse();
+  }
+
+  @Test
+  public void testRegisterTablePinsAdmittedMetadata() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("metadata_integrity_register");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    String tableLocation = STORAGE_LOCATION + "/metadata_integrity_register/table/";
+    String metadataLocation = tableLocation + "metadata/v1.metadata.json";
+    TableMetadata admitted = createEncryptedSampleTableMetadata(tableLocation);
+    TableMetadataParser.write(admitted, fileIO.newOutputFile(metadataLocation));
+
+    Assertions.assertThat(catalog.registerTable(tableId, metadataLocation)).isNotNull();
+
+    TableMetadata modified =
+        TableMetadata.buildFrom(admitted)
+            .setProperties(
+                Map.of(
+                    TableProperties.ENCRYPTION_TABLE_KEY,
+                    "key-1",
+                    TableProperties.COMMIT_NUM_RETRIES,
+                    "1"))
+            .build();
+    TableMetadataParser.overwrite(modified, fileIO.newOutputFile(metadataLocation));
+
+    Assertions.assertThatThrownBy(() -> catalog.loadTable(tableId))
+        .isInstanceOf(TableMetadataIntegrityException.class)
+        .hasMessageContaining("metadata does not match the trusted catalog digest");
+  }
+
+  @Test
+  public void testRegisterTableOverwriteReadmitsProtectedMetadataRevision() {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("metadata_integrity_register_overwrite");
+    TableIdentifier tableId = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty(TableProperties.FORMAT_VERSION, "3")
+            .withProperty(TableProperties.ENCRYPTION_TABLE_KEY, "key-1")
+            .create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    String metadataLocation = current.location() + "/metadata/register-readmission.metadata.json";
+    TableMetadata admitted =
+        TableMetadata.buildFrom(current)
+            .setProperties(
+                Map.of(
+                    TableProperties.ENCRYPTION_TABLE_KEY,
+                    "key-1",
+                    TableProperties.COMMIT_NUM_RETRIES,
+                    "1"))
+            .build();
+    TableMetadataParser.write(admitted, fileIO.newOutputFile(metadataLocation));
+
+    Assertions.assertThat(catalog.registerTable(tableId, metadataLocation, true)).isNotNull();
+    Assertions.assertThat(catalog.loadTable(tableId).properties())
+        .containsEntry(TableProperties.COMMIT_NUM_RETRIES, "1");
+
+    TableMetadata modified =
+        TableMetadata.buildFrom(admitted)
+            .setProperties(
+                Map.of(
+                    TableProperties.ENCRYPTION_TABLE_KEY,
+                    "key-1",
+                    TableProperties.COMMIT_NUM_RETRIES,
+                    "2"))
+            .build();
+    TableMetadataParser.overwrite(modified, fileIO.newOutputFile(metadataLocation));
+
+    Assertions.assertThatThrownBy(() -> catalog.loadTable(tableId))
+        .isInstanceOf(TableMetadataIntegrityException.class)
+        .hasMessageContaining("metadata does not match the trusted catalog digest");
   }
 
   @Test

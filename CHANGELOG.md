@@ -229,6 +229,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Python CLI `setup` now preserves the catalog `storageName` field during export and apply, so named storage credential selection survives backup and migration round trips.
 - The NoSQL persistence commit log (`Commits.commitLog`) no longer stops early when a commit's recent-ancestor tail is shorter than the internal fetch page size. With a `polaris.persistence.reference-previous-head-count` smaller than the page size, the natural-order commit log previously truncated at the first short tail because trailing null entries in the fetch page were treated as end-of-history, which could also drop still-referenced objects during maintenance.
+- Iceberg tables now pin `encryption.key-id` in catalog state and reject adding, changing, or
+  removing it after table creation, preserving the table's encryption key identity. Tables created
+  before this pin was recorded continue to use legacy behavior and are not automatically enrolled
+  into the new invariant from metadata stored outside the catalog. Metadata with Iceberg encryption
+  table properties is rejected before entering protected state when its format version is below 3.
+- Encrypted Iceberg tables now pin a canonical metadata SHA-256 in catalog state. Table loads and
+  asynchronous purge verify the digest before using metadata read from storage.
 - Python CLI REPL now shows a clear "Syntax error" message for malformed input instead of a generic "unexpected error" message.
 - Python CLI `setup apply` now exits with an error after any setup operation fails, while still attempting the remaining operations. Previously, individual failures were logged but the command reported success and exited with status 0.
 - Python CLI `tables list`, `tables get`, and `tables delete` commands now exit with status 1 when catalog API requests fail. Previously, these commands printed an error but exited successfully.
