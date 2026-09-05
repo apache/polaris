@@ -175,6 +175,13 @@ keys, or other secrets in table or view properties.
 | POLICY_ATTACH | Enables policy to be attached to entities. |
 | POLICY_DETACH | Enables policy to be detached from entities. |
 
+### Principal privileges
+
+| Privilege | Description |
+| --------- | ----------- |
+| PRINCIPAL_READ_PROPERTIES | Enables reading principal properties. |
+| PRINCIPAL_WRITE_PROPERTIES | Enables configuring principal properties. User-defined principal properties are projected as `polaris.user.*` attributes after authentication. OPA receives those keys as `actor.attributes` and can use them for ABAC. Ranger copies the same keys onto `RangerUserInfo`, but Apache Ranger 2.9.0's embedded authorizer evaluates only user name, groups, and roles, so these attributes cannot currently change a Ranger policy decision. |
+
 ## RBAC example
 
 The following diagram illustrates how RBAC works in Polaris and

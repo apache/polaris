@@ -47,6 +47,7 @@ import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
 import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
@@ -345,6 +346,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     return ImmutableActor.builder()
         .principal(principal.getName())
         .addAllRoles(principal.getRoles())
+        .putAllAttributes(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(principal))
         .build();
   }
 

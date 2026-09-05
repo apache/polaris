@@ -56,6 +56,7 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.auth.RenameAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
@@ -63,6 +64,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -96,7 +98,10 @@ public class OpaPolarisAuthorizerTest {
               "test-realm");
 
       PolarisPrincipal principal =
-          PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+          PolarisPrincipal.of(
+              "eve",
+              Map.of(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "finance"),
+              Set.of("auditor"));
 
       Set<PolarisBaseEntity> entities = Set.of();
       PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
@@ -125,6 +130,16 @@ public class OpaPolarisAuthorizerTest {
       // Verify realm is included for tenant isolation
       assertThat(input.get("context").has("realm")).as("context should contain realm").isTrue();
       assertThat(input.get("context").get("realm").asText()).isEqualTo("test-realm");
+
+      // Verify user-defined principal properties are forwarded as actor attributes
+      var actor = input.get("actor");
+      assertThat(actor.has("attributes")).as("Actor should have 'attributes' field").isTrue();
+      assertThat(
+              actor
+                  .get("attributes")
+                  .get(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")
+                  .asText())
+          .isEqualTo("finance");
     } finally {
       server.stop(0);
     }
@@ -1214,8 +1229,7 @@ public class OpaPolarisAuthorizerTest {
               "test-id",
               "test-realm");
 
-      PolarisPrincipal principal =
-          PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+      PolarisPrincipal principal = PolarisPrincipal.of("eve", Map.of(), Set.of("auditor"));
       PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
@@ -1255,8 +1269,7 @@ public class OpaPolarisAuthorizerTest {
               null,
               "test-realm");
 
-      PolarisPrincipal principal =
-          PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
+      PolarisPrincipal principal = PolarisPrincipal.of("eve", Map.of(), Set.of("auditor"));
       PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
@@ -1274,6 +1287,172 @@ public class OpaPolarisAuthorizerTest {
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
       String requestId = root.at("/input/context/request_id").asText();
       assertThatNoException().isThrownBy(() -> UUID.fromString(requestId));
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void actorAttributesIncludeDerivedNamespacedKeys() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "test-realm");
+
+      PolarisPrincipal principal =
+          PolarisPrincipal.of(
+              "eve",
+              Map.of(
+                  PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department",
+                  "finance",
+                  PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID,
+                  "internal-client-id",
+                  PolarisPrincipalAttributeNamespaces.USER_PREFIX
+                      + PolarisEntityConstants.getClientIdPropertyName(),
+                  "user-client-id"),
+              Set.of("auditor"));
+
+      PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
+      PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      Set.of(),
+                      PolarisAuthorizableOperation.LOAD_VIEW,
+                      target,
+                      secondary));
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      var attributes = root.path("input").path("actor").path("attributes");
+      assertThat(
+              attributes
+                  .path(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")
+                  .asText())
+          .isEqualTo("finance");
+      assertThat(attributes.path(PolarisPrincipalAttributeNamespaces.SYSTEM_CLIENT_ID).asText())
+          .isEqualTo("internal-client-id");
+      assertThat(attributes.path(PolarisEntityConstants.getClientIdPropertyName()).isMissingNode())
+          .isTrue();
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void actorAttributesPreserveEmptyUserPropertyValues() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "test-realm");
+
+      PolarisPrincipal principal =
+          PolarisPrincipal.of(
+              "eve",
+              Map.of(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", ""),
+              Set.of("auditor"));
+
+      PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
+      PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      Set.of(),
+                      PolarisAuthorizableOperation.LOAD_VIEW,
+                      target,
+                      secondary));
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      JsonNode attributes = root.path("input").path("actor").path("attributes");
+      assertThat(attributes.has(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"))
+          .isTrue();
+      assertThat(
+              attributes
+                  .path(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")
+                  .asText())
+          .isEqualTo("");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void actorAttributesDoNotWalkPrincipalEntity() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "test-realm");
+
+      PrincipalEntity entity =
+          new PrincipalEntity.Builder()
+              .setName("eve")
+              .setProperties(Map.of("department", "finance"))
+              .setClientId("internal-client-id")
+              .build();
+      PolarisPrincipal principal =
+          PolarisPrincipal.of(
+              "eve",
+              Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, entity),
+              Set.of("auditor"));
+
+      PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
+      PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      Set.of(),
+                      PolarisAuthorizableOperation.LOAD_VIEW,
+                      target,
+                      secondary));
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      JsonNode attributes = root.path("input").path("actor").path("attributes");
+      assertThat(attributes.isObject()).isTrue();
+      assertThat(attributes.size()).isZero();
     } finally {
       server.stop(0);
     }
