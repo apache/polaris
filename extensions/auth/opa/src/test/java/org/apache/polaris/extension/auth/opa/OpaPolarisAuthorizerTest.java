@@ -1413,6 +1413,67 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
+  void actorAttributesPreserveEmptyUserPropertyValues() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri,
+              HttpClients.createDefault(),
+              JsonMapper.builder().build(),
+              null,
+              null,
+              "test-realm");
+
+      PolarisPrincipal principal =
+          PolarisPrincipal.of(
+              "eve",
+              ImmutableAttributeMap.builder()
+                  .put(
+                      PolarisPrincipalAttributeNamespaces.stringKey(
+                          PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"),
+                      "")
+                  .build(),
+              Set.of("auditor"));
+
+      PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
+      PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer
+                      .authorize(
+                          new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                          new AuthorizationRequest(
+                              principal,
+                              authorizationIntents(
+                                  PolarisAuthorizableOperation.LOAD_VIEW,
+                                  List.of(target),
+                                  List.of(secondary))))
+                      .throwIfDenied());
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      JsonNode attributes = root.path("input").path("actor").path("attributes");
+      assertThat(attributes.has(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"))
+          .isTrue();
+      assertThat(
+              attributes
+                  .path(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")
+                  .asText())
+          .isEqualTo("");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
   void actorAttributesDoNotWalkPrincipalEntity() throws Exception {
     final String[] capturedRequestBody = new String[1];
 

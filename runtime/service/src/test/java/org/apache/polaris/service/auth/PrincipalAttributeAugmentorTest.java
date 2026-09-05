@@ -178,6 +178,35 @@ public class PrincipalAttributeAugmentorTest {
   }
 
   @Test
+  public void testPreservesEmptyAndWhitespaceUserPropertyValues() {
+    PrincipalEntity entity =
+        new PrincipalEntity.Builder()
+            .setName("eve")
+            .setProperties(Map.of("department", "", "team", "   ", "region", "us-west"))
+            .build();
+    PolarisPrincipal principal =
+        PolarisPrincipal.of(
+            "eve",
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, entity)
+                .build(),
+            Set.of());
+
+    PolarisPrincipal enriched =
+        (PolarisPrincipal)
+            augmentor
+                .augment(identityFor(principal), Uni.createFrom()::item)
+                .await()
+                .indefinitely()
+                .getPrincipal();
+
+    assertThat(PolarisPrincipalAttributeNamespaces.derivedStringAttributes(enriched))
+        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "")
+        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "team", "   ")
+        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "region", "us-west");
+  }
+
+  @Test
   public void testDoesNotDumpUnselectedInternalProperties() {
     PrincipalEntity entity =
         new PrincipalEntity.Builder()

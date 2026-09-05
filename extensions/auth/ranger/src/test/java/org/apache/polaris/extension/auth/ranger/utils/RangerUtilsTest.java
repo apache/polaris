@@ -69,6 +69,25 @@ public class RangerUtilsTest {
   }
 
   @Test
+  void toUserInfoPreservesEmptyUserPropertyValues() {
+    PolarisPrincipal principal =
+        PolarisPrincipal.of(
+            "alice",
+            ImmutableAttributeMap.builder()
+                .put(
+                    PolarisPrincipalAttributeNamespaces.stringKey(
+                        PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department"),
+                    "")
+                .build(),
+            Set.of("admin"));
+
+    RangerUserInfo userInfo = RangerUtils.toUserInfo(principal);
+
+    assertThat(userInfo.getAttributes())
+        .containsEntry(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department", "");
+  }
+
+  @Test
   void toUserInfoDoesNotWalkPrincipalEntity() {
     PolarisPrincipal principal =
         PolarisPrincipal.of(
