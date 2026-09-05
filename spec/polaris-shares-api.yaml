@@ -1,0 +1,1048 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+openapi: 3.0.3
+info:
+  title: Polaris Shares API
+  version: 0.0.3
+  description:
+    Defines the management APIs for sharing catalog content with consumers outside the
+    catalog's identity domain. A share enumerates what is shared; an external consumer is
+    a restricted, first-class identity; a listing is the only binding between a consumer
+    and a share and is the unit of audit. Consumers read shared data through the standard
+    Iceberg REST Catalog protocol using the connection material from their listing's
+    endpoint configuration. Shares are realm-level objects, addressed by name across the
+    service, and each share is bound to one catalog whose objects it can contain. This API
+    is served under the management root, next to the management API, and is in a beta
+    state and may change in a backward-incompatible way; it is served only when the
+    shares feature flag is enabled, and it is disabled by default.
+servers:
+  - url: "{scheme}://{host}/api/management/v1"
+    description: Server URL when the port can be inferred from the scheme
+    variables:
+      scheme:
+        description: The scheme of the URI, either http or https.
+        default: https
+      host:
+        description: The host address for the specified server
+        default: localhost
+security:
+  - OAuth2: []
+
+paths:
+  /shares:
+    get:
+      operationId: listShares
+      summary: List shares
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. List all shares in this Polaris service."
+      responses:
+        200:
+          description: List of shares
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shares"
+        403:
+          description: "The caller does not have permission to list shares"
+    post:
+      operationId: createShare
+      summary: Create a share
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Create a new share bound to the catalog named in the
+        request. A new share contains no members and is bound to no consumer until
+        members are added and a listing is created."
+      requestBody:
+        description: The share to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShareRequest"
+      responses:
+        201:
+          description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Share"
+        403:
+          description: "The caller does not have permission to create a share, or to create a catalog role in the bound catalog"
+        404:
+          description: "The bound catalog does not exist"
+        409:
+          description: "A share with the specified name already exists"
+
+  /shares/{shareName}:
+    parameters:
+      - name: shareName
+        in: path
+        description: The name of the share
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getShare
+      summary: Get a share
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Get a share by name."
+      responses:
+        200:
+          description: The share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Share"
+        403:
+          description: "The caller does not have permission to read this share"
+        404:
+          description: "The share does not exist"
+    put:
+      operationId: updateShare
+      summary: Update a share
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Update a share's description or properties. Share
+        membership is updated through the members resource, not through this operation."
+      requestBody:
+        description: The update to apply
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShareRequest"
+      responses:
+        200:
+          description: The updated share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Share"
+        403:
+          description: "The caller does not have permission to update this share"
+        404:
+          description: "The share does not exist"
+        409:
+          description: "The share was concurrently modified; fetch and retry"
+    delete:
+      operationId: deleteShare
+      summary: Delete a share
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Delete a share. Every listing of this share is
+        revoked immediately; consumer access through those listings ends with them."
+      responses:
+        204:
+          description: "Success, no content"
+        403:
+          description: "The caller does not have permission to delete this share"
+        404:
+          description: "The share does not exist"
+
+  /shares/{shareName}/members:
+    parameters:
+      - name: shareName
+        in: path
+        description: The name of the share
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listShareMembers
+      summary: List share members
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. List the members of a share."
+      responses:
+        200:
+          description: The members of the share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareMembers"
+        403:
+          description: "The caller does not have permission to read this share"
+        404:
+          description: "The share does not exist"
+    post:
+      operationId: updateShareMembers
+      summary: Update share members
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Apply an ordered list of member additions and
+        removals to the share's membership record atomically: either every update is
+        recorded or none is. The read grants implied by membership converge with the
+        record immediately after the commit; a service documents its behavior when
+        grant materialization fails partway. Every member must belong to the share's
+        bound catalog. Removing a member immediately removes it from every consumer's
+        view of the share."
+      requestBody:
+        description: The membership updates to apply
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShareMembersRequest"
+      responses:
+        200:
+          description: The resulting members of the share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareMembers"
+        400:
+          description: "An update in the list is invalid, or a member is outside the share's bound catalog"
+        403:
+          description: "The caller does not have permission to update this share's members"
+        404:
+          description: "The share, or a referenced member object, does not exist"
+        409:
+          description: "The share was concurrently modified; fetch and retry"
+
+  /shares/{shareName}/listings:
+    parameters:
+      - name: shareName
+        in: path
+        description: The name of the share
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listListingsForShare
+      summary: List listings of a share
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. List the listings of a share."
+      responses:
+        200:
+          description: The listings of the share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listings"
+        403:
+          description: "The caller does not have permission to read this share's listings"
+        404:
+          description: "The share does not exist"
+    post:
+      operationId: createListing
+      summary: Create a listing
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Create a listing, binding an external consumer to
+        this share. The listing is the only path that connects a consumer to a share,
+        and it is the unit of audit: every consumer read is attributable to its listing."
+      requestBody:
+        description: The listing to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateListingRequest"
+      responses:
+        201:
+          description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        403:
+          description: "The caller does not have permission to create a listing on this share"
+        404:
+          description: "The share or the external consumer does not exist"
+        409:
+          description: "A listing with the specified name already exists on this share, or a listing already binds this consumer to this share (at most one listing binds a given consumer to a given share)"
+
+  /shares/{shareName}/listings/{listingName}:
+    parameters:
+      - name: shareName
+        in: path
+        description: The name of the share
+        required: true
+        schema:
+          type: string
+      - name: listingName
+        in: path
+        description: The name of the listing
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getListing
+      summary: Get a listing
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Get a listing by name."
+      responses:
+        200:
+          description: The listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        403:
+          description: "The caller does not have permission to read this listing"
+        404:
+          description: "The share or listing does not exist"
+    delete:
+      operationId: deleteListing
+      summary: Delete a listing
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Delete a listing. The bound consumer's access to
+        this share through this listing is revoked immediately."
+      responses:
+        204:
+          description: "Success, no content"
+        403:
+          description: "The caller does not have permission to delete this listing"
+        404:
+          description: "The share or listing does not exist"
+
+  /shares/{shareName}/listings/{listingName}/endpoint-config:
+    parameters:
+      - name: shareName
+        in: path
+        description: The name of the share
+        required: true
+        schema:
+          type: string
+      - name: listingName
+        in: path
+        description: The name of the listing
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getListingEndpointConfig
+      summary: Get a listing's endpoint configuration
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Get the connection material for a listing: the
+        Iceberg REST Catalog endpoint, prefix, and authentication configuration the
+        external consumer uses to read the share with any standard Iceberg REST client.
+        The provider transmits this material to the consumer out of band."
+      responses:
+        200:
+          description: The endpoint configuration for the listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EndpointConfig"
+        403:
+          description: "The caller does not have permission to read this listing"
+        404:
+          description: "The share or listing does not exist"
+
+  /external-consumers:
+    get:
+      operationId: listExternalConsumers
+      summary: List external consumers
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. List all external consumers in this Polaris service."
+      responses:
+        200:
+          description: List of external consumers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalConsumers"
+        403:
+          description: "The caller does not have permission to list external consumers"
+    post:
+      operationId: createExternalConsumer
+      summary: Create an external consumer
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Create an external consumer: a restricted,
+        first-class identity representing a data consumer outside this catalog's
+        identity domain. An external consumer can be bound to shares through listings
+        and can hold consumer credentials; it cannot be granted any other role, right,
+        or privilege."
+      requestBody:
+        description: The external consumer to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExternalConsumerRequest"
+      responses:
+        201:
+          description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalConsumer"
+        403:
+          description: "The caller does not have permission to create an external consumer"
+        409:
+          description: "An external consumer with the specified name already exists"
+
+  /external-consumers/{consumerName}:
+    parameters:
+      - name: consumerName
+        in: path
+        description: The name of the external consumer
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getExternalConsumer
+      summary: Get an external consumer
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Get an external consumer by name."
+      responses:
+        200:
+          description: The external consumer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalConsumer"
+        403:
+          description: "The caller does not have permission to read this external consumer"
+        404:
+          description: "The external consumer does not exist"
+    delete:
+      operationId: deleteExternalConsumer
+      summary: Delete an external consumer
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Delete an external consumer. Every listing bound to
+        this consumer is revoked and every credential of this consumer is invalidated,
+        immediately and irreversibly."
+      responses:
+        204:
+          description: "Success, no content"
+        403:
+          description: "The caller does not have permission to delete this external consumer"
+        404:
+          description: "The external consumer does not exist"
+
+  /external-consumers/{consumerName}/listings:
+    parameters:
+      - name: consumerName
+        in: path
+        description: The name of the external consumer
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listListingsForConsumer
+      summary: List listings for a consumer
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. List every listing bound to this external consumer,
+        across all shares."
+      responses:
+        200:
+          description: The listings bound to this consumer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listings"
+        403:
+          description: "The caller does not have permission to read this external consumer"
+        404:
+          description: "The external consumer does not exist"
+
+  /external-consumers/{consumerName}/credentials:
+    parameters:
+      - name: consumerName
+        in: path
+        description: The name of the external consumer
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listExternalConsumerCredentials
+      summary: List a consumer's credentials
+      parameters:
+        - name: pageToken
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. List this consumer's credentials. Secrets are never
+        returned by this operation."
+      responses:
+        200:
+          description: The consumer's credentials, without secrets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsumerCredentials"
+        403:
+          description: "The caller does not have permission to read this external consumer"
+        404:
+          description: "The external consumer does not exist"
+    post:
+      operationId: createExternalConsumerCredential
+      summary: Create a consumer credential
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Create an OAuth2 client-credentials pair for this
+        consumer. The client secret is returned exactly once, in this response, and
+        cannot be retrieved later. A service MAY limit a consumer to one active
+        credential, in which case creating a new credential replaces the existing
+        one."
+      requestBody:
+        description: Options for the credential to create
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConsumerCredentialRequest"
+      responses:
+        201:
+          description: The created credential, including its secret (returned only here)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsumerCredentialWithSecret"
+        403:
+          description: "The caller does not have permission to manage this consumer's credentials"
+        404:
+          description: "The external consumer does not exist"
+
+  /external-consumers/{consumerName}/credentials/{credentialId}:
+    parameters:
+      - name: consumerName
+        in: path
+        description: The name of the external consumer
+        required: true
+        schema:
+          type: string
+      - name: credentialId
+        in: path
+        description: The id of the credential
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: revokeExternalConsumerCredential
+      summary: Revoke a consumer credential
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Revoke a credential immediately."
+      responses:
+        204:
+          description: "Success, no content"
+        403:
+          description: "The caller does not have permission to manage this consumer's credentials"
+        404:
+          description: "The external consumer or credential does not exist"
+
+  /external-consumers/{consumerName}/credentials/{credentialId}/rotate:
+    parameters:
+      - name: consumerName
+        in: path
+        description: The name of the external consumer
+        required: true
+        schema:
+          type: string
+      - name: credentialId
+        in: path
+        description: The id of the credential
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: rotateExternalConsumerCredential
+      summary: Rotate a consumer credential
+      description:
+        "**Beta:** this API is under active development and may change in a
+        backward-incompatible way. Rotate a credential: a new client-credentials pair is
+        created and returned (the new secret is returned exactly once), and the previous
+        credential remains valid for a service-defined overlap window so a running
+        consumer can roll over without interruption. A service without bounded
+        credential expiry keeps the previous credential valid until the next rotation
+        or revocation, and documents that behavior."
+      requestBody:
+        description: Options for the rotation
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RotateConsumerCredentialRequest"
+      responses:
+        201:
+          description: The replacement credential, including its secret (returned only here)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsumerCredentialWithSecret"
+        403:
+          description: "The caller does not have permission to manage this consumer's credentials"
+        404:
+          description: "The external consumer or credential does not exist"
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description:
+        Uses OAuth 2 with the client credentials flow. The token endpoint is
+        deployment-defined and is delivered to each consumer via its listing's
+        endpoint configuration (oauth2ServerUri); the URL below is illustrative only.
+      flows:
+        clientCredentials:
+          tokenUrl: "https://auth.example.invalid/oauth/tokens"
+          scopes: {}
+
+  schemas:
+    Share:
+      description:
+        A share; an explicit, named, realm-level container enumerating shared objects.
+        A share is bound to one catalog; its members are objects of that catalog. Share
+        names are unique across the service. The one-catalog binding is a rule of this
+        version rather than of the addressing, so a later version may bind further
+        catalogs without changing any path.
+      type: object
+      properties:
+        name:
+          type: string
+        catalogName:
+          type: string
+          description:
+            The catalog this share is bound to, whose objects it can contain; required at
+            creation, immutable afterwards. Exactly one catalog is bound in this version
+        description:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+        createTimestamp:
+          type: integer
+          format: int64
+        lastUpdateTimestamp:
+          type: integer
+          format: int64
+        entityVersion:
+          type: integer
+          description: The version of the share object used to determine if the share metadata has changed
+      required:
+        - name
+        - catalogName
+
+    Shares:
+      type: object
+      properties:
+        nextPageToken:
+          type: string
+          description:
+            Present when more results exist; absent on the last page, and never
+            returned by a non-paginating service
+        shares:
+          type: array
+          items:
+            $ref: "#/components/schemas/Share"
+
+    CreateShareRequest:
+      type: object
+      properties:
+        share:
+          $ref: "#/components/schemas/Share"
+      required:
+        - share
+
+    UpdateShareRequest:
+      description: Updates to apply to a share's description or properties
+      type: object
+      properties:
+        currentEntityVersion:
+          type: integer
+          description: The version of the object onto which this update is applied
+        description:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+
+    ShareMember:
+      description:
+        A member of a share. The canonical identity names the object inside the share's
+        bound catalog. A service pins each member to the underlying object's stable id
+        at add time, so a renamed member remains the same member under its current name,
+        and a new object reusing an old name is not a member. The exposed identity is
+        reserved for a future aliasing capability; aliasing is all-or-nothing (a
+        complete virtual namespace), it is not offered in this version, and a service
+        rejects an exposed identity that differs from the canonical identity.
+      type: object
+      properties:
+        kind:
+          type: string
+          description:
+            The member kind. TABLE is the only kind defined in this version; the set
+            is open (future versions add kinds), and a service rejects kinds it does
+            not support
+        canonical:
+          $ref: "#/components/schemas/MemberIdentity"
+        exposed:
+          $ref: "#/components/schemas/MemberIdentity"
+      required:
+        - kind
+        - canonical
+
+    MemberIdentity:
+      description:
+        The identity of a member object, as a namespace and a name inside the share's
+        bound catalog
+      type: object
+      properties:
+        catalog:
+          type: string
+          description:
+            The catalog containing the object; optional, and when present it must equal
+            the share's bound catalog
+        namespace:
+          type: array
+          items:
+            type: string
+        name:
+          type: string
+      required:
+        - namespace
+        - name
+
+    ShareMembers:
+      type: object
+      properties:
+        nextPageToken:
+          type: string
+          description:
+            Present when more results exist; absent on the last page, and never
+            returned by a non-paginating service
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShareMember"
+
+    UpdateShareMembersRequest:
+      description: An ordered list of membership updates, applied atomically
+      type: object
+      properties:
+        currentEntityVersion:
+          type: integer
+          description:
+            The share version this update was computed against; the request conflicts
+            when the share has moved past it. The member list is a read-modify-write,
+            so compare-and-set is recommended for every writer
+        updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShareMemberUpdate"
+      required:
+        - updates
+
+    ShareMemberUpdate:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - ADD
+            - REMOVE
+        member:
+          $ref: "#/components/schemas/ShareMember"
+      required:
+        - action
+        - member
+
+    ExternalConsumer:
+      description:
+        A restricted, first-class identity representing a data consumer outside this
+        catalog's identity domain
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+        createTimestamp:
+          type: integer
+          format: int64
+        lastUpdateTimestamp:
+          type: integer
+          format: int64
+        entityVersion:
+          type: integer
+      required:
+        - name
+
+    ExternalConsumers:
+      type: object
+      properties:
+        nextPageToken:
+          type: string
+          description:
+            Present when more results exist; absent on the last page, and never
+            returned by a non-paginating service
+        externalConsumers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExternalConsumer"
+
+    CreateExternalConsumerRequest:
+      type: object
+      properties:
+        externalConsumer:
+          $ref: "#/components/schemas/ExternalConsumer"
+      required:
+        - externalConsumer
+
+    Listing:
+      description:
+        The binding between an external consumer and a share; the only path that
+        connects a consumer to a share, and the unit of audit
+      type: object
+      properties:
+        name:
+          type: string
+        shareName:
+          type: string
+        consumerName:
+          type: string
+        description:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+        createTimestamp:
+          type: integer
+          format: int64
+        entityVersion:
+          type: integer
+          description: The version of the listing object, carried into audit attribution
+      required:
+        - name
+        - shareName
+        - consumerName
+
+    Listings:
+      type: object
+      properties:
+        nextPageToken:
+          type: string
+          description:
+            Present when more results exist; absent on the last page, and never
+            returned by a non-paginating service
+        listings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Listing"
+
+    CreateListingRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        consumerName:
+          type: string
+        description:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - name
+        - consumerName
+
+    EndpointConfig:
+      description:
+        The connection material an external consumer uses to read a share with a
+        standard Iceberg REST Catalog client
+      type: object
+      properties:
+        catalogEndpoint:
+          type: string
+          format: uri
+          description: The base URI of the Iceberg REST Catalog endpoint serving the share
+        warehouse:
+          type: string
+          description: The warehouse value the consumer's client sends at configuration discovery
+        oauth2ServerUri:
+          type: string
+          format: uri
+          description: The token endpoint the consumer's client uses for the OAuth2 client credentials flow
+        scope:
+          type: string
+          description:
+            The OAuth2 scope the consumer's client requests; required by deployments
+            whose token service mandates a scope, and delivered here because a stock
+            client cannot discover it in-band
+        additionalHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description:
+            HTTP headers the consumer's client must send on every request, including
+            token requests (for example a realm-selection header required by the
+            deployment)
+      required:
+        - catalogEndpoint
+        - warehouse
+        - oauth2ServerUri
+
+    ConsumerCredential:
+      description: An OAuth2 client-credentials pair of an external consumer, without its secret
+      type: object
+      properties:
+        credentialId:
+          type: string
+        clientId:
+          type: string
+        status:
+          type: string
+          description:
+            EXPIRING appears only on services with bounded overlap support; a service
+            without it reports ACTIVE or REVOKED only
+          enum:
+            - ACTIVE
+            - EXPIRING
+            - REVOKED
+        createTimestamp:
+          type: integer
+          format: int64
+        expirationTimestamp:
+          type: integer
+          format: int64
+          description: Present when the credential is expiring, such as after a rotation overlap window
+      required:
+        - credentialId
+        - clientId
+        - status
+
+    ConsumerCredentials:
+      type: object
+      properties:
+        nextPageToken:
+          type: string
+          description:
+            Present when more results exist; absent on the last page, and never
+            returned by a non-paginating service
+        credentials:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsumerCredential"
+
+    ConsumerCredentialWithSecret:
+      description: A consumer credential including its secret; returned exactly once, at creation or rotation
+      allOf:
+        - $ref: "#/components/schemas/ConsumerCredential"
+        - type: object
+          properties:
+            clientSecret:
+              type: string
+          required:
+            - clientSecret
+
+    CreateConsumerCredentialRequest:
+      type: object
+      properties:
+        expirationTimestamp:
+          type: integer
+          format: int64
+          description:
+            Optional expiry for the credential; a service without credential-expiry
+            support rejects a request that sets it
+
+    RotateConsumerCredentialRequest:
+      type: object
+      properties:
+        overlapSeconds:
+          type: integer
+          description:
+            Advisory. How long the previous credential should remain valid after
+            rotation; the service applies its configured policy, and a service without
+            bounded credential expiry ignores this value and keeps the previous
+            credential valid until the next rotation or revocation
