@@ -41,6 +41,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
     WHERE location_without_scheme IS NOT NULL;
   ```
   H2 is unaffected.
+- Relational JDBC: The per-schema-version runtime fallback has been removed. The migration to schema
+  v6 is now **required** before starting this version of Polaris. The first request to any realm
+  whose recorded schema version does not match what the binary expects will fail fast with a clear
+  error message. See the [Relational JDBC metastore documentation] for the full upgrade path.
+
+[Relational JDBC metastore documentation]:https://polaris.apache.org/releases/latest/metastores/relational-jdbc/#schema-upgrades
 
 - Relational JDBC: schema version 6 also declares `idx_grants_realm_grantee`,
   `idx_grants_realm_securable` and `idx_entities_catalog_id_id` on CockroachDB (see Fixes), which
@@ -72,6 +78,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   Either remove the setting from the URL, or point it at the schema that already holds your
   Polaris tables.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
+- Relational JDBC: Per-version schema scripts (`schema-v1.sql` through `schema-v5.sql`) have been
+  replaced by a single `schema.sql` that is safe to run on every startup. Per-version runtime
+  compatibility fallbacks and the `SCHEMA_VERSION_FALL_BACK_ON_DNE` configuration key have been
+  removed. Operators must ensure their database is at the right schema version before upgrading to 
+  this version.
 
 ### New Features
 
