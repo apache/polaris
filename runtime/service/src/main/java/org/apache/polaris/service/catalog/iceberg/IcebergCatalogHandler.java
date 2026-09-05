@@ -23,6 +23,7 @@ import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATE
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -340,8 +341,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // existence is also missing.
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils().loadNamespace(namespaceCatalog, namespace);
+    // Resolution already proved existence. Federated catalogs are passthrough, so ask the remote
+    // whether the namespace is there rather than loading its metadata.
+    if (!(baseCatalog instanceof LocalIcebergCatalog)
+        && !namespaceCatalog.namespaceExists(namespace)) {
+      throw noSuchNamespaceException(namespace);
+    }
   }
 
   public void dropNamespace(Namespace namespace) {
@@ -1321,8 +1326,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils().loadTable(baseCatalog, tableIdentifier);
+    // Resolution already proved existence. Federated catalogs are passthrough, so ask the remote
+    // whether the table is there rather than loading it.
+    if (!(baseCatalog instanceof LocalIcebergCatalog)
+        && !baseCatalog.tableExists(tableIdentifier)) {
+      throw notFoundExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+    }
   }
 
   public void renameTable(RenameTableRequest request) {
@@ -1593,8 +1603,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils().loadView(viewCatalog, viewIdentifier);
+    // Resolution already proved existence. Federated catalogs are passthrough, so ask the remote
+    // whether the view is there rather than loading it.
+    if (!(baseCatalog instanceof LocalIcebergCatalog) && !viewCatalog.viewExists(viewIdentifier)) {
+      throw notFoundExceptionForTableLikeEntity(viewIdentifier, PolarisEntitySubType.ICEBERG_VIEW);
+    }
   }
 
   public void renameView(RenameTableRequest request) {

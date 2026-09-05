@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
@@ -47,8 +49,13 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.catalog.ViewCatalog;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
@@ -664,5 +671,99 @@ class IcebergCatalogHandlerTest {
     assertThat(handler.filterResponseToSnapshots(response, null))
         .as("no snapshots param must be a pure passthrough, same as snapshots=all")
         .isSameAs(response);
+  }
+
+  private Catalog federatedCatalog() {
+    Catalog federated =
+        mock(
+            Catalog.class,
+            withSettings().extraInterfaces(ViewCatalog.class, SupportsNamespaces.class));
+    when(localCatalogFactory.createCatalog(any())).thenReturn(federated);
+    return federated;
+  }
+
+  @Test
+  void tableExistsSkipsLoadTableOnLocalCatalog() {
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.tableExists(TABLE2)).doesNotThrowAnyException();
+
+    verify(catalogHandlerUtils, never()).loadTable(any(), any());
+    verify(icebergCatalog, never()).loadTable(any());
+  }
+
+  @Test
+  void viewExistsSkipsLoadViewOnLocalCatalog() {
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.viewExists(TABLE2)).doesNotThrowAnyException();
+
+    verify(catalogHandlerUtils, never()).loadView(any(), any());
+    verify(icebergCatalog, never()).loadView(any());
+  }
+
+  @Test
+  void namespaceExistsSkipsLoadNamespaceOnLocalCatalog() {
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.namespaceExists(NS1)).doesNotThrowAnyException();
+
+    verify(catalogHandlerUtils, never()).loadNamespace(any(), any());
+    verify(icebergCatalog, never()).loadNamespaceMetadata(any());
+  }
+
+  @Test
+  void tableExistsAsksFederatedCatalogAndThrowsWhenAbsent() {
+    Catalog federated = federatedCatalog();
+    when(federated.tableExists(TABLE2)).thenReturn(false);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(() -> handler.tableExists(TABLE2)).isInstanceOf(NoSuchTableException.class);
+
+    verify(federated).tableExists(TABLE2);
+    verify(catalogHandlerUtils, never()).loadTable(any(), any());
+  }
+
+  @Test
+  void viewExistsAsksFederatedCatalogAndThrowsWhenAbsent() {
+    Catalog federated = federatedCatalog();
+    when(((ViewCatalog) federated).viewExists(TABLE2)).thenReturn(false);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(() -> handler.viewExists(TABLE2)).isInstanceOf(NoSuchViewException.class);
+
+    verify((ViewCatalog) federated).viewExists(TABLE2);
+    verify(catalogHandlerUtils, never()).loadView(any(), any());
+  }
+
+  @Test
+  void namespaceExistsAsksFederatedCatalogAndThrowsWhenAbsent() {
+    Catalog federated = federatedCatalog();
+    when(((SupportsNamespaces) federated).namespaceExists(NS1)).thenReturn(false);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(() -> handler.namespaceExists(NS1))
+        .isInstanceOf(NoSuchNamespaceException.class);
+
+    verify((SupportsNamespaces) federated).namespaceExists(NS1);
+    verify(catalogHandlerUtils, never()).loadNamespace(any(), any());
   }
 }
