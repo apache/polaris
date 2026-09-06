@@ -122,6 +122,8 @@ that are not catalog-scoped. To upgrade an existing v3/v4 database, run the foll
 CockroachDB, and H2), then restart Polaris:
 
 ```sql
+DROP INDEX IF EXISTS polaris_schema.idx_idemp_realm_expires;
+DROP INDEX IF EXISTS polaris_schema.idempotency_records;
 ALTER TABLE polaris_schema.events ALTER COLUMN catalog_id DROP NOT NULL;
 UPDATE polaris_schema.events SET catalog_id = NULL WHERE catalog_id = '__realm__';
 DROP TABLE IF EXISTS polaris_schema.idempotency_records;
