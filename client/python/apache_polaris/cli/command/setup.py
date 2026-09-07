@@ -332,6 +332,8 @@ class SetupCommand(Command):
                     if c.properties.additional_properties
                     else {},
                 }
+                if c.storage_config_info.storage_name is not None:
+                    catalog_info["storage_name"] = c.storage_config_info.storage_name
                 # Serialize storage config details
                 if storage_type.lower() == StorageType.S3.value:
                     s3_info = {
@@ -832,6 +834,7 @@ class SetupCommand(Command):
         """Maps storage-related properties from YAML data to command arguments."""
         storage_keys = [
             "storage_type",
+            "storage_name",
             "default_base_location",
             "allowed_locations",
             "properties",
@@ -1005,6 +1008,7 @@ class SetupCommand(Command):
                         catalog_type=command_args.get("catalog_type"),
                         default_base_location=command_args.get("default_base_location"),
                         storage_type=command_args.get("storage_type"),
+                        storage_name=command_args.get("storage_name"),
                         allowed_locations=command_args.get("allowed_locations"),
                         properties=command_args.get("properties"),
                         set_properties=command_args.get("set_properties"),

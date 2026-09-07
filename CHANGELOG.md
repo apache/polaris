@@ -79,12 +79,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Authorization requests with multiple intents are now evaluated one intent at a time. OPA
   deployments will observe this as separate OPA queries per intent, so existing Rego policies that
   depend on the previous combined-intent input shape may need to be updated.
+- Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
 
 ### New Features
 
 - Python CLI: `catalogs update` now supports `--no-sts` and `--no-kms` to toggle STS/KMS availability on an existing S3 catalog. Previously these were only settable at `catalogs create` time.
 - Python CLI: added `gcp` as an external catalog authentication type for Iceberg REST federation, enabling CLI creation of GCP-authenticated catalogs such as BigLake without passing Google credential secrets through command-line flags.
 - The database schema used by the Relational JDBC persistence backend is now configurable through standard datasource configuration: the JDBC driver's `currentSchema` connection property (defaulted to `POLARIS_SCHEMA` via `quarkus.datasource.jdbc.additional-jdbc-properties.currentSchema`) selects the schema, and the persistence layer is agnostic of the schema name. Also exposed as `persistence.relationalJdbc.additionalProperties.currentSchema` in the Helm chart.
+- Python CLI: `catalogs create` and `catalogs update` now support `--storage-name` to set an optional name referencing a server-side storage configuration.
 
 ### Changes
 
@@ -101,8 +103,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Deprecations
 
+- Deprecated the `ADD_TRAILING_SLASH_TO_LOCATION` feature flag; Polaris now always appends a trailing slash to table and namespace base locations, so the key is accepted-but-ignored (a startup warning is emitted only when it is `false` in `polaris.features` defaults or realm overrides) and will be removed in a future release.
+
 ### Fixes
 
+- Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
   error envelope (`{"error": {...}}`) instead of a flat `{"code", "message"}` body, so Iceberg
@@ -145,6 +150,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   loading the grants held by a principal, principal role or catalog role scans every grant record
   in the realm, because the `grant_records` primary key continues with the securable columns after
   `realm_id`. Existing CockroachDB deployments need a manual index creation — see Upgrade notes.
+- Creating a namespace without an explicit location no longer fails with HTTP 400 when the
+  catalog's `default-base-location` sits inside an allowed location instead of being one of
+  them. For example, with allowed location `s3://b1` and `default-base-location` `s3://b1/d1`,
+  `CREATE NAMESPACE ns` places the namespace at `s3://b1/d1/ns`, but the check expected it
+  directly under an allowed location, at `s3://b1/ns`, and rejected it as a custom location even
+  though the request asked for none. The namespace location is now compared against the
+  catalog's `default-base-location`, which is what it is derived from.
+- Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the
+  token). Credential-generation is enforced on token exchange; bearer verify is signature and claims
+  only. Secrets-load failures during exchange return service unavailable.
 
 ### Commits
 
@@ -220,6 +235,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Python CLI `setup` now preserves the catalog `storageName` field during export and apply, so named storage credential selection survives backup and migration round trips.
 - The NoSQL persistence commit log (`Commits.commitLog`) no longer stops early when a commit's recent-ancestor tail is shorter than the internal fetch page size. With a `polaris.persistence.reference-previous-head-count` smaller than the page size, the natural-order commit log previously truncated at the first short tail because trailing null entries in the fetch page were treated as end-of-history, which could also drop still-referenced objects during maintenance.
 - Python CLI REPL now shows a clear "Syntax error" message for malformed input instead of a generic "unexpected error" message.
 - Python CLI `setup apply` now exits with an error after any setup operation fails, while still attempting the remaining operations. Previously, individual failures were logged but the command reported success and exited with status 0.

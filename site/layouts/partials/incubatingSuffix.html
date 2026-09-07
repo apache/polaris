@@ -17,4 +17,20 @@ specific language governing permissions and limitations
 under the License.
 */}}
 
-{{- partial "githubPolarisUrl.html" (dict "page" . "path" (.Get 0)) -}}
+{{/*
+Returns "-incubating" if the given release version predates graduation (< 1.4.0),
+or "" otherwise. Pass "[unreleased]" to get "".
+
+Usage: {{ partial "incubatingSuffix.html" $ver }}
+*/}}
+
+{{- $suffix := "" -}}
+{{- if ne . "[unreleased]" -}}
+{{- $parts := split . "." -}}
+{{- $vMajor := index $parts 0 | int -}}
+{{- $vMinor := index $parts 1 | int -}}
+{{- if or (lt $vMajor 1) (and (eq $vMajor 1) (lt $vMinor 4)) -}}
+{{- $suffix = "-incubating" -}}
+{{- end -}}
+{{- end -}}
+{{- return $suffix -}}

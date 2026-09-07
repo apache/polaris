@@ -678,6 +678,119 @@ public class IcebergAllowedLocationTest {
         .hasMessageContaining("Invalid locations");
   }
 
+  @Test
+  void testCreateNamespaceWhenBaseLocationIsNestedInsideAllowedLocation(@TempDir Path tmpDir) {
+    TestServices services =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "ALLOW_INSECURE_STORAGE_TYPES",
+                    "true",
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("FILE")))
+            .build();
+
+    String allowedLocation = tmpDir.toAbsolutePath().toUri().toString();
+    String catalogLocation = tmpDir.resolve("warehouse").toAbsolutePath().toUri().toString();
+    createCatalog(services, Map.of(), catalogLocation, List.of(allowedLocation));
+
+    CreateNamespaceRequest derivedLocationRequest =
+        CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build();
+    try (Response response =
+        services
+            .restApi()
+            .createNamespace(
+                catalog,
+                derivedLocationRequest,
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    // A caller-specified location must still be rejected.
+    Map<String, String> customLocation = new HashMap<>();
+    customLocation.put("location", allowedLocation + "elsewhere");
+    CreateNamespaceRequest customLocationRequest =
+        CreateNamespaceRequest.builder()
+            .withNamespace(Namespace.of("ns2"))
+            .setProperties(customLocation)
+            .build();
+    assertThatThrownBy(
+            () ->
+                services
+                    .restApi()
+                    .createNamespace(
+                        catalog,
+                        customLocationRequest,
+                        IDEMPOTENCY_KEY,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+  }
+
+  /**
+   * The four namespace-location cases, with ALLOW_NAMESPACE_CUSTOM_LOCATION off for the first three
+   * and on for the last.
+   */
+  @Test
+  void testNamespaceCustomLocationRules(@TempDir Path tmpDir) {
+    Map<String, Object> baseConfig =
+        Map.of(
+            "ALLOW_INSECURE_STORAGE_TYPES",
+            "true",
+            "SUPPORTED_CATALOG_STORAGE_TYPES",
+            List.of("FILE"));
+    String catalogLocation = tmpDir.toAbsolutePath().toUri().toString();
+
+    TestServices strict = TestServices.builder().config(baseConfig).build();
+    createCatalog(strict, Map.of(), catalogLocation, List.of(catalogLocation));
+    String defaultBase = String.format("%s/%s", catalogLocation, catalog);
+
+    // 1. No location requested: the default is derived and used.
+    assertThat(createNamespaceStatus(strict, "ns1", null))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+
+    // 2. The default location, stated explicitly: allowed, it is explicit but not custom.
+    assertThat(createNamespaceStatus(strict, "ns2", defaultBase + "/ns2"))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+
+    // 3. A location other than the default: rejected as custom.
+    assertThatThrownBy(() -> createNamespaceStatus(strict, "ns3", catalogLocation + "elsewhere"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has a custom location");
+
+    // 4. With custom locations enabled, the same request is allowed.
+    Map<String, Object> permissive = new HashMap<>(baseConfig);
+    permissive.put("ALLOW_NAMESPACE_CUSTOM_LOCATION", "true");
+    TestServices lenient = TestServices.builder().config(permissive).build();
+    createCatalog(lenient, Map.of(), catalogLocation, List.of(catalogLocation));
+    assertThat(createNamespaceStatus(lenient, "ns4", catalogLocation + "elsewhere"))
+        .isEqualTo(Response.Status.OK.getStatusCode());
+  }
+
+  private int createNamespaceStatus(TestServices services, String name, String location) {
+    CreateNamespaceRequest.Builder request =
+        CreateNamespaceRequest.builder().withNamespace(Namespace.of(name));
+    if (location != null) {
+      Map<String, String> properties = new HashMap<>();
+      properties.put("location", location);
+      request.setProperties(properties);
+    }
+    try (Response response =
+        services
+            .restApi()
+            .createNamespace(
+                catalog,
+                request.build(),
+                IDEMPOTENCY_KEY,
+                services.realmContext(),
+                services.securityContext())) {
+      return response.getStatus();
+    }
+  }
+
   private void createCatalog(
       TestServices services,
       Map<String, String> catalogConfig,

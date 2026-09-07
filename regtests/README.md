@@ -172,15 +172,15 @@ If a test fails due to incorrect expected output, the test harness will generate
 you compare the actual output with the expected output. The script will be located in the `output`
 directory, and will have the same name as the test, with the extension `.fixdiffs.sh`.
 
-For example, if the test `t_hello_world` fails, the script to compare the actual and expected output
-will be located at `output/t_hello_world/hello_world.sh.fixdiffs.sh`:
+For example, if the test `t_catalog_federation` fails, the script to compare the actual and expected
+output will be located at `output/t_catalog_federation/catalog_federation.sh.fixdiffs.sh`:
 
 ```
 Tue Apr 23 06:32:23 UTC 2024: Running all tests
-Tue Apr 23 06:32:23 UTC 2024: Starting test t_hello_world:hello_world.sh
-Tue Apr 23 06:32:23 UTC 2024: Test run concluded for t_hello_world:hello_world.sh
-Tue Apr 23 06:32:23 UTC 2024: Test FAILED: t_hello_world:hello_world.sh
-Tue Apr 23 06:32:23 UTC 2024: To compare and fix diffs: /tmp/polaris-regtests/t_hello_world/hello_world.sh.fixdiffs.sh
+Tue Apr 23 06:32:23 UTC 2024: Starting test t_catalog_federation:catalog_federation.sh
+Tue Apr 23 06:32:23 UTC 2024: Test run concluded for t_catalog_federation:catalog_federation.sh
+Tue Apr 23 06:32:23 UTC 2024: Test FAILED: t_catalog_federation:catalog_federation.sh
+Tue Apr 23 06:32:23 UTC 2024: To compare and fix diffs: /tmp/polaris-regtests/t_catalog_federation/catalog_federation.sh.fixdiffs.sh
 Tue Apr 23 06:32:23 UTC 2024: Starting test t_spark_sql:spark_sql_basic.sh
 Tue Apr 23 06:32:32 UTC 2024: Test run concluded for t_spark_sql:spark_sql_basic.sh
 Tue Apr 23 06:32:32 UTC 2024: Test SUCCEEDED: t_spark_sql:spark_sql_basic.sh
@@ -189,7 +189,7 @@ Tue Apr 23 06:32:32 UTC 2024: Test SUCCEEDED: t_spark_sql:spark_sql_basic.sh
 Simply execute the specified `fixdiffs.sh` file, which will in turn run `meld` and fix the ref file:
 
 ```
-/tmp/polaris-regtests/t_hello_world/hello_world.sh.fixdiffs.sh
+/tmp/polaris-regtests/t_catalog_federation/catalog_federation.sh.fixdiffs.sh
 ```
 
 Then commit the changes to the ref file.

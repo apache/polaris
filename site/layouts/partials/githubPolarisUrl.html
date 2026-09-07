@@ -17,4 +17,13 @@ specific language governing permissions and limitations
 under the License.
 */}}
 
-{{- partial "githubPolarisUrl.html" (dict "page" . "path" (.Get 0)) -}}
+{{/*
+Returns a GitHub URL pointing to the given path in the apache/polaris repository,
+resolved to the correct branch or tag for the current page's release version.
+
+Usage: {{ partial "githubPolarisUrl.html" (dict "page" . "path" "path/to/file") }}
+*/}}
+
+{{- $gitRef := partial "polarisGitRef.html" .page -}}
+{{- $url := printf "https://github.com/apache/polaris/blob/%s/%s" $gitRef.ref .path -}}
+{{- return $url -}}

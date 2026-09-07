@@ -19,4 +19,4 @@
 
 # Dockerfile to provide the image name and tag to a test.
 # Version is managed by Renovate - do not edit.
-FROM docker.io/floci/floci-az:0.11.0
+FROM docker.io/floci/floci-az:0.12.0
