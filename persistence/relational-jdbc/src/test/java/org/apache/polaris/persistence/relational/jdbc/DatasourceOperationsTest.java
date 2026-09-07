@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -39,6 +40,7 @@ import java.util.List;
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.core.entity.EventEntity;
+import org.apache.polaris.core.persistence.AmbiguousWriteException;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations.Operation;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
@@ -95,6 +97,59 @@ public class DatasourceOperationsTest {
     when(mockPreparedStatement.executeUpdate()).thenThrow(new SQLException("demo", "42P07"));
 
     assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
+  }
+
+  @Test
+  void executeUpdateWithAmbiguousWriteDetection_doesNotRetryAmbiguousConnectionFailure()
+      throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1_000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE entities SET entity_version = ?", List.of(2));
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate())
+        .thenThrow(new SQLException("An I/O error occurred while sending to the backend."));
+
+    assertThatThrownBy(() -> datasourceOperations.executeUpdateWithAmbiguousWriteDetection(query))
+        .isInstanceOf(AmbiguousWriteException.class);
+
+    verify(mockPreparedStatement).executeUpdate();
+  }
+
+  @Test
+  void executeUpdateWithAmbiguousWriteDetection_retriesSerializationFailure() throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(2));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1_000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE entities SET entity_version = ?", List.of(2));
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate())
+        .thenThrow(new SQLException("serialization failure", "40001"))
+        .thenReturn(1);
+
+    assertEquals(1, datasourceOperations.executeUpdateWithAmbiguousWriteDetection(query));
+
+    verify(mockPreparedStatement, times(2)).executeUpdate();
+  }
+
+  @Test
+  void executeUpdateWithAmbiguousWriteDetection_retriesAcquisitionTimeout() throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(2));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1_000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    when(mockDataSource.getConnection())
+        .thenThrow(new SQLException("Acquisition timeout while waiting for a connection"))
+        .thenReturn(mockConnection);
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE entities SET entity_version = ?", List.of(2));
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate()).thenReturn(1);
+
+    assertEquals(1, datasourceOperations.executeUpdateWithAmbiguousWriteDetection(query));
+
+    verify(mockPreparedStatement).executeUpdate();
   }
 
   @Test

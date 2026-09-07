@@ -2898,7 +2898,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
         .when(spyMetaStore)
-        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+        .updateEntityPropertiesIfNotChangedWithAmbiguousWriteDetection(any(), any(), any());
 
     UpdateSchema update = table.updateSchema().addColumn("new_col", Types.LongType.get());
     Schema expected = update.apply();
