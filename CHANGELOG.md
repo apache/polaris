@@ -28,6 +28,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ## [Unreleased]
 
 ### Highlights
+- Table and view metadata updates now reconcile unknown persistence outcomes by reading back the
+  metadata location and notification timestamp. Confirmed updates return success; unconfirmed
+  updates retain their metadata files and report an unknown outcome.
+
 - Table and view commits no longer delete newly written metadata when the metastore write outcome
   is unknown (e.g. a dropped connection during `commit()`); they still clean up on known failures.
   JDBC reports that unknown outcome as `PersistenceCommitStateUnknownException` (HTTP 500). A
