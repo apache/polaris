@@ -3247,12 +3247,59 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
-    EntityResult res =
-        getMetaStoreManager()
-            .updateEntityPropertiesIfNotChanged(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                icebergTableLikeEntity);
+    EntityResult res;
+    try {
+      res =
+          getMetaStoreManager()
+              .updateEntityPropertiesIfNotChanged(
+                  getCurrentPolarisContext(),
+                  PolarisEntity.toCoreList(catalogPath),
+                  icebergTableLikeEntity);
+    } catch (PersistenceCommitStateUnknownException e) {
+      try {
+        EntityResult persisted =
+            getMetaStoreManager()
+                .loadEntity(
+                    getCurrentPolarisContext(),
+                    icebergTableLikeEntity.getCatalogId(),
+                    icebergTableLikeEntity.getId(),
+                    icebergTableLikeEntity.getType());
+        if (persisted.isSuccess() && persisted.getEntity() != null) {
+          IcebergTableLikeEntity stored = IcebergTableLikeEntity.of(persisted.getEntity());
+          // Notifications can advance the timestamp without changing the metadata location.
+          // Confirm both before acknowledging the update.
+          if (Objects.equal(
+                  stored.getMetadataLocation(), icebergTableLikeEntity.getMetadataLocation())
+              && stored
+                  .getLastAdmittedNotificationTimestamp()
+                  .equals(icebergTableLikeEntity.getLastAdmittedNotificationTimestamp())) {
+            LOGGER.info(
+                "Recovered ambiguous table or view update for {} with metadata location {}",
+                identifier,
+                icebergTableLikeEntity.getMetadataLocation());
+            return;
+          }
+          LOGGER.warn(
+              "Could not confirm ambiguous table or view update for {}: expected metadata location {}"
+                  + " and notification timestamp {}, found {} and {}",
+              identifier,
+              icebergTableLikeEntity.getMetadataLocation(),
+              icebergTableLikeEntity.getLastAdmittedNotificationTimestamp(),
+              stored.getMetadataLocation(),
+              stored.getLastAdmittedNotificationTimestamp());
+        } else {
+          LOGGER.warn(
+              "Could not confirm ambiguous table or view update for {}: entity not found on reload"
+                  + " (status {})",
+              identifier,
+              persisted.getReturnStatus());
+        }
+      } catch (RuntimeException reconciliationFailure) {
+        e.addSuppressed(reconciliationFailure);
+      }
+      // Preserve the shared unknown-outcome signal and its metadata cleanup protection.
+      throw e;
+    }
     if (!res.isSuccess()) {
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
