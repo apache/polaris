@@ -26,6 +26,9 @@ import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRea
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -36,14 +39,22 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DatabindException;
@@ -102,6 +113,50 @@ public class RangerPolarisAuthorizerTest {
   @Test
   public void testAuthzUnsupported() throws Exception {
     runTests(authorizer, "/authz_tests/tests_authz_unsupported.json");
+  }
+
+  @Test
+  public void testResolveAuthorizationInputsResolvesRequiredSelections() {
+    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    when(resolutionManifest.getCatalogName()).thenReturn("catalog-1");
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog-1")))));
+
+    authorizer.resolveAuthorizationInputs(authzState, request);
+
+    verify(resolutionManifest)
+        .resolveSelections(
+            Set.of(
+                Resolvable.REFERENCE_CATALOG,
+                Resolvable.REQUESTED_PATHS,
+                Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
+  }
+
+  @Test
+  public void testResolveAuthorizationInputsNullCatalogResolvesOnlyTopLevelEntities() {
+    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState(resolutionManifest);
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog-1")))));
+
+    authorizer.resolveAuthorizationInputs(authzState, request);
+
+    verify(resolutionManifest).resolveSelections(Set.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
   }
 
   private void runTests(PolarisAuthorizer authorizer, String testFilename) throws Exception {

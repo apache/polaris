@@ -57,6 +57,12 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private final Resolver primaryResolver;
   private final PolarisDiagnostics diagnostics;
 
+  /** Returns the name of the reference catalog, or {@code null} for admin-level operations. */
+  @Nullable
+  public String getCatalogName() {
+    return catalogName;
+  }
+
   private final Map<ResolvedPathKey, Integer> pathLookup = new HashMap<>();
   private final List<ResolverPath> addedPaths = new ArrayList<>();
   private final Multimap<String, PolarisEntityType> addedTopLevelNames = HashMultimap.create();
