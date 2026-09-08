@@ -20,7 +20,8 @@ package org.apache.polaris.extension.metrics.spi;
 
 import com.google.common.annotations.Beta;
 import java.util.List;
-import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
+import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.jspecify.annotations.NonNull;
@@ -46,18 +47,38 @@ public interface MetricsQuerySpi {
   }
 
   /**
+   * Result of {@link #listReports}, pairing the requested {@link MetricType} with the page of
+   * records of the matching record type so callers can switch exhaustively without casting.
+   */
+  sealed interface QueryResult permits ScanResult, CommitResult {
+    MetricType metricType();
+  }
+
+  record ScanResult(Page<ScanMetricsRecord> reports) implements QueryResult {
+    @Override
+    public MetricType metricType() {
+      return MetricType.SCAN;
+    }
+  }
+
+  record CommitResult(Page<CommitMetricsRecord> reports) implements QueryResult {
+    @Override
+    public MetricType metricType() {
+      return MetricType.COMMIT;
+    }
+  }
+
+  /**
    * Lists persisted metrics reports of the given {@link MetricType} for the given tables, applying
    * the supplied filters and returning at most one page of results merged across all requested
    * tables.
    *
-   * <p>Callers must only rely on the record subtype corresponding to {@code metricType}: {@code
-   * SCAN} yields {@link org.apache.polaris.core.persistence.metrics.ScanMetricsRecord} instances
-   * and {@code COMMIT} yields {@link
-   * org.apache.polaris.core.persistence.metrics.CommitMetricsRecord} instances.
+   * <p>The returned {@link QueryResult#metricType()} must equal {@code metricType}: {@code SCAN}
+   * must yield a {@link ScanResult} and {@code COMMIT} must yield a {@link CommitResult}.
    *
    * @param tableIds internal table entity IDs to query, all belonging to {@code catalogId}
    */
-  Page<? extends MetricsRecordIdentity> listReports(
+  QueryResult listReports(
       @NonNull MetricType metricType,
       long catalogId,
       @NonNull List<Long> tableIds,

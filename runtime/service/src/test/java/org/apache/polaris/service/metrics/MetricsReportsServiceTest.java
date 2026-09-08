@@ -118,14 +118,23 @@ class MetricsReportsServiceTest {
     // polaris-extensions-metrics-reports.
     MetricsQuerySpi noOp = mock(MetricsQuerySpi.class);
     when(noOp.listReports(
-            any(MetricsQuerySpi.MetricType.class),
+            eq(MetricsQuerySpi.MetricType.SCAN),
             anyLong(),
             any(),
             any(),
             any(),
             any(),
             any(PageToken.class)))
-        .thenReturn(Page.fromItems(List.of()));
+        .thenReturn(new MetricsQuerySpi.ScanResult(Page.fromItems(List.of())));
+    when(noOp.listReports(
+            eq(MetricsQuerySpi.MetricType.COMMIT),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(PageToken.class)))
+        .thenReturn(new MetricsQuerySpi.CommitResult(Page.fromItems(List.of())));
     @SuppressWarnings("unchecked")
     Instance<MetricsQuerySpi> noOpProvider = mock(Instance.class);
     when(noOpProvider.get()).thenReturn(noOp);
