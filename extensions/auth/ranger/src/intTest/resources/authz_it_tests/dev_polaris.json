@@ -2,7 +2,7 @@
   "serviceId": 1, "serviceName": "dev_polaris", "policyVersion": 15,
   "serviceDef": {
     "name":        "polaris",
-    "displayName": "Polaris (draft)",
+    "displayName": "Apache Polaris",
     "label":       "Apache Polaris",
     "description": "Apache Polaris",
     "guid":        "ca1b484b-e397-4ab4-b6e3-36a154662d7d",
@@ -96,6 +96,7 @@
           "table-drop",
           "table-data-read",
           "table-data-write",
+          "table-metrics-read",
           "table-properties-read",
           "table-properties-write",
           "table-properties-set",
@@ -307,12 +308,11 @@
       { "itemId": 28, "name": "table-create",     "label": "Table Create",     "category": "CREATE", "impliedGrants": [ "table-list" ] },
       { "itemId": 29, "name": "table-drop",       "label": "Table Drop",       "category": "DELETE" },
       { "itemId": 30, "name": "table-list",       "label": "Table List",       "category": "READ" },
-      { "itemId": 31, "name": "table-data-read",  "label": "Table Data Read",  "category": "READ",   "impliedGrants": [ "table-list", "table-properties-read", "table-metrics-read" ] },
+      { "itemId": 31, "name": "table-data-read",  "label": "Table Data Read",  "category": "READ",   "impliedGrants": [ "table-list", "table-properties-read" ] },
       { "itemId": 32, "name": "table-data-write", "label": "Table Data Write", "category": "UPDATE",
         "impliedGrants": [
           "table-list",
           "table-data-read",
-          "table-metrics-read",
           "table-properties-read",
           "table-properties-set",
           "table-properties-remove",
@@ -589,7 +589,13 @@
             { "type": "table-statistics-remove" },
             { "type": "table-structure-manage" }
           ],
-          "users": [ "admin1" ] }
+          "users": [ "admin1" ] },
+        {
+          "accesses": [
+            { "type": "table-data-read" },
+            { "type": "table-data-write" }
+          ],
+          "users": [ "dataonly1" ] }
       ]
     },
     {
