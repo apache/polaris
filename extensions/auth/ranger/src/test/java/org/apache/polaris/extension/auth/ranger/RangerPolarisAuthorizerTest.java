@@ -40,6 +40,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -199,7 +200,7 @@ public class RangerPolarisAuthorizerTest {
 
       String name = nameNode != null ? nameNode.asString() : null;
 
-      return PolarisPrincipal.of(name, Collections.emptyMap(), Collections.emptySet());
+      return PolarisPrincipal.of(name, AttributeMap.EMPTY, Collections.emptySet());
     }
   }
 

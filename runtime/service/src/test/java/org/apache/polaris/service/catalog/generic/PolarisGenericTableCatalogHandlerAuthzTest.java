@@ -27,7 +27,9 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -49,11 +51,10 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     return newWrapper(
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(
-                PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY,
-                principalEntity,
-                PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY,
-                true),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, true)
+                .build(),
             Set.of()));
   }
 
@@ -61,7 +62,9 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     return newWrapper(
         PolarisPrincipal.of(
             principalEntity.getName(),
-            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity),
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principalEntity)
+                .build(),
             activatedPrincipalRoles));
   }
 

@@ -33,9 +33,9 @@ import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -70,7 +70,7 @@ public class PolarisAuthorizerImplTest {
     PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(mock(RealmConfig.class));
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
     AuthorizationRequest request =
         new AuthorizationRequest(
             principal,
@@ -93,7 +93,7 @@ public class PolarisAuthorizerImplTest {
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper rootWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisResolvedPathWrapper principalRoleWrapper = mock(PolarisResolvedPathWrapper.class);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
 
     when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(rootWrapper);
     when(manifest.getResolvedTopLevelEntity("analytics-admin", PolarisEntityType.PRINCIPAL_ROLE))
@@ -137,7 +137,7 @@ public class PolarisAuthorizerImplTest {
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper rootWrapper = mock(PolarisResolvedPathWrapper.class);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
 
     when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(rootWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
@@ -175,7 +175,7 @@ public class PolarisAuthorizerImplTest {
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper namespaceWrapper = mock(PolarisResolvedPathWrapper.class);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
 
     when(manifest.getResolvedPath(
             ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true))
@@ -221,7 +221,7 @@ public class PolarisAuthorizerImplTest {
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper firstCatalogWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisResolvedPathWrapper secondCatalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
 
     when(manifest.getResolvedTopLevelEntity("catalog1", PolarisEntityType.CATALOG))
         .thenReturn(firstCatalogWrapper);
@@ -275,7 +275,7 @@ public class PolarisAuthorizerImplTest {
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper tableWrapper = mock(PolarisResolvedPathWrapper.class);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
 
     when(manifest.getResolvedPath(
             ResolvedPathKey.of(List.of("ns", "table"), PolarisEntityType.TABLE_LIKE), true))
@@ -326,7 +326,7 @@ public class PolarisAuthorizerImplTest {
 
   @Test
   void authorizationRequestThrowsWhenIntentsAreEmpty() {
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () -> new AuthorizationRequest(principal, List.of()))
@@ -340,7 +340,7 @@ public class PolarisAuthorizerImplTest {
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
     AuthorizationState authzState = new AuthorizationState(manifest);
     PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("role"));
 
     when(manifest.getResolvedTopLevelEntity("catalog", PolarisEntityType.CATALOG))
         .thenReturn(catalogWrapper);
@@ -378,7 +378,7 @@ public class PolarisAuthorizerImplTest {
     assertThatThrownBy(
             () ->
                 authorizer.authorizeOrThrow(
-                    PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
+                    PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("reader")),
                     Set.of(),
                     PolarisAuthorizableOperation.CREATE_TABLE_DIRECT,
                     List.of(namespace),
@@ -405,7 +405,7 @@ public class PolarisAuthorizerImplTest {
     assertThatThrownBy(
             () ->
                 authorizer.authorizeOrThrow(
-                    PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
+                    PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("reader")),
                     Set.of(),
                     PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
                     List.of(namespace),
@@ -432,7 +432,7 @@ public class PolarisAuthorizerImplTest {
     assertThatThrownBy(
             () ->
                 authorizer.authorizeOrThrow(
-                    PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
+                    PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("reader")),
                     Set.of(),
                     PolarisAuthorizableOperation.RENAME_TABLE,
                     List.of(srcTable),
@@ -467,7 +467,7 @@ public class PolarisAuthorizerImplTest {
 
     List<PolarisAuthorizerImpl.MissingPrivilege> missing =
         authorizer.findMissingPrivileges(
-            PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
+            PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("reader")),
             Set.of(),
             PolarisAuthorizableOperation.CREATE_TABLE_DIRECT,
             List.of(namespace),

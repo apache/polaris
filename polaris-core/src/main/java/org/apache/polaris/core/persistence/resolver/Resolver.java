@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -793,7 +794,8 @@ public class Resolver {
     // activate all principal roles specified in the authenticated principal
     if (resolvePrincipalRoles) {
       if (this.polarisPrincipal
-          .getAttribute(PolarisPrincipal.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY, Boolean.class)
+          .getAttributes()
+          .getOptional(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY)
           .orElse(false)) {
         resolvedCallerPrincipalRoles =
             resolveAllPrincipalRoles(toValidate, resolvedCallerPrincipal);
