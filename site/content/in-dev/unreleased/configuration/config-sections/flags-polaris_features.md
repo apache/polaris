@@ -27,7 +27,7 @@ Feature configurations for Polaris. These are stable, user-facing settings.
 
 ##### `polaris.features."ADD_TRAILING_SLASH_TO_LOCATION"`
 
-When set, the base location for a table or namespace will have `/` added as a suffix if not present
+Deprecated and ignored: Polaris always appends a trailing slash to table and namespace base locations. Retained so existing configuration remains accepted rather than rejected.
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -274,7 +274,7 @@ When enabled, a managed location generated for a table or view created without a
 
 ##### `polaris.features."DROP_WITH_PURGE_ENABLED"`
 
-If set to true, allows tables to be dropped with the purge parameter set to true.
+If set to true, allows Iceberg tables to be dropped with the purge parameter set to true.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -313,6 +313,15 @@ When true, enables finer grained update table privileges which are passed to the
 ##### `polaris.features."ENABLE_GENERIC_TABLES"`
 
 If true, the generic-tables endpoints are enabled
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
+##### `polaris.features."ENABLE_OPENLINEAGE_INGEST"`
+
+If true, the OpenLineage ingest endpoints are enabled and advertised to clients in the catalog configuration response during endpoint discovery. If false, the endpoints return 501 Not Implemented and are not advertised. The routes are always mounted when the OpenLineage extension is assembled into the server; this flag is the runtime switch that turns the feature on or off.
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -460,7 +469,7 @@ How many times to retry refreshing metadata when the previous error was retryabl
 
 ##### `polaris.features."OPTIMIZED_SIBLING_CHECK"`
 
-When set, Polaris uses an index to perform sibling overlap checks between tables, views, and namespaces. This is not a bypass mode, but enabling or disabling it can change overlap-detection coverage for non-standard location layouts. Only enable it when the required index and backfill state is known to be correct. For correct results, locations should end with a slash; see ADD_TRAILING_SLASH_TO_LOCATION. Supported by the JDBC and NoSQL metastore implementations.
+When set, Polaris uses an index to perform sibling overlap checks between tables, views, and namespaces. This is not a bypass mode, but enabling or disabling it can change overlap-detection coverage for non-standard location layouts. Only enable it when the required index and backfill state is known to be correct. Locations written by Polaris always end with a slash; locations stored by older versions without one are still handled. Supported by the JDBC and NoSQL metastore implementations.
 
 - **Type:** `Boolean`
 - **Default:** `false`

@@ -158,7 +158,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @TestFactory
   Stream<DynamicNode> testListNamespacesPrivileges() {
     return authzTestsBuilder("listNamespaces")
-        .action(() -> newHandler().listNamespaces(Namespace.of()))
+        .action(() -> newHandler().listNamespaces(Namespace.of(), null, null))
         .shouldPassWith(PolarisPrivilege.NAMESPACE_LIST)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
@@ -204,7 +204,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     Stream<DynamicNode> beforeRotationTests =
         Stream.of(
                 authzTestsBuilder("listNamespaces (before rotation)")
-                    .action(() -> handler.get().listNamespaces(Namespace.of()))
+                    .action(() -> handler.get().listNamespaces(Namespace.of(), null, null))
                     .principalName(principalName)
                     .shouldFailWithAnyPrivilege()
                     .createTests(),
@@ -258,7 +258,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     Stream<DynamicNode> afterRotationTests =
         Stream.of(
                 authzTestsBuilder("listNamespaces (after rotation)")
-                    .action(() -> refreshedWrapper.get().listNamespaces(Namespace.of()))
+                    .action(() -> refreshedWrapper.get().listNamespaces(Namespace.of(), null, null))
                     .principalName(principalName)
                     .shouldPassWith(PolarisPrivilege.NAMESPACE_LIST)
                     .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
@@ -307,17 +307,19 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         newRootAdminService()
             .grantPrivilegeOnCatalogToRole(
                 CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
-    Assertions.assertThat(newHandler().listNamespaces(Namespace.of()).namespaces())
+    Assertions.assertThat(newHandler().listNamespaces(Namespace.of(), null, null).namespaces())
         .containsAll(List.of(NS1, NS2));
 
     // Just activating PRINCIPAL_ROLE1 should also work.
     Assertions.assertThat(
-            newHandler(Set.of(PRINCIPAL_ROLE1)).listNamespaces(Namespace.of()).namespaces())
+            newHandler(Set.of(PRINCIPAL_ROLE1))
+                .listNamespaces(Namespace.of(), null, null)
+                .namespaces())
         .containsAll(List.of(NS1, NS2));
 
     // If we only activate PRINCIPAL_ROLE2 it won't have the privilege.
     Assertions.assertThatThrownBy(
-            () -> newHandler(Set.of(PRINCIPAL_ROLE2)).listNamespaces(Namespace.of()))
+            () -> newHandler(Set.of(PRINCIPAL_ROLE2)).listNamespaces(Namespace.of(), null, null))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("is not authorized");
 
@@ -326,7 +328,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         newRootAdminService()
             .revokePrivilegeOnCatalogFromRole(
                 CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
-    Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of()))
+    Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of(), null, null))
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -339,19 +341,19 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.NAMESPACE_LIST));
 
     // Listing directly on NS1 succeeds
-    Assertions.assertThat(newHandler().listNamespaces(NS1).namespaces())
+    Assertions.assertThat(newHandler().listNamespaces(NS1, null, null).namespaces())
         .containsAll(List.of(NS1A, NS1B));
 
     // Root listing fails
-    Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of()))
+    Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of(), null, null))
         .isInstanceOf(ForbiddenException.class);
 
     // NS2 listing fails
-    Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of()))
+    Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of(), null, null))
         .isInstanceOf(ForbiddenException.class);
 
     // Listing on a child of NS1 succeeds
-    Assertions.assertThat(newHandler().listNamespaces(NS1A).namespaces())
+    Assertions.assertThat(newHandler().listNamespaces(NS1A, null, null).namespaces())
         .containsAll(List.of(NS1AA));
   }
 

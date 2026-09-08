@@ -73,7 +73,7 @@ The repository is organized into the following groups of Gradle modules. Each le
   - `polaris-bom`, `polaris-build-logic`, `polaris-version` - BOM, shared build logic, versioning
   - `polaris-immutables`, `polaris-misc-types`, `polaris-container-spec-helper` - shared utilities
   - `polaris-floci-aws-testcontainer`, `polaris-floci-az-testcontainer`, `polaris-floci-gcp-testcontainer`,
-    `polaris-minio-testcontainer`, `polaris-rustfs-testcontainer`, `polaris-hms-testcontainer` - test containers
+    `polaris-rustfs-testcontainer`, `polaris-hms-testcontainer` - test containers
   - `polaris-config-docs-{annotations,generator,site}` - reference-doc generation
   - `aggregated-license-report` - aggregated license report
 - **Tests**

@@ -19,6 +19,7 @@
 #
 linkTitle: "Client: Trino"
 title: "Getting Started with Apache Polaris and Trino"
+description: "Uses Trino as the SQL query engine and RustFS for S3-compatible object storage, with Polaris as the Iceberg REST Catalog."
 tags:
   - trino
 weight: 350

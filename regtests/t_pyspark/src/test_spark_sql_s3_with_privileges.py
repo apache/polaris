@@ -42,8 +42,8 @@ from apache_polaris.sdk.management import PolarisDefaultApi, Principal, Principa
 
 
 _requires_s3_backend = pytest.mark.skipif(
-    os.environ.get('S3_TEST_BACKEND') not in ('aws', 'minio', 'rustfs'),
-    reason='S3_TEST_BACKEND is not set to aws, minio, or rustfs'
+    os.environ.get('S3_TEST_BACKEND') not in ('aws', 'rustfs'),
+    reason='S3_TEST_BACKEND is not set to aws or rustfs'
 )
 
 
@@ -52,7 +52,7 @@ def create_s3_client_from_config(config):
 
     Uses credentials, session token, and endpoint from the loadTable
     response config. Works for both AWS (vended credentials) and
-    MinIO (STS credentials with endpoint override).
+    RustFS (STS credentials with endpoint override).
     """
     client_kwargs = {
         'aws_access_key_id': config.get('s3.access-key-id'),

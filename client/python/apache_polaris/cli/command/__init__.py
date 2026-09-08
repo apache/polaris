@@ -53,6 +53,7 @@ class Command(ABC):
                 catalog_type=options_get(Arguments.TYPE),
                 default_base_location=options_get(Arguments.DEFAULT_BASE_LOCATION),
                 storage_type=options_get(Arguments.STORAGE_TYPE),
+                storage_name=options_get(Arguments.STORAGE_NAME),
                 allowed_locations=options_get(Arguments.ALLOWED_LOCATION),
                 role_arn=options_get(Arguments.ROLE_ARN),
                 external_id=options_get(Arguments.EXTERNAL_ID),
@@ -82,6 +83,8 @@ class Command(ABC):
                 path_style_access=options_get(Arguments.PATH_STYLE_ACCESS),
                 current_kms_key=options_get(Arguments.KMS_KEY_CURRENT),
                 allowed_kms_keys=options_get(Arguments.KMS_KEY_ALLOWED),
+                encryption_keys=options_get(Arguments.KMS_KEY_ENCRYPTION),
+                decryption_keys=options_get(Arguments.KMS_KEY_DECRYPTION),
                 catalog_connection_type=options_get(Arguments.CATALOG_CONNECTION_TYPE),
                 catalog_authentication_type=options_get(
                     Arguments.CATALOG_AUTHENTICATION_TYPE

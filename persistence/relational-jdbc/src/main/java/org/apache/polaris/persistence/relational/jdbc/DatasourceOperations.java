@@ -61,9 +61,12 @@ public class DatasourceOperations {
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
 
   // H2 STATUS CODES
-  // 90079 = Schema not found, 42S02 = Table or view not found
+  // 90079 = Schema not found, 42S02 = Table or view not found, 42S04 = Table or view not found
+  // (database empty). The latter surfaces for unqualified table references against a fresh
+  // database, where previously a schema-qualified reference produced a schema-not-found error.
   private static final String H2_SCHEMA_DOES_NOT_EXIST = "90079";
   private static final String H2_TABLE_DOES_NOT_EXIST = "42S02";
+  private static final String H2_TABLE_NOT_FOUND_DATABASE_EMPTY = "42S04";
 
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
@@ -461,7 +464,8 @@ public class DatasourceOperations {
     return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
             && (databaseType == DatabaseType.POSTGRES || databaseType == DatabaseType.COCKROACHDB))
         || ((H2_SCHEMA_DOES_NOT_EXIST.equals(e.getSQLState())
-                || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState()))
+                || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState())
+                || H2_TABLE_NOT_FOUND_DATABASE_EMPTY.equals(e.getSQLState()))
             && databaseType == DatabaseType.H2);
   }
 

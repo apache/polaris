@@ -43,6 +43,7 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-auth-ranger"))
   runtimeOnly(project(":polaris-extensions-events-kafka"))
   runtimeOnly(project(":polaris-extensions-semantic-models"))
+  runtimeOnly(project(":polaris-extensions-openlineage"))
   runtimeOnly(project(":polaris-extensions-metrics-reports"))
   runtimeOnly(project(":polaris-extensions-metrics-reports-jdbc"))
 
