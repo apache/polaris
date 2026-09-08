@@ -34,7 +34,6 @@ import java.util.OptionalInt;
 import java.util.ServiceLoader;
 import java.util.function.BooleanSupplier;
 import org.jspecify.annotations.Nullable;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DatabindContext;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ObjectMapper;
@@ -112,11 +111,6 @@ final class PageTokenUtil {
 
   private PageTokenUtil() {}
 
-  @VisibleForTesting
-  static ObjectMapper smileMapperForTests() {
-    return SMILE_MAPPER;
-  }
-
   /**
    * Decodes a {@link PageToken} from API request parameters for the page-size and a serialized page
    * token.
@@ -155,10 +149,12 @@ final class PageTokenUtil {
     try {
       var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
       return SMILE_MAPPER.readValue(bytes, PageToken.class);
-    } catch (IllegalArgumentException | IllegalStateException | JacksonException e) {
-      // IllegalArgumentException: not base64. IllegalStateException: unknown token type id (see
-      // TokenTypeIdResolver). JacksonException: not a serialized PageToken (garbage, truncated, or
-      // produced by an incompatible Polaris version).
+    } catch (RuntimeException e) {
+      // Deliberately broad: the input is untrusted bytes fed to a binary parser. Besides the
+      // expected failures (IllegalArgumentException for non-base64, JacksonException for a payload
+      // that is not a serialized PageToken, IllegalStateException for an unknown token type id),
+      // corrupted SMILE can surface as e.g. ArrayIndexOutOfBoundsException from the parser. All of
+      // them mean the same thing: the client sent a token we cannot interpret.
       throw new IllegalArgumentException("Invalid page token", e);
     }
   }
