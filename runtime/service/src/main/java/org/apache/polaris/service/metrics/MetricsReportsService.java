@@ -58,9 +58,7 @@ import org.apache.polaris.core.metrics.api.model.ScanPayloadData;
 import org.apache.polaris.core.metrics.api.model.TableRef;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
-import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -139,7 +137,7 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     PageToken pt = PageToken.build(request.getPageToken(), request.getPageSize(), () -> true);
     MetricsQuerySpi provider = queryProvider.get();
 
-    Page<? extends MetricsRecordIdentity> page =
+    MetricsQuerySpi.QueryResult result =
         provider.listReports(
             type,
             catalogId,
@@ -149,28 +147,43 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
             request.getTimestampTo(),
             pt);
 
-    if (type == MetricsQuerySpi.MetricType.COMMIT) {
-      List<CommitMetricsReport> reports =
-          page.items().stream()
-              .map(
-                  r ->
-                      toCommitReport((CommitMetricsRecord) r, tableIdToIdentifier.get(r.tableId())))
-              .toList();
-      return Response.ok(
-              new ListCommitMetricsResponse(
-                  page.encodedResponseToken(),
-                  ListCommitMetricsResponse.MetricTypeEnum.COMMIT,
-                  reports))
-          .build();
-    }
+    Preconditions.checkState(
+        result.metricType() == type,
+        "Provider returned %s for %s",
+        result.metricType(),
+        type);
 
+    return switch (result) {
+      case MetricsQuerySpi.ScanResult scan -> toScanResponse(scan, tableIdToIdentifier);
+      case MetricsQuerySpi.CommitResult commit -> toCommitResponse(commit, tableIdToIdentifier);
+    };
+  }
+
+  private static Response toScanResponse(
+      MetricsQuerySpi.ScanResult scan, Map<Long, TableIdentifier> tableIdToIdentifier) {
     List<ScanMetricsReport> reports =
-        page.items().stream()
-            .map(r -> toScanReport((ScanMetricsRecord) r, tableIdToIdentifier.get(r.tableId())))
+        scan.reports().items().stream()
+            .map(r -> toScanReport(r, tableIdToIdentifier.get(r.tableId())))
             .toList();
     return Response.ok(
             new ListScanMetricsResponse(
-                page.encodedResponseToken(), ListScanMetricsResponse.MetricTypeEnum.SCAN, reports))
+                scan.reports().encodedResponseToken(),
+                ListScanMetricsResponse.MetricTypeEnum.SCAN,
+                reports))
+        .build();
+  }
+
+  private static Response toCommitResponse(
+      MetricsQuerySpi.CommitResult commit, Map<Long, TableIdentifier> tableIdToIdentifier) {
+    List<CommitMetricsReport> reports =
+        commit.reports().items().stream()
+            .map(r -> toCommitReport(r, tableIdToIdentifier.get(r.tableId())))
+            .toList();
+    return Response.ok(
+            new ListCommitMetricsResponse(
+                commit.reports().encodedResponseToken(),
+                ListCommitMetricsResponse.MetricTypeEnum.COMMIT,
+                reports))
         .build();
   }
 
