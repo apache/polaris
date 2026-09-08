@@ -23,6 +23,7 @@ import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATE
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -48,6 +49,7 @@ import java.util.UUID;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.RetryableValidationException;
@@ -340,8 +342,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // existence is also missing.
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils().loadNamespace(namespaceCatalog, namespace);
+    // Resolution above already established that the namespace exists, so a local catalog needs
+    // no further check. A federated catalog serves it from the remote system, which therefore
+    // has to answer.
+    if (!(baseCatalog instanceof LocalIcebergCatalog)) {
+      if (!namespaceCatalog.namespaceExists(namespace)) {
+        throw noSuchNamespaceException(namespace);
+      }
+    }
   }
 
   public void dropNamespace(Namespace namespace) {
@@ -1384,8 +1392,22 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils().loadTable(baseCatalog, tableIdentifier);
+    // Resolution above already established that the table exists, so a local catalog needs no
+    // further check. A federated catalog serves it from the remote system, which therefore has
+    // to answer.
+    if (!(baseCatalog instanceof LocalIcebergCatalog)) {
+      // tableExists cannot answer for an identifier that could name a synthetic metadata table:
+      // Hadoop and Hive report ns.orders.snapshots as present while loadTable rejects it as not
+      // found, so HEAD would answer 204 where GET answers 404. A metadata table always ends in a
+      // MetadataTableType name, and nothing stops an ordinary table from carrying one of those
+      // names too, so only a load can tell the two apart.
+      if (MetadataTableType.from(tableIdentifier.name()) != null) {
+        catalogHandlerUtils().loadTable(baseCatalog, tableIdentifier);
+      } else if (!baseCatalog.tableExists(tableIdentifier)) {
+        throw notFoundExceptionForTableLikeEntity(
+            tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+      }
+    }
   }
 
   public void renameTable(RenameTableRequest request) {
@@ -1656,8 +1678,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
-    // TODO: Just skip CatalogHandlers for this one maybe
-    catalogHandlerUtils().loadView(viewCatalog, viewIdentifier);
+    // Resolution above already established that the view exists, so a local catalog needs no
+    // further check. A federated catalog serves it from the remote system, which therefore has
+    // to answer.
+    if (!(baseCatalog instanceof LocalIcebergCatalog)) {
+      if (!viewCatalog.viewExists(viewIdentifier)) {
+        throw notFoundExceptionForTableLikeEntity(
+            viewIdentifier, PolarisEntitySubType.ICEBERG_VIEW);
+      }
+    }
   }
 
   public void renameView(RenameTableRequest request) {
