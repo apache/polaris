@@ -23,6 +23,7 @@ import static org.apache.iceberg.aws.AwsClientProperties.REFRESH_CREDENTIALS_END
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.ACCESS_KEY_ID;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.ENDPOINT;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.SECRET_ACCESS_KEY;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.test.commons.MinioRustProfile.ACCESS_KEY;
 import static org.apache.polaris.test.commons.MinioRustProfile.SECRET_KEY;
@@ -197,6 +198,43 @@ public class RestCatalogFlociS3SpecialIT extends AbstractRestCatalogFlociS3Speci
       assertThatThrownBy(() -> restCatalog.createTable(id, SCHEMA))
           .hasMessageContaining("but no credentials are available")
           .hasMessageContaining(id.toString());
+    }
+  }
+
+  /**
+   * A client offering both delegation mechanisms against a catalog that cannot vend credentials
+   * must get the table back without delegated access (Iceberg REST spec: "the server may choose to
+   * supply access via any or none of the requested mechanisms"), not an HTTP 400.
+   */
+  @Test
+  public void testLoadTableWithBothDelegationModesWithoutStsReturnsTableWithoutCredentials()
+      throws IOException {
+    try (var restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of("http://sts.example.com"),
+            true,
+            Optional.empty(),
+            false)) {
+
+      catalogApi.createNamespace(catalogName, "test-ns");
+      var id = TableIdentifier.of("test-ns", "t4");
+      restCatalog.createTable(id, SCHEMA);
+
+      var response =
+          catalogApi.loadTable(
+              catalogName,
+              id,
+              "ALL",
+              Map.of(
+                  "X-Iceberg-Access-Delegation",
+                  VENDED_CREDENTIALS.protocolValue() + "," + REMOTE_SIGNING.protocolValue()));
+
+      assertThat(response.credentials()).isEmpty();
+      assertThat(response.config())
+          .doesNotContainKey(ACCESS_KEY_ID)
+          .doesNotContainKey(SECRET_ACCESS_KEY)
+          .doesNotContainKey(REFRESH_CREDENTIALS_ENDPOINT);
     }
   }
 

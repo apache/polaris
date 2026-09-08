@@ -218,8 +218,10 @@ For AWS S3 and S3-compatible backends that expose the STS API (such as MinIO), l
 
 For S3-compatible backends without STS (Apache Ozone S3 gateway, or Ceph RGW without STS enabled),
 set `stsUnavailable: true`. Polaris will then skip subscoped credential vending entirely, and the
-client must omit `X-Iceberg-Access-Delegation: vended-credentials` and authenticate to the object
-store directly. The Polaris guides for [Apache Ozone][ozone-guide] and [Ceph][ceph-guide] show
+client must authenticate to the object store directly. A client that requests only
+`X-Iceberg-Access-Delegation: vended-credentials` is rejected because no credentials can be vended;
+a client that offers several mechanisms (`vended-credentials,remote-signing`) gets the table back
+without delegated access, as allowed by the Iceberg REST specification. The Polaris guides for [Apache Ozone][ozone-guide] and [Ceph][ceph-guide] show
 this pattern end-to-end.
 
 ```json
