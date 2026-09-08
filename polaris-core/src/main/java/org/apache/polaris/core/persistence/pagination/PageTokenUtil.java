@@ -34,6 +34,7 @@ import java.util.OptionalInt;
 import java.util.ServiceLoader;
 import java.util.function.BooleanSupplier;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DatabindContext;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ObjectMapper;
@@ -111,6 +112,11 @@ final class PageTokenUtil {
 
   private PageTokenUtil() {}
 
+  @VisibleForTesting
+  static ObjectMapper smileMapperForTests() {
+    return SMILE_MAPPER;
+  }
+
   /**
    * Decodes a {@link PageToken} from API request parameters for the page-size and a serialized page
    * token.
@@ -122,8 +128,7 @@ final class PageTokenUtil {
     if (requestedPageToken != null
         && !requestedPageToken.isEmpty()
         && shouldDecodeToken.getAsBoolean()) {
-      var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
-      var pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);
+      var pageToken = deserializePageToken(requestedPageToken);
       if (requestedPageSize != null) {
         int pageSizeInt = requestedPageSize;
         checkArgument(pageSizeInt >= 0, "Invalid page size");
@@ -138,6 +143,23 @@ final class PageTokenUtil {
       return fromLimit(pageSizeInt);
     } else {
       return READ_EVERYTHING;
+    }
+  }
+
+  /**
+   * Decodes a client-supplied page token. Page tokens are opaque to clients, so any decoding
+   * failure is client input that cannot be interpreted and must surface as an {@link
+   * IllegalArgumentException} (mapped to HTTP 400), never as a server error.
+   */
+  private static PageToken deserializePageToken(String requestedPageToken) {
+    try {
+      var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
+      return SMILE_MAPPER.readValue(bytes, PageToken.class);
+    } catch (IllegalArgumentException | IllegalStateException | JacksonException e) {
+      // IllegalArgumentException: not base64. IllegalStateException: unknown token type id (see
+      // TokenTypeIdResolver). JacksonException: not a serialized PageToken (garbage, truncated, or
+      // produced by an incompatible Polaris version).
+      throw new IllegalArgumentException("Invalid page token", e);
     }
   }
 
