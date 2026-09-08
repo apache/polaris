@@ -411,13 +411,6 @@ minikube-stop-cluster: check-dependencies ## Stop the Minikube cluster
 
 ##@ Regression Tests
 
-regtest-minio: DEPENDENCIES := $(DOCKER)
-.PHONY: regtest-minio
-regtest-minio: check-dependencies ## Run regression tests with MinIO
-	@echo "--- Running regression tests with MinIO ---"
-	@S3_TEST_BACKEND=minio $(DOCKER) compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
-	@echo "--- Regression tests with MinIO completed ---"
-
 regtest-rustfs: DEPENDENCIES := $(DOCKER)
 .PHONY: regtest-rustfs
 regtest-rustfs: check-dependencies ## Run regression tests with RustFS
@@ -429,7 +422,7 @@ regtest-cleanup: DEPENDENCIES := $(DOCKER)
 .PHONY: regtest-cleanup
 regtest-cleanup: check-dependencies ## Stop and remove regression test containers, networks, and volumes
 	@echo "--- Cleaning up all regression tests resources ---"
-	@$(DOCKER) compose --profile minio --profile rustfs -f ./regtests/docker-compose.yml down --volumes --remove-orphans
+	@$(DOCKER) compose --profile rustfs -f ./regtests/docker-compose.yml down --volumes --remove-orphans
 	@echo "--- All regression resources cleanup completed ---"
 
 ##@ Pre-commit

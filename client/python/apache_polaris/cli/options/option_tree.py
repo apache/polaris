@@ -236,6 +236,11 @@ class OptionTree:
                             choices=[st.value for st in StorageType],
                         ),
                         Argument(
+                            Arguments.STORAGE_NAME,
+                            str,
+                            "An optional name referencing a server-side storage configuration",
+                        ),
+                        Argument(
                             Arguments.DEFAULT_BASE_LOCATION,
                             str,
                             "(Required) Default base location for the catalog",
@@ -286,6 +291,20 @@ class OptionTree:
                             Arguments.KMS_KEY_ALLOWED,
                             str,
                             Hints.S3_KMS_KEY_ALLOWED,
+                            allow_repeats=True,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_KEY_ENCRYPTION,
+                            str,
+                            Hints.S3_KMS_KEY_ENCRYPTION,
+                            allow_repeats=True,
+                            group="AWS S3 Storage Options",
+                        ),
+                        Argument(
+                            Arguments.KMS_KEY_DECRYPTION,
+                            str,
+                            Hints.S3_KMS_KEY_DECRYPTION,
                             allow_repeats=True,
                             group="AWS S3 Storage Options",
                         ),
@@ -381,6 +400,11 @@ class OptionTree:
                     Subcommands.UPDATE,
                     hint="Update properties of a catalog",
                     args=[
+                        Argument(
+                            Arguments.STORAGE_NAME,
+                            str,
+                            "A new storage name referencing a server-side storage configuration",
+                        ),
                         Argument(
                             Arguments.DEFAULT_BASE_LOCATION,
                             str,

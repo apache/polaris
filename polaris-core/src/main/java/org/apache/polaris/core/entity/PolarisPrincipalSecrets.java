@@ -21,6 +21,7 @@ package org.apache.polaris.core.entity;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.security.SecureRandom;
+import java.util.Optional;
 import org.apache.polaris.core.DigestUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -167,10 +168,45 @@ public class PolarisPrincipalSecrets {
     return principalClientId;
   }
 
+  /**
+   * @deprecated no longer used for authentication; kept for compatibility and will be removed in a
+   *     future release. Use {@link #getCredentialsVersionForSecret(String)} instead.
+   */
+  @Deprecated
   public boolean matchesSecret(String potentialSecret) {
+    return getCredentialsVersionForSecret(potentialSecret).isPresent();
+  }
+
+  /**
+   * Credentials-generation fingerprint corresponding to the secret that matches {@code
+   * potentialSecret}: the main generation when it matches the main secret hash, the secondary
+   * generation when it matches the secondary secret hash, or empty when it matches neither. Newly
+   * minted tokens carry this fingerprint in the {@code polaris-cv} claim. That claim gates
+   * <em>token-exchange</em> eligibility against the current (and secondary) generation; bearer
+   * verify checks only the JWT signature and claims, so a token remains usable as a bearer until
+   * JWT expiry even after its generation is no longer current.
+   *
+   * <p>Comparisons are constant-time, as in {@link #matchesCredentialsVersion(String)}.
+   */
+  public Optional<String> getCredentialsVersionForSecret(String potentialSecret) {
     String potentialSecretHash = hashSecret(potentialSecret);
-    return potentialSecretHash.equals(this.mainSecretHash)
-        || potentialSecretHash.equals(this.secondarySecretHash);
+    Optional<String> mainVersion = credentialsVersionForHash(mainSecretHash);
+    Optional<String> secondaryVersion = credentialsVersionForHash(secondarySecretHash);
+    // Always compare against both hashes and combine the flags, so the amount of comparison work
+    // does not reveal which generation matched.
+    boolean matchesMain =
+        mainSecretHash != null
+            && DigestUtils.constantTimeEquals(potentialSecretHash, mainSecretHash);
+    boolean matchesSecondary =
+        secondarySecretHash != null
+            && DigestUtils.constantTimeEquals(potentialSecretHash, secondarySecretHash);
+    if (matchesMain) {
+      return mainVersion;
+    }
+    if (matchesSecondary) {
+      return secondaryVersion;
+    }
+    return Optional.empty();
   }
 
   public String getMainSecret() {
@@ -183,6 +219,54 @@ public class PolarisPrincipalSecrets {
 
   public String getMainSecretHash() {
     return mainSecretHash;
+  }
+
+  /**
+   * Credentials-generation fingerprint for tokens minted against the <em>current</em> main secret.
+   * Derived from existing fields with the principal's secret salt, so no schema change is required.
+   * The value is not itself a credential and is safe to embed in signed (but not encrypted) JWTs.
+   *
+   * @return the main credentials version; never {@code null} since the main secret hash is always
+   *     set by the constructors
+   */
+  public String getCredentialsVersion() {
+    return credentialsVersionForHash(mainSecretHash).orElseThrow();
+  }
+
+  /**
+   * Returns true when {@code credentialsVersion} matches the salted fingerprint of the current main
+   * secret hash <em>or</em> the secondary secret hash. After a single rotate, the previous main
+   * hash is kept as secondary so client secrets and bound JWTs both remain valid for that
+   * generation; a further rotate/reset advances secondary and invalidates the older fingerprint.
+   *
+   * <p>Comparisons are constant-time against each candidate fingerprint.
+   */
+  public boolean matchesCredentialsVersion(@Nullable String credentialsVersion) {
+    if (credentialsVersion == null || credentialsVersion.isEmpty()) {
+      return false;
+    }
+    boolean matches = false;
+    Optional<String> mainVersion = credentialsVersionForHash(mainSecretHash);
+    if (mainVersion.isPresent()) {
+      matches |= DigestUtils.constantTimeEquals(credentialsVersion, mainVersion.get());
+    }
+    Optional<String> secondaryVersion = credentialsVersionForHash(secondarySecretHash);
+    if (secondaryVersion.isPresent()) {
+      matches |= DigestUtils.constantTimeEquals(credentialsVersion, secondaryVersion.get());
+    }
+    return matches;
+  }
+
+  /**
+   * Salted, non-reversible fingerprint of a secret-verification hash for embedding in JWTs. Uses
+   * the same per-principal {@link #secretSalt} already stored for secret hashing, which is always
+   * set by the constructors.
+   */
+  private Optional<String> credentialsVersionForHash(@Nullable String secretHash) {
+    if (secretHash == null || secretHash.isEmpty()) {
+      return Optional.empty();
+    }
+    return Optional.of(DigestUtils.sha256Hex(secretHash + ":" + secretSalt));
   }
 
   public String getSecondarySecretHash() {

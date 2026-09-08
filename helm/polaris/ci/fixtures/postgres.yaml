@@ -58,6 +58,23 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 15
+          volumeMounts:
+            # Create the Polaris schema on first init: Polaris does not create it itself.
+            - name: init-schema
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-schema
+          configMap:
+            name: postgres-init-schema
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-schema
+data:
+  create-polaris-schema.sql: |
+    -- Polaris does not create its database schema; it must exist before Polaris connects.
+    CREATE SCHEMA IF NOT EXISTS polaris_schema;
 ---
 apiVersion: v1
 kind: Service

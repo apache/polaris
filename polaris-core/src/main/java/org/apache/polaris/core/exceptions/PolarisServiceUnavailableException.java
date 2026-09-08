@@ -24,6 +24,9 @@ import jakarta.ws.rs.core.Response;
 /**
  * Signals a transient failure that the client may resolve by retrying. Mapped to HTTP 503 (Service
  * Unavailable) with a {@code Retry-After} header whose value is {@link #getRetryAfterSeconds()}.
+ *
+ * <p>{@code Retry-After} admits only a non-negative delay, so a negative {@code retryAfterSeconds}
+ * is stored as {@code 0}.
  */
 public class PolarisServiceUnavailableException extends PolarisException {
 
@@ -32,7 +35,7 @@ public class PolarisServiceUnavailableException extends PolarisException {
   @FormatMethod
   public PolarisServiceUnavailableException(int retryAfterSeconds, String message, Object... args) {
     super(String.format(message, args));
-    this.retryAfterSeconds = retryAfterSeconds;
+    this.retryAfterSeconds = Math.max(0, retryAfterSeconds);
   }
 
   public int getRetryAfterSeconds() {

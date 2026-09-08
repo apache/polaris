@@ -55,9 +55,13 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
   public abstract int schemaVersion();
 
   protected DataSource createDataSource() {
+    // The schema is provided by the datasource, not by the persistence code: INIT creates the
+    // schema (the DBA step in a real deployment) and selects it as the session schema on every
+    // connection (the currentSchema/SCHEMA driver setting in a real deployment).
     return JdbcConnectionPool.create(
         String.format(
-            "jdbc:h2:file:./build/test_data/polaris/db_%s_%d",
+            "jdbc:h2:file:./build/test_data/polaris/db_%s_%d"
+                + ";INIT=CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA\\;SET SCHEMA POLARIS_SCHEMA",
             databaseType().getDisplayName(), schemaVersion()),
         "sa",
         "");

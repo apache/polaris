@@ -19,6 +19,7 @@
 #
 linkTitle: "Backend: JDBC, CockroachDB"
 title: "Getting Started with Apache Polaris, Relational JDBC, CockroachDB and Spark SQL"
+description: "Uses JDBC persistence with CockroachDB as the backend database and Spark SQL as the query engine."
 weight: 110
 tags:
    - backend
@@ -101,7 +102,7 @@ exit 0
 ```shell
 docker exec -it jdbc-trino-1 trino
 ```
-Note, `cockroachdb-trino-1` is the name of the Docker container.
+Note, `jdbc-trino-1` is the name of the Docker container.
 
 Example Trino queries:
 ```

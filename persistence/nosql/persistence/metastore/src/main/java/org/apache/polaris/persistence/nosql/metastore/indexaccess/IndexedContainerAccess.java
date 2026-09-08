@@ -59,6 +59,14 @@ public abstract class IndexedContainerAccess<C extends ContainerObj> {
 
   public abstract Optional<ObjBase> byId(long stableId);
 
+  /**
+   * Returns the reference for the given stable id if it can be determined without fetching the
+   * object; an empty result means the caller must fall back to {@link #byId(long)}.
+   */
+  public Optional<ObjRef> objRefById(long stableId) {
+    return Optional.empty();
+  }
+
   public abstract Optional<IndexKey> nameKeyById(long stableId);
 
   public abstract Optional<ObjBase> byParentIdAndName(long parentId, String name);

@@ -172,6 +172,7 @@ options:
 Command Options:
   --type {internal,external}                                           The type of catalog [INTERNAL, EXTERNAL]
   --storage-type {s3,azure,gcs,file}                                   (Required) The storage type [S3, AZURE, GCS, FILE]
+  --storage-name STORAGE_NAME                                          An optional name referencing a server-side storage configuration
   --default-base-location DEFAULT_BASE_LOCATION                        (Required) Default base location for the catalog
   --allowed-location ALLOWED_LOCATION                                  An allowed location for files tracked by the catalog
   --property PROPERTY                                                  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once. Do not put passwords, tokens, access keys, or other secrets into the client-visible catalog properties.
@@ -183,8 +184,10 @@ AWS S3 Storage Options:
   --no-sts                                                             Indicates that Polaris should not use STS (e.g. if STS is not available)
   --no-kms                                                             Indicates that Polaris should not use KMS (e.g. if KMS is not available)
   --path-style-access                                                  Whether to use path-style-access for S3
-  --current-kms-key CURRENT_KMS_KEY                                    The AWS KMS key ARN to be used for encrypting new S3 data
-  --allowed-kms-key ALLOWED_KMS_KEY                                    AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)
+  --current-kms-key CURRENT_KMS_KEY                                    Deprecated. Use --encryption-key instead
+  --allowed-kms-key ALLOWED_KMS_KEY                                    Deprecated. Use --encryption-key instead
+  --encryption-key ENCRYPTION_KEY                                      AWS KMS key identifier(s) that this catalog and its clients may use to encrypt S3 data; these keys are also granted decryption permissions (zero or more)
+  --decryption-key DECRYPTION_KEY                                      AWS KMS key identifier(s) that this catalog and its clients may use to decrypt S3 data (zero or more)
   --role-arn ROLE_ARN                                                  A role ARN to use when connecting to S3
   --region REGION                                                      The region to use when connecting to S3
   --external-id EXTERNAL_ID                                            The external ID to use when connecting to S3
@@ -348,6 +351,7 @@ options:
   -h, --help                                     show this help message and exit
 
 Command Options:
+  --storage-name STORAGE_NAME                    A new storage name referencing a server-side storage configuration
   --default-base-location DEFAULT_BASE_LOCATION  A new default base location for the catalog
   --allowed-location ALLOWED_LOCATION            An additional allowed location for files
   --set-property SET_PROPERTY                    A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once. Do not put passwords, tokens, access keys, or other secrets into the client-visible catalog properties.

@@ -510,6 +510,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     return newTableOps(tableIdentifier, makeMetadataCurrentOnCommit);
   }
 
+  /**
+   * Please note: This method does NOT return the catalog's default warehouse location. It returns
+   * the table-like entity's location, derived from its namespace or the catalog warehouse. The
+   * method name is inherited from Iceberg and cannot be changed by this implementation.
+   */
   @Override
   protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
     String prefixedLocation = applyDefaultLocationObjectStoragePrefix(tableIdentifier, null);
@@ -671,14 +676,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       Namespace namespace,
       Map<String, String> metadata,
       PolarisResolvedPathWrapper resolvedParent) {
-    String baseLocation = resolveNamespaceLocation(namespace, metadata);
-
-    // Set / suffix
-    boolean requireTrailingSlash =
-        realmConfig.getConfig(FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
-    if (requireTrailingSlash && !baseLocation.endsWith("/")) {
-      baseLocation += "/";
-    }
+    String baseLocation =
+        StorageLocation.ensureTrailingSlash(resolveNamespaceLocation(namespace, metadata));
 
     NamespaceEntity entity =
         new NamespaceEntity.Builder(namespace)
@@ -697,7 +696,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     if (!realmConfig.getConfig(
         BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
-      validateNamespaceLocation(entity, resolvedParent);
+      if (metadata.containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)) {
+        validateNamespaceUsesDefaultLocation(entity, resolvedParent);
+      }
     }
     EntityResult result =
         getMetaStoreManager()
@@ -875,13 +876,28 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
     // Merge new properties into existing map.
     newProperties.putAll(properties);
+    // Keep the namespace base location slash-terminated like createNamespaceInternal, so property
+    // updates stay within the "locations written by Polaris always end with a slash" invariant.
+    String updatedBaseLocation = newProperties.get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+    if (updatedBaseLocation != null) {
+      newProperties.put(
+          PolarisEntityConstants.ENTITY_BASE_LOCATION,
+          StorageLocation.ensureTrailingSlash(updatedBaseLocation));
+    }
     PolarisEntity updatedEntity =
         new PolarisEntity.Builder(entity).setProperties(newProperties).build();
 
+    // Compare normalized (slash-terminated) locations so that merely normalizing a legacy
+    // slash-less location does not count as a move. Otherwise an unrelated property update on a
+    // namespace stored before Polaris always appended a slash would flip locationChanged to true
+    // and run the overlap check against the namespace's own still-persisted slash-less row (which
+    // the optimized sibling check does not exclude), wrongly rejecting the update. A genuine move
+    // still differs after normalization and is validated.
     boolean locationChanged =
         !Objects.equal(
-            NamespaceEntity.of(entity).getBaseLocation(),
-            NamespaceEntity.of(updatedEntity).getBaseLocation());
+            StorageLocation.ensureTrailingSlash(NamespaceEntity.of(entity).getBaseLocation()),
+            StorageLocation.ensureTrailingSlash(
+                NamespaceEntity.of(updatedEntity).getBaseLocation()));
 
     if (locationChanged
         && !realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
@@ -894,7 +910,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     if (!realmConfig.getConfig(
         BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
       if (properties.containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)) {
-        validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
+        validateNamespaceUsesDefaultLocation(NamespaceEntity.of(entity), resolvedEntities);
       }
     }
 
@@ -1434,8 +1450,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  /** Checks whether the location of a namespace is valid given its parent */
-  private void validateNamespaceLocation(
+  /** Checks that a namespace sits at the default location derived from its parent. */
+  private void validateNamespaceUsesDefaultLocation(
       NamespaceEntity namespace, PolarisResolvedPathWrapper resolvedParent) {
     StorageLocation namespaceLocation =
         StorageLocation.of(
@@ -1457,24 +1473,19 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         throw new IllegalArgumentException(
             "Cannot create namespace without a parent storage configuration");
       }
-      List<StorageLocation> defaultLocations =
-          parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
-              .filter(java.util.Objects::nonNull)
-              .map(
-                  l ->
-                      StorageLocation.ensureTrailingSlash(
-                          StorageLocation.ensureTrailingSlash(l) + namespace.getName()))
-              .map(StorageLocation::of)
-              .toList();
-      if (!defaultLocations.contains(namespaceLocation)) {
+      String parentLocation = resolveLocationForPath(diagnostics, List.of(parent));
+      StorageLocation defaultLocation =
+          StorageLocation.of(
+              StorageLocation.ensureTrailingSlash(
+                  StorageLocation.ensureTrailingSlash(parentLocation) + namespace.getName()));
+      if (!defaultLocation.equals(namespaceLocation)) {
         throw new IllegalArgumentException(
             "Namespace "
                 + namespace.getName()
                 + " has a custom location, "
-                + "which is not enabled. Expected a location in: ["
-                + String.join(
-                    ", ", defaultLocations.stream().map(StorageLocation::toString).toList())
-                + "]. Got location: "
+                + "which is not enabled. Expected location: ["
+                + defaultLocation
+                + "]. Got location: ["
                 + namespaceLocation
                 + "]");
       }
@@ -2833,15 +2844,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedParent,
       boolean validateMetadataLocation) {
     IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(entity);
-    // Set / suffix
-    boolean requireTrailingSlash =
-        realmConfig.getConfig(FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
-    if (requireTrailingSlash
-        && icebergTableLikeEntity.getBaseLocation() != null
-        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+    if (icebergTableLikeEntity.getBaseLocation() != null) {
       icebergTableLikeEntity =
           new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
-              .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")
+              .setBaseLocation(
+                  StorageLocation.ensureTrailingSlash(icebergTableLikeEntity.getBaseLocation()))
               .build();
     }
 
@@ -2902,15 +2909,11 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     IcebergTableLikeEntity icebergTableLikeEntity = new IcebergTableLikeEntity(entity);
 
-    // Set / suffix
-    boolean requireTrailingSlash =
-        realmConfig.getConfig(FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
-    if (requireTrailingSlash
-        && icebergTableLikeEntity.getBaseLocation() != null
-        && !icebergTableLikeEntity.getBaseLocation().endsWith("/")) {
+    if (icebergTableLikeEntity.getBaseLocation() != null) {
       icebergTableLikeEntity =
           new IcebergTableLikeEntity.Builder(icebergTableLikeEntity)
-              .setBaseLocation(icebergTableLikeEntity.getBaseLocation() + "/")
+              .setBaseLocation(
+                  StorageLocation.ensureTrailingSlash(icebergTableLikeEntity.getBaseLocation()))
               .build();
     }
 
@@ -2964,7 +2967,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
 
     // Check that purge is enabled, if it is set:
-    if (catalogPath != null && !catalogPath.isEmpty() && purge) {
+    if (catalogPath != null
+        && !catalogPath.isEmpty()
+        && purge
+        && subType == PolarisEntitySubType.ICEBERG_TABLE) {
       boolean dropWithPurgeEnabled =
           realmConfig.getConfig(FeatureConfiguration.DROP_WITH_PURGE_ENABLED, catalogEntity);
       if (!dropWithPurgeEnabled) {

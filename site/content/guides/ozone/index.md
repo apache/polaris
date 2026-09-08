@@ -19,6 +19,7 @@
 #
 linkTitle: "Storage: Apache Ozone"
 title: "Getting Started with Apache Polaris and Apache Ozone"
+description: "Uses Apache Ozone for S3-compatible object storage and Apache Spark as the query engine."
 weight: 200
 tags:
   - ozone

@@ -20,7 +20,7 @@
 #
 
 # Run if any S3-compatible backend is configured
-if [[ "${S3_TEST_BACKEND}" != "aws" ]] && [[ "${S3_TEST_BACKEND}" != "minio" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
+if [[ "${S3_TEST_BACKEND}" != "aws" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
   echo "S3 backend not configured. Skipping test."
   exit 0
 fi

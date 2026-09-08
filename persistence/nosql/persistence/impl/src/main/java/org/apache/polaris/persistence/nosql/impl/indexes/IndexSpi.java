@@ -46,9 +46,32 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
    * Adds a new element to the index.
    *
    * @param element element to add
-   * @return {@code true}, if the key did not exist in the index before
+   * @return logical add/update result
    */
-  boolean add(@NonNull InternalIndexElement<V> element);
+  AddResult add(@NonNull InternalIndexElement<V> element);
+
+  enum AddResult {
+    /**
+     * A new element was added. In case the {@link IndexSpi} instance is a layered index, this means
+     * neither the embedded nor the reference indexes contained the key.
+     */
+    NEW_KEY(true),
+    /** An existing element without a value (removal sentinel for embedded indexes) was updated. */
+    UPDATED_NO_VALUE(true),
+    /** An existing element with a value was updated. */
+    UPDATED(false);
+
+    /**
+     * {@code true} if the element's key was not <em>logically</em> present, so either not present
+     * in the embedded and the reference indexes <em>or</em> present in the embedded index but
+     * without a value (removal sentinel).
+     */
+    final boolean logicallyAdded;
+
+    AddResult(boolean logicallyAdded) {
+      this.logicallyAdded = logicallyAdded;
+    }
+  }
 
   /**
    * Convenience around {@link #add(InternalIndexElement)}.
@@ -61,7 +84,7 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
   default boolean put(@NonNull IndexKey key, @NonNull V value) {
     requireNonNull(key, "key must not be null");
     requireNonNull(value, "value must not be null");
-    return add(indexElement(key, value));
+    return add(indexElement(key, value)).logicallyAdded;
   }
 
   /**

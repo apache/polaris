@@ -21,6 +21,7 @@ package org.apache.polaris.core.entity;
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
 import com.google.common.base.Preconditions;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -143,23 +144,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     if (internalProperties.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
       PolarisStorageConfigurationInfo configInfo = getStorageConfigurationInfo();
       if (configInfo instanceof AwsStorageConfigurationInfo awsConfig) {
-        return AwsStorageConfigInfo.builder()
-            .setRoleArn(awsConfig.getRoleARN())
-            .setExternalId(awsConfig.getExternalId())
-            .setUserArn(awsConfig.getUserARN())
-            .setCurrentKmsKey(awsConfig.getCurrentKmsKey())
-            .setAllowedKmsKeys(awsConfig.getAllowedKmsKeys())
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(awsConfig.getAllowedLocations())
-            .setStorageName(awsConfig.getStorageName())
-            .setRegion(awsConfig.getRegion())
-            .setEndpoint(awsConfig.getEndpoint())
-            .setStsEndpoint(awsConfig.getStsEndpoint())
-            .setPathStyleAccess(awsConfig.getPathStyleAccess())
-            .setStsUnavailable(awsConfig.getStsUnavailable())
-            .setEndpointInternal(awsConfig.getEndpointInternal())
-            .setKmsUnavailable(awsConfig.getKmsUnavailable())
-            .build();
+        return getAwsStorageConfigInfo(awsConfig);
       }
       if (configInfo instanceof AzureStorageConfigurationInfo azureConfig) {
         return AzureStorageConfigInfo.builder()
@@ -190,6 +175,31 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return null;
     }
     return null;
+  }
+
+  @SuppressWarnings("deprecation")
+  private static AwsStorageConfigInfo getAwsStorageConfigInfo(
+      AwsStorageConfigurationInfo awsConfig) {
+    List<String> encryptionKeys = awsConfig.getEffectiveEncryptionKeys();
+    return AwsStorageConfigInfo.builder()
+        .setRoleArn(awsConfig.getRoleARN())
+        .setExternalId(awsConfig.getExternalId())
+        .setUserArn(awsConfig.getUserARN())
+        .setCurrentKmsKey(awsConfig.getCurrentKmsKey())
+        .setAllowedKmsKeys(encryptionKeys)
+        .setEncryptionKeys(encryptionKeys)
+        .setDecryptionKeys(awsConfig.getDecryptionKeys())
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setAllowedLocations(awsConfig.getAllowedLocations())
+        .setStorageName(awsConfig.getStorageName())
+        .setRegion(awsConfig.getRegion())
+        .setEndpoint(awsConfig.getEndpoint())
+        .setStsEndpoint(awsConfig.getStsEndpoint())
+        .setPathStyleAccess(awsConfig.getPathStyleAccess())
+        .setStsUnavailable(awsConfig.getStsUnavailable())
+        .setEndpointInternal(awsConfig.getEndpointInternal())
+        .setKmsUnavailable(awsConfig.getKmsUnavailable())
+        .build();
   }
 
   private ConnectionConfigInfo getConnectionInfo(
@@ -352,24 +362,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         validateMaxAllowedLocations(realmConfig, allowedLocations);
         switch (storageConfigModel.getStorageType()) {
           case S3:
-            AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
-            AwsStorageConfigurationInfo awsConfig =
-                AwsStorageConfigurationInfo.builder()
-                    .allowedLocations(allowedLocations)
-                    .storageName(storageConfigModel.getStorageName())
-                    .roleARN(awsConfigModel.getRoleArn())
-                    .currentKmsKey(awsConfigModel.getCurrentKmsKey())
-                    .allowedKmsKeys(awsConfigModel.getAllowedKmsKeys())
-                    .externalId(awsConfigModel.getExternalId())
-                    .region(awsConfigModel.getRegion())
-                    .endpoint(awsConfigModel.getEndpoint())
-                    .stsEndpoint(awsConfigModel.getStsEndpoint())
-                    .pathStyleAccess(awsConfigModel.getPathStyleAccess())
-                    .stsUnavailable(awsConfigModel.getStsUnavailable())
-                    .endpointInternal(awsConfigModel.getEndpointInternal())
-                    .kmsUnavailable(awsConfigModel.getKmsUnavailable())
-                    .build();
-            config = awsConfig;
+            config =
+                getAwsStorageConfigurationInfo(
+                    (AwsStorageConfigInfo) storageConfigModel, allowedLocations);
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
@@ -406,6 +401,36 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         internalProperties.put(
             PolarisEntityConstants.getStorageConfigInfoPropertyName(), config.serialize());
       }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static AwsStorageConfigurationInfo getAwsStorageConfigurationInfo(
+        AwsStorageConfigInfo awsConfigModel, Set<String> allowedLocations) {
+      List<String> encryptionKeys = new ArrayList<>(awsConfigModel.getEncryptionKeys());
+      for (String allowedKmsKey : awsConfigModel.getAllowedKmsKeys()) {
+        if (!encryptionKeys.contains(allowedKmsKey)) {
+          encryptionKeys.add(allowedKmsKey);
+        }
+      }
+      String currentKmsKey = awsConfigModel.getCurrentKmsKey();
+      if (currentKmsKey != null && !encryptionKeys.contains(currentKmsKey)) {
+        encryptionKeys.add(currentKmsKey);
+      }
+      return AwsStorageConfigurationInfo.builder()
+          .allowedLocations(allowedLocations)
+          .storageName(awsConfigModel.getStorageName())
+          .roleARN(awsConfigModel.getRoleArn())
+          .encryptionKeys(encryptionKeys)
+          .decryptionKeys(awsConfigModel.getDecryptionKeys())
+          .externalId(awsConfigModel.getExternalId())
+          .region(awsConfigModel.getRegion())
+          .endpoint(awsConfigModel.getEndpoint())
+          .stsEndpoint(awsConfigModel.getStsEndpoint())
+          .pathStyleAccess(awsConfigModel.getPathStyleAccess())
+          .stsUnavailable(awsConfigModel.getStsUnavailable())
+          .endpointInternal(awsConfigModel.getEndpointInternal())
+          .kmsUnavailable(awsConfigModel.getKmsUnavailable())
+          .build();
     }
 
     /** Validate the number of allowed locations not exceeding the max value. */

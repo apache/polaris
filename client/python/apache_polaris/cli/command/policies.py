@@ -20,7 +20,7 @@
 import json
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, cast
+from typing import Optional, Dict, List, Union, cast
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.command.utils import get_catalog_api_client
@@ -53,7 +53,7 @@ class PoliciesCommand(Command):
 
     policies_subcommand: str
     catalog_name: Optional[str] = None
-    namespace: Optional[str] = None
+    namespace: Optional[Union[str, List[str]]] = None
     policy_name: Optional[str] = None
     policy_file: Optional[str] = None
     policy_type: Optional[str] = None
@@ -127,7 +127,11 @@ class PoliciesCommand(Command):
         policy_name = cast(str, self.policy_name)
 
         namespace_str = (
-            self.namespace.replace(".", UNIT_SEPARATOR) if self.namespace else ""
+            UNIT_SEPARATOR.join(self.namespace)
+            if isinstance(self.namespace, list)
+            else self.namespace.replace(".", UNIT_SEPARATOR)
+            if self.namespace
+            else ""
         )
         if self.policies_subcommand == Subcommands.CREATE:
             policy_file = cast(str, self.policy_file)

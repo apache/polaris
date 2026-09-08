@@ -23,9 +23,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createConfig;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmConfig;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmContext;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -37,14 +42,34 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
+import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
+import org.apache.polaris.core.auth.RenameAuthorizationIntent;
+import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
+import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
+import org.apache.ranger.authz.model.RangerAuthzResult;
+import org.apache.ranger.authz.model.RangerMultiAuthzRequest;
+import org.apache.ranger.authz.model.RangerMultiAuthzResult;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.DeserializationContext;
@@ -104,20 +129,110 @@ public class RangerPolarisAuthorizerTest {
     runTests(authorizer, "/authz_tests/tests_authz_unsupported.json");
   }
 
+  @Test
+  void authorizeUsesIntentResolvedTarget() throws Exception {
+    RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
+    RangerPolarisAuthorizer authorizer =
+        new RangerPolarisAuthorizer(embeddedAuthorizer, "dev_polaris", createRealmConfig());
+    authorizer.setRealmContext(createRealmContext());
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    PolarisResolvedPathWrapper tablePath =
+        resolvedPath(
+            PolarisEntityType.ROOT,
+            "root",
+            PolarisEntityType.CATALOG,
+            "catalog",
+            PolarisEntityType.NAMESPACE,
+            "ns",
+            PolarisEntityType.TABLE_LIKE,
+            "table");
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Collections.emptySet());
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.LOAD_TABLE,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns"),
+                        new PathSegment(PolarisEntityType.TABLE_LIKE, "table")))));
+
+    when(manifest.getResolvedPath(
+            ResolvedPathKey.of(List.of("ns", "table"), PolarisEntityType.TABLE_LIKE), true))
+        .thenReturn(tablePath);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Collections.emptySet());
+    when(embeddedAuthorizer.authorize(
+            org.mockito.ArgumentMatchers.any(RangerMultiAuthzRequest.class)))
+        .thenReturn(rangerResult(RangerAuthzResult.AccessDecision.ALLOW));
+
+    AuthorizationDecision decision =
+        authorizer.authorize(new AuthorizationState(manifest), request);
+
+    assertThat(decision.isAllowed()).isTrue();
+    ArgumentCaptor<RangerMultiAuthzRequest> requestCaptor =
+        ArgumentCaptor.forClass(RangerMultiAuthzRequest.class);
+    verify(embeddedAuthorizer).authorize(requestCaptor.capture());
+    RangerMultiAuthzRequest rangerRequest = requestCaptor.getValue();
+    assertThat(rangerRequest.getUser().getName()).isEqualTo("alice");
+    assertThat(rangerRequest.getAccesses()).hasSize(1);
+    assertThat(rangerRequest.getAccesses().get(0).getAction()).isEqualTo("LOAD_TABLE");
+    assertThat(rangerRequest.getAccesses().get(0).getResource().getName())
+        .isEqualTo("table:POLARIS/catalog/ns/table");
+  }
+
+  @Test
+  void authorizeReturnsDenyDecisionWhenRangerDenies() throws Exception {
+    RangerEmbeddedAuthorizer embeddedAuthorizer = mock(RangerEmbeddedAuthorizer.class);
+    RangerPolarisAuthorizer authorizer =
+        new RangerPolarisAuthorizer(embeddedAuthorizer, "dev_polaris", createRealmConfig());
+    authorizer.setRealmContext(createRealmContext());
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    PolarisResolvedPathWrapper catalogPath =
+        resolvedPath(PolarisEntityType.ROOT, "root", PolarisEntityType.CATALOG, "catalog");
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Collections.emptySet());
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            principal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")))));
+
+    when(manifest.getResolvedReferenceCatalogEntity(true)).thenReturn(catalogPath);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Collections.emptySet());
+    when(embeddedAuthorizer.authorize(
+            org.mockito.ArgumentMatchers.any(RangerMultiAuthzRequest.class)))
+        .thenReturn(rangerResult(RangerAuthzResult.AccessDecision.DENY));
+
+    AuthorizationDecision decision =
+        authorizer.authorize(new AuthorizationState(manifest), request);
+
+    assertThat(decision.isAllowed()).isFalse();
+    assertThat(decision.getMessage().orElseThrow())
+        .contains("Principal 'alice' is not authorized for op 'GET_CATALOG'");
+  }
+
   private void runTests(PolarisAuthorizer authorizer, String testFilename) throws Exception {
     InputStream inStream = this.getClass().getResourceAsStream(testFilename);
     InputStreamReader reader = new InputStreamReader(inStream, UTF_8);
     TestSuite testSuite = getMapper().readValue(reader, TestSuite.class);
 
     for (TestData test : testSuite.tests) {
+      PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+      when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles())
+          .thenReturn(Collections.emptySet());
+      stubResolutionManifest(manifest, test.request.target);
+      stubResolutionManifest(manifest, test.request.secondary);
+      AuthorizationRequest request =
+          new AuthorizationRequest(
+              test.request.principal,
+              List.of(
+                  authorizationIntent(
+                      test.request.authzOp, test.request.target, test.request.secondary)));
       if (test.result.isAllowed) {
         try {
-          authorizer.authorizeOrThrow(
-              test.request.principal,
-              Collections.emptySet(),
-              test.request.authzOp,
-              test.request.target,
-              test.request.secondary);
+          authorizer.authorize(new AuthorizationState(manifest), request).throwIfDenied();
         } catch (ForbiddenException excp) {
           fail(
               test.request.principal
@@ -133,13 +248,7 @@ public class RangerPolarisAuthorizerTest {
       } else {
         assertThrows(
             ForbiddenException.class,
-            () ->
-                authorizer.authorizeOrThrow(
-                    test.request.principal,
-                    Collections.emptySet(),
-                    test.request.authzOp,
-                    test.request.target,
-                    test.request.secondary),
+            () -> authorizer.authorize(new AuthorizationState(manifest), request).throwIfDenied(),
             () ->
                 test.request.principal
                     + " should not be allowed to perform "
@@ -151,6 +260,100 @@ public class RangerPolarisAuthorizerTest {
                     + ")");
       }
     }
+  }
+
+  private AuthorizationIntent authorizationIntent(
+      PolarisAuthorizableOperation operation,
+      PolarisResolvedPathWrapper target,
+      PolarisResolvedPathWrapper secondary) {
+    if (RangerPolarisOperationSemantics.forOperation(operation) == null) {
+      return new TargetlessAuthorizationIntent(operation);
+    }
+    if (target == null
+        || target.getResolvedLeafEntity().getEntity().getType() == PolarisEntityType.ROOT) {
+      if (secondary != null && operation.name().endsWith("_ROOT_GRANT_FROM_PRINCIPAL_ROLE")) {
+        return new RootPrivilegeGrantAuthorizationIntent(operation, toSecurable(secondary));
+      }
+      return new TargetlessAuthorizationIntent(operation);
+    }
+
+    PolarisSecurable targetSecurable = toSecurable(target);
+    if (secondary == null) {
+      return new SingleTargetAuthorizationIntent(operation, targetSecurable);
+    }
+
+    PolarisSecurable secondarySecurable = toSecurable(secondary);
+    String operationName = operation.name();
+    if (operationName.startsWith("RENAME_")) {
+      return new RenameAuthorizationIntent(operation, targetSecurable, secondarySecurable);
+    }
+    if (operationName.startsWith("ATTACH_POLICY_") || operationName.startsWith("DETACH_POLICY_")) {
+      return new PolicyAttachmentAuthorizationIntent(
+          operation, targetSecurable, secondarySecurable);
+    }
+    if (operationName.endsWith("_ROOT_GRANT_FROM_PRINCIPAL_ROLE")) {
+      return new RootPrivilegeGrantAuthorizationIntent(operation, secondarySecurable);
+    }
+    if (operationName.contains("_CATALOG_ROLE_TO_PRINCIPAL_ROLE")
+        || operationName.contains("_PRINCIPAL_ROLE")) {
+      return new RoleAssignmentAuthorizationIntent(operation, targetSecurable, secondarySecurable);
+    }
+    if (operationName.contains("_GRANT_")) {
+      return new PrivilegeGrantAuthorizationIntent(operation, targetSecurable, secondarySecurable);
+    }
+    return new RenameAuthorizationIntent(operation, targetSecurable, secondarySecurable);
+  }
+
+  private void stubResolutionManifest(
+      PolarisResolutionManifest manifest, PolarisResolvedPathWrapper resolvedPath) {
+    if (resolvedPath == null || resolvedPath.getResolvedLeafEntity() == null) {
+      return;
+    }
+    PolarisEntity leaf = resolvedPath.getResolvedLeafEntity().getEntity();
+    if (leaf.getType() == PolarisEntityType.ROOT) {
+      when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(resolvedPath);
+    } else if (leaf.getType() == PolarisEntityType.CATALOG) {
+      when(manifest.getResolvedReferenceCatalogEntity(org.mockito.ArgumentMatchers.anyBoolean()))
+          .thenReturn(resolvedPath);
+    } else if (leaf.getType().isTopLevel()) {
+      when(manifest.getResolvedTopLevelEntity(leaf.getName(), leaf.getType()))
+          .thenReturn(resolvedPath);
+    } else {
+      List<String> pathNamesWithinCatalog = new ArrayList<>();
+      List<ResolvedPolarisEntity> parentPath = resolvedPath.getResolvedParentPath();
+      if (parentPath != null) {
+        for (ResolvedPolarisEntity parent : parentPath) {
+          PolarisEntity parentEntity = parent.getEntity();
+          if (parentEntity.getType() != PolarisEntityType.ROOT
+              && parentEntity.getType() != PolarisEntityType.CATALOG) {
+            pathNamesWithinCatalog.add(parentEntity.getName());
+          }
+        }
+      }
+      pathNamesWithinCatalog.add(leaf.getName());
+      ResolvedPathKey key = ResolvedPathKey.of(pathNamesWithinCatalog, leaf.getType());
+      when(manifest.getResolvedPath(eq(key), org.mockito.ArgumentMatchers.anyBoolean()))
+          .thenReturn(resolvedPath);
+    }
+  }
+
+  private PolarisSecurable toSecurable(PolarisResolvedPathWrapper resolvedPath) {
+    List<PathSegment> segments = new ArrayList<>();
+    List<ResolvedPolarisEntity> parentPath = resolvedPath.getResolvedParentPath();
+    if (parentPath != null) {
+      for (ResolvedPolarisEntity parent : parentPath) {
+        PolarisEntity parentEntity = parent.getEntity();
+        if (parentEntity.getType() != PolarisEntityType.ROOT) {
+          segments.add(new PathSegment(parentEntity.getType(), parentEntity.getName()));
+        }
+      }
+    }
+    PolarisEntity leaf = resolvedPath.getResolvedLeafEntity().getEntity();
+    if (leaf.getType() != PolarisEntityType.ROOT) {
+      segments.add(new PathSegment(leaf.getType(), leaf.getName()));
+    }
+    return PolarisSecurable.of(
+        segments.getFirst(), segments.stream().skip(1).toArray(PathSegment[]::new));
   }
 
   @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
@@ -189,6 +392,27 @@ public class RangerPolarisAuthorizerTest {
         PolarisResolvedPathWrapper.class, new PolarisResolvedPathWrapperDeserializer());
 
     return JsonMapper.builder().addModule(serDeModule).build();
+  }
+
+  private static RangerMultiAuthzResult rangerResult(RangerAuthzResult.AccessDecision decision) {
+    RangerAuthzResult accessResult = new RangerAuthzResult();
+    accessResult.setDecision(decision);
+    RangerMultiAuthzResult result = new RangerMultiAuthzResult();
+    result.setDecision(decision);
+    result.setAccesses(List.of(accessResult));
+    return result;
+  }
+
+  private static PolarisResolvedPathWrapper resolvedPath(Object... typeAndNamePairs) {
+    List<ResolvedPolarisEntity> entities = new ArrayList<>(typeAndNamePairs.length / 2);
+    for (int i = 0; i < typeAndNamePairs.length; i += 2) {
+      PolarisEntityType type = (PolarisEntityType) typeAndNamePairs[i];
+      String name = (String) typeAndNamePairs[i + 1];
+      PolarisEntity entity = new PolarisEntity.Builder().setName(name).setType(type).build();
+      entities.add(
+          new ResolvedPolarisEntity(entity, Collections.emptyList(), Collections.emptyList()));
+    }
+    return new PolarisResolvedPathWrapper(entities);
   }
 
   static class PolarisPrincipalDeserializer extends ValueDeserializer<PolarisPrincipal> {

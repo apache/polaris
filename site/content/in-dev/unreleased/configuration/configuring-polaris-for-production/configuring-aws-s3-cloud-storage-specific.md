@@ -161,27 +161,28 @@ ill-formed ARN is rejected at catalog creation time.
 
 ## Server-side encryption with KMS
 
-When the bucket uses SSE-KMS, supply both `currentKmsKey` (the key Polaris should use for writes)
-and `allowedKmsKeys` (every key the catalog is allowed to read from). The two fields are processed
-independently in `AwsCredentialsStorageIntegration`, so the write key must be included in
-`allowedKmsKeys` as well if you want it readable through vended credentials:
+When the bucket uses SSE-KMS, list the keys used for writes in `encryptionKeys`. Polaris grants
+these keys both encryption and decryption permissions. List any additional keys needed to read
+historical data in `decryptionKeys`. A key may appear in both lists; Polaris combines duplicate
+decryption permissions. The deprecated `currentKmsKey` and `allowedKmsKeys` properties are treated
+as entries in `encryptionKeys` for backward compatibility:
 
 ```json
 "storageConfigInfo": {
   "storageType": "S3",
   "roleArn": "...",
   "region": "us-east-1",
-  "currentKmsKey": "arn:aws:kms:us-east-1:123456789012:key/aaaa-bbbb",
-  "allowedKmsKeys": [
-    "arn:aws:kms:us-east-1:123456789012:key/aaaa-bbbb",
+  "encryptionKeys": [
+    "arn:aws:kms:us-east-1:123456789012:key/aaaa-bbbb"
+  ],
+  "decryptionKeys": [
     "arn:aws:kms:us-east-1:123456789012:key/cccc-dddd"
   ]
 }
 ```
 
-The IAM role's policy must include `kms:GenerateDataKey` and `kms:Decrypt` on `currentKmsKey` and
-`kms:Decrypt` on every key listed in `allowedKmsKeys`, and each key policy must grant the same to
-the role principal.
+The IAM role and key policies must allow encryption actions on every key in `encryptionKeys` and
+decryption actions on every key in `encryptionKeys` and `decryptionKeys`.
 
 If the deployment does not use KMS, set `kmsUnavailable` to `true` so Polaris will not request
 KMS-related session permissions:
@@ -318,7 +319,8 @@ SELECT * FROM warehouse_s3.demo.t;
 If `INSERT` or `SELECT` fails with a 403, the most common causes are:
 
 - The IAM role's trust policy does not match the `roleArn` / `externalId` Polaris is presenting.
-- The role grants S3 permissions but is missing the KMS actions for `currentKmsKey`.
+- The role grants S3 permissions but is missing the required KMS actions for `encryptionKeys` or
+  `decryptionKeys`.
 - The bucket policy denies access from outside a specific VPC endpoint.
 
 Polaris logs the assumed-role STS request at debug level, which is the fastest way to confirm

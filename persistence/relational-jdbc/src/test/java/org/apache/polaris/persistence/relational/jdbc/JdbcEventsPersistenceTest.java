@@ -53,9 +53,18 @@ class JdbcEventsPersistenceTest {
   @ParameterizedTest
   @MethodSource("schemaVersions")
   void writeEventsStoresNullCatalogIdPerSchemaVersion(int schemaVersion) throws Exception {
+    // The schema is provided by the datasource, not the persistence code: INIT creates
+    // POLARIS_SCHEMA
+    // and selects it on every connection (the DBA step + currentSchema driver setting in a real
+    // deployment), so the tables land in POLARIS_SCHEMA for every schema version.
     DataSource dataSource =
         JdbcConnectionPool.create(
-            "jdbc:h2:mem:test_events_" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1", "sa", "");
+            "jdbc:h2:mem:test_events_"
+                + UUID.randomUUID()
+                + ";DB_CLOSE_DELAY=-1"
+                + ";INIT=CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA\\;SET SCHEMA POLARIS_SCHEMA",
+            "sa",
+            "");
     DatasourceOperations datasourceOperations =
         new DatasourceOperations(
             dataSource, SimpleRelationalJdbcConfiguration.forDatabaseType(DatabaseType.H2));

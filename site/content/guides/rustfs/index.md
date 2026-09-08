@@ -19,6 +19,7 @@
 #
 linkTitle: "Storage: RustFS"
 title: "Getting Started with Apache Polaris and RustFS"
+description: "Uses RustFS for S3-compatible object storage and Apache Spark as the query engine."
 weight: 200
 tags:
    - rustfs
@@ -30,10 +31,6 @@ menus:
         parent: Guides
         weight: 200
 ---
-
-{{< alert warning >}}
-**Disclaimer:** This guide uses mc from MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes. For production setups, [rc](https://github.com/rustfs/cli) should be used.
-{{< /alert >}}
 
 ## Overview
 

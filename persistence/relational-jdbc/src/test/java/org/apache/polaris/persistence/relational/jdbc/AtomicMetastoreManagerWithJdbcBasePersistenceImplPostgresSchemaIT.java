@@ -81,12 +81,28 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplPostgresSchemaIT
   private static DataSource createPostgresDataSource(int schemaVersion) {
     String databaseName = "polaris_schema_v" + schemaVersion;
     createDatabaseIfNotExists(databaseName);
+    createPolarisSchema(databaseName);
 
     PGSimpleDataSource postgresDataSource = new PGSimpleDataSource();
     postgresDataSource.setURL(jdbcUrlForDatabase(databaseName));
     postgresDataSource.setUser(POSTGRES.getUsername());
     postgresDataSource.setPassword(POSTGRES.getPassword());
+    // The schema is provided by the datasource, not by the persistence code (the currentSchema
+    // driver setting in a real deployment).
+    postgresDataSource.setCurrentSchema("polaris_schema");
     return postgresDataSource;
+  }
+
+  /** The DBA step in a real deployment: the schema must exist before Polaris connects. */
+  private static void createPolarisSchema(String databaseName) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                jdbcUrlForDatabase(databaseName), POSTGRES.getUsername(), POSTGRES.getPassword());
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE SCHEMA IF NOT EXISTS polaris_schema");
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to create schema in " + databaseName, e);
+    }
   }
 
   private static void createDatabaseIfNotExists(String databaseName) {

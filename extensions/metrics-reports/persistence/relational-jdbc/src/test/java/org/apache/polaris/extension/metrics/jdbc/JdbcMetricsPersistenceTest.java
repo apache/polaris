@@ -52,7 +52,7 @@ class JdbcMetricsPersistenceTest {
 
     // Execute main schema v4 (includes metrics tables)
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-    InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
+    InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v5.sql");
     datasourceOperations.executeScript(schemaStream);
 
     RealmContext realmContext = () -> "TEST_REALM";
