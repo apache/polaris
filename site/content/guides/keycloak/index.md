@@ -52,7 +52,7 @@ Polaris beforehand, and the principal ID, name and roles must match the ones ret
 Polaris is configured with 3 realms:
 
 - `realm-internal`: This is the default realm, and is configured to use the internal authentication only. It accepts
-  token issues by Polaris itself only.
+  token issued by Polaris itself only.
 - `realm-external`: This realm is configured to use an external identity provider (IDP) for authentication only. It
   accepts tokens issued by Keycloak only.
 - `realm-mixed`: This realm is configured to use both the internal and external authentication. It accepts tokens 

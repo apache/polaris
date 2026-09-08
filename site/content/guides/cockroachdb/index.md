@@ -102,7 +102,7 @@ exit 0
 ```shell
 docker exec -it jdbc-trino-1 trino
 ```
-Note, `cockroachdb-trino-1` is the name of the Docker container.
+Note, `jdbc-trino-1` is the name of the Docker container.
 
 Example Trino queries:
 ```
