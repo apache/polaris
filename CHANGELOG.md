@@ -71,14 +71,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   and a subsequent `bootstrap` would create a second, empty set of tables in the other schema.
   Either remove the setting from the URL, or point it at the schema that already holds your
   Polaris tables.
-- OPA authorization inputs now reflect the intent-based authorization SPI more directly. Resource
+- PolarisAuthorizer inputs now reflect the intent-based authorization SPI more directly. Resource
   targets and parent paths no longer include Polaris's internal synthetic `ROOT` container. For
   example, catalog targets now have empty parent paths, root-scoped operations such as
-  `LIST_CATALOGS` no longer include a synthetic `ROOT` target. Existing Rego policies that depend
-  on the previous synthetic root target or root parent path may need to be updated.
-- Authorization requests with multiple intents are now evaluated one intent at a time. OPA
+  `LIST_CATALOGS` no longer include a synthetic `ROOT` target.
+- PolarisAuthorizer requests with multiple intents are now evaluated one intent at a time. OPA
   deployments will observe this as separate OPA queries per intent, so existing Rego policies that
-  depend on the previous combined-intent input shape may need to be updated.
+  depend on the previous combined-intent input shape may need to be updated. Same applies to other
+  PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
 
 ### New Features
