@@ -19,6 +19,7 @@
 
 import io
 from types import SimpleNamespace
+from typing import Optional
 from unittest.mock import call, patch, MagicMock, mock_open
 
 import yaml
@@ -185,6 +186,78 @@ class TestSetupCommand(CLITestBase):
         )
 
         self.assertEqual(command._failure_count, 1)
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_dry_run_namespace_detects_existing_namespaces(
+        self, mock_catalog_api_class: MagicMock
+    ) -> None:
+        def list_namespaces(
+            prefix: str, parent: Optional[str] = None
+        ) -> SimpleNamespace:
+            if parent is None:
+                return SimpleNamespace(namespaces=[["dev_namespace"]])
+            return SimpleNamespace(namespaces=[["dev_namespace", "inner_namespace"]])
+
+        mock_catalog_api_class.return_value.list_namespaces.side_effect = (
+            list_namespaces
+        )
+        mock_client = self.build_mock_client()
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            dry_run=True,
+        )
+        with self.assertLogs("apache_polaris.cli.command.setup", level="INFO") as logs:
+            command._create_namespaces(
+                mock_client,
+                "catalog",
+                [{"name": ["dev_namespace", "inner_namespace"]}],
+                dry_run=True,
+            )
+
+        output = "\n".join(logs.output)
+        self.assertIn(
+            "Skipping creation for already existing namespace 'dev_namespace'", output
+        )
+        self.assertIn(
+            "Skipping creation for already existing namespace "
+            "'dev_namespace.inner_namespace'",
+            output,
+        )
+        self.assertNotIn("Would create namespace", output)
+        mock_catalog_api_class.return_value.list_namespaces.assert_called()
+
+    @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
+    def test_setup_dry_run_nested_namespace_without_existing_parent_succeeds(
+        self, mock_catalog_api_class: MagicMock
+    ) -> None:
+        def list_namespaces(
+            prefix: str, parent: Optional[str] = None
+        ) -> SimpleNamespace:
+            if parent is None:
+                return SimpleNamespace(namespaces=[])
+            raise NotFoundException()
+
+        list_namespaces_mock = mock_catalog_api_class.return_value.list_namespaces
+        list_namespaces_mock.side_effect = list_namespaces
+        mock_client = self.build_mock_client()
+        command = SetupCommand(
+            setup_subcommand=Subcommands.APPLY,
+            dry_run=True,
+        )
+        with self.assertLogs("apache_polaris.cli.command.setup", level="INFO") as logs:
+            command._create_namespaces(
+                mock_client,
+                "catalog",
+                [{"name": ["dev_namespace", "inner_namespace"]}],
+                dry_run=True,
+            )
+
+        self.assertEqual(command._failure_count, 0)
+        self.assertIn(
+            "Would create namespace dev_namespace.inner_namespace",
+            "\n".join(logs.output),
+        )
+        list_namespaces_mock.assert_called_once_with(prefix="catalog")
 
     @patch("apache_polaris.cli.command.setup.PolicyAPI")
     def test_setup_apply_recovers_policy_lookup_failure(
