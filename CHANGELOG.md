@@ -128,6 +128,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
 - Fixed a false-negative in the JDBC optimized location-overlap check (`OPTIMIZED_SIBLING_CHECK`). Ancestor locations stored in `location_without_scheme` without a trailing slash were not matched by the generated ancestor equality terms, allowing nested table/namespace locations to be created under existing prefixes. The query now emits both slash-terminated and non-slash-terminated prefix terms and uses a slash-terminated `LIKE` pattern for descendant matching.
 - Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
+- Python CLI `setup apply --dry-run` now reports already-existing namespaces as skipped instead of proposed creations.
 - Fixed policy detach on the relational JDBC backend silently doing nothing when the mapping's `parameters` changed in between. The delete's `WHERE` clause included the non-key `parameters` column, so a re-attach landing between the detach's lookup and its delete made the delete match zero rows while detach still reported success, leaving the policy attached. The delete is now keyed on the mapping's identity columns, matching the table's primary key and the transactional backend's behavior.
 - Relational JDBC: the `idx_locations` index used by the optimized sibling check now matches the
   query that reads it. On Postgres and CockroachDB the index led with `parent_id`, while the overlap
@@ -152,6 +153,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the
   token). Credential-generation is enforced on token exchange; bearer verify is signature and claims
   only. Secrets-load failures during exchange return service unavailable.
+
 
 ### Commits
 
