@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -89,6 +90,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -230,6 +232,51 @@ class IcebergCatalogHandlerTest {
         .getStorageAccessConfig(
             eq(TABLE2), any(), actionsCaptor.capture(), eq(Optional.empty()), eq(resolvedPath));
     assertThat(actionsCaptor.getValue()).containsExactlyInAnyOrder(actions);
+  }
+
+  /**
+   * The Iceberg REST spec makes {@code X-Iceberg-Access-Delegation} a hint: "The server may choose
+   * to supply access via any or none of the requested mechanisms." When the resolver degrades a
+   * both-modes request to {@link AccessDelegationMode#REMOTE_SIGNING} (credential vending not
+   * possible for the catalog) and remote signing is not implemented, the handler must answer with
+   * the table and no delegated access, not with an error.
+   */
+  @Test
+  void bothModesRequestedAndResolverDegradesToRemoteSigningReturnsTableWithoutDelegation() {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> bothModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    when(accessDelegationModeResolver.resolve(eq(bothModes), any()))
+        .thenReturn(Optional.of(REMOTE_SIGNING));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.registerTable(NS1, registerTableRequest(false), bothModes, Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
+    // No delegated access: no storage credentials in the response, neither as a credential entry
+    // nor merged into the table config.
+    assertThat(response.credentials()).isEmpty();
+    assertThat(response.config()).doesNotContainKeys("fake.access.key", "fake.secret.key");
+  }
+
+  @Test
+  void remoteSigningRequestedAloneIsStillRejectedWhileUnsupported() {
+    mockRegisterTableCatalog(false);
+    EnumSet<AccessDelegationMode> remoteSigningOnly = EnumSet.of(REMOTE_SIGNING);
+    when(accessDelegationModeResolver.resolve(eq(remoteSigningOnly), any()))
+        .thenReturn(Optional.of(REMOTE_SIGNING));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(
+            () ->
+                handler.registerTable(
+                    NS1, registerTableRequest(false), remoteSigningOnly, Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unsupported access delegation mode");
   }
 
   @Test
