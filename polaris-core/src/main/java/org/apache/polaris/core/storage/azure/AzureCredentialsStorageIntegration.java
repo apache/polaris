@@ -196,8 +196,11 @@ public class AzureCredentialsStorageIntegration
 
     AccessToken accessToken =
         getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
-    // Get user delegation key. Backdate its start time to avoid intermittent authorization
-    // failures when the Azure Storage or consuming client's clock trails Polaris's clock.
+    // Microsoft's general SAS guidance recommends setting the start time at least 15 minutes in
+    // the past to account for clock skew; its Java user-delegation SAS example uses five minutes.
+    // Use the five-minute buffer here to prevent intermittent authorization failures when Azure
+    // Storage or the consuming client clock trails Polaris's clock. The key is limited to Azure's
+    // seven-day validity window, with a one-minute safety margin on the end time.
     Instant clockSkewAdjustedStart = getClockSkewAdjustedStart(start);
     OffsetDateTime startTime =
         clockSkewAdjustedStart.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
