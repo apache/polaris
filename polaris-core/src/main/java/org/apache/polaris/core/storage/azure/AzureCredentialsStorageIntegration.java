@@ -78,6 +78,10 @@ public class AzureCredentialsStorageIntegration
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
 
+  // Microsoft recommends backdating SAS start times to account for clock skew between clients and
+  // Azure Storage. See https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview.
+  private static final long SAS_CLOCK_SKEW_BUFFER_SECONDS = Duration.ofMinutes(5).toSeconds();
+
   final DefaultAzureCredential defaultAzureCredential;
 
   public AzureCredentialsStorageIntegration(
@@ -192,16 +196,16 @@ public class AzureCredentialsStorageIntegration
 
     AccessToken accessToken =
         getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
-    // Get user delegation key.
-    // Set the new generated user delegation key expiry to 7 days and minute 1 min
-    // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
-    // clock skew between the client and server,
-    OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
+    // Get user delegation key. Backdate its start time to avoid intermittent authorization
+    // failures when the Azure Storage or consuming client's clock trails Polaris's clock.
+    Instant clockSkewAdjustedStart = getClockSkewAdjustedStart(start);
+    OffsetDateTime startTime =
+        clockSkewAdjustedStart.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
     int intendedDurationSeconds = realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     OffsetDateTime intendedEndTime =
         start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
     OffsetDateTime maxAllowedEndTime =
-        start.plus(Period.ofDays(7)).minusSeconds(60).atOffset(ZoneOffset.UTC);
+        clockSkewAdjustedStart.plus(Period.ofDays(7)).minusSeconds(60).atOffset(ZoneOffset.UTC);
     OffsetDateTime sanitizedEndTime =
         intendedEndTime.isBefore(maxAllowedEndTime) ? intendedEndTime : maxAllowedEndTime;
 
@@ -254,6 +258,11 @@ public class AzureCredentialsStorageIntegration
     }
 
     return toAccessConfig(sasToken, location, sanitizedEndTime.toInstant(), refreshEndpoint);
+  }
+
+  @VisibleForTesting
+  static Instant getClockSkewAdjustedStart(Instant start) {
+    return start.minusSeconds(SAS_CLOCK_SKEW_BUFFER_SECONDS);
   }
 
   @VisibleForTesting

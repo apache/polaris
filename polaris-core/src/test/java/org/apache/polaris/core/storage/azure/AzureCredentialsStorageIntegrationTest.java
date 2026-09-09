@@ -22,6 +22,7 @@ package org.apache.polaris.core.storage.azure;
 import static org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration.toAccessConfig;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -91,5 +92,14 @@ public class AzureCredentialsStorageIntegrationTest {
         .containsEntry(StorageAccessProperty.AZURE_SAS_TOKEN_BARE.getPropertyName(), "sasToken");
     Assertions.assertThat(blobResult.credentials())
         .containsEntry(StorageAccessProperty.AZURE_ACCOUNT_NAME.getPropertyName(), "myaccount");
+  }
+
+  @Test
+  void getClockSkewAdjustedStart_backdatesByFiveMinutes() {
+    Instant start = Instant.parse("2026-09-10T00:00:00Z");
+
+    Instant adjustedStart = AzureCredentialsStorageIntegration.getClockSkewAdjustedStart(start);
+
+    Assertions.assertThat(adjustedStart).isEqualTo(start.minus(5, ChronoUnit.MINUTES));
   }
 }
