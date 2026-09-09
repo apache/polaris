@@ -26,6 +26,7 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isA;
@@ -48,6 +49,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -94,6 +96,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.CommitStateUnknownException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -134,6 +137,7 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.persistence.AmbiguousWriteException;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
@@ -2906,6 +2910,37 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitConflictException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  @Test
+  public void testAmbiguousTableCommitReturnsUnknownWhenReconciliationFails() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    LocalIcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    Namespace namespace = Namespace.of("parent", "ambiguous_commit");
+    createNonExistingNamespaces(namespace);
+    Table table = catalog.buildTable(TableIdentifier.of(namespace, "table"), SCHEMA).create();
+
+    doThrow(new AmbiguousWriteException(new SQLException("connection reset")))
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChangedWithAmbiguousWriteDetection(any(), any(), any());
+    doThrow(new RuntimeException("database unavailable"))
+        .when(spyMetaStore)
+        .loadEntity(any(), anyLong(), anyLong(), any());
+
+    Assertions.assertThatThrownBy(
+            () -> table.updateSchema().addColumn("new_col", Types.LongType.get()).commit())
+        .isInstanceOf(CommitStateUnknownException.class)
+        .hasMessageContaining("Unable to determine whether table metadata location became current");
   }
 
   static Stream<Arguments> renameFailureStatuses() {

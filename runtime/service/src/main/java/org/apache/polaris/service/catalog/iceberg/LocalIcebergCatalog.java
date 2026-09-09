@@ -2935,22 +2935,26 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   PolarisEntity.toCoreList(catalogPath),
                   icebergTableLikeEntity);
     } catch (AmbiguousWriteException e) {
-      EntityResult persisted =
-          getMetaStoreManager()
-              .loadEntity(
-                  getCurrentPolarisContext(),
-                  icebergTableLikeEntity.getCatalogId(),
-                  icebergTableLikeEntity.getId(),
-                  icebergTableLikeEntity.getType());
-      if (persisted.isSuccess()
-          && Objects.equal(
-              IcebergTableLikeEntity.of(persisted.getEntity()).getMetadataLocation(),
-              icebergTableLikeEntity.getMetadataLocation())) {
-        LOGGER.info(
-            "Recovered ambiguous table commit for {} with metadata location {}",
-            identifier,
-            icebergTableLikeEntity.getMetadataLocation());
-        return;
+      try {
+        EntityResult persisted =
+            getMetaStoreManager()
+                .loadEntity(
+                    getCurrentPolarisContext(),
+                    icebergTableLikeEntity.getCatalogId(),
+                    icebergTableLikeEntity.getId(),
+                    icebergTableLikeEntity.getType());
+        if (persisted.isSuccess()
+            && Objects.equal(
+                IcebergTableLikeEntity.of(persisted.getEntity()).getMetadataLocation(),
+                icebergTableLikeEntity.getMetadataLocation())) {
+          LOGGER.info(
+              "Recovered ambiguous table commit for {} with metadata location {}",
+              identifier,
+              icebergTableLikeEntity.getMetadataLocation());
+          return;
+        }
+      } catch (RuntimeException reconciliationFailure) {
+        e.addSuppressed(reconciliationFailure);
       }
       throw new CommitStateUnknownException(
           "Unable to determine whether table metadata location became current", e);

@@ -279,7 +279,11 @@ public class DatasourceOperations {
                 throw e;
               }
             } finally {
-              connection.setAutoCommit(autoCommit);
+              try {
+                connection.setAutoCommit(autoCommit);
+              } catch (SQLException resetFailure) {
+                LOGGER.warn("Unable to restore auto-commit; closing connection", resetFailure);
+              }
             }
           }
         });
@@ -386,8 +390,9 @@ public class DatasourceOperations {
   }
 
   private boolean isRetryable(SQLException e) {
-    if (SERIALIZATION_FAILURE_SQL_CODE.equals(e.getSQLState())) {
-      return true;
+    String sqlState = e.getSQLState();
+    if (sqlState != null) {
+      return SERIALIZATION_FAILURE_SQL_CODE.equals(sqlState);
     }
 
     String message = e.getMessage();

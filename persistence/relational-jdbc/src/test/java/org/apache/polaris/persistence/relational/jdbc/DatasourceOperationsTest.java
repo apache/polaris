@@ -23,8 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -115,6 +117,45 @@ public class DatasourceOperationsTest {
         .isInstanceOf(AmbiguousWriteException.class);
 
     verify(mockPreparedStatement).executeUpdate();
+  }
+
+  @Test
+  void executeUpdateWithAmbiguousWriteDetection_preservesAmbiguousFailureWhenResetFails()
+      throws Exception {
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE entities SET entity_version = ?", List.of(2));
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate())
+        .thenThrow(new SQLException("An I/O error occurred while sending to the backend."));
+    doAnswer(
+            invocation -> {
+              if (!(Boolean) invocation.getArgument(0)) {
+                throw new SQLException("This connection has been closed.");
+              }
+              return null;
+            })
+        .when(mockConnection)
+        .setAutoCommit(anyBoolean());
+
+    AmbiguousWriteException exception =
+        assertThrows(
+            AmbiguousWriteException.class,
+            () -> datasourceOperations.executeUpdateWithAmbiguousWriteDetection(query));
+
+    assertEquals(
+        "Unable to determine whether the persistence write succeeded", exception.getMessage());
+  }
+
+  @Test
+  void withRetries_doesNotUseMessageFallbackWhenSqlStateIsPresent() throws SQLException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(2));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1_000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    when(mockOperation.execute()).thenThrow(new SQLException("connection reset", "08006"));
+
+    assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
+
+    verify(mockOperation).execute();
   }
 
   @Test

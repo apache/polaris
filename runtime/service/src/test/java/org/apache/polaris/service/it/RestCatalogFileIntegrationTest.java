@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -79,6 +80,9 @@ public class RestCatalogFileIntegrationTest extends PolarisRestCatalogFileIntegr
         .updateEntityPropertiesIfNotChangedWithAmbiguousWriteDetection(any(), any(), any());
 
     table.newAppend().appendFile(FILE_A).commit();
+
+    verify(metaStoreManager)
+        .updateEntityPropertiesIfNotChangedWithAmbiguousWriteDetection(any(), any(), any());
 
     Table committedTable = catalog().loadTable(tableIdentifier);
     var snapshot = committedTable.currentSnapshot();
