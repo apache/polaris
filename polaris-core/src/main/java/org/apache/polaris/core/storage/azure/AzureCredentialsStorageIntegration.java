@@ -78,8 +78,9 @@ public class AzureCredentialsStorageIntegration
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
 
-  // Microsoft recommends backdating SAS start times to account for clock skew between clients and
-  // Azure Storage. See https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview.
+  // Microsoft's Java user-delegation SAS example backdates the key start time to account for
+  // clock skew. See
+  // https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-java.
   private static final long SAS_CLOCK_SKEW_BUFFER_SECONDS = Duration.ofMinutes(5).toSeconds();
 
   final DefaultAzureCredential defaultAzureCredential;
@@ -196,11 +197,11 @@ public class AzureCredentialsStorageIntegration
 
     AccessToken accessToken =
         getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
-    // Microsoft's general SAS guidance recommends setting the start time at least 15 minutes in
-    // the past to account for clock skew; its Java user-delegation SAS example uses five minutes.
-    // Use the five-minute buffer here to prevent intermittent authorization failures when Azure
-    // Storage or the consuming client clock trails Polaris's clock. The key is limited to Azure's
-    // seven-day validity window, with a one-minute safety margin on the end time.
+    // Backdate the user delegation key start time by five minutes, following Microsoft's Java
+    // user-delegation SAS example, to prevent authorization failures caused by clock skew.
+    // Microsoft's general SAS guidance recommends a 15-minute backdate for an explicit SAS start
+    // time; Polaris does not set a SAS start time, and this buffer applies only to the key. The
+    // key is limited to Azure's seven-day validity window, with a one-minute end-time margin.
     Instant clockSkewAdjustedStart = getClockSkewAdjustedStart(start);
     OffsetDateTime startTime =
         clockSkewAdjustedStart.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
