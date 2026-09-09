@@ -421,7 +421,50 @@ public class DatasourceOperationsTest {
 
     // Even though the underlying SQLSTATE (class 08) would otherwise look ambiguous, a connection
     // that was never acquired is a definite non-write; callers rely on this to clean up orphans.
-    assertTrue(datasourceOperations.isConnectionAcquisitionFailure(thrown));
+    assertTrue(datasourceOperations.isWriteNotStartedFailure(thrown));
     assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
+  }
+
+  @Test
+  void executeUpdate_prepareStatementFailureIsDefiniteNonWrite() throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(1));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    // The connection is acquired, but a pooled/stale connection reports SQLSTATE 08003 ("connection
+    // does not exist") from prepareStatement, before any DML is sent. This is a definite non-write
+    // even though 08003 is in the connection-exception class that otherwise looks ambiguous.
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(query.sql()))
+        .thenThrow(new SQLException("connection does not exist", "08003"));
+
+    SQLException thrown =
+        assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
+
+    assertTrue(datasourceOperations.isWriteNotStartedFailure(thrown));
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
+    verify(mockPreparedStatement, times(0)).executeUpdate();
+  }
+
+  @Test
+  void executeUpdate_executeFailureIsAmbiguousNotNonWrite() throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(1));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    // The statement is prepared and executeUpdate is entered, then the connection drops (SQLSTATE
+    // 08006). Because the mutating call had started, the outcome is ambiguous, not a non-write.
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate())
+        .thenThrow(new SQLException("connection reset", "08006"));
+
+    SQLException thrown =
+        assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
+
+    assertTrue(datasourceOperations.isAmbiguousCommitOutcome(thrown));
+    assertTrue(!datasourceOperations.isWriteNotStartedFailure(thrown));
   }
 }

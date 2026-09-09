@@ -254,6 +254,7 @@ public class DatasourceOperations {
     return withRetries(
         () -> {
           logQuery(preparedQuery);
+          boolean[] writeStarted = {false};
           try (Connection connection = acquireConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
             List<Object> params = preparedQuery.parameters();
@@ -263,10 +264,13 @@ public class DatasourceOperations {
             boolean autoCommit = connection.getAutoCommit();
             connection.setAutoCommit(true);
             try {
+              writeStarted[0] = true;
               return statement.executeUpdate();
             } finally {
               connection.setAutoCommit(autoCommit);
             }
+          } catch (SQLException e) {
+            throw classifyByPhase(e, writeStarted[0]);
           }
         });
   }
@@ -288,6 +292,7 @@ public class DatasourceOperations {
     AtomicInteger successCount = new AtomicInteger();
     return withRetries(
         () -> {
+          boolean[] writeStarted = {false};
           try (Connection connection = acquireConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQueries.sql())) {
             boolean autoCommit = connection.getAutoCommit();
@@ -304,11 +309,13 @@ public class DatasourceOperations {
                 statement.addBatch(); // Add to batch
 
                 if (i % batchSize == 0) {
+                  writeStarted[0] = true;
                   successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
                 }
               }
 
               // Execute remaining queries in the batch
+              writeStarted[0] = true;
               successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
               success = true;
             } finally {
@@ -323,6 +330,8 @@ public class DatasourceOperations {
                 connection.setAutoCommit(autoCommit);
               }
             }
+          } catch (SQLException e) {
+            throw classifyByPhase(e, writeStarted[0]);
           }
           return successCount.get();
         });
@@ -337,12 +346,18 @@ public class DatasourceOperations {
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
     withRetries(
         () -> {
+          boolean[] writeStarted = {false};
           try (Connection connection = acquireConnection()) {
             boolean autoCommit = connection.getAutoCommit();
             boolean success = false;
             connection.setAutoCommit(false);
             try {
               try {
+                // Entering the callback (and the commit below) is the mutating phase; failures
+                // before this point are definite non-writes. Statements run by the callback via
+                // execute() tag their own pre-execution failures, so a prepareStatement failure
+                // there still surfaces as WriteNotStartedException.
+                writeStarted[0] = true;
                 success = callback.execute(connection);
               } finally {
                 if (success) {
@@ -354,6 +369,8 @@ public class DatasourceOperations {
             } finally {
               connection.setAutoCommit(autoCommit);
             }
+          } catch (SQLException e) {
+            throw classifyByPhase(e, writeStarted[0]);
           }
           return null;
         });
@@ -362,12 +379,16 @@ public class DatasourceOperations {
   public Integer execute(Connection connection, QueryGenerator.PreparedQuery preparedQuery)
       throws SQLException {
     logQuery(preparedQuery);
+    boolean[] writeStarted = {false};
     try (PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
       List<Object> params = preparedQuery.parameters();
       for (int i = 0; i < params.size(); i++) {
         statement.setObject(i + 1, params.get(i));
       }
+      writeStarted[0] = true;
       return statement.executeUpdate();
+    } catch (SQLException e) {
+      throw classifyByPhase(e, writeStarted[0]);
     }
   }
 
@@ -378,10 +399,11 @@ public class DatasourceOperations {
    * <p>Callers must not treat these as definite failures for cleanup or safe retry of CAS writes.
    */
   public boolean isAmbiguousCommitOutcome(SQLException e) {
-    // A connection that was never acquired is a definite non-write, never an ambiguous outcome,
-    // even though the driver may tag the acquisition failure with a connection-class SQLSTATE that
-    // would otherwise match below. Check this first so classification is independent of call order.
-    if (isConnectionAcquisitionFailure(e)) {
+    // A definite non-write (nothing sent to the server: connection acquisition, statement
+    // preparation, parameter binding, or auto-commit setup failed) is never an ambiguous outcome,
+    // even though the driver may tag it with a connection-class SQLSTATE that would otherwise match
+    // below. Check this first so classification is independent of call order.
+    if (isWriteNotStartedFailure(e)) {
       return false;
     }
     // Walk the cause chain: withRetries rewraps the original SQLException in a generic SQLException
@@ -422,13 +444,14 @@ public class DatasourceOperations {
   }
 
   /**
-   * Whether a failure to obtain a connection (before any statement was sent) is present in the
-   * cause chain. Such a failure is a definite non-write, so callers can distinguish it from an
-   * ambiguous commit outcome after execution.
+   * Whether a failure that happened before the mutating call was entered (connection acquisition,
+   * statement preparation, parameter binding, auto-commit setup) is present in the cause chain.
+   * Such a failure is a definite non-write, so callers can distinguish it from an ambiguous commit
+   * outcome after execution.
    */
-  public boolean isConnectionAcquisitionFailure(SQLException e) {
+  public boolean isWriteNotStartedFailure(SQLException e) {
     for (Throwable t = e; t != null; t = t.getCause()) {
-      if (t instanceof ConnectionAcquisitionException) {
+      if (t instanceof WriteNotStartedException) {
         return true;
       }
     }
@@ -454,9 +477,9 @@ public class DatasourceOperations {
   }
 
   private boolean isRetryable(SQLException e, boolean mutating) {
-    // A connection that could never be acquired means the statement never ran: the write
-    // definitely did not happen, so retrying the whole operation is always safe, even for writes.
-    if (e instanceof ConnectionAcquisitionException) {
+    // A definite non-write (the mutating call was never entered) means the write did not happen, so
+    // retrying the whole operation is always safe, even for writes.
+    if (e instanceof WriteNotStartedException) {
       return true;
     }
     // For mutating operations an ambiguous outcome (connection loss, timeout, cancellation) may
@@ -584,25 +607,46 @@ public class DatasourceOperations {
   }
 
   /**
-   * Obtains a connection, tagging any acquisition failure with {@link
-   * ConnectionAcquisitionException} so callers can tell a definite non-write (the statement was
-   * never sent) apart from an ambiguous outcome after execution.
+   * Obtains a connection, tagging any acquisition failure with {@link WriteNotStartedException} so
+   * callers can tell a definite non-write (no statement was sent) apart from an ambiguous outcome
+   * after execution.
    */
   private Connection acquireConnection() throws SQLException {
     try {
       return borrowConnection();
     } catch (SQLException e) {
-      throw new ConnectionAcquisitionException(e);
+      throw new WriteNotStartedException(e);
     }
   }
 
   /**
-   * Marks a failure to obtain a JDBC connection, before any statement was sent. Such a failure is a
-   * definite non-write: it must not be classified as an ambiguous commit outcome, and the whole
-   * operation is safe to retry. The original message, SQLSTATE and vendor code are preserved.
+   * Classifies a failure by execution phase. If the mutating call has not yet been entered (or the
+   * failure is already a definite non-write), the failure is tagged {@link
+   * WriteNotStartedException} so it is retried and any orphaned state is cleaned up; otherwise the
+   * original exception is returned unchanged so {@link #isAmbiguousCommitOutcome} can decide the
+   * commit outcome.
+   *
+   * <p>This moves the ambiguity boundary from connection acquisition to the mutating call itself:
+   * failures thrown after {@code getConnection()} but before {@code executeUpdate()}/{@code
+   * executeBatch()}/{@code commit()} (for example a pooled driver reporting SQLSTATE {@code 08003}
+   * from {@code prepareStatement()}) are definite non-writes rather than ambiguous outcomes.
    */
-  static final class ConnectionAcquisitionException extends SQLException {
-    ConnectionAcquisitionException(SQLException cause) {
+  private static SQLException classifyByPhase(SQLException e, boolean writeStarted) {
+    if (writeStarted || e instanceof WriteNotStartedException) {
+      return e;
+    }
+    return new WriteNotStartedException(e);
+  }
+
+  /**
+   * Marks a failure that happened before the mutating JDBC call was entered — obtaining the
+   * connection, preparing the statement, binding parameters, or configuring auto-commit — so no DML
+   * reached the server. Such a failure is a definite non-write: it must not be classified as an
+   * ambiguous commit outcome, and the whole operation is safe to retry. The original message,
+   * SQLSTATE and vendor code are preserved.
+   */
+  static final class WriteNotStartedException extends SQLException {
+    WriteNotStartedException(SQLException cause) {
       super(cause.getMessage(), cause.getSQLState(), cause.getErrorCode(), cause);
     }
   }

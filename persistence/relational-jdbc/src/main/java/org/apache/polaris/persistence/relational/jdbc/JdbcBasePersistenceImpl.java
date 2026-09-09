@@ -282,9 +282,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   private RuntimeException wrapEntityWriteFailure(SQLException e, String context) {
-    // Check connection acquisition first: a connection that was never established is a definite
+    // Check the not-started phase first: a failure before the mutating call was entered (connection
+    // acquisition, statement preparation, parameter binding, auto-commit setup) is a definite
     // non-write, even though its SQLSTATE (e.g. class 08) would otherwise look ambiguous.
-    if (datasourceOperations.isConnectionAcquisitionFailure(e)) {
+    if (datasourceOperations.isWriteNotStartedFailure(e)) {
       return new PersistenceWriteNotStartedException(
           String.format("%s due to %s; the write did not start", context, e.getMessage()), e);
     }
