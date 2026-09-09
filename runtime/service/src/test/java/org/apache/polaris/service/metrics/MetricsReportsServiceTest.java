@@ -23,20 +23,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Set;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
-import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
@@ -104,14 +101,7 @@ class MetricsReportsServiceTest {
         .thenReturn(tableWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
     when(factory.createResolutionManifest(eq(principal), eq(CATALOG))).thenReturn(manifest);
-    doNothing()
-        .when(authorizer)
-        .authorizeOrThrow(
-            any(PolarisPrincipal.class),
-            any(Set.class),
-            any(PolarisAuthorizableOperation.class),
-            any(PolarisResolvedPathWrapper.class),
-            (PolarisResolvedPathWrapper) isNull());
+    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
 
     // By default the no-op query provider is active (durable backend absent) and returns
     // empty pages, mirroring the @DefaultBean NoOpMetricsQuery in
@@ -166,14 +156,7 @@ class MetricsReportsServiceTest {
 
   @Test
   void unauthorizedRequestThrowsForbiddenException() {
-    doThrow(new ForbiddenException("denied"))
-        .when(authorizer)
-        .authorizeOrThrow(
-            any(PolarisPrincipal.class),
-            any(Set.class),
-            eq(PolarisAuthorizableOperation.LIST_TABLE_METRICS),
-            any(PolarisResolvedPathWrapper.class),
-            (PolarisResolvedPathWrapper) isNull());
+    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
 
     assertThatThrownBy(
             () ->

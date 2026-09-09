@@ -34,9 +34,13 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.polaris.core.auth.AuthorizationIntent;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -66,6 +70,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.metrics.api.PolarisCatalogsApiService;
 import org.jspecify.annotations.NonNull;
 
@@ -148,10 +153,7 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
             pt);
 
     Preconditions.checkState(
-        result.metricType() == type,
-        "Provider returned %s for %s",
-        result.metricType(),
-        type);
+        result.metricType() == type, "Provider returned %s for %s", result.metricType(), type);
 
     return switch (result) {
       case MetricsQuerySpi.ScanResult scan -> toScanResponse(scan, tableIdToIdentifier);
@@ -222,6 +224,19 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
       throw new NotFoundException("Table not found");
     }
 
+    AuthorizationRequest authorizationRequest =
+        new AuthorizationRequest(
+            polarisPrincipal,
+            identifiers.stream()
+                .<AuthorizationIntent>map(
+                    identifier ->
+                        new SingleTargetAuthorizationIntent(
+                            PolarisAuthorizableOperation.LIST_TABLE_METRICS,
+                            PolarisSecurableMapper.tableLike(catalogName, identifier)))
+                .toList());
+    AuthorizationState authorizationState = new AuthorizationState(manifest);
+    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+
     for (TableIdentifier identifier : identifiers) {
       PolarisResolvedPathWrapper tableWrapper =
           manifest.getResolvedPath(
@@ -230,14 +245,9 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
       if (tableWrapper == null) {
         throw new NotFoundException("Table not found: %s", identifier);
       }
-
-      authorizer.authorizeOrThrow(
-          polarisPrincipal,
-          manifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-          PolarisAuthorizableOperation.LIST_TABLE_METRICS,
-          tableWrapper,
-          null);
     }
+
+    authorizer.authorize(authorizationState, authorizationRequest).throwIfDenied();
 
     return manifest;
   }
