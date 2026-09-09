@@ -103,7 +103,7 @@ public class TestNoSqlPaginationToken {
     var request = PageToken.fromLimit(10);
     var page = Page.page(request, List.of("item"), token);
 
-    var roundTripped = PageToken.build(page.encodedResponseToken(), null, () -> true);
+    var roundTripped = PageToken.build(page.encodedResponseToken(), null, -1, () -> true);
 
     soft.assertThat(roundTripped.pageSize()).isEqualTo(OptionalInt.of(10));
     soft.assertThat(roundTripped.valueAs(NoSqlPaginationToken.class))
