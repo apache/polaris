@@ -1264,6 +1264,19 @@ class SetupCommand(Command):
         listed_parents: Set[tuple[str, ...]] = set()
 
         listed_parents.add(())
+        confirmed_existing_namespaces: Set[tuple[str, ...]] = set()
+        if dry_run:
+            try:
+                sub_ns = catalog_api.list_namespaces(prefix=catalog_name).namespaces
+                for ns in sub_ns:
+                    existing_namespaces.add(tuple(ns))
+                    confirmed_existing_namespaces.add(tuple(ns))
+            except NotFoundException:
+                pass
+            except Exception:
+                self._record_failure(
+                    f"Failed to list existing namespaces for catalog '{catalog_name}'"
+                )
         all_namespaces_to_create: Set[tuple[str, ...]] = set()
         namespace_data_map: Dict[tuple[str, ...], Dict[str, Any]] = {}
         for ns_item in namespaces_config:
@@ -1295,17 +1308,17 @@ class SetupCommand(Command):
             if len(namespace_key) > 1:
                 parent = namespace_key[:-1]
                 parent_ns = ".".join(parent)
-                if (
-                    not dry_run
-                    and parent in existing_namespaces
-                    and parent not in listed_parents
-                ):
+                known_parents = (
+                    confirmed_existing_namespaces if dry_run else existing_namespaces
+                )
+                if parent in known_parents and parent not in listed_parents:
                     try:
                         sub_ns = catalog_api.list_namespaces(
                             prefix=catalog_name, parent=UNIT_SEPARATOR.join(parent)
                         ).namespaces
                         for ns in sub_ns:
                             existing_namespaces.add(tuple(ns))
+                            confirmed_existing_namespaces.add(tuple(ns))
                             listed_parents.add(parent)
                     except Exception:
                         self._record_failure(

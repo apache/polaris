@@ -28,6 +28,7 @@
     { "bundleName" : "bsd2", "licenseUrlPattern" : "https?://www.opensource.org/licenses/bsd-license.php" },
     { "bundleName" : "bsd2", "licenseUrlPattern" : "https?://opensource.org/licenses/BSD-2-Clause" },
 
+    { "bundleName" : "bsd3", "licenseNamePattern" : "BSD 3-clause" },
     { "bundleName" : "bsd3", "licenseNamePattern" : "BSD New license" },
     { "bundleName" : "bsd3", "licenseNamePattern" : "The BSD License" },
 

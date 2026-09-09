@@ -71,6 +71,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   and a subsequent `bootstrap` would create a second, empty set of tables in the other schema.
   Either remove the setting from the URL, or point it at the schema that already holds your
   Polaris tables.
+- PolarisAuthorizer inputs now reflect the intent-based authorization SPI more directly. Resource
+  targets and parent paths no longer include Polaris's internal synthetic `ROOT` container. For
+  example, catalog targets now have empty parent paths, root-scoped operations such as
+  `LIST_CATALOGS` no longer include a synthetic `ROOT` target.
+- PolarisAuthorizer requests with multiple intents are now evaluated one intent at a time. OPA
+  deployments will observe this as separate OPA queries per intent, so existing Rego policies that
+  depend on the previous combined-intent input shape may need to be updated. Same applies to other
+  PolarisAuthorizer implementations.
 - Internal JWTs minted before credentials-generation binding (tokens without the `polaris-cv` claim) can no longer be used as subject tokens in token exchange; they remain valid as bearer tokens until expiry. During a rolling upgrade, an old node may still mint claim-less tokens: exchanging such a token on any already-upgraded node fails with `invalid_grant`, so clients can see intermittent exchange failures until the last old node is gone; after that, rejection is consistent.
 
 ### New Features
@@ -128,6 +136,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Python CLI `setup` now preserves `endpoint_internal` and `sts_endpoint` during apply and export for S3 configuration
 - Fixed a false-negative in the JDBC optimized location-overlap check (`OPTIMIZED_SIBLING_CHECK`). Ancestor locations stored in `location_without_scheme` without a trailing slash were not matched by the generated ancestor equality terms, allowing nested table/namespace locations to be created under existing prefixes. The query now emits both slash-terminated and non-slash-terminated prefix terms and uses a slash-terminated `LIKE` pattern for descendant matching.
 - Python CLI `setup` now preserves the Azure `hierarchical` storage flag during apply and export
+- Python CLI `setup apply --dry-run` now reports already-existing namespaces as skipped instead of proposed creations.
 - Fixed policy detach on the relational JDBC backend silently doing nothing when the mapping's `parameters` changed in between. The delete's `WHERE` clause included the non-key `parameters` column, so a re-attach landing between the detach's lookup and its delete made the delete match zero rows while detach still reported success, leaving the policy attached. The delete is now keyed on the mapping's identity columns, matching the table's primary key and the transactional backend's behavior.
 - Relational JDBC: the `idx_locations` index used by the optimized sibling check now matches the
   query that reads it. On Postgres and CockroachDB the index led with `parent_id`, while the overlap
@@ -152,6 +161,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Internal JWTs are bound to principal secret generation via `polaris-cv` (no secret material in the
   token). Credential-generation is enforced on token exchange; bearer verify is signature and claims
   only. Secrets-load failures during exchange return service unavailable.
+- The Policy API now rejects an unknown `policyType` query parameter on `listPolicies` and `getApplicablePolicies` with HTTP 400. Previously an unrecognized value (for example `system.data_compaction`, misspelling `system.data-compaction` with an underscore) was silently treated as "no filter", so the request returned policies of every type with HTTP 200, and clients could not tell a filtered result from an unfiltered one. An absent or empty `policyType` still means "no filter", as the API specification allows.
 - File cleanup tasks now issue batched object-storage deletes again. `CatalogUtil.deleteFiles`
   batches only when the `FileIO` is an `instanceof SupportsBulkOperations`, but the `FileIO` reaching
   the cleanup tasks is wrapped by `ExceptionMappingFileIO` and, on Azure, by
@@ -160,7 +170,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `SupportsBulkOperations` when the wrapped `FileIO` supports it, which affects every storage
   backend, since `S3FileIO`, `GCSFileIO`, `ADLSFileIO` and `HadoopFileIO` all implement
   `DelegateFileIO`.
-
+  
 ### Commits
 
 ## [1.7.0]
