@@ -159,6 +159,18 @@ public class DatasourceOperationsTest {
   }
 
   @Test
+  void withRetries_doesNotRetryWhenSqlStateAndMessageAreAbsent() throws SQLException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(2));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1_000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    when(mockOperation.execute()).thenThrow(new SQLException((String) null));
+
+    assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
+
+    verify(mockOperation).execute();
+  }
+
+  @Test
   void executeUpdateWithAmbiguousWriteDetection_retriesSerializationFailure() throws Exception {
     when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(2));
     when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1_000L));

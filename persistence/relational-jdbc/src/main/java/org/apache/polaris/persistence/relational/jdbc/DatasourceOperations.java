@@ -391,10 +391,12 @@ public class DatasourceOperations {
 
   private boolean isRetryable(SQLException e) {
     String sqlState = e.getSQLState();
+
     if (sqlState != null) {
-      return SERIALIZATION_FAILURE_SQL_CODE.equals(sqlState);
+      return sqlState.equals(SERIALIZATION_FAILURE_SQL_CODE); // Serialization failure
     }
 
+    // Additionally, one might check for specific error messages or other conditions
     String message = e.getMessage();
     if (message == null) {
       return false;
