@@ -49,8 +49,12 @@ Access Boundary for the table's allowed locations, and returns identity 3. The c
 to GCS directly with `gcs.oauth2.token`.
 
 Identity 1 is configured once at Polaris deployment time. Identity 2 is created per catalog and
-its email is registered when the catalog is created. Identity 3 is generated on every table load
-and is never persisted.
+its email is registered when the catalog is created. Identity 3 is not minted on every table
+load. Matching vending requests go through `CachingStorageIntegration` and
+`StorageCredentialCache`: Polaris issues a downscoped token on a cache miss and reuses that
+in-memory credential until the cache entry or the token expires. The cache is process-local
+and is not durably persisted, so a restart issues new tokens and revocation of a still-cached
+credential waits until expiry or restart.
 
 When `gcpServiceAccount` is omitted, Polaris downscopes identity 1 itself. That is convenient for
 a single-project lab, but production catalogs should impersonate a dedicated service account so
@@ -99,18 +103,23 @@ The source identity still needs IAM that can actually perform those actions on t
 access boundary only narrows an existing grant. `roles/storage.objectAdmin` on the warehouse
 prefix is the usual starting point.
 
-## Hierarchical Namespace ACLs
+## Hierarchical namespace and prefix IAM
 
-Polaris requires both IAM roles and
-[Hierarchical Namespace (HNS)](https://docs.cloud.google.com/storage/docs/hns-overview) ACLs (if
-HNS is enabled) to be properly configured. Even with the correct IAM role (for example
-`roles/storage.objectAdmin`), access to paths such as `gs://<bucket>/idsp_ns/sample_table4/` may
-fail with 403 errors if HNS ACLs are missing for scoped tokens. The original access token may
-work, but scoped (vended) tokens require HNS ACLs on the base path or relevant subpath.
+GCS [hierarchical namespace (HNS)](https://docs.cloud.google.com/storage/docs/hns-overview)
+is optional for Polaris catalogs. When HNS is enabled, the bucket uses uniform bucket-level
+access and does not support object-level ACLs, so prefix isolation cannot come from an ACL
+layer.
 
-HNS is not mandatory when using GCS for a catalog in Polaris. If HNS is not enabled on the
-bucket, only IAM roles are required for access. Always verify HNS ACLs in addition to IAM roles
-when troubleshooting GCS access issues with credential vending and HNS enabled.
+Give the source identity (identity 2, or identity 1 if impersonation is skipped) IAM that
+already covers the warehouse prefix — for example `roles/storage.objectAdmin` on the bucket,
+on an associated [managed folder](https://cloud.google.com/storage/docs/managed-folders),
+or through an IAM condition on `resource.name`. Polaris then downscopes the vended token with
+a Credential Access Boundary; that boundary can only narrow permissions the source identity
+already has.
+
+When HNS is not enabled, the same IAM-plus-boundary model applies; only the bucket's
+namespace layout changes. When troubleshooting 403s on an HNS bucket, check the source
+identity's IAM on the prefix, not an object ACL.
 
 ## Catalog storage configuration
 
@@ -120,7 +129,7 @@ token in the `Authorization` header below is the Polaris admin bearer token obta
 how to bootstrap and issue admin tokens).
 
 ```bash
-curl -X POST https://<polaris-host>/management/v1/catalogs \
+curl -X POST https://<polaris-host>/api/management/v1/catalogs \
   -H "Authorization: Bearer ***" \
   -H "Content-Type: application/json" \
   -d '{
@@ -143,9 +152,12 @@ curl -X POST https://<polaris-host>/management/v1/catalogs \
 `GcpStorageConfigurationInfo` also records `gcpServiceAccount`; omit it only when the Polaris
 process identity should be downscoped directly.
 
-Iceberg I/O for GCS catalogs is `org.apache.iceberg.gcp.gcs.GCSFileIO`. Polaris returns that
-implementation name with the vended credentials; engines still need the matching Iceberg GCP
-jars on their own classpath.
+`GcpStorageConfigurationInfo` selects `org.apache.iceberg.gcp.gcs.GCSFileIO` for Polaris's
+own server-side FileIO. Vended credentials from `GcpCredentialsStorageIntegration` are only
+the token (`gcs.oauth2.token`), its expiry (`gcs.oauth2.token-expires-at`), and an optional
+refresh endpoint; Polaris does not return a FileIO implementation name to the client. Each
+engine must select its own GCS filesystem or FileIO (Spark `io-impl`, Trino `fs.gcs.enabled`,
+and so on) and still needs the matching GCS libraries on its classpath.
 
 ## Client configuration
 
@@ -177,7 +189,10 @@ is slated for removal in a future Iceberg release.
 The Spark application must include the Iceberg GCP bundle (or `iceberg-gcp` and the matching
 Google Cloud jars) on the classpath; Polaris does not ship these jars to the engine.
 
-For Trino, use the Iceberg connector with the REST catalog:
+For Trino, use the Iceberg connector with the REST catalog. Vended credentials require a
+native cloud filesystem; `fs.gcs.enabled` defaults to false, so catalog initialization fails
+before Trino calls Polaris unless it is set. This catalog file matches Trino 483 (the image
+used in Polaris getting-started):
 
 ```properties
 connector.name=iceberg
@@ -189,6 +204,7 @@ iceberg.rest-catalog.oauth2.credential=<client-id>:<client-secret>
 iceberg.rest-catalog.oauth2.scope=PRINCIPAL_ROLE:ALL
 iceberg.rest-catalog.oauth2.server-uri=https://<polaris-host>/api/catalog/v1/oauth/tokens
 iceberg.rest-catalog.vended-credentials-enabled=true
+fs.gcs.enabled=true
 ```
 
 For PyIceberg, use the `rest` catalog type and forward the vended-credential header as a REST
@@ -232,8 +248,10 @@ If `INSERT` or `SELECT` fails with a 403, the most common causes are:
 - The catalog service account (or the process identity, if impersonation is skipped) lacks
   `roles/storage.objectAdmin` — or an equivalent that covers read, list, and write — on the
   warehouse prefix.
-- HNS is enabled on the bucket and the directory ACL does not include the scoped token's
-  identity. IAM can look correct while the vended token still gets 403 on the table path.
+- HNS is enabled on the bucket and the source identity lacks IAM on the warehouse prefix
+  (managed folder or IAM condition). Uniform bucket-level access means there is no object
+  ACL to fix; the Credential Access Boundary cannot add permissions the source identity
+  does not already have.
 - The client omitted `X-Iceberg-Access-Delegation: vended-credentials`, so Iceberg never received
   `gcs.oauth2.token`.
 
