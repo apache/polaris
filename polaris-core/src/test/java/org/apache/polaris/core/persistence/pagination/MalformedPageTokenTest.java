@@ -35,6 +35,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.dataformat.smile.SmileMapper;
 
@@ -72,8 +74,24 @@ class MalformedPageTokenTest {
         // Found by fuzzing a valid token: the SMILE parser fails with
         // ArrayIndexOutOfBoundsException rather than a Jackson exception.
         arguments(
-            "corrupted SMILE that trips the parser itself",
-            "OikKAfqAcNTKdvqAdEBlgGkoAWs8aKr7-w=="));
+            "corrupted SMILE that trips the parser itself", "OikKAfqAcNTKdvqAdEBlgGkoAWs8aKr7-w=="),
+        // Deserializes "successfully" to null, so the failure would otherwise surface later as a
+        // NullPointerException.
+        arguments("SMILE-encoded null", smile(null)));
+  }
+
+  /**
+   * The page size is applied to the decoded token after deserialization; a token that decodes to
+   * null must be rejected before that, with or without a page size.
+   */
+  @ParameterizedTest(name = "pageSize={0}")
+  @NullSource
+  @ValueSource(ints = {0, 5})
+  void nullTokenIsRejectedWithAndWithoutPageSize(Integer pageSize) {
+    String nullToken = smile(null);
+    assertThatThrownBy(() -> PageToken.build(nullToken, pageSize, () -> true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid page token");
   }
 
   /**

@@ -146,9 +146,10 @@ final class PageTokenUtil {
    * IllegalArgumentException} (mapped to HTTP 400), never as a server error.
    */
   private static PageToken deserializePageToken(String requestedPageToken) {
+    PageToken pageToken;
     try {
       var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
-      return SMILE_MAPPER.readValue(bytes, PageToken.class);
+      pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);
     } catch (RuntimeException e) {
       // Deliberately broad: the input is untrusted bytes fed to a binary parser. Besides the
       // expected failures (IllegalArgumentException for non-base64, JacksonException for a payload
@@ -157,6 +158,10 @@ final class PageTokenUtil {
       // them mean the same thing: the client sent a token we cannot interpret.
       throw new IllegalArgumentException("Invalid page token", e);
     }
+    // A SMILE-encoded null deserializes "successfully" to null; reject it here rather than letting
+    // callers fail on it later.
+    checkArgument(pageToken != null, "Invalid page token");
+    return pageToken;
   }
 
   /**
