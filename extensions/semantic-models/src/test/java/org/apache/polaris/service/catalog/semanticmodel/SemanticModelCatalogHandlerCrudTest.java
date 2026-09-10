@@ -21,7 +21,7 @@ package org.apache.polaris.service.catalog.semanticmodel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.semanticmodel.types.ListSemanticModelsResponse;
@@ -81,7 +81,7 @@ class SemanticModelCatalogHandlerCrudTest extends AbstractSemanticModelCatalogHa
             () ->
                 passthroughHandler()
                     .createSemanticModel(NS, createRequest("m2", modelJson("ns1.missing"))))
-        .isInstanceOf(BadRequestException.class)
+        .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("ns1.missing");
   }
 }

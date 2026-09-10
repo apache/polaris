@@ -57,6 +57,8 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
+import org.apache.polaris.core.admin.model.SemanticModelGrant;
+import org.apache.polaris.core.admin.model.SemanticModelGrants;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -691,6 +693,21 @@ public class PolarisServiceImpl
                       catalogName, catalogRoleName, identifier, privilege);
           break;
         }
+      case SemanticModelGrant semanticModelGrant:
+        {
+          var privilege = PolarisPrivilege.valueOf(semanticModelGrant.getPrivilege().toString());
+          var identifier =
+              TableIdentifier.of(
+                  toNamespace(semanticModelGrant.getNamespace()),
+                  semanticModelGrant.getSemanticModelName());
+          result =
+              direction == GrantDirection.GRANT
+                  ? adminService.grantPrivilegeOnSemanticModelToRole(
+                      catalogName, catalogRoleName, identifier, privilege)
+                  : adminService.revokePrivilegeOnSemanticModelFromRole(
+                      catalogName, catalogRoleName, identifier, privilege);
+          break;
+        }
       default:
         LOGGER
             .atWarn()
@@ -733,5 +750,19 @@ public class PolarisServiceImpl
         adminService.listGrantsForCatalogRole(catalogName, catalogRoleName);
     GrantResources grantResources = new GrantResources(grantList);
     return Response.ok(grantResources).build();
+  }
+
+  @Override
+  public Response listGrantsOnSemanticModel(
+      String catalogName,
+      String semanticModelName,
+      List<String> namespace,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return Response.ok(
+            new SemanticModelGrants(
+                adminService.listGrantsOnSemanticModel(
+                    catalogName, TableIdentifier.of(toNamespace(namespace), semanticModelName))))
+        .build();
   }
 }

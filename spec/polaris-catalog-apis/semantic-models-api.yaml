@@ -34,7 +34,9 @@ paths:
         **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
         backward-incompatible way.
 
-        Creates a semantic model in the specified namespace.
+        Creates a semantic model in the specified namespace. Requires SEMANTIC_MODEL_CREATE
+        on the namespace and metadata read access to every referenced source table or view.
+        Missing or inaccessible sources return 404.
 
         A semantic model is an Apache Ossie document describing
         datasets, fields, relationships, metrics, and AI context for a logical analytics surface above
@@ -58,7 +60,7 @@ paths:
         403:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
         404:
-          description: Not Found - The namespace specified does not exist
+          description: Not Found - The namespace or a referenced source does not exist or is inaccessible
           content:
             application/json:
               schema:
@@ -165,7 +167,9 @@ paths:
         **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
         backward-incompatible way.
 
-        Replace a semantic model's document with a new one.
+        Replace a semantic model's document with a new one. Requires
+        SEMANTIC_MODEL_WRITE_PROPERTIES on the model and metadata read access to every referenced
+        source table or view. Missing or inaccessible sources return 404.
 
         Upon a successful update, the model's entity-version changes and the new value is returned.
 
@@ -189,7 +193,7 @@ paths:
         403:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
         404:
-          description: Not Found - the requested semantic model does not exist
+          description: Not Found - the model or a referenced source does not exist or is inaccessible
           content:
             application/json:
               schema:

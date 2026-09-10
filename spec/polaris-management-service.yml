@@ -733,6 +733,52 @@ paths:
         404:
           description: "The catalog or catalog role does not exist"
 
+  /catalogs/{catalogName}/semantic-models/{semanticModelName}/grants:
+    parameters:
+      - name: catalogName
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: semanticModelName
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: namespace
+        in: query
+        required: true
+        description: Ordered namespace levels, supplied as repeated query parameters.
+        style: form
+        explode: true
+        schema:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+    get:
+      operationId: listGrantsOnSemanticModel
+      description: >-
+        List privileges granted directly on this semantic model and the catalog roles that hold
+        them. Requires SEMANTIC_MODEL_LIST_GRANTS or a privilege that subsumes it. Does not expand
+        inherited namespace or catalog grants.
+      responses:
+        200:
+          description: Direct grants on the semantic model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SemanticModelGrants'
+        403:
+          description: The principal is not authorized to list grants on this model
+        404:
+          description: The catalog, namespace, or semantic model does not exist
+
   /catalogs/{catalogName}/catalog-roles/{catalogRoleName}/grants:
     parameters:
       - name: catalogName
@@ -1560,6 +1606,17 @@ components:
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
 
+    SemanticModelPrivilege:
+      type: string
+      enum:
+        - CATALOG_MANAGE_ACCESS
+        - SEMANTIC_MODEL_READ_PROPERTIES
+        - SEMANTIC_MODEL_WRITE_PROPERTIES
+        - SEMANTIC_MODEL_DROP
+        - SEMANTIC_MODEL_FULL_METADATA
+        - SEMANTIC_MODEL_LIST_GRANTS
+        - SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE
+
     PolicyPrivilege:
       type: string
       enum:
@@ -1575,6 +1632,14 @@ components:
     NamespacePrivilege:
       type: string
       enum:
+        - SEMANTIC_MODEL_LIST
+        - SEMANTIC_MODEL_CREATE
+        - SEMANTIC_MODEL_READ_PROPERTIES
+        - SEMANTIC_MODEL_WRITE_PROPERTIES
+        - SEMANTIC_MODEL_DROP
+        - SEMANTIC_MODEL_FULL_METADATA
+        - SEMANTIC_MODEL_LIST_GRANTS
+        - SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE
         - CATALOG_MANAGE_ACCESS
         - CATALOG_MANAGE_CONTENT
         - CATALOG_MANAGE_METADATA
@@ -1628,6 +1693,14 @@ components:
     CatalogPrivilege:
       type: string
       enum:
+        - SEMANTIC_MODEL_LIST
+        - SEMANTIC_MODEL_CREATE
+        - SEMANTIC_MODEL_READ_PROPERTIES
+        - SEMANTIC_MODEL_WRITE_PROPERTIES
+        - SEMANTIC_MODEL_DROP
+        - SEMANTIC_MODEL_FULL_METADATA
+        - SEMANTIC_MODEL_LIST_GRANTS
+        - SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE
         - CATALOG_MANAGE_ACCESS
         - CATALOG_MANAGE_CONTENT
         - CATALOG_MANAGE_METADATA
@@ -1732,6 +1805,47 @@ components:
             - tableName
             - privilege
 
+    SemanticModelRoleGrant:
+      type: object
+      properties:
+        catalogRoleName:
+          type: string
+        privilege:
+          $ref: '#/components/schemas/SemanticModelPrivilege'
+      required:
+        - catalogRoleName
+        - privilege
+
+    SemanticModelGrants:
+      type: object
+      properties:
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/SemanticModelRoleGrant'
+      required:
+        - grants
+
+    SemanticModelGrant:
+      allOf:
+        - $ref: '#/components/schemas/GrantResource'
+        - type: object
+          properties:
+            namespace:
+              type: array
+              items:
+                type: string
+            semanticModelName:
+              type: string
+              minLength: 1
+              maxLength: 256
+            privilege:
+              $ref: '#/components/schemas/SemanticModelPrivilege'
+          required:
+            - namespace
+            - semanticModelName
+            - privilege
+
     PolicyGrant:
       allOf:
         - $ref: '#/components/schemas/GrantResource'
@@ -1786,6 +1900,7 @@ components:
           table: '#/components/schemas/TableGrant'
           view: '#/components/schemas/ViewGrant'
           policy: '#/components/schemas/PolicyGrant'
+          semantic-model: '#/components/schemas/SemanticModelGrant'
       properties:
         type:
           type: string
@@ -1795,6 +1910,7 @@ components:
             - table
             - view
             - policy
+            - semantic-model
       required:
         - type
 

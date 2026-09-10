@@ -66,6 +66,9 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
+import org.apache.polaris.core.admin.model.SemanticModelGrant;
+import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
+import org.apache.polaris.core.admin.model.SemanticModelRoleGrant;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -127,6 +130,8 @@ import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.semantic.SemanticModelEntity;
+import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -611,6 +616,44 @@ public class PolarisAdminService {
             ResolvedPathKey.ofPolicy(identifier.namespace(), identifier.name()), true);
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofCatalogRole(catalogRoleName), true);
+
+    authorizer.authorize(authorizationState, authorizationRequest).throwIfDenied();
+    return resolutionManifest;
+  }
+
+  private PolarisResolutionManifest authorizeGrantOnSemanticModelOperationOrThrow(
+      PolarisAuthorizableOperation op,
+      String catalogName,
+      TableIdentifier identifier,
+      String catalogRoleName) {
+    PolarisResolutionManifest resolutionManifest = newResolutionManifest(catalogName);
+    resolutionManifest.addPath(
+        new ResolverPath(
+            PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
+            PolarisEntityType.SEMANTIC_MODEL));
+    resolutionManifest.addPath(new ResolverPath(ResolvedPathKey.ofCatalogRole(catalogRoleName)));
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    AuthorizationRequest authorizationRequest =
+        new AuthorizationRequest(
+            polarisPrincipal,
+            List.of(
+                new PrivilegeGrantAuthorizationIntent(
+                    op,
+                    PolarisSecurableMapper.semanticModel(
+                        catalogName, identifier.namespace(), identifier.name()),
+                    PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName))));
+    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+    ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
+    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
+      throw new NotFoundException("Catalog not found: %s", catalogName);
+    } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
+      if (status.getFailedToResolvePath().lastEntityType() == PolarisEntityType.SEMANTIC_MODEL) {
+        throw new NoSuchSemanticModelException(
+            String.format("Semantic model does not exist: %s", identifier));
+      } else {
+        throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
+      }
+    }
 
     authorizer.authorize(authorizationState, authorizationRequest).throwIfDenied();
     return resolutionManifest;
@@ -2007,6 +2050,98 @@ public class PolarisAdminService {
         resolutionManifest, catalogName, catalogRoleName, identifier, privilege);
   }
 
+  public List<SemanticModelRoleGrant> listGrantsOnSemanticModel(
+      String catalogName, TableIdentifier identifier) {
+    PolarisResolutionManifest manifest = newResolutionManifest(catalogName);
+    manifest.addPath(
+        new ResolverPath(
+            PolarisCatalogHelpers.tableIdentifierToList(identifier),
+            PolarisEntityType.SEMANTIC_MODEL));
+    AuthorizationState state = new AuthorizationState(manifest);
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            polarisPrincipal,
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.LIST_GRANTS_ON_SEMANTIC_MODEL,
+                    PolarisSecurableMapper.semanticModel(
+                        catalogName, identifier.namespace(), identifier.name()))));
+    authorizer.resolveAuthorizationInputs(state, request);
+    PolarisResolvedPathWrapper model =
+        manifest.getResolvedPath(
+            ResolvedPathKey.ofSemanticModel(identifier.namespace(), identifier.name()));
+    if (model == null) {
+      throw new NoSuchSemanticModelException(
+          String.format("Semantic model does not exist: %s", identifier));
+    }
+    authorizer.authorize(state, request).throwIfDenied();
+    LoadGrantsResult result =
+        metaStoreManager.loadGrantsOnSecurable(
+            getCurrentPolarisContext(), model.getRawLeafEntity());
+    List<SemanticModelRoleGrant> grants = new ArrayList<>();
+    Map<Long, PolarisBaseEntity> entities = result.getEntitiesAsMap();
+    for (PolarisGrantRecord record : result.getGrantRecords()) {
+      PolarisBaseEntity grantee =
+          getOrLoadEntity(
+              entities,
+              record.getGranteeCatalogId(),
+              record.getGranteeId(),
+              PolarisEntityType.CATALOG_ROLE);
+      if (grantee != null) {
+        grants.add(
+            new SemanticModelRoleGrant(
+                grantee.getName(),
+                SemanticModelPrivilege.valueOf(
+                    PolarisPrivilege.fromCode(record.getPrivilegeCode()).name())));
+      }
+    }
+    return grants;
+  }
+
+  public PrivilegeResult grantPrivilegeOnSemanticModelToRole(
+      String catalogName,
+      String catalogRoleName,
+      TableIdentifier identifier,
+      PolarisPrivilege privilege) {
+    PolarisResolutionManifest manifest =
+        authorizeGrantOnSemanticModelOperationOrThrow(
+            PolarisAuthorizableOperation.ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE,
+            catalogName,
+            identifier,
+            catalogRoleName);
+    PolarisResolvedPathWrapper model =
+        manifest.getResolvedPath(
+            ResolvedPathKey.ofSemanticModel(identifier.namespace(), identifier.name()));
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(),
+        getCatalogRoleByName(manifest, catalogRoleName),
+        PolarisEntity.toCoreList(model.getRawParentPath()),
+        model.getRawLeafEntity(),
+        privilege);
+  }
+
+  public PrivilegeResult revokePrivilegeOnSemanticModelFromRole(
+      String catalogName,
+      String catalogRoleName,
+      TableIdentifier identifier,
+      PolarisPrivilege privilege) {
+    PolarisResolutionManifest manifest =
+        authorizeGrantOnSemanticModelOperationOrThrow(
+            PolarisAuthorizableOperation.REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE,
+            catalogName,
+            identifier,
+            catalogRoleName);
+    PolarisResolvedPathWrapper model =
+        manifest.getResolvedPath(
+            ResolvedPathKey.ofSemanticModel(identifier.namespace(), identifier.name()));
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(),
+        getCatalogRoleByName(manifest, catalogRoleName),
+        PolarisEntity.toCoreList(model.getRawParentPath()),
+        model.getRawLeafEntity(),
+        privilege);
+  }
+
   public List<PolarisEntity> listAssigneePrincipalRolesForCatalogRole(
       String catalogName, String catalogRoleName) {
     PolarisAuthorizableOperation op =
@@ -2037,6 +2172,7 @@ public class PolarisAdminService {
     List<TableGrant> tableGrants = new ArrayList<>();
     List<ViewGrant> viewGrants = new ArrayList<>();
     List<PolicyGrant> policyGrants = new ArrayList<>();
+    List<SemanticModelGrant> semanticModelGrants = new ArrayList<>();
     Map<Long, PolarisBaseEntity> entityMap = grantList.getEntitiesAsMap();
     for (PolarisGrantRecord record : grantList.getGrantRecords()) {
       PolarisPrivilege privilege = PolarisPrivilege.fromCode(record.getPrivilegeCode());
@@ -2103,6 +2239,17 @@ public class PolarisAdminService {
               policyGrants.add(grant);
               break;
             }
+          case SEMANTIC_MODEL:
+            {
+              SemanticModelEntity model = SemanticModelEntity.of(baseEntity);
+              semanticModelGrants.add(
+                  new SemanticModelGrant(
+                      Arrays.asList(model.getParentNamespace().levels()),
+                      model.getName(),
+                      SemanticModelPrivilege.valueOf(privilege.toString()),
+                      GrantResource.TypeEnum.SEMANTIC_MODEL));
+              break;
+            }
           default:
             throw new IllegalArgumentException(
                 String.format(
@@ -2118,6 +2265,7 @@ public class PolarisAdminService {
     allGrants.addAll(tableGrants);
     allGrants.addAll(viewGrants);
     allGrants.addAll(policyGrants);
+    allGrants.addAll(semanticModelGrants);
     return allGrants;
   }
 

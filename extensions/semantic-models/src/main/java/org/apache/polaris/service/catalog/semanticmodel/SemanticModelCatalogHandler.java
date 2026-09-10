@@ -20,6 +20,8 @@ package org.apache.polaris.service.catalog.semanticmodel;
 
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -27,9 +29,11 @@ import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
@@ -46,10 +50,8 @@ import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticMode
  * Authorizes and delegates Apache Ossie semantic-model operations to {@link SemanticModelCatalog}.
  * Mirrors {@link org.apache.polaris.service.catalog.policy.PolicyCatalogHandler}.
  *
- * <p>Authorization is intentionally minimal in this phase: operations are gated by the coarse
- * {@code CATALOG_MANAGE_CONTENT} privilege (see {@code RbacOperationSemantics}). The dedicated
- * {@code SEMANTIC_MODEL_*} privilege matrix, the write-time source-access check, and the
- * independent/propagated read-time enforcement modes land in the authorization phase.
+ * <p>Model privileges are independent of source privileges when reading. Creating or updating a
+ * model additionally requires metadata read access to every referenced table or view.
  */
 @PolarisImmutable
 @SuppressWarnings("immutables:incompat")
@@ -65,7 +67,8 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
             callContext(),
             this.resolutionManifest,
             resolutionManifestFactory(),
-            polarisPrincipal());
+            polarisPrincipal(),
+            this::authorizeSourceOrThrow);
   }
 
   public LoadSemanticModelResponse createSemanticModel(
@@ -108,6 +111,33 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_SEMANTIC_MODEL;
     authorizeBasicSemanticModelOperationOrThrow(op, identifier);
     semanticModelCatalog.dropSemanticModel(identifier);
+  }
+
+  private void authorizeSourceOrThrow(
+      PolarisResolutionManifest manifest, TableIdentifier identifier) {
+    // Source identifiers come from the document, so use a separate manifest without replacing
+    // the model's resolved authorization state. Resolution identifies the table/view subtype.
+    PolarisResolvedPathWrapper source =
+        manifest.getPassthroughResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE);
+    if (source == null || source.getRawLeafEntity() == null) {
+      throw new NotFoundException("Semantic model source does not exist: %s", identifier);
+    }
+    PolarisAuthorizableOperation operation =
+        source.getRawLeafEntity().getSubType() == PolarisEntitySubType.ICEBERG_VIEW
+            ? PolarisAuthorizableOperation.LOAD_VIEW
+            : PolarisAuthorizableOperation.LOAD_TABLE;
+    AuthorizationRequest request =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    operation, PolarisSecurableMapper.tableLike(catalogName(), identifier))));
+    AuthorizationState state = new AuthorizationState(manifest);
+    authorizer().resolveAuthorizationInputs(state, request);
+    if (!authorizer().authorize(state, request).isAllowed()) {
+      throw new NotFoundException("Semantic model source does not exist: %s", identifier);
+    }
   }
 
   private boolean shouldDecodeToken() {

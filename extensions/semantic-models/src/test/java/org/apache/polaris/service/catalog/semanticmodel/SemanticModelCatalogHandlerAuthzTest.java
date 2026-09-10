@@ -26,42 +26,93 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
-import org.apache.polaris.service.TestServices;
+import org.apache.polaris.core.entity.CatalogRoleEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticModelRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 
-/**
- * Verifies that {@link SemanticModelCatalogHandler} enforces authorization: the five operations are
- * gated behind {@code CATALOG_MANAGE_CONTENT} (see {@code RbacOperationSemantics}), so the
- * unprivileged {@code test-principal} that {@link TestServices} bootstraps is rejected with {@link
- * ForbiddenException}. This guards against silent regression of the gate. The allow path (an
- * authorized principal succeeds) is covered end-to-end by {@link
- * SemanticModelCatalogHandlerCrudTest} via the pass-through authorizer; the privilege-grant
- * plumbing needed to build an authorized principal is not reachable through the {@link
- * TestServices} surface.
- */
+/** Exercises semantic-model privileges with persisted grants and the built-in authorizer. */
 class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogHandlerTest {
+
+  private PolarisEntity catalog;
+  private PolarisEntity namespace;
+  private PolarisEntity role;
+  private PolarisPrincipal caller;
 
   @BeforeEach
   void seedModel() {
-    // Seed a model with a pass-through authorizer so load/update/drop reach the authz check
-    // (rather than failing with "not found") when exercised by the unprivileged handler.
     passthroughHandler().createSemanticModel(NS, createRequest("m1", modelJson("ns1.t1")));
+    catalog = read(null, PolarisEntityType.CATALOG, CATALOG_NAME);
+    namespace = read(List.of(catalog), PolarisEntityType.NAMESPACE, NS.toString());
+    var context = services.newCallContext().getPolarisCallContext();
+    var principal =
+        services
+            .metaStoreManager()
+            .createPrincipal(context, new PrincipalEntity.Builder().setName("model-user").build())
+            .getPrincipal();
+    var principalRole =
+        new PrincipalRoleEntity.Builder()
+            .setName("model-users")
+            .setId(services.metaStoreManager().generateNewEntityId(context).getId())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
+    assertSuccess(
+        services.metaStoreManager().createEntityIfNotExists(context, null, principalRole));
+    role =
+        new CatalogRoleEntity.Builder()
+            .setName("model-role")
+            .setId(services.metaStoreManager().generateNewEntityId(context).getId())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .setCatalogId(catalog.getId())
+            .setParentId(catalog.getId())
+            .build();
+    assertSuccess(
+        services
+            .metaStoreManager()
+            .createEntityIfNotExists(context, PolarisEntity.toCoreList(List.of(catalog)), role));
+    assertSuccess(
+        services
+            .metaStoreManager()
+            .grantUsageOnRoleToGrantee(context, null, principalRole, principal));
+    assertSuccess(
+        services
+            .metaStoreManager()
+            .grantUsageOnRoleToGrantee(context, catalog, role, principalRole));
+    caller =
+        PolarisPrincipal.of(
+            principal.getName(),
+            Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principal),
+            Set.of(principalRole.getName()));
   }
 
   @Test
-  void createDeniedWithoutManageContent() {
+  void createDeniedWithoutPrivilege() {
     assertThatThrownBy(
             () ->
                 enforcingHandler()
@@ -70,19 +121,19 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   }
 
   @Test
-  void listDeniedWithoutManageContent() {
+  void listDeniedWithoutPrivilege() {
     assertThatThrownBy(() -> enforcingHandler().listSemanticModels(NS, null, null))
         .isInstanceOf(ForbiddenException.class);
   }
 
   @Test
-  void loadDeniedWithoutManageContent() {
+  void loadDeniedWithoutPrivilege() {
     assertThatThrownBy(() -> enforcingHandler().loadSemanticModel(identifier("m1")))
         .isInstanceOf(ForbiddenException.class);
   }
 
   @Test
-  void updateDeniedWithoutManageContent() {
+  void updateDeniedWithoutPrivilege() {
     assertThatThrownBy(
             () ->
                 enforcingHandler()
@@ -96,7 +147,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   }
 
   @Test
-  void dropDeniedWithoutManageContent() {
+  void dropDeniedWithoutPrivilege() {
     assertThatThrownBy(() -> enforcingHandler().dropSemanticModel(identifier("m1")))
         .isInstanceOf(ForbiddenException.class);
   }
@@ -131,8 +182,248 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
             });
   }
 
-  /** Handler that actually enforces authorization for the unprivileged {@code test-principal}. */
+  @ParameterizedTest
+  @MethodSource("operationPrivileges")
+  void dedicatedPrivilegesAuthorizeOnlyTheirOperations(
+      String operation, PolarisPrivilege privilege, boolean allowed) {
+    PolarisEntity target =
+        privilege == PolarisPrivilege.SEMANTIC_MODEL_CREATE
+                || privilege == PolarisPrivilege.SEMANTIC_MODEL_LIST
+                || privilege == PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA
+            ? namespace
+            : model("m1");
+    grant(target, privilege);
+    // Writes also need access to the referenced generic table.
+    grant(source(), PolarisPrivilege.TABLE_READ_PROPERTIES);
+    if (allowed) {
+      runOperation(operation);
+    } else {
+      assertThatThrownBy(() -> runOperation(operation)).isInstanceOf(ForbiddenException.class);
+    }
+  }
+
+  static Stream<Arguments> operationPrivileges() {
+    Map<String, PolarisPrivilege> required =
+        Map.of(
+            "create", PolarisPrivilege.SEMANTIC_MODEL_CREATE,
+            "list", PolarisPrivilege.SEMANTIC_MODEL_LIST,
+            "load", PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES,
+            "update", PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES,
+            "drop", PolarisPrivilege.SEMANTIC_MODEL_DROP);
+    return required.entrySet().stream()
+        .flatMap(
+            operation ->
+                Stream.of(PolarisPrivilege.values())
+                    .filter(p -> p.name().startsWith("SEMANTIC_MODEL_"))
+                    .map(
+                        privilege ->
+                            Arguments.of(
+                                operation.getKey(),
+                                privilege,
+                                privilege == operation.getValue()
+                                    || privilege == PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA
+                                    || (operation.getKey().equals("list")
+                                        && privilege == PolarisPrivilege.SEMANTIC_MODEL_CREATE)
+                                    || (operation.getKey().equals("load")
+                                        && privilege
+                                            == PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES))));
+  }
+
+  @ParameterizedTest
+  @MethodSource("umbrellaPrivileges")
+  void umbrellaPrivilegesApplyToDescendants(PolarisPrivilege privilege, boolean catalogScope) {
+    grant(catalogScope ? catalog : namespace, privilege);
+    grant(source(), PolarisPrivilege.TABLE_READ_PROPERTIES);
+    for (String operation : List.of("create", "list", "load", "update", "drop")) {
+      runOperation(operation);
+    }
+  }
+
+  static Stream<Arguments> umbrellaPrivileges() {
+    return Stream.of(
+        Arguments.of(PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA, false),
+        Arguments.of(PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA, true),
+        Arguments.of(PolarisPrivilege.NAMESPACE_FULL_METADATA, false),
+        Arguments.of(PolarisPrivilege.CATALOG_FULL_METADATA, true),
+        Arguments.of(PolarisPrivilege.CATALOG_MANAGE_METADATA, true),
+        Arguments.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT, true));
+  }
+
+  @ParameterizedTest
+  @MethodSource("namespaceReaders")
+  void namespaceAndCatalogReadersCanDiscoverModels(
+      PolarisPrivilege privilege, boolean catalogScope) {
+    grant(catalogScope ? catalog : namespace, privilege);
+    runOperation("list");
+    runOperation("load");
+  }
+
+  static Stream<Arguments> namespaceReaders() {
+    return Stream.of(
+            PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES,
+            PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES)
+        .flatMap(
+            privilege -> Stream.of(Arguments.of(privilege, false), Arguments.of(privilege, true)));
+  }
+
+  @Test
+  void readerCannotWriteOrReadSiblingModel() {
+    passthroughHandler().createSemanticModel(NS, createRequest("other", modelJson("ns1.t1")));
+    grant(model("m1"), PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES);
+    // Reading a model does not require privileges on its source.
+    runOperation("load");
+    for (String operation : List.of("create", "list", "update", "drop")) {
+      assertThatThrownBy(() -> runOperation(operation)).isInstanceOf(ForbiddenException.class);
+    }
+    assertThatThrownBy(() -> enforcingHandler().loadSemanticModel(identifier("other")))
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  void tablePrivilegesDoNotAuthorizeModels() {
+    grant(namespace, PolarisPrivilege.TABLE_FULL_METADATA);
+    assertThatThrownBy(() -> runOperation("load")).isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  void revokingModelReadRemovesAccess() {
+    PolarisEntity model = model("m1");
+    grant(model, PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES);
+    runOperation("load");
+    assertSuccess(
+        services
+            .metaStoreManager()
+            .revokePrivilegeOnSecurableFromRole(
+                services.newCallContext().getPolarisCallContext(),
+                role,
+                PolarisEntity.toCoreList(List.of(catalog, namespace)),
+                model,
+                PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES));
+    assertThatThrownBy(() -> runOperation("load")).isInstanceOf(ForbiddenException.class);
+  }
+
+  @ParameterizedTest
+  @MethodSource("sourceRepresentations")
+  void writesRequireReadAccessToEverySource(PolarisEntitySubType subtype, boolean singleModel) {
+    var context = services.newCallContext().getPolarisCallContext();
+    var secondSource =
+        new PolarisEntity.Builder()
+            .setName("second")
+            .setType(PolarisEntityType.TABLE_LIKE)
+            .setSubType(subtype)
+            .setId(services.metaStoreManager().generateNewEntityId(context).getId())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .setCatalogId(catalog.getId())
+            .setParentId(namespace.getId())
+            .build();
+    assertSuccess(
+        services
+            .metaStoreManager()
+            .createEntityIfNotExists(
+                context, PolarisEntity.toCoreList(List.of(catalog, namespace)), secondSource));
+    grant(namespace, PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA);
+    grant(source(), PolarisPrivilege.TABLE_READ_PROPERTIES);
+    String arrayDocument =
+        "[{\"name\":\"m\",\"datasets\":["
+            + "{\"name\":\"first\",\"source\":\"ns1.t1\"},"
+            + "{\"name\":\"second\",\"source\":\"ns1.second\"}]}]";
+    String document =
+        singleModel ? arrayDocument.substring(1, arrayDocument.length() - 1) : arrayDocument;
+    var request =
+        UpdateSemanticModelRequest.builder()
+            .setDocument(doc(document))
+            .setEntityVersion("1")
+            .build();
+    assertThatThrownBy(
+            () -> enforcingHandler().createSemanticModel(NS, createRequest("m2", document)))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("ns1.second");
+    assertThatThrownBy(() -> enforcingHandler().updateSemanticModel(identifier("m1"), request))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("ns1.second");
+    grant(
+        secondSource,
+        subtype == PolarisEntitySubType.ICEBERG_VIEW
+            ? PolarisPrivilege.VIEW_READ_PROPERTIES
+            : PolarisPrivilege.TABLE_READ_PROPERTIES);
+    enforcingHandler().createSemanticModel(NS, createRequest("m2", document));
+    enforcingHandler().updateSemanticModel(identifier("m1"), request);
+  }
+
+  static Stream<Arguments> sourceRepresentations() {
+    return Stream.of(
+            PolarisEntitySubType.ICEBERG_TABLE,
+            PolarisEntitySubType.GENERIC_TABLE,
+            PolarisEntitySubType.ICEBERG_VIEW)
+        .flatMap(subtype -> Stream.of(Arguments.of(subtype, false), Arguments.of(subtype, true)));
+  }
+
+  private void runOperation(String operation) {
+    SemanticModelCatalogHandler handler = enforcingHandler();
+    switch (operation) {
+      case "create" -> handler.createSemanticModel(NS, createRequest("m2", modelJson("ns1.t1")));
+      case "list" -> handler.listSemanticModels(NS, null, null);
+      case "load" -> handler.loadSemanticModel(identifier("m1"));
+      case "update" ->
+          handler.updateSemanticModel(
+              identifier("m1"),
+              UpdateSemanticModelRequest.builder()
+                  .setDocument(doc(modelJson("ns1.t1")))
+                  .setEntityVersion("1")
+                  .build());
+      case "drop" -> handler.dropSemanticModel(identifier("m1"));
+      default -> throw new IllegalArgumentException(operation);
+    }
+  }
+
+  private PolarisEntity read(List<PolarisEntity> parents, PolarisEntityType type, String name) {
+    var result =
+        services
+            .metaStoreManager()
+            .readEntityByName(
+                services.newCallContext().getPolarisCallContext(),
+                parents == null ? null : PolarisEntity.toCoreList(parents),
+                type,
+                PolarisEntitySubType.ANY_SUBTYPE,
+                name);
+    assertSuccess(result);
+    return new PolarisEntity(result.getEntity());
+  }
+
+  private PolarisEntity model(String name) {
+    return read(List.of(catalog, namespace), PolarisEntityType.SEMANTIC_MODEL, name);
+  }
+
+  private PolarisEntity source() {
+    return read(List.of(catalog, namespace), PolarisEntityType.TABLE_LIKE, SOURCE_TABLE);
+  }
+
+  private void grant(PolarisEntity target, PolarisPrivilege privilege) {
+    List<PolarisEntity> parents =
+        target == catalog || target == namespace ? List.of(catalog) : List.of(catalog, namespace);
+    assertSuccess(
+        services
+            .metaStoreManager()
+            .grantPrivilegeOnSecurableToRole(
+                services.newCallContext().getPolarisCallContext(),
+                role,
+                PolarisEntity.toCoreList(parents),
+                target,
+                privilege));
+  }
+
+  private static void assertSuccess(BaseResult result) {
+    assertThat(result.isSuccess()).as("%s", result).isTrue();
+  }
+
   private SemanticModelCatalogHandler enforcingHandler() {
-    return handler(new PolarisAuthorizerImpl(services.realmConfig()));
+    return ImmutableSemanticModelCatalogHandler.builder()
+        .catalogName(CATALOG_NAME)
+        .polarisPrincipal(caller)
+        .callContext(services.newCallContext())
+        .resolutionManifestFactory(services.resolutionManifestFactory())
+        .metaStoreManager(services.metaStoreManager())
+        .authorizer(new PolarisAuthorizerImpl(services.realmConfig()))
+        .build();
   }
 }
