@@ -749,4 +749,38 @@ public class ManagementServiceTest {
                 resultWithError.getReturnStatus(),
                 resultWithError.getExtraInformation()));
   }
+
+  @Test
+  public void testCredentialIssuerDefaultsToStsOnRead() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("issuer-default")
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog("issuer-default", services.realmContext(), services.securityContext())) {
+      Catalog fetched = (Catalog) response.getEntity();
+      assertThat(((AwsStorageConfigInfo) fetched.getStorageConfigInfo()).getCredentialIssuer())
+          .isEqualTo(AwsStorageConfigInfo.CredentialIssuerEnum.STS);
+    }
+  }
 }
