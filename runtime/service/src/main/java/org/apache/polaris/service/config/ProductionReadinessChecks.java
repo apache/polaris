@@ -314,6 +314,42 @@ public class ProductionReadinessChecks {
   }
 
   @Produces
+  public ProductionReadinessCheck checkCatalogConfigAuthorization(
+      FeaturesConfiguration featureConfiguration) {
+    var flag = FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION;
+    var message =
+        "ENFORCE_CATALOG_CONFIG_AUTHORIZATION is disabled. Iceberg REST GET /v1/config is not "
+            + "authorization-gated and catalog properties (defaults) are still returned to any "
+            + "authenticated caller. Before enabling: grant CATALOG_READ_PROPERTIES to clients that "
+            + "need catalog defaults, grant CATALOG_READ_CONFIG (or a catalog-level privilege that "
+            + "subsumes it) for the endpoint gate, and update Ranger/OPA policies for "
+            + "GET_CATALOG_CONFIG / GET_CATALOG_CONFIG_PROPERTIES. The default is expected to flip "
+            + "to true in a subsequent release.";
+    var errors = new ArrayList<Error>();
+    // Absent or false → warn (default is false). Explicit true → no warning for defaults.
+    if (!Boolean.parseBoolean(featureConfiguration.defaults().get(flag.key()))) {
+      errors.add(Error.of(message, format("polaris.features.\"%s\"", flag.key())));
+    }
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              String value = overrides.overrides().get(flag.key());
+              if (value != null && !Boolean.parseBoolean(value)) {
+                errors.add(
+                    Error.of(
+                        message,
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, flag.key())));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
   public ProductionReadinessCheck checkSkipCredentialSubscopingIndirection(
       FeaturesConfiguration featureConfiguration) {
     var flag = FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION;

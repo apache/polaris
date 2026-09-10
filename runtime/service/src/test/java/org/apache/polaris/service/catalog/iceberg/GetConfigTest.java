@@ -22,7 +22,6 @@ import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
 
 import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
@@ -38,10 +37,11 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.rest.GenericTableEndpoints;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.policy.PolicyEndpoints;
@@ -75,8 +75,8 @@ public class GetConfigTest {
   }
 
   /**
-   * A mock authorizer that resolves inputs but denies the given operations with a {@link
-   * ForbiddenException} on the legacy {@code authorizeOrThrow} path used by the handler.
+   * A mock authorizer that resolves inputs but denies the given operations via {@link
+   * AuthorizationDecision#deny(String)} on the {@code authorize()} SPI.
    */
   private static PolarisAuthorizer authorizerDenying(PolarisAuthorizableOperation... deniedOps) {
     PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
@@ -90,21 +90,18 @@ public class GetConfigTest {
         .resolveAuthorizationInputs(any(), any());
     Mockito.doAnswer(
             invocation -> {
-              PolarisAuthorizableOperation op = invocation.getArgument(2);
-              for (PolarisAuthorizableOperation denied : deniedOps) {
-                if (op == denied) {
-                  throw new ForbiddenException("test: operation %s denied", op);
+              AuthorizationRequest request = invocation.getArgument(1);
+              for (var intent : request.intents()) {
+                for (PolarisAuthorizableOperation denied : deniedOps) {
+                  if (intent.getOperation() == denied) {
+                    return AuthorizationDecision.deny("test: operation " + denied + " denied");
+                  }
                 }
               }
-              return null;
+              return AuthorizationDecision.allow();
             })
         .when(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            any(PolarisAuthorizableOperation.class),
-            any(PolarisResolvedPathWrapper.class),
-            isNull());
+        .authorize(any(), any());
     return authorizer;
   }
 
@@ -124,10 +121,10 @@ public class GetConfigTest {
   }
 
   @Test
-  public void testCatalogPropertiesHiddenWithoutPropertiesPrivilege() {
+  public void testCatalogPropertiesHiddenWithoutPropertiesPrivilegeWhenEnforcementEnabled() {
     TestServices services =
         TestServices.builder()
-            .config(baseConfig(Map.of()))
+            .config(baseConfig(Map.of("ENFORCE_CATALOG_CONFIG_AUTHORIZATION", true)))
             .authorizer(
                 authorizerDenying(PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES))
             .build();
@@ -148,13 +145,16 @@ public class GetConfigTest {
   }
 
   @Test
-  public void testConfigEndpointNotHardGatedWhenEnforcementDisabled() {
-    // Default ENFORCE_CATALOG_CONFIG_AUTHORIZATION is false: denying GET_CATALOG_CONFIG must not
-    // 403. Catalog properties remain gated by CATALOG_READ_PROPERTIES.
+  public void testConfigAuthChecksSkippedWhenEnforcementDisabled() {
+    // Default ENFORCE_CATALOG_CONFIG_AUTHORIZATION is false: neither the endpoint hard-gate nor
+    // the properties soft-hide runs, so denying both ops still returns 200 with defaults.
     TestServices services =
         TestServices.builder()
             .config(baseConfig(Map.of()))
-            .authorizer(authorizerDenying(PolarisAuthorizableOperation.GET_CATALOG_CONFIG))
+            .authorizer(
+                authorizerDenying(
+                    PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
+                    PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES))
             .build();
     String catalogName = createCatalog(services);
 
