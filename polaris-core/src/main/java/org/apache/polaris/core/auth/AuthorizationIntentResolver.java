@@ -69,19 +69,17 @@ public final class AuthorizationIntentResolver {
       AuthorizationIntent intent,
       boolean prependRootContainer) {
     List<PolarisResolvedPathWrapper> resolvedTargets;
-    List<PolarisResolvedPathWrapper> resolvedSecondaries;
+    List<PolarisResolvedPathWrapper> resolvedSecondaries = null;
     if (intent instanceof TargetlessAuthorizationIntent) {
       resolvedTargets =
           prependRootContainer
               ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
               : null;
-      resolvedSecondaries = null;
     } else if (intent instanceof SingleTargetAuthorizationIntent singleTargetIntent) {
       resolvedTargets =
           List.of(
               getResolvedSecurable(
                   resolutionManifest, singleTargetIntent.target(), prependRootContainer));
-      resolvedSecondaries = null;
     } else if (intent instanceof RenameAuthorizationIntent renameIntent) {
       resolvedTargets =
           List.of(
