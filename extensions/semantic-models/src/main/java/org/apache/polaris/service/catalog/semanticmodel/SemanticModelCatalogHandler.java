@@ -151,7 +151,7 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
       PolarisAuthorizableOperation op, SemanticModelIdentifier identifier) {
     Namespace namespace = Namespace.of(identifier.getNamespace().toArray(new String[0]));
     resolutionManifest = newResolutionManifest();
-    resolutionManifest.addPassthroughPath(
+    resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(namespace, identifier.getName()),
             PolarisEntityType.SEMANTIC_MODEL,

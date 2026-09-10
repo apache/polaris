@@ -253,17 +253,24 @@ public class SemanticModelCatalog {
             Map.of(),
             false);
     if (!result.isSuccess()) {
-      throw new IllegalStateException(
-          String.format(
-              "Failed to drop semantic model %s error status: %s with extraInfo: %s",
-              identifier, result.getReturnStatus(), result.getExtraInformation()));
+      switch (result.getReturnStatus()) {
+        case ENTITY_NOT_FOUND, CATALOG_PATH_CANNOT_BE_RESOLVED ->
+            throw new NoSuchSemanticModelException(
+                String.format("Semantic model does not exist: %s", identifier.getName()));
+        default ->
+            throw new IllegalStateException(
+                String.format(
+                    "Failed to drop semantic model %s error status: %s with extraInfo: %s",
+                    identifier, result.getReturnStatus(), result.getExtraInformation()));
+      }
     }
   }
 
   private PolarisResolvedPathWrapper resolveModelPathOrThrow(SemanticModelIdentifier identifier) {
     Namespace namespace = toNamespace(identifier);
+    // Reuse the authorized entity: a fresh lookup by name could select a concurrent replacement.
     PolarisResolvedPathWrapper resolved =
-        resolvedEntityView.getPassthroughResolvedPath(
+        resolvedEntityView.getResolvedPath(
             ResolvedPathKey.ofSemanticModel(namespace, identifier.getName()),
             PolarisEntitySubType.NULL_SUBTYPE);
     if (resolved == null || resolved.getRawLeafEntity() == null) {

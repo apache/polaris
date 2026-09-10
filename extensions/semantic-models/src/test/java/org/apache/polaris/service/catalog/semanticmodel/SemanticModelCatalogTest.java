@@ -63,6 +63,8 @@ import org.apache.polaris.service.catalog.semanticmodel.types.SemanticModelDocum
 import org.apache.polaris.service.catalog.semanticmodel.types.SemanticModelIdentifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.invocation.InvocationOnMock;
 
 /**
@@ -153,7 +155,7 @@ class SemanticModelCatalogTest {
             .setParentId(2L)
             .setEntityVersion(entityVersion)
             .build();
-    when(view.getPassthroughResolvedPath(
+    when(view.getResolvedPath(
             eq(ResolvedPathKey.ofSemanticModel(NS, MODEL)), eq(PolarisEntitySubType.NULL_SUBTYPE)))
         .thenReturn(path(catalogEntity, namespaceEntity, stored));
   }
@@ -253,6 +255,18 @@ class SemanticModelCatalogTest {
 
   @Test
   void dropRejectsMissingModel() {
+    assertThatThrownBy(() -> catalog.dropSemanticModel(IDENTIFIER))
+        .isInstanceOf(NoSuchSemanticModelException.class);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = BaseResult.ReturnStatus.class,
+      names = {"ENTITY_NOT_FOUND", "CATALOG_PATH_CANNOT_BE_RESOLVED"})
+  void dropRejectsModelRemovedAfterResolution(BaseResult.ReturnStatus status) {
+    stubExistingModel(1);
+    when(metaStoreManager.dropEntityIfExists(any(), any(), any(), any(), eq(false)))
+        .thenReturn(new DropEntityResult(status, null));
     assertThatThrownBy(() -> catalog.dropSemanticModel(IDENTIFIER))
         .isInstanceOf(NoSuchSemanticModelException.class);
   }
