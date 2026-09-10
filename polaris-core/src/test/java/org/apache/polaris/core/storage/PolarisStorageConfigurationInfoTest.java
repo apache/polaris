@@ -23,6 +23,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.S3CredentialIssuer;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.assertj.core.api.SoftAssertions;
@@ -66,7 +67,7 @@ public class PolarisStorageConfigurationInfoTest {
                 .roleARN("arn:aws:iam::123456789012:role/polaris-test")
                 .region("no-where-1")
                 .build(),
-            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialIssuer\":\"STS\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         arguments(
             AwsStorageConfigurationInfo.builder()
                 .addAllowedLocations("s3://foo/bar", "s3://no/where")
@@ -74,7 +75,7 @@ public class PolarisStorageConfigurationInfoTest {
                 .roleARN("arn:aws:iam::123456789012:role/polaris-test")
                 .externalId("external-id")
                 .build(),
-            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"externalId\":\"external-id\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialIssuer\":\"STS\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"externalId\":\"external-id\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         arguments(
             AwsStorageConfigurationInfo.builder()
                 .addAllowedLocations("s3://foo/bar", "s3://no/where")
@@ -86,7 +87,7 @@ public class PolarisStorageConfigurationInfoTest {
                 .endpointInternal("http://127.8.8.8/internal/")
                 .pathStyleAccess(true)
                 .build(),
-            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"externalId\":\"external-id\",\"region\":\"no-where-1\",\"endpoint\":\"http://127.9.9.9/\",\"stsEndpoint\":\"http://127.9.9.9/sts/\",\"endpointInternal\":\"http://127.8.8.8/internal/\",\"pathStyleAccess\":true,\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialIssuer\":\"STS\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"externalId\":\"external-id\",\"region\":\"no-where-1\",\"endpoint\":\"http://127.9.9.9/\",\"stsEndpoint\":\"http://127.9.9.9/sts/\",\"endpointInternal\":\"http://127.8.8.8/internal/\",\"pathStyleAccess\":true,\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         arguments(
             AwsStorageConfigurationInfo.builder()
                 .addAllowedLocations("s3://foo/bar", "s3://no/where")
@@ -94,7 +95,17 @@ public class PolarisStorageConfigurationInfoTest {
                 .region("no-where-1")
                 .storageName("my-storage")
                 .build(),
-            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"storageName\":\"my-storage\",\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialIssuer\":\"STS\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"storageName\":\"my-storage\",\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+        arguments(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocations("s3://r2-bucket/base/")
+                .credentialIssuer(S3CredentialIssuer.CLOUDFLARE_R2)
+                .endpoint("https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com")
+                .pathStyleAccess(true)
+                .region("auto")
+                .storageName("r2")
+                .build(),
+            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialIssuer\":\"CLOUDFLARE_R2\",\"allowedLocations\":[\"s3://r2-bucket/base/\"],\"storageName\":\"r2\",\"region\":\"auto\",\"endpoint\":\"https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com\",\"pathStyleAccess\":true,\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         //
         arguments(
             GcpStorageConfigurationInfo.builder()

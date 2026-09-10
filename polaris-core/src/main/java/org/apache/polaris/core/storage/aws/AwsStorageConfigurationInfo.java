@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.r2.CloudflareR2Endpoint;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 import org.jspecify.annotations.Nullable;
@@ -143,6 +144,46 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   public abstract @Nullable Boolean getPathStyleAccess();
 
   /**
+   * How subscoped credentials are issued for this catalog. Every row written before this field
+   * existed lacks it and therefore reads as {@link S3CredentialIssuer#STS}, today's behaviour.
+   */
+  @Value.Default
+  public S3CredentialIssuer getCredentialIssuer() {
+    return S3CredentialIssuer.STS;
+  }
+
+  /**
+   * The parsed and validated R2 endpoint. Meaningful only when {@link #getCredentialIssuer()} is
+   * {@link S3CredentialIssuer#CLOUDFLARE_R2}; the same parse validates the config and, at vend
+   * time, supplies the token subject and audience, so the two cannot disagree.
+   */
+  @JsonIgnore
+  public CloudflareR2Endpoint getCloudflareR2Endpoint() {
+    return CloudflareR2Endpoint.parse(getEndpoint());
+  }
+
+  /**
+   * On top of the S3 prefix check, a {@code CLOUDFLARE_R2} config rejects an allowed location whose
+   * path holds an empty segment. The catalog-overlap check compares slash-terminated locations, so
+   * {@code s3://bucket//} does not overlap an existing {@code s3://bucket/x/}, while the location
+   * validator trims one trailing slash and would then admit the whole bucket. STS configs are left
+   * exactly as upstream has them.
+   */
+  @Override
+  protected void validatePrefixForStorageType(String loc) {
+    super.validatePrefixForStorageType(loc);
+    if (getCredentialIssuer() == S3CredentialIssuer.CLOUDFLARE_R2) {
+      String path = loc.substring(loc.indexOf("://") + 3);
+      if (path.contains("//")) {
+        throw new IllegalArgumentException(
+            "allowed location '"
+                + loc
+                + "' contains an empty path segment ('//'); use one slash between segments");
+      }
+    }
+  }
+
+  /**
    * Flag indicating whether STS is available or not. It is modeled in the negative to simplify
    * support for unset values ({@code null} being interpreted as {@code false}).
    */
@@ -200,6 +241,48 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
       if (!matcher.matches()) {
         throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
       }
+    }
+    if (getCredentialIssuer() == S3CredentialIssuer.CLOUDFLARE_R2) {
+      checkCloudflareR2();
+    }
+  }
+
+  /** Spec 5.1: the rules of a CLOUDFLARE_R2 config that need no realm configuration. */
+  @SuppressWarnings("deprecation")
+  private void checkCloudflareR2() {
+    getCloudflareR2Endpoint(); // throws with a message naming 'endpoint'
+    if (!Boolean.TRUE.equals(getPathStyleAccess())) {
+      throw new IllegalArgumentException(
+          "pathStyleAccess must be true for the CLOUDFLARE_R2 credential issuer");
+    }
+    if (!"auto".equals(getRegion())) {
+      throw new IllegalArgumentException(
+          "region must be 'auto' for the CLOUDFLARE_R2 credential issuer");
+    }
+    requireAbsent("roleArn", getRoleARN());
+    requireAbsent("externalId", getExternalId());
+    requireAbsent("userArn", getUserARN());
+    requireAbsent("stsEndpoint", getStsEndpoint());
+    requireAbsent("stsUnavailable", getStsUnavailable());
+    requireAbsent("endpointInternal", getEndpointInternal());
+    requireAbsent("kmsUnavailable", getKmsUnavailable());
+    requireAbsent("currentKmsKey", getCurrentKmsKey());
+    requireAbsentList("allowedKmsKeys", getAllowedKmsKeys());
+    requireAbsentList("encryptionKeys", getEncryptionKeys());
+    requireAbsentList("decryptionKeys", getDecryptionKeys());
+  }
+
+  private static void requireAbsent(String field, @Nullable Object value) {
+    if (value != null) {
+      throw new IllegalArgumentException(
+          field + " must not be set for the CLOUDFLARE_R2 credential issuer");
+    }
+  }
+
+  private static void requireAbsentList(String field, @Nullable List<String> value) {
+    if (value != null && !value.isEmpty()) {
+      throw new IllegalArgumentException(
+          field + " must not be set for the CLOUDFLARE_R2 credential issuer");
     }
   }
 
