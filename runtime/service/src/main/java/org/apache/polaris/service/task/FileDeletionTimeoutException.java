@@ -22,8 +22,14 @@ package org.apache.polaris.service.task;
  * Signals that a file-cleanup task exceeded its configured deletion timeout. This is treated as a
  * terminal failure for the current execution: the task is not retried in-process, because an
  * immediate retry would only pile a fresh generation of deletions onto an already-stalled endpoint
- * (the previous deletions keep running and cannot be interrupted). The task entity is left in place
- * for the lease-based recovery path rather than being dropped.
+ * (the previous deletions keep running and cannot be interrupted).
+ *
+ * <p>The task entity is left persisted rather than dropped. That is the same end state as an
+ * ordinary failure after in-process retries are exhausted, and it keeps the row eligible for
+ * lease-based recovery via {@code PolarisMetaStoreManager.loadTasks} (which re-leases tasks whose
+ * last attempt is older than {@code POLARIS_TASK_TIMEOUT_MILLIS}). Note that no runtime component
+ * currently drives that recovery, so in practice the persisted task is not picked back up again in
+ * either case; this only avoids the retry pile-up, it does not add a new recovery guarantee.
  */
 class FileDeletionTimeoutException extends RuntimeException {
   FileDeletionTimeoutException(String message, Throwable cause) {
