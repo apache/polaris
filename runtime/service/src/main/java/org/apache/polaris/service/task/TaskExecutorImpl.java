@@ -199,8 +199,8 @@ public class TaskExecutorImpl implements TaskExecutor {
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
               if (!isRetryable(t)) {
                 LOGGER.warn(
-                    "Task entity id {} failed with a terminal error; leaving it for later recovery"
-                        + " instead of retrying",
+                    "Task entity id {} failed with a terminal error; not retrying in-process. The"
+                        + " task entity stays persisted (the same end state as exhausting retries).",
                     taskEntityId,
                     t);
                 return CompletableFuture.<Void>failedFuture(t);
