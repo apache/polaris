@@ -137,9 +137,8 @@ public class PolarisPrivilegeTest {
         Arguments.of(106, PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES),
         Arguments.of(107, PolarisPrivilege.SEMANTIC_MODEL_DROP),
         Arguments.of(108, PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA),
-        Arguments.of(109, PolarisPrivilege.SEMANTIC_MODEL_LIST_GRANTS),
-        Arguments.of(110, PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE),
-        Arguments.of(111, null));
+        Arguments.of(109, PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE),
+        Arguments.of(110, null));
   }
 
   @ParameterizedTest

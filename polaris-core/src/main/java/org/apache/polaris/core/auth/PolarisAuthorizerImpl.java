@@ -86,7 +86,6 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_CRE
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_LIST;
-import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES;
@@ -741,12 +740,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             CATALOG_FULL_METADATA,
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));
-    SUPER_PRIVILEGES.putAll(
-        SEMANTIC_MODEL_LIST_GRANTS,
-        List.of(
-            SEMANTIC_MODEL_LIST_GRANTS,
-            SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE,
-            CATALOG_MANAGE_ACCESS));
     SUPER_PRIVILEGES.putAll(
         SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE,
         List.of(SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE, CATALOG_MANAGE_ACCESS));

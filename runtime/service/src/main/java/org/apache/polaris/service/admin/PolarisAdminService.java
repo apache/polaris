@@ -68,7 +68,6 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
-import org.apache.polaris.core.admin.model.SemanticModelRoleGrant;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -2048,54 +2047,6 @@ public class PolarisAdminService {
 
     return revokePrivilegeOnPolicyEntityFromRole(
         resolutionManifest, catalogName, catalogRoleName, identifier, privilege);
-  }
-
-  public List<SemanticModelRoleGrant> listGrantsOnSemanticModel(
-      String catalogName, TableIdentifier identifier) {
-    PolarisResolutionManifest manifest = newResolutionManifest(catalogName);
-    manifest.addPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.SEMANTIC_MODEL));
-    AuthorizationState state = new AuthorizationState(manifest);
-    AuthorizationRequest request =
-        new AuthorizationRequest(
-            polarisPrincipal,
-            List.of(
-                new SingleTargetAuthorizationIntent(
-                    PolarisAuthorizableOperation.LIST_GRANTS_ON_SEMANTIC_MODEL,
-                    PolarisSecurableMapper.semanticModel(
-                        catalogName, identifier.namespace(), identifier.name()))));
-    authorizer.resolveAuthorizationInputs(state, request);
-    PolarisResolvedPathWrapper model =
-        manifest.getResolvedPath(
-            ResolvedPathKey.ofSemanticModel(identifier.namespace(), identifier.name()));
-    if (model == null) {
-      throw new NoSuchSemanticModelException(
-          String.format("Semantic model does not exist: %s", identifier));
-    }
-    authorizer.authorize(state, request).throwIfDenied();
-    LoadGrantsResult result =
-        metaStoreManager.loadGrantsOnSecurable(
-            getCurrentPolarisContext(), model.getRawLeafEntity());
-    List<SemanticModelRoleGrant> grants = new ArrayList<>();
-    Map<Long, PolarisBaseEntity> entities = result.getEntitiesAsMap();
-    for (PolarisGrantRecord record : result.getGrantRecords()) {
-      PolarisBaseEntity grantee =
-          getOrLoadEntity(
-              entities,
-              record.getGranteeCatalogId(),
-              record.getGranteeId(),
-              PolarisEntityType.CATALOG_ROLE);
-      if (grantee != null) {
-        grants.add(
-            new SemanticModelRoleGrant(
-                grantee.getName(),
-                SemanticModelPrivilege.valueOf(
-                    PolarisPrivilege.fromCode(record.getPrivilegeCode()).name())));
-      }
-    }
-    return grants;
   }
 
   public PrivilegeResult grantPrivilegeOnSemanticModelToRole(

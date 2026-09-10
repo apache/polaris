@@ -58,7 +58,6 @@ import org.apache.polaris.core.admin.model.Principals;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
-import org.apache.polaris.core.admin.model.SemanticModelGrants;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -750,19 +749,5 @@ public class PolarisServiceImpl
         adminService.listGrantsForCatalogRole(catalogName, catalogRoleName);
     GrantResources grantResources = new GrantResources(grantList);
     return Response.ok(grantResources).build();
-  }
-
-  @Override
-  public Response listGrantsOnSemanticModel(
-      String catalogName,
-      String semanticModelName,
-      List<String> namespace,
-      RealmContext realmContext,
-      SecurityContext securityContext) {
-    return Response.ok(
-            new SemanticModelGrants(
-                adminService.listGrantsOnSemanticModel(
-                    catalogName, TableIdentifier.of(toNamespace(namespace), semanticModelName))))
-        .build();
   }
 }

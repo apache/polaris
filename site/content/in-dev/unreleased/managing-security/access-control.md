@@ -187,8 +187,7 @@ Semantic models use their own privileges, independently of table and view privil
 | SEMANTIC_MODEL_WRITE_PROPERTIES | Semantic model | Updates the model document and permits reading it. |
 | SEMANTIC_MODEL_DROP | Semantic model | Deletes the model. |
 | SEMANTIC_MODEL_FULL_METADATA | Semantic model | Includes list, create, read, update, and drop privileges, as applicable to the grant's scope. |
-| SEMANTIC_MODEL_LIST_GRANTS | Semantic model | Lists direct grants on the model and the catalog roles that hold them. |
-| SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE | Semantic model | Grants privileges on the model and permits listing its direct grants. Revocation also requires `CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE` on the receiving role, matching other resource types. |
+| SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE | Semantic model | Grants privileges on the model. Revocation also requires `CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE` on the receiving role, matching other resource types. |
 
 Privileges granted on a namespace or catalog apply to descendant models. At these scopes,
 `SEMANTIC_MODEL_CREATE`, `SEMANTIC_MODEL_READ_PROPERTIES`, and `SEMANTIC_MODEL_WRITE_PROPERTIES`
@@ -197,8 +196,8 @@ also permit listing models, matching table and view privileges. Grant
 when granted on one model, it grants read, update, and drop access to that model.
 `NAMESPACE_FULL_METADATA`, `CATALOG_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and
 `CATALOG_MANAGE_CONTENT` also cover semantic model metadata operations within their scope.
-These metadata privileges do not confer grant management. `CATALOG_MANAGE_ACCESS` covers both
-model grant inspection and grant/revoke operations.
+These metadata privileges do not confer grant management. `CATALOG_MANAGE_ACCESS` covers model
+grant/revoke operations.
 
 Creating or updating a semantic model additionally requires `TABLE_READ_PROPERTIES` on every
 referenced Iceberg or generic table, or `VIEW_READ_PROPERTIES` on every referenced Iceberg view.
@@ -224,13 +223,6 @@ with a semantic model grant, for example:
 Use `type: "namespace"` or `type: "catalog"` with a semantic model privilege to grant it across
 that scope. Grant revocation uses the same request body with `POST` to the role's grants endpoint.
 The existing role-grants listing also returns semantic model grants.
-
-To list direct grants on a model, use
-`GET /api/management/v1/catalogs/{catalogName}/semantic-models/{semanticModelName}/grants?namespace=sales`.
-For nested namespaces, repeat the parameter in order, for example
-`?namespace=sales&namespace=reporting`. The response contains `grants` entries with
-`catalogRoleName` and `privilege`. It lists grants placed directly on the model; it does not expand
-inherited catalog/namespace grants or principal-role memberships.
 
 ## RBAC example
 

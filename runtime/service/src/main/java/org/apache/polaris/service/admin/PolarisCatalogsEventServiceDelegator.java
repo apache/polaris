@@ -25,7 +25,6 @@ import jakarta.decorator.Delegate;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.List;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
@@ -495,16 +494,5 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
           PolarisPrivilege.valueOf(semanticModelGrant.getPrivilege().toString());
       default -> null;
     };
-  }
-
-  @Override
-  public Response listGrantsOnSemanticModel(
-      String catalogName,
-      String semanticModelName,
-      List<String> namespace,
-      RealmContext realmContext,
-      SecurityContext securityContext) {
-    return delegate.listGrantsOnSemanticModel(
-        catalogName, semanticModelName, namespace, realmContext, securityContext);
   }
 }

@@ -19,7 +19,6 @@
 package org.apache.polaris.service.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
@@ -35,19 +34,15 @@ import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.GrantResources;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
-import org.apache.polaris.core.admin.model.SemanticModelGrants;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
-import org.apache.polaris.core.admin.model.SemanticModelRoleGrant;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.semantic.SemanticModelEntity;
-import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
 import org.apache.polaris.service.Profiles;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicNode;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -149,16 +144,6 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
         .createTests();
   }
 
-  @TestFactory
-  Stream<DynamicNode> listRequiresGrantVisibility() {
-    return authzTestsBuilder("listGrantsOnSemanticModel")
-        .action(() -> caller().listGrantsOnSemanticModel(CATALOG_NAME, MODEL))
-        .shouldPassWith(PolarisPrivilege.SEMANTIC_MODEL_LIST_GRANTS)
-        .shouldPassWith(PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE)
-        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
-        .createTests();
-  }
-
   @ParameterizedTest
   @EnumSource(SemanticModelPrivilege.class)
   void grantsRoundTripThroughManagementApi(SemanticModelPrivilege privilege) throws Exception {
@@ -182,27 +167,11 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
       assertThat(((GrantResources) response.getEntity()).getGrants()).contains(grant);
     }
     try (Response response =
-        api.listGrantsOnSemanticModel(
-            CATALOG_NAME, MODEL.name(), List.of(NS1.levels()), null, null)) {
-      assertThat(((SemanticModelGrants) response.getEntity()).getGrants())
-          .containsExactly(new SemanticModelRoleGrant(CATALOG_ROLE2, privilege));
-    }
-    try (Response response =
         api.revokeGrantFromCatalogRole(
             CATALOG_NAME, CATALOG_ROLE2, false, new RevokeGrantRequest(grant), null, null)) {
       assertThat(response.getStatus()).isEqualTo(201);
     }
-    assertThat(newRootAdminService().listGrantsOnSemanticModel(CATALOG_NAME, MODEL)).isEmpty();
     assertThat(newRootAdminService().listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
         .isEmpty();
-  }
-
-  @Test
-  void listGrantsRejectsMissingModel() {
-    assertThatThrownBy(
-            () ->
-                newRootAdminService()
-                    .listGrantsOnSemanticModel(CATALOG_NAME, TableIdentifier.of(NS1, "missing")))
-        .isInstanceOf(NoSuchSemanticModelException.class);
   }
 }
