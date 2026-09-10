@@ -30,7 +30,6 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTCatalogProperties;
@@ -46,7 +45,6 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -89,39 +87,47 @@ public class CatalogConfigHandler {
         resolutionManifestFactory.createResolutionManifest(principal, catalogName);
     resolutionManifest.addTopLevelName(
         catalogName, PolarisEntityType.CATALOG, false /* isOptional */);
-    AuthorizationRequest authzRequest =
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    // Separate AuthorizationRequests: GET_CATALOG_CONFIG is mandatory when enforcement is on,
+    // while GET_CATALOG_CONFIG_PROPERTIES is best-effort. They must not share an AND-combined
+    // multi-intent request (PolarisAuthorizer.authorize ANDs intents within one request).
+    AuthorizationRequest configAuthzRequest =
         new AuthorizationRequest(
             principal,
             List.of(
                 new SingleTargetAuthorizationIntent(
                     PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
-                    PolarisSecurableMapper.catalog(catalogName)),
+                    PolarisSecurableMapper.catalog(catalogName))));
+    AuthorizationRequest propertiesAuthzRequest =
+        new AuthorizationRequest(
+            principal,
+            List.of(
                 new SingleTargetAuthorizationIntent(
                     PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES,
                     PolarisSecurableMapper.catalog(catalogName))));
-    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer.resolveAuthorizationInputs(authorizationState, authzRequest);
+    // Resolve once (PolarisAuthorizerImpl.resolveAuthorizationInputs always resolveAll()s the
+    // manifest; a second call would fail). Authorize uses separate requests below.
+    authorizer.resolveAuthorizationInputs(authorizationState, configAuthzRequest);
 
     ResolverStatus resolverStatus = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", catalogName);
     }
-    PolarisResolvedPathWrapper catalogWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG);
-    Set<PolarisBaseEntity> activatedEntities =
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles();
+    PolarisBaseEntity catalogEntity =
+        resolutionManifest
+            .getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG)
+            .getResolvedLeafEntity()
+            .getEntity();
 
-    // Endpoint hard-gate is opt-in via ENFORCE_CATALOG_CONFIG_AUTHORIZATION (default false) so
-    // operators can grant CATALOG_READ_CONFIG (or rely on subsumption) before enforcement.
-    // GET_CATALOG_CONFIG maps to CATALOG_READ_CONFIG, which is subsumed by catalog-level
-    // content privileges so REST catalog users keep working once enforcement is on.
-    if (realmConfig.getConfig(FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION)) {
-      authorizer.authorizeOrThrow(
-          principal,
-          activatedEntities,
-          PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
-          catalogWrapper,
-          null /* secondary */);
+    // Both the endpoint hard-gate and the properties soft-hide are opt-in via
+    // ENFORCE_CATALOG_CONFIG_AUTHORIZATION (default false). When false, behavior matches the
+    // pre-authorization path so upgrades do not empty defaults or 403 bootstrap. When true:
+    // GET_CATALOG_CONFIG (CATALOG_READ_CONFIG) denies the whole response if unauthorized;
+    // GET_CATALOG_CONFIG_PROPERTIES (CATALOG_READ_PROPERTIES) soft-hides defaults.
+    boolean enforce =
+        realmConfig.getConfig(FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION);
+    if (enforce) {
+      authorizer.authorize(authorizationState, configAuthzRequest).throwIfDenied();
     }
 
     ConfigResponse.Builder builder =
@@ -135,24 +141,17 @@ public class CatalogConfigHandler {
                     RESTCatalogProperties.NAMESPACE_SEPARATOR,
                     NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED))
             .withEndpoints(ImmutableList.copyOf(supportedEndpoints()));
-
-    // Catalog properties are disclosed only to principals holding CATALOG_READ_PROPERTIES (via
-    // GET_CATALOG_CONFIG_PROPERTIES), matching the management-plane getCatalog rule. Other
-    // authorized callers still receive the prefix and endpoints needed to initialize a client.
-    try {
-      authorizer.authorizeOrThrow(
-          principal,
-          activatedEntities,
-          PolarisAuthorizableOperation.GET_CATALOG_CONFIG_PROPERTIES,
-          catalogWrapper,
-          null /* secondary */);
-      PolarisBaseEntity catalogEntity = catalogWrapper.getResolvedLeafEntity().getEntity();
+    if (enforce) {
+      if (authorizer.authorize(authorizationState, propertiesAuthzRequest).isAllowed()) {
+        builder.withDefaults(PolarisEntity.of(catalogEntity).getPropertiesAsMap());
+      } else {
+        LOGGER.debug(
+            "Principal '{}' may read catalog config but not catalog properties of '{}'",
+            principal.getName(),
+            catalogName);
+      }
+    } else {
       builder.withDefaults(PolarisEntity.of(catalogEntity).getPropertiesAsMap());
-    } catch (ForbiddenException e) {
-      LOGGER.debug(
-          "Principal '{}' may read catalog config but not catalog properties of '{}'",
-          principal.getName(),
-          catalogName);
     }
 
     // Advertise Idempotency-Key support to clients. Per the REST spec, presence of this field
