@@ -47,8 +47,9 @@ curl -u <ranger-admin-user>:<ranger-admin-password> -X POST \
   -d @polaris-ranger-servicedef.json \
   http://ranger-admin:6080/service/public/v2/api/servicedef
 ```
-   This is the same `serviceDef` exercised by `RangerPolarisAuthorizerTest`
-   (`RangerServiceDefConsistencyTest` fails the build if the two drift apart), so any access type
+   This is the same `serviceDef` exercised by `RangerPolarisAuthorizerTest`: the test fixture is
+   generated at build time by embedding this shipped `serviceDef` (see the
+   `generateAuthzTestFixture`/`generateAuthzItTestFixture` Gradle tasks), so any access type
    available to grant through Ranger policies is guaranteed to be understood by the authorizer.
 
 4. Create a Ranger service instance of type `polaris` (matching the `service-name` configured
