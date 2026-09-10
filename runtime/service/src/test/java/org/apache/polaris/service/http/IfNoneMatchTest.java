@@ -22,8 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Tests for If-None-Match header processing and ETag interaction scenarios. This includes both HTTP
@@ -62,28 +66,36 @@ public class IfNoneMatchTest {
     Assertions.assertEquals(etagValue3, etag3);
   }
 
-  @Test
-  public void validMultipleETagsWithoutSpaceAfterComma() {
-    // RFC 7230 section 7 allows a bare comma (no surrounding whitespace) between list elements.
-    String etagValue1 = "W/\"etag1\"";
-    String etagValue2 = "W/\"etag2\"";
-
-    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(etagValue1 + "," + etagValue2);
-
-    Assertions.assertEquals(List.of(etagValue1, etagValue2), ifNoneMatch.eTags());
+  /**
+   * The RFC 9110 section 5.6.1 list separator is a comma with optional whitespace (OWS = *( SP /
+   * HTAB )) on either side, independently. Every permutation below - bare, before-only, after-only,
+   * multiple, and mixed spaces/tabs - must parse to the same two ETags.
+   */
+  static Stream<Arguments> optionalWhitespaceSeparators() {
+    return Stream.of(
+        Arguments.of("bare comma", ","),
+        Arguments.of("space before only", " ,"),
+        Arguments.of("space after only", ", "),
+        Arguments.of("tab before only", "\t,"),
+        Arguments.of("tab after only", ",\t"),
+        Arguments.of("single space both sides", " , "),
+        Arguments.of("single tab both sides", "\t,\t"),
+        Arguments.of("multiple spaces both sides", "   ,   "),
+        Arguments.of("multiple tabs both sides", "\t\t,\t\t"),
+        Arguments.of("mixed spaces and tabs", " \t , \t "),
+        Arguments.of("mixed multiple, before only", " \t \t,"));
   }
 
-  @Test
-  public void validMultipleETagsWithWhitespaceAroundComma() {
-    // RFC 7230 section 7 permits optional whitespace (spaces or tabs) on either side of the comma.
+  @ParameterizedTest(name = "[{index}] {0}")
+  @MethodSource("optionalWhitespaceSeparators")
+  public void validMultipleETagsWithOptionalWhitespaceAroundComma(
+      String description, String separator) {
     String etagValue1 = "W/\"etag1\"";
     String etagValue2 = "W/\"etag2\"";
-    String etagValue3 = "W/\"etag3\"";
 
-    IfNoneMatch ifNoneMatch =
-        IfNoneMatch.fromHeader(etagValue1 + " , " + etagValue2 + "\t,\t" + etagValue3);
+    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(etagValue1 + separator + etagValue2);
 
-    Assertions.assertEquals(List.of(etagValue1, etagValue2, etagValue3), ifNoneMatch.eTags());
+    Assertions.assertEquals(List.of(etagValue1, etagValue2), ifNoneMatch.eTags());
   }
 
   @Test
