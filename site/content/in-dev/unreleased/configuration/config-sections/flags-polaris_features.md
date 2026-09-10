@@ -577,6 +577,15 @@ The list of supported authentication types for catalog federation
 
 ---
 
+##### `polaris.features."SUPPORTED_S3_CREDENTIAL_ISSUERS"`
+
+The credential issuers an S3 catalog in this realm may use. STS is AWS STS AssumeRole, today's behaviour; CLOUDFLARE_R2 signs Cloudflare R2 temporary credentials locally with a server-held parent token. The list has no implicit member: a realm that omits STS rejects every plain S3 catalog. Realm-level only; catalog properties cannot widen it. Enforced at catalog create and update, at catalog initialization on every request, when storage access is resolved, and at credential vending.
+
+- **Type:** `List<String>`
+- **Default:** `[STS]`
+
+---
+
 ##### `polaris.features."TABLE_METADATA_CLEANUP_BATCH_SIZE"`
 
 Metadata batch size for tasks that clean up dropped tables' files.

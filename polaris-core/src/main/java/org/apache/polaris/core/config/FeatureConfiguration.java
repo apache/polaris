@@ -24,6 +24,7 @@ import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
+import org.apache.polaris.core.storage.aws.S3CredentialIssuer;
 
 /**
  * Configurations for features within Polaris. These configurations are intended to be customized
@@ -401,6 +402,19 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   StorageConfigInfo.StorageTypeEnum.S3.name(),
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
                   StorageConfigInfo.StorageTypeEnum.GCS.name()))
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<List<String>> SUPPORTED_S3_CREDENTIAL_ISSUERS =
+      PolarisConfiguration.<List<String>>builder()
+          .key("SUPPORTED_S3_CREDENTIAL_ISSUERS")
+          .description(
+              "The credential issuers an S3 catalog in this realm may use. STS is AWS STS AssumeRole,\n"
+                  + "today's behaviour; CLOUDFLARE_R2 signs Cloudflare R2 temporary credentials locally with\n"
+                  + "a server-held parent token. The list has no implicit member: a realm that omits STS\n"
+                  + "rejects every plain S3 catalog. Realm-level only; catalog properties cannot widen it.\n"
+                  + "Enforced at catalog create and update, at catalog initialization on every request,\n"
+                  + "when storage access is resolved, and at credential vending.")
+          .defaultValue(List.of(S3CredentialIssuer.STS.name()))
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
