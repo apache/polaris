@@ -38,6 +38,8 @@ import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.GcpAuthenticationParameters;
+import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
@@ -369,6 +371,163 @@ public class ManagementServiceTest {
             "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
   }
 
+  @Test
+  public void testCreateAndUpdateValidBigLakeCatalog() {
+    String catalogName = "biglake-catalog";
+    String initialBaseLocation = "gs://bucket/path/to/data";
+    String updatedBaseLocation = "gs://bucket/path/to/updated-data";
+    Catalog catalog =
+        createBigLakeCatalog(
+            catalogName, initialBaseLocation, createBigLakeStorageConfig(initialBaseLocation));
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = (Catalog) response.getEntity();
+    }
+
+    UpdateCatalogRequest updateRequest =
+        UpdateCatalogRequest.builder()
+            .setCurrentEntityVersion(fetchedCatalog.getEntityVersion())
+            .setProperties(
+                Map.of(
+                    "default-base-location",
+                    updatedBaseLocation,
+                    "enable.credential.vending",
+                    "true"))
+            .setStorageConfigInfo(createBigLakeStorageConfig(updatedBaseLocation))
+            .build();
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalogName, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updatedCatalog = (Catalog) response.getEntity();
+      assertThat(updatedCatalog.getProperties().getDefaultBaseLocation())
+          .isEqualTo(updatedBaseLocation);
+    }
+  }
+
+  @Test
+  public void testCreateAndUpdateNonBigLakeGcpRestCatalogSkipsBigLakeValidation() {
+    String catalogName = "generic-gcp-rest-catalog";
+    String initialBaseLocation = "s3://bucket/path/to/data";
+    String updatedBaseLocation = "s3://bucket/path/to/updated-data";
+    Catalog catalog =
+        createGenericGcpRestCatalog(
+            catalogName, initialBaseLocation, createGenericS3StorageConfig(initialBaseLocation));
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = (Catalog) response.getEntity();
+      assertThat(fetchedCatalog.getProperties().getDefaultBaseLocation())
+          .isEqualTo(initialBaseLocation);
+    }
+
+    UpdateCatalogRequest updateRequest =
+        UpdateCatalogRequest.builder()
+            .setCurrentEntityVersion(fetchedCatalog.getEntityVersion())
+            .setProperties(
+                Map.of(
+                    "default-base-location",
+                    updatedBaseLocation,
+                    "enable.credential.vending",
+                    "true"))
+            .setStorageConfigInfo(createGenericS3StorageConfig(updatedBaseLocation))
+            .build();
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalogName, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updatedCatalog = (Catalog) response.getEntity();
+      assertThat(updatedCatalog.getProperties().getDefaultBaseLocation())
+          .isEqualTo(updatedBaseLocation);
+    }
+  }
+
+  @Test
+  public void testUpdateBigLakeCatalogRejectsInvalidMergedConfiguration() {
+    String catalogName = "biglake-catalog";
+    String initialBaseLocation = "gs://bucket/path/to/data";
+    Catalog catalog =
+        createBigLakeCatalog(
+            catalogName, initialBaseLocation, createBigLakeStorageConfig(initialBaseLocation));
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = (Catalog) response.getEntity();
+    }
+
+    UpdateCatalogRequest updateRequest =
+        UpdateCatalogRequest.builder()
+            .setCurrentEntityVersion(fetchedCatalog.getEntityVersion())
+            .setProperties(Map.of("enable.credential.vending", "true"))
+            .setStorageConfigInfo(
+                GcpStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                    .setAllowedLocations(List.of(initialBaseLocation))
+                    .build())
+            .build();
+
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .updateCatalog(
+                        catalogName,
+                        updateRequest,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOfAny(BadRequestException.class, IllegalArgumentException.class)
+        .hasMessageContaining("storageConfigInfo.gcsServiceAccount");
+  }
+
   private PolarisAdminService setupPolarisAdminService(
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
     PrincipalEntity rootPrincipal =
@@ -389,6 +548,69 @@ public class ManagementServiceTest {
         principal,
         new PolarisAuthorizerImpl(services.realmConfig()),
         ReservedProperties.NONE);
+  }
+
+  private Catalog createBigLakeCatalog(
+      String catalogName, String defaultBaseLocation, StorageConfigInfo storageConfigInfo) {
+    CatalogProperties catalogProperties = CatalogProperties.builder(defaultBaseLocation).build();
+    catalogProperties.put("enable.credential.vending", "true");
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName(catalogName)
+        .setProperties(catalogProperties)
+        .setStorageConfigInfo(storageConfigInfo)
+        .setConnectionConfigInfo(
+            IcebergRestConnectionConfigInfo.builder(
+                    ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+                .setUri("https://biglake.googleapis.com/iceberg/v1/restcatalog")
+                .setRemoteCatalogName("my-remote-catalog")
+                .setProperties(Map.of("header.x-goog-user-project", "my-billing-project"))
+                .setAuthenticationParameters(
+                    GcpAuthenticationParameters.builder()
+                        .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.GCP)
+                        .build())
+                .build())
+        .build();
+  }
+
+  private Catalog createGenericGcpRestCatalog(
+      String catalogName, String defaultBaseLocation, StorageConfigInfo storageConfigInfo) {
+    CatalogProperties catalogProperties = CatalogProperties.builder(defaultBaseLocation).build();
+    catalogProperties.put("enable.credential.vending", "true");
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName(catalogName)
+        .setProperties(catalogProperties)
+        .setStorageConfigInfo(storageConfigInfo)
+        .setConnectionConfigInfo(
+            IcebergRestConnectionConfigInfo.builder(
+                    ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+                .setUri("https://catalog-gateway.example.com/iceberg/v1")
+                .setRemoteCatalogName("my-remote-catalog")
+                .setAuthenticationParameters(
+                    GcpAuthenticationParameters.builder()
+                        .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.GCP)
+                        .build())
+                .build())
+        .build();
+  }
+
+  private StorageConfigInfo createBigLakeStorageConfig(String allowedLocation) {
+    return GcpStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+        .setGcsServiceAccount("test-sa@my-project.iam.gserviceaccount.com")
+        .setAllowedLocations(List.of(allowedLocation))
+        .build();
+  }
+
+  private StorageConfigInfo createGenericS3StorageConfig(String allowedLocation) {
+    return AwsStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+        .setExternalId("externalId")
+        .setUserArn("userArn")
+        .setAllowedLocations(List.of(allowedLocation))
+        .build();
   }
 
   private PrincipalEntity createPrincipal(

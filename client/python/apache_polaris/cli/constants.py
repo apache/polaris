@@ -20,6 +20,9 @@ import os
 from enum import Enum
 
 
+GCP_QUOTA_PROJECT_HEADER = "header.x-goog-user-project"
+
+
 class StorageType(Enum):
     """
     Represents a Storage Type within the Polaris API -- `s3`, `azure`, `gcs`, or `file`.
