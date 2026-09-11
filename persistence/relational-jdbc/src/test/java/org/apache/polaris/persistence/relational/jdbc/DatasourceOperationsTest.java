@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,6 +41,7 @@ import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.core.entity.EventEntity;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations.Operation;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
@@ -57,11 +59,15 @@ public class DatasourceOperationsTest {
 
   @Mock private PreparedStatement mockPreparedStatement;
 
+  @Mock private ResultSet mockResultSet;
+
   @Mock private RelationalJdbcConfiguration relationalJdbcConfiguration;
 
   @Mock private DatabaseMetaData mockDatabaseMetaData;
 
   @Mock Operation<String> mockOperation;
+
+  @Mock Converter<String> mockConverter;
 
   private DatasourceOperations datasourceOperations;
 
@@ -142,6 +148,47 @@ public class DatasourceOperationsTest {
 
     assertThrows(
         SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity(1)));
+  }
+
+  @Test
+  void testExecuteSelectRetryReplacesPartialResults() throws Exception {
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("SELECT * FROM users", List.of());
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(2));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next())
+        .thenReturn(true, true)
+        .thenThrow(new SQLException("Retryable error", "40001"))
+        .thenReturn(true, true, false);
+    when(mockConverter.fromResultSet(mockResultSet))
+        .thenReturn("first", "second", "third", "fourth");
+
+    assertEquals(
+        List.of("third", "fourth"), datasourceOperations.executeSelect(query, mockConverter));
+  }
+
+  @Test
+  void testExecuteSelectWithConnectionRetryReplacesPartialResults() throws Exception {
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("SELECT * FROM users", List.of());
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(2));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next())
+        .thenReturn(true, true)
+        .thenThrow(new SQLException("Retryable error", "40001"))
+        .thenReturn(true, true, false);
+    when(mockConverter.fromResultSet(mockResultSet))
+        .thenReturn("first", "second", "third", "fourth");
+
+    assertEquals(
+        List.of("third", "fourth"),
+        datasourceOperations.executeSelect(mockConnection, query, mockConverter));
   }
 
   @Test

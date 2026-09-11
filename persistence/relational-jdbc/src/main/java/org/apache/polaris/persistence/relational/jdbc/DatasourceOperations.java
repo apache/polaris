@@ -30,7 +30,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -38,6 +37,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -155,9 +155,9 @@ public class DatasourceOperations {
    */
   public <T> List<T> executeSelect(
       @NonNull PreparedQuery query, @NonNull Converter<T> converterInstance) throws SQLException {
-    ArrayList<T> results = new ArrayList<>();
-    executeSelectOverStream(query, converterInstance, stream -> stream.forEach(results::add));
-    return results;
+    AtomicReference<List<T>> results = new AtomicReference<>();
+    executeSelectOverStream(query, converterInstance, stream -> results.set(stream.toList()));
+    return results.get();
   }
 
   /**
@@ -227,10 +227,10 @@ public class DatasourceOperations {
       @NonNull PreparedQuery query,
       @NonNull Converter<T> converterInstance)
       throws SQLException {
-    ArrayList<T> results = new ArrayList<>();
+    AtomicReference<List<T>> results = new AtomicReference<>();
     executeSelectOverStream(
-        connection, query, converterInstance, stream -> stream.forEach(results::add));
-    return results;
+        connection, query, converterInstance, stream -> results.set(stream.toList()));
+    return results.get();
   }
 
   /**
