@@ -162,7 +162,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   token). Credential-generation is enforced on token exchange; bearer verify is signature and claims
   only. Secrets-load failures during exchange return service unavailable.
 - The Policy API now rejects an unknown `policyType` query parameter on `listPolicies` and `getApplicablePolicies` with HTTP 400. Previously an unrecognized value (for example `system.data_compaction`, misspelling `system.data-compaction` with an underscore) was silently treated as "no filter", so the request returned policies of every type with HTTP 200, and clients could not tell a filtered result from an unfiltered one. An absent or empty `policyType` still means "no filter", as the API specification allows.
-
+- File cleanup tasks now issue batched object-storage deletes again. `CatalogUtil.deleteFiles`
+  batches only when the `FileIO` is an `instanceof SupportsBulkOperations`, but the `FileIO` reaching
+  the cleanup tasks is wrapped by `ExceptionMappingFileIO` and, on Azure, by
+  `WasbTranslatingFileIO`. Neither wrapper declared the capability held by the wrapped `FileIO`, so
+  the check always failed and every file was deleted individually. Both wrappers now propagate
+  `SupportsBulkOperations` when the wrapped `FileIO` supports it, which affects every storage
+  backend, since `S3FileIO`, `GCSFileIO`, `ADLSFileIO` and `HadoopFileIO` all implement
+  `DelegateFileIO`.
+  
 ### Commits
 
 ## [1.7.0]
