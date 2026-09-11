@@ -26,12 +26,14 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-spi"))
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
 
   runtimeOnly(project(":polaris-relational-jdbc"))
+  runtimeOnly(project(":polaris-extensions-metrics-reports"))
 
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
@@ -179,6 +181,7 @@ dependencies {
   testImplementation(project(":polaris-persistence-nosql-impl"))
 
   testFixturesImplementation(project(":polaris-core"))
+  testFixturesImplementation(project(":polaris-spi"))
   testFixturesImplementation(project(":polaris-api-management-model"))
   testFixturesImplementation(project(":polaris-api-management-service"))
   testFixturesImplementation(project(":polaris-api-iceberg-service"))

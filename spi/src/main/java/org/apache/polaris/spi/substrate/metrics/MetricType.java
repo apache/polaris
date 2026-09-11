@@ -16,24 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.metrics.reports;
+package org.apache.polaris.spi.substrate.metrics;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.spi.substrate.metrics.IcebergMetricsReporter;
-import org.apache.polaris.spi.substrate.metrics.MetricsReportEnvelope;
-import org.jspecify.annotations.NonNull;
+import com.google.common.annotations.Beta;
 
 /**
- * No-op implementation of {@link IcebergMetricsReporter} that silently discards all metrics.
+ * Discriminator for the kind of Iceberg metrics report carried by a {@link MetricsReportEnvelope}.
  *
- * <p>Selected by default, or when {@code polaris.iceberg-metrics.reporting.type} is explicitly set
- * to {@code "default"}.
+ * <p>Making the type explicit at the SPI boundary means {@link IcebergMetricsReporter}
+ * implementations do not need to {@code instanceof}-check the raw Iceberg report.
  */
-@ApplicationScoped
-@Identifier("default")
-public class NoOpMetricsReporter implements IcebergMetricsReporter {
-
-  @Override
-  public void reportMetric(@NonNull MetricsReportEnvelope envelope) {}
+@Beta
+public enum MetricType {
+  /** An Iceberg scan report ({@link org.apache.iceberg.metrics.ScanReport}). */
+  SCAN,
+  /** An Iceberg commit report ({@link org.apache.iceberg.metrics.CommitReport}). */
+  COMMIT
 }

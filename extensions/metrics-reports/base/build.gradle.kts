@@ -24,11 +24,12 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
-  implementation(project(":polaris-runtime-service"))
+  implementation(project(":polaris-spi"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
 
+  implementation(libs.guava)
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
   implementation(libs.smallrye.common.annotation)
