@@ -38,4 +38,21 @@ polaris.authorization.ranger.authz.audit.destination.solr.urls=http://solr-servi
 
 ```
 
-3. Run or restart Polaris to see that all accesses are authorized by Ranger policies, with access audit records available in Apache Ranger console.
+3. Register the Polaris service type with Ranger Admin using the service definition shipped at
+   `src/main/resources/polaris-ranger-servicedef.json` (packaged as `polaris-ranger-servicedef.json`
+   on the classpath of `polaris-extensions-auth-ranger`), for example:
+```
+curl -u <ranger-admin-user>:<ranger-admin-password> -X POST \
+  -H "Content-Type: application/json" \
+  -d @polaris-ranger-servicedef.json \
+  http://ranger-admin:6080/service/public/v2/api/servicedef
+```
+   This is the same `serviceDef` exercised by `RangerPolarisAuthorizerTest`: the test fixture is
+   generated at build time by embedding this shipped `serviceDef` (see the
+   `generateAuthzTestFixture`/`generateAuthzItTestFixture` Gradle tasks), so any access type
+   available to grant through Ranger policies is guaranteed to be understood by the authorizer.
+
+4. Create a Ranger service instance of type `polaris` (matching the `service-name` configured
+   above), then define policies against it.
+
+5. Run or restart Polaris to see that all accesses are authorized by Ranger policies, with access audit records available in Apache Ranger console.
