@@ -54,8 +54,10 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.ChangeSetCommitStatus;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.PersistenceMutation;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
@@ -278,6 +280,108 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
     }
+  }
+
+  @Override
+  public @NonNull ChangeSetCommitStatus commitChangeSet(
+      @NonNull PolarisCallContext callCtx, @NonNull List<PersistenceMutation> mutations) {
+    if (mutations.isEmpty()) {
+      return ChangeSetCommitStatus.APPLIED;
+    }
+    try {
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            for (PersistenceMutation mutation : mutations) {
+              if (mutation instanceof PersistenceMutation.Entity em) {
+                switch (em.operation()) {
+                  case CREATE ->
+                      persistEntity(
+                          callCtx, em.entity(), null, connection, datasourceOperations::execute);
+                  case UPDATE ->
+                      persistEntity(
+                          callCtx,
+                          em.entity(),
+                          em.originalEntity(),
+                          connection,
+                          datasourceOperations::execute);
+                  case DELETE -> deleteEntity(connection, em.entity());
+                }
+              } else if (mutation instanceof PersistenceMutation.Grant gm) {
+                switch (gm.operation()) {
+                  case CREATE -> persistGrantRecord(connection, gm.grantRecord());
+                  case DELETE -> deleteGrantRecord(connection, gm.grantRecord());
+                  case UPDATE ->
+                      throw new IllegalArgumentException("GRANT_RECORD does not support UPDATE");
+                }
+              } else {
+                throw new IllegalArgumentException("Unsupported persistence mutation: " + mutation);
+              }
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException("Error committing change set", e);
+    }
+    return ChangeSetCommitStatus.APPLIED;
+  }
+
+  private void persistGrantRecord(Connection connection, PolarisGrantRecord grantRec)
+      throws SQLException {
+    ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
+    List<Object> values =
+        modelGrantRecord.toMap(datasourceOperations.getDatabaseType()).values().stream().toList();
+    // Duplicate grant inserts are a documented no-op. PostgreSQL aborts the whole transaction
+    // after a uniqueness violation, so catching SQLException is not enough; a savepoint lets
+    // the surrounding change set continue (and works on H2, which does not accept
+    // INSERT ... ON CONFLICT DO NOTHING in the default compatibility mode).
+    var savepoint = connection.setSavepoint();
+    try {
+      datasourceOperations.execute(
+          connection,
+          QueryGenerator.generateInsertQuery(
+              ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, values, realmId));
+    } catch (SQLException e) {
+      connection.rollback(savepoint);
+      if (datasourceOperations.isUniquenessConstraintViolation(e)) {
+        LOGGER.debug("Grant record already exists; treating as no-op: {}", grantRec);
+        return;
+      }
+      throw e;
+    } finally {
+      try {
+        connection.releaseSavepoint(savepoint);
+      } catch (SQLException ignored) {
+        // Already rolled back to the savepoint on the uniqueness path.
+      }
+    }
+  }
+
+  private void deleteEntity(Connection connection, PolarisBaseEntity entity) throws SQLException {
+    ModelEntity modelEntity = ModelEntity.fromEntity(entity, schemaVersion);
+    Map<String, Object> params =
+        Map.of(
+            "id",
+            modelEntity.getId(),
+            "catalog_id",
+            modelEntity.getCatalogId(),
+            "realm_id",
+            realmId);
+    datasourceOperations.execute(
+        connection,
+        QueryGenerator.generateDeleteQuery(
+            ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+  }
+
+  private void deleteGrantRecord(Connection connection, PolarisGrantRecord grantRec)
+      throws SQLException {
+    ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
+    Map<String, Object> whereClause =
+        modelGrantRecord.toMap(datasourceOperations.getDatabaseType());
+    whereClause.put("realm_id", realmId);
+    datasourceOperations.execute(
+        connection,
+        QueryGenerator.generateDeleteQuery(
+            ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, whereClause));
   }
 
   @Override

@@ -47,7 +47,9 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.ChangeSetCommitStatus;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.PersistenceMutation;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -111,6 +113,91 @@ class JdbcBasePersistenceImplTest {
         .doesNotThrowAnyException();
     assertThatCode(() -> basePersistence.writeToGrantRecords(callCtx, grant))
         .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2, 3, 4, 5})
+  void commitChangeSetDuplicateGrantDoesNotAbortTransaction(int schemaVersion) throws SQLException {
+    JdbcConnectionPool dataSource =
+        JdbcConnectionPool.create(
+            "jdbc:h2:mem:grant_changeset_dup_v"
+                + schemaVersion
+                + "_"
+                + System.nanoTime()
+                + ";DB_CLOSE_DELAY=-1",
+            "sa",
+            "");
+    DatasourceOperations datasourceOperations =
+        new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    try (InputStream scriptStream = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+      datasourceOperations.executeScript(scriptStream);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    JdbcBasePersistenceImpl basePersistence =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            datasourceOperations,
+            RANDOM_SECRETS,
+            REALM_CONTEXT.getRealmIdentifier(),
+            schemaVersion);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
+
+    PolarisBaseEntity entity =
+        new PolarisBaseEntity.Builder()
+            .id(101L)
+            .catalogId(0L)
+            .parentId(0L)
+            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .name("grant_dup_entity")
+            .entityVersion(1)
+            .grantRecordsVersion(0)
+            .createTimestamp(System.currentTimeMillis())
+            .build();
+    PolarisGrantRecord grant =
+        new PolarisGrantRecord(
+            SECURABLE_CATALOG_ID, SECURABLE_ID, GRANTEE_CATALOG_ID, GRANTEE_ID, PRIVILEGE_CODE);
+
+    assertThat(
+            basePersistence.commitChangeSet(
+                callCtx,
+                List.of(
+                    PersistenceMutation.createEntity(entity),
+                    PersistenceMutation.createGrant(grant))))
+        .isEqualTo(ChangeSetCommitStatus.APPLIED);
+
+    PolarisBaseEntity persisted =
+        basePersistence.lookupEntity(
+            callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
+    PolarisBaseEntity updated =
+        new PolarisBaseEntity.Builder(persisted)
+            .name("grant_dup_entity_updated")
+            .entityVersion(2)
+            .build();
+
+    assertThat(
+            basePersistence.commitChangeSet(
+                callCtx,
+                List.of(
+                    PersistenceMutation.updateEntity(updated, persisted),
+                    PersistenceMutation.createGrant(grant))))
+        .isEqualTo(ChangeSetCommitStatus.APPLIED);
+
+    PolarisBaseEntity after =
+        basePersistence.lookupEntity(
+            callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
+    assertThat(after.getName()).isEqualTo("grant_dup_entity_updated");
+    assertThat(
+            basePersistence.lookupGrantRecord(
+                callCtx,
+                SECURABLE_CATALOG_ID,
+                SECURABLE_ID,
+                GRANTEE_CATALOG_ID,
+                GRANTEE_ID,
+                PRIVILEGE_CODE))
+        .isNotNull();
   }
 
   @ParameterizedTest
