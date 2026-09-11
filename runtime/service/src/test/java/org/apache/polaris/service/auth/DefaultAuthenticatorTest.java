@@ -580,4 +580,158 @@ public class DefaultAuthenticatorTest {
         .isInstanceOf(AuthenticationFailedException.class)
         .hasMessageContaining("Unable to authenticate");
   }
+  // --- Tests for extractRequestedRoles ---
+
+  @Test
+  void testExtractRequestedRoles_allReturnsEmptyWithFlag() {
+    PolarisCredential credentials =
+            PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.extractRequestedRoles(credentials);
+
+    assertThat(selection.allRolesRequested()).isTrue();
+    assertThat(selection.roles()).isEmpty();
+  }
+
+  @Test
+  void testExtractRequestedRoles_allTakesPrecedenceOverIndividual() {
+    PolarisCredential credentials =
+            PolarisCredential.of(
+                    null,
+                    PRINCIPAL_NAME,
+                    Set.of(
+                            DefaultAuthenticator.PRINCIPAL_ROLE_ALL,
+                            DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1));
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.extractRequestedRoles(credentials);
+
+    assertThat(selection.allRolesRequested()).isTrue();
+    assertThat(selection.roles()).isEmpty();
+  }
+
+  @Test
+  void testExtractRequestedRoles_individualStripsPrefix() {
+    PolarisCredential credentials =
+            PolarisCredential.of(
+                    null,
+                    PRINCIPAL_NAME,
+                    Set.of(
+                            DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1,
+                            DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE2));
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.extractRequestedRoles(credentials);
+
+    assertThat(selection.allRolesRequested()).isFalse();
+    assertThat(selection.roles()).containsExactlyInAnyOrder(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+  }
+
+  @Test
+  void testExtractRequestedRoles_onlyInvalidPrefixesFilteredOut() {
+    PolarisCredential credentials =
+            PolarisCredential.of(null, PRINCIPAL_NAME, Set.of("unprefixed", "also-bad"));
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.extractRequestedRoles(credentials);
+
+    assertThat(selection.allRolesRequested()).isFalse();
+    assertThat(selection.roles()).isEmpty();
+  }
+
+  @Test
+  void testExtractRequestedRoles_mixedKeepsOnlyPrefixed() {
+    PolarisCredential credentials =
+            PolarisCredential.of(
+                    null,
+                    PRINCIPAL_NAME,
+                    Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1, "unprefixed"));
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.extractRequestedRoles(credentials);
+
+    assertThat(selection.allRolesRequested()).isFalse();
+    assertThat(selection.roles()).containsExactly(PRINCIPAL_ROLE1);
+  }
+
+  @Test
+  void testExtractRequestedRoles_emptyReturnsEmpty() {
+    PolarisCredential credentials = PolarisCredential.of(null, PRINCIPAL_NAME, Set.of());
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.extractRequestedRoles(credentials);
+
+    assertThat(selection.allRolesRequested()).isFalse();
+    assertThat(selection.roles()).isEmpty();
+  }
+
+  // --- Tests for resolvePrincipalRoles ---
+
+  @Test
+  void testResolvePrincipalRoles_allRequestedReturnsAllGranted() {
+    PolarisCredential credentials =
+            PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.resolvePrincipalRoles(credentials, principalEntity);
+
+    assertThat(selection.allRolesRequested()).isTrue();
+    assertThat(selection.roles()).containsExactlyInAnyOrder(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+  }
+
+  @Test
+  void testResolvePrincipalRoles_subsetReturnsOnlyRequestedGranted() {
+    PolarisCredential credentials =
+            PolarisCredential.of(
+                    null,
+                    PRINCIPAL_NAME,
+                    Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1));
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.resolvePrincipalRoles(credentials, principalEntity);
+
+    assertThat(selection.allRolesRequested()).isFalse();
+    assertThat(selection.roles()).containsExactly(PRINCIPAL_ROLE1);
+  }
+
+  @Test
+  void testResolvePrincipalRoles_requestedButUngrantedThrows() {
+    PolarisCredential credentials =
+            PolarisCredential.of(
+                    null,
+                    PRINCIPAL_NAME,
+                    Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + "non-existent-role"));
+
+    assertThatThrownBy(() -> authenticator.resolvePrincipalRoles(credentials, principalEntity))
+            .isInstanceOf(AuthenticationFailedException.class);
+  }
+
+  @Test
+  void testResolvePrincipalRoles_mixedGrantedAndUngrantedThrows() {
+    PolarisCredential credentials =
+            PolarisCredential.of(
+                    null,
+                    PRINCIPAL_NAME,
+                    Set.of(
+                            DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1,
+                            DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + "non-existent-role"));
+
+    assertThatThrownBy(() -> authenticator.resolvePrincipalRoles(credentials, principalEntity))
+            .isInstanceOf(AuthenticationFailedException.class);
+  }
+
+  @Test
+  void testResolvePrincipalRoles_emptyRequestedReturnsEmpty() {
+    PolarisCredential credentials = PolarisCredential.of(null, PRINCIPAL_NAME, Set.of());
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.resolvePrincipalRoles(credentials, principalEntity);
+
+    assertThat(selection.allRolesRequested()).isFalse();
+    assertThat(selection.roles()).isEmpty();
+  }
+
+  @Test
+  void testResolvePrincipalRoles_allRequestedNoGrantsReturnsEmpty() {
+    PolarisCredential credentials =
+            PolarisCredential.of(
+                    null, PRINCIPAL_NAME_NO_ROLES, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+    DefaultAuthenticator.PrincipalRoleSelection selection =
+            authenticator.resolvePrincipalRoles(credentials, principalEntityNoRoles);
+
+    assertThat(selection.allRolesRequested()).isTrue();
+    assertThat(selection.roles()).isEmpty();
+  }
 }
