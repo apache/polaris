@@ -185,13 +185,13 @@ Grants on individual models and model-scoped grant inspection are deferred.
 | --------- | ------ | ----------- |
 | SEMANTIC_MODEL_LIST | Namespace | Lists model identifiers in the namespace. |
 | SEMANTIC_MODEL_CREATE | Namespace | Creates a model in the namespace. |
-| SEMANTIC_MODEL_READ_PROPERTIES | Semantic model | Reads the model document and metadata. |
-| SEMANTIC_MODEL_WRITE_PROPERTIES | Semantic model | Updates the model document and permits reading it. |
+| SEMANTIC_MODEL_READ | Semantic model | Reads the model document and metadata. |
+| SEMANTIC_MODEL_WRITE | Semantic model | Updates the model document and permits reading it. |
 | SEMANTIC_MODEL_DROP | Semantic model | Deletes the model. |
 | SEMANTIC_MODEL_FULL_METADATA | Semantic model | Includes list, create, read, update, and drop privileges, as applicable to the grant's scope. |
 
 Privileges granted on a namespace or catalog apply to descendant models. At these scopes,
-`SEMANTIC_MODEL_CREATE`, `SEMANTIC_MODEL_READ_PROPERTIES`, and `SEMANTIC_MODEL_WRITE_PROPERTIES`
+`SEMANTIC_MODEL_CREATE`, `SEMANTIC_MODEL_READ`, and `SEMANTIC_MODEL_WRITE`
 also permit listing models, matching table and view privileges.
 `SEMANTIC_MODEL_FULL_METADATA` grants list, create, read, update, and drop access within that scope.
 `NAMESPACE_FULL_METADATA`, `CATALOG_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and
@@ -212,7 +212,7 @@ with a namespace grant, for example, to allow reading models in the `sales` name
   "grant": {
     "type": "namespace",
     "namespace": ["sales"],
-    "privilege": "SEMANTIC_MODEL_READ_PROPERTIES"
+    "privilege": "SEMANTIC_MODEL_READ"
   }
 }
 ```

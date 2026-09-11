@@ -167,7 +167,7 @@ paths:
         backward-incompatible way.
 
         Replace a semantic model's document with a new one. Requires
-        SEMANTIC_MODEL_WRITE_PROPERTIES on the model.
+        SEMANTIC_MODEL_WRITE on the model.
 
         Upon a successful update, the model's entity-version changes and the new value is returned.
 

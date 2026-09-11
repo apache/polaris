@@ -206,8 +206,8 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
         Map.of(
             "create", PolarisPrivilege.SEMANTIC_MODEL_CREATE,
             "list", PolarisPrivilege.SEMANTIC_MODEL_LIST,
-            "load", PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES,
-            "update", PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES,
+            "load", PolarisPrivilege.SEMANTIC_MODEL_READ,
+            "update", PolarisPrivilege.SEMANTIC_MODEL_WRITE,
             "drop", PolarisPrivilege.SEMANTIC_MODEL_DROP);
     return required.entrySet().stream()
         .flatMap(
@@ -224,8 +224,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
                                     || (operation.getKey().equals("list")
                                         && privilege == PolarisPrivilege.SEMANTIC_MODEL_CREATE)
                                     || (operation.getKey().equals("load")
-                                        && privilege
-                                            == PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES))));
+                                        && privilege == PolarisPrivilege.SEMANTIC_MODEL_WRITE))));
   }
 
   @ParameterizedTest
@@ -257,9 +256,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   }
 
   static Stream<Arguments> namespaceReaders() {
-    return Stream.of(
-            PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES,
-            PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES)
+    return Stream.of(PolarisPrivilege.SEMANTIC_MODEL_READ, PolarisPrivilege.SEMANTIC_MODEL_WRITE)
         .flatMap(
             privilege -> Stream.of(Arguments.of(privilege, false), Arguments.of(privilege, true)));
   }
@@ -267,7 +264,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   @Test
   void readerCannotWriteOrReadSiblingModel() {
     passthroughHandler().createSemanticModel(NS, createRequest("other", modelJson("ns1.t1")));
-    grant(model("m1"), PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES);
+    grant(model("m1"), PolarisPrivilege.SEMANTIC_MODEL_READ);
     // Reading a model does not require privileges on its source.
     runOperation("load");
     for (String operation : List.of("create", "list", "update", "drop")) {
@@ -286,7 +283,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   @Test
   void revokingModelReadRemovesAccess() {
     PolarisEntity model = model("m1");
-    grant(model, PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES);
+    grant(model, PolarisPrivilege.SEMANTIC_MODEL_READ);
     runOperation("load");
     assertSuccess(
         services
@@ -296,7 +293,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
                 role,
                 PolarisEntity.toCoreList(List.of(catalog, namespace)),
                 model,
-                PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES));
+                PolarisPrivilege.SEMANTIC_MODEL_READ));
     assertThatThrownBy(() -> runOperation("load")).isInstanceOf(ForbiddenException.class);
   }
 
@@ -357,8 +354,8 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
 
   static Stream<Arguments> replacementOperations() {
     return Stream.of(
-        Arguments.of("load", PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES),
-        Arguments.of("update", PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES),
+        Arguments.of("load", PolarisPrivilege.SEMANTIC_MODEL_READ),
+        Arguments.of("update", PolarisPrivilege.SEMANTIC_MODEL_WRITE),
         Arguments.of("drop", PolarisPrivilege.SEMANTIC_MODEL_DROP));
   }
 

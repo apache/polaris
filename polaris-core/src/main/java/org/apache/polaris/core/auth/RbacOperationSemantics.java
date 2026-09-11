@@ -187,8 +187,8 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_WRITE_PR
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_LIST;
-import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES;
-import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_READ;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_WRITE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SERVICE_MANAGE_ACCESS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_PARTITION_SPEC;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SCHEMA;
@@ -419,8 +419,8 @@ record RbacOperationSemantics(
 
     // Semantic-model operations.
     register(CREATE_SEMANTIC_MODEL, SEMANTIC_MODEL_CREATE);
-    register(LOAD_SEMANTIC_MODEL, SEMANTIC_MODEL_READ_PROPERTIES);
-    register(UPDATE_SEMANTIC_MODEL, SEMANTIC_MODEL_WRITE_PROPERTIES);
+    register(LOAD_SEMANTIC_MODEL, SEMANTIC_MODEL_READ);
+    register(UPDATE_SEMANTIC_MODEL, SEMANTIC_MODEL_WRITE);
     register(DROP_SEMANTIC_MODEL, SEMANTIC_MODEL_DROP);
     register(LIST_SEMANTIC_MODEL, SEMANTIC_MODEL_LIST);
 

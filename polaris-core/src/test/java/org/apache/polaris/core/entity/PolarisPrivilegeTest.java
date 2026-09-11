@@ -133,8 +133,8 @@ public class PolarisPrivilegeTest {
         Arguments.of(102, PolarisPrivilege.TABLE_MANAGE_STRUCTURE),
         Arguments.of(103, PolarisPrivilege.SEMANTIC_MODEL_LIST),
         Arguments.of(104, PolarisPrivilege.SEMANTIC_MODEL_CREATE),
-        Arguments.of(105, PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES),
-        Arguments.of(106, PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES),
+        Arguments.of(105, PolarisPrivilege.SEMANTIC_MODEL_READ),
+        Arguments.of(106, PolarisPrivilege.SEMANTIC_MODEL_WRITE),
         Arguments.of(107, PolarisPrivilege.SEMANTIC_MODEL_DROP),
         Arguments.of(108, PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA),
         Arguments.of(109, null));

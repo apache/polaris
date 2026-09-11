@@ -86,8 +86,8 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_CRE
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_LIST;
-import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES;
-import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_READ;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_WRITE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SERVICE_MANAGE_ACCESS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_PARTITION_SPEC;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SCHEMA;
@@ -687,8 +687,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             SEMANTIC_MODEL_LIST,
             SEMANTIC_MODEL_CREATE,
-            SEMANTIC_MODEL_READ_PROPERTIES,
-            SEMANTIC_MODEL_WRITE_PROPERTIES,
+            SEMANTIC_MODEL_READ,
+            SEMANTIC_MODEL_WRITE,
             SEMANTIC_MODEL_FULL_METADATA,
             NAMESPACE_FULL_METADATA,
             CATALOG_FULL_METADATA,
@@ -704,19 +704,19 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
-        SEMANTIC_MODEL_READ_PROPERTIES,
+        SEMANTIC_MODEL_READ,
         List.of(
-            SEMANTIC_MODEL_READ_PROPERTIES,
+            SEMANTIC_MODEL_READ,
             SEMANTIC_MODEL_FULL_METADATA,
-            SEMANTIC_MODEL_WRITE_PROPERTIES,
+            SEMANTIC_MODEL_WRITE,
             NAMESPACE_FULL_METADATA,
             CATALOG_FULL_METADATA,
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
-        SEMANTIC_MODEL_WRITE_PROPERTIES,
+        SEMANTIC_MODEL_WRITE,
         List.of(
-            SEMANTIC_MODEL_WRITE_PROPERTIES,
+            SEMANTIC_MODEL_WRITE,
             SEMANTIC_MODEL_FULL_METADATA,
             NAMESPACE_FULL_METADATA,
             CATALOG_FULL_METADATA,
