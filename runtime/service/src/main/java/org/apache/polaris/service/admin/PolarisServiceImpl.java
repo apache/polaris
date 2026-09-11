@@ -153,10 +153,8 @@ public class PolarisServiceImpl
     if (storageConfigInfo instanceof AwsStorageConfigInfo s3Config) {
       IcebergPropertiesValidation.validateS3CredentialIssuerAllowed(
           realmConfig, CatalogEntity.credentialIssuerOf(s3Config));
-    }
 
-    if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)) {
-      if (storageConfigInfo instanceof AwsStorageConfigInfo s3Config) {
+      if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)) {
         if (s3Config.getEndpoint() != null
             || s3Config.getStsEndpoint() != null
             || s3Config.getEndpointInternal() != null) {

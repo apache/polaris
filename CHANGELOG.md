@@ -32,7 +32,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - S3 storage configurations gain an optional `credentialIssuer` (`STS`, the default, or
   `CLOUDFLARE_R2`). A realm allows issuers with the new `SUPPORTED_S3_CREDENTIAL_ISSUERS` feature
   (default `[STS]`), enforced at catalog create and update, at catalog initialization on every
-  request, and at credential vending. This change adds the model and the gates; Cloudflare R2
+  request, when storage access is resolved for a table or a cleanup task, and at credential
+  vending. This change adds the model and the gates; Cloudflare R2
   credential vending itself follows in a separate change, and until then a `CLOUDFLARE_R2` catalog
   is refused on every Iceberg REST route with "not available in this build".
 

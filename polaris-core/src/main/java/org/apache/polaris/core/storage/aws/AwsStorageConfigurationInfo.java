@@ -178,7 +178,8 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
         throw new IllegalArgumentException(
             "allowed location '"
                 + loc
-                + "' contains an empty path segment ('//'); use one slash between segments");
+                + "' contains an empty path segment ('//'); CLOUDFLARE_R2 catalogs require one"
+                + " slash between segments");
       }
     }
   }

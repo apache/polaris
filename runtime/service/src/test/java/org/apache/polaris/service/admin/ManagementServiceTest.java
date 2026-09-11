@@ -1015,4 +1015,41 @@ public class ManagementServiceTest {
                 .getCredentialIssuer())
         .isEqualTo(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2);
   }
+
+  @Test
+  public void testStsCatalogEndpointStaysMutable() {
+    // ALLOW_SETTING_S3_ENDPOINTS is true by default; the endpoint freeze applies to
+    // CLOUDFLARE_R2 only, never to STS.
+    TestServices svc = issuerServices(List.of("STS"), false);
+    AwsStorageConfigInfo sts =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+            .setEndpoint("https://s3.example.com:1234")
+            .setPathStyleAccess(true)
+            .build();
+    try (Response response = create(svc, catalogNamed("sts-mutable", sts))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(svc, "sts-mutable");
+    UpdateCatalogRequest updateEndpoint =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://r2-bucket/base/sts-mutable"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+                .setEndpoint("https://s3.other.example.com:1234")
+                .setPathStyleAccess(true)
+                .build());
+    try (Response response =
+        svc.catalogsApi()
+            .updateCatalog(
+                "sts-mutable", updateEndpoint, svc.realmContext(), svc.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+    AwsStorageConfigInfo updated =
+        (AwsStorageConfigInfo) fetch(svc, "sts-mutable").getStorageConfigInfo();
+    assertThat(updated.getEndpoint()).isEqualTo("https://s3.other.example.com:1234");
+  }
 }

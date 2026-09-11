@@ -27,7 +27,9 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.ValidationException;
+import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -36,6 +38,7 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -64,7 +67,12 @@ class S3CredentialIssuerRoutesTest {
   }
 
   private static TestServices services(Map<String, Object> config) {
-    return TestServices.builder().config(config).build();
+    return TestServices.builder()
+        .config(config)
+        .fileIOFactorySupplier(
+            () ->
+                (FileIOFactory) (accessConfig, ioImplClassName, properties) -> new InMemoryFileIO())
+        .build();
   }
 
   private static Catalog stsCatalog(String name) {
@@ -104,6 +112,64 @@ class S3CredentialIssuerRoutesTest {
     }
   }
 
+  /** The table's location sits under the catalog's own allowed location. */
+  private static void createTable(TestServices svc, String catalog, String ns, String table) {
+    CreateTableRequest request =
+        CreateTableRequest.builder()
+            .withName(table)
+            .withSchema(PolarisAuthzTestBase.SCHEMA)
+            .withLocation("s3://bucket/base/" + catalog + "/" + ns + "/" + table + "/")
+            .build();
+    try (Response r =
+        svc.restApi()
+            .createTable(
+                catalog, ns, request, null, null, svc.realmContext(), svc.securityContext())) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  private static void assertLoadTableRefused(
+      TestServices svc,
+      String catalog,
+      String ns,
+      String table,
+      String accessDelegationMode,
+      String expectedMessage) {
+    assertThatThrownBy(
+            () ->
+                svc.restApi()
+                    .loadTable(
+                        catalog,
+                        ns,
+                        table,
+                        accessDelegationMode,
+                        null,
+                        "ALL",
+                        null,
+                        svc.realmContext(),
+                        svc.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(expectedMessage);
+  }
+
+  private static void assertLoadTableSucceeds(
+      TestServices svc, String catalog, String ns, String table) {
+    try (Response r =
+        svc.restApi()
+            .loadTable(
+                catalog,
+                ns,
+                table,
+                null,
+                null,
+                "ALL",
+                null,
+                svc.realmContext(),
+                svc.securityContext())) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
   private static void switchToCloudflareR2(TestServices svc, String name) {
     Catalog fetched;
     try (Response r =
@@ -133,7 +199,10 @@ class S3CredentialIssuerRoutesTest {
     TestServices svc = services(config(skipSubscoping));
     createCatalog(svc, "r2cat");
     createNamespace(svc, "r2cat", "ns");
+    createTable(svc, "r2cat", "ns", "t");
     createCatalog(svc, "stscat");
+    createNamespace(svc, "stscat", "ns");
+    createTable(svc, "stscat", "ns", "t");
     switchToCloudflareR2(svc, "r2cat");
 
     assertThatThrownBy(
@@ -161,6 +230,8 @@ class S3CredentialIssuerRoutesTest {
                         svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_AVAILABLE);
+    assertLoadTableRefused(svc, "r2cat", "ns", "t", "vended-credentials", NOT_AVAILABLE);
+    assertLoadTableRefused(svc, "r2cat", "ns", "t", null, NOT_AVAILABLE);
 
     // Management reads are unaffected, and the STS catalog in the same realm still serves.
     try (Response r =
@@ -173,6 +244,7 @@ class S3CredentialIssuerRoutesTest {
                 "stscat", null, null, null, svc.realmContext(), svc.securityContext())) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
+    assertLoadTableSucceeds(svc, "stscat", "ns", "t");
   }
 
   @ParameterizedTest
@@ -182,7 +254,10 @@ class S3CredentialIssuerRoutesTest {
     TestServices svc = services(config);
     createCatalog(svc, "r2kill");
     createNamespace(svc, "r2kill", "ns");
+    createTable(svc, "r2kill", "ns", "t");
     createCatalog(svc, "stskill");
+    createNamespace(svc, "stskill", "ns");
+    createTable(svc, "stskill", "ns", "t");
     switchToCloudflareR2(svc, "r2kill");
 
     // Engage the kill switch: the realm no longer lists CLOUDFLARE_R2.
@@ -203,6 +278,8 @@ class S3CredentialIssuerRoutesTest {
                         "r2kill", "ns", svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(notEnabled);
+    assertLoadTableRefused(svc, "r2kill", "ns", "t", "vended-credentials", notEnabled);
+    assertLoadTableRefused(svc, "r2kill", "ns", "t", null, notEnabled);
     // Management reads still work; an update carrying a storage config is refused at site 1.
     Catalog fetched;
     try (Response r =
@@ -228,5 +305,6 @@ class S3CredentialIssuerRoutesTest {
                 "stskill", null, null, null, svc.realmContext(), svc.securityContext())) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
+    assertLoadTableSucceeds(svc, "stskill", "ns", "t");
   }
 }
