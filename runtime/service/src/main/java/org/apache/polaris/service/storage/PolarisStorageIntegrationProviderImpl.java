@@ -47,6 +47,7 @@ import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -65,6 +66,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final Function<GcpStorageConfigurationInfo, GcpCredentialsStorageIntegration> gcpFactory;
   private final Function<AzureStorageConfigurationInfo, AzureCredentialsStorageIntegration>
       azureFactory;
+  private final RealmConfig realmConfig;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
@@ -76,6 +78,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       StorageCredentialCache cache,
       PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
+    this.realmConfig = realmConfig;
     this.awsFactory =
         storageConfig ->
             new AwsCredentialsStorageIntegration(
@@ -111,6 +114,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       RealmConfig realmConfig,
       PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
+    this.realmConfig = realmConfig;
     this.awsFactory =
         storageConfig ->
             new AwsCredentialsStorageIntegration(
@@ -136,7 +140,20 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private PolarisStorageIntegration createIntegration(
       PolarisStorageConfigurationInfo storageConfig) {
     return switch (storageConfig.getStorageType()) {
-      case S3 -> awsFactory.apply((AwsStorageConfigurationInfo) storageConfig);
+      case S3 -> {
+        AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) storageConfig;
+        // Spec 5.3 item 4: the allowlist as defence in depth behind the initialization and
+        // access-config gates; the CLOUDFLARE_R2 arm below is the PR-A availability throw.
+        IcebergPropertiesValidation.validateS3CredentialIssuerAllowed(
+            realmConfig, awsConfig.getCredentialIssuer());
+        yield switch (awsConfig.getCredentialIssuer()) {
+          case STS -> awsFactory.apply(awsConfig);
+          case CLOUDFLARE_R2 ->
+              // Replaced by the Cloudflare R2 integration in the follow-up change.
+              throw new IllegalArgumentException(
+                  "S3 credential issuer CLOUDFLARE_R2 is not available in this build");
+        };
+      }
       case GCS -> gcpFactory.apply((GcpStorageConfigurationInfo) storageConfig);
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);
       case FILE -> FILE_INTEGRATION;
