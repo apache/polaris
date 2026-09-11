@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.policy;
 
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
@@ -268,6 +270,11 @@ public class PolicyCatalog {
             detachAll);
 
     if (!result.isSuccess()) {
+      if (result.getReturnStatus() == ENTITY_NOT_FOUND
+          || result.getReturnStatus() == CATALOG_PATH_CANNOT_BE_RESOLVED) {
+        throw new NoSuchPolicyException(
+            String.format("Policy does not exist: %s", policyIdentifier));
+      }
       if (result.getReturnStatus() == POLICY_HAS_MAPPINGS) {
         throw new PolicyInUseException("Policy %s is still attached to entities", policyIdentifier);
       }
