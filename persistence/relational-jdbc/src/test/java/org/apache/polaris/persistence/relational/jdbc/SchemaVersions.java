@@ -74,9 +74,8 @@ final class SchemaVersions {
   }
 
   private static int firstSchemaVersion(DatabaseType databaseType) {
-    return switch (databaseType) {
-      case H2 -> 0;
-      case POSTGRES, COCKROACHDB -> 1;
-    };
+    // Which versions ship is a property of the database type itself; the only test-side difference
+    // is H2's schema-v0.sql, which lives in test resources to cover legacy bootstrap behavior.
+    return databaseType == DatabaseType.H2 ? 0 : databaseType.getFirstSchemaVersion();
   }
 }

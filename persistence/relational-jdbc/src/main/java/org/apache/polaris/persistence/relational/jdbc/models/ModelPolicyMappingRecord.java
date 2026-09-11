@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
@@ -37,6 +38,8 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
           "policy_catalog_id",
           "policy_id",
           "parameters");
+
+  public static final Set<String> JSON_COLUMNS = Set.of("parameters");
 
   // id of the catalog where target entity resides
   private long targetCatalogId;
@@ -175,11 +178,7 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
     map.put("policy_type_code", policyTypeCode);
     map.put("policy_catalog_id", policyCatalogId);
     map.put("policy_id", policyId);
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put("parameters", toJsonbPGobject(this.getParameters()));
-    } else {
-      map.put("parameters", this.getParameters());
-    }
+    map.put("parameters", wrapJsonForDatabase(this.getParameters(), databaseType));
     return map;
   }
 }
