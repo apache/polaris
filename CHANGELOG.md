@@ -29,7 +29,20 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
+- S3 storage configurations gain an optional `credentialIssuer` (`STS`, the default, or
+  `CLOUDFLARE_R2`). A realm allows issuers with the new `SUPPORTED_S3_CREDENTIAL_ISSUERS` feature
+  (default `[STS]`), enforced at catalog create and update, at catalog initialization on every
+  request, and at credential vending. This change adds the model and the gates; Cloudflare R2
+  credential vending itself follows in a separate change, and until then a `CLOUDFLARE_R2` catalog
+  is refused on every Iceberg REST route with "not available in this build".
+
 ### Upgrade notes
+
+- `GET /api/management/v1/catalogs` responses for S3 catalogs now carry `credentialIssuer: STS`.
+  No stored configuration changes; rows written before this release read as `STS`.
+- `SUPPORTED_S3_CREDENTIAL_ISSUERS` lists every issuer a realm accepts and has no implicit
+  member: a realm override that omits `STS` rejects every plain S3 catalog in that realm. Startup
+  reports an unknown name as a severe readiness error.
 
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris
