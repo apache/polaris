@@ -35,7 +35,7 @@ paths:
         backward-incompatible way.
 
         Creates a semantic model in the specified namespace. Requires SEMANTIC_MODEL_CREATE
-        on the namespace.
+        on the namespace, including grants inherited from an ancestor namespace or the catalog.
 
         A semantic model is an Apache Ossie document describing
         datasets, fields, relationships, metrics, and AI context for a logical analytics surface above
@@ -90,7 +90,8 @@ paths:
         **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
         backward-incompatible way.
 
-        List semantic-model identifiers under a namespace.
+        List semantic-model identifiers under a namespace. Requires SEMANTIC_MODEL_LIST
+        on the namespace, including grants inherited from an ancestor namespace or the catalog.
       parameters:
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
         - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
@@ -133,7 +134,8 @@ paths:
         **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
         backward-incompatible way.
 
-        Load a semantic model from the catalog.
+        Load a semantic model from the catalog. Requires SEMANTIC_MODEL_READ
+        on the model, including grants inherited from an ancestor namespace or the catalog.
       responses:
         200:
           $ref: '#/components/responses/LoadSemanticModelResponse'
@@ -166,8 +168,8 @@ paths:
         **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
         backward-incompatible way.
 
-        Replace a semantic model's document with a new one. Requires
-        SEMANTIC_MODEL_WRITE on the model.
+        Replace a semantic model's document with a new one. Requires SEMANTIC_MODEL_WRITE
+        on the model, including grants inherited from an ancestor namespace or the catalog.
 
         Upon a successful update, the model's entity-version changes and the new value is returned.
 
@@ -224,7 +226,8 @@ paths:
         **Beta:** The semantic-model (Apache Ossie) API is under active development and may change in a
         backward-incompatible way.
 
-        Remove a semantic model from the catalog.
+        Remove a semantic model from the catalog. Requires SEMANTIC_MODEL_DROP
+        on the model, including grants inherited from an ancestor namespace or the catalog.
       responses:
         204:
           description: Success, no content
