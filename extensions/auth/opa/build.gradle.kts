@@ -96,7 +96,7 @@ dependencies {
   opaStartupActionCompileOnly("org.apache.polaris.server-test-runner:polaris-server-test-runner")
   opaStartupActionImplementation(platform(libs.testcontainers.bom))
   opaStartupActionImplementation("org.testcontainers:testcontainers")
-  opaStartupActionImplementation(project(":polaris-container-spec-helper"))
+  opaStartupActionImplementation(project(":polaris-opa-testcontainer"))
 
   intTestBase(platform(libs.junit.bom))
   intTestBase("org.junit.jupiter:junit-jupiter")

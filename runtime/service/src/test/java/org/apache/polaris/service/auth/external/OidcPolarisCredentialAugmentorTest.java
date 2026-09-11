@@ -32,10 +32,13 @@ import java.security.Principal;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.PolarisCredential;
+import org.apache.polaris.service.auth.PrincipalMode;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalMapper;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalRolesMapper;
+import org.apache.polaris.service.auth.internal.InternalPolarisCredential;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +46,7 @@ import org.junit.jupiter.api.Test;
 class OidcPolarisCredentialAugmentorTest {
 
   private OidcPolarisCredentialAugmentor augmentor;
+  private AuthenticationRealmConfiguration authConfig;
   private org.apache.polaris.service.auth.external.mapping.PrincipalMapper principalMapper;
   private org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper
       principalRolesMapper;
@@ -69,7 +73,9 @@ class OidcPolarisCredentialAugmentorTest {
     when(principalRoleMappers.select(Identifier.Literal.of("default")))
         .thenReturn(principalRoleMappers);
     when(principalRoleMappers.get()).thenReturn(principalRolesMapper);
-    augmentor = new OidcPolarisCredentialAugmentor(principalMappers, principalRoleMappers);
+    authConfig = mock(AuthenticationRealmConfiguration.class);
+    augmentor =
+        new OidcPolarisCredentialAugmentor(authConfig, principalMappers, principalRoleMappers);
   }
 
   @Test
@@ -100,8 +106,9 @@ class OidcPolarisCredentialAugmentorTest {
   }
 
   @Test
-  public void testAugmentOidcPrincipal() {
+  public void testAugmentOidcInternalPrincipal() {
     // Given
+    when(authConfig.principalMode()).thenReturn(PrincipalMode.INTERNAL);
     JsonWebToken oidcPrincipal = mock(JsonWebToken.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
@@ -121,8 +128,59 @@ class OidcPolarisCredentialAugmentorTest {
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
     assertThat(result.getCredential(PolarisCredential.class))
-        .isEqualTo(PolarisCredential.of(123L, "root", Set.of("MAPPED_ROLE1")));
+        .isEqualTo(InternalPolarisCredential.of(123L, "root", Set.of("MAPPED_ROLE1")));
     // the identity roles should not change, since this is done by the ActiveRolesAugmentor
     assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
+  }
+
+  @Test
+  public void testAugmentOidcExternalPrincipal() {
+    // Given
+    when(authConfig.principalMode()).thenReturn(PrincipalMode.EXTERNAL);
+    JsonWebToken oidcPrincipal = mock(JsonWebToken.class);
+    SecurityIdentity identity =
+        QuarkusSecurityIdentity.builder()
+            .setPrincipal(oidcPrincipal)
+            .addRole("ROLE1")
+            .addAttribute(TENANT_CONFIG_ATTRIBUTE, config)
+            .build();
+    when(principalMapper.mapPrincipalName(identity)).thenReturn(Optional.of("alice"));
+    when(principalRolesMapper.mapPrincipalRoles(identity)).thenReturn(Set.of("MAPPED_ROLE1"));
+
+    // When
+    SecurityIdentity result =
+        augmentor.augment(identity, Uni.createFrom()::item).await().indefinitely();
+
+    // Then
+    assertThat(result).isNotNull();
+    assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
+    assertThat(result.getCredential(PolarisCredential.class))
+        .isEqualTo(ExternalPolarisCredential.of("alice", Set.of("MAPPED_ROLE1")));
+    // the identity roles should not change, since this is done by the ActiveRolesAugmentor
+    assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
+  }
+
+  @Test
+  public void testAugmentOidcExternalPrincipalWithoutName() {
+    // Given: external mode but the principal mapper cannot resolve a name
+    when(authConfig.principalMode()).thenReturn(PrincipalMode.EXTERNAL);
+    JsonWebToken oidcPrincipal = mock(JsonWebToken.class);
+    SecurityIdentity identity =
+        QuarkusSecurityIdentity.builder()
+            .setPrincipal(oidcPrincipal)
+            .addRole("ROLE1")
+            .addAttribute(TENANT_CONFIG_ATTRIBUTE, config)
+            .build();
+    when(principalMapper.mapPrincipalName(identity)).thenReturn(Optional.empty());
+    when(principalRolesMapper.mapPrincipalRoles(identity)).thenReturn(Set.of("MAPPED_ROLE1"));
+
+    // When: the augmentor builds a credential with a null name (no NPE from the builder); it is
+    // DefaultAuthenticator that later rejects the missing name.
+    SecurityIdentity result =
+        augmentor.augment(identity, Uni.createFrom()::item).await().indefinitely();
+
+    // Then
+    assertThat(result.getCredential(PolarisCredential.class))
+        .isEqualTo(ExternalPolarisCredential.of(null, Set.of("MAPPED_ROLE1")));
   }
 }

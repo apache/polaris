@@ -47,6 +47,8 @@ dependencies {
   runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
 
+  runtimeOnly(project(":polaris-extensions-auth-opa"))
+
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
@@ -134,8 +136,6 @@ dependencies {
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-relational-jdbc"))
 
-  testImplementation(project(":polaris-rustfs-testcontainer"))
-
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
 
@@ -159,6 +159,8 @@ dependencies {
   testImplementation(project(":polaris-floci-az-testcontainer"))
   testImplementation(project(":polaris-floci-gcp-testcontainer"))
   testImplementation(project(":polaris-keycloak-testcontainer"))
+  testImplementation(project(":polaris-opa-testcontainer"))
+  testImplementation(project(":polaris-rustfs-testcontainer"))
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))

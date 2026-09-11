@@ -60,6 +60,13 @@ See [Token Broker description]({{< relref "../external-idp#token-broker" >}}) fo
 3. [`OidcPolarisCredentialAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/OidcPolarisCredentialAugmentor.java) extracts JWT claims.
 4. `Authenticator.authenticate()` validates the claims, resolves the principal and principal roles, then creates the `PolarisPrincipal`.
 
+When [external principals]({{< relref "../external-idp#external-principals" >}}) are enabled for
+the realm, step 4 differs: `DefaultAuthenticator` builds the `PolarisPrincipal` directly from the
+mapped credentials, without any metastore lookup, and the principal's roles are taken verbatim from
+the credentials. Downstream, the
+[`Resolver`](https://github.com/apache/polaris/blob/main/polaris-core/src/main/java/org/apache/polaris/core/persistence/resolver/Resolver.java)
+synthesizes the caller principal and its roles instead of loading them from the backend.
+
 ### Mixed Authentication
 
 1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/InternalAuthenticationMechanism.java) tries decoding.
