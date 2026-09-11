@@ -138,6 +138,29 @@ public class SparkIT extends SparkIntegrationBase {
   }
 
   @Test
+  public void testPaimonCtasAndRtasAreRejectedWithoutSideEffects() {
+    String namespace = generateName("ns");
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
+
+    String ctasTable = "paimon_ctas";
+    assertThatThrownBy(() -> sql("CREATE TABLE %s USING paimon AS SELECT 1 AS id", ctasTable))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("CTAS and RTAS");
+    assertThat(sql("SHOW TABLES")).isEmpty();
+
+    String rtasTable = "paimon_rtas";
+    sql("CREATE TABLE %s AS SELECT 1 AS id", rtasTable);
+    assertThatThrownBy(() -> sql("REPLACE TABLE %s USING paimon AS SELECT 2 AS id", rtasTable))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("CTAS and RTAS");
+    assertThat(sql("SELECT * FROM %s", rtasTable)).containsExactly(new Object[] {1});
+
+    sql("DROP TABLE %s", rtasTable);
+    sql("DROP NAMESPACE %s", namespace);
+  }
+
+  @Test
   public void testMixedTableAndViews(@TempDir Path tempDir) {
     String namespace = generateName("ns");
     sql("CREATE NAMESPACE %s", namespace);
