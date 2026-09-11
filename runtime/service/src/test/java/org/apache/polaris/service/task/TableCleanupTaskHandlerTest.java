@@ -27,13 +27,17 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.time.Clock;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
@@ -51,6 +55,7 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.service.catalog.iceberg.TableMetadataIntegrityException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -146,6 +151,109 @@ class TableCleanupTaskHandlerTest {
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
+  }
+
+  @Test
+  public void testTableCleanupRejectsModifiedMetadata() throws IOException {
+    FileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void close() {
+            // Keep the in-memory store open so the assertion can verify that purge did not delete
+            // it.
+          }
+        };
+    TableIdentifier tableIdentifier = TableIdentifier.of("db1", "table1");
+    TableCleanupTaskHandler handler = newTableCleanupTaskHandler(fileIO);
+    String metadataFile = "v1-invalid-digest.metadata.json";
+    TableMetadata plaintextMetadata = TaskTestUtils.writeTableMetadata(fileIO, metadataFile);
+    TableMetadata encryptedMetadata =
+        TableMetadata.buildFrom(plaintextMetadata)
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "test-key"))
+            .build();
+    TableMetadataParser.overwrite(encryptedMetadata, fileIO.newOutputFile(metadataFile));
+    Map<String, String> trustedProperties =
+        Map.of(
+            "polaris.encryption.key-id-pinned",
+            "true",
+            "polaris.encryption.key-id",
+            "test-key",
+            "polaris.encryption.metadata-hash",
+            Base64.getEncoder().encodeToString(new byte[32]),
+            "polaris.encryption.metadata-hash-version",
+            "iceberg-canonical-json-sha256-v1");
+
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .setName("cleanup_" + tableIdentifier)
+            .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
+            .withData(
+                new IcebergTableLikeEntity.Builder(
+                        PolarisEntitySubType.ICEBERG_TABLE,
+                        tableIdentifier,
+                        Map.of(),
+                        trustedProperties,
+                        metadataFile)
+                    .setName("table1")
+                    .setCatalogId(1)
+                    .setCreateTimestamp(100)
+                    .build())
+            .build();
+
+    Assertions.assertThatThrownBy(() -> handler.handleTask(addTaskLocation(task), callContext))
+        .isInstanceOf(NonRetryableTaskException.class)
+        .hasMessage("Table cleanup stopped because metadata failed integrity validation")
+        .cause()
+        .isInstanceOf(TableMetadataIntegrityException.class)
+        .hasMessageContaining("metadata does not match the trusted catalog digest");
+    assertThat(fileIO.newInputFile(metadataFile).exists()).isTrue();
+  }
+
+  @Test
+  public void testTableCleanupRejectsKeyIdAddedToPinnedPlaintextMetadata() throws IOException {
+    FileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void close() {
+            // Keep the in-memory store open so the assertion can verify that purge did not delete
+            // it.
+          }
+        };
+    TableIdentifier tableIdentifier = TableIdentifier.of("db1", "table1");
+    TableCleanupTaskHandler handler = newTableCleanupTaskHandler(fileIO);
+    String metadataFile = "v1-added-key-id.metadata.json";
+    TableMetadata plaintextMetadata = TaskTestUtils.writeTableMetadata(fileIO, metadataFile);
+    TableMetadata modifiedMetadata =
+        TableMetadata.buildFrom(plaintextMetadata)
+            .setProperties(Map.of(TableProperties.ENCRYPTION_TABLE_KEY, "added-key"))
+            .build();
+    TableMetadataParser.overwrite(modifiedMetadata, fileIO.newOutputFile(metadataFile));
+
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .setName("cleanup_" + tableIdentifier)
+            .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
+            .withData(
+                new IcebergTableLikeEntity.Builder(
+                        PolarisEntitySubType.ICEBERG_TABLE,
+                        tableIdentifier,
+                        Map.of(),
+                        Map.of("polaris.encryption.key-id-pinned", "true"),
+                        metadataFile)
+                    .setName("table1")
+                    .setCatalogId(1)
+                    .setCreateTimestamp(100)
+                    .build())
+            .build();
+
+    Assertions.assertThatThrownBy(() -> handler.handleTask(addTaskLocation(task), callContext))
+        .isInstanceOf(NonRetryableTaskException.class)
+        .hasMessage("Table cleanup stopped because metadata failed integrity validation")
+        .cause()
+        .isInstanceOf(TableMetadataIntegrityException.class)
+        .hasMessageContaining("Iceberg table metadata integrity check failed for")
+        .hasMessageContaining(": encryption key ID does not match trusted catalog state");
+    assertThat(fileIO.newInputFile(metadataFile).exists()).isTrue();
   }
 
   @Test

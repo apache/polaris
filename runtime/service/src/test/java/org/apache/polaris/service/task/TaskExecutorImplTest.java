@@ -26,6 +26,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
@@ -290,5 +291,66 @@ public class TaskExecutorImplTest {
 
     // We verify at least the first call happened (throw leads to exception path).
     assertThat(handlerCalls.get()).isGreaterThanOrEqualTo(1);
+  }
+
+  @Test
+  void asyncNonRetryableFailureStopsAfterFirstAttemptAndKeepsTask() {
+    String realm = "myrealm";
+    RealmContext realmContext = () -> realm;
+    TestServices testServices = TestServices.builder().realmContext(realmContext).build();
+    PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
+    PolarisCallContext polarisCallCtx = testServices.newCallContext();
+
+    TaskEntity taskEntity =
+        new TaskEntity.Builder()
+            .setName("non-retryable-task")
+            .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
+            .setCreateTimestamp(testServices.clock().millis())
+            .build();
+    metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
+
+    AtomicInteger handlerCalls = new AtomicInteger();
+    TaskExecutorImpl executor =
+        new TaskExecutorImpl(
+            Runnable::run,
+            null,
+            testServices.clock(),
+            testServices.metaStoreManagerFactory(),
+            new TaskFileIOSupplier(
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
+            new RealmContextHolder(),
+            testServices.polarisEventDispatcher(),
+            testServices.eventMetadataFactory(),
+            null,
+            new PolarisPrincipalHolder(),
+            testServices.principal());
+    executor.addTaskHandler(
+        new TaskHandler() {
+          @Override
+          public boolean canHandleTask(TaskEntity task) {
+            return true;
+          }
+
+          @Override
+          public void handleTask(TaskEntity task, CallContext callContext) {
+            handlerCalls.incrementAndGet();
+            throw new NonRetryableTaskException(
+                "deterministic failure", new IllegalStateException("invalid trusted state"));
+          }
+        });
+
+    executor.addTaskHandlerContext(taskEntity.getId(), polarisCallCtx);
+
+    assertThat(handlerCalls).hasValue(1);
+    assertThat(
+            metaStoreManager
+                .loadEntity(polarisCallCtx, 0L, taskEntity.getId(), PolarisEntityType.TASK)
+                .getEntity())
+        .isNotNull();
+    PolarisEvent afterEvent =
+        ((InMemoryEventCollector) testServices.polarisEventDispatcher())
+            .getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
+    assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_ATTEMPT)).isEqualTo(1);
+    assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS)).isFalse();
   }
 }
