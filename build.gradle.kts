@@ -164,10 +164,6 @@ tasks.named<RatTask>("rat").configure {
 
   // Ignore Polaris.log file(s)
   excludes.add("**/polaris.log*")
-
-  // Ranger authz test fixture templates: raw JSON with a build-time placeholder token spliced
-  // in, so they're not standalone JSON/source files that can carry their own license header.
-  excludes.add("**/*.json.template")
 }
 
 tasks.register<Exec>("buildPythonClient") {
