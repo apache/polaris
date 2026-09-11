@@ -1,0 +1,280 @@
+{
+  "serviceId": 1, "serviceName": "dev_polaris", "policyVersion": 15,
+  "serviceDef": @@POLARIS_RANGER_SERVICE_DEF@@,
+  "policies": [
+    {
+      "id": 1, "name": "root:POLARIS",
+      "resources": { "root": { "values": [ "POLARIS" ] } },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "service-access-manage" },
+            { "type": "catalog-create" },
+            { "type": "catalog-list" },
+            { "type": "principal-create" },
+            { "type": "principal-list" }
+          ],
+          "users": [ "admin1", "root" ]
+        },
+        {
+          "accesses": [
+            { "type": "catalog-list" },
+            { "type": "principal-list" }
+          ],
+          "users": [ "user1" ] }
+      ]
+    },
+    {
+      "id": 2, "name": "catalog:POLARIS/catalog1", "version": 1,
+      "resources": {
+        "root":    { "values": [ "POLARIS" ] },
+        "catalog": { "values": [ "catalog1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "catalog-drop" },
+            { "type": "catalog-properties-read" },
+            { "type": "catalog-properties-write" },
+            { "type": "catalog-metadata-full" },
+            { "type": "catalog-metadata-manage" },
+            { "type": "catalog-content-manage" },
+            { "type": "catalog-policy-attach" },
+            { "type": "catalog-policy-detach" }
+          ],
+          "users": [ "admin1" ] }
+      ]
+    },
+    {
+      "id": 3, "name": "principal:POLARIS/principal1", "version": 1,
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "principal": { "values": [ "principal1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "principal-drop" },
+            { "type": "principal-properties-read" },
+            { "type": "principal-properties-write" },
+            { "type": "principal-metadata-full" },
+            { "type": "principal-credentials-rotate" },
+            { "type": "principal-credentials-reset" }
+          ],
+          "users": [ "admin1" ]
+        }
+      ]
+    },
+    {
+      "id": 4, "name": "namespace:POLARIS/catalog1/namespace1",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type":  "namespace-create" },
+            { "type":  "namespace-drop" },
+            { "type":  "namespace-list" },
+            { "type":  "namespace-properties-read" },
+            { "type":  "namespace-properties-write" },
+            { "type":  "namespace-metadata-full" },
+            { "type":  "namespace-policy-attach" },
+            { "type":  "namespace-policy-detach" },
+            { "type":  "table-create" },
+            { "type":  "table-drop" },
+            { "type":  "table-list" },
+            { "type":  "table-data-write" },
+            { "type":  "table-properties-write" },
+            { "type":  "view-create" },
+            { "type":  "view-drop" },
+            { "type":  "view-list" },
+            { "type":  "policy-create" },
+            { "type":  "policy-list" }
+          ],
+          "users": [ "admin1" ]
+        }
+      ]
+    },
+    {
+      "id": 5, "name": "table:POLARIS/catalog1/namespace1/table1",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "table":     { "values": [ "table1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "table-drop" },
+            { "type": "table-properties-read" },
+            { "type": "table-properties-write" },
+            { "type": "table-properties-set" },
+            { "type": "table-properties-remove" },
+            { "type": "table-data-read" },
+            { "type": "table-data-write" },
+            { "type": "table-metadata-full" },
+            { "type": "table-policy-attach" },
+            { "type": "table-policy-detach" },
+            { "type": "table-uuid-assign" },
+            { "type": "table-format-version-upgrade" },
+            { "type": "table-schema-add" },
+            { "type": "table-schema-set-current" },
+            { "type": "table-partition-spec-add" },
+            { "type": "table-partition-specs-remove" },
+            { "type": "table-sort-order-add" },
+            { "type": "table-sort-order-set-default" },
+            { "type": "table-snapshot-add" },
+            { "type": "table-snapshots-remove" },
+            { "type": "table-snapshot-ref-set" },
+            { "type": "table-snapshot-ref-remove" },
+            { "type": "table-location-set" },
+            { "type": "table-statistics-set" },
+            { "type": "table-statistics-remove" },
+            { "type": "table-structure-manage" }
+          ],
+          "users": [ "admin1" ] }
+      ]
+    },
+    {
+      "id": 6, "name": "table:POLARIS/catalog1/namespace1/view1",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "table":     { "values": [ "view1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "view-drop" },
+            { "type": "view-properties-read" },
+            { "type": "view-properties-write" },
+            { "type": "view-metadata-full" }
+          ],
+          "users": [ "admin1" ] }
+      ]
+    },
+    {
+      "id": 7, "name": "policy:POLARIS/catalog1/namespace1/policy1",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "policy":    { "values": [ "policy1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "policy-read" },
+            { "type": "policy-drop" },
+            { "type": "policy-write" },
+            { "type": "policy-metadata-full" },
+            { "type": "policy-attach" },
+            { "type": "policy-detach" }
+          ],
+          "users": [ "admin1" ] }
+      ]
+    },
+    {
+      "id": 8, "name": "policy:POLARIS/all_catalog",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "*" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "namespace-create" },
+            { "type": "catalog-policy-attach" },
+            { "type": "catalog-policy-detach" },
+            { "type":  "catalog-drop" }
+          ],
+          "users": [ "root" ] }
+      ]
+    },
+    {
+      "id": 9, "name": "policy:POLARIS/all_catalog/all_namespace/table-operations",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "*" ] },
+        "namespace": { "values": [ "*" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "table-create" },
+            { "type": "namespace-drop" },
+            { "type": "policy-create" }
+          ],
+          "users": [ "root" ] }
+      ]
+    },
+    {
+      "id": 10, "name": "policy:POLARIS/all_catalog/all_namespace/all_tables/table-operations",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "*" ] },
+        "namespace": { "values": [ "*" ] },
+        "table":     { "values": [ "*" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "table-drop" }
+          ],
+          "users": [ "root" ] }
+      ]
+    },
+    {
+      "id": 11, "name": "policy:POLARIS/all_catalog/all_namespace/all_policy",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "*" ] },
+        "namespace": { "values": [ "*" ] },
+        "policy":    { "values": [ "*" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "policy-read" },
+            { "type": "policy-drop" },
+            { "type": "policy-write" },
+            { "type": "policy-metadata-full" },
+            { "type": "policy-attach" },
+            { "type": "policy-detach" }
+          ],
+          "users": [ "root" ] }
+      ]
+    },
+    {
+      "id": 12, "name": "Realm:POLARIS",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            {
+              "type": "catalog-list"
+            }
+          ],
+          "users": [
+            "polcondu1", "polcondu2"
+          ],
+          "conditions": [
+            {
+              "type": "_expression",
+              "values": [
+                "USER.allowedSensitiveLevel > 5"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
