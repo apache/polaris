@@ -600,12 +600,22 @@ public class CatalogEntityTest {
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://example.com"))
-            .setRoleArn("arn:aws:iam::012345678901:role/test-role");
+            .setRoleArn("arn:aws:iam::012345678901:role/test-role")
+            .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.STS);
     AzureStorageConfigInfo.Builder a =
         AzureStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
             .setTenantId("test-tenant")
             .setAllowedLocations(List.of("abfss://test@example.dfs.core.windows.net/"));
+    AwsStorageConfigInfo r2 =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://example.com"))
+            .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+            .setEndpoint("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com")
+            .setPathStyleAccess(true)
+            .setRegion("auto")
+            .build();
     return Stream.of(
         Arguments.of(b.build()),
         Arguments.of(b.setExternalId("ex1").build()),
@@ -614,6 +624,7 @@ public class CatalogEntityTest {
         Arguments.of(b.setStsEndpoint("http://sts.example.com:1234").build()),
         Arguments.of(b.setPathStyleAccess(true).build()),
         Arguments.of(b.setStorageName("my-storage").build()),
+        Arguments.of(r2),
         Arguments.of(a.build()),
         Arguments.of(a.setHierarchical(true).build()));
   }
