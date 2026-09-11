@@ -40,7 +40,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 
-/** Spec 5.3 item 4: the provider's {@code case S3} checks the issuer, then dispatches on it. */
+/** The provider's {@code case S3} checks the issuer, then dispatches on it. */
 class S3CredentialIssuerDispatchTest {
 
   private static final RealmContext REALM = () -> "test-realm";

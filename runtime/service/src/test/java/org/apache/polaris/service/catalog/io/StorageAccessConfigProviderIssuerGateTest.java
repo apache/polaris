@@ -46,9 +46,9 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.junit.jupiter.api.Test;
 
 /**
- * Spec 5.3 item 3: the issuer check runs before the {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}
- * early return, so an early-opt-in CLOUDFLARE_R2 catalog fails here before any FileIO, on the
- * loadTable path and on the task path ({@code TaskFileIOSupplier} calls this first).
+ * The issuer check runs before the {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} early return, so
+ * an early-opt-in CLOUDFLARE_R2 catalog fails here before any FileIO, on the loadTable path and on
+ * the task path ({@code TaskFileIOSupplier} calls this first).
  */
 class StorageAccessConfigProviderIssuerGateTest {
 

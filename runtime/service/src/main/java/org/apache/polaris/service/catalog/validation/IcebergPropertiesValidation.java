@@ -88,8 +88,8 @@ public class IcebergPropertiesValidation {
   }
 
   /**
-   * The realm allowlist for S3 credential issuers (spec 5.3). The list has no implicit member;
-   * {@code STS} must be listed too. Used at catalog create and update.
+   * The realm allowlist for S3 credential issuers. The list has no implicit member; {@code STS}
+   * must be listed too. Used at catalog create and update.
    */
   public static void validateS3CredentialIssuerAllowed(
       @NonNull RealmConfig realmConfig, @NonNull S3CredentialIssuer issuer) {
@@ -100,10 +100,9 @@ public class IcebergPropertiesValidation {
   }
 
   /**
-   * The allowlist plus build availability, for catalog initialization and storage-access resolution
-   * (spec 5.3 sites 2 and 3). The storage integration provider uses the allowlist check and its own
-   * switch arm. The {@code CLOUDFLARE_R2} throw below is removed by the change that adds its
-   * integration.
+   * The allowlist plus build availability, for catalog initialization and storage-access
+   * resolution. The storage integration provider uses the allowlist check and its own switch arm.
+   * The {@code CLOUDFLARE_R2} throw below is removed by the change that adds its integration.
    */
   public static void validateS3CredentialIssuerAvailable(
       @NonNull RealmConfig realmConfig, @NonNull S3CredentialIssuer issuer) {

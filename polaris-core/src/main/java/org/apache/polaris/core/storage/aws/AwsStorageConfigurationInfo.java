@@ -247,7 +247,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     }
   }
 
-  /** Spec 5.1: the rules of a CLOUDFLARE_R2 config that need no realm configuration. */
+  /** The rules of a CLOUDFLARE_R2 config that need no realm configuration. */
   @SuppressWarnings("deprecation")
   private void checkCloudflareR2() {
     getCloudflareR2Endpoint(); // throws with a message naming 'endpoint'

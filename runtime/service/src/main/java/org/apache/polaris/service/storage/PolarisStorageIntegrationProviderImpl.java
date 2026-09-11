@@ -142,7 +142,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     return switch (storageConfig.getStorageType()) {
       case S3 -> {
         AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) storageConfig;
-        // Spec 5.3 item 4: the allowlist as defence in depth behind the initialization and
+        // The allowlist as defence in depth behind the initialization and
         // access-config gates; the CLOUDFLARE_R2 arm below is the PR-A availability throw.
         IcebergPropertiesValidation.validateS3CredentialIssuerAllowed(
             realmConfig, awsConfig.getCredentialIssuer());

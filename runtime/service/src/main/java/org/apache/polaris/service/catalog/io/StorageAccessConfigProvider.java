@@ -115,7 +115,7 @@ public class StorageAccessConfigProvider {
 
     RealmConfig realmConfig = callContext.getRealmConfig();
 
-    // Spec 5.3 item 3: before the skip-subscoping return, so tasks and the skip path are gated.
+    // Before the skip-subscoping return, so tasks and the skip path are gated.
     PolarisStorageConfigurationInfo.findStorageConfigFromHierarchy(resolvedEntityPath)
         .ifPresent(
             storageConfig ->

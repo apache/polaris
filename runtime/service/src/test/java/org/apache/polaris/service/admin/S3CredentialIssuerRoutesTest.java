@@ -40,13 +40,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Spec 5.3 item 2 and section 9: in a PR-A build every Iceberg route that opens a CLOUDFLARE_R2
- * catalog is refused at initialization, namespace reads included, with or without
- * SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION; an STS catalog in the same realm is untouched. The R2
- * catalog is produced by updating an STS catalog under
- * ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES, because nothing can be created inside an R2
- * catalog through the REST API in this build (R-P5). Every catalog gets its own allowed location:
- * upstream rejects overlapping catalog locations at create and update.
+ * In a PR-A build every Iceberg route that opens a CLOUDFLARE_R2 catalog is refused at
+ * initialization, namespace reads included, with or without SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION;
+ * an STS catalog in the same realm is untouched. The R2 catalog is produced by updating an STS
+ * catalog under ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES, because nothing can be created
+ * inside an R2 catalog through the REST API in this build. Every catalog gets its own allowed
+ * location: upstream rejects overlapping catalog locations at create and update.
  */
 class S3CredentialIssuerRoutesTest {
 
