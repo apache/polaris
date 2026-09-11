@@ -114,12 +114,7 @@ class SemanticModelCatalogTest {
 
     catalog =
         new SemanticModelCatalog(
-            metaStoreManager,
-            callContext,
-            view,
-            resolutionManifestFactory,
-            principal,
-            (manifest, identifier) -> {});
+            metaStoreManager, callContext, view, resolutionManifestFactory, principal);
   }
 
   private SemanticModelDocument doc(String semanticModelJson) {

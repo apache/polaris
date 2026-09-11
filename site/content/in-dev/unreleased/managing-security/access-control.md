@@ -199,11 +199,9 @@ also permit listing models, matching table and view privileges.
 These metadata privileges do not confer grant management. Granting and revoking semantic model
 privileges use the existing namespace/catalog grant-management permissions.
 
-Creating or updating a semantic model additionally requires `TABLE_READ_PROPERTIES` on every
-referenced Iceberg or generic table, or `VIEW_READ_PROPERTIES` on every referenced Iceberg view.
-Missing or inaccessible sources return HTTP 404. Reading a model only checks the model privilege;
-it neither requires nor grants access to its underlying tables or views. Propagated read-time
-source checks are not implemented.
+Model authorization is independent of source table/view privileges. Source-access authorization
+on create/update and propagated read-time checks are deferred. Model privileges do not grant
+access to the underlying tables or views.
 
 Use the existing management grant endpoint
 `PUT /api/management/v1/catalogs/{catalogName}/catalog-roles/{catalogRoleName}/grants`

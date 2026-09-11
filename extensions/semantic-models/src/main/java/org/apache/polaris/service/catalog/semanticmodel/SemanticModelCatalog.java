@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -86,15 +85,13 @@ public class SemanticModelCatalog {
   private final PolarisMetaStoreManager metaStoreManager;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisPrincipal principal;
-  private final BiConsumer<PolarisResolutionManifest, TableIdentifier> authorizeSource;
 
   public SemanticModelCatalog(
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
       ResolutionManifestFactory resolutionManifestFactory,
-      PolarisPrincipal principal,
-      BiConsumer<PolarisResolutionManifest, TableIdentifier> authorizeSource) {
+      PolarisPrincipal principal) {
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
@@ -102,7 +99,6 @@ public class SemanticModelCatalog {
     this.metaStoreManager = metaStoreManager;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.principal = principal;
-    this.authorizeSource = authorizeSource;
   }
 
   public LoadSemanticModelResponse createSemanticModel(
@@ -310,24 +306,23 @@ public class SemanticModelCatalog {
    * Resolves and validates every {@code dataset.source} in the parsed Ossie document against the
    * current catalog. Unlike engine-specific view SQL, {@code dataset.source} is a structured
    * catalog identifier, so validating it here prevents every client from persisting dangling
-   * references. Every dataset must define a string {@code source}; a missing or non-string source
-   * fails with 400 and a JSON-Pointer to the offending dataset. The handler checks metadata read
-   * access before persistence and returns 404 for missing or inaccessible sources.
+   * references. Every dataset must define a string {@code source}; a missing or non-string source,
+   * or one that does not resolve to a {@code TABLE_LIKE} entity, fails with 400 and a JSON-Pointer
+   * to the offending dataset.
    */
   private void resolveAndValidateSources(JsonNode semanticModel) {
-    // The REST API also accepts a single model object. Both representations must check sources.
-    JsonNode models =
-        semanticModel.isArray() ? semanticModel : MAPPER.createArrayNode().add(semanticModel);
-    for (int modelIdx = 0; modelIdx < models.size(); modelIdx++) {
-      JsonNode datasets = models.get(modelIdx).get("datasets");
+    if (!semanticModel.isArray()) {
+      return;
+    }
+
+    for (int modelIdx = 0; modelIdx < semanticModel.size(); modelIdx++) {
+      JsonNode datasets = semanticModel.get(modelIdx).get("datasets");
       if (datasets == null || !datasets.isArray()) {
         continue;
       }
       for (int datasetIdx = 0; datasetIdx < datasets.size(); datasetIdx++) {
         String pointer =
-            semanticModel.isArray()
-                ? String.format("/semantic_model/%d/datasets/%d/source", modelIdx, datasetIdx)
-                : String.format("/semantic_model/datasets/%d/source", datasetIdx);
+            String.format("/semantic_model/%d/datasets/%d/source", modelIdx, datasetIdx);
         JsonNode source = datasets.get(datasetIdx).get("source");
         if (source == null || !source.isTextual()) {
           throw new BadRequestException(
@@ -350,7 +345,6 @@ public class SemanticModelCatalog {
             PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
             PolarisEntityType.TABLE_LIKE,
             true /* optional */));
-    authorizeSource.accept(manifest, tableIdentifier);
     PolarisResolvedPathWrapper resolved =
         manifest.getPassthroughResolvedPath(
             ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);

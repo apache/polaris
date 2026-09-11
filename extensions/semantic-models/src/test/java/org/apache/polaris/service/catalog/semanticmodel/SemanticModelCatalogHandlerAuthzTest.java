@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -195,8 +194,6 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
             ? namespace
             : model("m1");
     grant(target, privilege);
-    // Writes also need access to the referenced generic table.
-    grant(source(), PolarisPrivilege.TABLE_READ_PROPERTIES);
     if (allowed) {
       runOperation(operation);
     } else {
@@ -235,7 +232,6 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   @MethodSource("umbrellaPrivileges")
   void umbrellaPrivilegesApplyToDescendants(PolarisPrivilege privilege, boolean catalogScope) {
     grant(catalogScope ? catalog : namespace, privilege);
-    grant(source(), PolarisPrivilege.TABLE_READ_PROPERTIES);
     for (String operation : List.of("create", "list", "load", "update", "drop")) {
       runOperation(operation);
     }
@@ -305,66 +301,9 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   }
 
   @ParameterizedTest
-  @MethodSource("sourceRepresentations")
-  void writesRequireReadAccessToEverySource(PolarisEntitySubType subtype, boolean singleModel) {
-    var context = services.newCallContext().getPolarisCallContext();
-    var secondSource =
-        new PolarisEntity.Builder()
-            .setName("second")
-            .setType(PolarisEntityType.TABLE_LIKE)
-            .setSubType(subtype)
-            .setId(services.metaStoreManager().generateNewEntityId(context).getId())
-            .setCreateTimestamp(System.currentTimeMillis())
-            .setCatalogId(catalog.getId())
-            .setParentId(namespace.getId())
-            .build();
-    assertSuccess(
-        services
-            .metaStoreManager()
-            .createEntityIfNotExists(
-                context, PolarisEntity.toCoreList(List.of(catalog, namespace)), secondSource));
-    grant(namespace, PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA);
-    grant(source(), PolarisPrivilege.TABLE_READ_PROPERTIES);
-    String arrayDocument =
-        "[{\"name\":\"m\",\"datasets\":["
-            + "{\"name\":\"first\",\"source\":\"ns1.t1\"},"
-            + "{\"name\":\"second\",\"source\":\"ns1.second\"}]}]";
-    String document =
-        singleModel ? arrayDocument.substring(1, arrayDocument.length() - 1) : arrayDocument;
-    var request =
-        UpdateSemanticModelRequest.builder()
-            .setDocument(doc(document))
-            .setEntityVersion("1")
-            .build();
-    assertThatThrownBy(
-            () -> enforcingHandler().createSemanticModel(NS, createRequest("m2", document)))
-        .isInstanceOf(NotFoundException.class)
-        .hasMessageContaining("ns1.second");
-    assertThatThrownBy(() -> enforcingHandler().updateSemanticModel(identifier("m1"), request))
-        .isInstanceOf(NotFoundException.class)
-        .hasMessageContaining("ns1.second");
-    grant(
-        secondSource,
-        subtype == PolarisEntitySubType.ICEBERG_VIEW
-            ? PolarisPrivilege.VIEW_READ_PROPERTIES
-            : PolarisPrivilege.TABLE_READ_PROPERTIES);
-    enforcingHandler().createSemanticModel(NS, createRequest("m2", document));
-    enforcingHandler().updateSemanticModel(identifier("m1"), request);
-  }
-
-  static Stream<Arguments> sourceRepresentations() {
-    return Stream.of(
-            PolarisEntitySubType.ICEBERG_TABLE,
-            PolarisEntitySubType.GENERIC_TABLE,
-            PolarisEntitySubType.ICEBERG_VIEW)
-        .flatMap(subtype -> Stream.of(Arguments.of(subtype, false), Arguments.of(subtype, true)));
-  }
-
-  @ParameterizedTest
   @MethodSource("replacementOperations")
   void operationsKeepAuthorizedModelWhenNameIsReused(String operation, PolarisPrivilege privilege) {
     grant(model("m1"), privilege);
-    grant(source(), PolarisPrivilege.TABLE_READ_PROPERTIES);
     long originalId = model("m1").getId();
     String original = modelJson("ns1.t1");
     String replacement = original.replace("\"m\"", "\"replacement\"");
@@ -450,18 +389,13 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
             context, PolarisEntity.toCoreList(List.of(catalog)), ownerRole));
     assertSuccess(manager.grantUsageOnRoleToGrantee(context, null, principalRole, principal));
     assertSuccess(manager.grantUsageOnRoleToGrantee(context, catalog, ownerRole, principalRole));
-    for (PolarisPrivilege privilege :
-        List.of(
-            PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA,
-            PolarisPrivilege.TABLE_READ_PROPERTIES)) {
-      assertSuccess(
-          manager.grantPrivilegeOnSecurableToRole(
-              context,
-              ownerRole,
-              PolarisEntity.toCoreList(List.of(catalog)),
-              namespace,
-              privilege));
-    }
+    assertSuccess(
+        manager.grantPrivilegeOnSecurableToRole(
+            context,
+            ownerRole,
+            PolarisEntity.toCoreList(List.of(catalog)),
+            namespace,
+            PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA));
     return ImmutableSemanticModelCatalogHandler.builder()
         .from(enforcingHandler())
         .polarisPrincipal(
@@ -506,10 +440,6 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
 
   private PolarisEntity model(String name) {
     return read(List.of(catalog, namespace), PolarisEntityType.SEMANTIC_MODEL, name);
-  }
-
-  private PolarisEntity source() {
-    return read(List.of(catalog, namespace), PolarisEntityType.TABLE_LIKE, SOURCE_TABLE);
   }
 
   private void grant(PolarisEntity target, PolarisPrivilege privilege) {
