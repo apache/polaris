@@ -783,4 +783,236 @@ public class ManagementServiceTest {
           .isEqualTo(AwsStorageConfigInfo.CredentialIssuerEnum.STS);
     }
   }
+
+  private static final String R2_ACCOUNT = "0123456789abcdef0123456789abcdef";
+  private static final String R2_ENDPOINT = "https://" + R2_ACCOUNT + ".r2.cloudflarestorage.com";
+
+  private static TestServices issuerServices(List<String> issuers, boolean unrestrictedChanges) {
+    return TestServices.builder()
+        .config(
+            Map.of(
+                "SUPPORTED_CATALOG_STORAGE_TYPES",
+                List.of("S3", "GCS", "AZURE"),
+                "SUPPORTED_S3_CREDENTIAL_ISSUERS",
+                issuers,
+                "ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES",
+                unrestrictedChanges))
+        .build();
+  }
+
+  private static AwsStorageConfigInfo.Builder r2Config() {
+    return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+        .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+        .setEndpoint(R2_ENDPOINT)
+        .setPathStyleAccess(true)
+        .setRegion("auto")
+        .setAllowedLocations(List.of("s3://r2-bucket/base/"));
+  }
+
+  private static Catalog catalogNamed(String name, StorageConfigInfo storageConfig) {
+    return PolarisCatalog.builder()
+        .setType(Catalog.TypeEnum.INTERNAL)
+        .setName(name)
+        .setProperties(new CatalogProperties("s3://r2-bucket/base/" + name))
+        .setStorageConfigInfo(storageConfig)
+        .build();
+  }
+
+  private static Response create(TestServices svc, Catalog catalog) {
+    return svc.catalogsApi()
+        .createCatalog(
+            new CreateCatalogRequest(catalog), svc.realmContext(), svc.securityContext());
+  }
+
+  private static Catalog fetch(TestServices svc, String name) {
+    try (Response response =
+        svc.catalogsApi().getCatalog(name, svc.realmContext(), svc.securityContext())) {
+      return (Catalog) response.getEntity();
+    }
+  }
+
+  @Test
+  public void testCloudflareR2IsRejectedByTheDefaultAllowlist() {
+    TestServices defaults = issuerServices(List.of("STS"), false);
+    assertThatThrownBy(() -> create(defaults, catalogNamed("r2-off", r2Config().build())))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm");
+  }
+
+  @Test
+  public void testStsIsRejectedWhenTheRealmListsOnlyCloudflareR2() {
+    TestServices r2Only = issuerServices(List.of("CLOUDFLARE_R2"), false);
+    AwsStorageConfigInfo sts =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+            .build();
+    assertThatThrownBy(() -> create(r2Only, catalogNamed("sts-off", sts)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("S3 credential issuer STS is not enabled in this realm");
+  }
+
+  @Test
+  public void testDisallowedIssuerIsRejectedOnUpdateToo() {
+    TestServices stsOnlyUnrestricted = issuerServices(List.of("STS"), true);
+    AwsStorageConfigInfo sts =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+            .build();
+    try (Response response = create(stsOnlyUnrestricted, catalogNamed("sts-stay", sts))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(stsOnlyUnrestricted, "sts-stay");
+    UpdateCatalogRequest toR2 =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://r2-bucket/base/sts-stay"),
+            r2Config().build());
+    assertThatThrownBy(
+            () ->
+                stsOnlyUnrestricted
+                    .catalogsApi()
+                    .updateCatalog(
+                        "sts-stay",
+                        toR2,
+                        stsOnlyUnrestricted.realmContext(),
+                        stsOnlyUnrestricted.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm");
+  }
+
+  @Test
+  public void testCloudflareR2CatalogIsCreatedAndReadBack() {
+    TestServices enabled = issuerServices(List.of("STS", "CLOUDFLARE_R2"), false);
+    try (Response response = create(enabled, catalogNamed("r2-on", r2Config().build()))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    AwsStorageConfigInfo fetched =
+        (AwsStorageConfigInfo) fetch(enabled, "r2-on").getStorageConfigInfo();
+    assertThat(fetched.getCredentialIssuer())
+        .isEqualTo(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2);
+    assertThat(fetched.getEndpoint()).isEqualTo(R2_ENDPOINT);
+    assertThat(fetched.getPathStyleAccess()).isTrue();
+    assertThat(fetched.getRegion()).isEqualTo("auto");
+  }
+
+  @Test
+  public void testCloudflareR2ModelRulesSurfaceAsBadRequests() {
+    TestServices enabled = issuerServices(List.of("STS", "CLOUDFLARE_R2"), false);
+    assertThatThrownBy(
+            () ->
+                create(
+                    enabled,
+                    catalogNamed("r2-no-path", r2Config().setPathStyleAccess(null).build())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("pathStyleAccess");
+    assertThatThrownBy(
+            () ->
+                create(
+                    enabled,
+                    catalogNamed(
+                        "r2-bad-ep", r2Config().setEndpoint("https://s3.amazonaws.com").build())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageStartingWith("endpoint");
+    assertThatThrownBy(
+            () ->
+                create(
+                    enabled,
+                    catalogNamed(
+                        "r2-role",
+                        r2Config().setRoleArn("arn:aws:iam::123456789012:role/x").build())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("roleArn");
+  }
+
+  @Test
+  public void testIssuerAndEndpointAreFrozen() {
+    TestServices enabled = issuerServices(List.of("STS", "CLOUDFLARE_R2"), false);
+    try (Response response = create(enabled, catalogNamed("r2-frozen", r2Config().build()))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(enabled, "r2-frozen");
+    Map<String, String> props = Map.of("default-base-location", "s3://r2-bucket/base/r2-frozen");
+
+    // Omitting the issuer reads as STS, which is a frozen-field change, not a silent revert.
+    UpdateCatalogRequest omitIssuer =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            props,
+            r2Config().setCredentialIssuer(null).setRoleArn(null).build());
+    assertThatThrownBy(
+            () ->
+                enabled
+                    .catalogsApi()
+                    .updateCatalog(
+                        "r2-frozen", omitIssuer, enabled.realmContext(), enabled.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageStartingWith("Cannot modify credential issuer");
+
+    UpdateCatalogRequest changeEndpoint =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            props,
+            r2Config()
+                .setEndpoint("https://ffffffffffffffffffffffffffffffff.r2.cloudflarestorage.com")
+                .build());
+    assertThatThrownBy(
+            () ->
+                enabled
+                    .catalogsApi()
+                    .updateCatalog(
+                        "r2-frozen",
+                        changeEndpoint,
+                        enabled.realmContext(),
+                        enabled.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageStartingWith("Cannot modify endpoint of a CLOUDFLARE_R2 storage config");
+
+    // Adding an allowed location keeps issuer and endpoint and is allowed.
+    UpdateCatalogRequest addLocation =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            props,
+            r2Config()
+                .setAllowedLocations(List.of("s3://r2-bucket/base/", "s3://r2-bucket/more/"))
+                .build());
+    try (Response response =
+        enabled
+            .catalogsApi()
+            .updateCatalog(
+                "r2-frozen", addLocation, enabled.realmContext(), enabled.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  public void testFreezeIsLiftedByTheUnrestrictedFlag() {
+    TestServices unrestricted = issuerServices(List.of("STS", "CLOUDFLARE_R2"), true);
+    AwsStorageConfigInfo sts =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+            .build();
+    try (Response response = create(unrestricted, catalogNamed("sts-to-r2", sts))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(unrestricted, "sts-to-r2");
+    UpdateCatalogRequest toR2 =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://r2-bucket/base/sts-to-r2"),
+            r2Config().build());
+    try (Response response =
+        unrestricted
+            .catalogsApi()
+            .updateCatalog(
+                "sts-to-r2", toR2, unrestricted.realmContext(), unrestricted.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+    assertThat(
+            ((AwsStorageConfigInfo) fetch(unrestricted, "sts-to-r2").getStorageConfigInfo())
+                .getCredentialIssuer())
+        .isEqualTo(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2);
+  }
 }

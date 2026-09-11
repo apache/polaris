@@ -130,6 +130,7 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.S3CredentialIssuer;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -931,6 +932,19 @@ public class PolarisAdminService {
         if (!Objects.equals(currentAwsConfig.getExternalId(), newAwsConfig.getExternalId())) {
           throw new BadRequestException(
               "Cannot modify ExternalId in storage config from %s to %s",
+              currentStorageConfig, newStorageConfig);
+        }
+
+        if (currentAwsConfig.getCredentialIssuer() != newAwsConfig.getCredentialIssuer()) {
+          throw new BadRequestException(
+              "Cannot modify credential issuer in storage config from %s to %s",
+              currentStorageConfig, newStorageConfig);
+        }
+
+        if (newAwsConfig.getCredentialIssuer() == S3CredentialIssuer.CLOUDFLARE_R2
+            && !Objects.equals(currentAwsConfig.getEndpoint(), newAwsConfig.getEndpoint())) {
+          throw new BadRequestException(
+              "Cannot modify endpoint of a CLOUDFLARE_R2 storage config from %s to %s",
               currentStorageConfig, newStorageConfig);
         }
       }
