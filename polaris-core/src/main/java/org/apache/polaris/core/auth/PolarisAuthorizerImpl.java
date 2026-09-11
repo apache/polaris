@@ -82,6 +82,13 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROLE_USA
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROTATE_CREDENTIALS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_CREATE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_DROP;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_LIST;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_READ;
+import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_WRITE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SERVICE_MANAGE_ACCESS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_PARTITION_SPEC;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SCHEMA;
@@ -675,6 +682,68 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
         List.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE, CATALOG_MANAGE_ACCESS));
+
+    // Semantic-model metadata privileges inherit through namespaces and catalogs.
+    SUPER_PRIVILEGES.putAll(
+        SEMANTIC_MODEL_LIST,
+        List.of(
+            SEMANTIC_MODEL_LIST,
+            SEMANTIC_MODEL_CREATE,
+            SEMANTIC_MODEL_READ,
+            SEMANTIC_MODEL_WRITE,
+            SEMANTIC_MODEL_FULL_METADATA,
+            NAMESPACE_FULL_METADATA,
+            CATALOG_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        SEMANTIC_MODEL_CREATE,
+        List.of(
+            SEMANTIC_MODEL_CREATE,
+            SEMANTIC_MODEL_FULL_METADATA,
+            NAMESPACE_FULL_METADATA,
+            CATALOG_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        SEMANTIC_MODEL_READ,
+        List.of(
+            SEMANTIC_MODEL_READ,
+            SEMANTIC_MODEL_FULL_METADATA,
+            SEMANTIC_MODEL_WRITE,
+            NAMESPACE_FULL_METADATA,
+            CATALOG_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        SEMANTIC_MODEL_WRITE,
+        List.of(
+            SEMANTIC_MODEL_WRITE,
+            SEMANTIC_MODEL_FULL_METADATA,
+            NAMESPACE_FULL_METADATA,
+            CATALOG_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        SEMANTIC_MODEL_DROP,
+        List.of(
+            SEMANTIC_MODEL_DROP,
+            SEMANTIC_MODEL_FULL_METADATA,
+            NAMESPACE_FULL_METADATA,
+            CATALOG_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        SEMANTIC_MODEL_FULL_METADATA,
+        List.of(
+            SEMANTIC_MODEL_FULL_METADATA,
+            NAMESPACE_FULL_METADATA,
+            CATALOG_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE,
+        List.of(SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE, CATALOG_MANAGE_ACCESS));
 
     // Policy privileges
     SUPER_PRIVILEGES.putAll(

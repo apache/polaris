@@ -256,6 +256,13 @@ public enum PolarisPrivilege {
       PolarisEntityType.TABLE_LIKE,
       List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
       PolarisEntityType.CATALOG_ROLE),
+  SEMANTIC_MODEL_LIST(103, PolarisEntityType.NAMESPACE),
+  SEMANTIC_MODEL_CREATE(104, PolarisEntityType.NAMESPACE),
+  SEMANTIC_MODEL_READ(105, PolarisEntityType.SEMANTIC_MODEL),
+  SEMANTIC_MODEL_WRITE(106, PolarisEntityType.SEMANTIC_MODEL),
+  SEMANTIC_MODEL_DROP(107, PolarisEntityType.SEMANTIC_MODEL),
+  SEMANTIC_MODEL_FULL_METADATA(108, PolarisEntityType.SEMANTIC_MODEL),
+  SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE(109, PolarisEntityType.SEMANTIC_MODEL),
   ;
 
   /**

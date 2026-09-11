@@ -175,6 +175,73 @@ keys, or other secrets in table or view properties.
 | POLICY_ATTACH | Enables policy to be attached to entities. |
 | POLICY_DETACH | Enables policy to be detached from entities. |
 
+### Semantic model privileges
+
+Semantic models use their own privileges, independently of table and view privileges.
+The management API supports grants on individual models and at namespace or catalog scope.
+Model-scoped grant inspection is deferred; model grants appear in the existing catalog-role
+grant listing.
+
+| Privilege | Target | Description |
+| --------- | ------ | ----------- |
+| SEMANTIC_MODEL_LIST | Namespace | Lists model identifiers in the namespace. |
+| SEMANTIC_MODEL_CREATE | Namespace | Creates a model in the namespace. |
+| SEMANTIC_MODEL_READ | Semantic model | Reads the model document and metadata. |
+| SEMANTIC_MODEL_WRITE | Semantic model | Updates the model document and permits reading it. |
+| SEMANTIC_MODEL_DROP | Semantic model | Deletes the model. |
+| SEMANTIC_MODEL_FULL_METADATA | Semantic model | Includes list, create, read, update, and drop privileges, as applicable to the grant's scope. |
+| SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE | Semantic model | Permits granting privileges on the model to catalog roles. Revocation also requires authority to manage the recipient role's grants. |
+
+Privileges granted on a namespace or catalog apply to descendant models. At these scopes,
+`SEMANTIC_MODEL_CREATE`, `SEMANTIC_MODEL_READ`, and `SEMANTIC_MODEL_WRITE`
+also permit listing models, matching table and view privileges.
+`SEMANTIC_MODEL_FULL_METADATA` grants list, create, read, update, and drop access within that scope.
+`NAMESPACE_FULL_METADATA`, `CATALOG_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and
+`CATALOG_MANAGE_CONTENT` also cover semantic model metadata operations within their scope.
+These metadata privileges do not confer grant management. Single-model grants require
+`SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE` on the model. Revocation additionally requires
+`CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE` on the recipient role, following policy grant semantics.
+`CATALOG_MANAGE_ACCESS` can satisfy these grant-management checks within its scope.
+Namespace/catalog grants continue to use the existing namespace/catalog grant-management permissions.
+
+Model authorization is independent of source table/view privileges. Source-access authorization
+on create/update and propagated read-time checks are deferred. Model privileges do not grant
+access to the underlying tables or views.
+
+Use the existing management grant endpoint
+`PUT /api/management/v1/catalogs/{catalogName}/catalog-roles/{catalogRoleName}/grants`
+with a namespace grant, for example, to allow reading models in the `sales` namespace:
+
+```json
+{
+  "grant": {
+    "type": "namespace",
+    "namespace": ["sales"],
+    "privilege": "SEMANTIC_MODEL_READ"
+  }
+}
+```
+
+For catalog-wide access, use `type: "catalog"` and omit `namespace`. To grant access only to
+the `sales.revenue` model, use:
+
+```json
+{
+  "grant": {
+    "type": "semantic-model",
+    "namespace": ["sales"],
+    "semanticModelName": "revenue",
+    "privilege": "SEMANTIC_MODEL_READ"
+  }
+}
+```
+
+Single-model grants can provide read, write, drop, full metadata, or grant-management access.
+They do not permit listing or creating models in the containing namespace; list and create
+privileges must be granted at namespace or catalog scope.
+Grant revocation uses the same request body with `POST` to the role's grants endpoint.
+The existing role-grants listing returns grants with their model, namespace, or catalog scope.
+
 ## RBAC example
 
 The following diagram illustrates how RBAC works in Polaris and
