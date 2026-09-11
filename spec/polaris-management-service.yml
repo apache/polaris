@@ -1560,16 +1560,6 @@ components:
         - TABLE_REMOVE_PARTITION_SPECS
         - TABLE_MANAGE_STRUCTURE
 
-    SemanticModelPrivilege:
-      type: string
-      enum:
-        - CATALOG_MANAGE_ACCESS
-        - SEMANTIC_MODEL_READ_PROPERTIES
-        - SEMANTIC_MODEL_WRITE_PROPERTIES
-        - SEMANTIC_MODEL_DROP
-        - SEMANTIC_MODEL_FULL_METADATA
-        - SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE
-
     PolicyPrivilege:
       type: string
       enum:
@@ -1591,7 +1581,6 @@ components:
         - SEMANTIC_MODEL_WRITE_PROPERTIES
         - SEMANTIC_MODEL_DROP
         - SEMANTIC_MODEL_FULL_METADATA
-        - SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE
         - CATALOG_MANAGE_ACCESS
         - CATALOG_MANAGE_CONTENT
         - CATALOG_MANAGE_METADATA
@@ -1651,7 +1640,6 @@ components:
         - SEMANTIC_MODEL_WRITE_PROPERTIES
         - SEMANTIC_MODEL_DROP
         - SEMANTIC_MODEL_FULL_METADATA
-        - SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE
         - CATALOG_MANAGE_ACCESS
         - CATALOG_MANAGE_CONTENT
         - CATALOG_MANAGE_METADATA
@@ -1756,26 +1744,6 @@ components:
             - tableName
             - privilege
 
-    SemanticModelGrant:
-      allOf:
-        - $ref: '#/components/schemas/GrantResource'
-        - type: object
-          properties:
-            namespace:
-              type: array
-              items:
-                type: string
-            semanticModelName:
-              type: string
-              minLength: 1
-              maxLength: 256
-            privilege:
-              $ref: '#/components/schemas/SemanticModelPrivilege'
-          required:
-            - namespace
-            - semanticModelName
-            - privilege
-
     PolicyGrant:
       allOf:
         - $ref: '#/components/schemas/GrantResource'
@@ -1830,7 +1798,6 @@ components:
           table: '#/components/schemas/TableGrant'
           view: '#/components/schemas/ViewGrant'
           policy: '#/components/schemas/PolicyGrant'
-          semantic-model: '#/components/schemas/SemanticModelGrant'
       properties:
         type:
           type: string
@@ -1840,7 +1807,6 @@ components:
             - table
             - view
             - policy
-            - semantic-model
       required:
         - type
 

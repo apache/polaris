@@ -22,7 +22,6 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_CATA
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_POLICY_GRANT_TO_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE;
-import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_TABLE_GRANT_TO_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
@@ -114,7 +113,6 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_N
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_PRINCIPAL_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE;
-import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ROTATE_CREDENTIALS;
@@ -189,7 +187,6 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_WRITE_PR
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_LIST;
-import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SEMANTIC_MODEL_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SERVICE_MANAGE_ACCESS;
@@ -426,11 +423,6 @@ record RbacOperationSemantics(
     register(UPDATE_SEMANTIC_MODEL, SEMANTIC_MODEL_WRITE_PROPERTIES);
     register(DROP_SEMANTIC_MODEL, SEMANTIC_MODEL_DROP);
     register(LIST_SEMANTIC_MODEL, SEMANTIC_MODEL_LIST);
-    register(ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE, SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE);
-    register(
-        REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE,
-        EnumSet.of(SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE),
-        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
 
     // Policy attachment operations (use CATALOG rooting)
     register(
