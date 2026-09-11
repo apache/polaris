@@ -26,11 +26,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.admin.model.AddGrantRequest;
+import org.apache.polaris.core.admin.model.GrantResource;
+import org.apache.polaris.core.admin.model.RevokeGrantRequest;
+import org.apache.polaris.core.admin.model.SemanticModelGrant;
+import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -273,6 +279,17 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   }
 
   @Test
+  void modelFullMetadataDoesNotAuthorizeNamespaceOperations() {
+    grant(model("m1"), PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA);
+    for (String operation : List.of("create", "list")) {
+      assertThatThrownBy(() -> runOperation(operation)).isInstanceOf(ForbiddenException.class);
+    }
+    for (String operation : List.of("load", "update", "drop")) {
+      runOperation(operation);
+    }
+  }
+
+  @Test
   void tablePrivilegesDoNotAuthorizeModels() {
     grant(namespace, PolarisPrivilege.TABLE_FULL_METADATA);
     assertThatThrownBy(() -> runOperation("load")).isInstanceOf(ForbiddenException.class);
@@ -283,15 +300,23 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
     PolarisEntity model = model("m1");
     grant(model, PolarisPrivilege.SEMANTIC_MODEL_READ);
     runOperation("load");
-    assertSuccess(
+    try (Response response =
         services
-            .metaStoreManager()
-            .revokePrivilegeOnSecurableFromRole(
-                services.newCallContext().getPolarisCallContext(),
-                role,
-                PolarisEntity.toCoreList(List.of(catalog, namespace)),
-                model,
-                PolarisPrivilege.SEMANTIC_MODEL_READ));
+            .catalogsApi()
+            .revokeGrantFromCatalogRole(
+                CATALOG_NAME,
+                role.getName(),
+                false,
+                new RevokeGrantRequest(
+                    new SemanticModelGrant(
+                        List.of(NS.levels()),
+                        model.getName(),
+                        SemanticModelPrivilege.SEMANTIC_MODEL_READ,
+                        GrantResource.TypeEnum.SEMANTIC_MODEL)),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(201);
+    }
     assertThatThrownBy(() -> runOperation("load")).isInstanceOf(ForbiddenException.class);
   }
 
@@ -332,17 +357,35 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
   }
 
   private void grant(PolarisEntity target, PolarisPrivilege privilege) {
-    List<PolarisEntity> parents =
-        target == catalog || target == namespace ? List.of(catalog) : List.of(catalog, namespace);
-    assertSuccess(
+    if (target.getType() != PolarisEntityType.SEMANTIC_MODEL) {
+      assertSuccess(
+          services
+              .metaStoreManager()
+              .grantPrivilegeOnSecurableToRole(
+                  services.newCallContext().getPolarisCallContext(),
+                  role,
+                  PolarisEntity.toCoreList(List.of(catalog)),
+                  target,
+                  privilege));
+      return;
+    }
+    SemanticModelGrant grant =
+        new SemanticModelGrant(
+            List.of(NS.levels()),
+            target.getName(),
+            SemanticModelPrivilege.valueOf(privilege.name()),
+            GrantResource.TypeEnum.SEMANTIC_MODEL);
+    try (Response response =
         services
-            .metaStoreManager()
-            .grantPrivilegeOnSecurableToRole(
-                services.newCallContext().getPolarisCallContext(),
-                role,
-                PolarisEntity.toCoreList(parents),
-                target,
-                privilege));
+            .catalogsApi()
+            .addGrantToCatalogRole(
+                CATALOG_NAME,
+                role.getName(),
+                new AddGrantRequest(grant),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(201);
+    }
   }
 
   private static void assertSuccess(BaseResult result) {

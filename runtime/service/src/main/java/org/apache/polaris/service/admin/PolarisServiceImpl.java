@@ -57,6 +57,7 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
 import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
+import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -688,6 +689,21 @@ public class PolarisServiceImpl
                   ? adminService.grantPrivilegeOnPolicyToRole(
                       catalogName, catalogRoleName, identifier, privilege)
                   : adminService.revokePrivilegeOnPolicyFromRole(
+                      catalogName, catalogRoleName, identifier, privilege);
+          break;
+        }
+      case SemanticModelGrant semanticModelGrant:
+        {
+          var privilege = PolarisPrivilege.valueOf(semanticModelGrant.getPrivilege().toString());
+          var identifier =
+              TableIdentifier.of(
+                  toNamespace(semanticModelGrant.getNamespace()),
+                  semanticModelGrant.getSemanticModelName());
+          result =
+              direction == GrantDirection.GRANT
+                  ? adminService.grantPrivilegeOnSemanticModelToRole(
+                      catalogName, catalogRoleName, identifier, privilege)
+                  : adminService.revokePrivilegeOnSemanticModelFromRole(
                       catalogName, catalogRoleName, identifier, privilege);
           break;
         }
