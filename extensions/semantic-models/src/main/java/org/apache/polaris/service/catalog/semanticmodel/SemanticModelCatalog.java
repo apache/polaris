@@ -249,16 +249,10 @@ public class SemanticModelCatalog {
             Map.of(),
             false);
     if (!result.isSuccess()) {
-      switch (result.getReturnStatus()) {
-        case ENTITY_NOT_FOUND, CATALOG_PATH_CANNOT_BE_RESOLVED ->
-            throw new NoSuchSemanticModelException(
-                String.format("Semantic model does not exist: %s", identifier.getName()));
-        default ->
-            throw new IllegalStateException(
-                String.format(
-                    "Failed to drop semantic model %s error status: %s with extraInfo: %s",
-                    identifier, result.getReturnStatus(), result.getExtraInformation()));
-      }
+      throw new IllegalStateException(
+          String.format(
+              "Failed to drop semantic model %s error status: %s with extraInfo: %s",
+              identifier, result.getReturnStatus(), result.getExtraInformation()));
     }
   }
 

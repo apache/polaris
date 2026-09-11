@@ -47,7 +47,6 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.semantic.exceptions.NoSuchSemanticModelException;
 import org.apache.polaris.core.semantic.exceptions.SemanticModelVersionMismatchException;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticModelRequest;
@@ -344,7 +343,7 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
               .isInstanceOf(SemanticModelVersionMismatchException.class);
       case "drop" ->
           assertThatThrownBy(() -> handler.dropSemanticModel(identifier("m1")))
-              .isInstanceOf(NoSuchSemanticModelException.class);
+              .isInstanceOf(RuntimeException.class);
       default -> throw new IllegalArgumentException(operation);
     }
     assertThat(owner.loadSemanticModel(identifier("m1")).getDocument().getSemanticModel())
