@@ -32,27 +32,15 @@ val polarisRangerServiceDefFile =
   layout.projectDirectory.file("src/main/resources/polaris-ranger-servicedef.json")
 val servicedefPlaceholder = "@@POLARIS_RANGER_SERVICE_DEF@@"
 
-// Both authz test fixtures below assert against the shipped `serviceDef`, so rather than
-// checking in a byte-for-byte copy of it (which can silently drift), each fixture is a
-// template with the shipped `polaris-ranger-servicedef.json` spliced in at build time.
-val generateAuthzTestFixture =
-  tasks.register("generateAuthzTestFixture") {
-    val templateFile =
-      layout.projectDirectory.file("src/test/resources/authz_tests/dev_polaris.json.template")
-    // Root of the srcDir added below: files must be written under authz_tests/ within it so
-    // their classpath-relative path matches what EmbeddedResourcePolicySource expects.
-    val outputDir = layout.buildDirectory.dir("generated/resources/test")
-    inputs.file(polarisRangerServiceDefFile)
-    inputs.file(templateFile)
-    outputs.dir(outputDir)
-    doLast {
-      val serviceDef = polarisRangerServiceDefFile.asFile.readText().trim()
-      val merged = templateFile.asFile.readText().replace(servicedefPlaceholder, serviceDef)
-      val outDir = outputDir.get().dir("authz_tests").asFile.apply { mkdirs() }
-      outDir.resolve("dev_polaris.json").writeText(merged)
-    }
-  }
+// Strips the ASF license header (required since these templates are checked-in source files)
+// that precedes the "{" starting the actual, not-quite-valid-JSON template content.
+fun stripLicenseHeader(text: String) = text.substringAfter("*/").trimStart()
 
+// The intTest authz fixture asserts against the shipped `serviceDef`, so rather than checking
+// in a byte-for-byte copy of it (which can silently drift), it's a template with the shipped
+// `polaris-ranger-servicedef.json` spliced in at build time. The unit-test equivalent fixture is
+// generated the same way, but by test Java code at test-run time (see RangerTestUtils), since
+// RangerPolarisAuthorizerTest runs in-process and can just write into a JUnit-managed temp dir.
 val generateAuthzItTestFixture =
   tasks.register("generateAuthzItTestFixture") {
     val templateFile =
@@ -95,16 +83,14 @@ val generateAuthzItTestFixture =
       val serviceDefWithConditions =
         shippedServiceDef.removeSuffix("}").trimEnd() + policyConditions + "\n}"
 
-      val merged =
-        templateFile.asFile.readText().replace(servicedefPlaceholder, serviceDefWithConditions)
+      val template = stripLicenseHeader(templateFile.asFile.readText())
+      val merged = template.replace(servicedefPlaceholder, serviceDefWithConditions)
       val outDir = outputDir.get().asFile.apply { mkdirs() }
       outDir.resolve("dev_polaris.json").writeText(merged)
       rolesFile.asFile.copyTo(outDir.resolve("dev_polaris_roles.json"), overwrite = true)
       userStoreFile.asFile.copyTo(outDir.resolve("dev_polaris_userstore.json"), overwrite = true)
     }
   }
-
-sourceSets { test { resources.srcDir(generateAuthzTestFixture) } }
 
 dependencies {
   polarisServer(project(path = ":polaris-server", configuration = "quarkusRunner"))
