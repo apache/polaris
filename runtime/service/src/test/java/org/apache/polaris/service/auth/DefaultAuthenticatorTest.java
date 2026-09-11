@@ -40,6 +40,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributeNamespaces;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -500,11 +501,41 @@ public class DefaultAuthenticatorTest {
     assertThat(result.getAttribute("custom-key", String.class)).isEmpty();
   }
 
+  @Test
+  void testPrincipalEntityAttributeContainsUserProperties() {
+    // Given: a principal with user-defined properties
+    PrincipalEntity entity =
+        createPrincipal("principal-with-properties", Map.of("department", "finance"));
+    PolarisCredential credentials =
+        PolarisCredential.of(
+            null, entity.getName(), Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+
+    // When: authenticating the principal
+    PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
+
+    // Then: the principal entity attribute must include the user-defined properties, but
+    // DefaultAuthenticator does not project authorizer-facing namespaced keys.
+    PrincipalEntity entityAttr =
+        result
+            .getAttribute(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, PrincipalEntity.class)
+            .orElseThrow();
+    assertThat(entityAttr.getPropertiesAsMap()).containsEntry("department", "finance");
+    assertThat(result.getAttributes())
+        .doesNotContainKey(PolarisPrincipalAttributeNamespaces.USER_PREFIX + "department")
+        .doesNotContainKey("department");
+  }
+
   private PrincipalEntity createPrincipal(String name, String... roles) {
+    return createPrincipal(name, Map.of(), roles);
+  }
+
+  private PrincipalEntity createPrincipal(
+      String name, Map<String, String> properties, String... roles) {
 
     PrincipalWithCredentialsCredentials credentials =
         newAdminService()
-            .createPrincipal(new PrincipalEntity.Builder().setName(name).build())
+            .createPrincipal(
+                new PrincipalEntity.Builder().setName(name).setProperties(properties).build())
             .getCredentials();
 
     metaStoreManager.rotatePrincipalSecrets(
