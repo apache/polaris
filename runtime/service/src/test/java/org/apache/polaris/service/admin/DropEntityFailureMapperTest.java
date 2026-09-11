@@ -18,11 +18,13 @@
  */
 package org.apache.polaris.service.admin;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.junit.jupiter.api.Test;
@@ -93,6 +95,20 @@ class DropEntityFailureMapperTest {
                     UNDROPPABLE_MESSAGE))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Principal 'alice' not found");
+  }
+
+  @Test
+  void throwIfFailed_entityAlreadyExists_throwsCommitConflictException() {
+    assertThatThrownBy(
+            () ->
+                DropEntityFailureMapper.throwIfFailed(
+                    new DropEntityResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null),
+                    () -> ENTITY_LABEL,
+                    UNDROPPABLE_MESSAGE))
+        .isInstanceOfSatisfying(
+            CommitConflictException.class,
+            exception -> assertThat(exception.httpStatusCode()).isEqualTo(409))
+        .hasMessage("Concurrent cleanup task creation while dropping Principal 'alice'");
   }
 
   @ParameterizedTest

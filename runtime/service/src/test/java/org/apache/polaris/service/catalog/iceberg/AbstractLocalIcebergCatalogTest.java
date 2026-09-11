@@ -2117,6 +2117,27 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testDropNamespaceWithCleanupTaskConflict() {
+    catalog.createNamespace(NS);
+
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(new DropEntityResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    LocalIcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThatThrownBy(() -> spiedCatalog.dropNamespace(NS))
+        .isInstanceOf(CommitConflictException.class)
+        .hasMessageContaining("Concurrent cleanup task creation")
+        .hasMessageContaining("namespace");
+  }
+
+  @Test
   public void testDropTableWithUnexpectedError() {
     catalog.createNamespace(NS);
     catalog.buildTable(TABLE, SCHEMA).create();
@@ -2139,6 +2160,28 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .isInstanceOf(ServiceFailureException.class)
         .hasMessageContaining("Failed to drop table")
         .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
+  }
+
+  @Test
+  public void testDropTableWithCleanupTaskConflict() {
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(new DropEntityResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    LocalIcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThatThrownBy(() -> spiedCatalog.dropTable(TABLE, false))
+        .isInstanceOf(CommitConflictException.class)
+        .hasMessageContaining("Concurrent cleanup task creation")
+        .hasMessageContaining("table");
   }
 
   @Test
@@ -2192,6 +2235,33 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .isInstanceOf(ServiceFailureException.class)
         .hasMessageContaining("Failed to drop view")
         .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
+  }
+
+  @Test
+  public void testDropViewWithCleanupTaskConflict() {
+    catalog.createNamespace(NS);
+    catalog
+        .buildView(TABLE)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", "SELECT * FROM ns.tbl")
+        .create();
+
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(new DropEntityResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    LocalIcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThatThrownBy(() -> spiedCatalog.dropView(TABLE))
+        .isInstanceOf(CommitConflictException.class)
+        .hasMessageContaining("Concurrent cleanup task creation")
+        .hasMessageContaining("view");
   }
 
   @Test
