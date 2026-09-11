@@ -36,6 +36,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,6 +70,7 @@ import org.apache.ranger.authz.model.RangerAuthzResult;
 import org.apache.ranger.authz.model.RangerMultiAuthzRequest;
 import org.apache.ranger.authz.model.RangerMultiAuthzResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DatabindException;
@@ -85,8 +87,9 @@ public class RangerPolarisAuthorizerTest {
 
   private final PolarisAuthorizer authorizer;
 
-  public RangerPolarisAuthorizerTest() {
-    RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig());
+  public RangerPolarisAuthorizerTest(@TempDir Path tempDir) {
+    RangerPolarisAuthorizerFactory factory =
+        new RangerPolarisAuthorizerFactory(createConfig(tempDir));
     RangerPolarisAuthorizer rangerPolarisAuthorizer = factory.create(createRealmConfig());
     rangerPolarisAuthorizer.setRealmContext(createRealmContext());
     this.authorizer = rangerPolarisAuthorizer;
