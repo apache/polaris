@@ -109,6 +109,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its
   catalog path disappears after resolution and before the deletion is persisted.
+- Return HTTP 404 instead of 500 when a policy or its catalog path disappears after resolution and before deletion.
 
 - Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
