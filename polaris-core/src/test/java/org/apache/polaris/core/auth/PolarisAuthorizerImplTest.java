@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationIntentResolver.ResolvedIntent;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -111,8 +112,7 @@ public class PolarisAuthorizerImplTest {
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE),
-            ArgumentMatchers.any(),
-            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+            any(ResolvedIntent.class));
 
     AuthorizationRequest request =
         new AuthorizationRequest(
@@ -131,8 +131,7 @@ public class PolarisAuthorizerImplTest {
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE),
-            eq(List.of(rootWrapper)),
-            eq(List.of(principalRoleWrapper)));
+            eq(new ResolvedIntent(List.of(rootWrapper), List.of(principalRoleWrapper))));
   }
 
   @Test
@@ -153,8 +152,7 @@ public class PolarisAuthorizerImplTest {
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.LIST_CATALOGS),
-            ArgumentMatchers.any(),
-            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+            any(ResolvedIntent.class));
 
     AuthorizationRequest request =
         new AuthorizationRequest(
@@ -169,8 +167,7 @@ public class PolarisAuthorizerImplTest {
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.LIST_CATALOGS),
-            eq(List.of(rootWrapper)),
-            eq(null));
+            eq(new ResolvedIntent(List.of(rootWrapper), null)));
   }
 
   @Test
@@ -193,8 +190,7 @@ public class PolarisAuthorizerImplTest {
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
-            ArgumentMatchers.any(),
-            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+            any(ResolvedIntent.class));
 
     AuthorizationRequest request =
         new AuthorizationRequest(
@@ -216,8 +212,7 @@ public class PolarisAuthorizerImplTest {
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
-            eq(List.of(namespaceWrapper)),
-            eq(null));
+            eq(new ResolvedIntent(List.of(namespaceWrapper), null)));
   }
 
   @Test
@@ -238,8 +233,7 @@ public class PolarisAuthorizerImplTest {
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.GET_CATALOG),
-            ArgumentMatchers.any(),
-            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+            any(ResolvedIntent.class));
 
     AuthorizationDecision decision =
         authorizer.authorize(
@@ -262,15 +256,13 @@ public class PolarisAuthorizerImplTest {
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.GET_CATALOG),
-            eq(List.of(firstCatalogWrapper)),
-            eq(null));
+            eq(new ResolvedIntent(List.of(firstCatalogWrapper), null)));
     verify(authorizer, times(1))
         .findMissingPrivileges(
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.GET_CATALOG),
-            eq(List.of(secondCatalogWrapper)),
-            eq(null));
+            eq(new ResolvedIntent(List.of(secondCatalogWrapper), null)));
   }
 
   @Test
@@ -291,8 +283,7 @@ public class PolarisAuthorizerImplTest {
             any(PolarisPrincipal.class),
             ArgumentMatchers.any(),
             any(PolarisAuthorizableOperation.class),
-            ArgumentMatchers.any(),
-            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+            any(ResolvedIntent.class));
 
     PolarisSecurable tableTarget =
         PolarisSecurable.of(
@@ -317,15 +308,13 @@ public class PolarisAuthorizerImplTest {
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES),
-            eq(List.of(tableWrapper)),
-            eq(null));
+            eq(new ResolvedIntent(List.of(tableWrapper), null)));
     verify(authorizer, times(1))
         .findMissingPrivileges(
             eq(principal),
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF),
-            eq(List.of(tableWrapper)),
-            eq(null));
+            eq(new ResolvedIntent(List.of(tableWrapper), null)));
   }
 
   @Test
@@ -511,8 +500,7 @@ public class PolarisAuthorizerImplTest {
             PolarisPrincipal.of("alice", Map.of(), Set.of("reader")),
             Set.of(),
             PolarisAuthorizableOperation.CREATE_TABLE_DIRECT,
-            List.of(namespace),
-            null);
+            new ResolvedIntent(List.of(namespace), null));
 
     assertThat(missing).isEmpty();
   }

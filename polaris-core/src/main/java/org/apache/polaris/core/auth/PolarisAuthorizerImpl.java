@@ -133,6 +133,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.StructuredLogKeys;
+import org.apache.polaris.core.auth.AuthorizationIntentResolver.ResolvedIntent;
 import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -775,14 +776,13 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(intent.getOperation());
     boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
     try {
-      AuthorizationIntentResolver.ResolvedIntent resolvedIntent =
+      ResolvedIntent resolvedIntent =
           AuthorizationIntentResolver.resolve(resolutionManifest, intent, prependRootContainer);
       authorizeRbacOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
           intent.getOperation(),
-          resolvedIntent.targets(),
-          resolvedIntent.secondaries());
+          resolvedIntent);
       return AuthorizationDecision.allow();
     } catch (ForbiddenException e) {
       LOGGER.debug(
@@ -817,8 +817,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
       @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries) {
+      @NonNull ResolvedIntent resolvedIntent) {
     AuthorizationPreConditions.checkCredentialRotationRequired(
         polarisPrincipal, authzOp, realmConfig);
     boolean isRoot = getRootPrincipalName().equals(polarisPrincipal.getName());
@@ -832,7 +831,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
           .log("Root principal allowed to reset credentials");
     } else {
       List<MissingPrivilege> missing =
-          findMissingPrivileges(polarisPrincipal, activatedEntities, authzOp, targets, secondaries);
+          findMissingPrivileges(polarisPrincipal, activatedEntities, authzOp, resolvedIntent);
       if (!missing.isEmpty()) {
         String missingDetails = formatMissingPrivileges(missing);
         LOGGER.info(
@@ -875,7 +874,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
-    return findMissingPrivileges(polarisPrincipal, activatedEntities, authzOp, targets, secondaries)
+    return findMissingPrivileges(
+            polarisPrincipal, activatedEntities, authzOp, new ResolvedIntent(targets, secondaries))
         .isEmpty();
   }
 
@@ -895,8 +895,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
       @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries) {
+      @NonNull ResolvedIntent resolvedIntent) {
+    List<PolarisResolvedPathWrapper> targets = resolvedIntent.targets();
+    List<PolarisResolvedPathWrapper> secondaries = resolvedIntent.secondaries();
     Set<Long> entityIdSet =
         activatedEntities.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
     RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(authzOp);
