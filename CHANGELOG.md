@@ -107,6 +107,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
+
 - Return HTTP 404 instead of 500 when a policy or its catalog path disappears after resolution and before deletion.
 
 - Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
