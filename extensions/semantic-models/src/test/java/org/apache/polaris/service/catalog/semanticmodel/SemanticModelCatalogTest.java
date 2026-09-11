@@ -148,7 +148,7 @@ class SemanticModelCatalogTest {
             .setParentId(2L)
             .setEntityVersion(entityVersion)
             .build();
-    when(view.getResolvedPath(
+    when(view.getPassthroughResolvedPath(
             eq(ResolvedPathKey.ofSemanticModel(NS, MODEL)), eq(PolarisEntitySubType.NULL_SUBTYPE)))
         .thenReturn(path(catalogEntity, namespaceEntity, stored));
   }

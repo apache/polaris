@@ -258,9 +258,8 @@ public class SemanticModelCatalog {
 
   private PolarisResolvedPathWrapper resolveModelPathOrThrow(SemanticModelIdentifier identifier) {
     Namespace namespace = toNamespace(identifier);
-    // Reuse the authorized entity: a fresh lookup by name could select a concurrent replacement.
     PolarisResolvedPathWrapper resolved =
-        resolvedEntityView.getResolvedPath(
+        resolvedEntityView.getPassthroughResolvedPath(
             ResolvedPathKey.ofSemanticModel(namespace, identifier.getName()),
             PolarisEntitySubType.NULL_SUBTYPE);
     if (resolved == null || resolved.getRawLeafEntity() == null) {

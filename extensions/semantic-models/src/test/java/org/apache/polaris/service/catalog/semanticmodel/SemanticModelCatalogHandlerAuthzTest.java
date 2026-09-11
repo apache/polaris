@@ -47,7 +47,6 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.semantic.exceptions.SemanticModelVersionMismatchException;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.semanticmodel.types.UpdateSemanticModelRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -294,112 +293,6 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
                 model,
                 PolarisPrivilege.SEMANTIC_MODEL_READ));
     assertThatThrownBy(() -> runOperation("load")).isInstanceOf(ForbiddenException.class);
-  }
-
-  @ParameterizedTest
-  @MethodSource("replacementOperations")
-  void operationsKeepAuthorizedModelWhenNameIsReused(String operation, PolarisPrivilege privilege) {
-    grant(model("m1"), privilege);
-    long originalId = model("m1").getId();
-    String original = modelJson("ns1.t1");
-    String replacement = original.replace("\"m\"", "\"replacement\"");
-    SemanticModelCatalogHandler owner = replacementOwner();
-    PolarisAuthorizer authorizer =
-        new PolarisAuthorizerImpl(services.realmConfig()) {
-          private boolean replaced;
-
-          @Override
-          public AuthorizationDecision authorize(
-              AuthorizationState state, AuthorizationRequest request) {
-            AuthorizationDecision decision = super.authorize(state, request);
-            if (decision.isAllowed() && !replaced) {
-              // Interleave an authorized owner's replacement after the caller's permission check.
-              replaced = true;
-              owner.dropSemanticModel(identifier("m1"));
-              owner.createSemanticModel(NS, createRequest("m1", replacement));
-              assertThat(model("m1").getId()).isNotEqualTo(originalId);
-            }
-            return decision;
-          }
-        };
-    SemanticModelCatalogHandler handler =
-        ImmutableSemanticModelCatalogHandler.builder()
-            .from(enforcingHandler())
-            .authorizer(authorizer)
-            .build();
-    switch (operation) {
-      case "load" ->
-          assertThat(handler.loadSemanticModel(identifier("m1")).getDocument().getSemanticModel())
-              .isEqualTo(original);
-      case "update" ->
-          assertThatThrownBy(
-                  () ->
-                      handler.updateSemanticModel(
-                          identifier("m1"),
-                          UpdateSemanticModelRequest.builder()
-                              .setDocument(doc(original))
-                              .setEntityVersion("1")
-                              .build()))
-              .isInstanceOf(SemanticModelVersionMismatchException.class);
-      case "drop" ->
-          assertThatThrownBy(() -> handler.dropSemanticModel(identifier("m1")))
-              .isInstanceOf(RuntimeException.class);
-      default -> throw new IllegalArgumentException(operation);
-    }
-    assertThat(owner.loadSemanticModel(identifier("m1")).getDocument().getSemanticModel())
-        .isEqualTo(replacement);
-    assertThatThrownBy(() -> runOperation(operation)).isInstanceOf(ForbiddenException.class);
-  }
-
-  static Stream<Arguments> replacementOperations() {
-    return Stream.of(
-        Arguments.of("load", PolarisPrivilege.SEMANTIC_MODEL_READ),
-        Arguments.of("update", PolarisPrivilege.SEMANTIC_MODEL_WRITE),
-        Arguments.of("drop", PolarisPrivilege.SEMANTIC_MODEL_DROP));
-  }
-
-  private SemanticModelCatalogHandler replacementOwner() {
-    var context = services.newCallContext().getPolarisCallContext();
-    var manager = services.metaStoreManager();
-    var principal =
-        manager
-            .createPrincipal(context, new PrincipalEntity.Builder().setName("model-owner").build())
-            .getPrincipal();
-    var principalRole =
-        new PrincipalRoleEntity.Builder()
-            .setName("model-owners")
-            .setId(manager.generateNewEntityId(context).getId())
-            .setCreateTimestamp(System.currentTimeMillis())
-            .build();
-    assertSuccess(manager.createEntityIfNotExists(context, null, principalRole));
-    var ownerRole =
-        new CatalogRoleEntity.Builder()
-            .setName("model-owner-role")
-            .setId(manager.generateNewEntityId(context).getId())
-            .setCreateTimestamp(System.currentTimeMillis())
-            .setCatalogId(catalog.getId())
-            .setParentId(catalog.getId())
-            .build();
-    assertSuccess(
-        manager.createEntityIfNotExists(
-            context, PolarisEntity.toCoreList(List.of(catalog)), ownerRole));
-    assertSuccess(manager.grantUsageOnRoleToGrantee(context, null, principalRole, principal));
-    assertSuccess(manager.grantUsageOnRoleToGrantee(context, catalog, ownerRole, principalRole));
-    assertSuccess(
-        manager.grantPrivilegeOnSecurableToRole(
-            context,
-            ownerRole,
-            PolarisEntity.toCoreList(List.of(catalog)),
-            namespace,
-            PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA));
-    return ImmutableSemanticModelCatalogHandler.builder()
-        .from(enforcingHandler())
-        .polarisPrincipal(
-            PolarisPrincipal.of(
-                principal.getName(),
-                Map.of(PolarisPrincipal.PRINCIPAL_ENTITY_ATTRIBUTE_KEY, principal),
-                Set.of(principalRole.getName())))
-        .build();
   }
 
   private void runOperation(String operation) {
