@@ -90,13 +90,17 @@ spec:
           {{- end }}
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
-          {{ if or .Values.storage.secret.name .Values.persistence.relationalJdbc.secret.name .Values.persistence.nosql.secret.name .Values.oidc.client.secret.name .Values.extraEnv -}}
+          {{ if or .Values.storage.secret.name .Values.persistence.relationalJdbc.secret.name .Values.persistence.nosql.secret.name .Values.oidc.client.secret.name (not .Values.tracing.enabled) .Values.tracing.disabledResourceProviders .Values.extraEnv -}}
           env:
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsAccessKeyId" "polaris.storage.aws.access-key") | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsSecretAccessKey" "polaris.storage.aws.secret-key") | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.storage.secret "gcpToken" "polaris.storage.gcp.token") | indent 12 -}}
             {{- include "polaris.persistenceEnv" . | indent 12 -}}
             {{- include "polaris.secretToEnv" (list .Values.oidc.client.secret "key" "quarkus.oidc.credentials.secret") | indent 12 -}}
+            {{- if or (not .Values.tracing.enabled) .Values.tracing.disabledResourceProviders }}
+            - name: OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS
+              value: {{ default "io.opentelemetry.contrib.gcp.resource.GCPResourceProvider" .Values.tracing.disabledResourceProviders | quote }}
+            {{- end }}
             {{- if .Values.extraEnv -}}
             {{- tpl (toYaml .Values.extraEnv) . | nindent 12 -}}
             {{- end -}}

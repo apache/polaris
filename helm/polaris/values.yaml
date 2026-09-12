@@ -740,6 +740,12 @@ tracing:
   attributes:
     # service.name: my-polaris
     {}
+  # -- Comma-separated OTel resource provider class names to disable.
+  # When tracing is disabled (the default), the GCP resource detector is disabled
+  # automatically to prevent a ~135s startup stall on non-GCP Kubernetes clusters.
+  # Set this explicitly to override when tracing is enabled but the cluster is non-GCP.
+  # @section -- Observability
+  disabledResourceProviders: ""
 
 metrics:
   # -- Specifies whether metrics for the polaris server should be enabled. See [Metrics](https://polaris.apache.org/in-dev/unreleased/telemetry/#metrics) for details.
