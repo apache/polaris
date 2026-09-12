@@ -17,7 +17,8 @@
 # under the License.
 #
 
-from unittest.mock import patch, MagicMock
+import io
+from unittest.mock import patch, MagicMock, call
 from cli_test_utils import CLITestBase
 from apache_polaris.cli.command.namespaces import NamespacesCommand
 from apache_polaris.cli.constants import UNIT_SEPARATOR, Subcommands
@@ -87,7 +88,9 @@ class TestNamespacesCommand(CLITestBase):
         self.mock_execute(
             mock_client, ["namespaces", "list", "--catalog", "my-catalog"]
         )
-        mock_iceberg_api.list_namespaces.assert_called_with(prefix="my-catalog")
+        mock_iceberg_api.list_namespaces.assert_called_with(
+            prefix="my-catalog", parent=None
+        )
 
         self.mock_execute(
             mock_client,
@@ -96,6 +99,57 @@ class TestNamespacesCommand(CLITestBase):
         mock_iceberg_api.list_namespaces.assert_called_with(
             prefix="my-catalog", parent="ns1"
         )
+
+
+    @patch("apache_polaris.cli.command.namespaces.IcebergCatalogAPI")
+    def test_namespace_with_paginate(self, mock_iceberg_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        page1 = MagicMock(namespaces=[["a"], ["b"]], next_page_token="token")
+        page2 = MagicMock(namespaces=[["c"]], next_page_token=None)
+        mock_iceberg_api.list_namespaces.side_effect = [page1, page2]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(
+                mock_client, ["namespaces", "list", "--catalog", "my-catalog", "--page-size", "2"],
+            )
+        # First request opts into pagination with an empty page_token and the returned next_page_token
+        # is used for the follow-up request.
+        mock_iceberg_api.list_namespaces.assert_has_calls(
+            [
+                call(prefix="my-catalog", parent=None, page_size=2, page_token=""),
+                call(prefix="my-catalog", parent=None, page_size=2, page_token="token"),
+            ]
+        )
+        self.assertEqual(mock_iceberg_api.list_namespaces.call_count, 2)
+        # All namespace across both pages should be collected
+        output_lines = mock_stdout.getvalue().splitlines()
+        self.assertEqual(
+            output_lines,
+            [
+                '{"namespace": "a"}',
+                '{"namespace": "b"}',
+                '{"namespace": "c"}',
+            ]
+        )
+
+    def test_namespace_rejects_invalid_page_size(self) -> None:
+        mock_client = self.build_mock_client()
+        for bad in (0, -1):
+            with self.subTest(page_size=bad):
+                self.check_exception(
+                    lambda: self.mock_execute(
+                        mock_client,
+                        [
+                            "--page-size",
+                            str(bad),
+                            "namespaces",
+                            "list",
+                            "--catalog",
+                            "my-catalog"
+                        ],
+                    ),
+                    "page-size must be a positive integer",
+                )
 
     @patch("apache_polaris.cli.command.namespaces.IcebergCatalogAPI")
     def test_namespace_delete(self, mock_iceberg_api_class: MagicMock) -> None:

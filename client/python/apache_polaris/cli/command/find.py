@@ -49,6 +49,7 @@ class FindCommand(Command):
     identifier: str
     catalog_name: Optional[str] = None
     type_filter: Optional[str] = None
+    page_size: Optional[int] = None
     _current_context: Optional[str] = field(default=None, repr=False)
     _type_counts: Counter = field(default_factory=Counter, repr=False)
 
@@ -214,6 +215,7 @@ class FindCommand(Command):
                 start_ns=namespace if namespace else None,
                 on_error=on_crawl_error,
                 entity_type_filter=self.type_filter,
+                page_size=self.page_size,
             ):
                 # Check if path matches to ns + fuzzy leaf
                 if is_fuzzy_match(leaf_name, path[-1]):
