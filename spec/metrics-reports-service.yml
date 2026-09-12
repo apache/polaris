@@ -1,0 +1,261 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+openapi: 3.0.3
+info:
+  title: Apache Polaris Metrics Reports API
+  description: >
+    **Experimental / Beta**: Read-only API for querying Iceberg table metrics (scan and commit
+    reports) from Apache Polaris.
+
+
+    **This API is experimental and subject to change, including breaking changes, in any future
+    release without prior notice. It should not be used in production environments. The "beta"
+    label indicates early-access status, not stability.**
+
+
+    Requires TABLE_READ_METRICS privilege on every requested table. Durable persistence backing for
+    this API is provided by the polaris-extensions-metrics-reports-jdbc extension; without it the
+    endpoint returns HTTP 501.
+  version: 0.1.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: "{scheme}://{host}/api/catalog/v1"
+    variables:
+      scheme:
+        default: https
+      host:
+        default: localhost
+
+paths:
+  /{prefix}/metrics/query:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+    post:
+      operationId: queryTableMetrics
+      summary: Query metrics reports for one or more tables
+      description: >
+        Returns persisted metrics reports for the tables listed in the request body. All requested
+        tables must belong to the catalog identified by `prefix`. The required `metricType`
+        selects between scan reports (produced during table reads) and commit reports (produced
+        during table writes). Results from all requested tables are merged into a single page,
+        ordered by timestamp descending, and disambiguated by the `table` field on each report.
+        Requires TABLE_READ_METRICS privilege on every requested table.
+      tags:
+        - Metrics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryMetricsRequest'
+      responses:
+        '200':
+          description: Paginated list of metrics reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetricsResponse'
+        '400':
+          description: Bad request (missing or invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient privileges (TABLE_READ_METRICS required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Catalog, namespace, or table not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Durable metrics query backing is not available in this deployment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    prefix:
+      name: prefix
+      in: path
+      required: true
+      schema:
+        type: string
+      description: >
+        The Iceberg REST Catalog API prefix identifying the catalog to query, resolved to a
+        Polaris catalog name the same way as the Iceberg Catalog API.
+
+  schemas:
+    TableRef:
+      type: object
+      description: Identifies a table by its namespace levels and name
+      required:
+        - namespace
+        - name
+      properties:
+        namespace:
+          type: array
+          items:
+            type: string
+          description: Namespace levels, e.g. ["a", "b"] for namespace a.b
+        name:
+          type: string
+
+    QueryMetricsRequest:
+      type: object
+      required:
+        - metricType
+        - tables
+      properties:
+        metricType:
+          type: string
+          enum: [scan, commit]
+          description: Type of metrics to retrieve
+        tables:
+          type: array
+          minItems: 1
+          description: >
+            Tables to query. All tables must belong to the catalog identified by prefix in the
+            path.
+          items:
+            $ref: '#/components/schemas/TableRef'
+        pageToken:
+          type: string
+          description: Opaque cursor from a previous response's nextPageToken field
+        pageSize:
+          type: integer
+          minimum: 1
+          description: >
+            Maximum number of results to return per page. As with other paginated Polaris APIs,
+            omitting this (and pageToken) returns all matching results in a single page.
+        snapshotId:
+          type: integer
+          format: int64
+          description: >
+            Filter results to a specific snapshot ID. Since snapshot IDs are scoped to a single
+            table, this is only valid when exactly one table is requested; the request fails with
+            400 otherwise.
+        timestampFrom:
+          type: integer
+          format: int64
+          description: Inclusive lower bound on report timestamp (Unix epoch milliseconds)
+        timestampTo:
+          type: integer
+          format: int64
+          description: Exclusive upper bound on report timestamp (Unix epoch milliseconds)
+
+    ListMetricsResponse:
+      type: object
+      required:
+        - reports
+      properties:
+        nextPageToken:
+          type: string
+          nullable: true
+          description: >
+            Opaque cursor for fetching the next page. Null or absent when no further pages exist.
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricsReport'
+
+    MetricsReport:
+      type: object
+      description: >
+        Envelope for a single persisted Iceberg metrics report (scan or commit). The `payload`
+        preserves the original Iceberg report data as an opaque JSON object so new metric fields
+        can pass through without requiring a change to this API's schema.
+      required:
+        - metricType
+        - table
+        - timestampMs
+        - payload
+      properties:
+        metricType:
+          type: string
+          enum: [scan, commit]
+          description: Matches the requested metricType
+        table:
+          $ref: '#/components/schemas/TableRef'
+        timestampMs:
+          type: integer
+          format: int64
+          description: Server-side timestamp when the report was received (Unix epoch milliseconds)
+        snapshotId:
+          type: integer
+          format: int64
+          nullable: true
+          description: Snapshot ID associated with the report, if any
+        actor:
+          $ref: '#/components/schemas/MetricsActor'
+          nullable: true
+        request:
+          $ref: '#/components/schemas/MetricsRequest'
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
+          description: >
+            Opaque Iceberg metrics report payload, e.g. `{"type": "iceberg.metrics.scan",
+            "version": 1, "data": {...}}`, mirroring the shape of the original report as received.
+
+    MetricsActor:
+      type: object
+      description: Identity of the principal who triggered the operation
+      properties:
+        principalName:
+          type: string
+          nullable: true
+
+    MetricsRequest:
+      type: object
+      description: Request context for correlation with logs and traces
+      properties:
+        requestId:
+          type: string
+          nullable: true
+        otelTraceId:
+          type: string
+          nullable: true
+          description: OpenTelemetry trace ID
+        otelSpanId:
+          type: string
+          nullable: true
+          description: OpenTelemetry span ID
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        type:
+          type: string
+        code:
+          type: integer

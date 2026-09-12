@@ -45,6 +45,9 @@ Apache Polaris provides the following OpenAPI specifications:
         - [oauth-tokens-api.yaml](polaris-catalog-apis/oauth-tokens-api.yaml) - Contains the specification for the
           internal OAuth Token endpoint, extracted from the Apache Iceberg REST Catalog API.
 
+- [metrics-reports-service.yml](metrics-reports-service.yml) - Defines the experimental, read-only API for querying
+  persisted Iceberg table metrics (scan and commit reports).
+
 
 ## Generated Specification Files
 The specification files in the generated folder are automatically created using OpenAPI bundling tools such as 

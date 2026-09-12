@@ -1,0 +1,345 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.polaris.service.metrics;
+
+import com.google.common.annotations.Beta;
+import com.google.common.base.Preconditions;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.polaris.core.auth.AuthorizationIntent;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.metrics.api.model.ListMetricsResponse;
+import org.apache.polaris.core.metrics.api.model.MetricsActor;
+import org.apache.polaris.core.metrics.api.model.MetricsReport;
+import org.apache.polaris.core.metrics.api.model.MetricsRequest;
+import org.apache.polaris.core.metrics.api.model.QueryMetricsRequest;
+import org.apache.polaris.core.metrics.api.model.TableRef;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
+import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
+import org.apache.polaris.service.metrics.api.PolarisMetricsApiService;
+import org.jspecify.annotations.NonNull;
+
+/**
+ * Service implementation for the Metrics Reports API.
+ *
+ * <p>Resolves catalog/namespace/table names to internal IDs, performs authorization, and delegates
+ * durable reads to {@link MetricsQuerySpi} when an implementation is available.
+ */
+@Beta
+@RequestScoped
+public class MetricsReportsService implements PolarisMetricsApiService {
+
+  private final PolarisAuthorizer authorizer;
+  private final PolarisPrincipal polarisPrincipal;
+  private final ResolutionManifestFactory resolutionManifestFactory;
+  private final Instance<MetricsQuerySpi> queryProvider;
+  private final CatalogPrefixParser prefixParser;
+
+  @Inject
+  public MetricsReportsService(
+      @NonNull PolarisAuthorizer authorizer,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull ResolutionManifestFactory resolutionManifestFactory,
+      @Any Instance<MetricsQuerySpi> queryProvider,
+      @NonNull CatalogPrefixParser prefixParser) {
+    this.authorizer = authorizer;
+    this.polarisPrincipal = polarisPrincipal;
+    this.resolutionManifestFactory = resolutionManifestFactory;
+    this.prefixParser = prefixParser;
+    this.queryProvider = queryProvider;
+  }
+
+  @Override
+  public Response queryTableMetrics(
+      String prefix,
+      QueryMetricsRequest request,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
+
+    List<TableRef> tableRefs = request.getTables();
+    if (tableRefs == null || tableRefs.isEmpty()) {
+      throw new IllegalArgumentException("tables must not be empty");
+    }
+    if (request.getSnapshotId() != null && tableRefs.size() != 1) {
+      throw new IllegalArgumentException(
+          "snapshotId can only be used when exactly one table is requested, since snapshot IDs "
+              + "are scoped to a single table");
+    }
+
+    List<TableIdentifier> identifiers =
+        tableRefs.stream()
+            .map(
+                ref ->
+                    TableIdentifier.of(
+                        Namespace.of(ref.getNamespace().toArray(new String[0])), ref.getName()))
+            .toList();
+
+    PolarisResolutionManifest manifest = resolveAndAuthorizeTableMetrics(catalogName, identifiers);
+
+    CatalogEntity catalogEntity = manifest.getResolvedCatalogEntity();
+    Preconditions.checkNotNull(catalogEntity, "No catalog available");
+    long catalogId = catalogEntity.getId();
+
+    List<Long> tableIds = new ArrayList<>(identifiers.size());
+    Map<Long, TableIdentifier> tableIdToIdentifier = new LinkedHashMap<>();
+    for (TableIdentifier identifier : identifiers) {
+      PolarisResolvedPathWrapper tableWrapper =
+          manifest.getResolvedPath(
+              ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE, true);
+      long tableId = tableWrapper.getRawLeafEntity().getId();
+      tableIds.add(tableId);
+      tableIdToIdentifier.put(tableId, identifier);
+    }
+
+    MetricsQuerySpi.MetricType type = parseMetricType(request.getMetricType().toString());
+    PageToken pt = PageToken.build(request.getPageToken(), request.getPageSize(), () -> true);
+    MetricsQuerySpi provider = queryProvider.get();
+
+    MetricsQuerySpi.QueryResult result =
+        provider.listReports(
+            type,
+            catalogId,
+            tableIds,
+            request.getSnapshotId(),
+            request.getTimestampFrom(),
+            request.getTimestampTo(),
+            pt);
+
+    Preconditions.checkState(
+        result.metricType() == type, "Provider returned %s for %s", result.metricType(), type);
+
+    return switch (result) {
+      case MetricsQuerySpi.ScanResult scan ->
+          toResponse(
+              scan.reports().encodedResponseToken(),
+              scan.reports().items().stream()
+                  .map(r -> toScanReport(r, tableIdToIdentifier.get(r.tableId())))
+                  .toList());
+      case MetricsQuerySpi.CommitResult commit ->
+          toResponse(
+              commit.reports().encodedResponseToken(),
+              commit.reports().items().stream()
+                  .map(r -> toCommitReport(r, tableIdToIdentifier.get(r.tableId())))
+                  .toList());
+    };
+  }
+
+  private static Response toResponse(String nextPageToken, List<MetricsReport> reports) {
+    return Response.ok(new ListMetricsResponse(nextPageToken, reports)).build();
+  }
+
+  private static MetricsQuerySpi.MetricType parseMetricType(String metricType) {
+    if ("scan".equalsIgnoreCase(metricType)) {
+      return MetricsQuerySpi.MetricType.SCAN;
+    }
+    if ("commit".equalsIgnoreCase(metricType)) {
+      return MetricsQuerySpi.MetricType.COMMIT;
+    }
+    throw new IllegalArgumentException(
+        "metricType must be one of [scan, commit], got: " + metricType);
+  }
+
+  private PolarisResolutionManifest resolveAndAuthorizeTableMetrics(
+      String catalogName, List<TableIdentifier> identifiers) {
+    PolarisResolutionManifest manifest =
+        resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
+    for (TableIdentifier identifier : identifiers) {
+      manifest.addPassthroughPath(
+          new ResolverPath(
+              Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE));
+      manifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE));
+    }
+    ResolverStatus status = manifest.resolveAll();
+
+    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
+      throw new NotFoundException(
+          "TopLevelEntity of type %s does not exist: %s",
+          status.getFailedToResolvedEntityType(), status.getFailedToResolvedEntityName());
+    }
+    if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
+      throw new NotFoundException("Table not found");
+    }
+
+    AuthorizationRequest authorizationRequest =
+        new AuthorizationRequest(
+            polarisPrincipal,
+            identifiers.stream()
+                .<AuthorizationIntent>map(
+                    identifier ->
+                        new SingleTargetAuthorizationIntent(
+                            PolarisAuthorizableOperation.LIST_TABLE_METRICS,
+                            PolarisSecurableMapper.tableLike(catalogName, identifier)))
+                .toList());
+    AuthorizationState authorizationState = new AuthorizationState(manifest);
+    authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
+
+    for (TableIdentifier identifier : identifiers) {
+      PolarisResolvedPathWrapper tableWrapper =
+          manifest.getResolvedPath(
+              ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE, true);
+
+      if (tableWrapper == null) {
+        throw new NotFoundException("Table not found: %s", identifier);
+      }
+    }
+
+    authorizer.authorize(authorizationState, authorizationRequest).throwIfDenied();
+
+    return manifest;
+  }
+
+  private static MetricsReport toScanReport(ScanMetricsRecord r, TableIdentifier identifier) {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("schema-id", r.schemaId().orElse(null));
+    data.put("filter", r.filterExpression().orElse(null));
+    data.put("projected-field-ids", r.projectedFieldIds());
+    data.put("projected-field-names", r.projectedFieldNames());
+    data.put("result-data-files", r.resultDataFiles());
+    data.put("result-delete-files", r.resultDeleteFiles());
+    data.put("total-file-size-bytes", r.totalFileSizeBytes());
+    data.put("total-data-manifests", r.totalDataManifests());
+    data.put("total-delete-manifests", r.totalDeleteManifests());
+    data.put("scanned-data-manifests", r.scannedDataManifests());
+    data.put("scanned-delete-manifests", r.scannedDeleteManifests());
+    data.put("skipped-data-manifests", r.skippedDataManifests());
+    data.put("skipped-delete-manifests", r.skippedDeleteManifests());
+    data.put("skipped-data-files", r.skippedDataFiles());
+    data.put("skipped-delete-files", r.skippedDeleteFiles());
+    data.put("total-planning-duration-ms", r.totalPlanningDurationMs());
+    data.put("equality-delete-files", r.equalityDeleteFiles());
+    data.put("positional-delete-files", r.positionalDeleteFiles());
+    data.put("indexed-delete-files", r.indexedDeleteFiles());
+    data.put("total-delete-file-size-bytes", r.totalDeleteFileSizeBytes());
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("type", "iceberg.metrics.scan");
+    payload.put("version", 1);
+    payload.put("data", data);
+
+    return toReport(
+        MetricsReport.MetricTypeEnum.SCAN,
+        identifier,
+        r.timestamp().toEpochMilli(),
+        r.snapshotId().orElse(null),
+        r.principalName(),
+        r.requestId(),
+        r.otelTraceId(),
+        r.otelSpanId(),
+        payload);
+  }
+
+  private static MetricsReport toCommitReport(CommitMetricsRecord r, TableIdentifier identifier) {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("sequence-number", r.sequenceNumber().orElse(null));
+    data.put("operation", r.operation());
+    data.put("added-data-files", r.addedDataFiles());
+    data.put("removed-data-files", r.removedDataFiles());
+    data.put("total-data-files", r.totalDataFiles());
+    data.put("added-delete-files", r.addedDeleteFiles());
+    data.put("removed-delete-files", r.removedDeleteFiles());
+    data.put("total-delete-files", r.totalDeleteFiles());
+    data.put("added-equality-delete-files", r.addedEqualityDeleteFiles());
+    data.put("removed-equality-delete-files", r.removedEqualityDeleteFiles());
+    data.put("added-positional-delete-files", r.addedPositionalDeleteFiles());
+    data.put("removed-positional-delete-files", r.removedPositionalDeleteFiles());
+    data.put("added-records", r.addedRecords());
+    data.put("removed-records", r.removedRecords());
+    data.put("total-records", r.totalRecords());
+    data.put("added-file-size-bytes", r.addedFileSizeBytes());
+    data.put("removed-file-size-bytes", r.removedFileSizeBytes());
+    data.put("total-file-size-bytes", r.totalFileSizeBytes());
+    data.put("total-duration-ms", r.totalDurationMs().orElse(null));
+    data.put("attempts", r.attempts());
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("type", "iceberg.metrics.commit");
+    payload.put("version", 1);
+    payload.put("data", data);
+
+    return toReport(
+        MetricsReport.MetricTypeEnum.COMMIT,
+        identifier,
+        r.timestamp().toEpochMilli(),
+        r.snapshotId(),
+        r.principalName(),
+        r.requestId(),
+        r.otelTraceId(),
+        r.otelSpanId(),
+        payload);
+  }
+
+  private static MetricsReport toReport(
+      MetricsReport.MetricTypeEnum metricType,
+      TableIdentifier identifier,
+      long timestampMs,
+      Long snapshotId,
+      String principalName,
+      String requestId,
+      String otelTraceId,
+      String otelSpanId,
+      Map<String, Object> payload) {
+    MetricsActor actor = principalName != null ? new MetricsActor(principalName) : null;
+    MetricsRequest request =
+        (requestId != null || otelTraceId != null || otelSpanId != null)
+            ? new MetricsRequest(requestId, otelTraceId, otelSpanId)
+            : null;
+    return new MetricsReport(
+        metricType, toTableRef(identifier), timestampMs, snapshotId, actor, request, payload);
+  }
+
+  private static TableRef toTableRef(TableIdentifier identifier) {
+    return new TableRef(Arrays.asList(identifier.namespace().levels()), identifier.name());
+  }
+}
