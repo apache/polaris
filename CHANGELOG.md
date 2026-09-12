@@ -110,13 +110,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its
   catalog path disappears after resolution and before the deletion is persisted.
 - Return HTTP 404 instead of 500 when a policy or its catalog path disappears after resolution and before deletion.
-- Iceberg REST: a request offering several access-delegation mechanisms
-  (`X-Iceberg-Access-Delegation: vended-credentials,remote-signing`) against a catalog that cannot vend
-  credentials (for example S3 with `stsUnavailable: true`, or an external catalog with credential vending
-  disabled) now returns the table without delegated access, as the Iceberg REST specification allows.
-  Previously the server resolved the request to remote signing, which is not implemented, and failed with
-  `400 Unsupported access delegation mode: REMOTE_SIGNING`. A request for `remote-signing` alone is still
-  rejected.
+- Iceberg REST: a request whose `X-Iceberg-Access-Delegation` resolves to remote signing, which is not
+  implemented, now returns the table without delegated access, as the Iceberg REST specification allows
+  for this optional header. This covers `remote-signing` requested alone, and
+  `vended-credentials,remote-signing` against a catalog that cannot vend credentials (for example S3 with
+  `stsUnavailable: true`, or an external catalog with credential vending disabled). Previously both cases
+  failed with `400 Unsupported access delegation mode: REMOTE_SIGNING`. The server logs at `INFO` when it
+  falls back to no delegation.
 - Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.
 - Iceberg REST: server-side JSON processing failures (HTTP 500) now return the standard Iceberg
