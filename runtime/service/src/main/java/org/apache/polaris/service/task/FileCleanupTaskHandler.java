@@ -18,9 +18,12 @@
  */
 package org.apache.polaris.service.task;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -45,12 +48,50 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
   public final TaskFileIOSupplier fileIOSupplier;
   public final ExecutorService executorService;
+  private final Duration fileDeletionTimeout;
   private static final Logger LOGGER = LoggerFactory.getLogger(FileCleanupTaskHandler.class);
 
   public FileCleanupTaskHandler(
-      TaskFileIOSupplier fileIOSupplier, ExecutorService executorService) {
+      TaskFileIOSupplier fileIOSupplier,
+      ExecutorService executorService,
+      Duration fileDeletionTimeout) {
     this.fileIOSupplier = fileIOSupplier;
     this.executorService = executorService;
+    this.fileDeletionTimeout = fileDeletionTimeout;
+  }
+
+  /**
+   * Blocks until the given deletion stage completes, bounded by the configured {@link
+   * TaskHandlerConfiguration#fileDeletionTimeout()}. On timeout the wait is abandoned and a {@link
+   * FileDeletionTimeoutException} is thrown; this is a terminal failure that releases the
+   * task-executor thread without triggering an in-process retry against the still-stalled endpoint.
+   * A zero or negative timeout waits indefinitely, preserving the previous behavior.
+   *
+   * @param deletion the aggregate deletion stage to await
+   * @param description human-readable description of the work, used in the timeout message
+   */
+  protected void awaitCompletion(CompletableFuture<Void> deletion, String description) {
+    try {
+      if (fileDeletionTimeout.isZero() || fileDeletionTimeout.isNegative()) {
+        deletion.get();
+      } else {
+        deletion.get(fileDeletionTimeout.toMillis(), TimeUnit.MILLISECONDS);
+      }
+    } catch (TimeoutException e) {
+      // Only the wait is abandoned: the in-flight deletes keep running on the deletion executor
+      // and cannot be interrupted (CompletableFuture.cancel ignores mayInterruptIfRunning and does
+      // not propagate to the upstream runAsync tasks). Releasing this task-executor thread is the
+      // goal. A timeout is terminal for this execution rather than retried in-process, because an
+      // immediate retry would only stack more deletions onto the same stalled endpoint; the deletes
+      // are idempotent, so re-running the task later is safe.
+      throw new FileDeletionTimeoutException(
+          "Timed out after " + fileDeletionTimeout + " waiting for " + description, e);
+    } catch (ExecutionException e) {
+      throw new RuntimeException("Failed while waiting for " + description, e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Interrupted while waiting for " + description, e);
+    }
   }
 
   @Override

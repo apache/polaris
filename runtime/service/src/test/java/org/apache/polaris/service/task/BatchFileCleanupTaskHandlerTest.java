@@ -29,6 +29,7 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -81,7 +82,7 @@ public class BatchFileCleanupTaskHandlerTest {
 
   private BatchFileCleanupTaskHandler newBatchFileCleanupTaskHandler(FileIO fileIO) {
     Mockito.when(taskFileIOSupplier.apply(Mockito.any(), Mockito.any())).thenReturn(fileIO);
-    return new BatchFileCleanupTaskHandler(taskFileIOSupplier, executor);
+    return new BatchFileCleanupTaskHandler(taskFileIOSupplier, executor, Duration.ofMinutes(5));
   }
 
   @Test
@@ -286,7 +287,7 @@ public class BatchFileCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     Mockito.when(taskFileIOSupplier.apply(Mockito.any(), Mockito.any())).thenReturn(fileIO);
     BatchFileCleanupTaskHandler handler =
-        new BatchFileCleanupTaskHandler(taskFileIOSupplier, executor) {
+        new BatchFileCleanupTaskHandler(taskFileIOSupplier, executor, Duration.ofMinutes(5)) {
           @Override
           public CompletableFuture<Void> tryDelete(
               TableIdentifier tableId,
