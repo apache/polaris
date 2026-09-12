@@ -52,6 +52,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
+import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -130,7 +131,9 @@ class MetricsReportsServiceTest {
     when(noOpProvider.get()).thenReturn(noOp);
     queryProvider = noOpProvider;
 
-    service = new MetricsReportsService(authorizer, principal, factory, queryProvider);
+    service =
+        new MetricsReportsService(
+            authorizer, principal, factory, queryProvider, new DefaultCatalogPrefixParser());
     realmContext = mock(RealmContext.class);
     securityContext = mock(SecurityContext.class);
   }
@@ -212,6 +215,24 @@ class MetricsReportsServiceTest {
             () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("tables");
+  }
+
+  @Test
+  void snapshotIdWithMultipleTablesThrowsIllegalArgumentException() {
+    QueryMetricsRequest request =
+        new QueryMetricsRequest(
+            QueryMetricsRequest.MetricTypeEnum.SCAN,
+            List.of(new TableRef(NAMESPACE, TABLE), new TableRef(NAMESPACE, "other-table")),
+            null,
+            null,
+            123L,
+            null,
+            null);
+
+    assertThatThrownBy(
+            () -> service.queryTableMetrics(CATALOG, request, realmContext, securityContext))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("snapshotId");
   }
 
   @Test
