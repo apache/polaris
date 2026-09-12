@@ -47,6 +47,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -658,5 +659,42 @@ class JdbcBasePersistenceImplTest {
     }
 
     assertThat(seen).containsExactly("e0", "e1", "e2", "e3");
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void rotatePrincipalSecrets_concurrentCollision_throwsRetryOnConcurrencyException(
+      int schemaVersion) throws SQLException, IOException {
+    DatasourceOperations datasourceOperations =
+        newH2DatasourceOperations("rotate_secrets_collision_v", schemaVersion);
+    TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
+    JdbcBasePersistenceImpl impl = tp.impl();
+    PolarisCallContext callCtx = tp.callCtx();
+
+    long principalId = 1001L;
+    String clientId = "client_test_collision";
+
+    // 1. Store initial secrets
+    impl.storePrincipalSecrets(callCtx, principalId, clientId, "initial_secret_value");
+    PolarisPrincipalSecrets initialSecrets = impl.loadPrincipalSecrets(callCtx, clientId);
+    assertThat(initialSecrets).isNotNull();
+    String initialHash = initialSecrets.getMainSecretHash();
+
+    // 2. Worker A reads initialHash and successfully rotates
+    PolarisPrincipalSecrets secretsA =
+        impl.rotatePrincipalSecrets(callCtx, clientId, principalId, false, initialHash);
+    assertThat(secretsA).isNotNull();
+    String secretA = secretsA.getMainSecret();
+
+    // 3. Worker B (concurrent request that read stale initialHash before A committed)
+    // attempts to rotate with the same initialHash -> must throw RetryOnConcurrencyException
+    assertThatExceptionOfType(RetryOnConcurrencyException.class)
+        .isThrownBy(
+            () -> impl.rotatePrincipalSecrets(callCtx, clientId, principalId, false, initialHash));
+
+    // 4. Verify DB state: Worker A's credentials remain valid and uncorrupted
+    PolarisPrincipalSecrets dbSecrets = impl.loadPrincipalSecrets(callCtx, clientId);
+    assertThat(dbSecrets).isNotNull();
+    assertThat(dbSecrets.getCredentialsVersionForSecret(secretA)).isPresent();
   }
 }
