@@ -107,6 +107,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
+
 - Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its
   catalog path disappears after resolution and before the deletion is persisted.
 - Return HTTP 404 instead of 500 when a policy or its catalog path disappears after resolution and before deletion.
