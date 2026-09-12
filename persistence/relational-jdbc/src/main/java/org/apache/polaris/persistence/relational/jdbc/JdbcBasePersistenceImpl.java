@@ -1030,20 +1030,29 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
     }
 
-    Map<String, Object> params = Map.of("principal_client_id", clientId, "realm_id", realmId);
+    Map<String, Object> params =
+        Map.of(
+            "principal_client_id", clientId,
+            "realm_id", realmId,
+            "main_secret_hash", oldSecretHash);
     try {
       ModelPrincipalAuthenticationData modelPrincipalAuthenticationData =
           ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets);
-      datasourceOperations.executeUpdate(
-          QueryGenerator.generateUpdateQuery(
-              ModelPrincipalAuthenticationData.ALL_COLUMNS,
-              ModelPrincipalAuthenticationData.TABLE_NAME,
-              modelPrincipalAuthenticationData
-                  .toMap(datasourceOperations.getDatabaseType())
-                  .values()
-                  .stream()
-                  .toList(),
-              params));
+      int rowsUpdated =
+          datasourceOperations.executeUpdate(
+              QueryGenerator.generateUpdateQuery(
+                  ModelPrincipalAuthenticationData.ALL_COLUMNS,
+                  ModelPrincipalAuthenticationData.TABLE_NAME,
+                  modelPrincipalAuthenticationData
+                      .toMap(datasourceOperations.getDatabaseType())
+                      .values()
+                      .stream()
+                      .toList(),
+                  params));
+      if (rowsUpdated == 0) {
+        throw new RetryOnConcurrencyException(
+            "Principal secrets for clientId '%s' concurrently modified", clientId);
+      }
     } catch (SQLException e) {
       LOGGER.error(
           "Failed to rotatePrincipalSecrets for clientId: {}, due to {}",
