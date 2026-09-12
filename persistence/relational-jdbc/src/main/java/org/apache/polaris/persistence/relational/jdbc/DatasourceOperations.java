@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -53,6 +54,15 @@ import org.slf4j.LoggerFactory;
 public class DatasourceOperations {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
+
+  /** The schema version this binary expects to find in the version table. */
+  // Whenever a schema change requires a migration:
+  // 1) Increment the version number in all schema.sql scripts
+  //    (the version number MUST be the same on all scripts)
+  // 2) Increment this constant to match the version number in schema.sql
+  // 3) Add the corresponding migration SQL to the Relational JDBC metastore documentation
+  // 4) Add a note to the changelog
+  public static final int CURRENT_SCHEMA_VERSION = 6;
 
   // PG STATUS CODES
   // 23505 = unique key violation, consistent across PG/Cockroach/H2; other checks (FK, NOT NULL,
@@ -458,6 +468,56 @@ public class DatasourceOperations {
 
   public boolean isUniquenessConstraintViolation(SQLException e) {
     return UNIQUENESS_CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
+  }
+
+  /**
+   * Checks whether the version table reports the schema version this binary expects. Throws {@link
+   * IllegalStateException} on a mismatch, an absent version table, or an empty version table.
+   */
+  public void validateSchemaCompatibility() {
+    PreparedQuery query = QueryGenerator.generateVersionQuery();
+    try {
+      List<Integer> versions =
+          executeSelect(
+              query,
+              new Converter<>() {
+                @Override
+                public Integer fromResultSet(ResultSet rs) throws SQLException {
+                  return rs.getInt("version_value");
+                }
+
+                @Override
+                public Map<String, Object> toMap(DatabaseType databaseType) {
+                  return Map.of();
+                }
+              });
+      if (versions.isEmpty()) {
+        throw new IllegalStateException(
+            "Version table exists but contains no rows. "
+                + "The database may be in a corrupted state. "
+                + "See the Relational JDBC metastore documentation for upgrade instructions.");
+      }
+      int version = versions.getFirst();
+      if (version != CURRENT_SCHEMA_VERSION) {
+        throw new IllegalStateException(
+            String.format(
+                "Incompatible JDBC schema version %d (expected %d). "
+                    + "Please apply the required DDL migration before starting Polaris. "
+                    + "See the Relational JDBC metastore documentation for upgrade instructions.",
+                version, CURRENT_SCHEMA_VERSION));
+      }
+    } catch (SQLException e) {
+      if (isRelationDoesNotExist(e)) {
+        throw new IllegalStateException(
+            "Version table not found. "
+                + "Please run the bootstrap command before starting Polaris, "
+                + "or apply the required DDL migration. "
+                + "See the Relational JDBC metastore documentation for upgrade instructions.",
+            e);
+      }
+      throw new IllegalStateException(
+          "Could not validate JDBC schema compatibility: " + e.getMessage(), e);
+    }
   }
 
   public boolean isRelationDoesNotExist(SQLException e) {

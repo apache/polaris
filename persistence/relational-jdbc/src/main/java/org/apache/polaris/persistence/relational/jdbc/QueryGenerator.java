@@ -164,19 +164,17 @@ public class QueryGenerator {
    * Builds a SELECT query using a list of entity ID pairs (catalog_id, id).
    *
    * @param realmId Realm to filter by.
-   * @param schemaVersion The schema version of entities table to query
    * @param entityIds List of PolarisEntityId pairs.
    * @return SELECT query to retrieve matching entities.
    * @throws IllegalArgumentException if entityIds is empty.
    */
   public static PreparedQuery generateSelectQueryWithEntityIds(
-      @NonNull String realmId, int schemaVersion, @NonNull List<PolarisEntityId> entityIds) {
-    return generateSelectQueryWithEntityIds(
-        realmId, ModelEntity.getAllColumnNames(schemaVersion), entityIds);
+      @NonNull String realmId, @NonNull List<PolarisEntityId> entityIds) {
+    return generateSelectQueryWithEntityIds(realmId, ModelEntity.getAllColumnNames(), entityIds);
   }
 
   /**
-   * Like {@link #generateSelectQueryWithEntityIds(String, int, List)} but selects only {@link
+   * Like {@link #generateSelectQueryWithEntityIds(String, List)} but selects only {@link
    * ModelEntity#VERSION_COLUMNS}. Used by {@code lookupEntityVersions} to avoid fetching large JSON
    * property blobs on the cache-validation hot path.
    */
@@ -349,9 +347,10 @@ public class QueryGenerator {
     return new QueryFragment(clause, parameters);
   }
 
-  @VisibleForTesting
-  static PreparedQuery generateVersionQuery() {
-    return new PreparedQuery("SELECT version_value FROM VERSION", List.of());
+  /** Returns a query that reads the current schema version. */
+  public static PreparedQuery generateVersionQuery() {
+    return new PreparedQuery(
+        "SELECT version_value FROM VERSION WHERE version_key = ?", List.of("version"));
   }
 
   /**
@@ -367,12 +366,6 @@ public class QueryGenerator {
     return new PreparedQuery(sql, where.parameters());
   }
 
-  @VisibleForTesting
-  static PreparedQuery generateEntityTableExistQuery() {
-    return new PreparedQuery(
-        String.format("SELECT * FROM %s LIMIT 1", ModelEntity.TABLE_NAME), List.of());
-  }
-
   /**
    * Generate a SELECT query to find any entities that have a given realm &amp; parent and that may
    * overlap with a given location. The check is performed without consideration for the scheme, so
@@ -384,14 +377,13 @@ public class QueryGenerator {
    * matched.
    *
    * @param realmId A realm to search within
-   * @param schemaVersion The schema version of entities table to query
    * @param catalogId A catalog entity to search within
    * @param baseLocation The base location to look for overlap with, with or without a scheme
    * @return The list of possibly overlapping entities that meet the criteria
    */
   @VisibleForTesting
   public static PreparedQuery generateOverlapQuery(
-      String realmId, int schemaVersion, long catalogId, String baseLocation) {
+      String realmId, long catalogId, String baseLocation) {
     StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
     String locationWithoutScheme = baseStorageLocation.withoutScheme();
 
@@ -440,10 +432,7 @@ public class QueryGenerator {
     QueryFragment where = new QueryFragment(clause, finalParams);
     PreparedQuery query =
         generateSelectQuery(
-            ModelEntity.getAllColumnNames(schemaVersion),
-            ModelEntity.TABLE_NAME,
-            where.sql(),
-            null);
+            ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, where.sql(), null);
     return new PreparedQuery(query.sql(), where.parameters());
   }
 }

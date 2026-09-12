@@ -41,7 +41,6 @@ import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.assertj.core.api.Assertions;
-import org.assertj.core.api.Assumptions;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 
@@ -52,30 +51,21 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     return DatabaseType.H2;
   }
 
-  public abstract int schemaVersion();
-
   protected DataSource createDataSource() {
     // The schema is provided by the datasource, not by the persistence code: INIT creates the
     // schema (the DBA step in a real deployment) and selects it as the session schema on every
     // connection (the currentSchema/SCHEMA driver setting in a real deployment).
     return JdbcConnectionPool.create(
         String.format(
-            "jdbc:h2:file:./build/test_data/polaris/db_%s_%d"
+            "jdbc:h2:file:./build/test_data/polaris/db_%s"
                 + ";INIT=CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA\\;SET SCHEMA POLARIS_SCHEMA",
-            databaseType().getDisplayName(), schemaVersion()),
+            databaseType().getDisplayName()),
         "sa",
         "");
   }
 
   protected InputStream openSchemaScript() {
-    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-    String resource =
-        String.format("%s/schema-v%d.sql", databaseType().getDisplayName(), schemaVersion());
-    InputStream scriptStream = classLoader.getResourceAsStream(resource);
-    if (scriptStream == null) {
-      throw new IllegalStateException("Schema resource not found: " + resource);
-    }
-    return scriptStream;
+    return databaseType().openInitScriptResource();
   }
 
   @Override
@@ -92,20 +82,13 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
       }
     } catch (SQLException | IOException e) {
       throw new RuntimeException(
-          String.format(
-              "Error executing %s schema-v%d script: %s",
-              databaseType(), schemaVersion(), e.getMessage()),
-          e);
+          String.format("Error executing %s schema script: %s", databaseType(), e.getMessage()), e);
     }
 
     RealmContext realmContext = () -> "REALM";
     JdbcBasePersistenceImpl basePersistence =
         new JdbcBasePersistenceImpl(
-            diagServices,
-            datasourceOperations,
-            RANDOM_SECRETS,
-            realmContext.getRealmIdentifier(),
-            schemaVersion());
+            diagServices, datasourceOperations, RANDOM_SECRETS, realmContext.getRealmIdentifier());
     AtomicOperationMetaStoreManager metaStoreManager =
         new AtomicOperationMetaStoreManager(clock, diagServices);
     PolarisCallContext callCtx = new PolarisCallContext(realmContext, basePersistence);
@@ -114,9 +97,6 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
   @Test
   void testHasOverlappingSiblingsUsesStoredBaseLocation() {
-    // The optimized check relies on the location_without_scheme column added in schema v2.
-    Assumptions.assumeThat(schemaVersion()).isGreaterThanOrEqualTo(2);
-
     var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
     var callContext = polarisTestMetaStoreManager.polarisCallContext();
     PolarisBaseEntity catalog =
