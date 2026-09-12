@@ -94,6 +94,21 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nullable PolarisBaseEntity originalEntity);
 
   /**
+   * Writes an entity without retrying a connection failure whose outcome may be ambiguous.
+   *
+   * <p>The default preserves the behavior of persistence implementations that execute this write
+   * transactionally. Backends that issue an auto-commit statement should override this method when
+   * the caller can reconcile the resulting entity state.
+   */
+  default void writeEntityWithAmbiguousWriteDetection(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      boolean nameOrParentChanged,
+      @Nullable PolarisBaseEntity originalEntity) {
+    writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
+  }
+
+  /**
    * write a batch of entities to the persistence backend conditional on *every* member of
    * originalEntities matching the existing persistent state. After this commit, *every* member of
    * entities must be committed durably.

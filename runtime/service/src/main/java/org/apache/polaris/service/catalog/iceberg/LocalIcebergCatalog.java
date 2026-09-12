@@ -73,6 +73,7 @@ import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
+import org.apache.iceberg.exceptions.CommitStateUnknownException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
@@ -119,6 +120,7 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.exceptions.PolarisServiceUnavailableException;
+import org.apache.polaris.core.persistence.AmbiguousWriteException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -2924,12 +2926,39 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
-    EntityResult res =
-        getMetaStoreManager()
-            .updateEntityPropertiesIfNotChanged(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                icebergTableLikeEntity);
+    EntityResult res;
+    try {
+      res =
+          getMetaStoreManager()
+              .updateEntityPropertiesIfNotChangedWithAmbiguousWriteDetection(
+                  getCurrentPolarisContext(),
+                  PolarisEntity.toCoreList(catalogPath),
+                  icebergTableLikeEntity);
+    } catch (AmbiguousWriteException e) {
+      try {
+        EntityResult persisted =
+            getMetaStoreManager()
+                .loadEntity(
+                    getCurrentPolarisContext(),
+                    icebergTableLikeEntity.getCatalogId(),
+                    icebergTableLikeEntity.getId(),
+                    icebergTableLikeEntity.getType());
+        if (persisted.isSuccess()
+            && Objects.equal(
+                IcebergTableLikeEntity.of(persisted.getEntity()).getMetadataLocation(),
+                icebergTableLikeEntity.getMetadataLocation())) {
+          LOGGER.info(
+              "Recovered ambiguous table commit for {} with metadata location {}",
+              identifier,
+              icebergTableLikeEntity.getMetadataLocation());
+          return;
+        }
+      } catch (RuntimeException reconciliationFailure) {
+        e.addSuppressed(reconciliationFailure);
+      }
+      throw new CommitStateUnknownException(
+          "Unable to determine whether table metadata location became current", e);
+    }
     if (!res.isSuccess()) {
       switch (res.getReturnStatus()) {
         case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:

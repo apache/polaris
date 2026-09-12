@@ -42,6 +42,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
+import org.apache.polaris.core.persistence.AmbiguousWriteException;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
@@ -70,6 +71,7 @@ public class DatasourceOperations {
 
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
+  private static final String CONNECTION_FAILURE_SQL_CODE = "08006";
 
   private final DataSource datasource;
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
@@ -241,6 +243,21 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during Query Execution.
    */
   public int executeUpdate(QueryGenerator.PreparedQuery preparedQuery) throws SQLException {
+    return executeUpdate(preparedQuery, false);
+  }
+
+  /**
+   * Executes an auto-commit update without replaying a connection failure whose outcome is unknown.
+   * Callers must reconcile the durable state before retrying or reporting success.
+   */
+  public int executeUpdateWithAmbiguousWriteDetection(QueryGenerator.PreparedQuery preparedQuery)
+      throws SQLException {
+    return executeUpdate(preparedQuery, true);
+  }
+
+  private int executeUpdate(
+      QueryGenerator.PreparedQuery preparedQuery, boolean detectAmbiguousWrite)
+      throws SQLException {
     return withRetries(
         () -> {
           logQuery(preparedQuery);
@@ -253,9 +270,20 @@ public class DatasourceOperations {
             boolean autoCommit = connection.getAutoCommit();
             connection.setAutoCommit(true);
             try {
-              return statement.executeUpdate();
+              try {
+                return statement.executeUpdate();
+              } catch (SQLException e) {
+                if (detectAmbiguousWrite && isAmbiguousWriteFailure(e)) {
+                  throw new AmbiguousWriteException(e);
+                }
+                throw e;
+              }
             } finally {
-              connection.setAutoCommit(autoCommit);
+              try {
+                connection.setAutoCommit(autoCommit);
+              } catch (SQLException resetFailure) {
+                LOGGER.warn("Unable to restore auto-commit; closing connection", resetFailure);
+              }
             }
           }
         });
@@ -369,8 +397,31 @@ public class DatasourceOperations {
     }
 
     // Additionally, one might check for specific error messages or other conditions
-    return e.getMessage().toLowerCase(Locale.ROOT).contains("connection refused")
-        || e.getMessage().toLowerCase(Locale.ROOT).contains("connection reset");
+    String message = e.getMessage();
+    if (message == null) {
+      return false;
+    }
+    String lowerMessage = message.toLowerCase(Locale.ROOT);
+    return lowerMessage.contains("connection refused")
+        || lowerMessage.contains("connection reset")
+        || lowerMessage.contains("acquisition timeout");
+  }
+
+  private boolean isAmbiguousWriteFailure(SQLException e) {
+    if (CONNECTION_FAILURE_SQL_CODE.equals(e.getSQLState())) {
+      return true;
+    }
+
+    String message = e.getMessage();
+    if (message == null) {
+      return false;
+    }
+    String lowerMessage = message.toLowerCase(Locale.ROOT);
+    return lowerMessage.contains("connection refused")
+        || lowerMessage.contains("connection reset")
+        || lowerMessage.contains("i/o error occurred while sending to the backend")
+        || lowerMessage.contains("broken pipe")
+        || lowerMessage.contains("connection has been closed");
   }
 
   // TODO: consider refactoring to use a retry library, inorder to have fair retries
@@ -391,6 +442,8 @@ public class DatasourceOperations {
     while (attempts < maxAttempts) {
       try {
         return operation.execute();
+      } catch (AmbiguousWriteException e) {
+        throw e;
       } catch (EntityAlreadyExistsException | RetryOnConcurrencyException e) {
         // Pass domain exceptions through unchanged. Do not unwrap their SQLException cause into
         // the retry path (that would rewrap them as a generic SQLException and lose the typed
