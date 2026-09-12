@@ -67,6 +67,10 @@ openApiGenerate {
   globalProperties.put("modelTests", "false")
   configOptions.put("openApiNullable", "false")
   configOptions.put("useBeanValidation", "true")
+  // Without this, the operation's generated API class name is derived from the first path
+  // segment, which is now the "{prefix}" path variable (per Iceberg REST Catalog API
+  // convention) rather than a fixed literal segment to name the class after.
+  configOptions.put("useTags", "true")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
   configOptions.put("generateBuilders", "true")

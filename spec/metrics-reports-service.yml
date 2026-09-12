@@ -39,7 +39,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
 servers:
-  - url: "{scheme}://{host}/api/metrics-reports/v1"
+  - url: "{scheme}://{host}/api/catalog/v1"
     variables:
       scheme:
         default: https
@@ -47,19 +47,19 @@ servers:
         default: localhost
 
 paths:
-  /catalogs/{catalogName}/metrics/query:
+  /{prefix}/metrics/query:
     parameters:
-      - $ref: '#/components/parameters/catalogName'
+      - $ref: '#/components/parameters/prefix'
     post:
       operationId: queryTableMetrics
       summary: Query metrics reports for one or more tables
       description: >
         Returns persisted metrics reports for the tables listed in the request body. All requested
-        tables must belong to the catalog identified by `catalogName`. The required `metricType`
+        tables must belong to the catalog identified by `prefix`. The required `metricType`
         selects between scan reports (produced during table reads) and commit reports (produced
         during table writes). Results from all requested tables are merged into a single page,
-        ordered by timestamp descending, and disambiguated by the `table` field on each report's
-        `object`. Requires TABLE_READ_METRICS privilege on every requested table.
+        ordered by timestamp descending, and disambiguated by the `table` field on each report.
+        Requires TABLE_READ_METRICS privilege on every requested table.
       tags:
         - Metrics
       requestBody:
@@ -102,12 +102,15 @@ paths:
 
 components:
   parameters:
-    catalogName:
-      name: catalogName
+    prefix:
+      name: prefix
       in: path
       required: true
       schema:
         type: string
+      description: >
+        The Iceberg REST Catalog API prefix identifying the catalog to query, resolved to a
+        Polaris catalog name the same way as the Iceberg Catalog API.
 
   schemas:
     TableRef:
@@ -139,8 +142,8 @@ components:
           type: array
           minItems: 1
           description: >
-            Tables to query. All tables must belong to the catalog identified by catalogName in
-            the path.
+            Tables to query. All tables must belong to the catalog identified by prefix in the
+            path.
           items:
             $ref: '#/components/schemas/TableRef'
         pageToken:
@@ -149,12 +152,16 @@ components:
         pageSize:
           type: integer
           minimum: 1
-          default: 100
-          description: Maximum number of results to return per page
+          description: >
+            Maximum number of results to return per page. As with other paginated Polaris APIs,
+            omitting this (and pageToken) returns all matching results in a single page.
         snapshotId:
           type: integer
           format: int64
-          description: Filter results to a specific snapshot ID
+          description: >
+            Filter results to a specific snapshot ID. Since snapshot IDs are scoped to a single
+            table, this is only valid when exactly one table is requested; the request fails with
+            400 otherwise.
         timestampFrom:
           type: integer
           format: int64
@@ -165,57 +172,59 @@ components:
           description: Exclusive upper bound on report timestamp (Unix epoch milliseconds)
 
     ListMetricsResponse:
+      type: object
+      required:
+        - reports
+      properties:
+        nextPageToken:
+          type: string
+          nullable: true
+          description: >
+            Opaque cursor for fetching the next page. Null or absent when no further pages exist.
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricsReport'
+
+    MetricsReport:
+      type: object
       description: >
-        Polymorphic response for metrics queries. The concrete type is determined by the
-        metricType discriminator field, which echoes the requested metricType query parameter.
-      oneOf:
-        - $ref: '#/components/schemas/ListScanMetricsResponse'
-        - $ref: '#/components/schemas/ListCommitMetricsResponse'
-      discriminator:
-        propertyName: metricType
-        mapping:
-          scan: '#/components/schemas/ListScanMetricsResponse'
-          commit: '#/components/schemas/ListCommitMetricsResponse'
-
-    ListScanMetricsResponse:
-      type: object
+        Envelope for a single persisted Iceberg metrics report (scan or commit). The `payload`
+        preserves the original Iceberg report data as an opaque JSON object so new metric fields
+        can pass through without requiring a change to this API's schema.
       required:
         - metricType
-        - reports
+        - table
+        - timestampMs
+        - payload
       properties:
-        nextPageToken:
-          type: string
-          nullable: true
-          description: >
-            Opaque cursor for fetching the next page. Null or absent when no further pages exist.
         metricType:
           type: string
-          enum: [scan]
-          description: Discriminator — always "scan" for this response type
-        reports:
-          type: array
-          items:
-            $ref: '#/components/schemas/ScanMetricsReport'
-
-    ListCommitMetricsResponse:
-      type: object
-      required:
-        - metricType
-        - reports
-      properties:
-        nextPageToken:
-          type: string
+          enum: [scan, commit]
+          description: Matches the requested metricType
+        table:
+          $ref: '#/components/schemas/TableRef'
+        timestampMs:
+          type: integer
+          format: int64
+          description: Server-side timestamp when the report was received (Unix epoch milliseconds)
+        snapshotId:
+          type: integer
+          format: int64
           nullable: true
+          description: Snapshot ID associated with the report, if any
+        actor:
+          $ref: '#/components/schemas/MetricsActor'
+          nullable: true
+        request:
+          $ref: '#/components/schemas/MetricsRequest'
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
           description: >
-            Opaque cursor for fetching the next page. Null or absent when no further pages exist.
-        metricType:
-          type: string
-          enum: [commit]
-          description: Discriminator — always "commit" for this response type
-        reports:
-          type: array
-          items:
-            $ref: '#/components/schemas/CommitMetricsReport'
+            Opaque Iceberg metrics report payload, e.g. `{"type": "iceberg.metrics.scan",
+            "version": 1, "data": {...}}`, mirroring the shape of the original report as received.
 
     MetricsActor:
       type: object
@@ -240,255 +249,6 @@ components:
           type: string
           nullable: true
           description: OpenTelemetry span ID
-
-    ScanMetricsObject:
-      type: object
-      description: Resource context for the scanned table operation
-      required:
-        - table
-      properties:
-        table:
-          $ref: '#/components/schemas/TableRef'
-        snapshotId:
-          type: integer
-          format: int64
-          nullable: true
-
-    CommitMetricsObject:
-      type: object
-      description: Resource context for the committed table operation
-      required:
-        - table
-        - snapshotId
-      properties:
-        table:
-          $ref: '#/components/schemas/TableRef'
-        snapshotId:
-          type: integer
-          format: int64
-
-    ScanPayloadData:
-      type: object
-      description: Iceberg scan metrics data
-      properties:
-        schemaId:
-          type: integer
-          nullable: true
-        filterExpression:
-          type: string
-          nullable: true
-        projectedFieldIds:
-          type: array
-          nullable: true
-          items:
-            type: integer
-          description: Projected field IDs
-        projectedFieldNames:
-          type: array
-          nullable: true
-          items:
-            type: string
-          description: Projected field names
-        resultDataFiles:
-          type: integer
-          format: int64
-        resultDeleteFiles:
-          type: integer
-          format: int64
-        totalFileSizeBytes:
-          type: integer
-          format: int64
-        totalDataManifests:
-          type: integer
-          format: int64
-        totalDeleteManifests:
-          type: integer
-          format: int64
-        scannedDataManifests:
-          type: integer
-          format: int64
-        scannedDeleteManifests:
-          type: integer
-          format: int64
-        skippedDataManifests:
-          type: integer
-          format: int64
-        skippedDeleteManifests:
-          type: integer
-          format: int64
-        skippedDataFiles:
-          type: integer
-          format: int64
-        skippedDeleteFiles:
-          type: integer
-          format: int64
-        totalPlanningDurationMs:
-          type: integer
-          format: int64
-        equalityDeleteFiles:
-          type: integer
-          format: int64
-        positionalDeleteFiles:
-          type: integer
-          format: int64
-        indexedDeleteFiles:
-          type: integer
-          format: int64
-        totalDeleteFileSizeBytes:
-          type: integer
-          format: int64
-
-    ScanPayload:
-      type: object
-      required:
-        - type
-        - version
-        - data
-      properties:
-        type:
-          type: string
-          enum: [iceberg.metrics.scan]
-        version:
-          type: integer
-          enum: [1]
-        data:
-          $ref: '#/components/schemas/ScanPayloadData'
-
-    CommitPayloadData:
-      type: object
-      description: Iceberg commit metrics data
-      properties:
-        sequenceNumber:
-          type: integer
-          format: int64
-          nullable: true
-        operation:
-          type: string
-          description: Commit operation (append, overwrite, delete, replace)
-        addedDataFiles:
-          type: integer
-          format: int64
-        removedDataFiles:
-          type: integer
-          format: int64
-        totalDataFiles:
-          type: integer
-          format: int64
-        addedDeleteFiles:
-          type: integer
-          format: int64
-        removedDeleteFiles:
-          type: integer
-          format: int64
-        totalDeleteFiles:
-          type: integer
-          format: int64
-        addedEqualityDeleteFiles:
-          type: integer
-          format: int64
-        removedEqualityDeleteFiles:
-          type: integer
-          format: int64
-        addedPositionalDeleteFiles:
-          type: integer
-          format: int64
-        removedPositionalDeleteFiles:
-          type: integer
-          format: int64
-        addedRecords:
-          type: integer
-          format: int64
-        removedRecords:
-          type: integer
-          format: int64
-        totalRecords:
-          type: integer
-          format: int64
-        addedFileSizeBytes:
-          type: integer
-          format: int64
-        removedFileSizeBytes:
-          type: integer
-          format: int64
-        totalFileSizeBytes:
-          type: integer
-          format: int64
-        totalDurationMs:
-          type: integer
-          format: int64
-          nullable: true
-        attempts:
-          type: integer
-
-    CommitPayload:
-      type: object
-      required:
-        - type
-        - version
-        - data
-      properties:
-        type:
-          type: string
-          enum: [iceberg.metrics.commit]
-        version:
-          type: integer
-          enum: [1]
-        data:
-          $ref: '#/components/schemas/CommitPayloadData'
-
-    ScanMetricsReport:
-      type: object
-      description: Stable envelope for a persisted Iceberg scan metrics report
-      required:
-        - id
-        - timestampMs
-        - object
-        - payload
-      properties:
-        id:
-          type: string
-          description: Unique identifier for this report
-        timestampMs:
-          type: integer
-          format: int64
-          description: Server-side timestamp when the report was received (Unix epoch milliseconds)
-        actor:
-          $ref: '#/components/schemas/MetricsActor'
-          nullable: true
-        request:
-          $ref: '#/components/schemas/MetricsRequest'
-          nullable: true
-        object:
-          $ref: '#/components/schemas/ScanMetricsObject'
-        payload:
-          $ref: '#/components/schemas/ScanPayload'
-
-    CommitMetricsReport:
-      type: object
-      description: Stable envelope for a persisted Iceberg commit metrics report
-      required:
-        - id
-        - timestampMs
-        - object
-        - payload
-      properties:
-        id:
-          type: string
-          description: Unique identifier for this report
-        timestampMs:
-          type: integer
-          format: int64
-          description: Server-side timestamp when the report was received (Unix epoch milliseconds)
-        actor:
-          $ref: '#/components/schemas/MetricsActor'
-          nullable: true
-        request:
-          $ref: '#/components/schemas/MetricsRequest'
-          nullable: true
-        object:
-          $ref: '#/components/schemas/CommitMetricsObject'
-        payload:
-          $ref: '#/components/schemas/CommitPayload'
 
     ErrorResponse:
       type: object

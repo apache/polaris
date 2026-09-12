@@ -46,19 +46,11 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.metrics.api.model.CommitMetricsObject;
-import org.apache.polaris.core.metrics.api.model.CommitMetricsReport;
-import org.apache.polaris.core.metrics.api.model.CommitPayload;
-import org.apache.polaris.core.metrics.api.model.CommitPayloadData;
-import org.apache.polaris.core.metrics.api.model.ListCommitMetricsResponse;
-import org.apache.polaris.core.metrics.api.model.ListScanMetricsResponse;
+import org.apache.polaris.core.metrics.api.model.ListMetricsResponse;
 import org.apache.polaris.core.metrics.api.model.MetricsActor;
+import org.apache.polaris.core.metrics.api.model.MetricsReport;
 import org.apache.polaris.core.metrics.api.model.MetricsRequest;
 import org.apache.polaris.core.metrics.api.model.QueryMetricsRequest;
-import org.apache.polaris.core.metrics.api.model.ScanMetricsObject;
-import org.apache.polaris.core.metrics.api.model.ScanMetricsReport;
-import org.apache.polaris.core.metrics.api.model.ScanPayload;
-import org.apache.polaris.core.metrics.api.model.ScanPayloadData;
 import org.apache.polaris.core.metrics.api.model.TableRef;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
@@ -70,8 +62,9 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.extension.metrics.spi.MetricsQuerySpi;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
-import org.apache.polaris.service.metrics.api.PolarisCatalogsApiService;
+import org.apache.polaris.service.metrics.api.PolarisMetricsApiService;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -82,35 +75,44 @@ import org.jspecify.annotations.NonNull;
  */
 @Beta
 @RequestScoped
-public class MetricsReportsService implements PolarisCatalogsApiService {
+public class MetricsReportsService implements PolarisMetricsApiService {
 
   private final PolarisAuthorizer authorizer;
   private final PolarisPrincipal polarisPrincipal;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final Instance<MetricsQuerySpi> queryProvider;
+  private final CatalogPrefixParser prefixParser;
 
   @Inject
   public MetricsReportsService(
       @NonNull PolarisAuthorizer authorizer,
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull ResolutionManifestFactory resolutionManifestFactory,
-      @Any Instance<MetricsQuerySpi> queryProvider) {
+      @Any Instance<MetricsQuerySpi> queryProvider,
+      @NonNull CatalogPrefixParser prefixParser) {
     this.authorizer = authorizer;
     this.polarisPrincipal = polarisPrincipal;
     this.resolutionManifestFactory = resolutionManifestFactory;
+    this.prefixParser = prefixParser;
     this.queryProvider = queryProvider;
   }
 
   @Override
   public Response queryTableMetrics(
-      String catalogName,
+      String prefix,
       QueryMetricsRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
 
     List<TableRef> tableRefs = request.getTables();
     if (tableRefs == null || tableRefs.isEmpty()) {
       throw new IllegalArgumentException("tables must not be empty");
+    }
+    if (request.getSnapshotId() != null && tableRefs.size() != 1) {
+      throw new IllegalArgumentException(
+          "snapshotId can only be used when exactly one table is requested, since snapshot IDs "
+              + "are scoped to a single table");
     }
 
     List<TableIdentifier> identifiers =
@@ -156,37 +158,23 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
         result.metricType() == type, "Provider returned %s for %s", result.metricType(), type);
 
     return switch (result) {
-      case MetricsQuerySpi.ScanResult scan -> toScanResponse(scan, tableIdToIdentifier);
-      case MetricsQuerySpi.CommitResult commit -> toCommitResponse(commit, tableIdToIdentifier);
+      case MetricsQuerySpi.ScanResult scan ->
+          toResponse(
+              scan.reports().encodedResponseToken(),
+              scan.reports().items().stream()
+                  .map(r -> toScanReport(r, tableIdToIdentifier.get(r.tableId())))
+                  .toList());
+      case MetricsQuerySpi.CommitResult commit ->
+          toResponse(
+              commit.reports().encodedResponseToken(),
+              commit.reports().items().stream()
+                  .map(r -> toCommitReport(r, tableIdToIdentifier.get(r.tableId())))
+                  .toList());
     };
   }
 
-  private static Response toScanResponse(
-      MetricsQuerySpi.ScanResult scan, Map<Long, TableIdentifier> tableIdToIdentifier) {
-    List<ScanMetricsReport> reports =
-        scan.reports().items().stream()
-            .map(r -> toScanReport(r, tableIdToIdentifier.get(r.tableId())))
-            .toList();
-    return Response.ok(
-            new ListScanMetricsResponse(
-                scan.reports().encodedResponseToken(),
-                ListScanMetricsResponse.MetricTypeEnum.SCAN,
-                reports))
-        .build();
-  }
-
-  private static Response toCommitResponse(
-      MetricsQuerySpi.CommitResult commit, Map<Long, TableIdentifier> tableIdToIdentifier) {
-    List<CommitMetricsReport> reports =
-        commit.reports().items().stream()
-            .map(r -> toCommitReport(r, tableIdToIdentifier.get(r.tableId())))
-            .toList();
-    return Response.ok(
-            new ListCommitMetricsResponse(
-                commit.reports().encodedResponseToken(),
-                ListCommitMetricsResponse.MetricTypeEnum.COMMIT,
-                reports))
-        .build();
+  private static Response toResponse(String nextPageToken, List<MetricsReport> reports) {
+    return Response.ok(new ListMetricsResponse(nextPageToken, reports)).build();
   }
 
   private static MetricsQuerySpi.MetricType parseMetricType(String metricType) {
@@ -252,82 +240,103 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     return manifest;
   }
 
-  private static ScanMetricsReport toScanReport(ScanMetricsRecord r, TableIdentifier identifier) {
-    MetricsActor actor = r.principalName() != null ? new MetricsActor(r.principalName()) : null;
-    MetricsRequest request =
-        (r.requestId() != null || r.otelTraceId() != null || r.otelSpanId() != null)
-            ? new MetricsRequest(r.requestId(), r.otelTraceId(), r.otelSpanId())
-            : null;
-    ScanMetricsObject object =
-        new ScanMetricsObject(toTableRef(identifier), r.snapshotId().orElse(null));
-    ScanPayloadData data =
-        ScanPayloadData.builder()
-            .setSchemaId(r.schemaId().orElse(null))
-            .setFilterExpression(r.filterExpression().orElse(null))
-            .setProjectedFieldIds(r.projectedFieldIds())
-            .setProjectedFieldNames(r.projectedFieldNames())
-            .setResultDataFiles(r.resultDataFiles())
-            .setResultDeleteFiles(r.resultDeleteFiles())
-            .setTotalFileSizeBytes(r.totalFileSizeBytes())
-            .setTotalDataManifests(r.totalDataManifests())
-            .setTotalDeleteManifests(r.totalDeleteManifests())
-            .setScannedDataManifests(r.scannedDataManifests())
-            .setScannedDeleteManifests(r.scannedDeleteManifests())
-            .setSkippedDataManifests(r.skippedDataManifests())
-            .setSkippedDeleteManifests(r.skippedDeleteManifests())
-            .setSkippedDataFiles(r.skippedDataFiles())
-            .setSkippedDeleteFiles(r.skippedDeleteFiles())
-            .setTotalPlanningDurationMs(r.totalPlanningDurationMs())
-            .setEqualityDeleteFiles(r.equalityDeleteFiles())
-            .setPositionalDeleteFiles(r.positionalDeleteFiles())
-            .setIndexedDeleteFiles(r.indexedDeleteFiles())
-            .setTotalDeleteFileSizeBytes(r.totalDeleteFileSizeBytes())
-            .build();
-    ScanPayload payload =
-        new ScanPayload(
-            ScanPayload.TypeEnum.ICEBERG_METRICS_SCAN, ScanPayload.VersionEnum.NUMBER_1, data);
-    return new ScanMetricsReport(
-        r.reportId(), r.timestamp().toEpochMilli(), actor, request, object, payload);
+  private static MetricsReport toScanReport(ScanMetricsRecord r, TableIdentifier identifier) {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("schema-id", r.schemaId().orElse(null));
+    data.put("filter", r.filterExpression().orElse(null));
+    data.put("projected-field-ids", r.projectedFieldIds());
+    data.put("projected-field-names", r.projectedFieldNames());
+    data.put("result-data-files", r.resultDataFiles());
+    data.put("result-delete-files", r.resultDeleteFiles());
+    data.put("total-file-size-bytes", r.totalFileSizeBytes());
+    data.put("total-data-manifests", r.totalDataManifests());
+    data.put("total-delete-manifests", r.totalDeleteManifests());
+    data.put("scanned-data-manifests", r.scannedDataManifests());
+    data.put("scanned-delete-manifests", r.scannedDeleteManifests());
+    data.put("skipped-data-manifests", r.skippedDataManifests());
+    data.put("skipped-delete-manifests", r.skippedDeleteManifests());
+    data.put("skipped-data-files", r.skippedDataFiles());
+    data.put("skipped-delete-files", r.skippedDeleteFiles());
+    data.put("total-planning-duration-ms", r.totalPlanningDurationMs());
+    data.put("equality-delete-files", r.equalityDeleteFiles());
+    data.put("positional-delete-files", r.positionalDeleteFiles());
+    data.put("indexed-delete-files", r.indexedDeleteFiles());
+    data.put("total-delete-file-size-bytes", r.totalDeleteFileSizeBytes());
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("type", "iceberg.metrics.scan");
+    payload.put("version", 1);
+    payload.put("data", data);
+
+    return toReport(
+        MetricsReport.MetricTypeEnum.SCAN,
+        identifier,
+        r.timestamp().toEpochMilli(),
+        r.snapshotId().orElse(null),
+        r.principalName(),
+        r.requestId(),
+        r.otelTraceId(),
+        r.otelSpanId(),
+        payload);
   }
 
-  private static CommitMetricsReport toCommitReport(
-      CommitMetricsRecord r, TableIdentifier identifier) {
-    MetricsActor actor = r.principalName() != null ? new MetricsActor(r.principalName()) : null;
+  private static MetricsReport toCommitReport(CommitMetricsRecord r, TableIdentifier identifier) {
+    Map<String, Object> data = new LinkedHashMap<>();
+    data.put("sequence-number", r.sequenceNumber().orElse(null));
+    data.put("operation", r.operation());
+    data.put("added-data-files", r.addedDataFiles());
+    data.put("removed-data-files", r.removedDataFiles());
+    data.put("total-data-files", r.totalDataFiles());
+    data.put("added-delete-files", r.addedDeleteFiles());
+    data.put("removed-delete-files", r.removedDeleteFiles());
+    data.put("total-delete-files", r.totalDeleteFiles());
+    data.put("added-equality-delete-files", r.addedEqualityDeleteFiles());
+    data.put("removed-equality-delete-files", r.removedEqualityDeleteFiles());
+    data.put("added-positional-delete-files", r.addedPositionalDeleteFiles());
+    data.put("removed-positional-delete-files", r.removedPositionalDeleteFiles());
+    data.put("added-records", r.addedRecords());
+    data.put("removed-records", r.removedRecords());
+    data.put("total-records", r.totalRecords());
+    data.put("added-file-size-bytes", r.addedFileSizeBytes());
+    data.put("removed-file-size-bytes", r.removedFileSizeBytes());
+    data.put("total-file-size-bytes", r.totalFileSizeBytes());
+    data.put("total-duration-ms", r.totalDurationMs().orElse(null));
+    data.put("attempts", r.attempts());
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("type", "iceberg.metrics.commit");
+    payload.put("version", 1);
+    payload.put("data", data);
+
+    return toReport(
+        MetricsReport.MetricTypeEnum.COMMIT,
+        identifier,
+        r.timestamp().toEpochMilli(),
+        r.snapshotId(),
+        r.principalName(),
+        r.requestId(),
+        r.otelTraceId(),
+        r.otelSpanId(),
+        payload);
+  }
+
+  private static MetricsReport toReport(
+      MetricsReport.MetricTypeEnum metricType,
+      TableIdentifier identifier,
+      long timestampMs,
+      Long snapshotId,
+      String principalName,
+      String requestId,
+      String otelTraceId,
+      String otelSpanId,
+      Map<String, Object> payload) {
+    MetricsActor actor = principalName != null ? new MetricsActor(principalName) : null;
     MetricsRequest request =
-        (r.requestId() != null || r.otelTraceId() != null || r.otelSpanId() != null)
-            ? new MetricsRequest(r.requestId(), r.otelTraceId(), r.otelSpanId())
+        (requestId != null || otelTraceId != null || otelSpanId != null)
+            ? new MetricsRequest(requestId, otelTraceId, otelSpanId)
             : null;
-    CommitMetricsObject object = new CommitMetricsObject(toTableRef(identifier), r.snapshotId());
-    CommitPayloadData data =
-        CommitPayloadData.builder()
-            .setSequenceNumber(r.sequenceNumber().orElse(null))
-            .setOperation(r.operation())
-            .setAddedDataFiles(r.addedDataFiles())
-            .setRemovedDataFiles(r.removedDataFiles())
-            .setTotalDataFiles(r.totalDataFiles())
-            .setAddedDeleteFiles(r.addedDeleteFiles())
-            .setRemovedDeleteFiles(r.removedDeleteFiles())
-            .setTotalDeleteFiles(r.totalDeleteFiles())
-            .setAddedEqualityDeleteFiles(r.addedEqualityDeleteFiles())
-            .setRemovedEqualityDeleteFiles(r.removedEqualityDeleteFiles())
-            .setAddedPositionalDeleteFiles(r.addedPositionalDeleteFiles())
-            .setRemovedPositionalDeleteFiles(r.removedPositionalDeleteFiles())
-            .setAddedRecords(r.addedRecords())
-            .setRemovedRecords(r.removedRecords())
-            .setTotalRecords(r.totalRecords())
-            .setAddedFileSizeBytes(r.addedFileSizeBytes())
-            .setRemovedFileSizeBytes(r.removedFileSizeBytes())
-            .setTotalFileSizeBytes(r.totalFileSizeBytes())
-            .setTotalDurationMs(r.totalDurationMs().orElse(null))
-            .setAttempts(r.attempts())
-            .build();
-    CommitPayload payload =
-        new CommitPayload(
-            CommitPayload.TypeEnum.ICEBERG_METRICS_COMMIT,
-            CommitPayload.VersionEnum.NUMBER_1,
-            data);
-    return new CommitMetricsReport(
-        r.reportId(), r.timestamp().toEpochMilli(), actor, request, object, payload);
+    return new MetricsReport(
+        metricType, toTableRef(identifier), timestampMs, snapshotId, actor, request, payload);
   }
 
   private static TableRef toTableRef(TableIdentifier identifier) {
