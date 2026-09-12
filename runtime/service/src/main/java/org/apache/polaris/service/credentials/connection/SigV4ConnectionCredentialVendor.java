@@ -36,6 +36,7 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.service.credentials.CredentialVendorPriorities;
 import org.jspecify.annotations.NonNull;
@@ -46,18 +47,15 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 /**
  * Connection credential vendor for AWS SigV4 authentication.
  *
- * <p>This vendor uses Polaris's AWS IAM service identity to assume a customer-provided IAM role via
- * AWS STS, generating temporary credentials that Polaris uses to access external AWS services
- * (e.g., AWS Glue catalog) with SigV4 request signing.
+ * <p>Two forms, chosen by which authentication parameters are set.
  *
- * <p>Flow:
+ * <p><b>Role assumption</b> — for AWS services such as Glue. Polaris uses its own {@link
+ * AwsIamServiceIdentityCredential} to assume the customer's role via AWS STS, and returns the
+ * temporary access key, secret key and session token.
  *
- * <ol>
- *   <li>Receives Polaris's {@link AwsIamServiceIdentityCredential} (the IAM user/role Polaris owns)
- *   <li>Extracts customer's role ARN from {@link SigV4AuthenticationParametersDpo}
- *   <li>Calls AWS STS AssumeRole to get temporary credentials
- *   <li>Returns temporary access key, secret key, and session token
- * </ol>
+ * <p><b>Static credentials</b> — for SigV4-compatible catalogs that are not AWS, which have neither
+ * a role to assume nor an STS endpoint. The key is read from the user secrets manager and handed to
+ * the signer directly; STS is not involved.
  *
  * <p>This is the default implementation with {@code @Priority(CredentialVendorPriorities.DEFAULT)}.
  * Custom implementations can override this by providing a higher priority value.
@@ -71,12 +69,16 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
 
   private final StsClientProvider stsClientProvider;
   private final ServiceIdentityProvider serviceIdentityProvider;
+  private final UserSecretsManager secretsManager;
 
   @Inject
   public SigV4ConnectionCredentialVendor(
-      StsClientProvider stsClientProvider, ServiceIdentityProvider serviceIdentityProvider) {
+      StsClientProvider stsClientProvider,
+      ServiceIdentityProvider serviceIdentityProvider,
+      UserSecretsManager secretsManager) {
     this.stsClientProvider = stsClientProvider;
     this.serviceIdentityProvider = serviceIdentityProvider;
+    this.secretsManager = secretsManager;
   }
 
   @Override
@@ -90,6 +92,10 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
         connectionConfig.getAuthenticationParameters().getClass().getName());
     SigV4AuthenticationParametersDpo sigv4Params =
         (SigV4AuthenticationParametersDpo) connectionConfig.getAuthenticationParameters();
+
+    if (sigv4Params.hasStaticCredentials()) {
+      return staticCredentials(sigv4Params);
+    }
 
     // Resolve the service identity credential
     Optional<ServiceIdentityCredential> serviceCredentialOpt =
@@ -144,6 +150,18 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
                     String.valueOf(expiration.toEpochMilli())));
 
     return ConnectionCredentials.of(props);
+  }
+
+  /** Long-lived keys handed to the signer as-is. They do not expire, so no expiry is reported. */
+  private ConnectionCredentials staticCredentials(
+      @NonNull SigV4AuthenticationParametersDpo sigv4Params) {
+    String secretAccessKey = secretsManager.readSecret(sigv4Params.getSecretAccessKeyReference());
+    return ConnectionCredentials.of(
+        Map.of(
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID,
+            sigv4Params.getAccessKeyId(),
+            CatalogAccessProperty.AWS_SECRET_ACCESS_KEY,
+            secretAccessKey));
   }
 
   @VisibleForTesting
