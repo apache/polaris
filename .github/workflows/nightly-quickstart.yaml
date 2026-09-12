@@ -1,0 +1,102 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# Builds and runs the Spark plugin's getting-started examples (docker-compose
+# + Jupyter notebook) end-to-end, to catch regressions that break these
+# examples outside of normal PR CI.
+
+name: Spark Plugin Quickstart Nightly
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+# Setting explicit permissions for the action to avoid the default permissions which are `write-all` in case of pull_request_target event
+permissions:
+  actions: read
+  contents: read
+  issues: read
+
+env:
+  GRADLE_TOS_ACCEPTED: ${{ vars.GRADLE_TOS_ACCEPTED }}
+  DEVELOCITY_SERVER: ${{ vars.DEVELOCITY_SERVER }}
+  DEVELOCITY_PROJECT_ID: ${{ vars.DEVELOCITY_PROJECT_ID }}
+
+jobs:
+  spark-quickstart:
+    name: Spark Quickstart (v${{ matrix.spark_version }})
+    runs-on: ubuntu-latest
+    if: github.repository == 'apache/polaris'
+    strategy:
+      fail-fast: false # don't block if one version fails
+      matrix:
+        include:
+          - spark_version: "3.5"
+            make_target: build-spark-plugin-3.5-2.12
+          - spark_version: "4.0"
+            make_target: build-spark-plugin-4.0-2.13
+    env:
+      COMPOSE_FILE: plugins/spark/v${{ matrix.spark_version }}/getting-started/docker-compose.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+
+      - name: Build Polaris image
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }} # zizmor: ignore[secrets-outside-env]
+        run: make build-server
+
+      - name: Build Spark plugin jar
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }} # zizmor: ignore[secrets-outside-env]
+        run: make ${{ matrix.make_target }}
+
+      - name: Start docker compose
+        run: docker compose -f "$COMPOSE_FILE" up -d --wait
+
+      - name: Run notebook end-to-end
+        run: |
+          docker compose -f "$COMPOSE_FILE" exec -T jupyter \
+            /home/spark/venv/bin/jupyter nbconvert \
+            --to notebook --execute --ExecutePreprocessor.timeout=600 \
+            --output /tmp/SparkPolaris.out.ipynb \
+            /home/spark/notebooks/SparkPolaris.ipynb
+
+      - name: Dump service logs
+        if: failure()
+        # Prints logs from all containers since the stack is torn down at the end of the job
+        run: docker compose -f "$COMPOSE_FILE" logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f "$COMPOSE_FILE" down -v
