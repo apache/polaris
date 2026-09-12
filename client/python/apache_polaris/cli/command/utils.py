@@ -39,7 +39,7 @@ def paginate(
 
     When page_size is None, a full response is fetched within a single request.
 
-    The first request sents an empty page_token to opt into pagination per the Iceberg
+    The first request sends an empty page_token to opt into pagination per the Iceberg
     REST spec. When setting to None, this would be dropped by the SDK and disable
     pagination on federated catalogs.
     """

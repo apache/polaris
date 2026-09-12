@@ -1273,10 +1273,14 @@ class SetupCommand(Command):
         confirmed_existing_namespaces: Set[tuple[str, ...]] = set()
         if dry_run:
             try:
-                sub_ns = catalog_api.list_namespaces(prefix=catalog_name).namespaces
-                for ns in sub_ns:
-                    existing_namespaces.add(tuple(ns))
-                    confirmed_existing_namespaces.add(tuple(ns))
+                for resp in paginate(
+                    catalog_api.list_namespaces,
+                    page_size=self.page_size,
+                    prefix=catalog_name,
+                ):
+                    for ns in resp.namespaces or []:
+                        existing_namespaces.add(tuple(ns))
+                        confirmed_existing_namespaces.add(tuple(ns))
             except NotFoundException:
                 pass
             except Exception:
@@ -1327,6 +1331,7 @@ class SetupCommand(Command):
                         ):
                             for ns in resp.namespaces or []:
                                 existing_namespaces.add(tuple(ns))
+                                confirmed_existing_namespaces.add(tuple(ns))
                                 listed_parents.add(parent)
                     except Exception:
                         self._record_failure(
