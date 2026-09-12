@@ -154,6 +154,14 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
    */
   public abstract @Nullable Boolean getKmsUnavailable();
 
+  /**
+   * Flag indicating whether to omit the inline session policy from STS AssumeRole requests. Set to
+   * {@code true} for S3-compatible STS implementations (e.g. VAST Data) that do not support inline
+   * session policies. When enabled, the temporary credentials inherit the full permissions of the
+   * assumed role; ensure the IAM role has appropriate permissions for the required operations.
+   */
+  public abstract @Nullable Boolean getNoInlinePolicy();
+
   /** Endpoint URI for STS API calls */
   @Nullable
   public abstract String getStsEndpoint();
