@@ -110,7 +110,7 @@ def test_create_table(
     test_catalog_client.create_table(
         prefix=test_catalog.name,
         namespace="NS1",
-        x_iceberg_access_delegation="true",
+        x_iceberg_access_delegation=["vended-credentials"],
         create_table_request=CreateTableRequest(
             name="some_table",
             var_schema=ModelSchema(

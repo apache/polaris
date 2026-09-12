@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.rest.RESTUtil;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -52,11 +51,8 @@ public class PolarisEntityUtilsTest {
 
   @ParameterizedTest
   @MethodSource("encodeNamespaceCases")
-  @SuppressWarnings("deprecation")
   public void testEncodeNamespace(Namespace ns, String expected) {
-    assertThat(PolarisEntityUtils.encodeNamespace(ns))
-        .isEqualTo(RESTUtil.encodeNamespace(ns))
-        .isEqualTo(expected);
+    assertThat(PolarisEntityUtils.encodeNamespace(ns)).isEqualTo(expected);
   }
 
   @ParameterizedTest
@@ -87,11 +83,8 @@ public class PolarisEntityUtilsTest {
 
   @ParameterizedTest
   @MethodSource("decodeNamespaceCases")
-  @SuppressWarnings("deprecation")
   public void testDecodeNamespace(String encoded, Namespace expected) {
-    assertThat(PolarisEntityUtils.decodeNamespace(encoded))
-        .isEqualTo(RESTUtil.decodeNamespace(encoded))
-        .isEqualTo(expected);
+    assertThat(PolarisEntityUtils.decodeNamespace(encoded)).isEqualTo(expected);
   }
 
   @ParameterizedTest

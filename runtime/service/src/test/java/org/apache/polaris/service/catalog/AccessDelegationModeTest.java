@@ -24,6 +24,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.fromProtoc
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.EnumSet;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -33,33 +34,38 @@ class AccessDelegationModeTest {
   @ParameterizedTest
   @EnumSource(AccessDelegationMode.class)
   void testSingle(AccessDelegationMode mode) {
-    assertThat(fromProtocolValuesList(mode.protocolValue())).isEqualTo(EnumSet.of(mode));
+    assertThat(fromProtocolValuesList(List.of(mode.protocolValue()))).isEqualTo(EnumSet.of(mode));
   }
 
   @Test
   void testSeveral() {
-    assertThat(fromProtocolValuesList("vended-credentials, remote-signing"))
+    assertThat(fromProtocolValuesList(List.of("vended-credentials", "remote-signing")))
         .isEqualTo(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING));
   }
 
   @Test
   void testEmpty() {
     assertThat(fromProtocolValuesList(null)).isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
-    assertThat(fromProtocolValuesList("")).isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
+    assertThat(fromProtocolValuesList(List.of()))
+        .isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
   }
 
   @Test
   void testUnknown() {
-    assertThat(fromProtocolValuesList("abc")).isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
-    assertThat(fromProtocolValuesList("abc,def"))
+    assertThat(fromProtocolValuesList(List.of("abc")))
         .isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
-    assertThat(fromProtocolValuesList("abc,remote-signing")).isEqualTo(EnumSet.of(REMOTE_SIGNING));
+    assertThat(fromProtocolValuesList(List.of("abc", "def")))
+        .isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
+    assertThat(fromProtocolValuesList(List.of("abc", "remote-signing")))
+        .isEqualTo(EnumSet.of(REMOTE_SIGNING));
   }
 
   @Test
   void testLegacy() {
-    assertThat(fromProtocolValuesList("true")).isEqualTo(EnumSet.of(VENDED_CREDENTIALS));
-    assertThat(fromProtocolValuesList("true, vended-credentials"))
+    assertThat(fromProtocolValuesList(List.of("true"))).isEqualTo(EnumSet.of(VENDED_CREDENTIALS));
+    assertThat(fromProtocolValuesList(List.of("true", "vended-credentials")))
         .isEqualTo(EnumSet.of(VENDED_CREDENTIALS));
+    assertThat(fromProtocolValuesList(List.of("true", "remote-signing")))
+        .isEqualTo(EnumSet.of(REMOTE_SIGNING));
   }
 }

@@ -196,7 +196,7 @@ public class IcebergAllowedLocationTest {
                     catalog,
                     namespace,
                     createTableRequest,
-                    "vended-credentials",
+                    List.of("vended-credentials"),
                     IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
@@ -227,7 +227,7 @@ public class IcebergAllowedLocationTest {
                 catalog,
                 namespace,
                 createTableRequest,
-                "vended-credentials",
+                List.of("vended-credentials"),
                 IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
@@ -295,7 +295,7 @@ public class IcebergAllowedLocationTest {
                 catalog,
                 namespace,
                 createTableRequest,
-                "vended-credentials",
+                List.of("vended-credentials"),
                 IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
@@ -983,7 +983,7 @@ public class IcebergAllowedLocationTest {
                 catalog,
                 namespace,
                 createReq,
-                "vended-credentials",
+                List.of("vended-credentials"),
                 IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {

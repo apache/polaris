@@ -129,7 +129,7 @@ public class IcebergOverlappingTableTest {
                 catalog,
                 namespace,
                 createTableRequest,
-                "vended-credentials",
+                List.of("vended-credentials"),
                 IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
