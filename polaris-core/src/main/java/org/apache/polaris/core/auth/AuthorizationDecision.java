@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import java.util.Optional;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 import org.jspecify.annotations.Nullable;
@@ -41,4 +42,10 @@ public interface AuthorizationDecision {
 
   @Value.Parameter(order = 2)
   Optional<String> getMessage();
+
+  default void throwIfDenied() {
+    if (!isAllowed()) {
+      throw new ForbiddenException("%s", getMessage().orElse("Authorization denied"));
+    }
+  }
 }

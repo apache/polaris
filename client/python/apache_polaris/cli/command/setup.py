@@ -337,6 +337,8 @@ class SetupCommand(Command):
                     if c.properties.additional_properties
                     else {},
                 }
+                if c.storage_config_info.storage_name is not None:
+                    catalog_info["storage_name"] = c.storage_config_info.storage_name
                 # Serialize storage config details
                 if storage_type.lower() == StorageType.S3.value:
                     s3_info = {
@@ -838,6 +840,7 @@ class SetupCommand(Command):
         """Maps storage-related properties from YAML data to command arguments."""
         storage_keys = [
             "storage_type",
+            "storage_name",
             "default_base_location",
             "allowed_locations",
             "properties",
@@ -1011,6 +1014,7 @@ class SetupCommand(Command):
                         catalog_type=command_args.get("catalog_type"),
                         default_base_location=command_args.get("default_base_location"),
                         storage_type=command_args.get("storage_type"),
+                        storage_name=command_args.get("storage_name"),
                         allowed_locations=command_args.get("allowed_locations"),
                         properties=command_args.get("properties"),
                         set_properties=command_args.get("set_properties"),
@@ -1266,6 +1270,19 @@ class SetupCommand(Command):
         listed_parents: Set[tuple[str, ...]] = set()
 
         listed_parents.add(())
+        confirmed_existing_namespaces: Set[tuple[str, ...]] = set()
+        if dry_run:
+            try:
+                sub_ns = catalog_api.list_namespaces(prefix=catalog_name).namespaces
+                for ns in sub_ns:
+                    existing_namespaces.add(tuple(ns))
+                    confirmed_existing_namespaces.add(tuple(ns))
+            except NotFoundException:
+                pass
+            except Exception:
+                self._record_failure(
+                    f"Failed to list existing namespaces for catalog '{catalog_name}'"
+                )
         all_namespaces_to_create: Set[tuple[str, ...]] = set()
         namespace_data_map: Dict[tuple[str, ...], Dict[str, Any]] = {}
         for ns_item in namespaces_config:
@@ -1297,11 +1314,10 @@ class SetupCommand(Command):
             if len(namespace_key) > 1:
                 parent = namespace_key[:-1]
                 parent_ns = ".".join(parent)
-                if (
-                    not dry_run
-                    and parent in existing_namespaces
-                    and parent not in listed_parents
-                ):
+                known_parents = (
+                    confirmed_existing_namespaces if dry_run else existing_namespaces
+                )
+                if parent in known_parents and parent not in listed_parents:
                     try:
                         for resp in paginate(
                             catalog_api.list_namespaces,

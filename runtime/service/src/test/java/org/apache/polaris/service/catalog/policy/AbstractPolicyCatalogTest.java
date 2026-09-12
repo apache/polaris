@@ -63,6 +63,7 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -97,6 +98,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -476,6 +479,37 @@ public abstract class AbstractPolicyCatalogTest {
     policyCatalog.dropPolicy(POLICY1, false);
     assertThatThrownBy(() -> policyCatalog.loadPolicy(POLICY1))
         .isInstanceOf(NoSuchPolicyException.class);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "ENTITY_NOT_FOUND, false",
+    "ENTITY_NOT_FOUND, true",
+    "CATALOG_PATH_CANNOT_BE_RESOLVED, false",
+    "CATALOG_PATH_CANNOT_BE_RESOLVED, true"
+  })
+  public void testDropPolicyDisappearsAfterResolution(
+      BaseResult.ReturnStatus status, boolean detachAll) {
+    icebergCatalog.createNamespace(NS);
+    policyCatalog.createPolicy(
+        POLICY1, PredefinedPolicyTypes.DATA_COMPACTION.getName(), "test", "{\"enable\": false}");
+
+    // Resolve the existing policy normally, then simulate a concurrent deletion at persistence.
+    PolarisMetaStoreManager concurrentlyDeleted = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(new DropEntityResult(status, "simulated"))
+        .when(concurrentlyDeleted)
+        .dropEntityIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.eq(detachAll));
+    PolicyCatalog catalog =
+        new PolicyCatalog(
+            concurrentlyDeleted,
+            polarisContext,
+            new PolarisPassthroughResolutionView(
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+
+    assertThatThrownBy(() -> catalog.dropPolicy(POLICY1, detachAll))
+        .isInstanceOf(NoSuchPolicyException.class)
+        .hasMessage("Policy does not exist: %s", POLICY1);
   }
 
   @Test

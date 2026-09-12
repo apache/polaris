@@ -108,7 +108,7 @@ class TestFindCommand(CLITestBase):
             ["--page-size", "10", "find", "my_table", "--catalog", "my-catalog", "--type", "table"],
         )
         mock_iceberg_api.list_namespaces.assert_called_with(
-            prefix="my-catalog", page_size=10, page_token=None
+            prefix="my-catalog", page_size=10, page_token=""
         )
 
     def test_find_summary(self) -> None:

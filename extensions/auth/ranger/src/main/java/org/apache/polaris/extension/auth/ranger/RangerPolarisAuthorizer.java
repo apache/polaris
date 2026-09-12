@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
+import org.apache.polaris.core.auth.AuthorizationIntentResolver;
 import org.apache.polaris.core.auth.AuthorizationPreConditions;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -34,6 +36,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
@@ -90,26 +93,47 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   @Override
   public @NonNull AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    throw new UnsupportedOperationException("authorize is not implemented yet");
+    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
+    for (AuthorizationIntent intent : request.intents()) {
+      AuthorizationDecision decision =
+          authorizeIntent(request.principal(), resolutionManifest, intent);
+      if (!decision.isAllowed()) {
+        return decision;
+      }
+    }
+    return AuthorizationDecision.allow();
   }
 
-  @Override
-  public void authorizeOrThrow(
-      @NonNull PolarisPrincipal polarisPrincipal,
-      @NonNull Set<PolarisBaseEntity> activatedEntities,
-      @NonNull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary) {
-    authorizeOrThrow(
-        polarisPrincipal,
-        activatedEntities,
-        authzOp,
-        target == null ? null : List.of(target),
-        secondary == null ? null : List.of(secondary));
+  private AuthorizationDecision authorizeIntent(
+      PolarisPrincipal polarisPrincipal,
+      PolarisResolutionManifest resolutionManifest,
+      AuthorizationIntent intent) {
+    RangerPolarisOperationSemantics semantics =
+        RangerPolarisOperationSemantics.forOperation(intent.getOperation());
+    if (semantics == null) {
+      return AuthorizationDecision.deny(
+          String.format(
+              RANGER_AUTH_FAILED_ERROR, polarisPrincipal.getName(), intent.getOperation().name()));
+    }
+    boolean prependRootContainer =
+        semantics.rooting() == RangerPolarisOperationSemantics.ResolvedPathRooting.ROOT;
+
+    try {
+      AuthorizationIntentResolver.ResolvedIntent resolvedIntent =
+          AuthorizationIntentResolver.resolve(resolutionManifest, intent, prependRootContainer);
+      authorizeRangerOrThrow(
+          polarisPrincipal,
+          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+          intent.getOperation(),
+          resolvedIntent.targets(),
+          resolvedIntent.secondaries());
+      return AuthorizationDecision.allow();
+    } catch (ForbiddenException e) {
+      return AuthorizationDecision.deny(e.getMessage());
+    }
   }
 
-  @Override
-  public void authorizeOrThrow(
+  private void authorizeRangerOrThrow(
       @NonNull PolarisPrincipal polarisPrincipal,
       @NonNull Set<PolarisBaseEntity> activatedEntities,
       @NonNull PolarisAuthorizableOperation authzOp,
@@ -126,7 +150,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
     if (LOG.isDebugEnabled()) {
       LOG.debug(
-          "authorizeOrThrow(principal={}, activatedEntities={}, authzOp={name: {}, targetPrivileges: {}, secondaryPrivileges: {}), targets={}, secondaries={}",
+          "authorizeRanger(principal={}, activatedEntities={}, authzOp={name: {}, targetPrivileges: {}, secondaryPrivileges: {}), targets={}, secondaries={}",
           polarisPrincipal,
           activatedEntities,
           authzOp,

@@ -82,7 +82,7 @@ catalogs:
           catalog:
             - CATALOG_MANAGE_CONTENT
     namespaces:
-      - dev_namespace
+      - name: [dev_namespace]
 ```
 
 ### Applying the Setup

@@ -22,20 +22,34 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import java.net.UnknownHostException;
 import java.util.Map;
+import org.apache.iceberg.io.BulkDeletionFailureException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
+import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 
-/** A {@link FileIO} implementation that wraps an existing FileIO and re-maps exceptions */
+/**
+ * A {@link FileIO} implementation that wraps an existing FileIO and re-maps exceptions.
+ *
+ * <p>Instances are created with {@link #wrap(FileIO)}, which preserves the wrapped FileIO's {@link
+ * SupportsBulkOperations} capability. Callers discover that capability with {@code instanceof}, and
+ * a plain wrapper would hide it.
+ */
 public class ExceptionMappingFileIO implements FileIO {
   private final FileIO io;
 
-  public ExceptionMappingFileIO(FileIO io) {
+  private ExceptionMappingFileIO(FileIO io) {
     this.io = io;
   }
 
-  private void handleException(RuntimeException e) {
+  public static ExceptionMappingFileIO wrap(FileIO io) {
+    return io instanceof SupportsBulkOperations
+        ? new BulkExceptionMappingFileIO(io)
+        : new ExceptionMappingFileIO(io);
+  }
+
+  private static void handleException(RuntimeException e) {
     for (Throwable t : Throwables.getCausalChain(e)) {
       // UnknownHostException isn't a RuntimeException so it's always wrapped
       if (t instanceof UnknownHostException) {
@@ -106,6 +120,27 @@ public class ExceptionMappingFileIO implements FileIO {
     } catch (RuntimeException e) {
       handleException(e);
       throw e;
+    }
+  }
+
+  private static class BulkExceptionMappingFileIO extends ExceptionMappingFileIO
+      implements SupportsBulkOperations {
+
+    private final SupportsBulkOperations bulkIo;
+
+    private BulkExceptionMappingFileIO(FileIO io) {
+      super(io);
+      this.bulkIo = (SupportsBulkOperations) io;
+    }
+
+    @Override
+    public void deleteFiles(Iterable<String> paths) throws BulkDeletionFailureException {
+      try {
+        bulkIo.deleteFiles(paths);
+      } catch (RuntimeException e) {
+        ExceptionMappingFileIO.handleException(e);
+        throw e;
+      }
     }
   }
 }

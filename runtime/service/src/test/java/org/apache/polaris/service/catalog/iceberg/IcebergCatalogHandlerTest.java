@@ -20,16 +20,17 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
@@ -47,8 +48,12 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.catalog.ViewCatalog;
+import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
@@ -57,6 +62,7 @@ import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -144,6 +150,7 @@ class IcebergCatalogHandlerTest {
     when(resolutionManifest.getResolvedPath(any(), any())).thenReturn(resolvedPath);
     when(resolutionManifest.getResolvedPath(any())).thenReturn(resolvedPath);
     when(resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
 
     // initializeCatalog() reads the resolved catalog entity to decide federated vs. local.
     // Return a CatalogEntity without a connection config so we take the local-catalog path.
@@ -208,6 +215,12 @@ class IcebergCatalogHandlerTest {
     return table;
   }
 
+  private static boolean hasOperation(
+      AuthorizationRequest request, PolarisAuthorizableOperation operation) {
+    return request != null
+        && request.intents().stream().anyMatch(intent -> intent.getOperation().equals(operation));
+  }
+
   @SuppressWarnings({"unchecked", "rawtypes"})
   private void assertVendedActions(PolarisStorageActions... actions) {
     ArgumentCaptor<Set<PolarisStorageActions>> actionsCaptor =
@@ -243,17 +256,17 @@ class IcebergCatalogHandlerTest {
     Catalog catalog = mockRegisterTableCatalog(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
-    doThrow(new ForbiddenException("write delegation denied"))
-        .when(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            eq(PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
+    when(authorizer.authorize(
+            any(),
+            argThat(
+                request ->
+                    hasOperation(
+                        request,
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
+        .thenReturn(AuthorizationDecision.deny("write delegation denied"));
 
     LoadTableResponse response =
         handler.registerTable(
@@ -290,17 +303,17 @@ class IcebergCatalogHandlerTest {
     when(catalogEntity.isExternal()).thenReturn(false);
     when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
-    doThrow(new ForbiddenException("write delegation denied"))
-        .when(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            eq(PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
+    when(authorizer.authorize(
+            any(),
+            argThat(
+                request ->
+                    hasOperation(
+                        request,
+                        PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
+        .thenReturn(AuthorizationDecision.deny("write delegation denied"));
     when(resolutionManifest.getResolvedPath(
             eq(ResolvedPathKey.ofTableLike(TABLE2)),
             eq(PolarisEntitySubType.ICEBERG_TABLE),
@@ -314,6 +327,18 @@ class IcebergCatalogHandlerTest {
     verify(catalog).registerTable(TABLE2, TABLE_LOCATION, true);
     assertThat(response.credentials()).hasSize(1);
     assertVendedActions(PolarisStorageActions.READ, PolarisStorageActions.LIST);
+    ArgumentCaptor<AuthorizationRequest> resolveRequestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
+    verify(authorizer).resolveAuthorizationInputs(any(), resolveRequestCaptor.capture());
+    assertThat(
+            resolveRequestCaptor.getValue().intents().stream()
+                .map(intent -> intent.getOperation())
+                .toList())
+        .containsExactly(
+            PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
+            PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION,
+            PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION,
+            PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION);
   }
 
   @Test
@@ -323,24 +348,23 @@ class IcebergCatalogHandlerTest {
     when(catalog.loadTable(TABLE2)).thenReturn(table);
     when(accessDelegationModeResolver.resolve(any(), any()))
         .thenReturn(Optional.of(VENDED_CREDENTIALS));
-    doThrow(new ForbiddenException("write delegation denied"))
-        .when(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            eq(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
     @SuppressWarnings("unchecked")
     ArgumentCaptor<AuthorizationRequest> requestCaptor =
         ArgumentCaptor.forClass(AuthorizationRequest.class);
     ArgumentCaptor<AuthorizationState> stateCaptor =
         ArgumentCaptor.forClass(AuthorizationState.class);
-    ArgumentCaptor<PolarisAuthorizableOperation> operationCaptor =
-        ArgumentCaptor.forClass(PolarisAuthorizableOperation.class);
+    ArgumentCaptor<AuthorizationRequest> authorizeRequestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
+    when(authorizer.authorize(
+            any(),
+            argThat(
+                request ->
+                    hasOperation(
+                        request, PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION))))
+        .thenReturn(AuthorizationDecision.deny("write delegation denied"));
 
     handler.loadCredentials(TABLE2, Optional.empty());
 
@@ -349,13 +373,11 @@ class IcebergCatalogHandlerTest {
     assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
         .isEqualTo(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION);
     verify(authorizer, org.mockito.Mockito.times(2))
-        .authorizeOrThrow(
-            any(),
-            any(),
-            operationCaptor.capture(),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
-    assertThat(operationCaptor.getAllValues())
+        .authorize(any(), authorizeRequestCaptor.capture());
+    assertThat(
+            authorizeRequestCaptor.getAllValues().stream()
+                .map(request -> request.intents().getFirst().getOperation())
+                .toList())
         .containsExactly(
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION,
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION);
@@ -379,8 +401,8 @@ class IcebergCatalogHandlerTest {
         ArgumentCaptor.forClass(AuthorizationRequest.class);
     ArgumentCaptor<AuthorizationState> stateCaptor =
         ArgumentCaptor.forClass(AuthorizationState.class);
-    ArgumentCaptor<PolarisAuthorizableOperation> operationCaptor =
-        ArgumentCaptor.forClass(PolarisAuthorizableOperation.class);
+    ArgumentCaptor<AuthorizationRequest> authorizeRequestCaptor =
+        ArgumentCaptor.forClass(AuthorizationRequest.class);
 
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
@@ -391,14 +413,8 @@ class IcebergCatalogHandlerTest {
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
     assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
         .isEqualTo(PolarisAuthorizableOperation.UPDATE_TABLE);
-    verify(authorizer)
-        .authorizeOrThrow(
-            any(),
-            any(),
-            operationCaptor.capture(),
-            nullable(PolarisResolvedPathWrapper.class),
-            nullable(PolarisResolvedPathWrapper.class));
-    assertThat(operationCaptor.getValue())
+    verify(authorizer).authorize(any(), authorizeRequestCaptor.capture());
+    assertThat(authorizeRequestCaptor.getValue().intents().getFirst().getOperation())
         .isEqualTo(PolarisAuthorizableOperation.SET_TABLE_PROPERTIES);
   }
 
@@ -664,5 +680,135 @@ class IcebergCatalogHandlerTest {
     assertThat(handler.filterResponseToSnapshots(response, null))
         .as("no snapshots param must be a pure passthrough, same as snapshots=all")
         .isSameAs(response);
+  }
+
+  private Catalog federatedCatalog() {
+    Catalog federated =
+        mock(
+            Catalog.class,
+            withSettings().extraInterfaces(ViewCatalog.class, SupportsNamespaces.class));
+    when(localCatalogFactory.createCatalog(any())).thenReturn(federated);
+    return federated;
+  }
+
+  @Test
+  void tableExistsSkipsLoadTableOnLocalCatalog() {
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.tableExists(TABLE2)).doesNotThrowAnyException();
+
+    verify(catalogHandlerUtils, never()).loadTable(any(), any());
+    verify(icebergCatalog, never()).loadTable(any());
+  }
+
+  @Test
+  void viewExistsSkipsLoadViewOnLocalCatalog() {
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.viewExists(TABLE2)).doesNotThrowAnyException();
+
+    verify(catalogHandlerUtils, never()).loadView(any(), any());
+    verify(icebergCatalog, never()).loadView(any());
+  }
+
+  @Test
+  void namespaceExistsSkipsLoadNamespaceOnLocalCatalog() {
+    LocalIcebergCatalog icebergCatalog = mock(LocalIcebergCatalog.class);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.namespaceExists(NS1)).doesNotThrowAnyException();
+
+    verify(catalogHandlerUtils, never()).loadNamespace(any(), any());
+    verify(icebergCatalog, never()).loadNamespaceMetadata(any());
+  }
+
+  @Test
+  void tableExistsAsksFederatedCatalogAndThrowsWhenAbsent() {
+    Catalog federated = federatedCatalog();
+    when(federated.tableExists(TABLE2)).thenReturn(false);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(() -> handler.tableExists(TABLE2)).isInstanceOf(NoSuchTableException.class);
+
+    verify(federated).tableExists(TABLE2);
+    verify(catalogHandlerUtils, never()).loadTable(any(), any());
+  }
+
+  @Test
+  void tableExistsLoadsFederatedTableNamedAfterMetadataTable() {
+    // "files" is a MetadataTableType name, but ns1.files is an ordinary table here: Iceberg
+    // resolves a real table ahead of a metadata table, so the load must answer, not tableExists
+    TableIdentifier tableNamedFiles = TableIdentifier.of(NS1, "files");
+    Catalog federated = federatedCatalog();
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatCode(() -> handler.tableExists(tableNamedFiles)).doesNotThrowAnyException();
+
+    verify(catalogHandlerUtils).loadTable(federated, tableNamedFiles);
+    verify(federated, never()).tableExists(any());
+  }
+
+  @Test
+  void tableExistsRejectsMetadataTableReportedByFederatedCatalog() {
+    TableIdentifier metadataTable =
+        TableIdentifier.of(Namespace.of(NS1.level(0), "table2"), "snapshots");
+    Catalog federated = federatedCatalog();
+    when(federated.tableExists(metadataTable)).thenReturn(true);
+    when(catalogHandlerUtils.loadTable(federated, metadataTable))
+        .thenThrow(new NoSuchTableException("Table does not exist: %s", metadataTable));
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    // the federated catalog reports the synthetic metadata table as present; the load decides
+    assertThatThrownBy(() -> handler.tableExists(metadataTable))
+        .isInstanceOf(NoSuchTableException.class);
+
+    verify(catalogHandlerUtils).loadTable(federated, metadataTable);
+    verify(federated, never()).tableExists(any());
+  }
+
+  @Test
+  void viewExistsAsksFederatedCatalogAndThrowsWhenAbsent() {
+    Catalog federated = federatedCatalog();
+    when(((ViewCatalog) federated).viewExists(TABLE2)).thenReturn(false);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(() -> handler.viewExists(TABLE2)).isInstanceOf(NoSuchViewException.class);
+
+    verify((ViewCatalog) federated).viewExists(TABLE2);
+    verify(catalogHandlerUtils, never()).loadView(any(), any());
+  }
+
+  @Test
+  void namespaceExistsAsksFederatedCatalogAndThrowsWhenAbsent() {
+    Catalog federated = federatedCatalog();
+    when(((SupportsNamespaces) federated).namespaceExists(NS1)).thenReturn(false);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    assertThatThrownBy(() -> handler.namespaceExists(NS1))
+        .isInstanceOf(NoSuchNamespaceException.class);
+
+    verify((SupportsNamespaces) federated).namespaceExists(NS1);
+    verify(catalogHandlerUtils, never()).loadNamespace(any(), any());
   }
 }

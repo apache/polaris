@@ -44,7 +44,7 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
       @NonNull StorageAccessConfig accessConfig,
       @NonNull String ioImplClassName,
       @NonNull Map<String, String> properties) {
-    return new WasbTranslatingFileIO(
+    return WasbTranslatingFileIO.wrap(
         defaultFileIOFactory.loadFileIO(accessConfig, ioImplClassName, properties));
   }
 }

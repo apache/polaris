@@ -131,7 +131,7 @@ class TestViewsCommand(CLITestBase):
         )
         self.assertEqual(mock_iceberg_api.list_views.call_count, 2)
         mock_iceberg_api.list_views.assert_any_call(
-            prefix="my-catalog", namespace="ns1", page_size=1, page_token=None
+            prefix="my-catalog", namespace="ns1", page_size=1, page_token=""
         )
         mock_iceberg_api.list_views.assert_any_call(
             prefix="my-catalog", namespace="ns1", page_size=1, page_token="token"

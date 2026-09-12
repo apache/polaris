@@ -19,10 +19,12 @@
 package org.apache.polaris.service.catalog.io;
 
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
-import org.junit.jupiter.api.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -34,7 +36,7 @@ public class ExceptionMappingFileIOTest {
   @Test
   void testProxiesMethodCalls() {
     try (var io = Mockito.mock(FileIO.class)) {
-      var wrappedIO = new ExceptionMappingFileIO(io);
+      var wrappedIO = ExceptionMappingFileIO.wrap(io);
 
       wrappedIO.newInputFile(PATH);
       Mockito.verify(io, Mockito.times(1)).newInputFile(PATH);
@@ -61,8 +63,60 @@ public class ExceptionMappingFileIOTest {
     try (var io = Mockito.mock(FileIO.class)) {
       Mockito.doThrow(new RuntimeException(new UnknownHostException())).when(io).newInputFile(PATH);
 
-      var wrappedIO = new ExceptionMappingFileIO(io);
-      Assertions.assertThrows(FileIOUnknownHostException.class, () -> wrappedIO.newInputFile(PATH));
+      var wrappedIO = ExceptionMappingFileIO.wrap(io);
+      Assertions.assertThatThrownBy(() -> wrappedIO.newInputFile(PATH))
+          .isInstanceOf(FileIOUnknownHostException.class);
+    }
+  }
+
+  /** A FileIO that also supports bulk operations, as S3FileIO, GCSFileIO and ADLSFileIO all do. */
+  private interface BulkFileIO extends SupportsBulkOperations {}
+
+  @Test
+  void testAdvertisesBulkSupportOnlyWhenTheWrappedIoHasIt() {
+    try (var bulkIo = Mockito.mock(BulkFileIO.class)) {
+      Assertions.assertThat(ExceptionMappingFileIO.wrap(bulkIo))
+          .isInstanceOf(SupportsBulkOperations.class);
+    }
+    try (var plainIo = Mockito.mock(FileIO.class)) {
+      Assertions.assertThat(ExceptionMappingFileIO.wrap(plainIo))
+          .isNotInstanceOf(SupportsBulkOperations.class);
+    }
+  }
+
+  @Test
+  void testDeleteFilesDelegatesToTheWrappedIo() {
+    try (var io = Mockito.mock(BulkFileIO.class)) {
+      var paths = List.of(PATH, "a/b/c");
+
+      ((SupportsBulkOperations) ExceptionMappingFileIO.wrap(io)).deleteFiles(paths);
+
+      Mockito.verify(io, Mockito.times(1)).deleteFiles(paths);
+      Mockito.verify(io, Mockito.never()).deleteFile(Mockito.anyString());
+    }
+  }
+
+  @Test
+  void testDeleteFilesRemapsExceptions() {
+    try (var io = Mockito.mock(BulkFileIO.class)) {
+      var paths = List.of(PATH);
+      Mockito.doThrow(new RuntimeException(new UnknownHostException())).when(io).deleteFiles(paths);
+
+      var wrappedIO = (SupportsBulkOperations) ExceptionMappingFileIO.wrap(io);
+      Assertions.assertThatThrownBy(() -> wrappedIO.deleteFiles(paths))
+          .isInstanceOf(FileIOUnknownHostException.class);
+    }
+  }
+
+  @Test
+  void testDeleteFilesRethrowsUnmappedExceptionsUnchanged() {
+    try (var io = Mockito.mock(BulkFileIO.class)) {
+      var paths = List.of(PATH);
+      var failure = new IllegalStateException("boom");
+      Mockito.doThrow(failure).when(io).deleteFiles(paths);
+
+      var wrappedIO = (SupportsBulkOperations) ExceptionMappingFileIO.wrap(io);
+      Assertions.assertThatThrownBy(() -> wrappedIO.deleteFiles(paths)).isSameAs(failure);
     }
   }
 }

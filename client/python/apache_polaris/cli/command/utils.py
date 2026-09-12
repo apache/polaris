@@ -38,13 +38,17 @@ def paginate(
     Yield responses from a paginated list endpoint.
 
     When page_size is None, a full response is fetched within a single request.
+
+    The first request sents an empty page_token to opt into pagination per the Iceberg
+    REST spec. When setting to None, this would be dropped by the SDK and disable
+    pagination on federated catalogs.
     """
     if page_size is not None and page_size < 1:
         raise CliError(f"page-size must be a positive integer, got: {page_size}")
     if page_size is None:
         yield list_function(**kwargs)
         return
-    page_token: Optional[str] = None
+    page_token: Optional[str] = ""
     while True:
         resp = list_function(page_size=page_size, page_token=page_token, **kwargs)
         yield resp

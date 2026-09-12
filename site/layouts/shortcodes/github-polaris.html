@@ -17,11 +17,4 @@ specific language governing permissions and limitations
 under the License.
 */}}
 
-{{- $ver := partial "releaseVersion.html" . -}}
-{{- $path := ( .Get 0 ) -}}
-{{- $url := "" -}}
-{{- if eq $ver "[unreleased]" -}}
-{{- printf "https://github.com/apache/polaris/blob/main/%s" $path }}
-{{- else -}}
-{{- printf "https://github.com/apache/polaris/blob/polaris-%s/%s" $path }}
-{{- end -}}
+{{- partial "githubPolarisUrl.html" (dict "page" . "path" (.Get 0)) -}}

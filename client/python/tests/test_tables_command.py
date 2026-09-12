@@ -78,7 +78,7 @@ class TestTablesCommand(CLITestBase):
         )
         self.assertEqual(mock_iceberg_api.list_tables.call_count, 2)
         mock_iceberg_api.list_tables.assert_any_call(
-            prefix="my-catalog", namespace="ns1", page_size=2, page_token=None
+            prefix="my-catalog", namespace="ns1", page_size=2, page_token=""
         )
         mock_iceberg_api.list_tables.assert_any_call(
             prefix="my-catalog", namespace="ns1", page_size=2, page_token="token"
@@ -107,7 +107,7 @@ class TestTablesCommand(CLITestBase):
             ],
         )
         mock_iceberg_api.list_tables.assert_called_once_with(
-            prefix="my-catalog", namespace="ns1", page_size=50, page_token=None
+            prefix="my-catalog", namespace="ns1", page_size=50, page_token=""
         )
 
     @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
