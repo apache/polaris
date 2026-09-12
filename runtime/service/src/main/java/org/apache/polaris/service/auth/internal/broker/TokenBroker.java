@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth.internal.broker;
 
 import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.types.TokenType;
+import org.jspecify.annotations.Nullable;
 
 /** A broker for generating and verifying tokens. */
 public interface TokenBroker {
@@ -52,6 +53,26 @@ public interface TokenBroker {
       final String scope,
       TokenType requestedTokenType);
 
-  /** Decodes and verifies the token, then returns the associated {@link PolarisCredential}. */
-  PolarisCredential verify(String token);
+  /**
+   * Decodes and verifies the token, then returns the associated {@link PolarisCredential}.
+   *
+   * <p>Outcomes the caller relies on:
+   *
+   * <ul>
+   *   <li>{@code null} — the token is not recognized by this broker (for example it does not claim
+   *       to be Polaris-issued). In MIXED mode the authentication mechanism may delegate to other
+   *       mechanisms; otherwise authentication fails.
+   *   <li>a credential — the token is recognized and valid.
+   *   <li>{@link org.apache.iceberg.exceptions.NotAuthorizedException} — the token is recognized as
+   *       Polaris-issued but fails verification (invalid signature, claims, and so on). Callers
+   *       must not treat this as “not recognized”; it stops MIXED fallback.
+   *   <li>{@link org.apache.polaris.core.exceptions.PolarisServiceUnavailableException} — a
+   *       transient failure while verifying (for example metastore unavailable). Propagate so
+   *       clients see the shared HTTP 503 contract rather than an authentication failure.
+   * </ul>
+   *
+   * @return the credential for a valid token recognized by this broker, or {@code null} when the
+   *     token is not recognized
+   */
+  @Nullable PolarisCredential verify(String token);
 }

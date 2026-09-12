@@ -94,7 +94,7 @@ public class RSAKeyPairJWTBrokerTest {
   }
 
   @Test
-  public void testVerifyRejectsTokenWithWrongIssuer() throws Exception {
+  public void testVerifyReturnsNullForForeignIssuer() throws Exception {
     var keyPair = PemUtils.generateKeyPair();
 
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
@@ -120,13 +120,12 @@ public class RSAKeyPairJWTBrokerTest {
                 Algorithm.RSA256(
                     (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
 
-    assertThatThrownBy(() -> tokenBroker.verify(tokenWithWrongIssuer))
-        .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
-        .hasMessageContaining("Failed to verify the token");
+    // Foreign tokens are not ours to verify; the caller delegates to other mechanisms.
+    assertThat(tokenBroker.verify(tokenWithWrongIssuer)).isNull();
   }
 
   @Test
-  public void testVerifyRejectsTokenWithMissingIssuer() throws Exception {
+  public void testVerifyReturnsNullForMissingIssuer() throws Exception {
     var keyPair = PemUtils.generateKeyPair();
 
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
@@ -151,7 +150,40 @@ public class RSAKeyPairJWTBrokerTest {
                 Algorithm.RSA256(
                     (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()));
 
-    assertThatThrownBy(() -> tokenBroker.verify(tokenWithoutIssuer))
+    assertThat(tokenBroker.verify(tokenWithoutIssuer)).isNull();
+  }
+
+  @Test
+  public void testVerifyRejectsPolarisTokenWithBadSignature() throws Exception {
+    var keyPair = PemUtils.generateKeyPair();
+    var otherKeyPair = PemUtils.generateKeyPair();
+
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
+    PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
+    KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    Algorithm algorithm =
+        Algorithm.RSA256(
+            (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey());
+    TokenBroker tokenBroker =
+        new JWTBroker(
+            metastoreManager,
+            polarisCallContext,
+            420,
+            algorithm,
+            JWTBroker.buildVerifier(algorithm));
+
+    // Polaris-issued (issuer claim) but signed with a different key: still an auth failure.
+    String tokenWithBadSignature =
+        JWT.create()
+            .withIssuer("polaris")
+            .withSubject("principal")
+            .withClaim("active", true)
+            .sign(
+                Algorithm.RSA256(
+                    (RSAPublicKey) otherKeyPair.getPublic(),
+                    (RSAPrivateKey) otherKeyPair.getPrivate()));
+
+    assertThatThrownBy(() -> tokenBroker.verify(tokenWithBadSignature))
         .isInstanceOf(org.apache.iceberg.exceptions.NotAuthorizedException.class)
         .hasMessageContaining("Failed to verify the token");
   }
