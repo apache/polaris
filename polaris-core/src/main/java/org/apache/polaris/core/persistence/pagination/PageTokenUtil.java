@@ -122,8 +122,7 @@ final class PageTokenUtil {
     if (requestedPageToken != null
         && !requestedPageToken.isEmpty()
         && shouldDecodeToken.getAsBoolean()) {
-      var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
-      var pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);
+      var pageToken = deserializePageToken(requestedPageToken);
       if (requestedPageSize != null) {
         int pageSizeInt = requestedPageSize;
         checkArgument(pageSizeInt >= 0, "Invalid page size");
@@ -139,6 +138,30 @@ final class PageTokenUtil {
     } else {
       return READ_EVERYTHING;
     }
+  }
+
+  /**
+   * Decodes a client-supplied page token. Page tokens are opaque to clients, so any decoding
+   * failure is client input that cannot be interpreted and must surface as an {@link
+   * IllegalArgumentException} (mapped to HTTP 400), never as a server error.
+   */
+  private static PageToken deserializePageToken(String requestedPageToken) {
+    PageToken pageToken;
+    try {
+      var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
+      pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);
+    } catch (RuntimeException e) {
+      // Deliberately broad: the input is untrusted bytes fed to a binary parser. Besides the
+      // expected failures (IllegalArgumentException for non-base64, JacksonException for a payload
+      // that is not a serialized PageToken, IllegalStateException for an unknown token type id),
+      // corrupted SMILE can surface as e.g. ArrayIndexOutOfBoundsException from the parser. All of
+      // them mean the same thing: the client sent a token we cannot interpret.
+      throw new IllegalArgumentException("Invalid page token", e);
+    }
+    // A SMILE-encoded null deserializes "successfully" to null; reject it here rather than letting
+    // callers fail on it later.
+    checkArgument(pageToken != null, "Invalid page token");
+    return pageToken;
   }
 
   /**
