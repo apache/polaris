@@ -200,6 +200,43 @@ public class RestCatalogFlociS3SpecialIT extends AbstractRestCatalogFlociS3Speci
     }
   }
 
+  /**
+   * A client requesting remote signing, alone or together with vended credentials, against a
+   * catalog that cannot vend credentials must get the table back without delegated access (Iceberg
+   * REST spec: "the server may choose to supply access via any or none of the requested
+   * mechanisms"), not an HTTP 400.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"vended-credentials,remote-signing", "remote-signing"})
+  public void testLoadTableWithRemoteSigningRequestedWithoutStsReturnsTableWithoutCredentials(
+      String accessDelegationHeader) throws IOException {
+    try (var restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of("http://sts.example.com"),
+            true,
+            Optional.empty(),
+            false)) {
+
+      catalogApi.createNamespace(catalogName, "test-ns");
+      var id = TableIdentifier.of("test-ns", "t4");
+      restCatalog.createTable(id, SCHEMA);
+
+      var response =
+          catalogApi.loadTable(
+              catalogName,
+              id,
+              "ALL",
+              Map.of("X-Iceberg-Access-Delegation", accessDelegationHeader));
+
+      assertThat(response.credentials()).isEmpty();
+      assertThat(response.config())
+          .doesNotContainKey(ACCESS_KEY_ID)
+          .doesNotContainKey(SECRET_ACCESS_KEY)
+          .doesNotContainKey(REFRESH_CREDENTIALS_ENDPOINT);
+    }
+  }
+
   @Test
   public void testLoadTableFailureWithCredentialVendingWithoutSts() throws IOException {
     try (var restCatalog =

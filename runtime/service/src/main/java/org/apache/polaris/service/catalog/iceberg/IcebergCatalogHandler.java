@@ -1194,16 +1194,19 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // allowedLocations were tightened after the table was created.
       validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
 
+      boolean vendCredentials = VENDED_CREDENTIALS.equals(delegationMode.orElse(null));
+      // Only advertise the credential-refresh endpoint when credentials are actually vended; a
+      // response without delegated access must look like one for a request without the header.
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider()
               .getStorageAccessConfig(
                   tableIdentifier,
                   tableLocations,
                   actions,
-                  refreshCredentialsEndpoint,
+                  vendCredentials ? refreshCredentialsEndpoint : Optional.empty(),
                   resolvedStoragePath);
       Map<String, String> credentialConfig = storageAccessConfig.credentials();
-      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))) {
+      if (vendCredentials) {
         if (!credentialConfig.isEmpty()) {
           responseBuilder.addAllConfig(credentialConfig);
           responseBuilder.addCredential(
@@ -1798,6 +1801,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * Resolves the access delegation mode by delegating to the configured {@link
    * AccessDelegationModeResolver}.
    *
+   * <p>Per the Iceberg REST spec, {@code X-Iceberg-Access-Delegation} is an optional hint: "The
+   * server may choose to supply access via any or none of the requested mechanisms." Remote signing
+   * is not implemented yet, so whenever the resolver settles on {@link
+   * AccessDelegationMode#REMOTE_SIGNING} (either because the client asked for it alone, or because
+   * credential vending is not possible for the catalog), the table is returned without any
+   * delegated access instead of failing the request.
+   *
    * @param requestedModes The non-empty set of delegation modes requested by the client
    * @return The resolved access delegation mode, or empty if no delegation mode was resolved
    */
@@ -1809,11 +1819,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
 
     // TODO remove when remote signing is implemented
-    // Reject if the resolved mode is REMOTE_SIGNING since it's not yet supported
-    Preconditions.checkArgument(
-        resolvedMode.orElse(null) != AccessDelegationMode.REMOTE_SIGNING,
-        "Unsupported access delegation mode: %s",
-        AccessDelegationMode.REMOTE_SIGNING);
+    if (resolvedMode.orElse(null) == AccessDelegationMode.REMOTE_SIGNING) {
+      LOGGER.info(
+          "Client requested access delegation modes {} but only {} is viable for catalog {}, "
+              + "which is not supported; returning the table without delegated access",
+          requestedModes,
+          AccessDelegationMode.REMOTE_SIGNING,
+          catalogEntity != null ? catalogEntity.getName() : null);
+      return Optional.empty();
+    }
 
     return resolvedMode;
   }
