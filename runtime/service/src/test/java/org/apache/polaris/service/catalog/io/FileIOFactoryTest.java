@@ -48,6 +48,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.LocalIcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.TableMetadataCache;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.assertj.core.api.Assertions;
@@ -221,7 +222,8 @@ public class FileIOFactoryTest {
             services.storageAccessConfigProvider(),
             services.fileIOFactory(),
             services.polarisEventDispatcher(),
-            services.eventMetadataFactory());
+            services.eventMetadataFactory(),
+            new TableMetadataCache(() -> 0));
     polarisCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
