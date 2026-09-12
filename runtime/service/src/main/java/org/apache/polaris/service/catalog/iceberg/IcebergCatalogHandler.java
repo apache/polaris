@@ -1801,13 +1801,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * Resolves the access delegation mode by delegating to the configured {@link
    * AccessDelegationModeResolver}.
    *
-   * <p>Per the Iceberg REST spec, {@code X-Iceberg-Access-Delegation} is a hint: "The server may
-   * choose to supply access via any or none of the requested mechanisms." Remote signing is not
-   * implemented yet, so when the resolver degrades a request that offered several mechanisms to
-   * {@link AccessDelegationMode#REMOTE_SIGNING} (credential vending is not possible for the
-   * catalog), the table is returned without any delegated access instead of failing the request. A
-   * request that asks for {@code remote-signing} alone cannot be satisfied in any form the client
-   * offered and is still rejected.
+   * <p>Per the Iceberg REST spec, {@code X-Iceberg-Access-Delegation} is an optional hint: "The
+   * server may choose to supply access via any or none of the requested mechanisms." Remote signing
+   * is not implemented yet, so whenever the resolver settles on {@link
+   * AccessDelegationMode#REMOTE_SIGNING} (either because the client asked for it alone, or because
+   * credential vending is not possible for the catalog), the table is returned without any
+   * delegated access instead of failing the request.
    *
    * @param requestedModes The non-empty set of delegation modes requested by the client
    * @return The resolved access delegation mode, or empty if no delegation mode was resolved
@@ -1821,11 +1820,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // TODO remove when remote signing is implemented
     if (resolvedMode.orElse(null) == AccessDelegationMode.REMOTE_SIGNING) {
-      Preconditions.checkArgument(
-          requestedModes.size() > 1,
-          "Unsupported access delegation mode: %s",
-          AccessDelegationMode.REMOTE_SIGNING);
-      LOGGER.debug(
+      LOGGER.info(
           "Client requested access delegation modes {} but only {} is viable for catalog {}, "
               + "which is not supported; returning the table without delegated access",
           requestedModes,

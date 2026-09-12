@@ -261,9 +261,10 @@ class IcebergCatalogHandlerTest {
     assertThat(response.config()).doesNotContainKeys("fake.access.key", "fake.secret.key");
   }
 
+  /** The header is optional, so even a request for {@code remote-signing} alone gets the table. */
   @Test
-  void remoteSigningRequestedAloneIsStillRejectedWhileUnsupported() {
-    mockRegisterTableCatalog(false);
+  void remoteSigningRequestedAloneReturnsTableWithoutDelegation() {
+    Catalog catalog = mockRegisterTableCatalog(false);
     EnumSet<AccessDelegationMode> remoteSigningOnly = EnumSet.of(REMOTE_SIGNING);
     when(accessDelegationModeResolver.resolve(eq(remoteSigningOnly), any()))
         .thenReturn(Optional.of(REMOTE_SIGNING));
@@ -271,12 +272,13 @@ class IcebergCatalogHandlerTest {
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
-    assertThatThrownBy(
-            () ->
-                handler.registerTable(
-                    NS1, registerTableRequest(false), remoteSigningOnly, Optional.empty()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Unsupported access delegation mode");
+    LoadTableResponse response =
+        handler.registerTable(
+            NS1, registerTableRequest(false), remoteSigningOnly, Optional.empty());
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
+    assertThat(response.credentials()).isEmpty();
+    assertThat(response.config()).doesNotContainKeys("fake.access.key", "fake.secret.key");
   }
 
   @Test
