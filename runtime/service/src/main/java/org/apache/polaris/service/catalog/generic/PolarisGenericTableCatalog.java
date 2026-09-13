@@ -19,6 +19,8 @@
 package org.apache.polaris.service.catalog.generic;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
@@ -172,6 +174,12 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
             leafEntity,
             Map.of(),
             false);
+
+    if (dropEntityResult.getReturnStatus() == ENTITY_NOT_FOUND
+        || dropEntityResult.getReturnStatus() == CATALOG_PATH_CANNOT_BE_RESOLVED) {
+      throw notFoundExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.GENERIC_TABLE);
+    }
 
     return dropEntityResult.isSuccess();
   }

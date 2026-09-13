@@ -34,6 +34,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -53,6 +54,8 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -79,6 +82,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
@@ -466,6 +470,42 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     Assertions.assertThat(genericTableCatalog.listGenericTables(namespace).size()).isEqualTo(10);
     Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = BaseResult.ReturnStatus.class,
+      names = {"ENTITY_NOT_FOUND", "CATALOG_PATH_CANNOT_BE_RESOLVED"})
+  public void testDropGenericTableDisappearsAfterResolution(BaseResult.ReturnStatus status) {
+    icebergCatalog.createNamespace(NS);
+    genericTableCatalog.createGenericTable(TABLE, "format", null, "doc", Map.of());
+
+    // Resolve the existing table normally, then simulate a concurrent deletion at persistence.
+    PolarisMetaStoreManager concurrentlyDeleted = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(new DropEntityResult(status, "simulated"))
+        .when(concurrentlyDeleted)
+        .dropEntityIfExists(
+            Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.eq(false));
+    PolarisGenericTableCatalog catalog =
+        new PolarisGenericTableCatalog(
+            concurrentlyDeleted,
+            polarisContext,
+            new PolarisPassthroughResolutionView(
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+
+    Assertions.assertThatThrownBy(() -> catalog.dropGenericTable(TABLE))
+        .isInstanceOf(NoSuchTableException.class)
+        .hasMessage("Generic table does not exist: %s", TABLE);
+  }
+
+  @Test
+  public void testDropGenericTable() {
+    icebergCatalog.createNamespace(NS);
+    genericTableCatalog.createGenericTable(TABLE, "format", null, "doc", Map.of());
+
+    Assertions.assertThat(genericTableCatalog.dropGenericTable(TABLE)).isTrue();
+    Assertions.assertThatThrownBy(() -> genericTableCatalog.loadGenericTable(TABLE))
+        .isInstanceOf(NoSuchTableException.class);
   }
 
   @Test
