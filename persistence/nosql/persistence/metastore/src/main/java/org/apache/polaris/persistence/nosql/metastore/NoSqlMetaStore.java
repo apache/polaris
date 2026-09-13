@@ -832,9 +832,6 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             : catalogContent
                 ? memoizedIndexedAccess.catalogContent(catalogStableId)
                 : memoizedIndexedAccess.indexedAccess(catalogStableId, entityType.getCode());
-    if (paginationToken.isPresent() && access.refObj().isEmpty()) {
-      throw new IllegalArgumentException("Invalid or expired NoSQL pagination token");
-    }
     var nameIndex = access.nameIndex().orElse(null);
 
     if (nameIndex == null) {
