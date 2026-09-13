@@ -2619,54 +2619,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @Test
-  public void testEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces() {
-    enableEntityLevelListFiltering();
-    // Parent-level check passes: NAMESPACE_LIST granted at catalog level.
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
-
-    Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("ns2"::equals)
-                .listNamespaces(Namespace.of(), null, null)
-                .namespaces())
-        .contains(NS1)
-        .doesNotContain(NS2);
-  }
-
-  @Test
-  public void testEntityLevelListFilteringEnabled_filtersUnauthorizedTables() {
-    enableEntityLevelListFiltering();
-    // Parent-level check passes: TABLE_LIST granted at catalog level cascades to NS1A.
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_LIST));
-
-    Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("table2"::equals)
-                .listTables(NS1A, null, null)
-                .identifiers())
-        .contains(TABLE_NS1A_1)
-        .doesNotContain(TABLE_NS1A_2);
-  }
-
-  @Test
-  public void testEntityLevelListFilteringEnabled_filtersUnauthorizedViews() {
-    enableEntityLevelListFiltering();
-    // Parent-level check passes: VIEW_LIST granted at catalog level cascades to NS1A.
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.VIEW_LIST));
-
-    Assertions.assertThat(
-            newHandlerWithEntityLevelFiltering("view2"::equals)
-                .listViews(NS1A, null, null)
-                .identifiers())
-        .contains(VIEW_NS1A_1)
-        .doesNotContain(VIEW_NS1A_2);
-  }
-
-  @Test
   public void testEntityLevelListFilteringEnabled_filtersUnauthorizedNamespaces_paginated() {
     enableEntityLevelListFiltering();
     assertSuccess(
@@ -2742,6 +2694,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 .identifiers())
         .contains(VIEW_NS1A_1, VIEW_NS1A_2);
   }
+
 
   @Test
   public void testEntityLevelListFilteringEnabled_federatedListTables_filtersUnauthorized()
