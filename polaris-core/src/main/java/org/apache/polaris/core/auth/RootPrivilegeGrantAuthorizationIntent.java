@@ -29,9 +29,4 @@ public record RootPrivilegeGrantAuthorizationIntent(
     Preconditions.checkNotNull(operation, "operation must be non-null");
     Preconditions.checkNotNull(grantee, "grantee must be non-null");
   }
-
-  @Override
-  public @NonNull PolarisAuthorizableOperation getOperation() {
-    return operation;
-  }
 }

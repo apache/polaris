@@ -135,7 +135,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   public AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     for (AuthorizationIntent intent : request.intents()) {
-      PolarisAuthorizableOperation operation = intent.getOperation();
+      PolarisAuthorizableOperation operation = intent.operation();
       List<ResourceEntity> targets;
       List<ResourceEntity> secondaries;
       switch (intent) {

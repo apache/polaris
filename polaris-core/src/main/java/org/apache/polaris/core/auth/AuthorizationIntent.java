@@ -30,5 +30,13 @@ public sealed interface AuthorizationIntent
         PrivilegeGrantAuthorizationIntent,
         RootPrivilegeGrantAuthorizationIntent {
 
-  @NonNull PolarisAuthorizableOperation getOperation();
+  @NonNull PolarisAuthorizableOperation operation();
+
+  /**
+   * @deprecated Since Polaris 1.8; use {@link #operation()} instead.
+   */
+  @Deprecated(since = "1.8")
+  default @NonNull PolarisAuthorizableOperation getOperation() {
+    return operation();
+  }
 }

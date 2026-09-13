@@ -32,9 +32,4 @@ public record RenameAuthorizationIntent(
     Preconditions.checkNotNull(from, "from must be non-null");
     Preconditions.checkNotNull(to, "to must be non-null");
   }
-
-  @Override
-  public @NonNull PolarisAuthorizableOperation getOperation() {
-    return operation;
-  }
 }

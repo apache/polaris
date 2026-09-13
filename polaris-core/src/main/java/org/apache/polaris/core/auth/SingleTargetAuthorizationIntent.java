@@ -29,9 +29,4 @@ public record SingleTargetAuthorizationIntent(
     Preconditions.checkNotNull(operation, "operation must be non-null");
     Preconditions.checkNotNull(target, "target must be non-null");
   }
-
-  @Override
-  public @NonNull PolarisAuthorizableOperation getOperation() {
-    return operation;
-  }
 }
