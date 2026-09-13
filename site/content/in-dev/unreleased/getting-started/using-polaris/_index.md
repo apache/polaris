@@ -156,10 +156,15 @@ bin/spark-sql \
 --conf spark.sql.catalog.polaris.catalog-impl=org.apache.iceberg.rest.RESTCatalog \
 --conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \
 --conf spark.sql.catalog.polaris.credential=${USER_CLIENT_ID}:${USER_CLIENT_SECRET} \
+--conf spark.redaction.regex='(?i)secret|password|token|access[.]?key|credential' \
 --conf spark.sql.catalog.polaris.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.polaris.token-refresh-enabled=true \
 --conf spark.sql.catalog.polaris.client.region=us-west-2
 ```
+
+The `spark.redaction.regex` line redacts the `credential` secret from the Spark UI and logs, since
+Spark's default redaction pattern does not cover `credential`. Newer Spark releases redact this key
+by default; the line keeps it redacted on earlier versions.
 
 Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, be sure to update the configuration appropriately.
 

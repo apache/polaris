@@ -166,6 +166,7 @@ class Arguments:
     TYPE = "type"
     DEFAULT_BASE_LOCATION = "default_base_location"
     STORAGE_TYPE = "storage_type"
+    STORAGE_NAME = "storage_name"
     ALLOWED_LOCATION = "allowed_location"
     ROLE_ARN = "role_arn"
     EXTERNAL_ID = "external_id"

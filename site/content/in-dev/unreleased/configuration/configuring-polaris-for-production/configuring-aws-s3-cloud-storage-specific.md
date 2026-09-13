@@ -254,8 +254,13 @@ bin/spark-sql \
     --conf spark.sql.catalog.polaris.warehouse=warehouse_s3 \
     --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
     --conf spark.sql.catalog.polaris.credential=<client-id>:<client-secret> \
+    --conf spark.redaction.regex='(?i)secret|password|token|access[.]?key|credential' \
     --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials
 ```
+
+The `spark.redaction.regex` line redacts the `credential` secret from the Spark UI and logs, since
+Spark's default redaction pattern does not cover `credential`. Newer Spark releases redact this key
+by default; the line keeps it redacted on earlier versions.
 
 The `oauth2-server-uri` is recommended: without it the Iceberg REST client falls back to a
 hard-coded `/v1/oauth/tokens` path and logs a deprecation warning, since the automatic fallback

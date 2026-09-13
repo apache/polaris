@@ -2695,7 +2695,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .contains(VIEW_NS1A_1, VIEW_NS1A_2);
   }
 
-
   @Test
   public void testEntityLevelListFilteringEnabled_federatedListTables_filtersUnauthorized()
       throws Exception {

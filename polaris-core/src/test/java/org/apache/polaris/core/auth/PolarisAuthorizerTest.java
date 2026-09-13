@@ -25,11 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -75,22 +72,6 @@ public class PolarisAuthorizerTest {
           ? AuthorizationDecision.deny(DENY_MESSAGE)
           : AuthorizationDecision.allow();
     }
-
-    @Override
-    public void authorizeOrThrow(
-        PolarisPrincipal polarisPrincipal,
-        Set<PolarisBaseEntity> activatedEntities,
-        PolarisAuthorizableOperation authzOp,
-        @Nullable PolarisResolvedPathWrapper target,
-        @Nullable PolarisResolvedPathWrapper secondary) {}
-
-    @Override
-    public void authorizeOrThrow(
-        PolarisPrincipal polarisPrincipal,
-        Set<PolarisBaseEntity> activatedEntities,
-        PolarisAuthorizableOperation authzOp,
-        @Nullable List<PolarisResolvedPathWrapper> targets,
-        @Nullable List<PolarisResolvedPathWrapper> secondaries) {}
   }
 
   private static final PolarisPrincipal PRINCIPAL =

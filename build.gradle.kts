@@ -97,6 +97,7 @@ tasks.named<RatTask>("rat").configure {
   // AI agents
   excludes.add(".claude/**")
   excludes.add(".agents/**")
+  excludes.add(".conductor/**")
 
   // Misc build artifacts
   excludes.add(".java-version")
@@ -117,6 +118,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("site/.user-settings")
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")
+  excludes.add("site/hugo.direct.sum")
   // Ignore generated stuff, when the Hugo is run w/o Docker
   excludes.add("site/public/**")
   excludes.add("site/resources/_gen/**")
@@ -143,15 +145,18 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("regtests/**/py.typed")
   excludes.add("regtests/**/*.ref")
   excludes.add("regtests/.env")
-  excludes.add("regtests/derby.log")
-  excludes.add("regtests/metastore_db/**")
   excludes.add("regtests/output/**")
   excludes.add("plugins/**/*.ref")
+
+  // Spark
+  excludes.add("**/derby.log")
+  excludes.add("**/metastore_db/**")
 
   // IntelliJ
   excludes.add(".idea")
   excludes.add("site/it/.idea")
   excludes.add("**/*.iml")
+  excludes.add("**/*.ipr")
   excludes.add("**/*.iws")
 
   // Rat can't scan binary images

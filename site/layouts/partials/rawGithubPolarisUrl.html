@@ -16,16 +16,18 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 */}}
-{{- $ver := partial "releaseVersion.html" . -}}
-{{- $spec := ( .Get 0 ) -}}
-{{- $url := "" -}}
-{{- $incubating := "" -}}
-{{- if lt $ver "1.4.0" -}}
-{{- $incubating = "-incubating" -}}
-{{- end -}}
-{{- if eq $ver "[unreleased]" -}}
-{{- $url = printf "https://github.com/apache/polaris/raw/refs/heads/main/spec/%s" $spec }}
-{{- else -}}
-{{- $url = printf "https://github.com/apache/polaris/raw/refs/tags/apache-polaris-%s%s/spec/%s" $ver $incubating $spec }}
+
+{{/*
+Returns a raw.githubusercontent.com URL pointing to the given path in the
+apache/polaris repository, resolved to the correct branch or tag for the
+current page's release version.
+
+Usage: {{ partial "rawGithubPolarisUrl.html" (dict "page" . "path" "path/to/file") }}
+*/}}
+
+{{- $gitRef := partial "polarisGitRef.html" .page -}}
+{{- $url := printf "https://raw.githubusercontent.com/apache/polaris/refs/heads/%s/%s" $gitRef.ref .path -}}
+{{- if $gitRef.isReleased -}}
+{{- $url = printf "https://raw.githubusercontent.com/apache/polaris/refs/tags/%s/%s" $gitRef.ref .path -}}
 {{- end -}}
 {{- return $url -}}

@@ -77,7 +77,10 @@ See the [Metastores]({{% ref "metastores" %}}) section for more information on c
 database connection. See [Configuration Reference]({{% ref "configuration/configuration-reference"
 %}}) for the full list of configuration options.
 
-Note: Polaris will always create the schema `polaris_schema` during bootstrap under the configured database.
+Note: Polaris does not create the database schema. The schema (by default `polaris_schema`, selected
+through the JDBC driver's `currentSchema` connection property) must already exist before bootstrapping;
+creating it is a database-administrator task. See the [Metastores]({{% ref "metastores" %}}) section for
+details.
 
 ## Bootstrapping Realms and Principal Credentials
 

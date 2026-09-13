@@ -26,10 +26,10 @@
       <pattern>%date{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
   </appender>
-  <root level="TRACE">
+  <root level="${test.log.level:-ERROR}">
     <appender-ref ref="console"/>
   </root>
-  <logger name="org.jboss" level="INFO"/>
-  <logger name="org.apache.polaris" level="DEBUG"/>
-  <logger name="org.apache.polaris.persistence.nosql.metastore" level="TRACE"/>
+  <logger name="org.jboss" level="ERROR"/>
+  <logger name="org.apache.polaris" level="ERROR"/>
+  <logger name="org.apache.polaris.persistence.nosql.metastore" level="ERROR"/>
 </configuration>

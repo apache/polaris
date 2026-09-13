@@ -126,17 +126,16 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
             PolarisCatalogHelpers.identifierToList(namespace, identifier.getName()),
             PolarisEntityType.SEMANTIC_MODEL,
             true /* optional */));
+    AuthorizationRequest authorizationRequest =
+        new AuthorizationRequest(
+            polarisPrincipal(),
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    op,
+                    PolarisSecurableMapper.semanticModel(
+                        catalogName(), namespace, identifier.getName()))));
     AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
-    authorizer()
-        .resolveAuthorizationInputs(
-            authorizationState,
-            new AuthorizationRequest(
-                polarisPrincipal(),
-                List.of(
-                    new SingleTargetAuthorizationIntent(
-                        op,
-                        PolarisSecurableMapper.semanticModel(
-                            catalogName(), namespace, identifier.getName())))));
+    authorizer().resolveAuthorizationInputs(authorizationState, authorizationRequest);
 
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(
@@ -146,13 +145,7 @@ public abstract class SemanticModelCatalogHandler extends CatalogHandler {
           String.format("Semantic model does not exist: %s", identifier.getName()));
     }
 
-    authorizer()
-        .authorizeOrThrow(
-            polarisPrincipal(),
-            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-            op,
-            target,
-            null /* secondary */);
+    authorizer().authorize(authorizationState, authorizationRequest).throwIfDenied();
 
     initializeCatalog();
   }

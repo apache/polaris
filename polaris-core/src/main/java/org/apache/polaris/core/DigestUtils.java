@@ -20,6 +20,8 @@ package org.apache.polaris.core;
 
 import com.google.common.hash.Hashing;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Objects;
 
 public final class DigestUtils {
   private DigestUtils() {
@@ -28,5 +30,15 @@ public final class DigestUtils {
 
   public static String sha256Hex(String input) {
     return Hashing.sha256().hashString(input, StandardCharsets.UTF_8).toString();
+  }
+
+  /**
+   * Constant-time equality check for secret material. Both arguments must be non-null; callers are
+   * expected to guard nullable inputs before comparing.
+   */
+  public static boolean constantTimeEquals(String a, String b) {
+    return MessageDigest.isEqual(
+        Objects.requireNonNull(a).getBytes(StandardCharsets.UTF_8),
+        Objects.requireNonNull(b).getBytes(StandardCharsets.UTF_8));
   }
 }

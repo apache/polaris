@@ -332,6 +332,28 @@ class TestCatalogsCommand(CLITestBase):
             "https://sts.amazonaws.com",
         )
 
+    def test_catalog_create_s3_storage_name(self) -> None:
+        mock_client = self.build_mock_client()
+        self.mock_execute(
+            mock_client,
+            [
+                "catalogs",
+                "create",
+                "s3-catalog",
+                "--storage-type",
+                "s3",
+                "--default-base-location",
+                "s3://bucket/path",
+                "--storage-name",
+                "analytics-prod",
+            ],
+        )
+        call_args = mock_client.create_catalog.call_args[0][0]
+        self.assertEqual(call_args.catalog.name, "s3-catalog")
+        self.assertEqual(
+            call_args.catalog.storage_config_info.storage_name, "analytics-prod"
+        )
+
     def test_catalog_create_gcs_options(self) -> None:
         mock_client = self.build_mock_client()
         self.mock_execute(
@@ -620,6 +642,26 @@ class TestCatalogsCommand(CLITestBase):
             ),
             "--no-kms requires S3 storage_type",
         )
+
+    def test_catalog_update_storage_name(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="s3-catalog",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path", additional_properties={}
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3", allowed_locations=[]
+            ),
+        )
+        self.mock_execute(
+            mock_client,
+            ["catalogs", "update", "s3-catalog", "--storage-name", "analytics-prod"],
+        )
+        call_args = mock_client.update_catalog.call_args[0][1]
+        self.assertEqual(call_args.storage_config_info.storage_name, "analytics-prod")
 
     def test_catalog_list(self) -> None:
         mock_client = self.build_mock_client()

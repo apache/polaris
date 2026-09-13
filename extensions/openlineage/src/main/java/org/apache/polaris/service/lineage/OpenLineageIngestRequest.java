@@ -24,11 +24,11 @@ import io.openlineage.server.OpenLineage;
  * Polaris-owned request type passed to {@link OpenLineageIngestProvider}.
  *
  * <p>Carries the already-dispatched OpenLineage event. Provider implementations do not need to know
- * about the JAX-RS binding, {@link PolarisLineageEvent} wrappers, or {@code schemaURL} fallback
- * semantics — those concerns are resolved before this object is constructed. The request is
- * inherently realm-scoped; a provider that needs realm-specific context can be
- * {@code @RequestScoped} and inject {@code RealmContext}/{@code CallContext} directly rather than
- * reading it off this request.
+ * about the JAX-RS binding, {@link org.apache.polaris.service.lineage.api.PolarisLineageEvent}
+ * wrappers, or {@code schemaURL} fallback semantics — those concerns are resolved before this
+ * object is constructed. The request is inherently realm-scoped; a provider that needs
+ * realm-specific context can be {@code @RequestScoped} and inject {@code RealmContext}/{@code
+ * CallContext} directly rather than reading it off this request.
  */
 public final class OpenLineageIngestRequest {
 
