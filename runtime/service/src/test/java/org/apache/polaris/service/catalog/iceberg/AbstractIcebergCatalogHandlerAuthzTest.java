@@ -2765,4 +2765,63 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .contains(NS1)
         .doesNotContain(NS2);
   }
+
+  // ─── Entity-level filtering under the real RBAC authorizer ───────────────
+  //
+  // These use newHandler(), which carries the real PolarisAuthorizerImpl. The tests above
+  // substitute a double that denies by leaf name, so they exercise the filtering plumbing but
+  // never RBAC's own per-entity decision.
+
+  /**
+   * The container gate and the per-entity check must use different privileges. TABLE_LIST on the
+   * namespace lets the caller list at all; seeing an individual table additionally requires
+   * TABLE_READ_PROPERTIES (or a privilege that subsumes it) on that table or an ancestor.
+   */
+  @Test
+  public void testEntityLevelListFilteringRequiresReadPropertiesPerEntity() {
+    enableEntityLevelListFiltering();
+    assertSuccess(
+        adminService.grantPrivilegeOnNamespaceToRole(
+            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
+    assertSuccess(
+        adminService.grantPrivilegeOnTableToRole(
+            CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1A_1, PolarisPrivilege.TABLE_READ_PROPERTIES));
+
+    Assertions.assertThat(newHandler().listTables(NS1A, null, null).identifiers())
+        .contains(TABLE_NS1A_1)
+        .doesNotContain(TABLE_NS1A_2);
+  }
+
+  /**
+   * TABLE_READ_PROPERTIES is subsumed by TABLE_FULL_METADATA (among others), so a namespace-level
+   * grant of a subsuming privilege keeps every table visible. Pins the privilege hierarchy.
+   */
+  @Test
+  public void testEntityLevelListFilteringHonoursSubsumingPrivileges() {
+    enableEntityLevelListFiltering();
+    assertSuccess(
+        adminService.grantPrivilegeOnNamespaceToRole(
+            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
+    assertSuccess(
+        adminService.grantPrivilegeOnNamespaceToRole(
+            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_FULL_METADATA));
+
+    Assertions.assertThat(newHandler().listTables(NS1A, null, null).identifiers())
+        .contains(TABLE_NS1A_1, TABLE_NS1A_2);
+  }
+
+  /**
+   * The behavioural cliff, asserted deliberately: a principal holding only TABLE_LIST passes the
+   * container gate and then fails every per-entity check, so the list comes back empty rather than
+   * forbidden. Enabling the feature is a breaking change for LIST-only principals.
+   */
+  @Test
+  public void testEntityLevelListFilteringReturnsEmptyForListOnlyPrincipal() {
+    enableEntityLevelListFiltering();
+    assertSuccess(
+        adminService.grantPrivilegeOnNamespaceToRole(
+            CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_LIST));
+
+    Assertions.assertThat(newHandler().listTables(NS1A, null, null).identifiers()).isEmpty();
+  }
 }

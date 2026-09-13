@@ -1934,6 +1934,26 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return realmConfig().getConfig(ENABLE_ENTITY_LEVEL_LIST_FILTERING, getResolvedCatalogEntity());
   }
 
+  /**
+   * Maps a container-scoped LIST operation to the entity-scoped operation used to decide whether an
+   * individual candidate is visible.
+   *
+   * <p>The two are deliberately distinct. The container operation gates the list call itself (may I
+   * list here at all?), while the entity operation asks whether this one entity may be seen.
+   * Keeping them separate lets authorizers require a stronger permission per entity -- the built-in
+   * RBAC authorizer maps the entity operations to the {@code *_READ_PROPERTIES} privileges.
+   */
+  private static PolarisAuthorizableOperation entityVisibilityOperation(
+      PolarisAuthorizableOperation listOperation) {
+    return switch (listOperation) {
+      case LIST_NAMESPACES -> PolarisAuthorizableOperation.LIST_NAMESPACES_ENTITY;
+      case LIST_TABLES -> PolarisAuthorizableOperation.LIST_TABLES_ENTITY;
+      case LIST_VIEWS -> PolarisAuthorizableOperation.LIST_VIEWS_ENTITY;
+      default ->
+          throw new IllegalArgumentException("Not a filterable list operation: " + listOperation);
+    };
+  }
+
   private <T> List<T> filterEntities(
       List<T> entities,
       Function<T, ResolverPath> toResolverPath,
@@ -1966,7 +1986,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         requests.add(
             new AuthorizationRequest(
                 principal,
-                List.of(new SingleTargetAuthorizationIntent(op, toSecurable.apply(entity)))));
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        entityVisibilityOperation(op), toSecurable.apply(entity)))));
       }
     }
 
