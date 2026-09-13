@@ -22,6 +22,7 @@ import static java.lang.String.format;
 import static java.util.function.Function.identity;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.NULL_SUBTYPE;
+import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG_ROLE;
 import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
 import static org.apache.polaris.core.entity.PolarisEntityType.POLICY;
@@ -142,21 +143,13 @@ public class TestCatalogMaintenance {
     // tell maintenance to only retain the latest commit
     MutableCatalogsMaintenanceConfig.setCurrent(
         CatalogsMaintenanceConfig.BuildableCatalogsMaintenanceConfig.builder()
-            .paginationTokenRetention(Duration.ZERO)
-            .catalogRolesRetain(1)
-            .catalogsHistoryRetain(1)
-            .catalogPoliciesRetain(1)
-            .catalogStateRetain(1)
-            .grantsRetain(1)
-            .principalRolesRetain(1)
-            .principalsRetain(1)
-            .immediateTasksRetain(1)
+            .minRetentionDuration(Duration.ZERO)
             .build());
   }
 
   @Test
-  public void paginationTokenSnapshotRetention() {
-    var paginationTokenRetention = GRACE_TIME.plusMinutes(5);
+  public void minimumRetentionPreservesPaginationTokenSnapshot() {
+    var minimumRetention = GRACE_TIME.plusMinutes(5);
     var testSetup = bootstrapRealm();
     var manager = testSetup.manager();
     var callCtx = testSetup.callCtx();
@@ -172,7 +165,7 @@ public class TestCatalogMaintenance {
 
     MutableCatalogsMaintenanceConfig.setCurrent(
         CatalogsMaintenanceConfig.BuildableCatalogsMaintenanceConfig.builder()
-            .paginationTokenRetention(paginationTokenRetention)
+            .minRetentionDuration(minimumRetention)
             .build());
 
     var firstPage =
@@ -198,10 +191,10 @@ public class TestCatalogMaintenance {
         .isEqualTo(true);
 
     // Make the superseded snapshot old enough that the maintenance created-at grace period cannot
-    // protect it. It must therefore be retained specifically for the pagination token.
+    // protect it. It must therefore be retained by the global minimum duration.
     mutableMonotonicClock.advanceBoth(GRACE_TIME);
     assertThat(runMaintenance().success()).isTrue();
-    purgeBackendCache("within pagination-token retention");
+    purgeBackendCache("within minimum retention");
 
     // Pagination remains snapshot-consistent even though maintenance retains only one commit by
     // count. The newly created namespace must not appear in the old snapshot.
@@ -214,9 +207,9 @@ public class TestCatalogMaintenance {
 
     // At the duration boundary, the superseded snapshot may be collected. Reusing its token must
     // fail explicitly instead of silently returning an empty page.
-    mutableMonotonicClock.advanceBoth(paginationTokenRetention.minus(GRACE_TIME));
+    mutableMonotonicClock.advanceBoth(minimumRetention.minus(GRACE_TIME));
     assertThat(runMaintenance().success()).isTrue();
-    purgeBackendCache("after pagination-token retention");
+    purgeBackendCache("after minimum retention");
 
     assertThatIllegalArgumentException()
         .isThrownBy(
@@ -227,9 +220,57 @@ public class TestCatalogMaintenance {
   }
 
   @Test
-  public void paginationRetentionDoesNotExtendNonPaginatedHistory() {
-    var policyMappingsRetention = GRACE_TIME;
-    var paginationTokenRetention = GRACE_TIME.plusMinutes(5);
+  public void catalogPaginationRetainsVersionsReferencedBySnapshot() {
+    var minimumRetention = GRACE_TIME.plusMinutes(5);
+    var testSetup = bootstrapRealm();
+    var manager = testSetup.manager();
+    var callCtx = testSetup.callCtx();
+    var persistence = testSetup.persistence();
+
+    createCatalog(manager, callCtx, persistence, "catalog-a");
+    var nextPageCatalog = createCatalog(manager, callCtx, persistence, "catalog-b");
+
+    MutableCatalogsMaintenanceConfig.setCurrent(
+        CatalogsMaintenanceConfig.BuildableCatalogsMaintenanceConfig.builder()
+            .minRetentionDuration(minimumRetention)
+            .build());
+
+    var firstPage =
+        manager.listFullEntities(callCtx, List.of(), CATALOG, NULL_SUBTYPE, PageToken.fromLimit(1));
+    assertThat(firstPage.items())
+        .extracting(PolarisBaseEntity::getName)
+        .containsExactly("catalog-a");
+    assertThat(firstPage.encodedResponseToken()).isNotBlank();
+    var secondPageToken = PageToken.build(firstPage.encodedResponseToken(), null, () -> true);
+
+    var updatedProperties = new HashMap<>(nextPageCatalog.getPropertiesAsMap());
+    updatedProperties.put("updated", "true");
+    assertThat(
+            manager.updateEntityPropertiesIfNotChanged(
+                callCtx,
+                List.of(),
+                new PolarisEntity.Builder(new PolarisEntity(nextPageCatalog))
+                    .setProperties(updatedProperties)
+                    .build()))
+        .extracting(BaseResult::isSuccess)
+        .isEqualTo(true);
+
+    mutableMonotonicClock.advanceBoth(GRACE_TIME);
+    assertThat(runMaintenance().success()).isTrue();
+    purgeBackendCache("within minimum retention");
+
+    var secondPage =
+        manager.listFullEntities(callCtx, List.of(), CATALOG, NULL_SUBTYPE, secondPageToken);
+    assertThat(secondPage.items())
+        .extracting(PolarisBaseEntity::getName)
+        .containsExactly("catalog-b");
+    assertThat(secondPage.items().getFirst().getPropertiesAsMap())
+        .isEqualTo(nextPageCatalog.getPropertiesAsMap());
+  }
+
+  @Test
+  public void minimumRetentionAppliesToNonPaginatedHistory() {
+    var minimumRetention = GRACE_TIME.plusMinutes(5);
     var persistence = bootstrapRealm().persistence();
 
     var oldPolicyMappings =
@@ -254,13 +295,19 @@ public class TestCatalogMaintenance {
 
     MutableCatalogsMaintenanceConfig.setCurrent(
         CatalogsMaintenanceConfig.BuildableCatalogsMaintenanceConfig.builder()
-            .paginationTokenRetention(paginationTokenRetention)
-            .catalogPoliciesRetainDuration(policyMappingsRetention)
+            .minRetentionDuration(minimumRetention)
             .build());
 
-    mutableMonotonicClock.advanceBoth(policyMappingsRetention);
+    mutableMonotonicClock.advanceBoth(GRACE_TIME);
     assertThat(runMaintenance().success()).isTrue();
-    purgeBackendCache("after policy-mapping retention");
+    purgeBackendCache("within minimum retention");
+
+    assertThat(persistence.fetch(objRef(oldPolicyMappings), PolicyMappingsObj.class))
+        .isEqualTo(oldPolicyMappings);
+
+    mutableMonotonicClock.advanceBoth(minimumRetention.minus(GRACE_TIME));
+    assertThat(runMaintenance().success()).isTrue();
+    purgeBackendCache("after minimum retention");
 
     assertThat(persistence.fetch(objRef(oldPolicyMappings), PolicyMappingsObj.class)).isNull();
     assertThat(persistence.fetch(objRef(currentPolicyMappings), PolicyMappingsObj.class))
@@ -911,12 +958,20 @@ public class TestCatalogMaintenance {
 
   private static PolarisBaseEntity createCatalog(
       PolarisMetaStoreManager manager, PolarisCallContext callCtx, Persistence persistence) {
+    return createCatalog(manager, callCtx, persistence, "catalog");
+  }
+
+  private static PolarisBaseEntity createCatalog(
+      PolarisMetaStoreManager manager,
+      PolarisCallContext callCtx,
+      Persistence persistence,
+      String name) {
     var catalogResult =
         manager.createCatalog(
             callCtx,
             new PolarisEntity.Builder(
                     new CatalogEntity.Builder()
-                        .setName("catalog")
+                        .setName(name)
                         .setDefaultBaseLocation("file:///tmp/foo/bar/baz")
                         .setCatalogType("INTERNAL")
                         .build())

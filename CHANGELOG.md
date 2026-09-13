@@ -237,9 +237,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   and count and duration are combined as minimums. Before upgrading, replace `*-retain=false` with
   `*-retain=1`, `commits < N` with `N`, `commits <= N` with `N + 1`, `ageDays < N` with
   `*-retain-duration=P<N>D`, and `true` with `*-retain-all=true`. The new
-  `polaris.persistence.nosql.maintenance.catalog.pagination-token-retention` duration (default
-  `P30D`) is an additional global minimum for container histories that back paginated entity
-  listings, keeping their superseded snapshots available for existing pagination tokens.
+  `polaris.persistence.nosql.maintenance.catalog.min-retention-duration` setting (default `PT0S`)
+  provides an optional global minimum duration for all catalog histories.
 - Removed the `--schema-version` (`-v`) option from the admin tool's `bootstrap` command. New realms
   are now always bootstrapped with the latest available schema version.
 - The `MaintenanceService.performMaintenance()` signature now requires an explicit `OptionalLong overrideRunId` argument to supersede the latest unfinished maintenance run.

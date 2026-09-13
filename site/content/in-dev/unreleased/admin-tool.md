@@ -242,10 +242,10 @@ upgrading, replace `*-retain=false` with `*-retain=1`, `commits < N` with `N`, `
 `*-retain-duration=PT<N>H`, `ageMinutes < N` with `*-retain-duration=PT<N>M`, and `true` with
 `*-retain-all=true`. Count and age conditions joined by `||` map to the corresponding count and
 duration settings. The
-`polaris.persistence.nosql.maintenance.catalog.pagination-token-retention` duration (default
-`P30D`) is a separate global minimum for container histories that back paginated entity listings.
-It protects their superseded snapshots when referenced by pagination tokens, without extending
-non-pagination histories such as grants and policy mappings.
+`polaris.persistence.nosql.maintenance.catalog.min-retention-duration` setting (default `PT0S`)
+provides an optional global minimum duration for all catalog histories. Set it to at least the
+maximum expected lifetime of ongoing API operations, including pagination tokens, if superseded
+history must remain available to them.
 {{< /alert >}}
 
 The output shows a bunch of configuration options, most of which are automatically determined by the tool.
