@@ -31,13 +31,12 @@ import tools.jackson.databind.annotation.JsonSerialize;
  * No SQL persistence implementation of Polaris stores a history of changes per kind of object
  * (principals, principal roles, grants, immediate tasks, catalog roles and catalog state).
  *
- * <p>Each kind of history has independent controls for the minimum number of commits to retain, the
- * minimum retention duration, and whether to retain all commits. Count and duration controls are
- * combined, retaining commits required by either one. The per-history controls default to one
- * commit, zero duration, and retain-all disabled.
+ * <p>{@link #retention()} provides independent controls for each kind of history. Count and
+ * duration controls are combined, retaining commits required by either one. The per-history
+ * controls default to one commit, zero duration, and retain-all disabled.
  *
- * <p>{@link #paginationTokenRetention()} is a separate global minimum that additionally keeps
- * superseded snapshots available for snapshot-based pagination.
+ * <p>{@link #minRetentionDuration()} provides a global minimum retention duration for all kinds of
+ * history.
  */
 @ConfigMapping(prefix = "polaris.persistence.nosql.maintenance.catalog")
 @JsonSerialize(as = ImmutableBuildableCatalogsMaintenanceConfig.class)
@@ -47,121 +46,135 @@ public interface CatalogsMaintenanceConfig {
   int DEFAULT_RETAIN_COMMITS = 1;
   String DEFAULT_RETAIN_DURATION = "PT0S";
   String DEFAULT_RETAIN_ALL = "false";
-  String DEFAULT_PAGINATION_TOKEN_RETENTION = "P30D";
+  String DEFAULT_MIN_RETENTION_DURATION = "PT0S";
 
   /**
-   * Minimum time to retain a container snapshot after it is superseded, so pagination tokens that
-   * reference that snapshot can continue to be used. This minimum applies only to histories backed
-   * by container snapshots that can be referenced by pagination tokens.
-   *
-   * <p>A zero duration disables this pagination-token retention minimum.
+   * Minimum duration to retain commits for all kinds of history. This is combined with each
+   * per-history duration, retaining commits required by either setting.
    */
-  @WithDefault(DEFAULT_PAGINATION_TOKEN_RETENTION)
-  Duration paginationTokenRetention();
+  @WithDefault(DEFAULT_MIN_RETENTION_DURATION)
+  Duration minRetentionDuration();
 
-  /** Number of latest principal commits to retain. */
-  @WithDefault("" + DEFAULT_RETAIN_COMMITS)
-  @Min(1)
-  int principalsRetain();
+  /** Retention settings for each kind of catalog-related history. */
+  RetentionsConfig retention();
 
-  /** Minimum duration to retain principal commits after they are superseded. */
-  @WithDefault(DEFAULT_RETAIN_DURATION)
-  Duration principalsRetainDuration();
+  interface RetentionsConfig {
+    RetentionConfig principals();
 
-  /** Whether to retain all principal commits. */
-  @WithDefault(DEFAULT_RETAIN_ALL)
-  boolean principalsRetainAll();
+    RetentionConfig principalRoles();
 
-  /** Number of latest principal-role commits to retain. */
-  @WithDefault("" + DEFAULT_RETAIN_COMMITS)
-  @Min(1)
-  int principalRolesRetain();
+    RetentionConfig grants();
 
-  /** Minimum duration to retain principal-role commits after they are superseded. */
-  @WithDefault(DEFAULT_RETAIN_DURATION)
-  Duration principalRolesRetainDuration();
+    RetentionConfig immediateTasks();
 
-  /** Whether to retain all principal-role commits. */
-  @WithDefault(DEFAULT_RETAIN_ALL)
-  boolean principalRolesRetainAll();
+    RetentionConfig catalogsHistory();
 
-  /** Number of latest realm-grant commits to retain. */
-  @WithDefault("" + DEFAULT_RETAIN_COMMITS)
-  @Min(1)
-  int grantsRetain();
+    RetentionConfig catalogRoles();
 
-  /** Minimum duration to retain realm-grant commits after they are superseded. */
-  @WithDefault(DEFAULT_RETAIN_DURATION)
-  Duration grantsRetainDuration();
+    RetentionConfig catalogPolicies();
 
-  /** Whether to retain all realm-grant commits. */
-  @WithDefault(DEFAULT_RETAIN_ALL)
-  boolean grantsRetainAll();
+    RetentionConfig catalogState();
+  }
 
-  /** Number of latest immediate-task commits to retain. */
-  @WithDefault("" + DEFAULT_RETAIN_COMMITS)
-  @Min(1)
-  int immediateTasksRetain();
+  /** Retention settings shared by every kind of history. */
+  interface RetentionConfig {
+    /** Minimum number of latest commits to retain. */
+    @WithDefault("" + DEFAULT_RETAIN_COMMITS)
+    @Min(1)
+    int numCommits();
 
-  /** Minimum duration to retain immediate-task commits after they are superseded. */
-  @WithDefault(DEFAULT_RETAIN_DURATION)
-  Duration immediateTasksRetainDuration();
+    /** Minimum duration to retain commits after they are superseded. */
+    @WithDefault(DEFAULT_RETAIN_DURATION)
+    Duration duration();
 
-  /** Whether to retain all immediate-task commits. */
-  @WithDefault(DEFAULT_RETAIN_ALL)
-  boolean immediateTasksRetainAll();
+    /** Whether to retain all commits. */
+    @WithDefault(DEFAULT_RETAIN_ALL)
+    boolean all();
+  }
 
-  /** Number of latest catalog-list commits to retain. */
-  @WithDefault("" + DEFAULT_RETAIN_COMMITS)
-  @Min(1)
-  int catalogsHistoryRetain();
+  @PolarisImmutable
+  interface BuildableRetentionConfig extends RetentionConfig {
+    static ImmutableBuildableRetentionConfig.Builder builder() {
+      return ImmutableBuildableRetentionConfig.builder();
+    }
 
-  /** Minimum duration to retain catalog-list commits after they are superseded. */
-  @WithDefault(DEFAULT_RETAIN_DURATION)
-  Duration catalogsHistoryRetainDuration();
+    @Override
+    @Value.Default
+    default int numCommits() {
+      return DEFAULT_RETAIN_COMMITS;
+    }
 
-  /** Whether to retain all catalog-list commits. */
-  @WithDefault(DEFAULT_RETAIN_ALL)
-  boolean catalogsHistoryRetainAll();
+    @Override
+    @Value.Default
+    default Duration duration() {
+      return Duration.parse(DEFAULT_RETAIN_DURATION);
+    }
 
-  /** Number of latest catalog-role commits to retain. */
-  @WithDefault("" + DEFAULT_RETAIN_COMMITS)
-  @Min(1)
-  int catalogRolesRetain();
+    @Override
+    @Value.Default
+    default boolean all() {
+      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
+    }
+  }
 
-  /** Minimum duration to retain catalog-role commits after they are superseded. */
-  @WithDefault(DEFAULT_RETAIN_DURATION)
-  Duration catalogRolesRetainDuration();
+  @PolarisImmutable
+  interface BuildableRetentionsConfig extends RetentionsConfig {
+    static ImmutableBuildableRetentionsConfig.Builder builder() {
+      return ImmutableBuildableRetentionsConfig.builder();
+    }
 
-  /** Whether to retain all catalog-role commits. */
-  @WithDefault(DEFAULT_RETAIN_ALL)
-  boolean catalogRolesRetainAll();
+    private static BuildableRetentionConfig defaultRetention() {
+      return BuildableRetentionConfig.builder().build();
+    }
 
-  /** Number of latest catalog-policy commits to retain. */
-  @WithDefault("" + DEFAULT_RETAIN_COMMITS)
-  @Min(1)
-  int catalogPoliciesRetain();
+    @Override
+    @Value.Default
+    default RetentionConfig principals() {
+      return defaultRetention();
+    }
 
-  /** Minimum duration to retain catalog-policy commits after they are superseded. */
-  @WithDefault(DEFAULT_RETAIN_DURATION)
-  Duration catalogPoliciesRetainDuration();
+    @Override
+    @Value.Default
+    default RetentionConfig principalRoles() {
+      return defaultRetention();
+    }
 
-  /** Whether to retain all catalog-policy commits. */
-  @WithDefault(DEFAULT_RETAIN_ALL)
-  boolean catalogPoliciesRetainAll();
+    @Override
+    @Value.Default
+    default RetentionConfig grants() {
+      return defaultRetention();
+    }
 
-  /** Number of latest catalog-state commits to retain. */
-  @WithDefault("" + DEFAULT_RETAIN_COMMITS)
-  @Min(1)
-  int catalogStateRetain();
+    @Override
+    @Value.Default
+    default RetentionConfig immediateTasks() {
+      return defaultRetention();
+    }
 
-  /** Minimum duration to retain catalog-state commits after they are superseded. */
-  @WithDefault(DEFAULT_RETAIN_DURATION)
-  Duration catalogStateRetainDuration();
+    @Override
+    @Value.Default
+    default RetentionConfig catalogsHistory() {
+      return defaultRetention();
+    }
 
-  /** Whether to retain all catalog-state commits. */
-  @WithDefault(DEFAULT_RETAIN_ALL)
-  boolean catalogStateRetainAll();
+    @Override
+    @Value.Default
+    default RetentionConfig catalogRoles() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogPolicies() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogState() {
+      return defaultRetention();
+    }
+  }
 
   @PolarisImmutable
   interface BuildableCatalogsMaintenanceConfig extends CatalogsMaintenanceConfig {
@@ -171,152 +184,14 @@ public interface CatalogsMaintenanceConfig {
 
     @Override
     @Value.Default
-    default Duration paginationTokenRetention() {
-      return Duration.parse(DEFAULT_PAGINATION_TOKEN_RETENTION);
+    default Duration minRetentionDuration() {
+      return Duration.parse(DEFAULT_MIN_RETENTION_DURATION);
     }
 
     @Override
     @Value.Default
-    default int principalsRetain() {
-      return DEFAULT_RETAIN_COMMITS;
-    }
-
-    @Override
-    @Value.Default
-    default Duration principalsRetainDuration() {
-      return Duration.parse(DEFAULT_RETAIN_DURATION);
-    }
-
-    @Override
-    @Value.Default
-    default boolean principalsRetainAll() {
-      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
-    }
-
-    @Override
-    @Value.Default
-    default int principalRolesRetain() {
-      return DEFAULT_RETAIN_COMMITS;
-    }
-
-    @Override
-    @Value.Default
-    default Duration principalRolesRetainDuration() {
-      return Duration.parse(DEFAULT_RETAIN_DURATION);
-    }
-
-    @Override
-    @Value.Default
-    default boolean principalRolesRetainAll() {
-      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
-    }
-
-    @Override
-    @Value.Default
-    default int grantsRetain() {
-      return DEFAULT_RETAIN_COMMITS;
-    }
-
-    @Override
-    @Value.Default
-    default Duration grantsRetainDuration() {
-      return Duration.parse(DEFAULT_RETAIN_DURATION);
-    }
-
-    @Override
-    @Value.Default
-    default boolean grantsRetainAll() {
-      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
-    }
-
-    @Override
-    @Value.Default
-    default int immediateTasksRetain() {
-      return DEFAULT_RETAIN_COMMITS;
-    }
-
-    @Override
-    @Value.Default
-    default Duration immediateTasksRetainDuration() {
-      return Duration.parse(DEFAULT_RETAIN_DURATION);
-    }
-
-    @Override
-    @Value.Default
-    default boolean immediateTasksRetainAll() {
-      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
-    }
-
-    @Override
-    @Value.Default
-    default int catalogsHistoryRetain() {
-      return DEFAULT_RETAIN_COMMITS;
-    }
-
-    @Override
-    @Value.Default
-    default Duration catalogsHistoryRetainDuration() {
-      return Duration.parse(DEFAULT_RETAIN_DURATION);
-    }
-
-    @Override
-    @Value.Default
-    default boolean catalogsHistoryRetainAll() {
-      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
-    }
-
-    @Override
-    @Value.Default
-    default int catalogRolesRetain() {
-      return DEFAULT_RETAIN_COMMITS;
-    }
-
-    @Override
-    @Value.Default
-    default Duration catalogRolesRetainDuration() {
-      return Duration.parse(DEFAULT_RETAIN_DURATION);
-    }
-
-    @Override
-    @Value.Default
-    default boolean catalogRolesRetainAll() {
-      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
-    }
-
-    @Override
-    @Value.Default
-    default int catalogPoliciesRetain() {
-      return DEFAULT_RETAIN_COMMITS;
-    }
-
-    @Override
-    @Value.Default
-    default Duration catalogPoliciesRetainDuration() {
-      return Duration.parse(DEFAULT_RETAIN_DURATION);
-    }
-
-    @Override
-    @Value.Default
-    default boolean catalogPoliciesRetainAll() {
-      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
-    }
-
-    @Override
-    @Value.Default
-    default int catalogStateRetain() {
-      return DEFAULT_RETAIN_COMMITS;
-    }
-
-    @Override
-    @Value.Default
-    default Duration catalogStateRetainDuration() {
-      return Duration.parse(DEFAULT_RETAIN_DURATION);
-    }
-
-    @Override
-    @Value.Default
-    default boolean catalogStateRetainAll() {
-      return Boolean.parseBoolean(DEFAULT_RETAIN_ALL);
+    default RetentionsConfig retention() {
+      return BuildableRetentionsConfig.builder().build();
     }
   }
 }

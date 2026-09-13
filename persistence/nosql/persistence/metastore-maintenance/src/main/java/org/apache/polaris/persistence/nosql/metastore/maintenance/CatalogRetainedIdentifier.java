@@ -74,6 +74,7 @@ import org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.RootObj;
 import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
+import org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.RetentionConfig;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,6 +122,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     // `RetainedCollector.realmPersistence()` are automatically retained (no need to call
     // collector.retain*() explicitly).
     var persistence = collector.realmPersistence();
+    var retention = catalogsMaintenanceConfig.retention();
 
     cleanupPass(collector);
 
@@ -131,29 +133,19 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(() -> persistence.fetchReferenceHead(ROOT_REF_NAME, RootObj.class));
 
     perRealmContainer(
-        "principals",
-        PRINCIPALS_REF_NAME,
-        catalogsMaintenanceConfig.principalsRetain(),
-        catalogsMaintenanceConfig.principalsRetainDuration(),
-        catalogsMaintenanceConfig.principalsRetainAll(),
-        PrincipalsObj.class,
-        collector);
+        "principals", PRINCIPALS_REF_NAME, retention.principals(), PrincipalsObj.class, collector);
 
     perRealmContainer(
         "principal roles",
         PRINCIPAL_ROLES_REF_NAME,
-        catalogsMaintenanceConfig.principalRolesRetain(),
-        catalogsMaintenanceConfig.principalRolesRetainDuration(),
-        catalogsMaintenanceConfig.principalRolesRetainAll(),
+        retention.principalRoles(),
         PrincipalRolesObj.class,
         collector);
 
     perRealm(
         "grants",
         REALM_GRANTS_REF_NAME,
-        catalogsMaintenanceConfig.grantsRetain(),
-        catalogsMaintenanceConfig.grantsRetainDuration(),
-        catalogsMaintenanceConfig.grantsRetainAll(),
+        retention.grants(),
         RealmGrantsObj.class,
         RealmGrantsObj::acls,
         collector);
@@ -161,21 +153,16 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     perRealmContainer(
         "immediate tasks",
         IMMEDIATE_TASKS_REF_NAME,
-        catalogsMaintenanceConfig.immediateTasksRetain(),
-        catalogsMaintenanceConfig.immediateTasksRetainDuration(),
-        catalogsMaintenanceConfig.immediateTasksRetainAll(),
+        retention.immediateTasks(),
         ImmediateTasksObj.class,
         collector);
 
     LOGGER.info("Identifying policy mappings...");
     ignoreReferenceNotFound(
         () -> {
+          var policyRetention = retention.catalogPolicies();
           var policyMappingsContinue =
-              this.<PolicyMappingsObj>historyContinuePredicate(
-                  catalogsMaintenanceConfig.catalogPoliciesRetain(),
-                  catalogsMaintenanceConfig.catalogPoliciesRetainDuration(),
-                  catalogsMaintenanceConfig.catalogPoliciesRetainAll(),
-                  persistence);
+              this.<PolicyMappingsObj>historyContinuePredicate(policyRetention, persistence);
           // PolicyMappings are stored _INLINE_
           collector.refRetain(
               POLICY_MAPPINGS_REF_NAME,
@@ -197,12 +184,9 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     LOGGER.info("Identifying catalogs...");
     ignoreReferenceNotFound(
         () -> {
+          var catalogsRetention = retention.catalogsHistory();
           var catalogsHistoryContinue =
-              this.<CatalogsObj>paginatedHistoryContinuePredicate(
-                  catalogsMaintenanceConfig.catalogsHistoryRetain(),
-                  catalogsMaintenanceConfig.catalogsHistoryRetainDuration(),
-                  catalogsMaintenanceConfig.catalogsHistoryRetainAll(),
-                  persistence);
+              this.<CatalogsObj>historyContinuePredicate(catalogsRetention, persistence);
           var currentCatalogs = new ConcurrentHashMap<IndexKey, ObjRef>();
           collector.refRetain(
               CATALOGS_REF_NAME,
@@ -214,6 +198,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                 for (var entry : allCatalogsIndex) {
                   var catalogKey = entry.key();
                   var catalogObjRef = entry.value();
+                  collector.retainObject(catalogObjRef);
                   currentCatalogs.putIfAbsent(catalogKey, catalogObjRef);
                 }
                 collector.indexRetain(catalogs.stableIdToName());
@@ -230,9 +215,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
             perCatalogRoles(
                 catalogObj,
-                catalogsMaintenanceConfig.catalogRolesRetain(),
-                catalogsMaintenanceConfig.catalogRolesRetainDuration(),
-                catalogsMaintenanceConfig.catalogRolesRetainAll(),
+                retention.catalogRoles(),
                 collector,
                 catalogRolesObj -> collector.indexRetain(catalogRolesObj.stableIdToName()));
 
@@ -242,14 +225,12 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                 catalogObj.stableId());
             ignoreReferenceNotFound(
                 () -> {
+                  var catalogStateRetention = retention.catalogState();
                   var catalogStateRefName =
                       format(CATALOG_STATE_REF_NAME_PATTERN, catalogObj.stableId());
                   var catalogStateContinue =
-                      this.<CatalogStateObj>paginatedHistoryContinuePredicate(
-                          catalogsMaintenanceConfig.catalogStateRetain(),
-                          catalogsMaintenanceConfig.catalogStateRetainDuration(),
-                          catalogsMaintenanceConfig.catalogStateRetainAll(),
-                          persistence);
+                      this.<CatalogStateObj>historyContinuePredicate(
+                          catalogStateRetention, persistence);
                   collector.refRetainIndexToSingleObj(
                       catalogStateRefName,
                       CatalogStateObj.class,
@@ -303,9 +284,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
   private <O extends BaseCommitObj> void perRealm(
       String what,
       String refName,
-      int commitsToRetain,
-      Duration minimumRetention,
-      boolean retainAll,
+      RetentionConfig retention,
       Class<O> objClazz,
       Function<O, IndexContainer<ObjRef>> indexContainerFunction,
       RetainedCollector collector) {
@@ -314,9 +293,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(
         () -> {
           var persistence = collector.realmPersistence();
-          var historyContinue =
-              this.<O>historyContinuePredicate(
-                  commitsToRetain, minimumRetention, retainAll, persistence);
+          var historyContinue = this.<O>historyContinuePredicate(retention, persistence);
           collector.refRetainIndexToSingleObj(
               refName, objClazz, historyContinue, indexContainerFunction);
         });
@@ -326,9 +303,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
   private <O extends ContainerObj> void perRealmContainer(
       String what,
       String refName,
-      int commitsToRetain,
-      Duration minimumRetention,
-      boolean retainAll,
+      RetentionConfig retention,
       Class<O> objClazz,
       RetainedCollector collector) {
 
@@ -336,9 +311,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(
         () -> {
           var persistence = collector.realmPersistence();
-          var historyContinue =
-              this.<O>paginatedHistoryContinuePredicate(
-                  commitsToRetain, minimumRetention, retainAll, persistence);
+          var historyContinue = this.<O>historyContinuePredicate(retention, persistence);
           collector.refRetainIndexToSingleObj(
               refName,
               objClazz,
@@ -350,9 +323,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
   private void perCatalogRoles(
       CatalogObj catalogObj,
-      int commitsToRetain,
-      Duration minimumRetention,
-      boolean retainAll,
+      RetentionConfig retention,
       RetainedCollector collector,
       Consumer<CatalogRolesObj> objConsumer) {
     LOGGER.info(
@@ -366,8 +337,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
           var refName =
               format(CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN, catalogObj.stableId());
           var historyContinue =
-              this.<CatalogRolesObj>paginatedHistoryContinuePredicate(
-                  commitsToRetain, minimumRetention, retainAll, persistence);
+              this.<CatalogRolesObj>historyContinuePredicate(retention, persistence);
           collector.refRetainIndexToSingleObj(
               refName,
               CatalogRolesObj.class,
@@ -735,24 +705,18 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
   private record RefIndexKey(String refName, Class<? extends ContainerObj> containerClass) {}
 
   private <O extends BaseCommitObj> Predicate<O> historyContinuePredicate(
-      int commitsToRetain, Duration minimumRetention, boolean retainAll, Persistence persistence) {
+      RetentionConfig retention, Persistence persistence) {
     return historyContinuePredicate(
-        commitsToRetain, minimumRetention, retainAll, persistence::objAge);
-  }
-
-  private <O extends ContainerObj> Predicate<O> paginatedHistoryContinuePredicate(
-      int commitsToRetain, Duration minimumRetention, boolean retainAll, Persistence persistence) {
-    return paginatedHistoryContinuePredicate(
-        commitsToRetain,
-        minimumRetention,
-        retainAll,
-        catalogsMaintenanceConfig.paginationTokenRetention(),
+        retention.numCommits(),
+        retention.duration(),
+        retention.all(),
+        catalogsMaintenanceConfig.minRetentionDuration(),
         persistence::objAge);
   }
 
   /**
    * Returns a predicate that continues traversal while the next historic commit must be retained by
-   * the configured count, per-history retention duration, or retain-all policy.
+   * the configured count, retention duration, or retain-all policy.
    *
    * <p>{@link RetainedCollector} invokes this predicate after retaining the current commit. The
    * current commit's age represents how long the next, older commit has been superseded.
@@ -766,22 +730,22 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
   }
 
   /**
-   * Same as {@link #historyContinuePredicate(int, Duration, boolean, Function)}, with an additional
-   * global minimum for histories whose container snapshots can be referenced by pagination tokens.
+   * Same as {@link #historyContinuePredicate(int, Duration, boolean, Function)}, combining the
+   * per-history duration with a global minimum retention duration.
    */
-  static <O> Predicate<O> paginatedHistoryContinuePredicate(
+  static <O> Predicate<O> historyContinuePredicate(
       int commitsToRetain,
       Duration minimumRetention,
       boolean retainAll,
-      Duration paginationTokenRetention,
+      Duration globalMinimumRetention,
       Function<O, Duration> objectAge) {
-    if (paginationTokenRetention.isNegative()) {
-      throw new IllegalArgumentException("paginationTokenRetention must not be negative");
+    if (globalMinimumRetention.isNegative()) {
+      throw new IllegalArgumentException("globalMinimumRetention must not be negative");
     }
     var effectiveMinimumRetention =
-        minimumRetention.compareTo(paginationTokenRetention) >= 0
+        minimumRetention.compareTo(globalMinimumRetention) >= 0
             ? minimumRetention
-            : paginationTokenRetention;
+            : globalMinimumRetention;
     return retentionContinuePredicate(
         commitsToRetain, effectiveMinimumRetention, retainAll, objectAge);
   }

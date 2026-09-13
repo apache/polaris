@@ -78,26 +78,13 @@ class TestCommitRetention {
   }
 
   @Test
-  void usesLongerOfHistoryAndPaginationRetention() {
+  void usesLongerOfHistoryAndGlobalMinimumRetention() {
     var continueAfterCommit =
-        CatalogRetainedIdentifier.<Duration>paginatedHistoryContinuePredicate(
+        CatalogRetainedIdentifier.<Duration>historyContinuePredicate(
             1, Duration.ofDays(3), false, Duration.ofDays(30), age -> age);
 
     assertThat(continueAfterCommit.test(Duration.ofDays(29))).isTrue();
     assertThat(continueAfterCommit.test(Duration.ofDays(30))).isFalse();
-  }
-
-  @Test
-  void doesNotApplyPaginationRetentionToNonPaginatedHistory() {
-    var nonPaginatedHistory =
-        CatalogRetainedIdentifier.<Duration>historyContinuePredicate(
-            1, Duration.ofDays(7), false, age -> age);
-    var paginatedHistory =
-        CatalogRetainedIdentifier.<Duration>paginatedHistoryContinuePredicate(
-            1, Duration.ofDays(7), false, Duration.ofDays(30), age -> age);
-
-    assertThat(nonPaginatedHistory.test(Duration.ofDays(8))).isFalse();
-    assertThat(paginatedHistory.test(Duration.ofDays(8))).isTrue();
   }
 
   @Test
@@ -121,12 +108,12 @@ class TestCommitRetention {
   }
 
   @Test
-  void rejectsNegativePaginationTokenRetention() {
+  void rejectsNegativeGlobalMinimumRetention() {
     assertThatIllegalArgumentException()
         .isThrownBy(
             () ->
-                CatalogRetainedIdentifier.paginatedHistoryContinuePredicate(
+                CatalogRetainedIdentifier.historyContinuePredicate(
                     1, Duration.ZERO, false, Duration.ofSeconds(-1), ignored -> Duration.ZERO))
-        .withMessage("paginationTokenRetention must not be negative");
+        .withMessage("globalMinimumRetention must not be negative");
   }
 }
