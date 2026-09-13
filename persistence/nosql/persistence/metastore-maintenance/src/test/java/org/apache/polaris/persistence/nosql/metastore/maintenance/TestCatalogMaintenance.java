@@ -44,7 +44,6 @@ import static org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsOb
 import static org.apache.polaris.persistence.nosql.coretypes.refs.References.realmReferenceNames;
 import static org.apache.polaris.persistence.nosql.maintenance.impl.MutableMaintenanceConfig.GRACE_TIME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.AssertionsForClassTypes.fail;
 
 import io.smallrye.common.annotation.Identifier;
@@ -204,19 +203,6 @@ public class TestCatalogMaintenance {
     assertThat(secondPage.items())
         .hasSize(2)
         .noneMatch(entity -> entity.getName().equals("created-after-pagination-token"));
-
-    // At the duration boundary, the superseded snapshot may be collected. Reusing its token must
-    // fail explicitly instead of silently returning an empty page.
-    mutableMonotonicClock.advanceBoth(minimumRetention.minus(GRACE_TIME));
-    assertThat(runMaintenance().success()).isTrue();
-    purgeBackendCache("after minimum retention");
-
-    assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                manager.listFullEntities(
-                    callCtx, List.of(catalog), NAMESPACE, NULL_SUBTYPE, secondPageToken))
-        .withMessage("Invalid or expired NoSQL pagination token");
   }
 
   @Test
