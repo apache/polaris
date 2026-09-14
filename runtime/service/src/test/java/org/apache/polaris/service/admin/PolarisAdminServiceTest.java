@@ -36,8 +36,10 @@ import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -49,6 +51,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationState;
@@ -223,6 +226,53 @@ public class PolarisAdminServiceTest {
     adminService.createCatalog(new CreateCatalogRequest(createExternalOauthCatalog()));
 
     verify(userSecretsManager, never()).deleteSecret(any());
+  }
+
+  private static CreateCatalogRequest cloudflareR2CatalogRequest() {
+    AwsStorageConfigInfo r2 =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+            .setEndpoint("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com")
+            .setPathStyleAccess(true)
+            .setRegion("auto")
+            .setAllowedLocations(List.of("s3://bucket/base/"))
+            .build();
+    return new CreateCatalogRequest(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("r2")
+            .setProperties(new CatalogProperties("s3://bucket/base/"))
+            .setStorageConfigInfo(r2)
+            .build());
+  }
+
+  /** A denied caller gets the 403 and the realm's issuer allowlist is never consulted. */
+  @Test
+  void deniedCreateCatalogNeverConsultsTheIssuerAllowlist() {
+    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
+    assertThatThrownBy(() -> adminService.createCatalog(cloudflareR2CatalogRequest()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("denied");
+    verify(realmConfig, never()).getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS);
+    verify(metaStoreManager, never()).createCatalog(any(), any(), any());
+  }
+
+  /** The check still runs: an authorized caller with a disabled issuer gets the 400. */
+  @Test
+  void authorizedCreateCatalogWithADisabledIssuerIsRefusedAfterAuthorization() {
+    // CatalogEntity.fromCatalog and the overlap check read these regardless of credentialIssuer;
+    // the denied test above never reaches them, but this one proceeds past authorization.
+    when(realmConfig.getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS))
+        .thenReturn(-1);
+    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS))
+        .thenReturn(true);
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS))
+        .thenReturn(List.of("STS"));
+    assertThatThrownBy(() -> adminService.createCatalog(cloudflareR2CatalogRequest()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm");
+    verify(authorizer).authorize(any(), any());
+    verify(metaStoreManager, never()).createCatalog(any(), any(), any());
   }
 
   @Test
@@ -882,6 +932,10 @@ public class PolarisAdminServiceTest {
     when(realmConfig.getConfig(
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of(authType.name()));
+    // The admin service now reads the realm's S3 credential issuer allowlist on catalog create;
+    // the mock RealmConfig must answer it, even though these catalogs are not S3.
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS))
+        .thenReturn(List.of("STS"));
 
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
     when(idResult.getId()).thenReturn(2L);
