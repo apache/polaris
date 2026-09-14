@@ -155,6 +155,9 @@ testing {
           // Need to allow a java security manager after Java 21, for Subject.getSubject to work
           // "getSubject is supported only if a security manager is allowed".
           systemProperty("java.security.manager", "allow")
+          // Avro 1.12.2 restricts class loading during Avro schema deserialization to trusted
+          // classes/packages (AVRO-4189). Set to '*' to restore original behaviour
+          systemProperty("org.apache.avro.SERIALIZABLE_PACKAGES", "*")
           val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
           // delete files from previous runs
           doFirst {
