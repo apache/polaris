@@ -19,15 +19,25 @@
 package org.apache.polaris.service.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
@@ -38,6 +48,7 @@ import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /** Unit tests for TaskExecutorImpl */
 public class TaskExecutorImplTest {
@@ -228,6 +239,182 @@ public class TaskExecutorImplTest {
     // Event should have been emitted with TASK_SUCCESS=false even though we threw
     PolarisEvent afterEvent =
         testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
+    assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS)).isEqualTo(false);
+  }
+
+  @Test
+  void handleTaskIsANoOpWhenTaskEntityNoLongerExists() {
+    String realm = "myrealm";
+    RealmContext realmContext = () -> realm;
+
+    TestServices testServices = TestServices.builder().realmContext(realmContext).build();
+
+    InMemoryEventCollector testPolarisEventDispatcher =
+        (InMemoryEventCollector) testServices.polarisEventDispatcher();
+
+    PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
+    PolarisCallContext polarisCallCtx = testServices.newCallContext();
+
+    // Reserve an id but never persist the entity, reproducing a retry that runs after an earlier
+    // attempt already handled the task and dropped its entity.
+    long droppedTaskId = metaStoreManager.generateNewEntityId(polarisCallCtx).getId();
+
+    AtomicInteger handlerCalls = new AtomicInteger(0);
+
+    TaskExecutorImpl executor =
+        new TaskExecutorImpl(
+            Runnable::run,
+            null,
+            testServices.clock(),
+            testServices.metaStoreManagerFactory(),
+            new TaskFileIOSupplier(
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
+            new RealmContextHolder(),
+            testServices.polarisEventDispatcher(),
+            testServices.eventMetadataFactory(),
+            null,
+            new PolarisPrincipalHolder(),
+            testServices.principal());
+
+    executor.addTaskHandler(
+        new TaskHandler() {
+          @Override
+          public boolean canHandleTask(TaskEntity task) {
+            return true;
+          }
+
+          @Override
+          public void handleTask(TaskEntity task, CallContext callContext) {
+            handlerCalls.incrementAndGet();
+          }
+        });
+
+    assertThatCode(
+            () ->
+                executor.handleTask(
+                    droppedTaskId,
+                    polarisCallCtx,
+                    PolarisEventMetadata.builder().realmId(realm).build(),
+                    2))
+        .doesNotThrowAnyException();
+
+    assertThat(handlerCalls.get()).isZero();
+
+    PolarisEvent afterEvent =
+        testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
+    assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_ENTITY_ID))
+        .isEqualTo(droppedTaskId);
+    assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS)).isEqualTo(true);
+  }
+
+  @Test
+  void handleTaskFailsTheAttemptWhenLoadingTheTaskEntityFails() {
+    String realm = "myrealm";
+    RealmContext realmContext = () -> realm;
+
+    TestServices testServices = TestServices.builder().realmContext(realmContext).build();
+
+    InMemoryEventCollector testPolarisEventDispatcher =
+        (InMemoryEventCollector) testServices.polarisEventDispatcher();
+
+    PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
+    PolarisCallContext polarisCallCtx = testServices.newCallContext();
+
+    TaskEntity taskEntity =
+        new TaskEntity.Builder()
+            .setName("unreadable-task")
+            .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
+            .setCreateTimestamp(testServices.clock().millis())
+            .build();
+    metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
+
+    // The entity exists; the load fails for a reason other than "not found". EntityResult reports
+    // every non-success status with a null entity, so only the status separates this case from an
+    // entity an earlier attempt already dropped.
+    PolarisMetaStoreManager failingMetaStoreManager = Mockito.spy(metaStoreManager);
+    Mockito.doReturn(new EntityResult(BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, null))
+        .when(failingMetaStoreManager)
+        .loadEntity(Mockito.any(), Mockito.anyLong(), Mockito.anyLong(), Mockito.any());
+
+    MetaStoreManagerFactory delegate = testServices.metaStoreManagerFactory();
+    MetaStoreManagerFactory failingFactory =
+        new MetaStoreManagerFactory() {
+          @Override
+          public PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext) {
+            return failingMetaStoreManager;
+          }
+
+          @Override
+          public BasePersistence getOrCreateSession(RealmContext realmContext) {
+            return delegate.getOrCreateSession(realmContext);
+          }
+
+          @Override
+          public EntityCache getOrCreateEntityCache(
+              RealmContext realmContext, RealmConfig realmConfig) {
+            return delegate.getOrCreateEntityCache(realmContext, realmConfig);
+          }
+
+          @Override
+          public Map<String, PrincipalSecretsResult> bootstrapRealms(
+              Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
+            return delegate.bootstrapRealms(realms, rootCredentialsSet);
+          }
+
+          @Override
+          public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
+            return delegate.purgeRealms(realms);
+          }
+        };
+
+    AtomicInteger handlerCalls = new AtomicInteger(0);
+
+    TaskExecutorImpl executor =
+        new TaskExecutorImpl(
+            Runnable::run,
+            null,
+            testServices.clock(),
+            failingFactory,
+            new TaskFileIOSupplier(
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
+            new RealmContextHolder(),
+            testServices.polarisEventDispatcher(),
+            testServices.eventMetadataFactory(),
+            null,
+            new PolarisPrincipalHolder(),
+            testServices.principal());
+
+    executor.addTaskHandler(
+        new TaskHandler() {
+          @Override
+          public boolean canHandleTask(TaskEntity task) {
+            return true;
+          }
+
+          @Override
+          public void handleTask(TaskEntity task, CallContext callContext) {
+            handlerCalls.incrementAndGet();
+          }
+        });
+
+    assertThatThrownBy(
+            () ->
+                executor.handleTask(
+                    taskEntity.getId(),
+                    polarisCallCtx,
+                    PolarisEventMetadata.builder().realmId(realm).build(),
+                    2))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
+
+    assertThat(handlerCalls.get()).isZero();
+
+    // The attempt must be reported as a failure so the retry logic runs again, rather than as a
+    // success that silently abandons a task whose entity is still present.
+    PolarisEvent afterEvent =
+        testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
+    assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_ENTITY_ID))
+        .isEqualTo(taskEntity.getId());
     assertThat(afterEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS)).isEqualTo(false);
   }
 
