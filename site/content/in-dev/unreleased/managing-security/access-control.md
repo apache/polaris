@@ -196,8 +196,9 @@ Privileges granted on a namespace or catalog apply to descendant models. At thes
 `SEMANTIC_MODEL_CREATE`, `SEMANTIC_MODEL_READ`, and `SEMANTIC_MODEL_WRITE`
 also permit listing models, matching table and view privileges.
 `SEMANTIC_MODEL_FULL_METADATA` grants list, create, read, update, and drop access within that scope.
-`NAMESPACE_FULL_METADATA`, `CATALOG_FULL_METADATA`, `CATALOG_MANAGE_METADATA`, and
-`CATALOG_MANAGE_CONTENT` also cover semantic model metadata operations within their scope.
+`CATALOG_MANAGE_METADATA` and `CATALOG_MANAGE_CONTENT` also cover semantic model metadata
+operations within their scope. `NAMESPACE_FULL_METADATA` and `CATALOG_FULL_METADATA` cover
+namespace and catalog metadata operations, respectively, and do not imply semantic model privileges.
 These metadata privileges do not confer grant management. Single-model grants require
 `SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE` on the model. Revocation additionally requires
 `CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE` on the recipient role, following policy grant semantics.

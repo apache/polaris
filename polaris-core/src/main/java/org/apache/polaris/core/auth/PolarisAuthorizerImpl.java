@@ -691,8 +691,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             SEMANTIC_MODEL_READ,
             SEMANTIC_MODEL_WRITE,
             SEMANTIC_MODEL_FULL_METADATA,
-            NAMESPACE_FULL_METADATA,
-            CATALOG_FULL_METADATA,
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
@@ -700,8 +698,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             SEMANTIC_MODEL_CREATE,
             SEMANTIC_MODEL_FULL_METADATA,
-            NAMESPACE_FULL_METADATA,
-            CATALOG_FULL_METADATA,
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
@@ -710,8 +706,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             SEMANTIC_MODEL_READ,
             SEMANTIC_MODEL_FULL_METADATA,
             SEMANTIC_MODEL_WRITE,
-            NAMESPACE_FULL_METADATA,
-            CATALOG_FULL_METADATA,
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
@@ -719,8 +713,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             SEMANTIC_MODEL_WRITE,
             SEMANTIC_MODEL_FULL_METADATA,
-            NAMESPACE_FULL_METADATA,
-            CATALOG_FULL_METADATA,
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
@@ -728,18 +720,11 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             SEMANTIC_MODEL_DROP,
             SEMANTIC_MODEL_FULL_METADATA,
-            NAMESPACE_FULL_METADATA,
-            CATALOG_FULL_METADATA,
             CATALOG_MANAGE_METADATA,
             CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
         SEMANTIC_MODEL_FULL_METADATA,
-        List.of(
-            SEMANTIC_MODEL_FULL_METADATA,
-            NAMESPACE_FULL_METADATA,
-            CATALOG_FULL_METADATA,
-            CATALOG_MANAGE_METADATA,
-            CATALOG_MANAGE_CONTENT));
+        List.of(SEMANTIC_MODEL_FULL_METADATA, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
     SUPER_PRIVILEGES.putAll(
         SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE,
         List.of(SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE, CATALOG_MANAGE_ACCESS));

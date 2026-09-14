@@ -244,10 +244,27 @@ class SemanticModelCatalogHandlerAuthzTest extends AbstractSemanticModelCatalogH
     return Stream.of(
         Arguments.of(PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA, false),
         Arguments.of(PolarisPrivilege.SEMANTIC_MODEL_FULL_METADATA, true),
-        Arguments.of(PolarisPrivilege.NAMESPACE_FULL_METADATA, false),
-        Arguments.of(PolarisPrivilege.CATALOG_FULL_METADATA, true),
         Arguments.of(PolarisPrivilege.CATALOG_MANAGE_METADATA, true),
         Arguments.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT, true));
+  }
+
+  @ParameterizedTest
+  @MethodSource("parentMetadataPrivileges")
+  void namespaceAndCatalogMetadataDoNotAuthorizeModels(
+      PolarisPrivilege privilege, boolean catalogScope) {
+    grant(catalogScope ? catalog : namespace, privilege);
+    for (String operation : List.of("create", "list", "load", "update", "drop")) {
+      assertThatThrownBy(() -> runOperation(operation))
+          .as("%s must not authorize %s", privilege, operation)
+          .isInstanceOf(ForbiddenException.class);
+    }
+  }
+
+  static Stream<Arguments> parentMetadataPrivileges() {
+    return Stream.of(
+        Arguments.of(PolarisPrivilege.NAMESPACE_FULL_METADATA, false),
+        Arguments.of(PolarisPrivilege.NAMESPACE_FULL_METADATA, true),
+        Arguments.of(PolarisPrivilege.CATALOG_FULL_METADATA, true));
   }
 
   @ParameterizedTest
