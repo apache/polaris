@@ -122,8 +122,6 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     // `RetainedCollector.realmPersistence()` are automatically retained (no need to call
     // collector.retain*() explicitly).
     var persistence = collector.realmPersistence();
-    var retention = catalogsMaintenanceConfig.retention();
-
     cleanupPass(collector);
 
     // per realm
@@ -133,19 +131,23 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     ignoreReferenceNotFound(() -> persistence.fetchReferenceHead(ROOT_REF_NAME, RootObj.class));
 
     perRealmContainer(
-        "principals", PRINCIPALS_REF_NAME, retention.principals(), PrincipalsObj.class, collector);
+        "principals",
+        PRINCIPALS_REF_NAME,
+        catalogsMaintenanceConfig.principalsRetention(),
+        PrincipalsObj.class,
+        collector);
 
     perRealmContainer(
         "principal roles",
         PRINCIPAL_ROLES_REF_NAME,
-        retention.principalRoles(),
+        catalogsMaintenanceConfig.principalRolesRetention(),
         PrincipalRolesObj.class,
         collector);
 
     perRealm(
         "grants",
         REALM_GRANTS_REF_NAME,
-        retention.grants(),
+        catalogsMaintenanceConfig.grantsRetention(),
         RealmGrantsObj.class,
         RealmGrantsObj::acls,
         collector);
@@ -153,14 +155,14 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     perRealmContainer(
         "immediate tasks",
         IMMEDIATE_TASKS_REF_NAME,
-        retention.immediateTasks(),
+        catalogsMaintenanceConfig.immediateTasksRetention(),
         ImmediateTasksObj.class,
         collector);
 
     LOGGER.info("Identifying policy mappings...");
     ignoreReferenceNotFound(
         () -> {
-          var policyRetention = retention.catalogPolicies();
+          var policyRetention = catalogsMaintenanceConfig.catalogPoliciesRetention();
           var policyMappingsContinue =
               this.<PolicyMappingsObj>historyContinuePredicate(policyRetention, persistence);
           // PolicyMappings are stored _INLINE_
@@ -184,7 +186,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     LOGGER.info("Identifying catalogs...");
     ignoreReferenceNotFound(
         () -> {
-          var catalogsRetention = retention.catalogsHistory();
+          var catalogsRetention = catalogsMaintenanceConfig.catalogsHistoryRetention();
           var catalogsHistoryContinue =
               this.<CatalogsObj>historyContinuePredicate(catalogsRetention, persistence);
           var currentCatalogs = new ConcurrentHashMap<IndexKey, ObjRef>();
@@ -215,7 +217,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
             perCatalogRoles(
                 catalogObj,
-                retention.catalogRoles(),
+                catalogsMaintenanceConfig.catalogRolesRetention(),
                 collector,
                 catalogRolesObj -> collector.indexRetain(catalogRolesObj.stableIdToName()));
 
@@ -225,7 +227,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                 catalogObj.stableId());
             ignoreReferenceNotFound(
                 () -> {
-                  var catalogStateRetention = retention.catalogState();
+                  var catalogStateRetention = catalogsMaintenanceConfig.catalogStateRetention();
                   var catalogStateRefName =
                       format(CATALOG_STATE_REF_NAME_PATTERN, catalogObj.stableId());
                   var catalogStateContinue =

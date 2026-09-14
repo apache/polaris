@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.nosql.metastore.maintenance;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 import jakarta.validation.constraints.Min;
 import java.time.Duration;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -31,9 +32,9 @@ import tools.jackson.databind.annotation.JsonSerialize;
  * No SQL persistence implementation of Polaris stores a history of changes per kind of object
  * (principals, principal roles, grants, immediate tasks, catalog roles and catalog state).
  *
- * <p>{@link #retention()} provides independent controls for each kind of history. Count and
- * duration controls are combined, retaining commits required by either one. The per-history
- * controls default to one commit, zero duration, and retain-all disabled.
+ * <p>The per-history retention settings provide independent controls for each kind of history.
+ * Count and duration controls are combined, retaining commits required by either one. The
+ * per-history controls default to one commit, zero duration, and retain-all disabled.
  *
  * <p>{@link #minRetentionDuration()} provides a global minimum retention duration for all kinds of
  * history.
@@ -55,26 +56,29 @@ public interface CatalogsMaintenanceConfig {
   @WithDefault(DEFAULT_MIN_RETENTION_DURATION)
   Duration minRetentionDuration();
 
-  /** Retention settings for each kind of catalog-related history. */
-  RetentionsConfig retention();
+  @WithName("retention.principals")
+  RetentionConfig principalsRetention();
 
-  interface RetentionsConfig {
-    RetentionConfig principals();
+  @WithName("retention.principal-roles")
+  RetentionConfig principalRolesRetention();
 
-    RetentionConfig principalRoles();
+  @WithName("retention.grants")
+  RetentionConfig grantsRetention();
 
-    RetentionConfig grants();
+  @WithName("retention.immediate-tasks")
+  RetentionConfig immediateTasksRetention();
 
-    RetentionConfig immediateTasks();
+  @WithName("retention.catalogs-history")
+  RetentionConfig catalogsHistoryRetention();
 
-    RetentionConfig catalogsHistory();
+  @WithName("retention.catalog-roles")
+  RetentionConfig catalogRolesRetention();
 
-    RetentionConfig catalogRoles();
+  @WithName("retention.catalog-policies")
+  RetentionConfig catalogPoliciesRetention();
 
-    RetentionConfig catalogPolicies();
-
-    RetentionConfig catalogState();
-  }
+  @WithName("retention.catalog-state")
+  RetentionConfig catalogStateRetention();
 
   /** Retention settings shared by every kind of history. */
   interface RetentionConfig {
@@ -118,68 +122,13 @@ public interface CatalogsMaintenanceConfig {
   }
 
   @PolarisImmutable
-  interface BuildableRetentionsConfig extends RetentionsConfig {
-    static ImmutableBuildableRetentionsConfig.Builder builder() {
-      return ImmutableBuildableRetentionsConfig.builder();
+  interface BuildableCatalogsMaintenanceConfig extends CatalogsMaintenanceConfig {
+    static ImmutableBuildableCatalogsMaintenanceConfig.Builder builder() {
+      return ImmutableBuildableCatalogsMaintenanceConfig.builder();
     }
 
     private static BuildableRetentionConfig defaultRetention() {
       return BuildableRetentionConfig.builder().build();
-    }
-
-    @Override
-    @Value.Default
-    default RetentionConfig principals() {
-      return defaultRetention();
-    }
-
-    @Override
-    @Value.Default
-    default RetentionConfig principalRoles() {
-      return defaultRetention();
-    }
-
-    @Override
-    @Value.Default
-    default RetentionConfig grants() {
-      return defaultRetention();
-    }
-
-    @Override
-    @Value.Default
-    default RetentionConfig immediateTasks() {
-      return defaultRetention();
-    }
-
-    @Override
-    @Value.Default
-    default RetentionConfig catalogsHistory() {
-      return defaultRetention();
-    }
-
-    @Override
-    @Value.Default
-    default RetentionConfig catalogRoles() {
-      return defaultRetention();
-    }
-
-    @Override
-    @Value.Default
-    default RetentionConfig catalogPolicies() {
-      return defaultRetention();
-    }
-
-    @Override
-    @Value.Default
-    default RetentionConfig catalogState() {
-      return defaultRetention();
-    }
-  }
-
-  @PolarisImmutable
-  interface BuildableCatalogsMaintenanceConfig extends CatalogsMaintenanceConfig {
-    static ImmutableBuildableCatalogsMaintenanceConfig.Builder builder() {
-      return ImmutableBuildableCatalogsMaintenanceConfig.builder();
     }
 
     @Override
@@ -190,8 +139,50 @@ public interface CatalogsMaintenanceConfig {
 
     @Override
     @Value.Default
-    default RetentionsConfig retention() {
-      return BuildableRetentionsConfig.builder().build();
+    default RetentionConfig principalsRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig principalRolesRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig grantsRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig immediateTasksRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogsHistoryRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogRolesRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogPoliciesRetention() {
+      return defaultRetention();
+    }
+
+    @Override
+    @Value.Default
+    default RetentionConfig catalogStateRetention() {
+      return defaultRetention();
     }
   }
 }
