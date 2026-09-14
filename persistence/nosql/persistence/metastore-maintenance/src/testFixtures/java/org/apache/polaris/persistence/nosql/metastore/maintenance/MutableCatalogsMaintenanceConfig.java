@@ -35,7 +35,42 @@ public class MutableCatalogsMaintenanceConfig implements CatalogsMaintenanceConf
   }
 
   @Override
-  public RetentionsConfig retention() {
-    return current.retention();
+  public RetentionConfig principalsRetention() {
+    return current.principalsRetention();
+  }
+
+  @Override
+  public RetentionConfig principalRolesRetention() {
+    return current.principalRolesRetention();
+  }
+
+  @Override
+  public RetentionConfig grantsRetention() {
+    return current.grantsRetention();
+  }
+
+  @Override
+  public RetentionConfig immediateTasksRetention() {
+    return current.immediateTasksRetention();
+  }
+
+  @Override
+  public RetentionConfig catalogsHistoryRetention() {
+    return current.catalogsHistoryRetention();
+  }
+
+  @Override
+  public RetentionConfig catalogRolesRetention() {
+    return current.catalogRolesRetention();
+  }
+
+  @Override
+  public RetentionConfig catalogPoliciesRetention() {
+    return current.catalogPoliciesRetention();
+  }
+
+  @Override
+  public RetentionConfig catalogStateRetention() {
+    return current.catalogStateRetention();
   }
 }
