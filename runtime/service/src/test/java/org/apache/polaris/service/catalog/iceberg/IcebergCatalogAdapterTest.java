@@ -73,7 +73,9 @@ public class IcebergCatalogAdapterTest {
                     "ENABLE_CATALOG_FEDERATION",
                     "true",
                     FeatureConfiguration.ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION.key(),
-                    "false"))
+                    "false",
+                    FeatureConfiguration.LIST_PAGINATION_MAX_PAGE_SIZE.key(),
+                    "100"))
             .build();
     catalogAdapter = Mockito.spy(testServices.catalogAdapter());
 
@@ -308,7 +310,7 @@ public class IcebergCatalogAdapterTest {
       inMemoryCatalog.initialize("inMemory", Map.of());
       mockCatalogAdapter(inMemoryCatalog);
 
-      // One more entity than the default LIST_PAGINATION_MAX_PAGE_SIZE of 100
+      // One more entity than the LIST_PAGINATION_MAX_PAGE_SIZE configured above
       int entityCount = 101;
       for (int i = 0; i < entityCount; ++i) {
         inMemoryCatalog.createNamespace(Namespace.of("ns" + i));

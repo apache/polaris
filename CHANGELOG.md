@@ -103,14 +103,18 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `TokenBroker.verify` now returns `null` for tokens not recognized by the internal broker
   (instead of failing auth), so MIXED mode can delegate to other mechanisms. Exceptions from
   `verify` are forwarded as-is rather than mapped to auth failure or MIXED fallback.
-- Client-requested list page sizes are now bounded by a server-side maximum, configured with
-  `LIST_PAGINATION_MAX_PAGE_SIZE` (default `100`, overridable per catalog via
-  `polaris.config.list-pagination-max-page-size`). A request for a larger page is reduced to the
-  maximum rather than rejected, since the Iceberg REST specification treats the requested page size
-  as an upper bound. For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED`
-  is true, since with pagination disabled the requested page size is ignored and the full result set
-  is returned; for federated catalogs it always applies, because Polaris paginates those listings
-  itself.
+- Client-requested list page sizes can now be bounded by a server-side maximum, configured with
+  `LIST_PAGINATION_MAX_PAGE_SIZE` (overridable per catalog via
+  `polaris.config.list-pagination-max-page-size`). It defaults to `-1`, meaning unlimited, so the
+  maximum is opt-in. Once set, a request for a larger page is reduced to the maximum rather than
+  rejected, since the Iceberg REST specification treats the requested page size as an upper bound.
+  For local catalogs the maximum takes effect only when `LIST_PAGINATION_ENABLED` is true, since
+  with pagination disabled the requested page size is ignored and the full result set is returned;
+  for federated catalogs it always applies, because Polaris paginates those listings itself.
+  Setting a maximum deviates from the Iceberg REST specification, which requires a request that
+  does not supply a `pageToken` to receive the complete result with a null `next-page-token`: such
+  a request is then truncated to the maximum and answered with a continuation token, so a client
+  that does not follow continuations sees only the first page.
 
 ### Deprecations
 
