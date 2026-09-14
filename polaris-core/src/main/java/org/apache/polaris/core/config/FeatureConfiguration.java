@@ -409,11 +409,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("SUPPORTED_S3_CREDENTIAL_ISSUERS")
           .description(
               "The credential issuers an S3 catalog in this realm may use. STS is AWS STS AssumeRole,\n"
-                  + "today's behaviour; CLOUDFLARE_R2 signs Cloudflare R2 temporary credentials locally with\n"
-                  + "a server-held parent token. The list has no implicit member: a realm that omits STS\n"
-                  + "rejects every plain S3 catalog. Realm-level only; catalog properties cannot widen it.\n"
-                  + "Enforced at catalog create and update, at catalog initialization on every request,\n"
-                  + "when storage access is resolved, and at credential vending.")
+                  + "today's behaviour; CLOUDFLARE_R2 selects Cloudflare R2 issuance and requires an R2 endpoint.\n"
+                  + "The list has no implicit member: a realm that omits STS rejects every plain S3 catalog.\n"
+                  + "Realm-level only; catalog properties cannot widen it. Enforced at catalog create and update,\n"
+                  + "at catalog initialization on every request, when storage access is resolved, and in the\n"
+                  + "storage integration provider.")
           .defaultValue(List.of(S3CredentialIssuer.STS.name()))
           .buildFeatureConfiguration();
 

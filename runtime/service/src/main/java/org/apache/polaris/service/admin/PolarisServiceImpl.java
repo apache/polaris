@@ -149,8 +149,8 @@ public class PolarisServiceImpl
           "Unsupported storage type: " + storageConfigInfo.getStorageType());
     }
 
-    if (storageConfigInfo instanceof AwsStorageConfigInfo s3Config) {
-      if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)) {
+    if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)) {
+      if (storageConfigInfo instanceof AwsStorageConfigInfo s3Config) {
         if (s3Config.getEndpoint() != null
             || s3Config.getStsEndpoint() != null
             || s3Config.getEndpointInternal() != null) {

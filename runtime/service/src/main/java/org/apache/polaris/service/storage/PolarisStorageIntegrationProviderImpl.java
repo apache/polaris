@@ -143,13 +143,13 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case S3 -> {
         AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) storageConfig;
         // The allowlist as defence in depth behind the initialization and
-        // access-config gates; the CLOUDFLARE_R2 arm below is the PR-A availability throw.
+        // access-config gates. The CLOUDFLARE_R2 arm below refuses until the vending change lands.
         IcebergPropertiesValidation.validateS3CredentialIssuerAllowed(
             realmConfig, awsConfig.getCredentialIssuer());
         yield switch (awsConfig.getCredentialIssuer()) {
           case STS -> awsFactory.apply(awsConfig);
           case CLOUDFLARE_R2 ->
-              // Replaced by the Cloudflare R2 integration in the follow-up change.
+              // Replaced by the Cloudflare R2 integration when vending lands.
               throw new IllegalArgumentException(
                   "S3 credential issuer CLOUDFLARE_R2 is not available in this build");
         };

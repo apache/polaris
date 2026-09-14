@@ -260,12 +260,6 @@ public class PolarisAdminServiceTest {
   /** The check still runs: an authorized caller with a disabled issuer gets the 400. */
   @Test
   void authorizedCreateCatalogWithADisabledIssuerIsRefusedAfterAuthorization() {
-    // CatalogEntity.fromCatalog and the overlap check read these regardless of credentialIssuer;
-    // the denied test above never reaches them, but this one proceeds past authorization.
-    when(realmConfig.getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS))
-        .thenReturn(-1);
-    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS))
-        .thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS))
         .thenReturn(List.of("STS"));
     assertThatThrownBy(() -> adminService.createCatalog(cloudflareR2CatalogRequest()))

@@ -1211,10 +1211,10 @@ components:
                 - CLOUDFLARE_R2
               description: >-
                 How Polaris issues subscoped storage credentials for this catalog. STS: AssumeRole against
-                the configured role (default, today's behaviour). CLOUDFLARE_R2: Polaris signs Cloudflare R2
-                temporary-credential tokens locally with a server-held parent token; requires an R2 endpoint
-                (https://<accountId>[.<jurisdiction>].r2.cloudflarestorage.com), pathStyleAccess=true and
-                region=auto. The realm must list the issuer in SUPPORTED_S3_CREDENTIAL_ISSUERS.
+                the configured role (default, today's behaviour). CLOUDFLARE_R2: Cloudflare R2 issuance;
+                requires an R2 endpoint (https://<accountId>[.<jurisdiction>].r2.cloudflarestorage.com),
+                pathStyleAccess=true and region=auto. The realm must list the issuer in
+                SUPPORTED_S3_CREDENTIAL_ISSUERS.
 
     AzureStorageConfigInfo:
       type: object
