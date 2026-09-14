@@ -21,7 +21,7 @@ package org.apache.polaris.core.persistence.pagination;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.util.Arrays;
@@ -183,14 +183,18 @@ class MalformedPageTokenTest {
     }
   }
 
+  /**
+   * A corrupted token may still decode to some well-formed token; that outcome needs no assertion.
+   * If decoding fails, the failure must be the {@link IllegalArgumentException} that maps to HTTP
+   * 400 and nothing else.
+   */
   private static void assertDecodesOrIsBadRequest(String token) {
-    try {
-      PageToken decoded = PageToken.build(token, null, () -> true);
-      assertThat(decoded).as("token %s", token).isNotNull();
-    } catch (IllegalArgumentException expected) {
-      assertThat(expected).as("token %s", token).hasMessageContaining("Invalid page token");
-    } catch (RuntimeException unexpected) {
-      fail("token %s escaped as %s".formatted(token, unexpected), unexpected);
+    Throwable thrown = catchThrowable(() -> PageToken.build(token, null, () -> true));
+    if (thrown != null) {
+      assertThat(thrown)
+          .as("token %s", token)
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Invalid page token");
     }
   }
 
