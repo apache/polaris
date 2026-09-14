@@ -321,8 +321,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         IcebergPropertiesValidation.determineFileIOClassName(
             realmConfig, properties, storageConfigurationInfo);
 
-    // The issuer allowlist and build availability, checked where the storage-type
-    // gate already fires so both have the same scope (every route that opens the catalog).
+    // Kept beside the storage-type gate as defence in depth; the catalog handlers run the same
+    // check first.
     IcebergPropertiesValidation.validateS3CredentialIssuerAvailable(
         realmConfig, storageConfigurationInfo);
 

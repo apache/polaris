@@ -128,6 +128,7 @@ import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
@@ -223,6 +224,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   @Override
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity = getResolvedCatalogEntity();
+    // The issuer allowlist and build availability, before the federated/local branch below, so an
+    // external catalog that carries an S3 storage config is gated on the same routes as a
+    // Polaris-managed one.
+    IcebergPropertiesValidation.validateS3CredentialIssuerAvailable(
+        realmConfig(), resolvedCatalogEntity.getStorageConfigurationInfo());
     ConnectionConfigInfoDpo connectionConfigInfoDpo =
         resolvedCatalogEntity.getConnectionConfigInfoDpo();
     if (connectionConfigInfoDpo != null) {

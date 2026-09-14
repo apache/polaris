@@ -45,6 +45,7 @@ import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
+import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
@@ -64,6 +65,9 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
   @Override
   protected void initializeCatalog() {
+    // The same issuer gate the Iceberg and generic-table handlers apply.
+    IcebergPropertiesValidation.validateS3CredentialIssuerAvailable(
+        realmConfig(), resolutionManifest.getResolvedCatalogEntity().getStorageConfigurationInfo());
     this.policyCatalog =
         new PolicyCatalog(metaStoreManager(), callContext(), this.resolutionManifest);
   }

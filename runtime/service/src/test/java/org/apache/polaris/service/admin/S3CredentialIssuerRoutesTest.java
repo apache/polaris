@@ -30,15 +30,21 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.ExternalCatalog;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -56,6 +62,8 @@ class S3CredentialIssuerRoutesTest {
       "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com";
   private static final String NOT_AVAILABLE =
       "S3 credential issuer CLOUDFLARE_R2 is not available in this build";
+  private static final String NOT_ENABLED =
+      "S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm";
 
   /** A mutable config map: TestServices reads it live, so a test can flip the realm allowlist. */
   private static Map<String, Object> config(boolean skipSubscoping) {
@@ -306,5 +314,104 @@ class S3CredentialIssuerRoutesTest {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
     assertLoadTableSucceeds(svc, "stskill", "ns", "t");
+  }
+
+  /** An EXTERNAL catalog with an Iceberg REST connection and a CLOUDFLARE_R2 storage config. */
+  private static void createExternalR2Catalog(TestServices svc, String name) {
+    ConnectionConfigInfo connection =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://remote.example.com/api/catalog")
+            .setRemoteCatalogName("remote")
+            .setAuthenticationParameters(
+                OAuthClientCredentialsParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
+                    .setClientId("client-id")
+                    .setClientSecret("client-secret")
+                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+    AwsStorageConfigInfo r2 =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+            .setEndpoint(R2_ENDPOINT)
+            .setPathStyleAccess(true)
+            .setRegion("auto")
+            .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
+            .build();
+    Catalog external =
+        ExternalCatalog.builder()
+            .setType(ExternalCatalog.TypeEnum.EXTERNAL)
+            .setName(name)
+            .setProperties(new CatalogProperties("s3://bucket/base/" + name))
+            .setStorageConfigInfo(r2)
+            .setConnectionConfigInfo(connection)
+            .build();
+    try (Response r =
+        svc.catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(external), svc.realmContext(), svc.securityContext())) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+  }
+
+  /**
+   * An EXTERNAL catalog never reaches LocalIcebergCatalog, so the handler's own check is its only
+   * gate. With the issuer enabled the request stops at the gate with "not available" (the federated
+   * factory lookup, which TestServices leaves unsatisfied, is never reached); with the kill switch
+   * engaged it stops with "not enabled".
+   */
+  @Test
+  void theRealmKillSwitchGatesAnExternalCatalogBeforeItsFederatedFactory() {
+    Map<String, Object> config = config(false);
+    config.put("ENABLE_CATALOG_FEDERATION", true);
+    TestServices svc = services(config);
+    createExternalR2Catalog(svc, "r2ext");
+
+    assertThatThrownBy(
+            () ->
+                svc.restApi()
+                    .listNamespaces(
+                        "r2ext", null, null, null, svc.realmContext(), svc.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(NOT_AVAILABLE);
+
+    config.put("SUPPORTED_S3_CREDENTIAL_ISSUERS", List.of("STS"));
+    assertThatThrownBy(
+            () ->
+                svc.restApi()
+                    .listNamespaces(
+                        "r2ext", null, null, null, svc.realmContext(), svc.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(NOT_ENABLED);
+  }
+
+  /**
+   * Generic-table routes open the catalog through their own handler; the gate applies there too.
+   */
+  @Test
+  void theRealmKillSwitchRefusesGenericTableRoutesToo() {
+    Map<String, Object> config = config(false);
+    TestServices svc = services(config);
+    createCatalog(svc, "r2gen");
+    createNamespace(svc, "r2gen", "ns");
+    switchToCloudflareR2(svc, "r2gen");
+
+    assertThatThrownBy(
+            () ->
+                svc.genericTableApi()
+                    .listGenericTables(
+                        "r2gen", "ns", null, null, svc.realmContext(), svc.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(NOT_AVAILABLE);
+
+    config.put("SUPPORTED_S3_CREDENTIAL_ISSUERS", List.of("STS"));
+    assertThatThrownBy(
+            () ->
+                svc.genericTableApi()
+                    .listGenericTables(
+                        "r2gen", "ns", null, null, svc.realmContext(), svc.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(NOT_ENABLED);
   }
 }
