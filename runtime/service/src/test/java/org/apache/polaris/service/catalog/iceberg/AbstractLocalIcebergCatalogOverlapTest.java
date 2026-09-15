@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +49,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -293,6 +295,50 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                     .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Unable to create entity at location")
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testDefaultLocationsUnderAncestorsAreNotOverlaps() {
+    // A namespace's default location is nested under its parent's location, and a table's default
+    // location is nested under its namespace's location. Those ancestors are not siblings and must
+    // never be reported as overlaps, regardless of which sibling-check implementation is active.
+    Namespace parent = Namespace.of("overlap-ancestor-parent");
+    catalog().createNamespace(parent);
+
+    Namespace child = Namespace.of("overlap-ancestor-parent", "child");
+    assertThatCode(() -> catalog().createNamespace(child)).doesNotThrowAnyException();
+
+    Namespace grandchild = Namespace.of("overlap-ancestor-parent", "child", "grandchild");
+    assertThatCode(() -> catalog().createNamespace(grandchild)).doesNotThrowAnyException();
+
+    TableIdentifier table = TableIdentifier.of(grandchild, "table-at-default-location");
+    assertThatCode(() -> catalog().buildTable(table, SCHEMA).create()).doesNotThrowAnyException();
+
+    // Being contained by an ancestor is fine; sitting at exactly an ancestor's location is not.
+    TableIdentifier tableAtNamespaceLocation =
+        TableIdentifier.of(grandchild, "table-at-namespace-location");
+    String grandchildLocation = STORAGE_LOCATION + "/overlap-ancestor-parent/child/grandchild";
+    assertThatThrownBy(
+            () ->
+                catalog()
+                    .buildTable(tableAtNamespaceLocation, SCHEMA)
+                    .withLocation(grandchildLocation)
+                    .create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+
+    // Real overlaps between siblings are still rejected: a second namespace whose explicit
+    // location sits inside the child's default location.
+    Namespace intruder = Namespace.of("overlap-ancestor-parent", "intruder");
+    String childLocation = STORAGE_LOCATION + "/overlap-ancestor-parent/child/intruder";
+    assertThatThrownBy(
+            () ->
+                catalog()
+                    .createNamespace(
+                        intruder,
+                        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, childLocation)))
+        .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
 }

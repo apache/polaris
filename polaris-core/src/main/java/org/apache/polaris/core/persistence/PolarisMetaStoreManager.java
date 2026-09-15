@@ -443,8 +443,9 @@ public interface PolarisMetaStoreManager
       long entityId);
 
   /**
-   * Check if the specified IcebergTableLikeEntity has any same-namespace siblings which share a
-   * location
+   * Check if the specified IcebergTableLikeEntity / NamespaceEntity has any sibling entities which
+   * share a base location. The entity's own ancestors are not siblings; see {@link
+   * BasePersistence#hasOverlappingSiblings}.
    *
    * @param callContext the polaris call context
    * @param entity the entity to check for overlapping siblings for
