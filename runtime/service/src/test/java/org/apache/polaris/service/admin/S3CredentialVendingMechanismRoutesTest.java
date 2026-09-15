@@ -54,8 +54,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION; an STS catalog in the same realm is untouched. The R2
  * catalog is produced by updating an STS catalog under
  * ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES, because nothing can be created inside an R2
- * catalog through the REST API in this build. Every catalog gets its own allowed location: upstream
- * rejects overlapping catalog locations at create and update.
+ * catalog through the REST API in this server. Every catalog gets its own allowed location:
+ * upstream rejects overlapping catalog locations at create and update.
  *
  * <p>The policy routes go through {@code PolicyCatalogHandler}, which {@link TestServices} does not
  * wire (it has no policy API): building that handler by hand here would need the authorizer and

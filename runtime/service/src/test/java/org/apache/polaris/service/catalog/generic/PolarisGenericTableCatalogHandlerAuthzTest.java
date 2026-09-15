@@ -36,6 +36,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.admin.PolarisAuthzTestsFactory;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
@@ -44,6 +45,7 @@ import org.junit.jupiter.api.TestFactory;
 public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   @jakarta.inject.Inject PolarisCredentialManager credentialManager;
   @jakarta.inject.Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
+  @jakarta.inject.Inject S3CredentialVendingMechanisms vendingMechanisms;
 
   private GenericTableCatalogHandler newWrapper() {
     return newWrapper(
@@ -75,6 +77,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .authorizer(polarisAuthorizer)
         .credentialManager(credentialManager)
         .federatedCatalogFactories(federatedCatalogFactories)
+        .vendingMechanisms(vendingMechanisms)
         .build();
   }
 

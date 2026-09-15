@@ -30,6 +30,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.service.Profiles;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
@@ -39,9 +40,25 @@ import org.apache.polaris.service.types.UpdatePolicyRequest;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
+/**
+ * Privilege-matrix coverage for {@link PolicyCatalogHandler}. The mechanism gate in {@code
+ * initializeCatalog()} is not exercised here: this class's fixture provisions one shared,
+ * FILE-backed {@code CATALOG_NAME} with catalog roles and grants set up only for that catalog, and
+ * every handler built below targets it by name. Standing up a second, S3-backed, {@code
+ * CLOUDFLARE_R2} catalog to reach the gate would need widening {@link
+ * Profiles.PolarisAuthzBaseProfile}'s realm-wide allowlist (shared by every authz test class in
+ * this package), a fresh catalog created and switched from STS under {@code
+ * ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES} the way the CDI test does it, and its own catalog
+ * roles and grants before an authorized {@code listPolicies} call could ever reach {@code
+ * initializeCatalog()} — not a cheap addition to this fixture. That case is already covered
+ * end-to-end, through the real REST API and a real {@code CLOUDFLARE_R2} catalog, by {@link
+ * org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest#stsOnlyDiscoveryAndTheStandaloneCloudflareR2Contract}.
+ */
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
 public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
+
+  @jakarta.inject.Inject S3CredentialVendingMechanisms vendingMechanisms;
 
   private PolicyCatalogHandler newHandler() {
     return newHandler(
@@ -71,6 +88,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .authorizer(polarisAuthorizer)
+        .vendingMechanisms(vendingMechanisms)
         .build();
   }
 

@@ -96,6 +96,7 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.metrics.IcebergMetricsReporter;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -178,6 +179,7 @@ class IcebergCatalogHandlerTest {
         .reservedProperties(mock(ReservedProperties.class))
         .catalogHandlerUtils(catalogHandlerUtils)
         .storageAccessConfigProvider(storageAccessConfigProvider)
+        .vendingMechanisms(new S3CredentialVendingMechanisms(Map.of()))
         .eventAttributeMap(mock(MutableAttributeMap.class))
         .metricsReporter(mock(IcebergMetricsReporter.class))
         .clock(mock(Clock.class))

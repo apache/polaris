@@ -45,6 +45,8 @@ public class S3CredentialVendingMechanisms {
   @Inject
   public S3CredentialVendingMechanisms(@Any Instance<S3CredentialVendingMechanism> mechanisms) {
     Set<String> found = new TreeSet<>();
+    // Handles are read for their qualifiers only; get() is never called, so nothing is activated
+    // and nothing needs closing.
     for (Instance.Handle<S3CredentialVendingMechanism> handle : mechanisms.handles()) {
       String id =
           handle.getBean().getQualifiers().stream()
