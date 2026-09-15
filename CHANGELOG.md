@@ -29,14 +29,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
-- S3 storage configurations gain an optional `credentialVendingMechanism` (`STS`, the default, or
-  another identifier the server provides, such as `CLOUDFLARE_R2`). Mechanisms are discovered
-  through CDI; a realm allows mechanisms with the new `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS`
-  feature (default `[STS]`), enforced at catalog create and update, at catalog initialization on
-  every request, when storage access is resolved for a table or a cleanup task, and at credential
-  vending. A `CLOUDFLARE_R2` catalog is accepted and frozen, and every route that opens it is
-  refused with "S3 credential vending mechanism CLOUDFLARE_R2 is not available in this server"
-  until a `CLOUDFLARE_R2` mechanism bean is installed.
+- S3 storage configurations gain an optional string field, `credentialVendingMechanism` (`STS`,
+  the default, or a mechanism the server provides, such as `CLOUDFLARE_R2`). Mechanisms are CDI
+  beans discovered by their `@Identifier` at runtime; a realm lists the ones it accepts in the new
+  `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature (default `[STS]`), enforced at catalog
+  create and update, at catalog initialization on every request, when storage access is resolved,
+  and in the storage integration provider. A listed mechanism with no implementation in the server
+  is reported at startup and refused at use with "S3 credential vending mechanism `<id>` is not
+  available in this server".
 
 ### Upgrade notes
 
