@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage.gcp;
 
 import static org.apache.polaris.core.storage.StorageLocation.ensureTrailingSlash;
+import static org.apache.polaris.core.storage.StorageLocation.trimLeadingSlash;
 
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
@@ -580,17 +581,5 @@ public class GcpCredentialsStorageIntegration
 
   private static String bucketResource(String bucket) {
     return "//storage.googleapis.com/projects/_/buckets/" + bucket;
-  }
-
-  /**
-   * Strips a single leading slash from a raw path, tolerating an empty raw path. A bucket-root
-   * location such as {@code gs://bucket} parses to an empty raw path, so an unguarded {@code
-   * substring(1)} would throw. This mirrors the AWS integration's handling.
-   */
-  private static String trimLeadingSlash(String path) {
-    if (path.startsWith("/")) {
-      path = path.substring(1);
-    }
-    return path;
   }
 }

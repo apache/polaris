@@ -73,6 +73,18 @@ public class StorageLocation {
     }
   }
 
+  /**
+   * Strips a single leading slash from a path. A {@code null} path is treated as empty. Tolerating
+   * an empty/absent path matters for bucket-root locations such as {@code gs://bucket}, whose raw
+   * path is empty and would otherwise break an unguarded {@code substring(1)}.
+   */
+  public static String trimLeadingSlash(String path) {
+    if (path == null) {
+      return "";
+    }
+    return path.startsWith("/") ? path.substring(1) : path;
+  }
+
   /** If a path doesn't start with `/`, this will add one */
   protected static @NonNull String ensureLeadingSlash(@NonNull String location) {
     if (location.startsWith("/")) {
