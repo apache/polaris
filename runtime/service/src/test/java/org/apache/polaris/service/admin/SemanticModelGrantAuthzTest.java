@@ -20,6 +20,12 @@ package org.apache.polaris.service.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
@@ -42,6 +48,9 @@ import org.apache.polaris.core.admin.model.NamespacePrivilege;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.SemanticModelGrant;
 import org.apache.polaris.core.admin.model.SemanticModelPrivilege;
+import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -54,6 +63,7 @@ import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @QuarkusTest
@@ -90,6 +100,10 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
   }
 
   private PolarisAdminService caller() {
+    return caller(polarisAuthorizer);
+  }
+
+  private PolarisAdminService caller(PolarisAuthorizer authorizer) {
     PolarisPrincipal principal =
         PolarisPrincipal.of(
             principalEntity.getName(),
@@ -102,7 +116,7 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
         userSecretsManager,
         serviceIdentityProvider,
         principal,
-        polarisAuthorizer,
+        authorizer,
         reservedProperties);
   }
 
@@ -171,25 +185,100 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
         .isInstanceOf(ForbiddenException.class);
   }
 
+  private PolarisAuthorizer externalAuthorizer(AuthorizationDecision decision) {
+    PolarisAuthorizer authorizer = mock(PolarisAuthorizer.class);
+    doAnswer(
+            invocation -> {
+              AuthorizationState state = invocation.getArgument(0);
+              state.getResolutionManifest().resolveAll();
+              return null;
+            })
+        .when(authorizer)
+        .resolveAuthorizationInputs(any(), any());
+    when(authorizer.authorize(any(), any())).thenReturn(decision);
+    return authorizer;
+  }
+
   @Test
-  void grantRejectsMissingModelOrRole() {
+  void authorizedGrantReportsMissingResources() {
+    // An external authorizer can authorize by resource name even when resolution fails.
+    PolarisAuthorizer authorizer = externalAuthorizer(AuthorizationDecision.allow());
+    PolarisAdminService service = caller(authorizer);
     assertThatThrownBy(
             () ->
-                newRootAdminService()
-                    .grantPrivilegeOnSemanticModelToRole(
-                        CATALOG_NAME,
-                        CATALOG_ROLE2,
-                        TableIdentifier.of(NS1, "missing"),
-                        PolarisPrivilege.SEMANTIC_MODEL_READ))
+                service.grantPrivilegeOnSemanticModelToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    TableIdentifier.of(NS1, "missing"),
+                    PolarisPrivilege.SEMANTIC_MODEL_READ))
         .isInstanceOf(NoSuchSemanticModelException.class);
     assertThatThrownBy(
             () ->
-                newRootAdminService()
-                    .grantPrivilegeOnSemanticModelToRole(
-                        CATALOG_NAME, "missing-role", MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
+                service.grantPrivilegeOnSemanticModelToRole(
+                    CATALOG_NAME, "missing-role", MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
         .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(
+            () ->
+                service.grantPrivilegeOnSemanticModelToRole(
+                    "missing-catalog", CATALOG_ROLE2, MODEL, PolarisPrivilege.SEMANTIC_MODEL_READ))
+        .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(
+            () ->
+                service.grantPrivilegeOnSemanticModelToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    TableIdentifier.of("missing-ns", "model"),
+                    PolarisPrivilege.SEMANTIC_MODEL_READ))
+        .isInstanceOf(NoSuchSemanticModelException.class);
+    verify(authorizer, times(4)).authorize(any(), any());
     assertThat(newRootAdminService().listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
         .isEmpty();
+  }
+
+  static Stream<Arguments> grantOperationTargets() {
+    return Stream.of(false, true)
+        .flatMap(
+            revoke ->
+                Stream.of(
+                    Arguments.of(revoke, CATALOG_NAME, CATALOG_ROLE2, MODEL),
+                    Arguments.of(revoke, "missing-catalog", CATALOG_ROLE2, MODEL),
+                    Arguments.of(revoke, CATALOG_NAME, "missing-role", MODEL),
+                    Arguments.of(
+                        revoke,
+                        CATALOG_NAME,
+                        CATALOG_ROLE2,
+                        TableIdentifier.of("missing-ns", "model")),
+                    Arguments.of(
+                        revoke,
+                        CATALOG_NAME,
+                        CATALOG_ROLE2,
+                        TableIdentifier.of(NS1, "missing-model"))));
+  }
+
+  @ParameterizedTest
+  @MethodSource("grantOperationTargets")
+  void deniedGrantOperationsDoNotReportMissingResources(
+      boolean revoke, String catalogName, String roleName, TableIdentifier identifier) {
+    PolarisAuthorizer authorizer = externalAuthorizer(AuthorizationDecision.deny("Not authorized"));
+    PolarisAdminService service = caller(authorizer);
+    assertThatThrownBy(
+            () -> {
+              if (revoke) {
+                service.revokePrivilegeOnSemanticModelFromRole(
+                    catalogName, roleName, identifier, PolarisPrivilege.SEMANTIC_MODEL_READ);
+              } else {
+                service.grantPrivilegeOnSemanticModelToRole(
+                    catalogName, roleName, identifier, PolarisPrivilege.SEMANTIC_MODEL_READ);
+              }
+            })
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage(
+            "Principal '%s' is not authorized for op %s",
+            principalEntity.getName(),
+            revoke
+                ? "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+                : "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE");
+    verify(authorizer).authorize(any(), any());
   }
 
   static Stream<GrantResource> scopedGrants() {
