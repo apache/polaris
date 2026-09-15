@@ -50,9 +50,10 @@ import org.junit.jupiter.api.TestFactory;
  * this package), a fresh catalog created and switched from STS under {@code
  * ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES} the way the CDI test does it, and its own catalog
  * roles and grants before an authorized {@code listPolicies} call could ever reach {@code
- * initializeCatalog()} — not a cheap addition to this fixture. That case is already covered
- * end-to-end, through the real REST API and a real {@code CLOUDFLARE_R2} catalog, by {@link
- * org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest#stsOnlyDiscoveryAndTheStandaloneCloudflareR2Contract}.
+ * initializeCatalog()}, which is not a cheap addition to this fixture. That case is already
+ * covered end-to-end, through the real REST API and a catalog switched to a mechanism the server
+ * never installs, by {@link
+ * org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest#stsOnlyDiscoveryAndUninstalledMechanismsAreRefusedEverywhere}.
  */
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)
