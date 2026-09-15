@@ -132,7 +132,7 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.aws.S3CredentialIssuer;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -775,7 +775,7 @@ public class PolarisAdminService {
   public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.CREATE_CATALOG);
     Catalog catalog = catalogRequest.getCatalog();
-    validateS3CredentialIssuer(catalog.getStorageConfigInfo());
+    validateS3CredentialVendingMechanism(catalog.getStorageConfigInfo());
 
     CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalog);
 
@@ -899,14 +899,14 @@ public class PolarisAdminService {
   }
 
   /**
-   * The realm allowlist for S3 credential issuers, checked after authorization so an unauthorized
-   * caller learns nothing about the realm's configuration. The storage-type gate and the S3
-   * endpoint policy stay in {@code PolarisServiceImpl}, where they already were.
+   * The realm allowlist for S3 credential vending mechanisms, checked after authorization so an
+   * unauthorized caller learns nothing about the realm's configuration. The storage-type gate and
+   * the S3 endpoint policy stay in {@code PolarisServiceImpl}, where they already were.
    */
-  private void validateS3CredentialIssuer(@Nullable StorageConfigInfo storageConfigInfo) {
+  private void validateS3CredentialVendingMechanism(@Nullable StorageConfigInfo storageConfigInfo) {
     if (storageConfigInfo instanceof AwsStorageConfigInfo s3Config) {
-      IcebergPropertiesValidation.validateS3CredentialIssuerAllowed(
-          realmConfig, CatalogEntity.credentialIssuerOf(s3Config));
+      IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
+          realmConfig, PolarisStorageConfigurationInfo.credentialVendingMechanismOf(s3Config));
     }
   }
 
@@ -951,13 +951,15 @@ public class PolarisAdminService {
               currentStorageConfig, newStorageConfig);
         }
 
-        if (currentAwsConfig.getCredentialIssuer() != newAwsConfig.getCredentialIssuer()) {
+        if (!Objects.equals(
+            currentAwsConfig.getCredentialVendingMechanism(),
+            newAwsConfig.getCredentialVendingMechanism())) {
           throw new BadRequestException(
-              "Cannot modify credential issuer in storage config from %s to %s",
+              "Cannot modify credential vending mechanism in storage config from %s to %s",
               currentStorageConfig, newStorageConfig);
         }
-
-        if (newAwsConfig.getCredentialIssuer() == S3CredentialIssuer.CLOUDFLARE_R2
+        if (S3CredentialVendingMechanism.CLOUDFLARE_R2.equals(
+                newAwsConfig.getCredentialVendingMechanism())
             && !Objects.equals(currentAwsConfig.getEndpoint(), newAwsConfig.getEndpoint())) {
           throw new BadRequestException(
               "Cannot modify endpoint of a CLOUDFLARE_R2 storage config from %s to %s",
@@ -980,7 +982,7 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_CATALOG;
     PolarisResolutionManifest resolutionManifest =
         authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.CATALOG);
-    validateS3CredentialIssuer(updateRequest.getStorageConfigInfo());
+    validateS3CredentialVendingMechanism(updateRequest.getStorageConfigInfo());
 
     CatalogEntity currentCatalogEntity = getCatalogByName(resolutionManifest, name);
 

@@ -30,14 +30,13 @@ import jakarta.enterprise.inject.Produces;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.TreeSet;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.storage.aws.S3CredentialIssuer;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
@@ -49,6 +48,7 @@ import org.apache.polaris.service.context.TestRealmContextResolver;
 import org.apache.polaris.service.credentials.connection.AuthType;
 import org.apache.polaris.service.metrics.MetricsConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.slf4j.Logger;
@@ -316,35 +316,39 @@ public class ProductionReadinessChecks {
   }
 
   /**
-   * Every name in {@code SUPPORTED_S3_CREDENTIAL_ISSUERS}, in the defaults and in each realm
-   * override, must be an {@link S3CredentialIssuer} constant. A misspelt name would otherwise
-   * disable an issuer silently, or be found only when a request arrives.
+   * Every name in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}, in the defaults and in each
+   * realm override, must be installed in this server. A listed-but-uninstalled mechanism is not
+   * severe: the mechanism is simply refused wherever a catalog selects it. Only the registry's own
+   * constructor (a bean with no {@code @Identifier}, or two beans sharing one) aborts startup.
    */
   @Produces
-  public ProductionReadinessCheck checkS3CredentialIssuers(
-      FeaturesConfiguration featureConfiguration) {
-    var issuers = FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS;
+  public ProductionReadinessCheck checkS3CredentialVendingMechanisms(
+      FeaturesConfiguration featureConfiguration, S3CredentialVendingMechanisms mechanisms) {
+    var flag = FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS;
     var mapper = JsonMapper.builder().build();
     var errors = new ArrayList<Error>();
     @SuppressWarnings("unchecked")
     var defaults =
         (List<String>)
-            featureConfiguration.parseDefaults(mapper).getOrDefault(issuers.key(), List.of());
+            featureConfiguration.parseDefaults(mapper).getOrDefault(flag.key(), List.of());
     defaults.forEach(
-        name -> checkIssuerName(name, format("polaris.features.\"%s\"", issuers.key()), errors));
+        name ->
+            checkMechanismAvailable(
+                name, format("polaris.features.\"%s\"", flag.key()), mechanisms, errors));
     featureConfiguration
         .parseRealmOverrides(mapper)
         .forEach(
             (realmId, overrides) -> {
               @SuppressWarnings("unchecked")
-              var names = (List<String>) overrides.getOrDefault(issuers.key(), List.of());
+              var names = (List<String>) overrides.getOrDefault(flag.key(), List.of());
               names.forEach(
                   name ->
-                      checkIssuerName(
+                      checkMechanismAvailable(
                           name,
                           format(
                               "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                              realmId, issuers.key()),
+                              realmId, flag.key()),
+                          mechanisms,
                           errors));
             });
     return errors.isEmpty()
@@ -352,15 +356,18 @@ public class ProductionReadinessChecks {
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
   }
 
-  private static void checkIssuerName(String name, String offendingProperty, List<Error> errors) {
-    try {
-      S3CredentialIssuer.valueOf(name);
-    } catch (IllegalArgumentException e) {
+  private static void checkMechanismAvailable(
+      String name,
+      String offendingProperty,
+      S3CredentialVendingMechanisms mechanisms,
+      List<Error> errors) {
+    if (!mechanisms.isAvailable(name)) {
       errors.add(
-          Error.ofSevere(
+          Error.of(
               format(
-                  "Unknown S3 credential issuer '%s'; accepted values: %s",
-                  name, Arrays.toString(S3CredentialIssuer.values())),
+                  "S3 credential vending mechanism '%s' listed in %s is not available in this "
+                      + "server; catalogs that select it are refused at use. Available: %s",
+                  name, offendingProperty, new TreeSet<>(mechanisms.availableIds())),
               offendingProperty));
     }
   }

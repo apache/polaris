@@ -68,6 +68,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -116,6 +117,8 @@ import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvid
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
+import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -181,6 +184,7 @@ public record TestServices(
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient;
+    private Map<String, S3CredentialVendingMechanism> vendingMechanisms;
     private boolean useEventDelegator = false;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
     private UnaryOperator<PolarisMetaStoreManager> metaStoreManagerDecorator =
@@ -234,6 +238,11 @@ public record TestServices(
       return this;
     }
 
+    public Builder vendingMechanisms(Map<String, S3CredentialVendingMechanism> vendingMechanisms) {
+      this.vendingMechanisms = vendingMechanisms;
+      return this;
+    }
+
     public Builder withEventDelegator(boolean useEventDelegator) {
       this.useEventDelegator = useEventDelegator;
       return this;
@@ -264,10 +273,19 @@ public record TestServices(
 
       RealmConfig realmConfig = new RealmConfigImpl(configurationSource, realmContext);
 
+      Map<String, S3CredentialVendingMechanism> vendingMechanismsMap =
+          this.vendingMechanisms != null
+              ? this.vendingMechanisms
+              : Map.of(
+                  "STS",
+                  new StsCredentialVendingMechanism(
+                      (destination) -> stsClient, Optional.empty(), storageCredentialCache));
+      S3CredentialVendingMechanisms vendingMechanisms =
+          new S3CredentialVendingMechanisms(vendingMechanismsMap);
+
       PolarisStorageIntegrationProviderImpl storageIntegrationProvider =
           new PolarisStorageIntegrationProviderImpl(
-              (destination) -> stsClient,
-              Optional.empty(),
+              vendingMechanisms,
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())),
               storageCredentialCache,
               realmConfig,
@@ -364,7 +382,7 @@ public record TestServices(
 
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              callContext, principal, realmContext, storageIntegrationProvider);
+              callContext, principal, realmContext, storageIntegrationProvider, vendingMechanisms);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
@@ -467,6 +485,7 @@ public record TestServices(
                         .catalogHandlerUtils(catalogHandlerUtils)
                         .federatedCatalogFactories(federatedCatalogFactory)
                         .storageAccessConfigProvider(storageAccessConfigProvider)
+                        .vendingMechanisms(vendingMechanisms)
                         .eventAttributeMap(eventAttributeMap)
                         .metricsReporter(envelope -> {})
                         .clock(clock)
@@ -529,6 +548,7 @@ public record TestServices(
                         .authorizer(authorizer)
                         .credentialManager(credentialManager)
                         .federatedCatalogFactories(federatedCatalogFactory)
+                        .vendingMechanisms(vendingMechanisms)
                         .build();
                   }
                 };

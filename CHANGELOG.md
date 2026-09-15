@@ -29,21 +29,24 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
-- S3 storage configurations gain an optional `credentialIssuer` (`STS`, the default, or
-  `CLOUDFLARE_R2`). A realm allows issuers with the new `SUPPORTED_S3_CREDENTIAL_ISSUERS` feature
-  (default `[STS]`), enforced at catalog create and update, at catalog initialization on every
-  request, when storage access is resolved for a table or a cleanup task, and at credential
+- S3 storage configurations gain an optional `credentialVendingMechanism` (`STS`, the default, or
+  another identifier the server provides, such as `CLOUDFLARE_R2`). Mechanisms are discovered
+  through CDI; a realm allows mechanisms with the new `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS`
+  feature (default `[STS]`), enforced at catalog create and update, at catalog initialization on
+  every request, when storage access is resolved for a table or a cleanup task, and at credential
   vending. A `CLOUDFLARE_R2` catalog is accepted and frozen, and every route that opens it is
-  refused with "S3 credential issuer CLOUDFLARE_R2 is not available in this build" until the
-  vending implementation lands.
+  refused with "S3 credential vending mechanism CLOUDFLARE_R2 is not available in this server"
+  until a `CLOUDFLARE_R2` mechanism bean is installed.
 
 ### Upgrade notes
 
-- `GET /api/management/v1/catalogs` responses for S3 catalogs now carry `credentialIssuer: STS`.
-  No stored configuration changes; rows written before this release read as `STS`.
-- `SUPPORTED_S3_CREDENTIAL_ISSUERS` lists every issuer a realm accepts and has no implicit
-  member: a realm override that omits `STS` rejects every plain S3 catalog in that realm. Startup
-  reports an unknown name as a severe readiness error.
+- `GET /api/management/v1/catalogs` responses for S3 catalogs now carry
+  `credentialVendingMechanism: STS`. No stored configuration changes; rows written before this
+  release read as `STS`.
+- `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` lists every mechanism a realm accepts and has no
+  implicit member: a realm override that omits `STS` rejects every plain S3 catalog in that realm.
+  Startup reports an allowlisted mechanism with no installed bean as a non-severe readiness
+  warning; the mechanism is still refused wherever a catalog selects it.
 
 - Relational JDBC: schema version 6 corrects the `idx_locations` index on Postgres and CockroachDB
   (see Fixes). Fresh bootstraps use schema v6 automatically and get the right index. Because Polaris

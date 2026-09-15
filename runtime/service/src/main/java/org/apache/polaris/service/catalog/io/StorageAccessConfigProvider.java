@@ -45,6 +45,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,17 +64,20 @@ public class StorageAccessConfigProvider {
   private final PolarisPrincipal polarisPrincipal;
   private final RealmContext realmContext;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final S3CredentialVendingMechanisms vendingMechanisms;
 
   @Inject
   public StorageAccessConfigProvider(
       CallContext callContext,
       PolarisPrincipal polarisPrincipal,
       RealmContext realmContext,
-      PolarisStorageIntegrationProvider storageIntegrationProvider) {
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      S3CredentialVendingMechanisms vendingMechanisms) {
     this.callContext = callContext;
     this.polarisPrincipal = polarisPrincipal;
     this.realmContext = realmContext;
     this.storageIntegrationProvider = storageIntegrationProvider;
+    this.vendingMechanisms = vendingMechanisms;
   }
 
   public StorageAccessConfig getStorageAccessConfig(
@@ -119,8 +123,8 @@ public class StorageAccessConfigProvider {
     PolarisStorageConfigurationInfo.findStorageConfigFromHierarchy(resolvedEntityPath)
         .ifPresent(
             storageConfig ->
-                IcebergPropertiesValidation.validateS3CredentialIssuerAvailable(
-                    realmConfig, storageConfig));
+                IcebergPropertiesValidation.validateS3CredentialVendingMechanism(
+                    realmConfig, storageConfig, vendingMechanisms));
 
     boolean skipCredentialSubscopingIndirection =
         realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);

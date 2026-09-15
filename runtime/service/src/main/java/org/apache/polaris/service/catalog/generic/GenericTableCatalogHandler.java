@@ -38,6 +38,7 @@ import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
@@ -53,14 +54,16 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
 
   protected abstract Instance<FederatedCatalogFactory> federatedCatalogFactories();
 
+  protected abstract S3CredentialVendingMechanisms vendingMechanisms();
+
   private GenericTableCatalog genericTableCatalog;
 
   @Override
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity = resolutionManifest.getResolvedCatalogEntity();
-    // The same issuer gate the Iceberg handler applies.
-    IcebergPropertiesValidation.validateS3CredentialIssuerAvailable(
-        realmConfig(), resolvedCatalogEntity.getStorageConfigurationInfo());
+    // The same gate the Iceberg handler applies.
+    IcebergPropertiesValidation.validateS3CredentialVendingMechanism(
+        realmConfig(), resolvedCatalogEntity.getStorageConfigurationInfo(), vendingMechanisms());
     ConnectionConfigInfoDpo connectionConfigInfoDpo =
         resolvedCatalogEntity.getConnectionConfigInfoDpo();
     if (connectionConfigInfoDpo != null) {

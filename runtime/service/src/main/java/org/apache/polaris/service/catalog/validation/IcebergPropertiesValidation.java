@@ -21,7 +21,7 @@ package org.apache.polaris.service.catalog.validation;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_INSECURE_STORAGE_TYPES;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_SPECIFYING_FILE_IO_IMPL;
 import static org.apache.polaris.core.config.FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES;
-import static org.apache.polaris.core.config.FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS;
+import static org.apache.polaris.core.config.FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS;
 
 import java.util.List;
 import java.util.Map;
@@ -30,7 +30,7 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.aws.S3CredentialIssuer;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -88,37 +88,37 @@ public class IcebergPropertiesValidation {
   }
 
   /**
-   * The realm allowlist for S3 credential issuers. The list has no implicit member; {@code STS}
-   * must be listed too. Used at catalog create and update.
+   * The realm allowlist for S3 credential vending mechanisms. The list has no implicit member;
+   * {@code STS} must be listed too. Used at catalog create and update, and as defence in depth
+   * behind the availability gates below.
    */
-  public static void validateS3CredentialIssuerAllowed(
-      @NonNull RealmConfig realmConfig, @NonNull S3CredentialIssuer issuer) {
-    List<String> allowed = realmConfig.getConfig(SUPPORTED_S3_CREDENTIAL_ISSUERS);
-    if (!allowed.contains(issuer.name())) {
-      throw new ValidationException("S3 credential issuer %s is not enabled in this realm", issuer);
-    }
-  }
-
-  /**
-   * The allowlist plus build availability, for catalog initialization and storage-access
-   * resolution. The storage integration provider uses the allowlist check and its own switch arm.
-   * The {@code CLOUDFLARE_R2} throw below is removed by the change that adds its integration.
-   */
-  public static void validateS3CredentialIssuerAvailable(
-      @NonNull RealmConfig realmConfig, @NonNull S3CredentialIssuer issuer) {
-    validateS3CredentialIssuerAllowed(realmConfig, issuer);
-    if (issuer == S3CredentialIssuer.CLOUDFLARE_R2) {
+  public static void validateS3CredentialVendingMechanismAllowed(
+      @NonNull RealmConfig realmConfig, @NonNull String mechanism) {
+    List<String> allowed = realmConfig.getConfig(SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS);
+    if (!allowed.contains(mechanism)) {
       throw new ValidationException(
-          "S3 credential issuer CLOUDFLARE_R2 is not available in this build");
+          "S3 credential vending mechanism %s is not enabled in this realm", mechanism);
     }
   }
 
-  /** {@link #validateS3CredentialIssuerAvailable(RealmConfig, S3CredentialIssuer)} for a config. */
-  public static void validateS3CredentialIssuerAvailable(
+  /** {@link #validateS3CredentialVendingMechanismAllowed(RealmConfig, String)} for a config. */
+  public static void validateS3CredentialVendingMechanismAllowed(
+      @NonNull RealmConfig realmConfig, @Nullable PolarisStorageConfigurationInfo storageConfig) {
+    if (storageConfig instanceof AwsStorageConfigurationInfo awsConfig) {
+      validateS3CredentialVendingMechanismAllowed(
+          realmConfig, awsConfig.getCredentialVendingMechanism());
+    }
+  }
+
+  /** Allowlist, then availability in this server; for catalog initialization and storage access. */
+  public static void validateS3CredentialVendingMechanism(
       @NonNull RealmConfig realmConfig,
-      @Nullable PolarisStorageConfigurationInfo storageConfigurationInfo) {
-    if (storageConfigurationInfo instanceof AwsStorageConfigurationInfo awsConfig) {
-      validateS3CredentialIssuerAvailable(realmConfig, awsConfig.getCredentialIssuer());
+      @Nullable PolarisStorageConfigurationInfo storageConfig,
+      @NonNull S3CredentialVendingMechanisms mechanisms) {
+    if (storageConfig instanceof AwsStorageConfigurationInfo awsConfig) {
+      String mechanism = awsConfig.getCredentialVendingMechanism();
+      validateS3CredentialVendingMechanismAllowed(realmConfig, mechanism);
+      mechanisms.require(mechanism);
     }
   }
 

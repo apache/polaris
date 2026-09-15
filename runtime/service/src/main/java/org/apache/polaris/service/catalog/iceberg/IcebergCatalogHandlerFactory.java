@@ -41,6 +41,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.metrics.IcebergMetricsReporter;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 
 @RequestScoped
 public class IcebergCatalogHandlerFactory {
@@ -58,6 +59,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject CatalogHandlerUtils catalogHandlerUtils;
   @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
+  @Inject S3CredentialVendingMechanisms vendingMechanisms;
   @Inject IcebergMetricsReporter metricsReporter;
   @Inject Clock clock;
   @Inject AccessDelegationModeResolver accessDelegationModeResolver;
@@ -84,6 +86,7 @@ public class IcebergCatalogHandlerFactory {
         .catalogHandlerUtils(catalogHandlerUtils)
         .federatedCatalogFactories(federatedCatalogFactories)
         .storageAccessConfigProvider(storageAccessConfigProvider)
+        .vendingMechanisms(vendingMechanisms)
         .eventAttributeMap(eventAttributeMap)
         .metricsReporter(metricsReporter)
         .clock(clock)
