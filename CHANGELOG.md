@@ -100,6 +100,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `PURGE_VIEW_METADATA_ON_DROP` defaulting to `true`, dropping any view failed with HTTP 403 under
   the default configuration. A view drop is now governed by `PURGE_VIEW_METADATA_ON_DROP` alone,
   while the guard continues to protect a client-requested Iceberg table purge.
+- `TokenBroker.verify` now returns `null` for tokens not recognized by the internal broker
+  (instead of failing auth), so MIXED mode can delegate to other mechanisms. Exceptions from
+  `verify` are forwarded as-is rather than mapped to auth failure or MIXED fallback.
 
 ### Deprecations
 
