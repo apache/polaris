@@ -302,11 +302,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
         .contains(Optional.of("s3://bucket/foo/"));
 
     for (var check :
-        List.of(
-            "s3://bucket/foo/bar",
-            "s3://bucket/foo/bar/",
-            "s3a://bucket/foo/bar/",
-            "gs://bucket/foo/bar/")) {
+        List.of("s3://bucket/foo/bar", "s3://bucket/foo/bar/", "s3a://bucket/foo/bar/")) {
       soft.assertThat(
               metaStore.hasOverlappingSiblings(
                   callContext,
@@ -317,6 +313,20 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
           .isPresent()
           .contains(Optional.of("s3://bucket/foo/bar/"));
     }
+
+    // The location index is scheme-less, so a same-path location under a different scheme is a
+    // candidate, but the overlap verdict is scheme-aware (only the S3 family is treated as one
+    // scheme), consistent with the legacy sibling check. A gs:// path does not overlap an s3://
+    // one.
+    soft.assertThat(
+            metaStore.hasOverlappingSiblings(
+                callContext,
+                new NamespaceEntity.Builder(Namespace.of("x"))
+                    .setCatalogId(catalog.getId())
+                    .setBaseLocation("gs://bucket/foo/bar/")
+                    .build()))
+        .isPresent()
+        .contains(Optional.empty());
 
     soft.assertThat(
             metaStore.hasOverlappingSiblings(

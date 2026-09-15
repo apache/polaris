@@ -108,6 +108,7 @@ import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRoleObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj;
+import org.apache.polaris.persistence.nosql.coretypes.catalog.EntityIdSet;
 import org.apache.polaris.persistence.nosql.coretypes.content.ContentObj;
 import org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalObj;
@@ -630,12 +631,22 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       return Optional.empty();
     }
 
+    var catalogId = entity.getCatalogId();
     var checkLocation = StorageLocation.of(baseLocation).withoutScheme();
+    var entityLocation = StorageLocation.of(baseLocation);
 
-    return hasOverlappingSiblings(entity.getCatalogId(), checkLocation);
-  }
+    // The entity's own parent namespaces contain its location by construction; they are not
+    // siblings. Resolve the parent chain up front via the (memoized) id index.
+    var ancestorIds = new HashSet<Long>();
+    for (var id = entity.getParentId();
+        id != PolarisEntityConstants.getNullId() && id != catalogId && ancestorIds.add(id); ) {
+      var ancestor = lookupEntity(catalogId, id, PolarisEntityType.NAMESPACE.getCode());
+      if (ancestor == null) {
+        break;
+      }
+      id = ancestor.getParentId();
+    }
 
-  Optional<String> hasOverlappingSiblings(long catalogId, String checkLocation) {
     return memoizedIndexedAccess
         .catalogContent(catalogId)
         .refObj()
@@ -654,36 +665,61 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               var locationIdentifier = identifierFromLocationString(checkLocation);
               var locationIndexKey = locationIdentifier.toIndexKey();
 
+              // Resolves an index entry to the base location of the first entity in it that
+              // actually overlaps the entity being checked.
+              Function<EntityIdSet, Optional<String>> firstOverlap =
+                  entityIdSet ->
+                      entityIdSet.entityIds().stream()
+                          .map(IndexKey::key)
+                          .map(byId::get)
+                          .filter(Objects::nonNull)
+                          .map(byName::get)
+                          .filter(Objects::nonNull)
+                          .map(objRef -> persistence.fetch(objRef, ContentObj.class))
+                          .filter(Objects::nonNull)
+                          .map(contentObj -> mapToEntity(contentObj, catalogId))
+                          .filter(
+                              candidate -> {
+                                // The entity itself being re-created is an already-exists
+                                // condition for the create, not an overlap.
+                                if (candidate.getParentId() == entity.getParentId()
+                                    && candidate.getType() == entity.getType()
+                                    && candidate.getName().equals(entity.getName())) {
+                                  return false;
+                                }
+                                var candidateBaseLocation =
+                                    candidate.getPropertiesAsMap().get(ENTITY_BASE_LOCATION);
+                                if (candidateBaseLocation == null
+                                    || candidateBaseLocation.isBlank()) {
+                                  return false;
+                                }
+                                var candidateLocation = StorageLocation.of(candidateBaseLocation);
+                                var containsEntity = entityLocation.isChildOf(candidateLocation);
+                                var containedByEntity = candidateLocation.isChildOf(entityLocation);
+                                // An ancestor may contain the entity, but the entity may not sit
+                                // at exactly its location.
+                                if (containsEntity
+                                    && !containedByEntity
+                                    && ancestorIds.contains(candidate.getId())) {
+                                  return false;
+                                }
+                                return containsEntity || containedByEntity;
+                              })
+                          .map(
+                              candidate -> candidate.getPropertiesAsMap().get(ENTITY_BASE_LOCATION))
+                          .findFirst();
+
               // Check for children and exact matches first using forward iteration (preserves
               // existing test expectations on which conflicting location is reported).
               // Also iterate fully in case early entries are filtered out.
               var iter = locationsIndex.iterator(locationIndexKey, null, false);
               while (iter.hasNext()) {
                 var elem = iter.next();
-                var elemKey = elem.key();
-                var elemIdentifier = indexKeyToIdentifier(elemKey);
+                var elemIdentifier = indexKeyToIdentifier(elem.key());
                 if (!elemIdentifier.startsWith(locationIdentifier)) {
                   break; // No more matches due to ordering
                 }
-
-                var conflicting =
-                    elem.value().entityIds().stream()
-                        .map(IndexKey::key)
-                        .map(byId::get)
-                        .filter(Objects::nonNull)
-                        .map(byName::get)
-                        .filter(Objects::nonNull)
-                        .map(objRef -> persistence.fetch(objRef, ContentObj.class))
-                        .filter(Objects::nonNull)
-                        .map(
-                            contentObj -> {
-                              var conflictingBaseLocation =
-                                  contentObj.properties().get(ENTITY_BASE_LOCATION);
-                              return conflictingBaseLocation != null
-                                  ? conflictingBaseLocation
-                                  : String.join("/", elemIdentifier.elements());
-                            })
-                        .findFirst();
+                var conflicting = firstOverlap.apply(elem.value());
                 if (conflicting.isPresent()) {
                   return conflicting;
                 }
@@ -692,29 +728,11 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               // Check for parent (prefix) overlaps. These have shorter keys and are missed by
               // forward iteration starting at the full target key.
               for (int i = 1; i <= locationIdentifier.length(); i++) {
-                var prefixElements = locationIdentifier.elements().subList(0, i);
-                var prefix = ContentIdentifier.identifier(prefixElements);
-                var prefixKey = prefix.toIndexKey();
-                var entry = locationsIndex.get(prefixKey);
+                var prefix =
+                    ContentIdentifier.identifier(locationIdentifier.elements().subList(0, i));
+                var entry = locationsIndex.get(prefix.toIndexKey());
                 if (entry != null) {
-                  var conflicting =
-                      entry.entityIds().stream()
-                          .map(IndexKey::key)
-                          .map(byId::get)
-                          .filter(Objects::nonNull)
-                          .map(byName::get)
-                          .filter(Objects::nonNull)
-                          .map(objRef -> persistence.fetch(objRef, ContentObj.class))
-                          .filter(Objects::nonNull)
-                          .map(
-                              contentObj -> {
-                                var conflictingBaseLocation =
-                                    contentObj.properties().get(ENTITY_BASE_LOCATION);
-                                return conflictingBaseLocation != null
-                                    ? conflictingBaseLocation
-                                    : String.join("/", prefix.elements());
-                              })
-                          .findFirst();
+                  var conflicting = firstOverlap.apply(entry);
                   if (conflicting.isPresent()) {
                     return conflicting;
                   }
