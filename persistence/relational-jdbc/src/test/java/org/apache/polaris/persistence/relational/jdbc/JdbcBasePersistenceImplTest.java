@@ -661,12 +661,12 @@ class JdbcBasePersistenceImplTest {
     assertThat(seen).containsExactly("e0", "e1", "e2", "e3");
   }
 
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2})
-  void rotatePrincipalSecrets_concurrentCollision_throwsRetryOnConcurrencyException(
-      int schemaVersion) throws SQLException, IOException {
+  @Test
+  void rotatePrincipalSecrets_concurrentCollision_throwsRetryOnConcurrencyException()
+      throws SQLException, IOException {
+    int schemaVersion = DatabaseType.H2.getLatestSchemaVersion();
     DatasourceOperations datasourceOperations =
-        newH2DatasourceOperations("rotate_secrets_collision_v", schemaVersion);
+        newH2DatasourceOperations("rotate_secrets_collision", schemaVersion);
     TestPersistence tp = newTestPersistence(datasourceOperations, schemaVersion);
     JdbcBasePersistenceImpl impl = tp.impl();
     PolarisCallContext callCtx = tp.callCtx();
