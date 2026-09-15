@@ -189,7 +189,7 @@ grant listing.
 | SEMANTIC_MODEL_READ | Semantic model | Reads the model document and metadata. |
 | SEMANTIC_MODEL_WRITE | Semantic model | Updates the model document and permits reading it. |
 | SEMANTIC_MODEL_DROP | Semantic model | Deletes the model. |
-| SEMANTIC_MODEL_FULL_METADATA | Semantic model | Includes list, create, read, update, and drop privileges, as applicable to the grant's scope. |
+| SEMANTIC_MODEL_FULL_METADATA | Semantic model | Grants list, create, read, update, and drop privileges; list and create apply only at namespace or catalog scope. |
 | SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE | Semantic model | Permits granting privileges on the model to catalog roles. Revocation also requires authority to manage the recipient role's grants. |
 
 Privileges granted on a namespace or catalog apply to descendant models. At these scopes,
@@ -224,7 +224,7 @@ with a namespace grant, for example, to allow reading models in the `sales` name
 ```
 
 For catalog-wide access, use `type: "catalog"` and omit `namespace`. To grant access only to
-the `sales.revenue` model, use:
+the `revenue` model in the `sales` namespace, use:
 
 ```json
 {

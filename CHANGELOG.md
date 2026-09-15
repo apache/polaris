@@ -83,7 +83,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
-- Semantic models now support dedicated privileges for listing, creation, reading, updating,
+- Semantic models now support dedicated privileges for listing, creating, reading, updating,
   and dropping. Privileges can be granted to catalog roles on individual models or at namespace
   or catalog scope, with separate controls for managing model grants.
 
