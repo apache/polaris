@@ -57,7 +57,7 @@ import software.amazon.awssdk.services.sts.model.Credentials;
  * {@link StsCredentialVendingMechanism} moved {@code AwsCredentialsStorageIntegration} construction
  * out of the provider unchanged; these tests prove that move preserved the existing behaviour:
  * per-storage-name credential resolution, {@code stsUnavailable}, and per-realm-config credential
- * duration. The mock {@link StorageConfiguration} is never delegated to its default methods — every
+ * duration. The mock {@link StorageConfiguration} is never delegated to its default methods: every
  * {@code stsCredentials(...)} overload used here is stubbed directly. The CDI-level discovery and
  * gating behaviour lives in {@link S3CredentialVendingMechanismCdiTest}.
  */

@@ -29,7 +29,13 @@ import java.util.Set;
  */
 public class ThirdMechanismProfile implements QuarkusTestProfile {
 
+  /**
+   * The realm the test client targets by default; the positive path never sends an explicit realm
+   * header, it just relies on this being the client's default realm. Named here only to build the
+   * realm list below.
+   */
   public static final String ALLOWLISTED_REALM = "POLARIS";
+
   public static final String KILL_SWITCH_REALM = "POLARIS2";
 
   @Override

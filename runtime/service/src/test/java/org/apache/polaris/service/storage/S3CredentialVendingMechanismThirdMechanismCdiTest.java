@@ -65,8 +65,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * {@code @Nested} test classes ({@code io.quarkus.test.junit.QuarkusTestExtension}: "@Nested tests
  * may not contain @TestProfile annotations"), and the two scenarios need different application
  * instances regardless: {@code getEnabledAlternatives()} is profile-wide, and {@link
- * S3CredentialVendingMechanismCdiTest}'s F1 assertion requires {@code availableIds()} to be exactly
- * {@code {STS}}, which this test's third mechanism would otherwise widen.
+ * S3CredentialVendingMechanismCdiTest} asserts {@code availableIds()} is exactly {@code {STS}} in
+ * its own application instance, which this test's third mechanism would otherwise widen.
  */
 @QuarkusTest
 @TestProfile(ThirdMechanismProfile.class)
@@ -124,13 +124,16 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
       int callsAfterVending = testMechanism.calls().size();
       assertThat(testMechanism.calls())
           .allSatisfy(
-              call ->
-                  assertThat(call.storageConfig().getCredentialVendingMechanism())
-                      .isEqualTo(TestS3CredentialVendingMechanism.ID));
+              call -> {
+                assertThat(call.storageConfig().getCredentialVendingMechanism())
+                    .isEqualTo(TestS3CredentialVendingMechanism.ID);
+                assertThat(call.storageConfig().getAllowedLocations())
+                    .containsExactly("s3://bucket/base/" + catalog + "/");
+              });
 
       // A realm where TEST_MECHANISM is not allowlisted: creation itself is refused with "not
       // enabled", at PolarisAdminService's allowlist-only gate, and the mechanism is never
-      // dispatched — the recorder gains no further call.
+      // dispatched, so the recorder gains no further call.
       Map<String, String> killSwitchRealmHeaders =
           Map.of(
               "Authorization",

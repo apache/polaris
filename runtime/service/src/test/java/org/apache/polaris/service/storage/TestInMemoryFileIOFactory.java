@@ -33,10 +33,10 @@ import org.jspecify.annotations.NonNull;
  * endpoint, keeping the S3 credential vending mechanism tests hermetic. Selected through the same
  * {@code @Identifier}-and-config mechanism as {@code DefaultFileIOFactory} ({@code
  * ServiceProducers.fileIOFactory}), so no CDI alternative is needed: {@code
- * CatalogProperties.FILE_IO_IMPL} is never set on any catalog or request, which means {@code
- * IcebergPropertiesValidation.determineFileIOClassName}'s insecure-storage-type check — the one
- * that would otherwise require {@code ALLOW_INSECURE_STORAGE_TYPES} (a severe readiness issue) —
- * never runs; the storage config still reports the real, safe {@code S3FileIO} class name, but this
+ * CatalogProperties.FILE_IO_IMPL} is never set on any catalog or request, so {@code
+ * IcebergPropertiesValidation.determineFileIOClassName}'s insecure-storage-type check (the one that
+ * would otherwise require {@code ALLOW_INSECURE_STORAGE_TYPES}, a severe readiness issue) never
+ * runs; the storage config still reports the real, safe {@code S3FileIO} class name, but this
  * factory substitutes {@link InMemoryFileIO} underneath it regardless.
  */
 @RequestScoped
