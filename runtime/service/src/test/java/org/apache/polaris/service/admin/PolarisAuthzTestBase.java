@@ -86,6 +86,8 @@ import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.idempotency.IdempotencyRequestContext;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
+import org.apache.polaris.service.storage.StsCredentialVendingMechanism;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.assertj.core.api.Assertions;
@@ -188,10 +190,15 @@ public abstract class PolarisAuthzTestBase {
   @BeforeAll
   public static void setUpMocks() {
     StsClient stsClient = Mockito.mock(StsClient.class);
+    S3CredentialVendingMechanisms mechanisms =
+        new S3CredentialVendingMechanisms(
+            Map.of(
+                "STS",
+                new StsCredentialVendingMechanism(
+                    destination -> stsClient, Optional.empty(), null)));
     PolarisStorageIntegrationProviderImpl mock =
         new PolarisStorageIntegrationProviderImpl(
-            destination -> stsClient,
-            Optional.empty(),
+            mechanisms,
             () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
             null,
             null,

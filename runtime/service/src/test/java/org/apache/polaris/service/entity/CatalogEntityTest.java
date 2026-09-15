@@ -601,7 +601,7 @@ public class CatalogEntityTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://example.com"))
             .setRoleArn("arn:aws:iam::012345678901:role/test-role")
-            .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.STS);
+            .setCredentialVendingMechanism("STS");
     AzureStorageConfigInfo.Builder a =
         AzureStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
@@ -611,7 +611,7 @@ public class CatalogEntityTest {
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://example.com"))
-            .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+            .setCredentialVendingMechanism("CLOUDFLARE_R2")
             .setEndpoint("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com")
             .setPathStyleAccess(true)
             .setRegion("auto")

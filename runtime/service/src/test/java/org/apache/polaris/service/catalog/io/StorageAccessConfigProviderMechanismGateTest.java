@@ -43,14 +43,16 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.junit.jupiter.api.Test;
 
 /**
- * The issuer check runs before the {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} early return, so
- * an early-opt-in CLOUDFLARE_R2 catalog fails here before any FileIO, on the loadTable path and on
- * the task path ({@code TaskFileIOSupplier} calls this first).
+ * The mechanism gate runs before the {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} early return,
+ * so an early-opt-in CLOUDFLARE_R2 catalog fails here before any FileIO, on the loadTable path and
+ * on the task path ({@code TaskFileIOSupplier} calls this first).
  */
-class StorageAccessConfigProviderIssuerGateTest {
+class StorageAccessConfigProviderMechanismGateTest {
 
   private static final RealmContext REALM = () -> "test-realm";
   private static final String R2_ENDPOINT =
@@ -59,19 +61,21 @@ class StorageAccessConfigProviderIssuerGateTest {
   private final PolarisStorageIntegrationProvider integrationProvider =
       mock(PolarisStorageIntegrationProvider.class);
 
-  private static RealmConfig realmConfig(boolean skipSubscoping, List<String> issuers) {
+  private static RealmConfig realmConfig(boolean skipSubscoping, List<String> mechanisms) {
     Map<String, Object> config =
         Map.of(
             "SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION", skipSubscoping,
-            "SUPPORTED_S3_CREDENTIAL_ISSUERS", issuers);
+            "SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", mechanisms);
     return new RealmConfigImpl((rc, name) -> config.get(name), REALM);
   }
 
   private StorageAccessConfigProvider provider(RealmConfig realmConfig) {
     CallContext callContext = mock(CallContext.class);
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
+    S3CredentialVendingMechanisms mechanisms =
+        new S3CredentialVendingMechanisms(Map.of("STS", mock(S3CredentialVendingMechanism.class)));
     return new StorageAccessConfigProvider(
-        callContext, mock(PolarisPrincipal.class), REALM, integrationProvider);
+        callContext, mock(PolarisPrincipal.class), REALM, integrationProvider, mechanisms);
   }
 
   private static PolarisResolvedPathWrapper pathTo(
@@ -88,7 +92,7 @@ class StorageAccessConfigProviderIssuerGateTest {
 
   private static AwsStorageConfigInfo r2() {
     return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-        .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+        .setCredentialVendingMechanism(S3CredentialVendingMechanism.CLOUDFLARE_R2)
         .setEndpoint(R2_ENDPOINT)
         .setPathStyleAccess(true)
         .setRegion("auto")
@@ -118,16 +122,17 @@ class StorageAccessConfigProviderIssuerGateTest {
     RealmConfig rc = realmConfig(true, List.of("STS", "CLOUDFLARE_R2"));
     assertThatThrownBy(() -> call(provider(rc), pathTo(rc, r2())))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential issuer CLOUDFLARE_R2 is not available in this build");
+        .hasMessage(
+            "S3 credential vending mechanism CLOUDFLARE_R2 is not available in this server");
     verifyNoInteractions(integrationProvider);
   }
 
   @Test
-  void disabledIssuerPlusSkipSubscopingFailsBeforeTheEarlyReturn() {
+  void disabledMechanismPlusSkipSubscopingFailsBeforeTheEarlyReturn() {
     RealmConfig rc = realmConfig(true, List.of("STS"));
     assertThatThrownBy(() -> call(provider(rc), pathTo(rc, r2())))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm");
+        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
     verifyNoInteractions(integrationProvider);
   }
 

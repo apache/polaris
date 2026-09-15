@@ -21,59 +21,90 @@ package org.apache.polaris.service.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
-import jakarta.ws.rs.core.Response;
+import java.util.List;
+import java.util.Map;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.exception.IcebergJsonProcessingExceptionMapper;
+import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.Test;
 
-/** The management API's JSON handling of {@code credentialIssuer}: absent, null and unknown. */
+/**
+ * The management API's JSON handling of {@code credentialVendingMechanism}: absent, null and
+ * unknown.
+ */
 class StorageConfigInfoJsonTest {
 
   private final ObjectMapper mapper = new ObjectMapper();
 
   @Test
-  void absentAndNullIssuerDeserializeAsNull() throws Exception {
+  void absentAndNullMechanismDeserializeAsNull() throws Exception {
     StorageConfigInfo absent =
         mapper.readValue(
             "{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://b/p/\"]}",
             StorageConfigInfo.class);
-    assertThat(((AwsStorageConfigInfo) absent).getCredentialIssuer()).isNull();
+    assertThat(((AwsStorageConfigInfo) absent).getCredentialVendingMechanism()).isNull();
     StorageConfigInfo explicitNull =
         mapper.readValue(
-            "{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://b/p/\"],\"credentialIssuer\":null}",
+            "{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://b/p/\"],"
+                + "\"credentialVendingMechanism\":null}",
             StorageConfigInfo.class);
-    assertThat(((AwsStorageConfigInfo) explicitNull).getCredentialIssuer()).isNull();
+    assertThat(((AwsStorageConfigInfo) explicitNull).getCredentialVendingMechanism()).isNull();
   }
 
   @Test
-  void knownIssuerDeserializes() throws Exception {
+  void knownMechanismDeserializes() throws Exception {
     StorageConfigInfo r2 =
         mapper.readValue(
-            "{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://b/p/\"],\"credentialIssuer\":\"CLOUDFLARE_R2\"}",
+            "{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://b/p/\"],"
+                + "\"credentialVendingMechanism\":\"CLOUDFLARE_R2\"}",
             StorageConfigInfo.class);
-    assertThat(((AwsStorageConfigInfo) r2).getCredentialIssuer())
-        .isEqualTo(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2);
+    assertThat(((AwsStorageConfigInfo) r2).getCredentialVendingMechanism())
+        .isEqualTo("CLOUDFLARE_R2");
   }
 
+  /**
+   * An unknown mechanism name is not a Jackson type error: the string field deserializes as is, and
+   * the realm allowlist refuses it at catalog create.
+   */
   @Test
-  void unknownIssuerIsA400NeverA500() {
+  void unknownMechanismDeserializesAndIsRefusedByTheAllowlist() throws Exception {
     String body =
-        "{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://b/p/\"],\"credentialIssuer\":\"BOGUS\"}";
-    assertThatThrownBy(() -> mapper.readValue(body, StorageConfigInfo.class))
-        .isInstanceOf(InvalidFormatException.class)
-        .hasMessageContaining("BOGUS");
-    JsonProcessingException failure = null;
-    try {
-      mapper.readValue(body, StorageConfigInfo.class);
-    } catch (JsonProcessingException e) {
-      failure = e;
-    }
-    try (Response response = new IcebergJsonProcessingExceptionMapper().toResponse(failure)) {
-      assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
-    }
+        "{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://b/p/\"],"
+            + "\"credentialVendingMechanism\":\"BOGUS\"}";
+    StorageConfigInfo deserialized = mapper.readValue(body, StorageConfigInfo.class);
+    assertThat(((AwsStorageConfigInfo) deserialized).getCredentialVendingMechanism())
+        .isEqualTo("BOGUS");
+
+    TestServices svc =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3")))
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("bogus-mechanism")
+            .setProperties(new CatalogProperties("s3://bucket/base/"))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn("arn:aws:iam::123456789012:role/r")
+                    .setCredentialVendingMechanism("BOGUS")
+                    .setAllowedLocations(List.of("s3://bucket/base/"))
+                    .build())
+            .build();
+    assertThatThrownBy(
+            () ->
+                svc.catalogsApi()
+                    .createCatalog(
+                        new CreateCatalogRequest(catalog),
+                        svc.realmContext(),
+                        svc.securityContext()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("S3 credential vending mechanism BOGUS is not enabled in this realm");
   }
 }

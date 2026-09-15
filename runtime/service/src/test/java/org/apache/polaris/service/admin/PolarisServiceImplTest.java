@@ -103,11 +103,11 @@ public class PolarisServiceImplTest {
   }
 
   /**
-   * Drives the real resource method: a denied caller gets the 403 before the realm's issuer
-   * allowlist is read. A check re-added in front of {@code adminService.createCatalog} fails this.
+   * Drives the real resource method: a denied caller gets the 403 before the realm's allowlist is
+   * read. A check re-added in front of {@code adminService.createCatalog} fails this.
    */
   @Test
-  void deniedCreateCatalogThroughTheResourceNeverConsultsTheIssuerAllowlist() {
+  void deniedCreateCatalogThroughTheResourceNeverConsultsTheAllowlist() {
     PolarisResolutionManifest manifest = Mockito.mock(PolarisResolutionManifest.class);
     when(resolutionManifestFactory.createResolutionManifest(any(), any())).thenReturn(manifest);
     when(polarisAuthorizer.authorize(any(), any()))
@@ -121,7 +121,7 @@ public class PolarisServiceImplTest {
 
     AwsStorageConfigInfo r2 =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+            .setCredentialVendingMechanism("CLOUDFLARE_R2")
             .setEndpoint("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com")
             .setPathStyleAccess(true)
             .setRegion("auto")
@@ -139,7 +139,8 @@ public class PolarisServiceImplTest {
             () -> polarisService.createCatalog(new CreateCatalogRequest(catalog), null, null))
         .isInstanceOf(ForbiddenException.class)
         .hasMessage("denied");
-    verify(realmConfig, never()).getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS);
+    verify(realmConfig, never())
+        .getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS);
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());
   }
 

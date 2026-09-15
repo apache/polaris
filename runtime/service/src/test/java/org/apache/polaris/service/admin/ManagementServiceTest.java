@@ -751,7 +751,7 @@ public class ManagementServiceTest {
   }
 
   @Test
-  public void testCredentialIssuerDefaultsToStsOnRead() {
+  public void testCredentialVendingMechanismDefaultsToStsOnRead() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
@@ -761,7 +761,7 @@ public class ManagementServiceTest {
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setName("issuer-default")
+            .setName("mechanism-default")
             .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
             .setStorageConfigInfo(awsConfigModel)
             .build();
@@ -777,24 +777,27 @@ public class ManagementServiceTest {
     try (Response response =
         services
             .catalogsApi()
-            .getCatalog("issuer-default", services.realmContext(), services.securityContext())) {
+            .getCatalog("mechanism-default", services.realmContext(), services.securityContext())) {
       Catalog fetched = (Catalog) response.getEntity();
-      assertThat(((AwsStorageConfigInfo) fetched.getStorageConfigInfo()).getCredentialIssuer())
-          .isEqualTo(AwsStorageConfigInfo.CredentialIssuerEnum.STS);
+      assertThat(
+              ((AwsStorageConfigInfo) fetched.getStorageConfigInfo())
+                  .getCredentialVendingMechanism())
+          .isEqualTo("STS");
     }
   }
 
   private static final String R2_ACCOUNT = "0123456789abcdef0123456789abcdef";
   private static final String R2_ENDPOINT = "https://" + R2_ACCOUNT + ".r2.cloudflarestorage.com";
 
-  private static TestServices issuerServices(List<String> issuers, boolean unrestrictedChanges) {
+  private static TestServices mechanismServices(
+      List<String> mechanisms, boolean unrestrictedChanges) {
     return TestServices.builder()
         .config(
             Map.of(
                 "SUPPORTED_CATALOG_STORAGE_TYPES",
                 List.of("S3", "GCS", "AZURE"),
-                "SUPPORTED_S3_CREDENTIAL_ISSUERS",
-                issuers,
+                "SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS",
+                mechanisms,
                 "ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES",
                 unrestrictedChanges))
         .build();
@@ -802,7 +805,7 @@ public class ManagementServiceTest {
 
   private static AwsStorageConfigInfo.Builder r2Config() {
     return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-        .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+        .setCredentialVendingMechanism("CLOUDFLARE_R2")
         .setEndpoint(R2_ENDPOINT)
         .setPathStyleAccess(true)
         .setRegion("auto")
@@ -833,15 +836,15 @@ public class ManagementServiceTest {
 
   @Test
   public void testCloudflareR2IsRejectedByTheDefaultAllowlist() {
-    TestServices defaults = issuerServices(List.of("STS"), false);
+    TestServices defaults = mechanismServices(List.of("STS"), false);
     assertThatThrownBy(() -> create(defaults, catalogNamed("r2-off", r2Config().build())))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm");
+        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
   }
 
   @Test
   public void testStsIsRejectedWhenTheRealmListsOnlyCloudflareR2() {
-    TestServices r2Only = issuerServices(List.of("CLOUDFLARE_R2"), false);
+    TestServices r2Only = mechanismServices(List.of("CLOUDFLARE_R2"), false);
     AwsStorageConfigInfo sts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
@@ -849,12 +852,12 @@ public class ManagementServiceTest {
             .build();
     assertThatThrownBy(() -> create(r2Only, catalogNamed("sts-off", sts)))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential issuer STS is not enabled in this realm");
+        .hasMessage("S3 credential vending mechanism STS is not enabled in this realm");
   }
 
   @Test
-  public void testDisallowedIssuerIsRejectedOnUpdateToo() {
-    TestServices stsOnlyUnrestricted = issuerServices(List.of("STS"), true);
+  public void testDisallowedMechanismIsRejectedOnUpdateToo() {
+    TestServices stsOnlyUnrestricted = mechanismServices(List.of("STS"), true);
     AwsStorageConfigInfo sts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
@@ -879,19 +882,18 @@ public class ManagementServiceTest {
                         stsOnlyUnrestricted.realmContext(),
                         stsOnlyUnrestricted.securityContext()))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm");
+        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
   }
 
   @Test
   public void testCloudflareR2CatalogIsCreatedAndReadBack() {
-    TestServices enabled = issuerServices(List.of("STS", "CLOUDFLARE_R2"), false);
+    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
     try (Response response = create(enabled, catalogNamed("r2-on", r2Config().build()))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
     AwsStorageConfigInfo fetched =
         (AwsStorageConfigInfo) fetch(enabled, "r2-on").getStorageConfigInfo();
-    assertThat(fetched.getCredentialIssuer())
-        .isEqualTo(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2);
+    assertThat(fetched.getCredentialVendingMechanism()).isEqualTo("CLOUDFLARE_R2");
     assertThat(fetched.getEndpoint()).isEqualTo(R2_ENDPOINT);
     assertThat(fetched.getPathStyleAccess()).isTrue();
     assertThat(fetched.getRegion()).isEqualTo("auto");
@@ -899,7 +901,7 @@ public class ManagementServiceTest {
 
   @Test
   public void testCloudflareR2ModelRulesSurfaceAsBadRequests() {
-    TestServices enabled = issuerServices(List.of("STS", "CLOUDFLARE_R2"), false);
+    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
     assertThatThrownBy(
             () ->
                 create(
@@ -927,28 +929,69 @@ public class ManagementServiceTest {
   }
 
   @Test
-  public void testIssuerAndEndpointAreFrozen() {
-    TestServices enabled = issuerServices(List.of("STS", "CLOUDFLARE_R2"), false);
+  public void changingTheMechanismIsRefused() {
+    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
     try (Response response = create(enabled, catalogNamed("r2-frozen", r2Config().build()))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
     Catalog fetched = fetch(enabled, "r2-frozen");
     Map<String, String> props = Map.of("default-base-location", "s3://r2-bucket/base/r2-frozen");
 
-    // Omitting the issuer reads as STS, which is a frozen-field change, not a silent revert.
-    UpdateCatalogRequest omitIssuer =
+    // Omitting the mechanism reads as STS, which is a frozen-field change, not a silent revert.
+    UpdateCatalogRequest omitMechanism =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             props,
-            r2Config().setCredentialIssuer(null).setRoleArn(null).build());
+            r2Config().setCredentialVendingMechanism(null).setRoleArn(null).build());
     assertThatThrownBy(
             () ->
                 enabled
                     .catalogsApi()
                     .updateCatalog(
-                        "r2-frozen", omitIssuer, enabled.realmContext(), enabled.securityContext()))
+                        "r2-frozen",
+                        omitMechanism,
+                        enabled.realmContext(),
+                        enabled.securityContext()))
         .isInstanceOf(BadRequestException.class)
-        .hasMessageStartingWith("Cannot modify credential issuer");
+        .hasMessageStartingWith("Cannot modify credential vending mechanism");
+  }
+
+  /**
+   * A fresh {@code String} built at the same value as the stored one: the freeze check must use
+   * {@code Objects.equals}, never {@code ==} or {@code !=}, or a value rebuilt from a JSON request
+   * would look like a change on every update.
+   */
+  @Test
+  public void updatingACatalogWithTheSameMechanismValueIsNotAFreezeViolation() {
+    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
+    try (Response response = create(enabled, catalogNamed("r2-same", r2Config().build()))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(enabled, "r2-same");
+    @SuppressWarnings("StringOperationCanBeSimplified")
+    String freshMechanismValue = new String("CLOUDFLARE_R2");
+    UpdateCatalogRequest sameMechanism =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(),
+            Map.of("default-base-location", "s3://r2-bucket/base/r2-same"),
+            r2Config().setCredentialVendingMechanism(freshMechanismValue).build());
+    try (Response response =
+        enabled
+            .catalogsApi()
+            .updateCatalog(
+                "r2-same", sameMechanism, enabled.realmContext(), enabled.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  public void testEndpointIsFrozenOnCloudflareR2() {
+    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
+    try (Response response = create(enabled, catalogNamed("r2-endpoint", r2Config().build()))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    Catalog fetched = fetch(enabled, "r2-endpoint");
+    Map<String, String> props = Map.of("default-base-location", "s3://r2-bucket/base/r2-endpoint");
 
     UpdateCatalogRequest changeEndpoint =
         new UpdateCatalogRequest(
@@ -962,14 +1005,14 @@ public class ManagementServiceTest {
                 enabled
                     .catalogsApi()
                     .updateCatalog(
-                        "r2-frozen",
+                        "r2-endpoint",
                         changeEndpoint,
                         enabled.realmContext(),
                         enabled.securityContext()))
         .isInstanceOf(BadRequestException.class)
         .hasMessageStartingWith("Cannot modify endpoint of a CLOUDFLARE_R2 storage config");
 
-    // Adding an allowed location keeps issuer and endpoint and is allowed.
+    // Adding an allowed location keeps the mechanism and endpoint and is allowed.
     UpdateCatalogRequest addLocation =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
@@ -981,14 +1024,14 @@ public class ManagementServiceTest {
         enabled
             .catalogsApi()
             .updateCatalog(
-                "r2-frozen", addLocation, enabled.realmContext(), enabled.securityContext())) {
+                "r2-endpoint", addLocation, enabled.realmContext(), enabled.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
   }
 
   @Test
   public void testFreezeIsLiftedByTheUnrestrictedFlag() {
-    TestServices unrestricted = issuerServices(List.of("STS", "CLOUDFLARE_R2"), true);
+    TestServices unrestricted = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), true);
     AwsStorageConfigInfo sts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
@@ -1012,15 +1055,15 @@ public class ManagementServiceTest {
     }
     assertThat(
             ((AwsStorageConfigInfo) fetch(unrestricted, "sts-to-r2").getStorageConfigInfo())
-                .getCredentialIssuer())
-        .isEqualTo(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2);
+                .getCredentialVendingMechanism())
+        .isEqualTo("CLOUDFLARE_R2");
   }
 
   @Test
   public void testStsCatalogEndpointStaysMutable() {
     // ALLOW_SETTING_S3_ENDPOINTS is true by default; the endpoint freeze applies to
     // CLOUDFLARE_R2 only, never to STS.
-    TestServices svc = issuerServices(List.of("STS"), false);
+    TestServices svc = mechanismServices(List.of("STS"), false);
     AwsStorageConfigInfo sts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")

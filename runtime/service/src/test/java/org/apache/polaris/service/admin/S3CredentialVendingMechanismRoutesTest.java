@@ -49,27 +49,33 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Until the vending change lands, every Iceberg route that opens a CLOUDFLARE_R2 catalog is refused
- * at initialization, namespace reads included, with or without
+ * Only STS is installed in {@link TestServices}, so every Iceberg route that opens a CLOUDFLARE_R2
+ * catalog is refused at initialization, namespace reads included, with or without
  * SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION; an STS catalog in the same realm is untouched. The R2
  * catalog is produced by updating an STS catalog under
  * ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES, because nothing can be created inside an R2
  * catalog through the REST API in this build. Every catalog gets its own allowed location: upstream
  * rejects overlapping catalog locations at create and update.
+ *
+ * <p>The policy routes go through {@code PolicyCatalogHandler}, which {@link TestServices} does not
+ * wire (it has no policy API): building that handler by hand here would need the authorizer and
+ * resolution internals {@link TestServices} keeps private to its {@code build()} closure. That case
+ * is covered by the CDI test added when the mechanism registry is exercised through a real
+ * container.
  */
-class S3CredentialIssuerRoutesTest {
+class S3CredentialVendingMechanismRoutesTest {
 
   private static final String R2_ENDPOINT =
       "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com";
   private static final String NOT_AVAILABLE =
-      "S3 credential issuer CLOUDFLARE_R2 is not available in this build";
+      "S3 credential vending mechanism CLOUDFLARE_R2 is not available in this server";
   private static final String NOT_ENABLED =
-      "S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm";
+      "S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm";
 
   /** A mutable config map: TestServices reads it live, so a test can flip the realm allowlist. */
   private static Map<String, Object> config(boolean skipSubscoping) {
     Map<String, Object> config = new HashMap<>();
-    config.put("SUPPORTED_S3_CREDENTIAL_ISSUERS", List.of("STS", "CLOUDFLARE_R2"));
+    config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS", "CLOUDFLARE_R2"));
     config.put("ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES", true);
     config.put("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION", skipSubscoping);
     return config;
@@ -190,7 +196,7 @@ class S3CredentialIssuerRoutesTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket/base/" + name),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+                .setCredentialVendingMechanism("CLOUDFLARE_R2")
                 .setEndpoint(R2_ENDPOINT)
                 .setPathStyleAccess(true)
                 .setRegion("auto")
@@ -270,9 +276,10 @@ class S3CredentialIssuerRoutesTest {
     switchToCloudflareR2(svc, "r2kill");
 
     // Engage the kill switch: the realm no longer lists CLOUDFLARE_R2.
-    config.put("SUPPORTED_S3_CREDENTIAL_ISSUERS", List.of("STS"));
+    config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS"));
 
-    String notEnabled = "S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm";
+    String notEnabled =
+        "S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm";
     assertThatThrownBy(
             () ->
                 svc.restApi()
@@ -334,7 +341,7 @@ class S3CredentialIssuerRoutesTest {
             .build();
     AwsStorageConfigInfo r2 =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+            .setCredentialVendingMechanism("CLOUDFLARE_R2")
             .setEndpoint(R2_ENDPOINT)
             .setPathStyleAccess(true)
             .setRegion("auto")
@@ -358,9 +365,9 @@ class S3CredentialIssuerRoutesTest {
 
   /**
    * An EXTERNAL catalog never reaches LocalIcebergCatalog, so the handler's own check is its only
-   * gate. With the issuer enabled the request stops at the gate with "not available" (the federated
-   * factory lookup, which TestServices leaves unsatisfied, is never reached); with the kill switch
-   * engaged it stops with "not enabled".
+   * gate. With the mechanism enabled the request stops at the gate with "not available" (the
+   * federated factory lookup, which TestServices leaves unsatisfied, is never reached); with the
+   * kill switch engaged it stops with "not enabled".
    */
   @Test
   void theRealmKillSwitchGatesAnExternalCatalogBeforeItsFederatedFactory() {
@@ -377,7 +384,7 @@ class S3CredentialIssuerRoutesTest {
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_AVAILABLE);
 
-    config.put("SUPPORTED_S3_CREDENTIAL_ISSUERS", List.of("STS"));
+    config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS"));
     assertThatThrownBy(
             () ->
                 svc.restApi()
@@ -406,7 +413,7 @@ class S3CredentialIssuerRoutesTest {
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_AVAILABLE);
 
-    config.put("SUPPORTED_S3_CREDENTIAL_ISSUERS", List.of("STS"));
+    config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS"));
     assertThatThrownBy(
             () ->
                 svc.genericTableApi()

@@ -27,6 +27,8 @@ import static org.mockito.Mockito.withSettings;
 import java.util.Map;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,8 +88,16 @@ class ProductionReadinessChecksTest {
     return config;
   }
 
-  private static final String ISSUERS_KEY =
-      FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS.key();
+  private static final String MECHANISMS_KEY =
+      FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS.key();
+
+  private static S3CredentialVendingMechanisms installed(String... ids) {
+    Map<String, S3CredentialVendingMechanism> mechanisms = new java.util.HashMap<>();
+    for (String id : ids) {
+      mechanisms.put(id, mock(S3CredentialVendingMechanism.class));
+    }
+    return new S3CredentialVendingMechanisms(mechanisms);
+  }
 
   private static FeaturesConfiguration featuresConfig(
       Map<String, String> defaults, Map<String, RealmOverridable.RealmOverrides> realmOverrides) {
@@ -106,46 +116,46 @@ class ProductionReadinessChecksTest {
   }
 
   @Test
-  void knownIssuerNamesAreReady() {
+  void everyAllowlistedMechanismInstalledIsReady() {
     ProductionReadinessCheck result =
-        checks.checkS3CredentialIssuers(
+        checks.checkS3CredentialVendingMechanisms(
             featuresConfig(
-                Map.of(ISSUERS_KEY, "[\"STS\",\"CLOUDFLARE_R2\"]"),
-                Map.of("r1", overrides(Map.of(ISSUERS_KEY, "[\"STS\"]")))));
+                Map.of(MECHANISMS_KEY, "[\"STS\"]"),
+                Map.of("r1", overrides(Map.of(MECHANISMS_KEY, "[\"STS\"]")))),
+            installed("STS"));
     assertThat(result.ready()).isTrue();
   }
 
   @Test
-  void unknownIssuerNameInDefaultsIsSevere() {
+  void anAllowlistedUninstalledMechanismInDefaultsIsNonSevereAndNamesWhatIsAvailable() {
     ProductionReadinessCheck result =
-        checks.checkS3CredentialIssuers(
-            featuresConfig(Map.of(ISSUERS_KEY, "[\"STS\",\"BOGUS\"]"), Map.of()));
+        checks.checkS3CredentialVendingMechanisms(
+            featuresConfig(Map.of(MECHANISMS_KEY, "[\"STS\",\"BOGUS\"]"), Map.of()),
+            installed("STS"));
     assertThat(result.getErrors())
         .singleElement()
         .satisfies(
             error -> {
-              assertThat(error.severe()).isTrue();
+              assertThat(error.severe()).isFalse();
               assertThat(error.offendingProperty())
-                  .isEqualTo("polaris.features.\"" + ISSUERS_KEY + "\"");
-              assertThat(error.message())
-                  .contains("BOGUS")
-                  .contains("STS")
-                  .contains("CLOUDFLARE_R2");
+                  .isEqualTo("polaris.features.\"" + MECHANISMS_KEY + "\"");
+              assertThat(error.message()).contains("BOGUS").contains("STS");
             });
   }
 
   @Test
-  void unknownIssuerNameInARealmOverrideNamesTheRealm() {
+  void anAllowlistedUninstalledMechanismInARealmOverrideNamesTheRealm() {
     ProductionReadinessCheck result =
-        checks.checkS3CredentialIssuers(
-            featuresConfig(Map.of(), Map.of("r1", overrides(Map.of(ISSUERS_KEY, "[\"NOPE\"]")))));
+        checks.checkS3CredentialVendingMechanisms(
+            featuresConfig(Map.of(), Map.of("r1", overrides(Map.of(MECHANISMS_KEY, "[\"NOPE\"]")))),
+            installed("STS"));
     assertThat(result.getErrors())
         .singleElement()
         .satisfies(
             error -> {
-              assertThat(error.severe()).isTrue();
-              assertThat(error.offendingProperty()).contains("r1").contains(ISSUERS_KEY);
-              assertThat(error.message()).contains("NOPE");
+              assertThat(error.severe()).isFalse();
+              assertThat(error.offendingProperty()).contains("r1").contains(MECHANISMS_KEY);
+              assertThat(error.message()).contains("NOPE").contains("STS");
             });
   }
 }

@@ -231,7 +231,7 @@ public class PolarisAdminServiceTest {
   private static CreateCatalogRequest cloudflareR2CatalogRequest() {
     AwsStorageConfigInfo r2 =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setCredentialIssuer(AwsStorageConfigInfo.CredentialIssuerEnum.CLOUDFLARE_R2)
+            .setCredentialVendingMechanism("CLOUDFLARE_R2")
             .setEndpoint("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com")
             .setPathStyleAccess(true)
             .setRegion("auto")
@@ -246,25 +246,26 @@ public class PolarisAdminServiceTest {
             .build());
   }
 
-  /** A denied caller gets the 403 and the realm's issuer allowlist is never consulted. */
+  /** A denied caller gets the 403 and the realm's allowlist is never consulted. */
   @Test
-  void deniedCreateCatalogNeverConsultsTheIssuerAllowlist() {
+  void deniedCreateCatalogNeverConsultsTheAllowlist() {
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
     assertThatThrownBy(() -> adminService.createCatalog(cloudflareR2CatalogRequest()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessage("denied");
-    verify(realmConfig, never()).getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS);
+    verify(realmConfig, never())
+        .getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS);
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());
   }
 
-  /** The check still runs: an authorized caller with a disabled issuer gets the 400. */
+  /** The check still runs: an authorized caller with a disabled mechanism gets the 400. */
   @Test
-  void authorizedCreateCatalogWithADisabledIssuerIsRefusedAfterAuthorization() {
-    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS))
+  void authorizedCreateCatalogWithADisabledMechanismIsRefusedAfterAuthorization() {
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS))
         .thenReturn(List.of("STS"));
     assertThatThrownBy(() -> adminService.createCatalog(cloudflareR2CatalogRequest()))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential issuer CLOUDFLARE_R2 is not enabled in this realm");
+        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
     verify(authorizer).authorize(any(), any());
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());
   }
@@ -926,9 +927,9 @@ public class PolarisAdminServiceTest {
     when(realmConfig.getConfig(
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of(authType.name()));
-    // The admin service now reads the realm's S3 credential issuer allowlist on catalog create;
-    // the mock RealmConfig must answer it, even though these catalogs are not S3.
-    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_ISSUERS))
+    // The admin service now reads the realm's S3 credential vending mechanism allowlist on
+    // catalog create; the mock RealmConfig must answer it, even though these catalogs are not S3.
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS))
         .thenReturn(List.of("STS"));
 
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
