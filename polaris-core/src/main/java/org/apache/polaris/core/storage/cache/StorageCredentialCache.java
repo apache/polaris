@@ -89,16 +89,59 @@ public class StorageCredentialCache {
 
   /** Minimum buffer to keep between credential expiry and cache eviction. */
   private long refreshBufferMs(RealmConfig realmConfig) {
-    return realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS)
-        * 1000L;
+    var refreshBufferSeconds =
+        realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS);
+    var credentialDurationSeconds =
+        realmConfig.getConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+    if (refreshBufferSeconds < 0 || refreshBufferSeconds >= credentialDurationSeconds) {
+      throw new IllegalArgumentException(
+          String.format(
+              "%s must be >= 0 and less than %s",
+              FeatureConfiguration.STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS.key(),
+              FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key()));
+    }
+    return refreshBufferSeconds * 1000L;
   }
 
   /**
    * Return the cached {@link StorageAccessConfig} for {@code key}, loading it via {@link
    * StorageCredentialCacheKey#load()} on miss.
+   *
+   * <p>The refresh buffer (when non-zero) is enforced on every call, not just on cache hits: a
+   * freshly loaded credential can itself already be within the buffer of expiring (e.g. a
+   * credential provider issuing a short-lived token), in which case Caffeine's {@code expireAfter}
+   * would give it a zero TTL but still hand it back on this same call. To honor the "clients always
+   * receive credentials with at least this much validity left" contract, such an entry is discarded
+   * and reloaded once, bypassing the stale copy. If the reload is still under the buffer, it's
+   * returned anyway (with a warning) rather than retried indefinitely -- a provider that can't
+   * clear its own configured buffer is a configuration problem, not something to hot-loop against.
    */
   public StorageAccessConfig getOrLoad(StorageCredentialCacheKey key) {
-    return cache.get(key).toAccessConfig();
+    StorageCredentialCacheEntry entry = cache.get(key);
+    if (isUnderRefreshBuffer(entry)) {
+      cache.invalidate(key);
+      entry = cache.get(key);
+      if (isUnderRefreshBuffer(entry)) {
+        LOGGER
+            .atWarn()
+            .log(
+                "Reloaded storage credential is still within its configured refresh buffer "
+                    + "({} ms remaining, buffer {} ms) -- returning it anyway. The underlying "
+                    + "credential provider may be issuing credentials shorter than the "
+                    + "configured buffer.",
+                entry.getExpirationTime() - System.currentTimeMillis(),
+                entry.refreshBufferMs());
+      }
+    }
+    return entry.toAccessConfig();
+  }
+
+  private static boolean isUnderRefreshBuffer(StorageCredentialCacheEntry entry) {
+    if (entry.refreshBufferMs() <= 0) {
+      return false;
+    }
+    long remainingMs = entry.getExpirationTime() - System.currentTimeMillis();
+    return remainingMs < entry.refreshBufferMs();
   }
 
   @VisibleForTesting
