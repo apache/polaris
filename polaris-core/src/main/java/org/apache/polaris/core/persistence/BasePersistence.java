@@ -398,7 +398,10 @@ public interface BasePersistence extends PolicyMappingPersistence {
 
   /**
    * Check if the specified IcebergTableLikeEntity / NamespaceEntity has any sibling entities which
-   * share a base location
+   * share a base location. The entity's own ancestors are not siblings: a parent namespace whose
+   * location contains the entity's location is not reported, unless the entity sits at exactly the
+   * ancestor's location. An existing entity with the same name under the same parent is not
+   * reported either; that is an already-exists condition for the subsequent create.
    *
    * @param callContext the polaris call context
    * @param entity the entity to check for overlapping siblings for

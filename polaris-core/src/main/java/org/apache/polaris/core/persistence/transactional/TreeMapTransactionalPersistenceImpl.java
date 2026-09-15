@@ -19,8 +19,11 @@
 package org.apache.polaris.core.persistence.transactional;
 
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -34,11 +37,11 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
@@ -650,42 +653,52 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         .readRange(this.store.buildPrefixKeyComposite(policyTypeCode, policyCatalogId, policyId));
   }
 
-  private Optional<String> getEntityLocationWithoutScheme(PolarisBaseEntity entity) {
-    if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
-      if (entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
-          || entity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
-        return Optional.of(
-            StorageLocation.of(
-                    entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
-                .withoutScheme());
-      }
-    }
-    if (entity.getType() == PolarisEntityType.NAMESPACE) {
-      return Optional.of(
-          StorageLocation.of(
-                  entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
-              .withoutScheme());
-    }
-    return Optional.empty();
-  }
-
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @NonNull PolarisCallContext callContext, T entity) {
     // TODO we could optimize this full scan
-    StorageLocation entityLocationWithoutScheme =
-        StorageLocation.of(StorageLocation.of(entity.getBaseLocation()).withoutScheme());
     List<PolarisBaseEntity> allEntities = this.store.getSliceEntities().readRange("");
-    for (PolarisBaseEntity siblingEntity : allEntities) {
-      Optional<StorageLocation> maybeSiblingLocationWithoutScheme =
-          getEntityLocationWithoutScheme(siblingEntity).map(StorageLocation::of);
-      if (maybeSiblingLocationWithoutScheme.isPresent()) {
-        if (maybeSiblingLocationWithoutScheme.get().isChildOf(entityLocationWithoutScheme)
-            || entityLocationWithoutScheme.isChildOf(maybeSiblingLocationWithoutScheme.get())) {
-          return Optional.of(Optional.of(maybeSiblingLocationWithoutScheme.toString()));
-        }
+
+    // The entity's own parent namespaces contain its location by construction; they are not
+    // siblings. Every entity is in memory, so the parent chain is resolved from the scan itself.
+    Map<Long, PolarisBaseEntity> entitiesById =
+        allEntities.stream()
+            .collect(Collectors.toMap(PolarisBaseEntity::getId, Function.identity(), (a, b) -> a));
+    Set<Long> ancestorIds = new HashSet<>();
+    for (PolarisBaseEntity ancestor = entitiesById.get(entity.getParentId());
+        ancestor != null && ancestorIds.add(ancestor.getId());
+        ancestor = entitiesById.get(ancestor.getParentId())) {}
+
+    StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+    for (PolarisBaseEntity candidate : allEntities) {
+      if (candidate.getCatalogId() != entity.getCatalogId()) {
+        continue;
+      }
+      // An entity with the same name under the same parent is the entity itself being
+      // re-created: an already-exists condition for the create, not an overlap.
+      if (candidate.getParentId() == entity.getParentId()
+          && candidate.getType() == entity.getType()
+          && candidate.getName().equals(entity.getName())) {
+        continue;
+      }
+      Optional<StorageLocation> candidateLocation =
+          PolarisEntityUtils.asLocationBasedEntity(PolarisEntity.of(candidate))
+              .map(LocationBasedEntity::getBaseLocation)
+              .filter(location -> location != null && !location.isBlank())
+              .map(StorageLocation::of);
+      if (candidateLocation.isEmpty()) {
+        continue;
+      }
+      boolean containsEntity = entityLocation.isChildOf(candidateLocation.get());
+      boolean containedByEntity = candidateLocation.get().isChildOf(entityLocation);
+      // An ancestor may contain the entity, but the entity may not sit at exactly its location.
+      if (containsEntity && !containedByEntity && ancestorIds.contains(candidate.getId())) {
+        continue;
+      }
+      if (containsEntity || containedByEntity) {
+        return Optional.of(Optional.of(candidateLocation.get().toString()));
       }
     }
     return Optional.of(Optional.empty());

@@ -107,6 +107,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Fixed `OPTIMIZED_SIBLING_CHECK` rejecting every entity created under a namespace. The location
+  index lookup returns the new entity's own parent namespaces (their locations contain the new
+  location by construction), and each backend treated them as overlapping siblings, so nested
+  namespace creation and default-location table creation failed with `403 Forbidden`, and
+  re-creating an existing namespace returned `403` instead of `409`. The JDBC, NoSQL, and in-memory
+  implementations of `hasOverlappingSiblings` now exclude the entity's ancestors (when they strictly
+  contain it) and the entity itself before reporting an overlap, matching the legacy sibling check.
+
 - Return HTTP 404 instead of 204 when a generic table or its catalog path disappears after resolution and before deletion.
 
 - Deleting a semantic model now returns HTTP 404 instead of HTTP 500 when the model or its
