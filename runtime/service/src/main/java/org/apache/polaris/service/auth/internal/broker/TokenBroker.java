@@ -66,9 +66,11 @@ public interface TokenBroker {
    *   <li>{@link org.apache.iceberg.exceptions.NotAuthorizedException} — the token is recognized as
    *       Polaris-issued but fails verification (invalid signature, claims, and so on). Callers
    *       must not treat this as “not recognized”; it stops MIXED fallback.
-   *   <li>{@link org.apache.polaris.core.exceptions.PolarisServiceUnavailableException} — a
-   *       transient failure while verifying (for example metastore unavailable). Propagate so
-   *       clients see the shared HTTP 503 contract rather than an authentication failure.
+   *   <li>other runtime failures — if an implementation surfaces a transient error (for example
+   *       {@link org.apache.polaris.core.exceptions.PolarisServiceUnavailableException}), callers
+   *       must propagate it rather than treating it as an authentication failure. Stock {@code
+   *       JWTBroker.verify} does not perform metastore IO; secrets-load unavailability applies on
+   *       the token-exchange path instead.
    * </ul>
    *
    * @return the credential for a valid token recognized by this broker, or {@code null} when the
