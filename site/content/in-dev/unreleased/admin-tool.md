@@ -234,14 +234,17 @@ It is recommended to run the `nosql maintenance-run` command regularly, for exam
 {{< /alert >}}
 
 {{< alert important >}}
-The catalog-history `*-retain` settings now accept a positive integer number of latest commits
-instead of a CEL expression. Each history also has `*-retain-duration` and `*-retain-all`
-settings. Count and duration are combined, retaining commits required by either setting. When
-upgrading, replace `*-retain=false` with `*-retain=1`, `commits < N` with `N`, `commits <= N` with
-`N + 1`, `ageDays < N` with `*-retain-duration=P<N>D`, `ageHours < N` with
-`*-retain-duration=PT<N>H`, `ageMinutes < N` with `*-retain-duration=PT<N>M`, and `true` with
-`*-retain-all=true`. Count and age conditions joined by `||` map to the corresponding count and
-duration settings. The
+Under `polaris.persistence.nosql.maintenance.catalog`, the catalog-history `<history>-retain`
+settings that accepted CEL expressions have been replaced by `retention.<history>.num-commits`,
+`retention.<history>.duration`, and `retention.<history>.all`. Count and duration are combined,
+retaining commits required by either setting. When upgrading, replace `<history>-retain=false` with
+`retention.<history>.num-commits=1`, `commits < N` with
+`retention.<history>.num-commits=N`, and `commits <= N` with
+`retention.<history>.num-commits` set to `N + 1`. Replace `ageDays < N` with
+`retention.<history>.duration=P<N>D`, `ageHours < N` with
+`retention.<history>.duration=PT<N>H`, `ageMinutes < N` with
+`retention.<history>.duration=PT<N>M`, and `true` with `retention.<history>.all=true`. Count and age
+conditions joined by `||` map to the corresponding count and duration settings. The
 `polaris.persistence.nosql.maintenance.catalog.min-retention-duration` setting (default `PT0S`)
 provides an optional global minimum duration for all catalog histories. Set it to at least the
 maximum expected lifetime of ongoing API operations, including pagination tokens, if superseded
