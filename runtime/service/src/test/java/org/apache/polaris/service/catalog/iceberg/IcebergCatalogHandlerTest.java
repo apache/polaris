@@ -90,6 +90,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
@@ -259,6 +260,45 @@ class IcebergCatalogHandlerTest {
     // nor merged into the table config.
     assertThat(response.credentials()).isEmpty();
     assertThat(response.config()).doesNotContainKeys("fake.access.key", "fake.secret.key");
+  }
+
+  /**
+   * Resolving to vended credentials does not guarantee credentials are vended: the storage
+   * integration may return none (for example when it does not support vending). The refresh
+   * endpoint must then be withheld as well, so it never appears without credentials.
+   */
+  @Test
+  void refreshEndpointIsWithheldWhenNoCredentialsAreVended() {
+    Catalog catalog = mockRegisterTableCatalog(false);
+    when(accessDelegationModeResolver.resolve(eq(EnumSet.of(VENDED_CREDENTIALS)), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+    String refreshEndpoint = "v1/catalog/namespaces/ns1/tables/table2/credentials";
+    StorageAccessConfig noCredentials =
+        StorageAccessConfig.builder()
+            .supportsCredentialVending(false)
+            .putExtraProperty(
+                StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
+                refreshEndpoint)
+            .putExtraProperty("s3.endpoint", "http://s3.example.com")
+            .build();
+    when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
+        .thenReturn(noCredentials);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    LoadTableResponse response =
+        handler.registerTable(
+            NS1,
+            registerTableRequest(false),
+            EnumSet.of(VENDED_CREDENTIALS),
+            Optional.of(refreshEndpoint));
+
+    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
+    assertThat(response.credentials()).isEmpty();
+    assertThat(response.config())
+        .doesNotContainKey(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName())
+        .containsEntry("s3.endpoint", "http://s3.example.com");
   }
 
   /** The header is optional, so even a request for {@code remote-signing} alone gets the table. */

@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogUtil;
@@ -118,6 +119,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
@@ -162,6 +164,13 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("immutables:incompat")
 public abstract class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
+
+  /** Config keys that point clients at the credential-refresh endpoint, one per storage type. */
+  private static final Set<String> REFRESH_CREDENTIALS_ENDPOINT_PROPERTIES =
+      Set.of(
+          StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
+          StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
+          StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName());
 
   protected abstract PolarisDiagnostics diagnostics();
 
@@ -1195,8 +1204,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
 
       boolean vendCredentials = VENDED_CREDENTIALS.equals(delegationMode.orElse(null));
-      // Only advertise the credential-refresh endpoint when credentials are actually vended; a
-      // response without delegated access must look like one for a request without the header.
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider()
               .getStorageAccessConfig(
@@ -1206,24 +1213,33 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   vendCredentials ? refreshCredentialsEndpoint : Optional.empty(),
                   resolvedStoragePath);
       Map<String, String> credentialConfig = storageAccessConfig.credentials();
-      if (vendCredentials) {
-        if (!credentialConfig.isEmpty()) {
-          responseBuilder.addAllConfig(credentialConfig);
-          responseBuilder.addCredential(
-              ImmutableCredential.builder()
-                  .prefix(tableMetadata.location())
-                  .config(credentialConfig)
-                  .build());
-        } else {
-          Boolean skipCredIndirection =
-              realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
-          Preconditions.checkArgument(
-              !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
-              "Credential vending was requested for table %s, but no credentials are available",
-              tableIdentifier);
-        }
+      boolean credentialsVended = vendCredentials && !credentialConfig.isEmpty();
+      if (credentialsVended) {
+        responseBuilder.addAllConfig(credentialConfig);
+        responseBuilder.addCredential(
+            ImmutableCredential.builder()
+                .prefix(tableMetadata.location())
+                .config(credentialConfig)
+                .build());
+      } else if (vendCredentials) {
+        Boolean skipCredIndirection =
+            realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+        Preconditions.checkArgument(
+            !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
+            "Credential vending was requested for table %s, but no credentials are available",
+            tableIdentifier);
       }
-      responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
+      // The credential-refresh endpoint only makes sense next to vended credentials. Keep the two
+      // in sync: a response without credentials (delegation not resolved, or the storage
+      // integration vended none) must not advertise a refresh endpoint either.
+      Map<String, String> extraProperties = storageAccessConfig.extraProperties();
+      if (!credentialsVended) {
+        extraProperties =
+            extraProperties.entrySet().stream()
+                .filter(e -> !REFRESH_CREDENTIALS_ENDPOINT_PROPERTIES.contains(e.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+      }
+      responseBuilder.addAllConfig(extraProperties);
     }
 
     return responseBuilder;
@@ -1820,7 +1836,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // TODO remove when remote signing is implemented
     if (resolvedMode.orElse(null) == AccessDelegationMode.REMOTE_SIGNING) {
-      LOGGER.info(
+      LOGGER.debug(
           "Client requested access delegation modes {} but only {} is viable for catalog {}, "
               + "which is not supported; returning the table without delegated access",
           requestedModes,
