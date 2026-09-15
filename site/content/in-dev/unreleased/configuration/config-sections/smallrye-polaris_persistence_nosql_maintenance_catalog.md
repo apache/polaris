@@ -25,7 +25,7 @@ build:
 
 No SQL persistence implementation of Polaris stores a history of changes per kind of object  (principals, principal roles, grants, immediate tasks, catalog roles and catalog state).  
 
-(`#retention()`) provides independent controls for each kind of history. Count and  duration controls are combined, retaining commits required by either one. The per-history  controls default to one commit, zero duration, and retain-all disabled.   
+The per-history retention settings provide independent controls for each kind of history.  Count and duration controls are combined, retaining commits required by either one. The  per-history controls default to one commit, zero duration, and retain-all disabled.   
 
 (`#minRetentionDuration()`) provides a global minimum retention duration for all kinds of  history.
 
