@@ -2862,24 +2862,22 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
-  @Test
-  public void testMalformedPageTokenIsBadRequest() {
-    // Valid url-safe base64 that is not a serialized page token. Client input, so the server
-    // must answer 400, not 500.
-    for (String badToken : List.of("AAAA", "aGVsbG8gd29ybGQ=", "%%%not-base64%%%")) {
-      try (Response response =
-          catalogApi
-              .request(
-                  "v1/{cat}/namespaces",
-                  Map.of("cat", currentCatalogName),
-                  Map.of("pageToken", badToken, "pageSize", "5"))
-              .get()) {
-        assertThat(response)
-            .as("pageToken=" + badToken)
-            .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
-            .extracting(r -> r.readEntity(ErrorResponse.class))
-            .returns("Invalid page token", ErrorResponse::message);
-      }
+  // Valid url-safe base64 that is not a serialized page token, plain text, and not base64 at all.
+  // Client input, so the server must answer 400, not 500.
+  @ParameterizedTest
+  @ValueSource(strings = {"AAAA", "aGVsbG8gd29ybGQ=", "%%%not-base64%%%"})
+  public void testMalformedPageTokenIsBadRequest(String badToken) {
+    try (Response response =
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces",
+                Map.of("cat", currentCatalogName),
+                Map.of("pageToken", badToken, "pageSize", "5"))
+            .get()) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+          .extracting(r -> r.readEntity(ErrorResponse.class))
+          .returns("Invalid page token", ErrorResponse::message);
     }
   }
 

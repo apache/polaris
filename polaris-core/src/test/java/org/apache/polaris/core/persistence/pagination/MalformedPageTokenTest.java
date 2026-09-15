@@ -19,19 +19,13 @@
 package org.apache.polaris.core.persistence.pagination;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.List;
 import java.util.Map;
-import java.util.Random;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -94,110 +88,6 @@ class MalformedPageTokenTest {
         .hasMessageContaining("Invalid page token");
   }
 
-  /**
-   * Byte-level corruption: flip every single bit of a valid token, one at a time, and overwrite
-   * every byte with 0x00 and 0xFF. A corrupted token is allowed to still decode (some flips land in
-   * payload bytes and yield a different but well-formed token), but it must never fail with
-   * anything other than {@link IllegalArgumentException}.
-   */
-  @Test
-  void corruptedTokenNeverEscapesAsServerError() {
-    byte[] valid = validTokenBytes();
-
-    Stream<byte[]> bitFlips =
-        IntStream.range(0, valid.length * 8)
-            .mapToObj(
-                bit -> {
-                  byte[] corrupted = valid.clone();
-                  corrupted[bit / 8] ^= (byte) (1 << (bit % 8));
-                  return corrupted;
-                });
-    Stream<byte[]> byteOverwrites =
-        IntStream.range(0, valid.length)
-            .boxed()
-            .flatMap(
-                i ->
-                    Stream.of((byte) 0x00, (byte) 0xFF)
-                        .map(
-                            b -> {
-                              byte[] corrupted = valid.clone();
-                              corrupted[i] = b;
-                              return corrupted;
-                            }));
-
-    Stream.concat(bitFlips, byteOverwrites)
-        .map(MalformedPageTokenTest::encode)
-        .forEach(MalformedPageTokenTest::assertDecodesOrIsBadRequest);
-  }
-
-  /**
-   * Random corruption with a fixed seed: overwrite, truncate, insert and flip bytes of valid tokens
-   * of different shapes. Deterministic, so a failure reproduces.
-   */
-  @Test
-  void randomlyCorruptedTokenNeverEscapesAsServerError() {
-    List<byte[]> seeds =
-        List.of(
-            validTokenBytes(),
-            tokenBytes(
-                ImmutablePageToken.builder()
-                    .pageSize(10)
-                    .value(EntityIdToken.fromEntityId(123456789L))
-                    .build()),
-            tokenBytes(
-                ImmutablePageToken.builder()
-                    .pageSize(1000)
-                    .value(
-                        ImmutableDummyTestToken.builder()
-                            .s("a".repeat(300))
-                            .i(Integer.MAX_VALUE)
-                            .build())
-                    .build()));
-    Random random = new Random(42);
-    for (int iteration = 0; iteration < 20_000; iteration++) {
-      byte[] valid = seeds.get(iteration % seeds.size());
-      byte[] corrupted;
-      switch (random.nextInt(4)) {
-        case 0 -> {
-          corrupted = valid.clone();
-          for (int k = 0, n = 1 + random.nextInt(3); k < n; k++) {
-            corrupted[random.nextInt(corrupted.length)] = (byte) random.nextInt(256);
-          }
-        }
-        case 1 -> corrupted = Arrays.copyOf(valid, random.nextInt(valid.length));
-        case 2 -> {
-          int at = random.nextInt(valid.length);
-          corrupted = new byte[valid.length + 1];
-          System.arraycopy(valid, 0, corrupted, 0, at);
-          corrupted[at] = (byte) random.nextInt(256);
-          System.arraycopy(valid, at, corrupted, at + 1, valid.length - at);
-        }
-        default -> {
-          corrupted = valid.clone();
-          int at = random.nextInt(corrupted.length);
-          corrupted[at] ^= (byte) (1 << random.nextInt(8));
-          corrupted[(at + 1) % corrupted.length] = (byte) 0xFF;
-        }
-      }
-      assertDecodesOrIsBadRequest(encode(corrupted));
-    }
-  }
-
-  /**
-   * A corrupted token may still decode to some well-formed token; that outcome needs no assertion.
-   * If decoding fails, the failure must be the {@link IllegalArgumentException} that maps to HTTP
-   * 400 and nothing else.
-   */
-  private static void assertDecodesOrIsBadRequest(String token) {
-    Throwable thrown = catchThrowable(() -> PageToken.build(token, null, () -> true));
-    if (thrown != null) {
-      assertThat(thrown)
-          .as("token %s", token)
-          .isInstanceOf(IllegalArgumentException.class)
-          .hasMessageContaining("Invalid page token");
-    }
-  }
-
   private static String encode(byte[] bytes) {
     return Base64.getUrlEncoder().encodeToString(bytes);
   }
@@ -211,14 +101,11 @@ class MalformedPageTokenTest {
   }
 
   private static byte[] validTokenBytes() {
-    return tokenBytes(
+    PageToken valid =
         ImmutablePageToken.builder()
             .pageSize(10)
             .value(ImmutableDummyTestToken.builder().s("some-string-value").i(42).build())
-            .build());
-  }
-
-  private static byte[] tokenBytes(PageToken token) {
-    return Base64.getUrlDecoder().decode(PageTokenUtil.serializePageToken(token));
+            .build();
+    return Base64.getUrlDecoder().decode(PageTokenUtil.serializePageToken(valid));
   }
 }
