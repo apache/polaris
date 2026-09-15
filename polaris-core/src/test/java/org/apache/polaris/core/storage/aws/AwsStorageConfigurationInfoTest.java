@@ -207,7 +207,7 @@ public class AwsStorageConfigurationInfoTest {
 
   private static ImmutableAwsStorageConfigurationInfo.Builder r2Builder() {
     return AwsStorageConfigurationInfo.builder()
-        .credentialIssuer(S3CredentialIssuer.CLOUDFLARE_R2)
+        .credentialVendingMechanism(S3CredentialVendingMechanism.CLOUDFLARE_R2)
         .endpoint(R2_ENDPOINT)
         .pathStyleAccess(true)
         .region("auto")
@@ -215,11 +215,11 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
-  public void testCredentialIssuerDefaultsToSts() {
+  public void testCredentialVendingMechanismDefaultsToSts() {
     AwsStorageConfigurationInfo config =
         newBuilder().addAllowedLocation("s3://bucket/path/").build();
-    assertThat(config.getCredentialIssuer()).isEqualTo(S3CredentialIssuer.STS);
-    // An upstream-shaped row with no credentialIssuer field reads back as STS.
+    assertThat(config.getCredentialVendingMechanism()).isEqualTo(S3CredentialVendingMechanism.STS);
+    // An upstream-shaped row with no credentialVendingMechanism field reads back as STS.
     String legacyRow =
         "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\","
             + "\"allowedLocations\":[\"s3://bucket/path/\"],"
@@ -228,8 +228,55 @@ public class AwsStorageConfigurationInfoTest {
     PolarisStorageConfigurationInfo deserialized =
         PolarisStorageConfigurationInfo.deserialize(legacyRow);
     assertThat(deserialized).isInstanceOf(AwsStorageConfigurationInfo.class);
-    assertThat(((AwsStorageConfigurationInfo) deserialized).getCredentialIssuer())
-        .isEqualTo(S3CredentialIssuer.STS);
+    assertThat(((AwsStorageConfigurationInfo) deserialized).getCredentialVendingMechanism())
+        .isEqualTo(S3CredentialVendingMechanism.STS);
+  }
+
+  @Test
+  void blankMechanismIsRejected() {
+    assertThatThrownBy(
+            () ->
+                AwsStorageConfigurationInfo.builder()
+                    .credentialVendingMechanism(" ")
+                    .addAllowedLocation("s3://bucket/")
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("credentialVendingMechanism must not be blank");
+  }
+
+  @Test
+  void unknownMechanismIsCarriedByTheModel() {
+    assertThat(
+            AwsStorageConfigurationInfo.builder()
+                .credentialVendingMechanism("DOWNSTREAM_MECHANISM")
+                .addAllowedLocation("s3://bucket/")
+                .build()
+                .getCredentialVendingMechanism())
+        .isEqualTo("DOWNSTREAM_MECHANISM");
+  }
+
+  @Test
+  void aPersistedRowWithoutTheKeyReadsAsSts() throws Exception {
+    String json =
+        "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\","
+            + "\"allowedLocations\":[\"s3://bucket/\"]}";
+    AwsStorageConfigurationInfo info =
+        (AwsStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(json);
+    assertThat(info.getCredentialVendingMechanism()).isEqualTo(S3CredentialVendingMechanism.STS);
+  }
+
+  @Test
+  void aPersistedRowWithTheKeyReadsItBack() throws Exception {
+    String json =
+        "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\","
+            + "\"allowedLocations\":[\"s3://bucket/\"],"
+            + "\"credentialVendingMechanism\":\"CLOUDFLARE_R2\",\"endpoint\":"
+            + "\"https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com\","
+            + "\"pathStyleAccess\":true,\"region\":\"auto\"}";
+    AwsStorageConfigurationInfo info =
+        (AwsStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(json);
+    assertThat(info.getCredentialVendingMechanism())
+        .isEqualTo(S3CredentialVendingMechanism.CLOUDFLARE_R2);
   }
 
   @Test
@@ -239,7 +286,7 @@ public class AwsStorageConfigurationInfoTest {
     assertThat(endpoint.accountId()).isEqualTo(R2_ACCOUNT);
     assertThat(endpoint.host()).isEqualTo(R2_ACCOUNT + ".r2.cloudflarestorage.com");
     String json = config.serialize();
-    assertThat(json).contains("\"credentialIssuer\":\"CLOUDFLARE_R2\"");
+    assertThat(json).contains("\"credentialVendingMechanism\":\"CLOUDFLARE_R2\"");
     assertThat(json).doesNotContain("cloudflareR2Endpoint");
     assertThat(PolarisStorageConfigurationInfo.deserialize(json)).isEqualTo(config);
   }
@@ -304,7 +351,7 @@ public class AwsStorageConfigurationInfoTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("empty path segment")
         .hasMessageContaining(location);
-    // The guard is issuer-conditioned: an STS config with the same location is untouched.
+    // The guard is mechanism-conditioned: an STS config with the same location is untouched.
     assertThat(newBuilder().allowedLocations(List.of(location)).build().getAllowedLocations())
         .containsExactly(location);
   }

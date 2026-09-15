@@ -51,7 +51,6 @@ import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.aws.S3CredentialIssuer;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.jspecify.annotations.NonNull;
@@ -200,16 +199,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         .setStsUnavailable(awsConfig.getStsUnavailable())
         .setEndpointInternal(awsConfig.getEndpointInternal())
         .setKmsUnavailable(awsConfig.getKmsUnavailable())
-        .setCredentialIssuer(
-            AwsStorageConfigInfo.CredentialIssuerEnum.valueOf(
-                awsConfig.getCredentialIssuer().name()))
+        .setCredentialVendingMechanism(awsConfig.getCredentialVendingMechanism())
         .build();
-  }
-
-  /** The core issuer for an API model; an absent or null issuer means STS, today's behaviour. */
-  public static S3CredentialIssuer credentialIssuerOf(AwsStorageConfigInfo model) {
-    AwsStorageConfigInfo.CredentialIssuerEnum issuer = model.getCredentialIssuer();
-    return issuer == null ? S3CredentialIssuer.STS : S3CredentialIssuer.valueOf(issuer.name());
   }
 
   private ConnectionConfigInfo getConnectionInfo(
@@ -429,7 +420,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return AwsStorageConfigurationInfo.builder()
           .allowedLocations(allowedLocations)
           .storageName(awsConfigModel.getStorageName())
-          .credentialIssuer(credentialIssuerOf(awsConfigModel))
+          .credentialVendingMechanism(
+              PolarisStorageConfigurationInfo.credentialVendingMechanismOf(awsConfigModel))
           .roleARN(awsConfigModel.getRoleArn())
           .encryptionKeys(encryptionKeys)
           .decryptionKeys(awsConfigModel.getDecryptionKeys())

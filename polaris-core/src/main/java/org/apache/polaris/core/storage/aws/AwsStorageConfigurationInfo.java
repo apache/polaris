@@ -144,18 +144,22 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   public abstract @Nullable Boolean getPathStyleAccess();
 
   /**
-   * How subscoped credentials are issued for this catalog. Every row written before this field
-   * existed lacks it and therefore reads as {@link S3CredentialIssuer#STS}, today's behaviour.
+   * The mechanism that vends credentials for this catalog: {@link S3CredentialVendingMechanism#STS}
+   * (AssumeRole, the default) or another identifier the server provides, such as {@link
+   * S3CredentialVendingMechanism#CLOUDFLARE_R2}. A row persisted before this field existed lacks it
+   * and therefore reads as STS, today's behaviour. The value is carried as is; the realm allowlist
+   * and the mechanism registry decide whether it is accepted.
    */
   @Value.Default
-  public S3CredentialIssuer getCredentialIssuer() {
-    return S3CredentialIssuer.STS;
+  public String getCredentialVendingMechanism() {
+    return S3CredentialVendingMechanism.STS;
   }
 
   /**
-   * The parsed and validated R2 endpoint. Meaningful only when {@link #getCredentialIssuer()} is
-   * {@link S3CredentialIssuer#CLOUDFLARE_R2}; the same parse validates the config and, at vend
-   * time, supplies the token subject and audience, so the two cannot disagree.
+   * The parsed and validated R2 endpoint. Meaningful only when {@link
+   * #getCredentialVendingMechanism()} is {@link S3CredentialVendingMechanism#CLOUDFLARE_R2}; the
+   * same parse validates the config and, at vend time, supplies the token subject and audience, so
+   * the two cannot disagree.
    */
   @JsonIgnore
   public CloudflareR2Endpoint getCloudflareR2Endpoint() {
@@ -172,7 +176,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Override
   protected void validatePrefixForStorageType(String loc) {
     super.validatePrefixForStorageType(loc);
-    if (getCredentialIssuer() == S3CredentialIssuer.CLOUDFLARE_R2) {
+    if (S3CredentialVendingMechanism.CLOUDFLARE_R2.equals(getCredentialVendingMechanism())) {
       String path = loc.substring(loc.indexOf("://") + 3);
       if (path.contains("//")) {
         throw new IllegalArgumentException(
@@ -235,6 +239,9 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Override
   protected void check() {
     super.check();
+    if (getCredentialVendingMechanism().isBlank()) {
+      throw new IllegalArgumentException("credentialVendingMechanism must not be blank");
+    }
     String arn = getRoleARN();
     validateArn(arn);
     if (arn != null) {
@@ -243,7 +250,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
         throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
       }
     }
-    if (getCredentialIssuer() == S3CredentialIssuer.CLOUDFLARE_R2) {
+    if (S3CredentialVendingMechanism.CLOUDFLARE_R2.equals(getCredentialVendingMechanism())) {
       checkCloudflareR2();
     }
   }
@@ -254,11 +261,11 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     getCloudflareR2Endpoint(); // throws with a message naming 'endpoint'
     if (!Boolean.TRUE.equals(getPathStyleAccess())) {
       throw new IllegalArgumentException(
-          "pathStyleAccess must be true for the CLOUDFLARE_R2 credential issuer");
+          "pathStyleAccess must be true for the CLOUDFLARE_R2 credential vending mechanism");
     }
     if (!"auto".equals(getRegion())) {
       throw new IllegalArgumentException(
-          "region must be 'auto' for the CLOUDFLARE_R2 credential issuer");
+          "region must be 'auto' for the CLOUDFLARE_R2 credential vending mechanism");
     }
     requireAbsent("roleArn", getRoleARN());
     requireAbsent("externalId", getExternalId());
@@ -276,14 +283,14 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   private static void requireAbsent(String field, @Nullable Object value) {
     if (value != null) {
       throw new IllegalArgumentException(
-          field + " must not be set for the CLOUDFLARE_R2 credential issuer");
+          field + " must not be set for the CLOUDFLARE_R2 credential vending mechanism");
     }
   }
 
   private static void requireAbsentList(String field, @Nullable List<String> value) {
     if (value != null && !value.isEmpty()) {
       throw new IllegalArgumentException(
-          field + " must not be set for the CLOUDFLARE_R2 credential issuer");
+          field + " must not be set for the CLOUDFLARE_R2 credential vending mechanism");
     }
   }
 

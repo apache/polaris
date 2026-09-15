@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -37,6 +38,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.immutables.value.Value;
@@ -115,6 +117,12 @@ public abstract class PolarisStorageConfigurationInfo {
    */
   public static PolarisStorageConfigurationInfo deserialize(final @NonNull String jsonStr) {
     return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
+  }
+
+  /** The core value for an S3 API model; an absent or blank value means STS, today's behaviour. */
+  public static String credentialVendingMechanismOf(AwsStorageConfigInfo model) {
+    String value = model.getCredentialVendingMechanism();
+    return value == null || value.isBlank() ? S3CredentialVendingMechanism.STS : value;
   }
 
   public static Optional<LocationRestrictions> forEntityPath(

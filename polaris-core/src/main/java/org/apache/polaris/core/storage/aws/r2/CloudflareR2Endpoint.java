@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
  * <p>The whole string is matched: userinfo, a port, a path, a query or a fragment all fail. The
  * account id (32 lowercase hex characters) is the subject of vended credentials and the host is
  * their audience, so both are read from a string that has already been proven to be an R2 endpoint;
- * the endpoint is never parsed to detect R2, the issuer declares it.
+ * the endpoint is never parsed to detect R2, the credential vending mechanism declares it.
  *
  * @param accountId the Cloudflare account id, the first host label
  * @param jurisdiction the optional jurisdiction label, one of {@link #KNOWN_JURISDICTIONS}
@@ -62,7 +62,7 @@ public record CloudflareR2Endpoint(
   public static CloudflareR2Endpoint parse(@Nullable String endpoint) {
     if (endpoint == null) {
       throw new IllegalArgumentException(
-          "endpoint is required for the CLOUDFLARE_R2 credential issuer; expected"
+          "endpoint is required for the CLOUDFLARE_R2 credential vending mechanism; expected"
               + " https://<accountId>[.<jurisdiction>]."
               + HOST_SUFFIX);
     }
