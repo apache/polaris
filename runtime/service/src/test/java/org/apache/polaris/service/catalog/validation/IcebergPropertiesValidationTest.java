@@ -72,14 +72,15 @@ class IcebergPropertiesValidationTest {
     assertThatThrownBy(
             () ->
                 IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-                    realmConfig, "CLOUDFLARE_R2"))
+                    realmConfig, "SECOND_MECHANISM"))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
+        .hasMessage(
+            "S3 credential vending mechanism SECOND_MECHANISM is not enabled in this realm");
   }
 
   @Test
   void theListHasNoImplicitMember() {
-    allow("CLOUDFLARE_R2");
+    allow("SECOND_MECHANISM");
     assertThatThrownBy(
             () ->
                 IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
@@ -90,8 +91,8 @@ class IcebergPropertiesValidationTest {
 
   @Test
   void mechanismCheckAllowsAnAllowlistedInstalledMechanism() {
-    allow("STS", "CLOUDFLARE_R2");
-    S3CredentialVendingMechanisms mechanisms = installed("STS", "CLOUDFLARE_R2");
+    allow("STS", "SECOND_MECHANISM");
+    S3CredentialVendingMechanisms mechanisms = installed("STS", "SECOND_MECHANISM");
     AwsStorageConfigurationInfo sts =
         AwsStorageConfigurationInfo.builder()
             .roleARN("arn:aws:iam::123456789012:role/r")
@@ -106,16 +107,16 @@ class IcebergPropertiesValidationTest {
 
   @Test
   void mechanismCheckRejectsAnAllowlistedButUninstalledMechanism() {
-    allow("STS", "CLOUDFLARE_R2");
+    allow("STS", "SECOND_MECHANISM");
     S3CredentialVendingMechanisms mechanisms = installed("STS");
-    AwsStorageConfigurationInfo r2 = r2Config();
+    AwsStorageConfigurationInfo secondMechanism = secondMechanismConfig();
     assertThatThrownBy(
             () ->
                 IcebergPropertiesValidation.validateS3CredentialVendingMechanism(
-                    realmConfig, r2, mechanisms))
+                    realmConfig, secondMechanism, mechanisms))
         .isInstanceOf(ValidationException.class)
         .hasMessage(
-            "S3 credential vending mechanism CLOUDFLARE_R2 is not available in this server");
+            "S3 credential vending mechanism SECOND_MECHANISM is not available in this server");
   }
 
   @Test
@@ -123,19 +124,20 @@ class IcebergPropertiesValidationTest {
     allow("STS");
     // Installed in this server, but not allowlisted in this realm: still refused, and with the
     // realm's message, not the registry's.
-    S3CredentialVendingMechanisms mechanisms = installed("STS", "CLOUDFLARE_R2");
-    AwsStorageConfigurationInfo r2 = r2Config();
+    S3CredentialVendingMechanisms mechanisms = installed("STS", "SECOND_MECHANISM");
+    AwsStorageConfigurationInfo secondMechanism = secondMechanismConfig();
     assertThatThrownBy(
             () ->
                 IcebergPropertiesValidation.validateS3CredentialVendingMechanism(
-                    realmConfig, r2, mechanisms))
-        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
+                    realmConfig, secondMechanism, mechanisms))
+        .hasMessage(
+            "S3 credential vending mechanism SECOND_MECHANISM is not enabled in this realm");
   }
 
   @Test
   void storageConfigOverloadsIgnoreNonS3AndNull() {
-    allow("CLOUDFLARE_R2"); // would reject STS if consulted
-    S3CredentialVendingMechanisms mechanisms = installed("CLOUDFLARE_R2");
+    allow("SECOND_MECHANISM"); // would reject STS if consulted
+    S3CredentialVendingMechanisms mechanisms = installed("SECOND_MECHANISM");
     FileStorageConfigurationInfo file =
         FileStorageConfigurationInfo.builder().addAllowedLocation("file:///tmp/x/").build();
     assertThatCode(
@@ -163,21 +165,19 @@ class IcebergPropertiesValidationTest {
   @Test
   void storageConfigOverloadReadsTheMechanismFromAnS3Config() {
     allow("STS");
-    AwsStorageConfigurationInfo r2 = r2Config();
+    AwsStorageConfigurationInfo secondMechanism = secondMechanismConfig();
     assertThatThrownBy(
             () ->
                 IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-                    realmConfig, r2))
-        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
+                    realmConfig, secondMechanism))
+        .hasMessage(
+            "S3 credential vending mechanism SECOND_MECHANISM is not enabled in this realm");
   }
 
-  private static AwsStorageConfigurationInfo r2Config() {
+  private static AwsStorageConfigurationInfo secondMechanismConfig() {
     return AwsStorageConfigurationInfo.builder()
-        .credentialVendingMechanism(S3CredentialVendingMechanism.CLOUDFLARE_R2)
-        .endpoint("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com")
-        .pathStyleAccess(true)
-        .region("auto")
-        .addAllowedLocation("s3://b/p/")
+        .credentialVendingMechanism("SECOND_MECHANISM")
+        .addAllowedLocation("s3://bucket/prefix/")
         .build();
   }
 }

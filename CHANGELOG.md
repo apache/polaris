@@ -30,8 +30,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Highlights
 
 - S3 storage configurations gain an optional string field, `credentialVendingMechanism` (`STS`,
-  the default, or a mechanism the server provides, such as `CLOUDFLARE_R2`). Mechanisms are CDI
-  beans discovered by their `@Identifier` at runtime; a realm lists the ones it accepts in the new
+  the default, or a mechanism the server provides). Mechanisms are CDI beans discovered by their
+  `@Identifier` at runtime; a realm lists the ones it accepts in the new
   `SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS` feature (default `[STS]`), enforced at catalog
   create and update, at catalog initialization on every request, when storage access is resolved,
   and in the storage integration provider. A listed mechanism with no implementation in the server

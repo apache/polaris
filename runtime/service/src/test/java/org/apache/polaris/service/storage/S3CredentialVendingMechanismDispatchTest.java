@@ -47,8 +47,6 @@ import software.amazon.awssdk.services.sts.StsClient;
 class S3CredentialVendingMechanismDispatchTest {
 
   private static final RealmContext REALM = () -> "test-realm";
-  private static final String R2_ENDPOINT =
-      "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com";
 
   private static RealmConfig realmConfig(List<String> mechanisms) {
     Map<String, Object> config = Map.of("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", mechanisms);
@@ -89,12 +87,10 @@ class S3CredentialVendingMechanismDispatchTest {
         .build();
   }
 
-  private static AwsStorageConfigInfo r2() {
+  private static AwsStorageConfigInfo uninstalled() {
     return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-        .setCredentialVendingMechanism(S3CredentialVendingMechanism.CLOUDFLARE_R2)
-        .setEndpoint(R2_ENDPOINT)
-        .setPathStyleAccess(true)
-        .setRegion("auto")
+        .setCredentialVendingMechanism("UNINSTALLED_MECHANISM")
+        .setRoleArn("arn:aws:iam::123456789012:role/r")
         .setAllowedLocations(List.of("s3://bucket/base/"))
         .build();
   }
@@ -119,19 +115,20 @@ class S3CredentialVendingMechanismDispatchTest {
 
   @Test
   void disallowedMechanismIsRejectedBeforeDispatch() {
-    RealmConfig rc = realmConfig(List.of("CLOUDFLARE_R2"));
+    RealmConfig rc = realmConfig(List.of("SECOND_MECHANISM"));
     assertThatThrownBy(() -> provider(rc).getStorageIntegration(List.of(catalog(rc, sts()))))
         .isInstanceOf(ValidationException.class)
         .hasMessage("S3 credential vending mechanism STS is not enabled in this realm");
   }
 
   @Test
-  void allowlistedButUninstalledCloudflareR2IsNotAvailable() {
-    RealmConfig rc = realmConfig(List.of("STS", "CLOUDFLARE_R2"));
-    assertThatThrownBy(() -> provider(rc).getStorageIntegration(List.of(catalog(rc, r2()))))
+  void allowlistedButUninstalledMechanismIsNotAvailable() {
+    RealmConfig rc = realmConfig(List.of("STS", "UNINSTALLED_MECHANISM"));
+    assertThatThrownBy(
+            () -> provider(rc).getStorageIntegration(List.of(catalog(rc, uninstalled()))))
         .isInstanceOf(ValidationException.class)
         .hasMessage(
-            "S3 credential vending mechanism CLOUDFLARE_R2 is not available in this server");
+            "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server");
   }
 
   @Test

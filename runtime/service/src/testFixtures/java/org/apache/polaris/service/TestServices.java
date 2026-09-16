@@ -32,6 +32,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -68,6 +69,8 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
@@ -149,6 +152,8 @@ public record TestServices(
     PolarisEventDispatcher polarisEventDispatcher,
     PolarisEventMetadataFactory eventMetadataFactory,
     StorageAccessConfigProvider storageAccessConfigProvider,
+    Map<String, S3CredentialVendingMechanism> installedMechanisms,
+    S3CredentialVendingMechanisms vendingMechanisms,
     IdempotencyRequestContext idempotencyRequestContext) {
 
   public PolarisCatalogsApi catalogsApi() {
@@ -184,7 +189,7 @@ public record TestServices(
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient;
-    private Map<String, S3CredentialVendingMechanism> vendingMechanisms;
+    private Map<String, S3CredentialVendingMechanism> additionalVendingMechanisms = Map.of();
     private boolean useEventDelegator = false;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
     private UnaryOperator<PolarisMetaStoreManager> metaStoreManagerDecorator =
@@ -238,8 +243,14 @@ public record TestServices(
       return this;
     }
 
-    public Builder vendingMechanisms(Map<String, S3CredentialVendingMechanism> vendingMechanisms) {
-      this.vendingMechanisms = vendingMechanisms;
+    /**
+     * Mechanisms installed in addition to the defaults; an entry with a default identifier replaces
+     * the default. The map behind the registry stays mutable and is exposed as {@code
+     * installedMechanisms()}, so a test can uninstall a mechanism after a catalog selected it.
+     */
+    public Builder additionalVendingMechanisms(
+        Map<String, S3CredentialVendingMechanism> additionalVendingMechanisms) {
+      this.additionalVendingMechanisms = additionalVendingMechanisms;
       return this;
     }
 
@@ -273,13 +284,12 @@ public record TestServices(
 
       RealmConfig realmConfig = new RealmConfigImpl(configurationSource, realmContext);
 
-      Map<String, S3CredentialVendingMechanism> vendingMechanismsMap =
-          this.vendingMechanisms != null
-              ? this.vendingMechanisms
-              : Map.of(
-                  "STS",
-                  new StsCredentialVendingMechanism(
-                      (destination) -> stsClient, Optional.empty(), storageCredentialCache));
+      Map<String, S3CredentialVendingMechanism> vendingMechanismsMap = new HashMap<>();
+      vendingMechanismsMap.put(
+          S3CredentialVendingMechanism.STS,
+          new StsCredentialVendingMechanism(
+              (destination) -> stsClient, Optional.empty(), storageCredentialCache));
+      vendingMechanismsMap.putAll(additionalVendingMechanisms);
       S3CredentialVendingMechanisms vendingMechanisms =
           new S3CredentialVendingMechanisms(vendingMechanismsMap);
 
@@ -610,6 +620,8 @@ public record TestServices(
           polarisEventDispatcher,
           eventMetadataFactory,
           storageAccessConfigProvider,
+          vendingMechanismsMap,
+          vendingMechanisms,
           idempotencyRequestContext);
     }
   }
@@ -631,5 +643,21 @@ public record TestServices(
         realmContext,
         metaStoreManagerFactory.getOrCreateSession(realmContext),
         configurationSource);
+  }
+
+  /**
+   * A mechanism that vends a fixed fake credential triple: for tests that need an installed second
+   * mechanism. A Mockito mock of the integration would return null from getStorageAccessConfig and
+   * break table creation whenever credential subscoping is not skipped.
+   */
+  public static S3CredentialVendingMechanism fakeMechanism() {
+    return (storageConfig, realmConfig) ->
+        (grants, refreshEndpoint, context) ->
+            StorageAccessConfig.builder()
+                .putCredential(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "FAKE_KEY")
+                .putCredential(
+                    StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "FAKE_SECRET")
+                .putCredential(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "FAKE_TOKEN")
+                .build();
   }
 }

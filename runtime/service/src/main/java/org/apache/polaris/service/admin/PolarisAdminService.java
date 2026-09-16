@@ -132,7 +132,6 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -956,13 +955,6 @@ public class PolarisAdminService {
             newAwsConfig.getCredentialVendingMechanism())) {
           throw new BadRequestException(
               "Cannot modify credential vending mechanism in storage config from %s to %s",
-              currentStorageConfig, newStorageConfig);
-        }
-        if (S3CredentialVendingMechanism.CLOUDFLARE_R2.equals(
-                newAwsConfig.getCredentialVendingMechanism())
-            && !Objects.equals(currentAwsConfig.getEndpoint(), newAwsConfig.getEndpoint())) {
-          throw new BadRequestException(
-              "Cannot modify endpoint of a CLOUDFLARE_R2 storage config from %s to %s",
               currentStorageConfig, newStorageConfig);
         }
       }

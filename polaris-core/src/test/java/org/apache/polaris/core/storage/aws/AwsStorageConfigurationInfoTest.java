@@ -26,13 +26,11 @@ import java.net.URI;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.aws.r2.CloudflareR2Endpoint;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 public class AwsStorageConfigurationInfoTest {
 
@@ -202,18 +200,6 @@ public class AwsStorageConfigurationInfoTest {
         Arguments.of("urn:sgws:identity::12345:group/foo-bar-abcdef", "12345", "sgws"));
   }
 
-  private static final String R2_ACCOUNT = "0123456789abcdef0123456789abcdef";
-  private static final String R2_ENDPOINT = "https://" + R2_ACCOUNT + ".r2.cloudflarestorage.com";
-
-  private static ImmutableAwsStorageConfigurationInfo.Builder r2Builder() {
-    return AwsStorageConfigurationInfo.builder()
-        .credentialVendingMechanism(S3CredentialVendingMechanism.CLOUDFLARE_R2)
-        .endpoint(R2_ENDPOINT)
-        .pathStyleAccess(true)
-        .region("auto")
-        .addAllowedLocation("s3://bucket/prefix/");
-  }
-
   @Test
   public void testCredentialVendingMechanismDefaultsToSts() {
     AwsStorageConfigurationInfo config =
@@ -259,96 +245,9 @@ public class AwsStorageConfigurationInfoTest {
     String json =
         "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\","
             + "\"allowedLocations\":[\"s3://bucket/\"],"
-            + "\"credentialVendingMechanism\":\"CLOUDFLARE_R2\",\"endpoint\":"
-            + "\"https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com\","
-            + "\"pathStyleAccess\":true,\"region\":\"auto\"}";
+            + "\"credentialVendingMechanism\":\"DOWNSTREAM_MECHANISM\"}";
     AwsStorageConfigurationInfo info =
         (AwsStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(json);
-    assertThat(info.getCredentialVendingMechanism())
-        .isEqualTo(S3CredentialVendingMechanism.CLOUDFLARE_R2);
-  }
-
-  @Test
-  public void testCloudflareR2ConfigParsesTheEndpointAndRoundTrips() {
-    AwsStorageConfigurationInfo config = r2Builder().build();
-    CloudflareR2Endpoint endpoint = config.getCloudflareR2Endpoint();
-    assertThat(endpoint.accountId()).isEqualTo(R2_ACCOUNT);
-    assertThat(endpoint.host()).isEqualTo(R2_ACCOUNT + ".r2.cloudflarestorage.com");
-    String json = config.serialize();
-    assertThat(json).contains("\"credentialVendingMechanism\":\"CLOUDFLARE_R2\"");
-    assertThat(json).doesNotContain("cloudflareR2Endpoint");
-    assertThat(PolarisStorageConfigurationInfo.deserialize(json)).isEqualTo(config);
-  }
-
-  @Test
-  public void testCloudflareR2RequiresAnR2Endpoint() {
-    assertThatThrownBy(() -> r2Builder().endpoint(null).build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageStartingWith("endpoint");
-    assertThatThrownBy(() -> r2Builder().endpoint("https://s3.us-east-1.amazonaws.com").build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageStartingWith("endpoint");
-  }
-
-  @Test
-  public void testCloudflareR2RequiresPathStyleAndAutoRegion() {
-    assertThatThrownBy(() -> r2Builder().pathStyleAccess(null).build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("pathStyleAccess");
-    assertThatThrownBy(() -> r2Builder().pathStyleAccess(false).build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("pathStyleAccess");
-    assertThatThrownBy(() -> r2Builder().region(null).build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("region");
-    assertThatThrownBy(() -> r2Builder().region("us-east-1").build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("region");
-  }
-
-  @Test
-  public void testCloudflareR2RejectsStsAndKmsFields() {
-    assertThatThrownBy(() -> r2Builder().roleARN("arn:aws:iam::123456789012:role/x").build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("roleArn");
-    assertThatThrownBy(() -> r2Builder().externalId("ext").build())
-        .hasMessageContaining("externalId");
-    assertThatThrownBy(() -> r2Builder().userARN("arn:aws:iam::123456789012:user/x").build())
-        .hasMessageContaining("userArn");
-    assertThatThrownBy(() -> r2Builder().stsEndpoint("https://sts.example.com").build())
-        .hasMessageContaining("stsEndpoint");
-    assertThatThrownBy(() -> r2Builder().stsUnavailable(true).build())
-        .hasMessageContaining("stsUnavailable");
-    assertThatThrownBy(() -> r2Builder().endpointInternal(R2_ENDPOINT).build())
-        .hasMessageContaining("endpointInternal");
-    assertThatThrownBy(() -> r2Builder().kmsUnavailable(true).build())
-        .hasMessageContaining("kmsUnavailable");
-    assertThatThrownBy(() -> r2Builder().addEncryptionKeys(ALLOWED_KMS_KEY_ARN).build())
-        .hasMessageContaining("encryptionKeys");
-    assertThatThrownBy(() -> r2Builder().addDecryptionKeys(DECRYPTION_KEY_ARN).build())
-        .hasMessageContaining("decryptionKeys");
-    assertThatThrownBy(() -> r2Builder().currentKmsKey(ALLOWED_KMS_KEY_ARN).build())
-        .hasMessageContaining("currentKmsKey");
-    assertThatThrownBy(() -> r2Builder().addAllowedKmsKeys(ALLOWED_KMS_KEY_ARN).build())
-        .hasMessageContaining("allowedKmsKeys");
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"s3://b//", "s3://b//x/", "s3://b/x//y/"})
-  public void testCloudflareR2RejectsEmptyPathSegments(String location) {
-    assertThatThrownBy(() -> r2Builder().allowedLocations(List.of(location)).build())
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("empty path segment")
-        .hasMessageContaining(location);
-    // The guard is mechanism-conditioned: an STS config with the same location is untouched.
-    assertThat(newBuilder().allowedLocations(List.of(location)).build().getAllowedLocations())
-        .containsExactly(location);
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"s3://b/x/", "s3a://b/x/"})
-  public void testCloudflareR2AcceptsSingleSlashLocationsOfBothSchemes(String location) {
-    assertThat(r2Builder().allowedLocations(List.of(location)).build().getAllowedLocations())
-        .containsExactly(location);
+    assertThat(info.getCredentialVendingMechanism()).isEqualTo("DOWNSTREAM_MECHANISM");
   }
 }

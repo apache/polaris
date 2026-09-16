@@ -1208,10 +1208,8 @@ components:
               type: string
               description: >-
                 How Polaris issues subscoped storage credentials for this catalog. Absent means STS.
-                STS: AssumeRole against the configured role (the default). CLOUDFLARE_R2: Cloudflare R2
-                issuance; requires an R2 endpoint (https://<accountId>[.<jurisdiction>].r2.cloudflarestorage.com),
-                pathStyleAccess=true and region=auto. Servers may provide further mechanisms; the realm must
-                list the value in SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS.
+                STS: AssumeRole against the configured role (the default). Servers may provide further
+                mechanisms; the realm must list the value in SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS.
 
     AzureStorageConfigInfo:
       type: object

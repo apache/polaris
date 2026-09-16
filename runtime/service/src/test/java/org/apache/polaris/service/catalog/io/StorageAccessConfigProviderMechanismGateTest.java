@@ -49,14 +49,13 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The mechanism gate runs before the {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} early return,
- * so an early-opt-in CLOUDFLARE_R2 catalog fails here before any FileIO, on the loadTable path and
- * on the task path ({@code TaskFileIOSupplier} calls this first).
+ * so a catalog selecting a mechanism the server never ships fails here before any FileIO, on the
+ * loadTable path and on the task path ({@code TaskFileIOSupplier} calls this first).
  */
 class StorageAccessConfigProviderMechanismGateTest {
 
   private static final RealmContext REALM = () -> "test-realm";
-  private static final String R2_ENDPOINT =
-      "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com";
+  private static final String UNINSTALLED_MECHANISM = "UNINSTALLED_MECHANISM";
 
   private final PolarisStorageIntegrationProvider integrationProvider =
       mock(PolarisStorageIntegrationProvider.class);
@@ -90,12 +89,10 @@ class StorageAccessConfigProviderMechanismGateTest {
         List.of(new ResolvedPolarisEntity(catalog, List.of(), List.of())));
   }
 
-  private static AwsStorageConfigInfo r2() {
+  private static AwsStorageConfigInfo uninstalled() {
     return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-        .setCredentialVendingMechanism(S3CredentialVendingMechanism.CLOUDFLARE_R2)
-        .setEndpoint(R2_ENDPOINT)
-        .setPathStyleAccess(true)
-        .setRegion("auto")
+        .setCredentialVendingMechanism(UNINSTALLED_MECHANISM)
+        .setRoleArn("arn:aws:iam::123456789012:role/r")
         .setAllowedLocations(List.of("s3://bucket/base/"))
         .build();
   }
@@ -119,20 +116,25 @@ class StorageAccessConfigProviderMechanismGateTest {
 
   @Test
   void earlyOptInPlusSkipSubscopingFailsBeforeTheEarlyReturn() {
-    RealmConfig rc = realmConfig(true, List.of("STS", "CLOUDFLARE_R2"));
-    assertThatThrownBy(() -> call(provider(rc), pathTo(rc, r2())))
+    RealmConfig rc = realmConfig(true, List.of("STS", UNINSTALLED_MECHANISM));
+    assertThatThrownBy(() -> call(provider(rc), pathTo(rc, uninstalled())))
         .isInstanceOf(ValidationException.class)
         .hasMessage(
-            "S3 credential vending mechanism CLOUDFLARE_R2 is not available in this server");
+            "S3 credential vending mechanism "
+                + UNINSTALLED_MECHANISM
+                + " is not available in this server");
     verifyNoInteractions(integrationProvider);
   }
 
   @Test
   void disabledMechanismPlusSkipSubscopingFailsBeforeTheEarlyReturn() {
     RealmConfig rc = realmConfig(true, List.of("STS"));
-    assertThatThrownBy(() -> call(provider(rc), pathTo(rc, r2())))
+    assertThatThrownBy(() -> call(provider(rc), pathTo(rc, uninstalled())))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
+        .hasMessage(
+            "S3 credential vending mechanism "
+                + UNINSTALLED_MECHANISM
+                + " is not enabled in this realm");
     verifyNoInteractions(integrationProvider);
   }
 

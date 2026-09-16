@@ -49,33 +49,33 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Only STS is installed in {@link TestServices}, so every Iceberg route that opens a CLOUDFLARE_R2
- * catalog is refused at initialization, namespace reads included, with or without
- * SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION; an STS catalog in the same realm is untouched. The R2
- * catalog is produced by updating an STS catalog under
- * ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES, because nothing can be created inside an R2
+ * Only STS is installed in {@link TestServices}, so every Iceberg route that opens a catalog
+ * selecting a mechanism the server never ships is refused at initialization, namespace reads
+ * included, with or without SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION; an STS catalog in the same
+ * realm is untouched. The catalog is produced by updating an STS catalog under
+ * ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES, because nothing can be created inside such a
  * catalog through the REST API in this server. Every catalog gets its own allowed location:
  * upstream rejects overlapping catalog locations at create and update.
  *
  * <p>The policy routes go through {@code PolicyCatalogHandler}, which {@link TestServices} does not
  * wire (it has no policy API): building that handler by hand here would need the authorizer and
  * resolution internals {@link TestServices} keeps private to its {@code build()} closure. That case
- * is covered by the CDI test added when the mechanism registry is exercised through a real
- * container.
+ * is covered by {@link org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest}.
  */
 class S3CredentialVendingMechanismRoutesTest {
 
-  private static final String R2_ENDPOINT =
-      "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com";
+  private static final String UNINSTALLED_MECHANISM = "UNINSTALLED_MECHANISM";
   private static final String NOT_AVAILABLE =
-      "S3 credential vending mechanism CLOUDFLARE_R2 is not available in this server";
+      "S3 credential vending mechanism "
+          + UNINSTALLED_MECHANISM
+          + " is not available in this server";
   private static final String NOT_ENABLED =
-      "S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm";
+      "S3 credential vending mechanism " + UNINSTALLED_MECHANISM + " is not enabled in this realm";
 
   /** A mutable config map: TestServices reads it live, so a test can flip the realm allowlist. */
   private static Map<String, Object> config(boolean skipSubscoping) {
     Map<String, Object> config = new HashMap<>();
-    config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS", "CLOUDFLARE_R2"));
+    config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS", UNINSTALLED_MECHANISM));
     config.put("ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES", true);
     config.put("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION", skipSubscoping);
     return config;
@@ -185,72 +185,72 @@ class S3CredentialVendingMechanismRoutesTest {
     }
   }
 
-  private static void switchToCloudflareR2(TestServices svc, String name) {
+  private static void switchToUninstalledMechanism(TestServices svc, String name) {
     Catalog fetched;
     try (Response r =
         svc.catalogsApi().getCatalog(name, svc.realmContext(), svc.securityContext())) {
       fetched = (Catalog) r.getEntity();
     }
-    UpdateCatalogRequest toR2 =
+    UpdateCatalogRequest toUninstalled =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket/base/" + name),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                .setCredentialVendingMechanism("CLOUDFLARE_R2")
-                .setEndpoint(R2_ENDPOINT)
-                .setPathStyleAccess(true)
-                .setRegion("auto")
+                .setCredentialVendingMechanism(UNINSTALLED_MECHANISM)
+                .setRoleArn("arn:aws:iam::123456789012:role/r")
                 .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
                 .build());
     try (Response r =
-        svc.catalogsApi().updateCatalog(name, toR2, svc.realmContext(), svc.securityContext())) {
+        svc.catalogsApi()
+            .updateCatalog(name, toUninstalled, svc.realmContext(), svc.securityContext())) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
   }
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
-  void everyIcebergRouteOnACloudflareR2CatalogIsRefusedAtInitialization(boolean skipSubscoping) {
+  void everyIcebergRouteOnAnUninstalledMechanismCatalogIsRefusedAtInitialization(
+      boolean skipSubscoping) {
     TestServices svc = services(config(skipSubscoping));
-    createCatalog(svc, "r2cat");
-    createNamespace(svc, "r2cat", "ns");
-    createTable(svc, "r2cat", "ns", "t");
+    createCatalog(svc, "mechcat");
+    createNamespace(svc, "mechcat", "ns");
+    createTable(svc, "mechcat", "ns", "t");
     createCatalog(svc, "stscat");
     createNamespace(svc, "stscat", "ns");
     createTable(svc, "stscat", "ns", "t");
-    switchToCloudflareR2(svc, "r2cat");
+    switchToUninstalledMechanism(svc, "mechcat");
 
     assertThatThrownBy(
             () ->
                 svc.restApi()
                     .listNamespaces(
-                        "r2cat", null, null, null, svc.realmContext(), svc.securityContext()))
+                        "mechcat", null, null, null, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_AVAILABLE);
     assertThatThrownBy(
             () ->
                 svc.restApi()
                     .loadNamespaceMetadata(
-                        "r2cat", "ns", svc.realmContext(), svc.securityContext()))
+                        "mechcat", "ns", svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_AVAILABLE);
     assertThatThrownBy(
             () ->
                 svc.restApi()
                     .createNamespace(
-                        "r2cat",
+                        "mechcat",
                         CreateNamespaceRequest.builder().withNamespace(Namespace.of("ns2")).build(),
                         null,
                         svc.realmContext(),
                         svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_AVAILABLE);
-    assertLoadTableRefused(svc, "r2cat", "ns", "t", "vended-credentials", NOT_AVAILABLE);
-    assertLoadTableRefused(svc, "r2cat", "ns", "t", null, NOT_AVAILABLE);
+    assertLoadTableRefused(svc, "mechcat", "ns", "t", "vended-credentials", NOT_AVAILABLE);
+    assertLoadTableRefused(svc, "mechcat", "ns", "t", null, NOT_AVAILABLE);
 
     // Management reads are unaffected, and the STS catalog in the same realm still serves.
     try (Response r =
-        svc.catalogsApi().getCatalog("r2cat", svc.realmContext(), svc.securityContext())) {
+        svc.catalogsApi().getCatalog("mechcat", svc.realmContext(), svc.securityContext())) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
     try (Response r =
@@ -264,54 +264,56 @@ class S3CredentialVendingMechanismRoutesTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
-  void theRealmKillSwitchRefusesTheR2CatalogWithNotEnabled(boolean skipSubscoping) {
+  void theRealmKillSwitchRefusesTheCatalogWithNotEnabled(boolean skipSubscoping) {
     Map<String, Object> config = config(skipSubscoping);
     TestServices svc = services(config);
-    createCatalog(svc, "r2kill");
-    createNamespace(svc, "r2kill", "ns");
-    createTable(svc, "r2kill", "ns", "t");
+    createCatalog(svc, "mechkill");
+    createNamespace(svc, "mechkill", "ns");
+    createTable(svc, "mechkill", "ns", "t");
     createCatalog(svc, "stskill");
     createNamespace(svc, "stskill", "ns");
     createTable(svc, "stskill", "ns", "t");
-    switchToCloudflareR2(svc, "r2kill");
+    switchToUninstalledMechanism(svc, "mechkill");
 
-    // Engage the kill switch: the realm no longer lists CLOUDFLARE_R2.
+    // Engage the kill switch: the realm no longer lists UNINSTALLED_MECHANISM.
     config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS"));
 
     String notEnabled =
-        "S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm";
+        "S3 credential vending mechanism "
+            + UNINSTALLED_MECHANISM
+            + " is not enabled in this realm";
     assertThatThrownBy(
             () ->
                 svc.restApi()
                     .listNamespaces(
-                        "r2kill", null, null, null, svc.realmContext(), svc.securityContext()))
+                        "mechkill", null, null, null, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(notEnabled);
     assertThatThrownBy(
             () ->
                 svc.restApi()
                     .loadNamespaceMetadata(
-                        "r2kill", "ns", svc.realmContext(), svc.securityContext()))
+                        "mechkill", "ns", svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(notEnabled);
-    assertLoadTableRefused(svc, "r2kill", "ns", "t", "vended-credentials", notEnabled);
-    assertLoadTableRefused(svc, "r2kill", "ns", "t", null, notEnabled);
+    assertLoadTableRefused(svc, "mechkill", "ns", "t", "vended-credentials", notEnabled);
+    assertLoadTableRefused(svc, "mechkill", "ns", "t", null, notEnabled);
     // Management reads still work; an update carrying a storage config is refused at site 1.
     Catalog fetched;
     try (Response r =
-        svc.catalogsApi().getCatalog("r2kill", svc.realmContext(), svc.securityContext())) {
+        svc.catalogsApi().getCatalog("mechkill", svc.realmContext(), svc.securityContext())) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       fetched = (Catalog) r.getEntity();
     }
     UpdateCatalogRequest touch =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://bucket/base/r2kill"),
+            Map.of("default-base-location", "s3://bucket/base/mechkill"),
             fetched.getStorageConfigInfo());
     assertThatThrownBy(
             () ->
                 svc.catalogsApi()
-                    .updateCatalog("r2kill", touch, svc.realmContext(), svc.securityContext()))
+                    .updateCatalog("mechkill", touch, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(notEnabled);
     // The STS catalog in the same realm is unaffected.
@@ -324,8 +326,11 @@ class S3CredentialVendingMechanismRoutesTest {
     assertLoadTableSucceeds(svc, "stskill", "ns", "t");
   }
 
-  /** An EXTERNAL catalog with an Iceberg REST connection and a CLOUDFLARE_R2 storage config. */
-  private static void createExternalR2Catalog(TestServices svc, String name) {
+  /**
+   * An EXTERNAL catalog with an Iceberg REST connection and a storage config selecting a mechanism
+   * the server never ships.
+   */
+  private static void createExternalUninstalledMechanismCatalog(TestServices svc, String name) {
     ConnectionConfigInfo connection =
         IcebergRestConnectionConfigInfo.builder(
                 ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
@@ -339,12 +344,10 @@ class S3CredentialVendingMechanismRoutesTest {
                     .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
                     .build())
             .build();
-    AwsStorageConfigInfo r2 =
+    AwsStorageConfigInfo uninstalled =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setCredentialVendingMechanism("CLOUDFLARE_R2")
-            .setEndpoint(R2_ENDPOINT)
-            .setPathStyleAccess(true)
-            .setRegion("auto")
+            .setCredentialVendingMechanism(UNINSTALLED_MECHANISM)
+            .setRoleArn("arn:aws:iam::123456789012:role/r")
             .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
             .build();
     Catalog external =
@@ -352,7 +355,7 @@ class S3CredentialVendingMechanismRoutesTest {
             .setType(ExternalCatalog.TypeEnum.EXTERNAL)
             .setName(name)
             .setProperties(new CatalogProperties("s3://bucket/base/" + name))
-            .setStorageConfigInfo(r2)
+            .setStorageConfigInfo(uninstalled)
             .setConnectionConfigInfo(connection)
             .build();
     try (Response r =
@@ -374,13 +377,13 @@ class S3CredentialVendingMechanismRoutesTest {
     Map<String, Object> config = config(false);
     config.put("ENABLE_CATALOG_FEDERATION", true);
     TestServices svc = services(config);
-    createExternalR2Catalog(svc, "r2ext");
+    createExternalUninstalledMechanismCatalog(svc, "mechext");
 
     assertThatThrownBy(
             () ->
                 svc.restApi()
                     .listNamespaces(
-                        "r2ext", null, null, null, svc.realmContext(), svc.securityContext()))
+                        "mechext", null, null, null, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_AVAILABLE);
 
@@ -389,7 +392,7 @@ class S3CredentialVendingMechanismRoutesTest {
             () ->
                 svc.restApi()
                     .listNamespaces(
-                        "r2ext", null, null, null, svc.realmContext(), svc.securityContext()))
+                        "mechext", null, null, null, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_ENABLED);
   }
@@ -401,15 +404,15 @@ class S3CredentialVendingMechanismRoutesTest {
   void theRealmKillSwitchRefusesGenericTableRoutesToo() {
     Map<String, Object> config = config(false);
     TestServices svc = services(config);
-    createCatalog(svc, "r2gen");
-    createNamespace(svc, "r2gen", "ns");
-    switchToCloudflareR2(svc, "r2gen");
+    createCatalog(svc, "mechgen");
+    createNamespace(svc, "mechgen", "ns");
+    switchToUninstalledMechanism(svc, "mechgen");
 
     assertThatThrownBy(
             () ->
                 svc.genericTableApi()
                     .listGenericTables(
-                        "r2gen", "ns", null, null, svc.realmContext(), svc.securityContext()))
+                        "mechgen", "ns", null, null, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_AVAILABLE);
 
@@ -418,7 +421,7 @@ class S3CredentialVendingMechanismRoutesTest {
             () ->
                 svc.genericTableApi()
                     .listGenericTables(
-                        "r2gen", "ns", null, null, svc.realmContext(), svc.securityContext()))
+                        "mechgen", "ns", null, null, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_ENABLED);
   }

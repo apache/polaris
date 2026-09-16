@@ -56,9 +56,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * A third {@code S3CredentialVendingMechanism} the server does not ship: proves the registry and
- * the gates generalize past {@code STS} and {@code CLOUDFLARE_R2}. Runs under {@link
- * ThirdMechanismProfile}, which enables {@link TestS3CredentialVendingMechanism} as a CDI
- * alternative and allowlists it for one realm but not a second.
+ * the gates generalize past {@code STS}. Runs under {@link ThirdMechanismProfile}, which enables
+ * {@link TestS3CredentialVendingMechanism} as a CDI alternative and allowlists it for one realm but
+ * not a second.
  *
  * <p>This is a separate top-level class, not a {@code @Nested} class inside {@link
  * S3CredentialVendingMechanismCdiTest}, because Quarkus rejects {@code @TestProfile} on

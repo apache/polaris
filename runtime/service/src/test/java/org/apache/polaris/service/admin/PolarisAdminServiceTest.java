@@ -228,21 +228,19 @@ public class PolarisAdminServiceTest {
     verify(userSecretsManager, never()).deleteSecret(any());
   }
 
-  private static CreateCatalogRequest cloudflareR2CatalogRequest() {
-    AwsStorageConfigInfo r2 =
+  private static CreateCatalogRequest secondMechanismCatalogRequest() {
+    AwsStorageConfigInfo storage =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setCredentialVendingMechanism("CLOUDFLARE_R2")
-            .setEndpoint("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com")
-            .setPathStyleAccess(true)
-            .setRegion("auto")
+            .setCredentialVendingMechanism("SECOND_MECHANISM")
+            .setRoleArn("arn:aws:iam::123456789012:role/r")
             .setAllowedLocations(List.of("s3://bucket/base/"))
             .build();
     return new CreateCatalogRequest(
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setName("r2")
+            .setName("second")
             .setProperties(new CatalogProperties("s3://bucket/base/"))
-            .setStorageConfigInfo(r2)
+            .setStorageConfigInfo(storage)
             .build());
   }
 
@@ -250,7 +248,7 @@ public class PolarisAdminServiceTest {
   @Test
   void deniedCreateCatalogNeverConsultsTheAllowlist() {
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
-    assertThatThrownBy(() -> adminService.createCatalog(cloudflareR2CatalogRequest()))
+    assertThatThrownBy(() -> adminService.createCatalog(secondMechanismCatalogRequest()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessage("denied");
     verify(realmConfig, never())
@@ -263,9 +261,10 @@ public class PolarisAdminServiceTest {
   void authorizedCreateCatalogWithADisabledMechanismIsRefusedAfterAuthorization() {
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS))
         .thenReturn(List.of("STS"));
-    assertThatThrownBy(() -> adminService.createCatalog(cloudflareR2CatalogRequest()))
+    assertThatThrownBy(() -> adminService.createCatalog(secondMechanismCatalogRequest()))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
+        .hasMessage(
+            "S3 credential vending mechanism SECOND_MECHANISM is not enabled in this realm");
     verify(authorizer).authorize(any(), any());
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());
   }

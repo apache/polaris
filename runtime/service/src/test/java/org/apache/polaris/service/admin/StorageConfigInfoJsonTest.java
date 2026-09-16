@@ -59,13 +59,12 @@ class StorageConfigInfoJsonTest {
 
   @Test
   void knownMechanismDeserializes() throws Exception {
-    StorageConfigInfo r2 =
+    StorageConfigInfo sts =
         mapper.readValue(
             "{\"storageType\":\"S3\",\"allowedLocations\":[\"s3://b/p/\"],"
-                + "\"credentialVendingMechanism\":\"CLOUDFLARE_R2\"}",
+                + "\"credentialVendingMechanism\":\"STS\"}",
             StorageConfigInfo.class);
-    assertThat(((AwsStorageConfigInfo) r2).getCredentialVendingMechanism())
-        .isEqualTo("CLOUDFLARE_R2");
+    assertThat(((AwsStorageConfigInfo) sts).getCredentialVendingMechanism()).isEqualTo("STS");
   }
 
   /**

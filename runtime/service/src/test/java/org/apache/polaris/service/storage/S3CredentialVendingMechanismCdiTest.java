@@ -46,7 +46,6 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
@@ -65,8 +64,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * with no bean installed is refused everywhere it would be used, never confused with STS, and never
  * aborts startup, while STS itself is proven to still vend through the real registry dispatch. No
  * cloud calls: every catalog's table content goes through {@link TestInMemoryFileIOFactory}
- * (selected by {@code polaris.file-io.type=test-in-memory}), and {@code CLOUDFLARE_R2} appears only
- * as a storage-config value, never as a live endpoint.
+ * (selected by {@code polaris.file-io.type=test-in-memory}).
  *
  * <p>The generic-table and policy routes are namespace-scoped: {@code
  * CatalogHandler.authorizeBasicNamespaceOperationOrThrow} resolves and checks the namespace's
@@ -81,19 +79,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * past authorization and reach {@code initializeCatalog()}'s gate.
  *
  * <p>The "not available in this server" assertions target a mechanism identifier the server never
- * ships, {@code UNINSTALLED_MECHANISM}, not {@code CLOUDFLARE_R2}: once a real bean is installed
- * for {@code CLOUDFLARE_R2} elsewhere in this codebase, every one of those assertions would
- * otherwise start failing. Exactly one {@code CLOUDFLARE_R2} assertion remains, on a separately,
- * directly created (never-populated) catalog: it is created (201) and its namespace listing is 400
- * "not available in this server"; that is the one assertion expected to flip once a {@code
- * CLOUDFLARE_R2} bean exists.
+ * ships, {@code UNINSTALLED_MECHANISM}.
  *
  * <p>This class installs only the {@code STS} mechanism (the server's real, shipped bean) and
- * allowlists {@code CLOUDFLARE_R2} and {@code UNINSTALLED_MECHANISM} without installing either.
- * {@link S3CredentialVendingMechanismThirdMechanismCdiTest} swaps in a test-only mechanism, under
- * its own profile, to prove the registry and the gates work for a mechanism the server itself does
- * not ship. Quarkus does not allow {@code @TestProfile} on a {@code @Nested} class, so that
- * scenario cannot share this file: it needs its own application instance, since {@code
+ * allowlists {@code UNINSTALLED_MECHANISM} without installing it. {@link
+ * S3CredentialVendingMechanismThirdMechanismCdiTest} swaps in a test-only mechanism, under its own
+ * profile, to prove the registry and the gates work for a mechanism the server itself does not
+ * ship. Quarkus does not allow {@code @TestProfile} on a {@code @Nested} class, so that scenario
+ * cannot share this file: it needs its own application instance, since {@code
  * getEnabledAlternatives()} is a profile-wide, one-instance setting, and this class asserts {@code
  * availableIds()} is exactly {@code {STS}}.
  */
@@ -102,10 +95,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(PolarisIntegrationTestExtension.class)
 class S3CredentialVendingMechanismCdiTest {
 
-  private static final String R2_ENDPOINT =
-      "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com";
-  private static final String NOT_AVAILABLE_R2 =
-      "S3 credential vending mechanism CLOUDFLARE_R2 is not available in this server";
   private static final String UNINSTALLED_MECHANISM = "UNINSTALLED_MECHANISM";
   private static final String NOT_AVAILABLE_UNINSTALLED =
       "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server";
@@ -131,7 +120,7 @@ class S3CredentialVendingMechanismCdiTest {
               "false"),
           Map.entry(
               "polaris.features.\"SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS\"",
-              "[\"STS\",\"CLOUDFLARE_R2\",\"" + UNINSTALLED_MECHANISM + "\"]"),
+              "[\"STS\",\"" + UNINSTALLED_MECHANISM + "\"]"),
           Map.entry("polaris.event-listener.type", "test"),
           Map.entry("polaris.authentication.token-broker.type", "symmetric-key"),
           Map.entry("polaris.authentication.token-broker.symmetric-key.secret", "secret"));
@@ -142,12 +131,11 @@ class S3CredentialVendingMechanismCdiTest {
 
   /**
    * With the default readiness settings (no {@code polaris.readiness.ignore-severe-issues}
-   * override) and two mechanisms allowlisted but not installed, the application starts, only {@code
-   * STS} is available, a {@code CLOUDFLARE_R2} catalog is still created and frozen, and every route
-   * that would open an uninstalled-mechanism catalog or vend for it refuses with "not available in
-   * this server": the Iceberg, generic-table and policy routes alike, and a storage-access
-   * resolution under {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} too. An STS catalog in the same
-   * realm is untouched throughout.
+   * override) and one mechanism allowlisted but not installed, the application starts, only {@code
+   * STS} is available, and every route that would open an uninstalled-mechanism catalog or vend for
+   * it refuses with "not available in this server": the Iceberg, generic-table and policy routes
+   * alike, and a storage-access resolution under {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}
+   * too. An STS catalog in the same realm is untouched throughout.
    */
   @Test
   void stsOnlyDiscoveryAndUninstalledMechanismsAreRefusedEverywhere(
@@ -165,15 +153,7 @@ class S3CredentialVendingMechanismCdiTest {
       PolicyApi policyApi = client.policyApi(adminToken);
 
       String stsCatalog = "cdi-sts-cat";
-      String bareR2Catalog = "cdi-r2-bare-cat";
       String uninstalledCatalog = "cdi-uninstalled-cat";
-
-      // The one CLOUDFLARE_R2 assertion this class keeps: create-and-201, and the catalog-root
-      // namespace list, which needs no pre-existing namespace since the root always resolves.
-      createCloudflareR2Catalog(managementApi, bareR2Catalog);
-      assertRefused(
-          catalogApi.request("v1/{cat}/namespaces", Map.of("cat", bareR2Catalog)).get(),
-          NOT_AVAILABLE_R2);
 
       // The STS catalog: content created normally, left untouched for the rest of the test.
       createStsCatalog(managementApi, stsCatalog);
@@ -372,28 +352,10 @@ class S3CredentialVendingMechanismCdiTest {
             .build());
   }
 
-  private static void createCloudflareR2Catalog(ManagementApi managementApi, String name) {
-    managementApi.createCatalog(
-        PolarisCatalog.builder()
-            .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(name)
-            .setProperties(new CatalogProperties("s3://bucket/base/" + name))
-            .setStorageConfigInfo(
-                AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                    .setCredentialVendingMechanism(S3CredentialVendingMechanism.CLOUDFLARE_R2)
-                    .setEndpoint(R2_ENDPOINT)
-                    .setPathStyleAccess(true)
-                    .setRegion("auto")
-                    .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
-                    .build())
-            .build());
-  }
-
   /**
-   * Switches an existing STS catalog's storage config to a mechanism the server never ships, with
-   * no R2-specific fields, freezing its content. {@link ManagementApi#updateCatalog(Catalog, Map)}
-   * always reuses the existing storage config, so the switch needs a raw request carrying the new
-   * one.
+   * Switches an existing STS catalog's storage config to a mechanism the server never ships,
+   * freezing its content. {@link ManagementApi#updateCatalog(Catalog, Map)} always reuses the
+   * existing storage config, so the switch needs a raw request carrying the new one.
    */
   private static void switchToUninstalledMechanism(ManagementApi managementApi, String name) {
     Catalog fetched = managementApi.getCatalog(name);

@@ -579,7 +579,7 @@ The list of supported authentication types for catalog federation
 
 ##### `polaris.features."SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS"`
 
-The credential vending mechanisms an S3 catalog in this realm may use. STS is AWS STS AssumeRole, today's behaviour; other values select mechanisms the server provides, such as CLOUDFLARE_R2 for Cloudflare R2 issuance. The list has no implicit member: a realm that omits STS rejects every plain S3 catalog. Realm-level only; catalog properties cannot widen it. Enforced at catalog create and update, at catalog initialization on every request, when storage access is resolved, and in the storage integration provider. A listed mechanism with no implementation in this server is reported at startup and refused at use.
+The credential vending mechanisms an S3 catalog in this realm may use. STS is AWS STS AssumeRole, today's behaviour; other values select mechanisms the server provides. The list has no implicit member: a realm that omits STS rejects every plain S3 catalog. Realm-level only; catalog properties cannot widen it. Enforced at catalog create and update, at catalog initialization on every request, when storage access is resolved, and in the storage integration provider. A listed mechanism with no implementation in this server is reported at startup and refused at use.
 
 - **Type:** `List<String>`
 - **Default:** `[STS]`

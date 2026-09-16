@@ -410,9 +410,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .key("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS")
               .description(
                   "The credential vending mechanisms an S3 catalog in this realm may use. STS is AWS STS\n"
-                      + "AssumeRole, today's behaviour; other values select mechanisms the server provides, such as\n"
-                      + "CLOUDFLARE_R2 for Cloudflare R2 issuance. The list has no implicit member: a realm that omits\n"
-                      + "STS rejects every plain S3 catalog. Realm-level only; catalog properties cannot widen it.\n"
+                      + "AssumeRole, today's behaviour; other values select mechanisms the server provides. The\n"
+                      + "list has no implicit member: a realm that omits STS rejects every plain S3 catalog.\n"
+                      + "Realm-level only; catalog properties cannot widen it.\n"
                       + "Enforced at catalog create and update, at catalog initialization on every request, when\n"
                       + "storage access is resolved, and in the storage integration provider. A listed mechanism with\n"
                       + "no implementation in this server is reported at startup and refused at use.")

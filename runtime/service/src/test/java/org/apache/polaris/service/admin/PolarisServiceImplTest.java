@@ -119,20 +119,18 @@ public class PolarisServiceImplTest {
             FeatureConfiguration.ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
         .thenReturn(true);
 
-    AwsStorageConfigInfo r2 =
+    AwsStorageConfigInfo storage =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setCredentialVendingMechanism("CLOUDFLARE_R2")
-            .setEndpoint("https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com")
-            .setPathStyleAccess(true)
-            .setRegion("auto")
+            .setCredentialVendingMechanism("SECOND_MECHANISM")
+            .setRoleArn("arn:aws:iam::123456789012:role/r")
             .setAllowedLocations(List.of("s3://bucket/base/"))
             .build();
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setName("r2")
+            .setName("second")
             .setProperties(new CatalogProperties("s3://bucket/base/"))
-            .setStorageConfigInfo(r2)
+            .setStorageConfigInfo(storage)
             .build();
 
     assertThatThrownBy(

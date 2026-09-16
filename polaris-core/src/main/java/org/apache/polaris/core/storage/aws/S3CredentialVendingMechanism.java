@@ -37,9 +37,6 @@ public interface S3CredentialVendingMechanism {
   /** AWS STS AssumeRole against the catalog's role, the default. */
   String STS = "STS";
 
-  /** Cloudflare R2 temporary credentials signed by the server with a parent token. */
-  String CLOUDFLARE_R2 = "CLOUDFLARE_R2";
-
   /** The storage integration that vends for one S3 catalog under this mechanism. */
   PolarisStorageIntegration integrationFor(
       AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig);

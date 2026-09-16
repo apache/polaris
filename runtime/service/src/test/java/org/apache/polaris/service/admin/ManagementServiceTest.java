@@ -786,8 +786,7 @@ public class ManagementServiceTest {
     }
   }
 
-  private static final String R2_ACCOUNT = "0123456789abcdef0123456789abcdef";
-  private static final String R2_ENDPOINT = "https://" + R2_ACCOUNT + ".r2.cloudflarestorage.com";
+  private static final String TEST_MECHANISM = "TEST_MECHANISM";
 
   private static TestServices mechanismServices(
       List<String> mechanisms, boolean unrestrictedChanges) {
@@ -800,23 +799,21 @@ public class ManagementServiceTest {
                 mechanisms,
                 "ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES",
                 unrestrictedChanges))
+        .additionalVendingMechanisms(Map.of(TEST_MECHANISM, TestServices.fakeMechanism()))
         .build();
   }
 
-  private static AwsStorageConfigInfo.Builder r2Config() {
+  private static AwsStorageConfigInfo.Builder secondMechanismConfig() {
     return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-        .setCredentialVendingMechanism("CLOUDFLARE_R2")
-        .setEndpoint(R2_ENDPOINT)
-        .setPathStyleAccess(true)
-        .setRegion("auto")
-        .setAllowedLocations(List.of("s3://r2-bucket/base/"));
+        .setCredentialVendingMechanism(TEST_MECHANISM)
+        .setAllowedLocations(List.of("s3://second-bucket/base/"));
   }
 
   private static Catalog catalogNamed(String name, StorageConfigInfo storageConfig) {
     return PolarisCatalog.builder()
         .setType(Catalog.TypeEnum.INTERNAL)
         .setName(name)
-        .setProperties(new CatalogProperties("s3://r2-bucket/base/" + name))
+        .setProperties(new CatalogProperties("s3://second-bucket/base/" + name))
         .setStorageConfigInfo(storageConfig)
         .build();
   }
@@ -835,22 +832,24 @@ public class ManagementServiceTest {
   }
 
   @Test
-  public void testCloudflareR2IsRejectedByTheDefaultAllowlist() {
+  public void testASecondMechanismIsRejectedByTheDefaultAllowlist() {
     TestServices defaults = mechanismServices(List.of("STS"), false);
-    assertThatThrownBy(() -> create(defaults, catalogNamed("r2-off", r2Config().build())))
+    assertThatThrownBy(
+            () -> create(defaults, catalogNamed("second-off", secondMechanismConfig().build())))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
+        .hasMessage(
+            "S3 credential vending mechanism " + TEST_MECHANISM + " is not enabled in this realm");
   }
 
   @Test
-  public void testStsIsRejectedWhenTheRealmListsOnlyCloudflareR2() {
-    TestServices r2Only = mechanismServices(List.of("CLOUDFLARE_R2"), false);
+  public void testStsIsRejectedWhenTheRealmListsOnlyASecondMechanism() {
+    TestServices secondOnly = mechanismServices(List.of(TEST_MECHANISM), false);
     AwsStorageConfigInfo sts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .build();
-    assertThatThrownBy(() -> create(r2Only, catalogNamed("sts-off", sts)))
+    assertThatThrownBy(() -> create(secondOnly, catalogNamed("sts-off", sts)))
         .isInstanceOf(ValidationException.class)
         .hasMessage("S3 credential vending mechanism STS is not enabled in this realm");
   }
@@ -861,94 +860,66 @@ public class ManagementServiceTest {
     AwsStorageConfigInfo sts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .build();
     try (Response response = create(stsOnlyUnrestricted, catalogNamed("sts-stay", sts))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
     Catalog fetched = fetch(stsOnlyUnrestricted, "sts-stay");
-    UpdateCatalogRequest toR2 =
+    UpdateCatalogRequest toSecond =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://r2-bucket/base/sts-stay"),
-            r2Config().build());
+            Map.of("default-base-location", "s3://second-bucket/base/sts-stay"),
+            secondMechanismConfig().build());
     assertThatThrownBy(
             () ->
                 stsOnlyUnrestricted
                     .catalogsApi()
                     .updateCatalog(
                         "sts-stay",
-                        toR2,
+                        toSecond,
                         stsOnlyUnrestricted.realmContext(),
                         stsOnlyUnrestricted.securityContext()))
         .isInstanceOf(ValidationException.class)
-        .hasMessage("S3 credential vending mechanism CLOUDFLARE_R2 is not enabled in this realm");
+        .hasMessage(
+            "S3 credential vending mechanism " + TEST_MECHANISM + " is not enabled in this realm");
   }
 
   @Test
-  public void testCloudflareR2CatalogIsCreatedAndReadBack() {
-    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
-    try (Response response = create(enabled, catalogNamed("r2-on", r2Config().build()))) {
+  public void testASecondMechanismCatalogIsCreatedAndReadBack() {
+    TestServices enabled = mechanismServices(List.of("STS", TEST_MECHANISM), false);
+    try (Response response =
+        create(enabled, catalogNamed("second-on", secondMechanismConfig().build()))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
     AwsStorageConfigInfo fetched =
-        (AwsStorageConfigInfo) fetch(enabled, "r2-on").getStorageConfigInfo();
-    assertThat(fetched.getCredentialVendingMechanism()).isEqualTo("CLOUDFLARE_R2");
-    assertThat(fetched.getEndpoint()).isEqualTo(R2_ENDPOINT);
-    assertThat(fetched.getPathStyleAccess()).isTrue();
-    assertThat(fetched.getRegion()).isEqualTo("auto");
-  }
-
-  @Test
-  public void testCloudflareR2ModelRulesSurfaceAsBadRequests() {
-    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
-    assertThatThrownBy(
-            () ->
-                create(
-                    enabled,
-                    catalogNamed("r2-no-path", r2Config().setPathStyleAccess(null).build())))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("pathStyleAccess");
-    assertThatThrownBy(
-            () ->
-                create(
-                    enabled,
-                    catalogNamed(
-                        "r2-bad-ep", r2Config().setEndpoint("https://s3.amazonaws.com").build())))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageStartingWith("endpoint");
-    assertThatThrownBy(
-            () ->
-                create(
-                    enabled,
-                    catalogNamed(
-                        "r2-role",
-                        r2Config().setRoleArn("arn:aws:iam::123456789012:role/x").build())))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("roleArn");
+        (AwsStorageConfigInfo) fetch(enabled, "second-on").getStorageConfigInfo();
+    assertThat(fetched.getCredentialVendingMechanism()).isEqualTo(TEST_MECHANISM);
   }
 
   @Test
   public void changingTheMechanismIsRefused() {
-    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
-    try (Response response = create(enabled, catalogNamed("r2-frozen", r2Config().build()))) {
+    TestServices enabled = mechanismServices(List.of("STS", TEST_MECHANISM), false);
+    try (Response response =
+        create(enabled, catalogNamed("second-frozen", secondMechanismConfig().build()))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
-    Catalog fetched = fetch(enabled, "r2-frozen");
-    Map<String, String> props = Map.of("default-base-location", "s3://r2-bucket/base/r2-frozen");
+    Catalog fetched = fetch(enabled, "second-frozen");
+    Map<String, String> props =
+        Map.of("default-base-location", "s3://second-bucket/base/second-frozen");
 
     // Omitting the mechanism reads as STS, which is a frozen-field change, not a silent revert.
     UpdateCatalogRequest omitMechanism =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
             props,
-            r2Config().setCredentialVendingMechanism(null).setRoleArn(null).build());
+            secondMechanismConfig().setCredentialVendingMechanism(null).setRoleArn(null).build());
     assertThatThrownBy(
             () ->
                 enabled
                     .catalogsApi()
                     .updateCatalog(
-                        "r2-frozen",
+                        "second-frozen",
                         omitMechanism,
                         enabled.realmContext(),
                         enabled.securityContext()))
@@ -963,111 +934,69 @@ public class ManagementServiceTest {
    */
   @Test
   public void updatingACatalogWithTheSameMechanismValueIsNotAFreezeViolation() {
-    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
-    try (Response response = create(enabled, catalogNamed("r2-same", r2Config().build()))) {
+    TestServices enabled = mechanismServices(List.of("STS", TEST_MECHANISM), false);
+    try (Response response =
+        create(enabled, catalogNamed("second-same", secondMechanismConfig().build()))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
-    Catalog fetched = fetch(enabled, "r2-same");
+    Catalog fetched = fetch(enabled, "second-same");
     @SuppressWarnings("StringOperationCanBeSimplified")
-    String freshMechanismValue = new String("CLOUDFLARE_R2");
+    String freshMechanismValue = new String(TEST_MECHANISM);
     UpdateCatalogRequest sameMechanism =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://r2-bucket/base/r2-same"),
-            r2Config().setCredentialVendingMechanism(freshMechanismValue).build());
+            Map.of("default-base-location", "s3://second-bucket/base/second-same"),
+            secondMechanismConfig().setCredentialVendingMechanism(freshMechanismValue).build());
     try (Response response =
         enabled
             .catalogsApi()
             .updateCatalog(
-                "r2-same", sameMechanism, enabled.realmContext(), enabled.securityContext())) {
-      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-    }
-  }
-
-  @Test
-  public void testEndpointIsFrozenOnCloudflareR2() {
-    TestServices enabled = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), false);
-    try (Response response = create(enabled, catalogNamed("r2-endpoint", r2Config().build()))) {
-      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
-    }
-    Catalog fetched = fetch(enabled, "r2-endpoint");
-    Map<String, String> props = Map.of("default-base-location", "s3://r2-bucket/base/r2-endpoint");
-
-    UpdateCatalogRequest changeEndpoint =
-        new UpdateCatalogRequest(
-            fetched.getEntityVersion(),
-            props,
-            r2Config()
-                .setEndpoint("https://ffffffffffffffffffffffffffffffff.r2.cloudflarestorage.com")
-                .build());
-    assertThatThrownBy(
-            () ->
-                enabled
-                    .catalogsApi()
-                    .updateCatalog(
-                        "r2-endpoint",
-                        changeEndpoint,
-                        enabled.realmContext(),
-                        enabled.securityContext()))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessageStartingWith("Cannot modify endpoint of a CLOUDFLARE_R2 storage config");
-
-    // Adding an allowed location keeps the mechanism and endpoint and is allowed.
-    UpdateCatalogRequest addLocation =
-        new UpdateCatalogRequest(
-            fetched.getEntityVersion(),
-            props,
-            r2Config()
-                .setAllowedLocations(List.of("s3://r2-bucket/base/", "s3://r2-bucket/more/"))
-                .build());
-    try (Response response =
-        enabled
-            .catalogsApi()
-            .updateCatalog(
-                "r2-endpoint", addLocation, enabled.realmContext(), enabled.securityContext())) {
+                "second-same", sameMechanism, enabled.realmContext(), enabled.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
   }
 
   @Test
   public void testFreezeIsLiftedByTheUnrestrictedFlag() {
-    TestServices unrestricted = mechanismServices(List.of("STS", "CLOUDFLARE_R2"), true);
+    TestServices unrestricted = mechanismServices(List.of("STS", TEST_MECHANISM), true);
     AwsStorageConfigInfo sts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .build();
-    try (Response response = create(unrestricted, catalogNamed("sts-to-r2", sts))) {
+    try (Response response = create(unrestricted, catalogNamed("sts-to-second", sts))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
-    Catalog fetched = fetch(unrestricted, "sts-to-r2");
-    UpdateCatalogRequest toR2 =
+    Catalog fetched = fetch(unrestricted, "sts-to-second");
+    UpdateCatalogRequest toSecond =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://r2-bucket/base/sts-to-r2"),
-            r2Config().build());
+            Map.of("default-base-location", "s3://second-bucket/base/sts-to-second"),
+            secondMechanismConfig().build());
     try (Response response =
         unrestricted
             .catalogsApi()
             .updateCatalog(
-                "sts-to-r2", toR2, unrestricted.realmContext(), unrestricted.securityContext())) {
+                "sts-to-second",
+                toSecond,
+                unrestricted.realmContext(),
+                unrestricted.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
     assertThat(
-            ((AwsStorageConfigInfo) fetch(unrestricted, "sts-to-r2").getStorageConfigInfo())
+            ((AwsStorageConfigInfo) fetch(unrestricted, "sts-to-second").getStorageConfigInfo())
                 .getCredentialVendingMechanism())
-        .isEqualTo("CLOUDFLARE_R2");
+        .isEqualTo(TEST_MECHANISM);
   }
 
   @Test
   public void testStsCatalogEndpointStaysMutable() {
-    // ALLOW_SETTING_S3_ENDPOINTS is true by default; the endpoint freeze applies to
-    // CLOUDFLARE_R2 only, never to STS.
+    // The mechanism freeze never touches the endpoint of an STS catalog.
     TestServices svc = mechanismServices(List.of("STS"), false);
     AwsStorageConfigInfo sts =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+            .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .setEndpoint("https://s3.example.com:1234")
             .setPathStyleAccess(true)
             .build();
@@ -1078,10 +1007,10 @@ public class ManagementServiceTest {
     UpdateCatalogRequest updateEndpoint =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://r2-bucket/base/sts-mutable"),
+            Map.of("default-base-location", "s3://second-bucket/base/sts-mutable"),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-                .setAllowedLocations(List.of("s3://r2-bucket/base/"))
+                .setAllowedLocations(List.of("s3://second-bucket/base/"))
                 .setEndpoint("https://s3.other.example.com:1234")
                 .setPathStyleAccess(true)
                 .build());

@@ -23,7 +23,6 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.assertj.core.api.SoftAssertions;
@@ -98,14 +97,14 @@ public class PolarisStorageConfigurationInfoTest {
             "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialVendingMechanism\":\"STS\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"storageName\":\"my-storage\",\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         arguments(
             AwsStorageConfigurationInfo.builder()
-                .addAllowedLocations("s3://r2-bucket/base/")
-                .credentialVendingMechanism(S3CredentialVendingMechanism.CLOUDFLARE_R2)
-                .endpoint("https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com")
+                .addAllowedLocations("s3://other-bucket/base/")
+                .credentialVendingMechanism("DOWNSTREAM_MECHANISM")
+                .endpoint("https://s3.example-compatible-store.test")
                 .pathStyleAccess(true)
                 .region("auto")
-                .storageName("r2")
+                .storageName("other")
                 .build(),
-            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialVendingMechanism\":\"CLOUDFLARE_R2\",\"allowedLocations\":[\"s3://r2-bucket/base/\"],\"storageName\":\"r2\",\"region\":\"auto\",\"endpoint\":\"https://0123456789abcdef0123456789abcdef.eu.r2.cloudflarestorage.com\",\"pathStyleAccess\":true,\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"credentialVendingMechanism\":\"DOWNSTREAM_MECHANISM\",\"allowedLocations\":[\"s3://other-bucket/base/\"],\"storageName\":\"other\",\"region\":\"auto\",\"endpoint\":\"https://s3.example-compatible-store.test\",\"pathStyleAccess\":true,\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         //
         arguments(
             GcpStorageConfigurationInfo.builder()

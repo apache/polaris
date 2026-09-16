@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.aws.r2.CloudflareR2Endpoint;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 import org.jspecify.annotations.Nullable;
@@ -145,47 +144,13 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
 
   /**
    * The mechanism that vends credentials for this catalog: {@link S3CredentialVendingMechanism#STS}
-   * (AssumeRole, the default) or another identifier the server provides, such as {@link
-   * S3CredentialVendingMechanism#CLOUDFLARE_R2}. A row persisted before this field existed lacks it
-   * and therefore reads as STS, today's behaviour. The value is carried as is; the realm allowlist
-   * and the mechanism registry decide whether it is accepted.
+   * (AssumeRole, the default) or another identifier the server provides. A row persisted before
+   * this field existed lacks it and therefore reads as STS, today's behaviour. The value is carried
+   * as is; the realm allowlist and the mechanism registry decide whether it is accepted.
    */
   @Value.Default
   public String getCredentialVendingMechanism() {
     return S3CredentialVendingMechanism.STS;
-  }
-
-  /**
-   * The parsed and validated R2 endpoint. Meaningful only when {@link
-   * #getCredentialVendingMechanism()} is {@link S3CredentialVendingMechanism#CLOUDFLARE_R2}; the
-   * same parse validates the config and, at vend time, supplies the token subject and audience, so
-   * the two cannot disagree.
-   */
-  @JsonIgnore
-  public CloudflareR2Endpoint getCloudflareR2Endpoint() {
-    return CloudflareR2Endpoint.parse(getEndpoint());
-  }
-
-  /**
-   * On top of the S3 prefix check, a {@code CLOUDFLARE_R2} config rejects an allowed location whose
-   * path holds an empty segment. The catalog-overlap check compares slash-terminated locations, so
-   * {@code s3://bucket//} does not overlap an existing {@code s3://bucket/x/}, while the location
-   * validator trims one trailing slash and would then admit the whole bucket. STS configs are left
-   * exactly as upstream has them.
-   */
-  @Override
-  protected void validatePrefixForStorageType(String loc) {
-    super.validatePrefixForStorageType(loc);
-    if (S3CredentialVendingMechanism.CLOUDFLARE_R2.equals(getCredentialVendingMechanism())) {
-      String path = loc.substring(loc.indexOf("://") + 3);
-      if (path.contains("//")) {
-        throw new IllegalArgumentException(
-            "allowed location '"
-                + loc
-                + "' contains an empty path segment ('//'); CLOUDFLARE_R2 catalogs require one"
-                + " slash between segments");
-      }
-    }
   }
 
   /**
@@ -249,48 +214,6 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
       if (!matcher.matches()) {
         throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
       }
-    }
-    if (S3CredentialVendingMechanism.CLOUDFLARE_R2.equals(getCredentialVendingMechanism())) {
-      checkCloudflareR2();
-    }
-  }
-
-  /** The rules of a CLOUDFLARE_R2 config that need no realm configuration. */
-  @SuppressWarnings("deprecation")
-  private void checkCloudflareR2() {
-    getCloudflareR2Endpoint(); // throws with a message naming 'endpoint'
-    if (!Boolean.TRUE.equals(getPathStyleAccess())) {
-      throw new IllegalArgumentException(
-          "pathStyleAccess must be true for the CLOUDFLARE_R2 credential vending mechanism");
-    }
-    if (!"auto".equals(getRegion())) {
-      throw new IllegalArgumentException(
-          "region must be 'auto' for the CLOUDFLARE_R2 credential vending mechanism");
-    }
-    requireAbsent("roleArn", getRoleARN());
-    requireAbsent("externalId", getExternalId());
-    requireAbsent("userArn", getUserARN());
-    requireAbsent("stsEndpoint", getStsEndpoint());
-    requireAbsent("stsUnavailable", getStsUnavailable());
-    requireAbsent("endpointInternal", getEndpointInternal());
-    requireAbsent("kmsUnavailable", getKmsUnavailable());
-    requireAbsent("currentKmsKey", getCurrentKmsKey());
-    requireAbsentList("allowedKmsKeys", getAllowedKmsKeys());
-    requireAbsentList("encryptionKeys", getEncryptionKeys());
-    requireAbsentList("decryptionKeys", getDecryptionKeys());
-  }
-
-  private static void requireAbsent(String field, @Nullable Object value) {
-    if (value != null) {
-      throw new IllegalArgumentException(
-          field + " must not be set for the CLOUDFLARE_R2 credential vending mechanism");
-    }
-  }
-
-  private static void requireAbsentList(String field, @Nullable List<String> value) {
-    if (value != null && !value.isEmpty()) {
-      throw new IllegalArgumentException(
-          field + " must not be set for the CLOUDFLARE_R2 credential vending mechanism");
     }
   }
 
