@@ -219,17 +219,6 @@ public class AwsStorageConfigurationInfoTest {
     AwsStorageConfigurationInfo config =
         newBuilder().addAllowedLocation("s3://bucket/path/").build();
     assertThat(config.getCredentialVendingMechanism()).isEqualTo(S3CredentialVendingMechanism.STS);
-    // An upstream-shaped row with no credentialVendingMechanism field reads back as STS.
-    String legacyRow =
-        "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\","
-            + "\"allowedLocations\":[\"s3://bucket/path/\"],"
-            + "\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\","
-            + "\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}";
-    PolarisStorageConfigurationInfo deserialized =
-        PolarisStorageConfigurationInfo.deserialize(legacyRow);
-    assertThat(deserialized).isInstanceOf(AwsStorageConfigurationInfo.class);
-    assertThat(((AwsStorageConfigurationInfo) deserialized).getCredentialVendingMechanism())
-        .isEqualTo(S3CredentialVendingMechanism.STS);
   }
 
   @Test

@@ -27,7 +27,10 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
  * {@code @Identifier("<mechanism>")}; a catalog's {@code credentialVendingMechanism} selects one by
  * that identifier. A realm lists the mechanisms it accepts in {@code
  * SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}; a listed mechanism with no bean in the running
- * server is refused wherever the catalog is opened or a credential is needed.
+ * server is refused wherever the catalog is opened or a credential is needed. An implementation
+ * must be application-scoped (or otherwise normal-scoped): the registry resolves the bean with
+ * {@code select(...).get()} on every credential resolution and keeps no handle to destroy a
+ * dependent instance.
  */
 public interface S3CredentialVendingMechanism {
 

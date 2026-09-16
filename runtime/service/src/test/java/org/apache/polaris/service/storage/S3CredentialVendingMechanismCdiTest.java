@@ -284,8 +284,8 @@ class S3CredentialVendingMechanismCdiTest {
       }
 
       // The catalog's auto-granted catalog_admin role carries CATALOG_MANAGE_ACCESS and
-      // CATALOG_MANAGE_METADATA only; loadTable with delegation needs CATALOG_MANAGE_CONTENT too,
-      // the same grant ManagementApi.makeAdmin gives a caller-supplied catalog role.
+      // CATALOG_MANAGE_METADATA only. This grant broadens it to CATALOG_MANAGE_CONTENT, the same
+      // grant ManagementApi.makeAdmin gives a caller-supplied catalog role.
       try (Response r =
           managementApi
               .request(

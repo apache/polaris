@@ -23,6 +23,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -64,7 +65,7 @@ public class S3CredentialVendingMechanisms {
             "Two S3 credential vending mechanisms share the identifier " + id);
       }
     }
-    this.ids = Set.copyOf(found);
+    this.ids = Collections.unmodifiableSet(found);
     this.select =
         id -> {
           Instance<S3CredentialVendingMechanism> selected =
