@@ -1207,9 +1207,9 @@ components:
             credentialVendingMechanism:
               type: string
               description: >-
-                How Polaris issues subscoped storage credentials for this catalog. Absent means STS.
-                STS: AssumeRole against the configured role (the default). Servers may provide further
-                mechanisms; the realm must list the value in SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS.
+                How Polaris vends subscoped storage credentials for this catalog. Leave the field empty
+                to use the server's default mechanism. STS selects AWS STS AssumeRole against the
+                configured role. A server may provide further mechanisms. The value DEFAULT is reserved.
 
     AzureStorageConfigInfo:
       type: object

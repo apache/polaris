@@ -409,13 +409,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           PolarisConfiguration.<List<String>>builder()
               .key("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS")
               .description(
-                  "The credential vending mechanisms an S3 catalog in this realm may use. STS is AWS STS\n"
-                      + "AssumeRole, today's behaviour; other values select mechanisms the server provides. The\n"
-                      + "list has no implicit member: a realm that omits STS rejects every plain S3 catalog.\n"
-                      + "Realm-level only; catalog properties cannot widen it.\n"
-                      + "Enforced at catalog create and update, at catalog initialization on every request, when\n"
-                      + "storage access is resolved, and in the storage integration provider. A listed mechanism with\n"
-                      + "no implementation in this server is reported at startup and refused at use.")
+                  "The credential vending mechanisms an S3 catalog in this realm may name explicitly. STS is\n"
+                      + "AWS STS AssumeRole; a server may provide further mechanisms. A catalog that leaves\n"
+                      + "credentialVendingMechanism empty uses the server's default mechanism and is always\n"
+                      + "allowed. Realm-level only; catalog properties cannot widen it. Enforced at catalog create\n"
+                      + "and update, at catalog initialization on every request, when storage access is resolved,\n"
+                      + "and in the storage integration provider. A listed mechanism with no implementation in\n"
+                      + "this server is reported at startup and refused wherever a catalog names it.")
               .defaultValue(List.of(S3CredentialVendingMechanism.STS))
               .buildFeatureConfiguration();
 
