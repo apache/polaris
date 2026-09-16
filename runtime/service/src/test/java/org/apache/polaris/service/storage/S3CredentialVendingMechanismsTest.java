@@ -21,82 +21,163 @@ package org.apache.polaris.service.storage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.spi.Bean;
+import jakarta.enterprise.inject.spi.BeanManager;
 import java.lang.annotation.Annotation;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@link S3CredentialVendingMechanisms} discovers its beans by reading {@code Instance.handles()}
- * alone; {@code get()} is never called during discovery, so these tests build a fake {@link
- * Instance} whose handles expose only the {@link Bean} metadata the registry reads: the bean class
- * and its qualifiers. No CDI container runs here.
+ * {@link S3CredentialVendingMechanisms} discovers identifiers from bean metadata and resolves each
+ * identifier once, at construction. No CDI container runs here: the {@link BeanManager} and the
+ * {@link Instance} are Mockito fakes that answer only the calls the registry makes.
  */
 class S3CredentialVendingMechanismsTest {
 
-  private static final class FirstBean {}
+  private static final class StsBean {}
+
+  private static final class DefaultBean {}
+
+  private static final class OverridingDefaultBean {}
 
   private static final class SecondBean {}
 
+  private final BeanManager beanManager = mock(BeanManager.class);
+
+  @SuppressWarnings("unchecked")
+  private final Instance<S3CredentialVendingMechanism> candidates = mock(Instance.class);
+
+  @Test
+  void identifiersComeFromEveryBeanAndResolutionPicksTheAlternative() {
+    S3CredentialVendingMechanism sts = mock(S3CredentialVendingMechanism.class);
+    S3CredentialVendingMechanism override = mock(S3CredentialVendingMechanism.class);
+    beans(
+        bean(StsBean.class, Identifier.Literal.of("STS")),
+        bean(DefaultBean.class, Identifier.Literal.of("DEFAULT")),
+        bean(OverridingDefaultBean.class, Identifier.Literal.of("DEFAULT")));
+    resolves("STS", sts);
+    resolves("DEFAULT", override);
+
+    S3CredentialVendingMechanisms registry =
+        new S3CredentialVendingMechanisms(candidates, beanManager);
+
+    assertThat(registry.availableIds()).containsExactly("DEFAULT", "STS");
+    assertThat(registry.require("DEFAULT")).isSameAs(override);
+    assertThat(registry.require("STS")).isSameAs(sts);
+  }
+
   @Test
   void aBeanWithNoIdentifierAbortsStartup() {
-    Instance<S3CredentialVendingMechanism> mechanisms = instanceOf(handleFor(FirstBean.class));
+    beans(bean(StsBean.class));
 
-    assertThatThrownBy(() -> new S3CredentialVendingMechanisms(mechanisms))
+    assertThatThrownBy(() -> new S3CredentialVendingMechanisms(candidates, beanManager))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage(
             "S3 credential vending mechanism bean "
-                + FirstBean.class.getName()
+                + StsBean.class.getName()
                 + " has no @Identifier");
   }
 
   @Test
   void twoBeansSharingOneIdentifierAbortStartup() {
-    Instance<S3CredentialVendingMechanism> mechanisms =
-        instanceOf(
-            handleFor(FirstBean.class, Identifier.Literal.of("DUP")),
-            handleFor(SecondBean.class, Identifier.Literal.of("DUP")));
+    beans(
+        bean(StsBean.class, Identifier.Literal.of("DUP")),
+        bean(SecondBean.class, Identifier.Literal.of("DUP")));
+    ambiguous("DUP");
 
-    assertThatThrownBy(() -> new S3CredentialVendingMechanisms(mechanisms))
+    assertThatThrownBy(() -> new S3CredentialVendingMechanisms(candidates, beanManager))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Two S3 credential vending mechanisms share the identifier DUP");
   }
 
   @Test
-  void twoDistinctIdentifiersBothRegister() {
-    Instance<S3CredentialVendingMechanism> mechanisms =
-        instanceOf(
-            handleFor(FirstBean.class, Identifier.Literal.of("ONE")),
-            handleFor(SecondBean.class, Identifier.Literal.of("TWO")));
+  void aBeanThatFailsToConstructAbortsStartup() {
+    beans(bean(StsBean.class, Identifier.Literal.of("STS")));
+    failsToConstruct("STS", new IllegalStateException("no STS client"));
 
-    S3CredentialVendingMechanisms registry = new S3CredentialVendingMechanisms(mechanisms);
-
-    assertThat(registry.availableIds()).containsExactlyInAnyOrder("ONE", "TWO");
+    assertThatThrownBy(() -> new S3CredentialVendingMechanisms(candidates, beanManager))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("no STS client");
   }
 
-  @SafeVarargs
-  @SuppressWarnings("unchecked")
-  private static Instance<S3CredentialVendingMechanism> instanceOf(
-      Instance.Handle<S3CredentialVendingMechanism>... handles) {
-    Instance<S3CredentialVendingMechanism> instance = mock(Instance.class);
-    doReturn(List.of(handles)).when(instance).handles();
-    return instance;
+  @Test
+  void requireOnAMissingIdentifierIsTheRefusalEveryGateReturns() {
+    beans(bean(StsBean.class, Identifier.Literal.of("STS")));
+    resolves("STS", mock(S3CredentialVendingMechanism.class));
+    S3CredentialVendingMechanisms registry =
+        new S3CredentialVendingMechanisms(candidates, beanManager);
+
+    assertThat(registry.isAvailable("NOPE")).isFalse();
+    assertThatThrownBy(() -> registry.require("NOPE"))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("S3 credential vending mechanism NOPE is not available in this server");
+  }
+
+  @Test
+  void theTestMapIsReadOnEveryCall() {
+    Map<String, S3CredentialVendingMechanism> live = new HashMap<>();
+    live.put("STS", mock(S3CredentialVendingMechanism.class));
+    S3CredentialVendingMechanisms registry = new S3CredentialVendingMechanisms(live);
+    assertThat(registry.availableIds()).containsExactly("STS");
+
+    live.put("LATER", mock(S3CredentialVendingMechanism.class));
+    assertThat(registry.availableIds()).containsExactly("LATER", "STS");
+    assertThat(registry.isAvailable("LATER")).isTrue();
+
+    live.remove("STS");
+    assertThat(registry.isAvailable("STS")).isFalse();
+    assertThatThrownBy(() -> registry.require("STS"))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("S3 credential vending mechanism STS is not available in this server");
+  }
+
+  private void beans(Bean<?>... beans) {
+    doReturn(Set.of(beans))
+        .when(beanManager)
+        .getBeans(S3CredentialVendingMechanism.class, Any.Literal.INSTANCE);
   }
 
   @SuppressWarnings("unchecked")
-  private static Instance.Handle<S3CredentialVendingMechanism> handleFor(
-      Class<?> beanClass, Annotation... qualifiers) {
+  private static Bean<?> bean(Class<?> beanClass, Annotation... qualifiers) {
     Bean<S3CredentialVendingMechanism> bean = mock(Bean.class);
     doReturn(beanClass).when(bean).getBeanClass();
     doReturn(Set.of(qualifiers)).when(bean).getQualifiers();
-    Instance.Handle<S3CredentialVendingMechanism> handle = mock(Instance.Handle.class);
-    doReturn(bean).when(handle).getBean();
-    return handle;
+    return bean;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Instance<S3CredentialVendingMechanism> selection(String id) {
+    Instance<S3CredentialVendingMechanism> selected = mock(Instance.class);
+    doReturn(selected).when(candidates).select(Identifier.Literal.of(id));
+    return selected;
+  }
+
+  private void resolves(String id, S3CredentialVendingMechanism mechanism) {
+    Instance<S3CredentialVendingMechanism> selected = selection(id);
+    doReturn(false).when(selected).isAmbiguous();
+    doReturn(false).when(selected).isUnsatisfied();
+    doReturn(mechanism).when(selected).get();
+  }
+
+  private void ambiguous(String id) {
+    Instance<S3CredentialVendingMechanism> selected = selection(id);
+    doReturn(true).when(selected).isAmbiguous();
+  }
+
+  private void failsToConstruct(String id, RuntimeException failure) {
+    Instance<S3CredentialVendingMechanism> selected = selection(id);
+    doReturn(false).when(selected).isAmbiguous();
+    doReturn(false).when(selected).isUnsatisfied();
+    doThrow(failure).when(selected).get();
   }
 }

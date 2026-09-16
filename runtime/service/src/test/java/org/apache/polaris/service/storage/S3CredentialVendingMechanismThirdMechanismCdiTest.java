@@ -73,6 +73,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(PolarisIntegrationTestExtension.class)
 class S3CredentialVendingMechanismThirdMechanismCdiTest {
 
+  @Inject S3CredentialVendingMechanisms mechanisms;
+
   @Inject
   @Identifier(TestS3CredentialVendingMechanism.ID)
   TestS3CredentialVendingMechanism testMechanism;
@@ -81,6 +83,8 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
   void anInstalledThirdMechanismVendsWhenAllowlistedAndIsRefusedWithoutDispatchWhenNot(
       PolarisApiEndpoints endpoints, ClientCredentials credentials) throws Exception {
     testMechanism.clear();
+    assertThat(mechanisms.availableIds())
+        .containsExactly("DEFAULT", "STS", TestS3CredentialVendingMechanism.ID);
     try (PolarisClient client = PolarisClient.polarisClient(endpoints)) {
       String adminToken = client.obtainToken(credentials);
       ManagementApi managementApi = client.managementApi(adminToken);
