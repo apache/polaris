@@ -449,8 +449,19 @@ tests:
           value: Always
 
   # spec.template.spec.containers[0].env
-  - it: should not set container env by default
+  - it: should set OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS env var when tracing disabled (default)
     template: deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS
+            value: io.opentelemetry.contrib.gcp.resource.GCPResourceProvider
+  - it: should not set OTEL_JAVA_DISABLED_RESOURCE_PROVIDERS env var when tracing enabled
+    template: deployment.yaml
+    set:
+      tracing:
+        enabled: true
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].env
