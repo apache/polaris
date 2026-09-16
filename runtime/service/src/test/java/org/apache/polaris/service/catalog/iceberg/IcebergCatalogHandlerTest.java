@@ -150,7 +150,8 @@ class IcebergCatalogHandlerTest {
     when(resolutionManifest.getResolvedPath(any(), any())).thenReturn(resolvedPath);
     when(resolutionManifest.getResolvedPath(any())).thenReturn(resolvedPath);
     when(resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
-    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
+    when(authorizer.authorize(any(), any(AuthorizationRequest.class)))
+        .thenReturn(AuthorizationDecision.allow());
 
     // initializeCatalog() reads the resolved catalog entity to decide federated vs. local.
     // Return a CatalogEntity without a connection config so we take the local-catalog path.
@@ -262,7 +263,7 @@ class IcebergCatalogHandlerTest {
     when(authorizer.authorize(
             any(),
             argThat(
-                request ->
+                (AuthorizationRequest request) ->
                     hasOperation(
                         request,
                         PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
@@ -309,7 +310,7 @@ class IcebergCatalogHandlerTest {
     when(authorizer.authorize(
             any(),
             argThat(
-                request ->
+                (AuthorizationRequest request) ->
                     hasOperation(
                         request,
                         PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION))))
@@ -361,7 +362,7 @@ class IcebergCatalogHandlerTest {
     when(authorizer.authorize(
             any(),
             argThat(
-                request ->
+                (AuthorizationRequest request) ->
                     hasOperation(
                         request, PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION))))
         .thenReturn(AuthorizationDecision.deny("write delegation denied"));

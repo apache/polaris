@@ -74,13 +74,16 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CAT
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_GRANTS_FOR_CATALOG_ROLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_NAMESPACES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_NAMESPACES_ENTITY;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_POLICY;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPALS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES_ASSIGNED;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLES_ENTITY;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_VIEWS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_VIEWS_ENTITY;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_NAMESPACE_METADATA;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_POLICY;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_SEMANTIC_MODEL;
@@ -286,6 +289,7 @@ record RbacOperationSemantics(
   static {
     // Namespace operations
     register(LIST_NAMESPACES, NAMESPACE_LIST);
+    register(LIST_NAMESPACES_ENTITY, NAMESPACE_READ_PROPERTIES);
     register(CREATE_NAMESPACE, NAMESPACE_CREATE);
     register(LOAD_NAMESPACE_METADATA, NAMESPACE_READ_PROPERTIES);
     register(NAMESPACE_EXISTS, NAMESPACE_LIST);
@@ -294,6 +298,7 @@ record RbacOperationSemantics(
 
     // Table operations
     register(LIST_TABLES, TABLE_LIST);
+    register(LIST_TABLES_ENTITY, TABLE_READ_PROPERTIES);
     register(CREATE_TABLE_DIRECT, TABLE_CREATE);
     register(CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION, EnumSet.of(TABLE_CREATE, TABLE_WRITE_DATA));
     register(CREATE_TABLE_STAGED, TABLE_CREATE);
@@ -321,6 +326,7 @@ record RbacOperationSemantics(
 
     // View operations
     register(LIST_VIEWS, VIEW_LIST);
+    register(LIST_VIEWS_ENTITY, VIEW_READ_PROPERTIES);
     register(CREATE_VIEW, VIEW_CREATE);
     register(REGISTER_VIEW, VIEW_CREATE);
     register(LOAD_VIEW, VIEW_READ_PROPERTIES);

@@ -129,6 +129,10 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.LIST_NAMESPACES,
         new RangerPolarisOperationSemantics(toSet(NAMESPACE_LIST), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.LIST_NAMESPACES_ENTITY,
+        new RangerPolarisOperationSemantics(
+            toSet(NAMESPACE_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.CREATE_NAMESPACE,
         new RangerPolarisOperationSemantics(
             toSet(NAMESPACE_CREATE), null, ResolvedPathRooting.ROOT));
@@ -149,6 +153,10 @@ public record RangerPolarisOperationSemantics(
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LIST_TABLES,
         new RangerPolarisOperationSemantics(toSet(TABLE_LIST), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.LIST_TABLES_ENTITY,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.CREATE_TABLE_DIRECT,
         new RangerPolarisOperationSemantics(toSet(TABLE_CREATE), null, ResolvedPathRooting.ROOT));
@@ -226,6 +234,10 @@ public record RangerPolarisOperationSemantics(
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LIST_VIEWS,
         new RangerPolarisOperationSemantics(toSet(VIEW_LIST), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.LIST_VIEWS_ENTITY,
+        new RangerPolarisOperationSemantics(
+            toSet(VIEW_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.CREATE_VIEW,
         new RangerPolarisOperationSemantics(toSet(VIEW_CREATE), null, ResolvedPathRooting.ROOT));

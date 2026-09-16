@@ -800,4 +800,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "configured, but existing values cannot be changed to different ones.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_ENTITY_LEVEL_LIST_FILTERING =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_ENTITY_LEVEL_LIST_FILTERING")
+          .catalogConfig("polaris.config.enable-entity-level-list-filtering")
+          .description(
+              "When true, LIST operations (listNamespaces, listTables, listViews) filter "
+                  + "results to only entities the caller is authorized to see. When false "
+                  + "(default), authorization is checked only at the parent level.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }
