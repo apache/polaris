@@ -123,6 +123,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   `400 Bad Request` (`Invalid page token`) instead of `500 Internal Server Error`. Tokens that are
   valid Base64 but not a serialized page token (garbage, truncated, or produced by an incompatible
   Polaris version) previously escaped as Jackson decoding exceptions.
+- Iceberg REST: when `X-Iceberg-Access-Delegation` resolves to remote signing (not implemented),
+  either because `remote-signing` was requested alone or because `vended-credentials,remote-signing`
+  was requested against a catalog that cannot vend credentials, the `400` response now explains the
+  situation and what to do (`This catalog cannot vend credentials or sign requests; request without
+  X-Iceberg-Access-Delegation and configure storage credentials on the client`) instead of the opaque
+  `Unsupported access delegation mode: REMOTE_SIGNING`.
 - Iceberg REST: renaming a table or view with a missing `source` or `destination` now returns `400 Bad Request` instead of `500 Internal Server Error`.
 - Async file-cleanup tasks now bound how long they wait for object-store deletions via the new `polaris.tasks.file-deletion-timeout` (default 1h), so a stalled storage endpoint can no longer pin a task-executor thread indefinitely; a timeout is terminal for the current run rather than immediately retried, so it does not stack more deletions onto the stalled endpoint.
 - Python CLI `catalogs create --type external` now validates `--storage-type` and `--default-base-location` up front, matching the behavior for internal catalogs and the flags' documented "(Required)" status. Previously, omitting either produced an opaque pydantic `ValidationError` at request-build time.

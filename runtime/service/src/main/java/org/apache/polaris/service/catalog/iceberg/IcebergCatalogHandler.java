@@ -1798,6 +1798,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * Resolves the access delegation mode by delegating to the configured {@link
    * AccessDelegationModeResolver}.
    *
+   * <p>Remote signing is not implemented yet. Whenever the resolver settles on {@link
+   * AccessDelegationMode#REMOTE_SIGNING}, either because the client asked for it alone or because
+   * credential vending is not possible for the catalog and the client offered remote signing as the
+   * alternative, the request fails fast with a message that tells the client what to do. This
+   * matches how a vended-credentials-only request behaves when no credentials can be vended.
+   *
    * @param requestedModes The non-empty set of delegation modes requested by the client
    * @return The resolved access delegation mode, or empty if no delegation mode was resolved
    */
@@ -1809,11 +1815,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
 
     // TODO remove when remote signing is implemented
-    // Reject if the resolved mode is REMOTE_SIGNING since it's not yet supported
-    Preconditions.checkArgument(
-        resolvedMode.orElse(null) != AccessDelegationMode.REMOTE_SIGNING,
-        "Unsupported access delegation mode: %s",
-        AccessDelegationMode.REMOTE_SIGNING);
+    if (resolvedMode.orElse(null) == AccessDelegationMode.REMOTE_SIGNING) {
+      throw new IllegalArgumentException(
+          "This catalog cannot vend credentials or sign requests; request without "
+              + "X-Iceberg-Access-Delegation and configure storage credentials on the client");
+    }
 
     return resolvedMode;
   }
