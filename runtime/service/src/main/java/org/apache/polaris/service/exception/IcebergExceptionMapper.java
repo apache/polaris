@@ -57,6 +57,7 @@ import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
+import org.apache.polaris.service.catalog.iceberg.TableMetadataIntegrityException;
 import org.eclipse.microprofile.faulttolerance.exceptions.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -178,6 +179,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case FileIOUnknownHostException e -> Status.NOT_FOUND.getStatusCode();
       case AlreadyExistsException e -> Status.CONFLICT.getStatusCode();
       case CommitFailedException e -> Status.CONFLICT.getStatusCode();
+      case TableMetadataIntegrityException e -> 422;
       case UnprocessableEntityException e -> 422;
       case CherrypickAncestorCommitException e -> Status.BAD_REQUEST.getStatusCode();
       case CommitStateUnknownException e -> Status.INTERNAL_SERVER_ERROR.getStatusCode();
