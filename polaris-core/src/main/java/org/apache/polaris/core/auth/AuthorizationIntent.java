@@ -35,7 +35,7 @@ public sealed interface AuthorizationIntent
   /**
    * @deprecated Since Polaris 1.8; use {@link #operation()} instead.
    */
-  @Deprecated(since = "1.8")
+  @Deprecated(since = "1.8", forRemoval = true)
   default @NonNull PolarisAuthorizableOperation getOperation() {
     return operation();
   }
