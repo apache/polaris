@@ -118,13 +118,7 @@ public class InMemoryEntityCacheTest {
   @Test
   void testMeters() {
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
-    InMemoryEntityCache cache =
-        new InMemoryEntityCache(
-            diagServices,
-            callCtx.getRealmConfig(),
-            this.metaStoreManager,
-            Optional.of(meterRegistry),
-            Tags.of("realm_id", "testRealm"));
+    InMemoryEntityCache cache = allocateInstrumentedCache(meterRegistry, "testRealm");
 
     // a miss on the by-name index, then a hit
     EntityCacheByNameKey catalogName = new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test");
@@ -224,7 +218,12 @@ public class InMemoryEntityCacheTest {
         .isNotNull();
   }
 
-  /** Builds an instrumented cache tagged for {@code realmId}, sharing {@code meterRegistry}. */
+  /**
+   * Builds an instrumented cache tagged for {@code realmId}, sharing {@code meterRegistry}.
+   * Caffeine's bookkeeping - including the weighted size the weight gauge reports - is normally
+   * applied asynchronously, so these caches run it on the calling thread to keep the meters in step
+   * with the writes.
+   */
   private InMemoryEntityCache allocateInstrumentedCache(
       SimpleMeterRegistry meterRegistry, String realmId) {
     return new InMemoryEntityCache(
@@ -232,7 +231,8 @@ public class InMemoryEntityCacheTest {
         callCtx.getRealmConfig(),
         this.metaStoreManager,
         Optional.of(meterRegistry),
-        Tags.of("realm_id", realmId));
+        Tags.of("realm_id", realmId),
+        Runnable::run);
   }
 
   /** Warms the cache by name, then performs one lookup by id, which Caffeine records. */

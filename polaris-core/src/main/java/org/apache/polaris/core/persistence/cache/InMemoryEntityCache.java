@@ -24,6 +24,7 @@ import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.RemovalListener;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import com.github.benmanes.caffeine.cache.stats.StatsCounter;
+import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Meter;
@@ -41,6 +42,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
@@ -125,6 +128,31 @@ public class InMemoryEntityCache implements EntityCache {
       @NonNull PolarisMetaStoreManager polarisMetaStoreManager,
       Optional<MeterRegistry> meterRegistry,
       Iterable<Tag> extraTags) {
+    this(
+        diagnostics,
+        realmConfig,
+        polarisMetaStoreManager,
+        meterRegistry,
+        extraTags,
+        ForkJoinPool.commonPool());
+  }
+
+  /**
+   * Constructor taking the executor that Caffeine runs its maintenance on. Caffeine's bookkeeping -
+   * draining the read and write buffers, applying evictions, updating {@code
+   * Policy.Eviction#weightedSize()} - happens asynchronously on this executor, so a caller that
+   * needs the cache's reported state to be up to date as soon as a write returns can pass {@link
+   * Runnable#run} to make that bookkeeping synchronous. Production code uses the default {@link
+   * ForkJoinPool#commonPool()}.
+   */
+  @VisibleForTesting
+  InMemoryEntityCache(
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull RealmConfig realmConfig,
+      @NonNull PolarisMetaStoreManager polarisMetaStoreManager,
+      Optional<MeterRegistry> meterRegistry,
+      Iterable<Tag> extraTags,
+      @NonNull Executor maintenanceExecutor) {
     this.diagnostics = diagnostics;
     this.meterRegistry = meterRegistry;
 
@@ -149,6 +177,7 @@ public class InMemoryEntityCache implements EntityCache {
             .maximumWeight(weigherTarget)
             .weigher(EntityWeigher.asWeigher())
             .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
+            .executor(maintenanceExecutor)
             .removalListener(removalListener); // Set the removal listener
 
     boolean useSoftValues =
