@@ -218,7 +218,7 @@ class IcebergCatalogHandlerTest {
   private static boolean hasOperation(
       AuthorizationRequest request, PolarisAuthorizableOperation operation) {
     return request != null
-        && request.intents().stream().anyMatch(intent -> intent.getOperation().equals(operation));
+        && request.intents().stream().anyMatch(intent -> intent.operation().equals(operation));
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})
@@ -332,7 +332,7 @@ class IcebergCatalogHandlerTest {
     verify(authorizer).resolveAuthorizationInputs(any(), resolveRequestCaptor.capture());
     assertThat(
             resolveRequestCaptor.getValue().intents().stream()
-                .map(intent -> intent.getOperation())
+                .map(intent -> intent.operation())
                 .toList())
         .containsExactly(
             PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION,
@@ -370,13 +370,13 @@ class IcebergCatalogHandlerTest {
 
     verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
-    assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
+    assertThat(requestCaptor.getValue().intents().getFirst().operation())
         .isEqualTo(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION);
     verify(authorizer, org.mockito.Mockito.times(2))
         .authorize(any(), authorizeRequestCaptor.capture());
     assertThat(
             authorizeRequestCaptor.getAllValues().stream()
-                .map(request -> request.intents().getFirst().getOperation())
+                .map(request -> request.intents().getFirst().operation())
                 .toList())
         .containsExactly(
             PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION,
@@ -411,10 +411,10 @@ class IcebergCatalogHandlerTest {
 
     verify(authorizer).resolveAuthorizationInputs(stateCaptor.capture(), requestCaptor.capture());
     assertThat(stateCaptor.getValue().getResolutionManifest()).isSameAs(resolutionManifest);
-    assertThat(requestCaptor.getValue().intents().getFirst().getOperation())
+    assertThat(requestCaptor.getValue().intents().getFirst().operation())
         .isEqualTo(PolarisAuthorizableOperation.UPDATE_TABLE);
     verify(authorizer).authorize(any(), authorizeRequestCaptor.capture());
-    assertThat(authorizeRequestCaptor.getValue().intents().getFirst().getOperation())
+    assertThat(authorizeRequestCaptor.getValue().intents().getFirst().operation())
         .isEqualTo(PolarisAuthorizableOperation.SET_TABLE_PROPERTIES);
   }
 
