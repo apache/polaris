@@ -255,7 +255,7 @@ public class DatasourceOperations {
     return withRetries(
         () -> {
           logQuery(preparedQuery);
-          AtomicBoolean writeStarted = new AtomicBoolean(false);
+          AtomicBoolean commitStarted = new AtomicBoolean(false);
           try (Connection connection = acquireConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
             List<Object> params = preparedQuery.parameters();
@@ -274,7 +274,7 @@ public class DatasourceOperations {
             } finally {
               try {
                 if (success) {
-                  writeStarted.set(true);
+                  commitStarted.set(true);
                   connection.commit();
                 } else {
                   connection.rollback();
@@ -285,7 +285,7 @@ public class DatasourceOperations {
             }
             return rowsUpdated;
           } catch (SQLException e) {
-            throw classifyByPhase(e, writeStarted.get());
+            throw classifyByPhase(e, commitStarted.get());
           }
         });
   }
@@ -307,7 +307,7 @@ public class DatasourceOperations {
     AtomicInteger successCount = new AtomicInteger();
     return withRetries(
         () -> {
-          AtomicBoolean writeStarted = new AtomicBoolean(false);
+          AtomicBoolean commitStarted = new AtomicBoolean(false);
           try (Connection connection = acquireConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQueries.sql())) {
             boolean autoCommit = connection.getAutoCommit();
@@ -337,7 +337,7 @@ public class DatasourceOperations {
                   // The batch is buffered until commit(); only commit() can leave an ambiguous
                   // outcome. A failure in executeBatch() above is uncommitted (a definite
                   // non-write).
-                  writeStarted.set(true);
+                  commitStarted.set(true);
                   connection.commit();
                 } else {
                   connection.rollback();
@@ -348,7 +348,7 @@ public class DatasourceOperations {
               }
             }
           } catch (SQLException e) {
-            throw classifyByPhase(e, writeStarted.get());
+            throw classifyByPhase(e, commitStarted.get());
           }
           return successCount.get();
         });
@@ -363,7 +363,7 @@ public class DatasourceOperations {
   public void runWithinTransaction(TransactionCallback callback) throws SQLException {
     withRetries(
         () -> {
-          AtomicBoolean writeStarted = new AtomicBoolean(false);
+          AtomicBoolean commitStarted = new AtomicBoolean(false);
           try (Connection connection = acquireConnection()) {
             boolean autoCommit = connection.getAutoCommit();
             boolean success = false;
@@ -375,7 +375,7 @@ public class DatasourceOperations {
                 if (success) {
                   // Only commit() can leave an ambiguous outcome; a failure in the callback runs
                   // against an uncommitted transaction and is a definite non-write.
-                  writeStarted.set(true);
+                  commitStarted.set(true);
                   connection.commit();
                 } else {
                   connection.rollback();
@@ -385,7 +385,7 @@ public class DatasourceOperations {
               connection.setAutoCommit(autoCommit);
             }
           } catch (SQLException e) {
-            throw classifyByPhase(e, writeStarted.get());
+            throw classifyByPhase(e, commitStarted.get());
           }
           return null;
         });
@@ -639,7 +639,7 @@ public class DatasourceOperations {
    * failure that occurs before commit was entered leaves the transaction uncommitted and is
    * therefore a definite non-write.
    *
-   * <p>Once {@code writeStarted} is set (immediately before {@code commit()}), or the failure is
+   * <p>Once {@code commitStarted} is set (immediately before {@code commit()}), or the failure is
    * already a {@link WriteNotStartedException}, the original exception is returned unchanged so
    * {@link #isAmbiguousCommitOutcome} can decide the commit outcome.
    *
@@ -650,8 +650,8 @@ public class DatasourceOperations {
    * already classify correctly and keep their original type, so higher-level mapping (for example
    * already-exists detection) and retry behavior are unaffected.
    */
-  private static SQLException classifyByPhase(SQLException e, boolean writeStarted) {
-    if (writeStarted || e instanceof WriteNotStartedException) {
+  private static SQLException classifyByPhase(SQLException e, boolean commitStarted) {
+    if (commitStarted || e instanceof WriteNotStartedException) {
       return e;
     }
     return indicatesAmbiguousOutcome(e) ? new WriteNotStartedException(e) : e;
