@@ -101,6 +101,16 @@ class S3CredentialVendingMechanismsTest {
   }
 
   @Test
+  void anIdentifierThatResolvesToNoBeanAbortsStartup() {
+    beans(bean(StsBean.class, Identifier.Literal.of("GHOST")));
+    unsatisfied("GHOST");
+
+    assertThatThrownBy(() -> new S3CredentialVendingMechanisms(candidates, beanManager))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("S3 credential vending mechanism GHOST resolves to no enabled bean");
+  }
+
+  @Test
   void aBeanThatFailsToConstructAbortsStartup() {
     beans(bean(StsBean.class, Identifier.Literal.of("STS")));
     failsToConstruct("STS", new IllegalStateException("no STS client"));
@@ -172,6 +182,12 @@ class S3CredentialVendingMechanismsTest {
   private void ambiguous(String id) {
     Instance<S3CredentialVendingMechanism> selected = selection(id);
     doReturn(true).when(selected).isAmbiguous();
+  }
+
+  private void unsatisfied(String id) {
+    Instance<S3CredentialVendingMechanism> selected = selection(id);
+    doReturn(false).when(selected).isAmbiguous();
+    doReturn(true).when(selected).isUnsatisfied();
   }
 
   private void failsToConstruct(String id, RuntimeException failure) {
