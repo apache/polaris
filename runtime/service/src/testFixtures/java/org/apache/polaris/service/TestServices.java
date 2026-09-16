@@ -270,8 +270,7 @@ public record TestServices(
               Optional.empty(),
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())),
               storageCredentialCache,
-              realmConfig,
-              diagnostics);
+              realmConfig);
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
               clock, diagnostics, storageIntegrationProvider, RootCredentialsSet.EMPTY);
