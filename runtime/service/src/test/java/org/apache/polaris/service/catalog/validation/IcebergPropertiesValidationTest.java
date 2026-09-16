@@ -92,7 +92,7 @@ class IcebergPropertiesValidationTest {
   @Test
   void mechanismCheckAllowsAnAllowlistedInstalledMechanism() {
     allow("STS", "SECOND_MECHANISM");
-    S3CredentialVendingMechanisms mechanisms = installed("STS", "SECOND_MECHANISM");
+    S3CredentialVendingMechanisms mechanisms = installed("STS", "SECOND_MECHANISM", "DEFAULT");
     AwsStorageConfigurationInfo sts =
         AwsStorageConfigurationInfo.builder()
             .roleARN("arn:aws:iam::123456789012:role/r")
@@ -132,6 +132,24 @@ class IcebergPropertiesValidationTest {
                     realmConfig, secondMechanism, mechanisms))
         .hasMessage(
             "S3 credential vending mechanism SECOND_MECHANISM is not enabled in this realm");
+  }
+
+  @Test
+  void anEmptyMechanismSkipsTheAllowlistAndResolvesToDefault() {
+    allow("SECOND_MECHANISM"); // would refuse STS and DEFAULT if consulted
+    AwsStorageConfigurationInfo empty =
+        AwsStorageConfigurationInfo.builder().addAllowedLocation("s3://bucket/prefix/").build();
+    IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
+        realmConfig, (String) null);
+    IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(realmConfig, empty);
+    IcebergPropertiesValidation.validateS3CredentialVendingMechanism(
+        realmConfig, empty, installed("STS", "DEFAULT"));
+    assertThatThrownBy(
+            () ->
+                IcebergPropertiesValidation.validateS3CredentialVendingMechanism(
+                    realmConfig, empty, installed("STS")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("S3 credential vending mechanism DEFAULT is not available in this server");
   }
 
   @Test

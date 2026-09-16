@@ -37,6 +37,7 @@ import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
@@ -316,10 +317,11 @@ public class ProductionReadinessChecks {
   }
 
   /**
-   * Every name in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}, in the defaults and in each
-   * realm override, must be installed in this server. A listed-but-uninstalled mechanism is not
-   * severe: the mechanism is simply refused wherever a catalog selects it. Only the registry's own
-   * constructor (a bean with no {@code @Identifier}, or two beans sharing one) aborts startup.
+   * Every explicit name in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}, in the defaults and
+   * in each realm override, must be installed in this server; DEFAULT is reserved and has no effect
+   * in the list. A listed-but-uninstalled mechanism is not severe: the mechanism is simply refused
+   * wherever a catalog selects it. Only the registry's own constructor (a bean with no
+   * {@code @Identifier}, or two beans sharing one) aborts startup.
    */
   @Produces
   public ProductionReadinessCheck checkS3CredentialVendingMechanisms(
@@ -361,6 +363,17 @@ public class ProductionReadinessChecks {
       String offendingProperty,
       S3CredentialVendingMechanisms mechanisms,
       List<Error> errors) {
+    if (S3CredentialVendingMechanism.DEFAULT.equals(name)) {
+      errors.add(
+          Error.of(
+              format(
+                  "S3 credential vending mechanism 'DEFAULT' listed in %s has no effect: a catalog"
+                      + " that leaves credentialVendingMechanism empty always uses the server's"
+                      + " default mechanism, and a catalog cannot name DEFAULT explicitly",
+                  offendingProperty),
+              offendingProperty));
+      return;
+    }
     if (!mechanisms.isAvailable(name)) {
       errors.add(
           Error.of(

@@ -201,10 +201,45 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
-  public void testCredentialVendingMechanismDefaultsToSts() {
+  void anEmptyMechanismReadsAsNullAndResolvesToTheServerDefault() {
     AwsStorageConfigurationInfo config =
         newBuilder().addAllowedLocation("s3://bucket/path/").build();
-    assertThat(config.getCredentialVendingMechanism()).isEqualTo(S3CredentialVendingMechanism.STS);
+    assertThat(config.getCredentialVendingMechanism()).isNull();
+    assertThat(config.resolvedCredentialVendingMechanism())
+        .isEqualTo(S3CredentialVendingMechanism.DEFAULT);
+    assertThat(config.serialize()).doesNotContain("credentialVendingMechanism");
+  }
+
+  @Test
+  void anExplicitMechanismResolvesToItself() {
+    AwsStorageConfigurationInfo config =
+        newBuilder()
+            .addAllowedLocation("s3://bucket/path/")
+            .credentialVendingMechanism(S3CredentialVendingMechanism.STS)
+            .build();
+    assertThat(config.resolvedCredentialVendingMechanism())
+        .isEqualTo(S3CredentialVendingMechanism.STS);
+    assertThat(config.serialize()).contains("\"credentialVendingMechanism\":\"STS\"");
+  }
+
+  @Test
+  void aPersistedRowWithoutTheKeyReadsAsEmpty() throws Exception {
+    String json =
+        "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\","
+            + "\"allowedLocations\":[\"s3://bucket/\"]}";
+    AwsStorageConfigurationInfo info =
+        (AwsStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(json);
+    assertThat(info.getCredentialVendingMechanism()).isNull();
+    assertThat(info.resolvedCredentialVendingMechanism())
+        .isEqualTo(S3CredentialVendingMechanism.DEFAULT);
+  }
+
+  @Test
+  void theApiValueNormalizerTreatsNullAndBlankAsEmpty() {
+    assertThat(AwsStorageConfigurationInfo.credentialVendingMechanismOf(null)).isNull();
+    assertThat(AwsStorageConfigurationInfo.credentialVendingMechanismOf("")).isNull();
+    assertThat(AwsStorageConfigurationInfo.credentialVendingMechanismOf("  ")).isNull();
+    assertThat(AwsStorageConfigurationInfo.credentialVendingMechanismOf("STS")).isEqualTo("STS");
   }
 
   @Test
@@ -228,16 +263,6 @@ public class AwsStorageConfigurationInfoTest {
                 .build()
                 .getCredentialVendingMechanism())
         .isEqualTo("DOWNSTREAM_MECHANISM");
-  }
-
-  @Test
-  void aPersistedRowWithoutTheKeyReadsAsSts() throws Exception {
-    String json =
-        "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\","
-            + "\"allowedLocations\":[\"s3://bucket/\"]}";
-    AwsStorageConfigurationInfo info =
-        (AwsStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(json);
-    assertThat(info.getCredentialVendingMechanism()).isEqualTo(S3CredentialVendingMechanism.STS);
   }
 
   @Test

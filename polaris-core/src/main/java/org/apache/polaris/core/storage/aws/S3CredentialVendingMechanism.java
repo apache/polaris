@@ -25,17 +25,25 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 /**
  * How Polaris vends S3 credentials for one S3 catalog. Implementations are CDI beans annotated with
  * {@code @Identifier("<mechanism>")}; a catalog's {@code credentialVendingMechanism} selects one by
- * that identifier. A realm lists the mechanisms it accepts in {@code
- * SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}; a listed mechanism with no bean in the running
- * server is refused wherever the catalog is opened or a credential is needed. An implementation
- * must be application-scoped (or otherwise normal-scoped): the registry resolves the bean with
- * {@code select(...).get()} on every credential resolution and keeps no handle to destroy a
- * dependent instance.
+ * that identifier, and a catalog that leaves the field empty selects {@link #DEFAULT}. A realm
+ * lists the explicit mechanisms it accepts in {@code SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS}; a
+ * listed mechanism with no bean in the running server is refused wherever a catalog selects it. A
+ * server replaces a mechanism, {@link #DEFAULT} included, with an {@code @Alternative} bean of a
+ * higher {@code @Priority} that carries the same identifier. An implementation must be
+ * application-scoped (or otherwise normal-scoped): the registry resolves every bean once at startup
+ * and hands out the same instance for the lifetime of the server.
  */
 public interface S3CredentialVendingMechanism {
 
-  /** AWS STS AssumeRole against the catalog's role, the default. */
+  /** AWS STS AssumeRole against the catalog's role. */
   String STS = "STS";
+
+  /**
+   * The server's default mechanism, selected by leaving {@code credentialVendingMechanism} empty.
+   * The identifier itself is reserved: a request that names it is refused. Polaris maps it to
+   * {@link #STS}; a server build may install a different default.
+   */
+  String DEFAULT = "DEFAULT";
 
   /** The storage integration that vends for one S3 catalog under this mechanism. */
   PolarisStorageIntegration integrationFor(

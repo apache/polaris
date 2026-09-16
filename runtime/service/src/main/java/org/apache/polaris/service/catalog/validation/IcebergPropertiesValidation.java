@@ -88,12 +88,14 @@ public class IcebergPropertiesValidation {
   }
 
   /**
-   * The realm allowlist for S3 credential vending mechanisms. The list has no implicit member;
-   * {@code STS} must be listed too. Used at catalog create and update, and as defence in depth
-   * behind the availability gates below.
+   * The realm allowlist for an explicit mechanism. An empty value (null) selects the server's
+   * default mechanism and is always allowed, so it is not checked here.
    */
   public static void validateS3CredentialVendingMechanismAllowed(
-      @NonNull RealmConfig realmConfig, @NonNull String mechanism) {
+      @NonNull RealmConfig realmConfig, @Nullable String mechanism) {
+    if (mechanism == null) {
+      return;
+    }
     List<String> allowed = realmConfig.getConfig(SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS);
     if (!allowed.contains(mechanism)) {
       throw new ValidationException(
@@ -110,15 +112,15 @@ public class IcebergPropertiesValidation {
     }
   }
 
-  /** Allowlist, then availability in this server; for catalog initialization and storage access. */
+  /** Allowlist on the explicit value, then availability of the resolved identifier. */
   public static void validateS3CredentialVendingMechanism(
       @NonNull RealmConfig realmConfig,
       @Nullable PolarisStorageConfigurationInfo storageConfig,
       @NonNull S3CredentialVendingMechanisms mechanisms) {
     if (storageConfig instanceof AwsStorageConfigurationInfo awsConfig) {
-      String mechanism = awsConfig.getCredentialVendingMechanism();
-      validateS3CredentialVendingMechanismAllowed(realmConfig, mechanism);
-      mechanisms.require(mechanism);
+      validateS3CredentialVendingMechanismAllowed(
+          realmConfig, awsConfig.getCredentialVendingMechanism());
+      mechanisms.require(awsConfig.resolvedCredentialVendingMechanism());
     }
   }
 

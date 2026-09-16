@@ -132,6 +132,7 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -898,14 +899,21 @@ public class PolarisAdminService {
   }
 
   /**
-   * The realm allowlist for S3 credential vending mechanisms, checked after authorization so an
-   * unauthorized caller learns nothing about the realm's configuration. The storage-type gate and
-   * the S3 endpoint policy stay in {@code PolarisServiceImpl}, where they already were.
+   * The mechanism checks that run after authorization, so an unauthorized caller learns nothing
+   * about the realm's configuration: the reserved DEFAULT identifier, then the realm allowlist for
+   * an explicit value. The storage-type gate and the S3 endpoint policy stay in {@code
+   * PolarisServiceImpl}, where they already were.
    */
   private void validateS3CredentialVendingMechanism(@Nullable StorageConfigInfo storageConfigInfo) {
     if (storageConfigInfo instanceof AwsStorageConfigInfo s3Config) {
+      String requested = s3Config.getCredentialVendingMechanism();
+      if (S3CredentialVendingMechanism.DEFAULT.equals(requested)) {
+        throw new ValidationException(
+            "S3 credential vending mechanism DEFAULT is reserved; leave the field empty to use the"
+                + " server default");
+      }
       IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-          realmConfig, PolarisStorageConfigurationInfo.credentialVendingMechanismOf(s3Config));
+          realmConfig, AwsStorageConfigurationInfo.credentialVendingMechanismOf(requested));
     }
   }
 

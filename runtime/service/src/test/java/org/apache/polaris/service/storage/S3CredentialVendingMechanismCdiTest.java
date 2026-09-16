@@ -26,6 +26,7 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
@@ -55,16 +56,17 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.PolicyApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * CDI-level coverage for {@link S3CredentialVendingMechanisms}: discovery through the real
  * container, and the standalone contract this module alone must satisfy: an allowlisted mechanism
- * with no bean installed is refused everywhere it would be used, never confused with STS, and never
- * aborts startup, while STS itself is proven to still vend through the real registry dispatch. No
- * cloud calls: every catalog's table content goes through {@link TestInMemoryFileIOFactory}
- * (selected by {@code polaris.file-io.type=test-in-memory}).
+ * with no bean installed is refused everywhere it would be used, never confused with DEFAULT or
+ * STS, and never aborts startup, while the DEFAULT and STS beans are proven to still vend through
+ * the real registry dispatch. No cloud calls: every catalog's table content goes through {@link
+ * TestInMemoryFileIOFactory} (selected by {@code polaris.file-io.type=test-in-memory}).
  *
  * <p>The generic-table and policy routes are namespace-scoped: {@code
  * CatalogHandler.authorizeBasicNamespaceOperationOrThrow} resolves and checks the namespace's
@@ -81,14 +83,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * <p>The "not available in this server" assertions target a mechanism identifier the server never
  * ships, {@code UNINSTALLED_MECHANISM}.
  *
- * <p>This class installs only the {@code STS} mechanism (the server's real, shipped bean) and
- * allowlists {@code UNINSTALLED_MECHANISM} without installing it. {@link
+ * <p>This class installs only the {@code DEFAULT} and {@code STS} mechanisms (the server's real,
+ * shipped beans) and allowlists {@code UNINSTALLED_MECHANISM} without installing it. {@link
  * S3CredentialVendingMechanismThirdMechanismCdiTest} swaps in a test-only mechanism, under its own
  * profile, to prove the registry and the gates work for a mechanism the server itself does not
  * ship. Quarkus does not allow {@code @TestProfile} on a {@code @Nested} class, so that scenario
  * cannot share this file: it needs its own application instance, since {@code
  * getEnabledAlternatives()} is a profile-wide, one-instance setting, and this class asserts {@code
- * availableIds()} is exactly {@code {STS}}.
+ * availableIds()} is exactly {@code {DEFAULT, STS}}.
  */
 @QuarkusTest
 @TestProfile(S3CredentialVendingMechanismCdiTest.Profile.class)
@@ -143,7 +145,7 @@ class S3CredentialVendingMechanismCdiTest {
     // The application started at all, with two mechanisms allowlisted and neither installed, and
     // default readiness settings, is itself part of what this proves; availableIds() shows only
     // STS installed.
-    assertThat(mechanisms.availableIds()).containsExactly("STS");
+    assertThat(mechanisms.availableIds()).containsExactly("DEFAULT", "STS");
 
     try (PolarisClient client = PolarisClient.polarisClient(endpoints)) {
       String adminToken = client.obtainToken(credentials);
@@ -157,6 +159,11 @@ class S3CredentialVendingMechanismCdiTest {
 
       // The STS catalog: content created normally, left untouched for the rest of the test.
       createStsCatalog(managementApi, stsCatalog);
+      try (Response r =
+          managementApi.request("v1/catalogs/{name}", Map.of("name", stsCatalog)).get()) {
+        assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        assertThat(r.readEntity(String.class)).doesNotContain("credentialVendingMechanism");
+      }
       catalogApi.createNamespace(stsCatalog, "ns");
       createTable(catalogApi, stsCatalog, "ns", "t");
 
@@ -211,22 +218,24 @@ class S3CredentialVendingMechanismCdiTest {
   }
 
   /**
-   * Proves the second half of STS discovery that the other test method cannot: that an STS catalog
-   * actually vends through the registry-resolved STS bean, not merely that the gate admits it. That
-   * test method's realm has {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} on, so {@code
+   * Proves the second half of STS discovery that the other test method cannot: that the DEFAULT and
+   * STS beans actually vend through the registry, not merely that the gate admits them. That test
+   * method's realm has {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION} on, so {@code
    * StorageAccessConfigProvider} returns before ever calling the registry; its 200s show only that
-   * the route works. This method runs in a realm with the skip flag off, on a catalog with {@code
+   * the route works. This method runs in a realm with the skip flag off, on catalogs with {@code
    * stsUnavailable: true}, so no real STS call is made: {@code
    * buildLoadTableResponseWithDelegationCredentials} calls {@code StorageAccessConfigProvider}
    * unconditionally on every load, delegation requested or not, which reaches the registry, which
-   * resolves {@code @Identifier("STS")} and runs {@code AwsCredentialsStorageIntegration}, which
-   * checks {@code stsUnavailable}, skips the AssumeRole call entirely, and returns only the
-   * catalog's non-credential storage properties (its region and endpoint). A load succeeding with
-   * those properties present and no access key anywhere in the response is only possible if the
-   * registry actually resolved the {@code STS} bean and ran its integration.
+   * resolves the catalog's mechanism (an absent value resolving to {@code @Identifier("DEFAULT")},
+   * an explicit one to {@code @Identifier("STS")}) and runs {@code
+   * AwsCredentialsStorageIntegration}, which checks {@code stsUnavailable}, skips the AssumeRole
+   * call entirely, and returns only the catalog's non-credential storage properties (its region and
+   * endpoint). A load succeeding with those properties present and no access key anywhere in the
+   * response is only possible if the registry actually resolved the bean and ran its integration.
+   * The sequence runs once for each mechanism, on its own catalog.
    */
   @Test
-  void stsVendsThroughTheRegistryWithoutARealStsCall(
+  void theDefaultAndStsMechanismsVendThroughTheRegistryWithoutARealStsCall(
       PolarisApiEndpoints endpoints, ClientCredentials credentials) throws Exception {
     try (PolarisClient client = PolarisClient.polarisClient(endpoints)) {
       String adminToken = client.obtainToken(credentials);
@@ -235,106 +244,128 @@ class S3CredentialVendingMechanismCdiTest {
       Map<String, String> realmHeaders =
           Map.of("Authorization", "Bearer " + adminToken, "Polaris-Realm", NO_SKIP_REALM);
 
-      String catalog = "cdi-sts-unavailable-cat";
       String endpoint = "https://s3.example-compatible-store.test";
       String region = "us-east-1";
 
-      try (Response r =
-          managementApi
-              .request("v1/catalogs", Map.of(), Map.of(), realmHeaders)
-              .post(
-                  Entity.json(
-                      new CreateCatalogRequest(
-                          PolarisCatalog.builder()
-                              .setType(Catalog.TypeEnum.INTERNAL)
-                              .setName(catalog)
-                              .setProperties(new CatalogProperties("s3://bucket/base/" + catalog))
-                              .setStorageConfigInfo(
-                                  AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                                      .setRoleArn("arn:aws:iam::123456789012:role/r")
-                                      .setStsUnavailable(true)
-                                      .setEndpoint(endpoint)
-                                      .setPathStyleAccess(true)
-                                      .setRegion(region)
-                                      .setAllowedLocations(
-                                          List.of("s3://bucket/base/" + catalog + "/"))
-                                      .build())
-                              .build())))) {
-        assertThat(r.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
-      }
+      Map<String, String> scenarios = new LinkedHashMap<>();
+      scenarios.put("cdi-default-unavailable-cat", null);
+      scenarios.put("cdi-sts-unavailable-cat", "STS");
 
-      // The catalog's auto-granted catalog_admin role carries CATALOG_MANAGE_ACCESS and
-      // CATALOG_MANAGE_METADATA only. This grant broadens it to CATALOG_MANAGE_CONTENT, the same
-      // grant ManagementApi.makeAdmin gives a caller-supplied catalog role.
-      try (Response r =
-          managementApi
-              .request(
-                  "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-                  Map.of(
-                      "cat", catalog, "role", PolarisEntityConstants.getNameOfCatalogAdminRole()),
-                  Map.of(),
-                  realmHeaders)
-              .put(
-                  Entity.json(
-                      new CatalogGrant(
-                          CatalogPrivilege.CATALOG_MANAGE_CONTENT,
-                          GrantResource.TypeEnum.CATALOG)))) {
-        assertThat(r.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
-      }
+      for (Map.Entry<String, String> scenario : scenarios.entrySet()) {
+        String catalog = scenario.getKey();
+        String mechanism = scenario.getValue();
 
-      try (Response r =
-          catalogApi
-              .request("v1/{cat}/namespaces", Map.of("cat", catalog), Map.of(), realmHeaders)
-              .post(
-                  Entity.json(
-                      CreateNamespaceRequest.builder()
-                          .withNamespace(Namespace.of("ns"))
-                          .build()))) {
-        assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-      }
+        createStsUnavailableCatalog(
+            managementApi, realmHeaders, catalog, mechanism, endpoint, region);
 
-      try (Response r =
-          catalogApi
-              .request(
-                  "v1/{cat}/namespaces/{ns}/tables",
-                  Map.of("cat", catalog, "ns", "ns"),
-                  Map.of(),
-                  realmHeaders)
-              .post(
-                  Entity.json(
-                      CreateTableRequest.builder()
-                          .withName("t")
-                          .withSchema(PolarisAuthzTestBase.SCHEMA)
-                          .withLocation("s3://bucket/base/" + catalog + "/ns/t/")
-                          .build()))) {
-        assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-      }
+        // The catalog's auto-granted catalog_admin role carries CATALOG_MANAGE_ACCESS and
+        // CATALOG_MANAGE_METADATA only. This grant broadens it to CATALOG_MANAGE_CONTENT, the same
+        // grant ManagementApi.makeAdmin gives a caller-supplied catalog role.
+        try (Response r =
+            managementApi
+                .request(
+                    "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                    Map.of(
+                        "cat", catalog, "role", PolarisEntityConstants.getNameOfCatalogAdminRole()),
+                    Map.of(),
+                    realmHeaders)
+                .put(
+                    Entity.json(
+                        new CatalogGrant(
+                            CatalogPrivilege.CATALOG_MANAGE_CONTENT,
+                            GrantResource.TypeEnum.CATALOG)))) {
+          assertThat(r.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+        }
 
-      // No X-Iceberg-Access-Delegation header: buildLoadTableResponseWithDelegationCredentials
-      // calls StorageAccessConfigProvider unconditionally for every loadTable, delegation
-      // requested or not, so this still reaches the registry and the STS bean's integration.
-      // Requesting delegation here does not work hermetically: a single "vended-credentials"
-      // mode with no credentials available throws ("Credential vending was requested... but no
-      // credentials are available"), and requesting both modes together resolves to
-      // remote-signing once STS is unavailable, which IcebergCatalogHandler rejects outright as
-      // not yet implemented. A plain load avoids both and still proves the same thing: the
-      // registry resolved the STS bean and ran its integration to produce these properties.
-      try (Response r =
-          catalogApi
-              .request(
-                  "v1/{cat}/namespaces/{ns}/tables/{table}",
-                  Map.of("cat", catalog, "ns", "ns", "table", "t"),
-                  Map.of(),
-                  realmHeaders)
-              .get()) {
-        assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-        LoadTableResponse loaded = r.readEntity(LoadTableResponse.class);
-        assertThat(loaded.credentials()).isEmpty();
-        assertThat(loaded.config())
-            .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), region)
-            .containsEntry(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
-            .doesNotContainKey(StorageAccessProperty.AWS_KEY_ID.getPropertyName());
+        try (Response r =
+            catalogApi
+                .request("v1/{cat}/namespaces", Map.of("cat", catalog), Map.of(), realmHeaders)
+                .post(
+                    Entity.json(
+                        CreateNamespaceRequest.builder()
+                            .withNamespace(Namespace.of("ns"))
+                            .build()))) {
+          assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        }
+
+        try (Response r =
+            catalogApi
+                .request(
+                    "v1/{cat}/namespaces/{ns}/tables",
+                    Map.of("cat", catalog, "ns", "ns"),
+                    Map.of(),
+                    realmHeaders)
+                .post(
+                    Entity.json(
+                        CreateTableRequest.builder()
+                            .withName("t")
+                            .withSchema(PolarisAuthzTestBase.SCHEMA)
+                            .withLocation("s3://bucket/base/" + catalog + "/ns/t/")
+                            .build()))) {
+          assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+        }
+
+        // No X-Iceberg-Access-Delegation header: buildLoadTableResponseWithDelegationCredentials
+        // calls StorageAccessConfigProvider unconditionally for every loadTable, delegation
+        // requested or not, so this still reaches the registry and the resolved bean's
+        // integration. Requesting delegation here does not work hermetically: a single
+        // "vended-credentials" mode with no credentials available throws ("Credential vending
+        // was requested... but no credentials are available"), and requesting both modes
+        // together resolves to remote-signing once STS is unavailable, which
+        // IcebergCatalogHandler rejects outright as not yet implemented. A plain load avoids
+        // both and still proves the same thing: the registry resolved the bean and ran its
+        // integration to produce these properties.
+        try (Response r =
+            catalogApi
+                .request(
+                    "v1/{cat}/namespaces/{ns}/tables/{table}",
+                    Map.of("cat", catalog, "ns", "ns", "table", "t"),
+                    Map.of(),
+                    realmHeaders)
+                .get()) {
+          assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+          LoadTableResponse loaded = r.readEntity(LoadTableResponse.class);
+          assertThat(loaded.credentials()).isEmpty();
+          assertThat(loaded.config())
+              .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), region)
+              .containsEntry(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
+              .doesNotContainKey(StorageAccessProperty.AWS_KEY_ID.getPropertyName());
+        }
       }
+    }
+  }
+
+  private static void createStsUnavailableCatalog(
+      ManagementApi managementApi,
+      Map<String, String> realmHeaders,
+      String name,
+      @Nullable String mechanism,
+      String endpoint,
+      String region) {
+    AwsStorageConfigInfo.Builder storageConfig =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/r")
+            .setStsUnavailable(true)
+            .setEndpoint(endpoint)
+            .setPathStyleAccess(true)
+            .setRegion(region)
+            .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"));
+    if (mechanism != null) {
+      storageConfig.setCredentialVendingMechanism(mechanism);
+    }
+    try (Response r =
+        managementApi
+            .request("v1/catalogs", Map.of(), Map.of(), realmHeaders)
+            .post(
+                Entity.json(
+                    new CreateCatalogRequest(
+                        PolarisCatalog.builder()
+                            .setType(Catalog.TypeEnum.INTERNAL)
+                            .setName(name)
+                            .setProperties(new CatalogProperties("s3://bucket/base/" + name))
+                            .setStorageConfigInfo(storageConfig.build())
+                            .build())))) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
   }
 

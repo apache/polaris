@@ -27,13 +27,16 @@ import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
-/** AWS STS AssumeRole, selected explicitly by {@code credentialVendingMechanism: STS}. */
+/**
+ * The server's default mechanism, selected by an empty {@code credentialVendingMechanism}: AWS STS
+ * AssumeRole.
+ */
 @ApplicationScoped
-@Identifier(S3CredentialVendingMechanism.STS)
-public class StsCredentialVendingMechanism extends AbstractStsCredentialVendingMechanism {
+@Identifier(S3CredentialVendingMechanism.DEFAULT)
+public class DefaultCredentialVendingMechanism extends AbstractStsCredentialVendingMechanism {
 
   @Inject
-  public StsCredentialVendingMechanism(
+  public DefaultCredentialVendingMechanism(
       StorageConfiguration storageConfiguration,
       StsClientProvider stsClientProvider,
       StorageCredentialCache cache) {
@@ -41,7 +44,7 @@ public class StsCredentialVendingMechanism extends AbstractStsCredentialVendingM
   }
 
   /** Test constructor: a fixed credentials provider, the realm config is never consulted. */
-  public StsCredentialVendingMechanism(
+  public DefaultCredentialVendingMechanism(
       StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> stsCredentials,
       StorageCredentialCache cache) {

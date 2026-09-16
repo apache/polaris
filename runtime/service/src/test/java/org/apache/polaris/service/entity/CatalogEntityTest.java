@@ -48,6 +48,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -537,6 +538,31 @@ public class CatalogEntityTest {
   }
 
   @Test
+  public void testBlankMechanismInTheModelIsStoredAsEmpty() {
+    AwsStorageConfigInfo blank =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket/path/"))
+            .setRoleArn("arn:aws:iam::012345678901:role/test-role")
+            .setCredentialVendingMechanism("  ")
+            .build();
+    CatalogEntity entity =
+        new CatalogEntity.Builder()
+            .setName("blank-mechanism")
+            .setDefaultBaseLocation("s3://bucket/path/")
+            .setStorageConfigurationInfo(realmConfig, blank)
+            .build();
+    AwsStorageConfigurationInfo stored =
+        (AwsStorageConfigurationInfo) entity.getStorageConfigurationInfo();
+    assertThat(stored.getCredentialVendingMechanism()).isNull();
+    assertThat(
+            ((AwsStorageConfigInfo)
+                    entity.asCatalog(serviceIdentityProvider).getStorageConfigInfo())
+                .getCredentialVendingMechanism())
+        .isNull();
+  }
+
+  @Test
   public void testServiceIdentityInjection() {
     String baseLocation = "s3://test-bucket/path";
     AwsStorageConfigInfo storageConfigModel =
@@ -600,8 +626,7 @@ public class CatalogEntityTest {
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://example.com"))
-            .setRoleArn("arn:aws:iam::012345678901:role/test-role")
-            .setCredentialVendingMechanism("STS");
+            .setRoleArn("arn:aws:iam::012345678901:role/test-role");
     AzureStorageConfigInfo.Builder a =
         AzureStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
@@ -615,6 +640,7 @@ public class CatalogEntityTest {
         Arguments.of(b.setStsEndpoint("http://sts.example.com:1234").build()),
         Arguments.of(b.setPathStyleAccess(true).build()),
         Arguments.of(b.setStorageName("my-storage").build()),
+        Arguments.of(b.setCredentialVendingMechanism("STS").build()),
         Arguments.of(a.build()),
         Arguments.of(a.setHierarchical(true).build()));
   }

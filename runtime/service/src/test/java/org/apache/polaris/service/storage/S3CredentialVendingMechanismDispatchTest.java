@@ -58,6 +58,11 @@ class S3CredentialVendingMechanismDispatchTest {
         destination -> Mockito.mock(StsClient.class), Optional.empty(), null);
   }
 
+  private static S3CredentialVendingMechanism testDefaultMechanism() {
+    return new DefaultCredentialVendingMechanism(
+        destination -> Mockito.mock(StsClient.class), Optional.empty(), null);
+  }
+
   private static PolarisStorageIntegrationProviderImpl provider(
       RealmConfig realmConfig, Map<String, S3CredentialVendingMechanism> mechanisms) {
     return new PolarisStorageIntegrationProviderImpl(
@@ -69,7 +74,8 @@ class S3CredentialVendingMechanismDispatchTest {
   }
 
   private static PolarisStorageIntegrationProviderImpl provider(RealmConfig realmConfig) {
-    return provider(realmConfig, Map.of("STS", testStsMechanism()));
+    return provider(
+        realmConfig, Map.of("STS", testStsMechanism(), "DEFAULT", testDefaultMechanism()));
   }
 
   private static CatalogEntity catalog(RealmConfig realmConfig, AwsStorageConfigInfo model) {
@@ -116,9 +122,12 @@ class S3CredentialVendingMechanismDispatchTest {
   @Test
   void disallowedMechanismIsRejectedBeforeDispatch() {
     RealmConfig rc = realmConfig(List.of("SECOND_MECHANISM"));
-    assertThatThrownBy(() -> provider(rc).getStorageIntegration(List.of(catalog(rc, sts()))))
+    assertThatThrownBy(
+            () -> provider(rc).getStorageIntegration(List.of(catalog(rc, withMechanism("STS")))))
         .isInstanceOf(ValidationException.class)
         .hasMessage("S3 credential vending mechanism STS is not enabled in this realm");
+    assertThat(provider(rc).getStorageIntegration(List.of(catalog(rc, sts()))))
+        .isInstanceOf(AwsCredentialsStorageIntegration.class);
   }
 
   @Test

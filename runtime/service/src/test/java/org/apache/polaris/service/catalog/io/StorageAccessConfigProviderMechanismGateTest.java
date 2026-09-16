@@ -72,7 +72,10 @@ class StorageAccessConfigProviderMechanismGateTest {
     CallContext callContext = mock(CallContext.class);
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     S3CredentialVendingMechanisms mechanisms =
-        new S3CredentialVendingMechanisms(Map.of("STS", mock(S3CredentialVendingMechanism.class)));
+        new S3CredentialVendingMechanisms(
+            Map.of(
+                "STS", mock(S3CredentialVendingMechanism.class),
+                "DEFAULT", mock(S3CredentialVendingMechanism.class)));
     return new StorageAccessConfigProvider(
         callContext, mock(PolarisPrincipal.class), REALM, integrationProvider, mechanisms);
   }

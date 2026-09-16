@@ -120,13 +120,14 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     return switch (storageConfig.getStorageType()) {
       case S3 -> {
         AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) storageConfig;
-        String mechanism = awsConfig.getCredentialVendingMechanism();
         // The allowlist as defence in depth behind the initialization and access-config gates,
         // then the registry, which returns the same 400 every other gate returns when the
         // mechanism is allowlisted but not installed in this server.
         IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-            realmConfig, mechanism);
-        yield mechanisms.require(mechanism).integrationFor(awsConfig, realmConfig);
+            realmConfig, awsConfig.getCredentialVendingMechanism());
+        yield mechanisms
+            .require(awsConfig.resolvedCredentialVendingMechanism())
+            .integrationFor(awsConfig, realmConfig);
       }
       case GCS -> gcpFactory.apply((GcpStorageConfigurationInfo) storageConfig);
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);

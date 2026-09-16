@@ -41,6 +41,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.junit.jupiter.api.Test;
@@ -205,5 +206,21 @@ class StsCredentialVendingMechanismTest {
     longIntegration.getStorageAccessConfig(
         grants(), Optional.empty(), CredentialVendingContext.empty());
     assertThat(captor.getValue().durationSeconds()).isEqualTo(3600);
+  }
+
+  @Test
+  void theDefaultMechanismBuildsTheSameIntegrationAsSts() {
+    StsClientProvider stsClientProvider = destination -> mock(StsClient.class);
+    AwsStorageConfigurationInfo config = storageConfig();
+    RealmConfig realmConfig = realmConfig(Map.of());
+
+    assertThat(
+            new DefaultCredentialVendingMechanism(stsClientProvider, Optional.empty(), null)
+                .integrationFor(config, realmConfig))
+        .isInstanceOf(AwsCredentialsStorageIntegration.class);
+    assertThat(
+            new StsCredentialVendingMechanism(stsClientProvider, Optional.empty(), null)
+                .integrationFor(config, realmConfig))
+        .isInstanceOf(AwsCredentialsStorageIntegration.class);
   }
 }

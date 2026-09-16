@@ -158,4 +158,19 @@ class ProductionReadinessChecksTest {
               assertThat(error.message()).contains("NOPE").contains("STS");
             });
   }
+
+  @Test
+  void aListedDefaultIsANonSevereWarningEvenThoughItIsInstalled() {
+    ProductionReadinessCheck result =
+        checks.checkS3CredentialVendingMechanisms(
+            featuresConfig(Map.of(MECHANISMS_KEY, "[\"STS\",\"DEFAULT\"]"), Map.of()),
+            installed("STS", "DEFAULT"));
+    assertThat(result.getErrors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.severe()).isFalse();
+              assertThat(error.message()).contains("DEFAULT").contains("has no effect");
+            });
+  }
 }

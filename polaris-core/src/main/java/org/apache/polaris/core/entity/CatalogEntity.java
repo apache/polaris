@@ -421,7 +421,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           .allowedLocations(allowedLocations)
           .storageName(awsConfigModel.getStorageName())
           .credentialVendingMechanism(
-              PolarisStorageConfigurationInfo.credentialVendingMechanismOf(awsConfigModel))
+              AwsStorageConfigurationInfo.credentialVendingMechanismOf(
+                  awsConfigModel.getCredentialVendingMechanism()))
           .roleARN(awsConfigModel.getRoleArn())
           .encryptionKeys(encryptionKeys)
           .decryptionKeys(awsConfigModel.getDecryptionKeys())
