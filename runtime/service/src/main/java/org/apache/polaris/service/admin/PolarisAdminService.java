@@ -784,6 +784,8 @@ public class PolarisAdminService {
 
     CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalog);
     if (mechanism != null) {
+      // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
+      // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo.
       mechanism.validate(
           null, (AwsStorageConfigurationInfo) entity.getStorageConfigurationInfo(), realmConfig);
     }
@@ -1036,6 +1038,9 @@ public class PolarisAdminService {
     if (mechanism != null) {
       PolarisStorageConfigurationInfo currentStorageConfig =
           currentCatalogEntity.getStorageConfigurationInfo();
+      // Safe: CatalogEntity.Builder.processStorageConfigurationInfo always converts an
+      // AwsStorageConfigInfo request to an AwsStorageConfigurationInfo, and the storage-type
+      // freeze above has already refused a type change.
       mechanism.validate(
           currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
               ? currentAwsConfig

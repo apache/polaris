@@ -86,7 +86,7 @@ class S3CredentialVendingMechanismDispatchTest {
         .build();
   }
 
-  private static AwsStorageConfigInfo sts() {
+  private static AwsStorageConfigInfo emptyMechanism() {
     return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
         .setRoleArn("arn:aws:iam::123456789012:role/r")
         .setAllowedLocations(List.of("s3://bucket/base/"))
@@ -113,7 +113,7 @@ class S3CredentialVendingMechanismDispatchTest {
   void stsAndAbsentMechanismDispatchToTheAwsIntegration() {
     RealmConfig rc = realmConfig(List.of("STS"));
     PolarisStorageIntegrationProviderImpl provider = provider(rc);
-    assertThat(provider.getStorageIntegration(List.of(catalog(rc, sts()))))
+    assertThat(provider.getStorageIntegration(List.of(catalog(rc, emptyMechanism()))))
         .isInstanceOf(AwsCredentialsStorageIntegration.class);
     assertThat(provider.getStorageIntegration(List.of(catalog(rc, withMechanism("STS")))))
         .isInstanceOf(AwsCredentialsStorageIntegration.class);
@@ -126,7 +126,7 @@ class S3CredentialVendingMechanismDispatchTest {
             () -> provider(rc).getStorageIntegration(List.of(catalog(rc, withMechanism("STS")))))
         .isInstanceOf(ValidationException.class)
         .hasMessage("S3 credential vending mechanism STS is not enabled in this realm");
-    assertThat(provider(rc).getStorageIntegration(List.of(catalog(rc, sts()))))
+    assertThat(provider(rc).getStorageIntegration(List.of(catalog(rc, emptyMechanism()))))
         .isInstanceOf(AwsCredentialsStorageIntegration.class);
   }
 

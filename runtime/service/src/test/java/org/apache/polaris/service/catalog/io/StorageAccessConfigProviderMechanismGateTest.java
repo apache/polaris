@@ -100,7 +100,7 @@ class StorageAccessConfigProviderMechanismGateTest {
         .build();
   }
 
-  private static AwsStorageConfigInfo sts() {
+  private static AwsStorageConfigInfo emptyMechanism() {
     return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
         .setRoleArn("arn:aws:iam::123456789012:role/r")
         .setAllowedLocations(List.of("s3://bucket/base/"))
@@ -118,7 +118,7 @@ class StorageAccessConfigProviderMechanismGateTest {
   }
 
   @Test
-  void earlyOptInPlusSkipSubscopingFailsBeforeTheEarlyReturn() {
+  void uninstalledMechanismPlusSkipSubscopingFailsBeforeTheEarlyReturn() {
     RealmConfig rc = realmConfig(true, List.of("STS", UNINSTALLED_MECHANISM));
     assertThatThrownBy(() -> call(provider(rc), pathTo(rc, uninstalled())))
         .isInstanceOf(ValidationException.class)
@@ -142,9 +142,9 @@ class StorageAccessConfigProviderMechanismGateTest {
   }
 
   @Test
-  void stsWithSkipSubscopingBehavesAsUpstream() {
+  void emptyMechanismWithSkipSubscopingBehavesAsUpstream() {
     RealmConfig rc = realmConfig(true, List.of("STS"));
-    StorageAccessConfig config = call(provider(rc), pathTo(rc, sts()));
+    StorageAccessConfig config = call(provider(rc), pathTo(rc, emptyMechanism()));
     assertThat(config.supportsCredentialVending()).isFalse();
     assertThat(config.credentials()).isEmpty();
     verifyNoInteractions(integrationProvider);

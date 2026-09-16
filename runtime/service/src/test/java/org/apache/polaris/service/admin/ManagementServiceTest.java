@@ -815,7 +815,7 @@ public class ManagementServiceTest {
         .setAllowedLocations(List.of("s3://second-bucket/base/"));
   }
 
-  private static AwsStorageConfigInfo stsConfig() {
+  private static AwsStorageConfigInfo emptyMechanismConfig() {
     return AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
         .setRoleArn("arn:aws:iam::123456789012:role/my-role")
         .setAllowedLocations(List.of("s3://second-bucket/base/"))
@@ -884,26 +884,27 @@ public class ManagementServiceTest {
   @Test
   public void testDisallowedMechanismIsRejectedOnUpdateToo() {
     TestServices stsOnlyUnrestricted = mechanismServices(List.of("STS"), true);
-    AwsStorageConfigInfo sts =
+    AwsStorageConfigInfo emptyMechanism =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .build();
-    try (Response response = create(stsOnlyUnrestricted, catalogNamed("sts-stay", sts))) {
+    try (Response response =
+        create(stsOnlyUnrestricted, catalogNamed("empty-stay", emptyMechanism))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
-    Catalog fetched = fetch(stsOnlyUnrestricted, "sts-stay");
+    Catalog fetched = fetch(stsOnlyUnrestricted, "empty-stay");
     UpdateCatalogRequest toSecond =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://second-bucket/base/sts-stay"),
+            Map.of("default-base-location", "s3://second-bucket/base/empty-stay"),
             secondMechanismConfig().build());
     assertThatThrownBy(
             () ->
                 stsOnlyUnrestricted
                     .catalogsApi()
                     .updateCatalog(
-                        "sts-stay",
+                        "empty-stay",
                         toSecond,
                         stsOnlyUnrestricted.realmContext(),
                         stsOnlyUnrestricted.securityContext()))
@@ -1054,55 +1055,56 @@ public class ManagementServiceTest {
   @Test
   public void testFreezeIsLiftedByTheUnrestrictedFlag() {
     TestServices unrestricted = mechanismServices(List.of("STS", TEST_MECHANISM), true);
-    AwsStorageConfigInfo sts =
+    AwsStorageConfigInfo emptyMechanism =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .build();
-    try (Response response = create(unrestricted, catalogNamed("sts-to-second", sts))) {
+    try (Response response =
+        create(unrestricted, catalogNamed("empty-to-second", emptyMechanism))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
-    Catalog fetched = fetch(unrestricted, "sts-to-second");
+    Catalog fetched = fetch(unrestricted, "empty-to-second");
     UpdateCatalogRequest toSecond =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://second-bucket/base/sts-to-second"),
+            Map.of("default-base-location", "s3://second-bucket/base/empty-to-second"),
             secondMechanismConfig().build());
     try (Response response =
         unrestricted
             .catalogsApi()
             .updateCatalog(
-                "sts-to-second",
+                "empty-to-second",
                 toSecond,
                 unrestricted.realmContext(),
                 unrestricted.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
     assertThat(
-            ((AwsStorageConfigInfo) fetch(unrestricted, "sts-to-second").getStorageConfigInfo())
+            ((AwsStorageConfigInfo) fetch(unrestricted, "empty-to-second").getStorageConfigInfo())
                 .getCredentialVendingMechanism())
         .isEqualTo(TEST_MECHANISM);
   }
 
   @Test
-  public void testStsCatalogEndpointStaysMutable() {
-    // The mechanism freeze never touches the endpoint of an STS catalog.
+  public void emptyMechanismCatalogEndpointStaysMutable() {
+    // The mechanism freeze never touches the endpoint of a catalog with an empty mechanism.
     TestServices svc = mechanismServices(List.of("STS"), false);
-    AwsStorageConfigInfo sts =
+    AwsStorageConfigInfo emptyMechanism =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
             .setAllowedLocations(List.of("s3://second-bucket/base/"))
             .setEndpoint("https://s3.example.com:1234")
             .setPathStyleAccess(true)
             .build();
-    try (Response response = create(svc, catalogNamed("sts-mutable", sts))) {
+    try (Response response = create(svc, catalogNamed("empty-mutable", emptyMechanism))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
-    Catalog fetched = fetch(svc, "sts-mutable");
+    Catalog fetched = fetch(svc, "empty-mutable");
     UpdateCatalogRequest updateEndpoint =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://second-bucket/base/sts-mutable"),
+            Map.of("default-base-location", "s3://second-bucket/base/empty-mutable"),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setAllowedLocations(List.of("s3://second-bucket/base/"))
@@ -1112,11 +1114,11 @@ public class ManagementServiceTest {
     try (Response response =
         svc.catalogsApi()
             .updateCatalog(
-                "sts-mutable", updateEndpoint, svc.realmContext(), svc.securityContext())) {
+                "empty-mutable", updateEndpoint, svc.realmContext(), svc.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
     AwsStorageConfigInfo updated =
-        (AwsStorageConfigInfo) fetch(svc, "sts-mutable").getStorageConfigInfo();
+        (AwsStorageConfigInfo) fetch(svc, "empty-mutable").getStorageConfigInfo();
     assertThat(updated.getEndpoint()).isEqualTo("https://s3.other.example.com:1234");
   }
 
@@ -1137,14 +1139,14 @@ public class ManagementServiceTest {
   @Test
   public void updatingACatalogToAnAllowlistedButUninstalledMechanismIsRefused() {
     TestServices svc = mechanismServices(List.of("STS", "UNINSTALLED_MECHANISM"), true);
-    try (Response response = create(svc, catalogNamed("sts-stays", stsConfig()))) {
+    try (Response response = create(svc, catalogNamed("empty-stays", emptyMechanismConfig()))) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
-    Catalog fetched = fetch(svc, "sts-stays");
+    Catalog fetched = fetch(svc, "empty-stays");
     UpdateCatalogRequest toUninstalled =
         new UpdateCatalogRequest(
             fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://second-bucket/base/sts-stays"),
+            Map.of("default-base-location", "s3://second-bucket/base/empty-stays"),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setCredentialVendingMechanism("UNINSTALLED_MECHANISM")
                 .setAllowedLocations(List.of("s3://second-bucket/base/"))
@@ -1153,7 +1155,7 @@ public class ManagementServiceTest {
             () ->
                 svc.catalogsApi()
                     .updateCatalog(
-                        "sts-stays", toUninstalled, svc.realmContext(), svc.securityContext()))
+                        "empty-stays", toUninstalled, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(
             "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server");

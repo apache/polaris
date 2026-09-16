@@ -156,6 +156,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
    * The identifier to resolve in the mechanism registry: the explicit value, or {@link
    * S3CredentialVendingMechanism#DEFAULT} when the field is empty.
    */
+  @JsonIgnore
   public String resolvedCredentialVendingMechanism() {
     String mechanism = getCredentialVendingMechanism();
     return mechanism == null ? S3CredentialVendingMechanism.DEFAULT : mechanism;

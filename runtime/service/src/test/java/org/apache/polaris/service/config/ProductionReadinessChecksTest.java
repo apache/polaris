@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
@@ -92,7 +93,7 @@ class ProductionReadinessChecksTest {
       FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS.key();
 
   private static S3CredentialVendingMechanisms installed(String... ids) {
-    Map<String, S3CredentialVendingMechanism> mechanisms = new java.util.HashMap<>();
+    Map<String, S3CredentialVendingMechanism> mechanisms = new HashMap<>();
     for (String id : ids) {
       mechanisms.put(id, mock(S3CredentialVendingMechanism.class));
     }

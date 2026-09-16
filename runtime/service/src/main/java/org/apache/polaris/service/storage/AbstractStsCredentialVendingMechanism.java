@@ -30,7 +30,10 @@ import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
-/** AWS STS AssumeRole against the catalog's role; the body shared by the STS and DEFAULT beans. */
+/**
+ * AWS STS AssumeRole against the catalog's role; the body shared by the STS and DEFAULT beans.
+ * {@code @Identifier} is not inherited, so each leaf bean declares its own.
+ */
 public abstract class AbstractStsCredentialVendingMechanism
     implements S3CredentialVendingMechanism {
 

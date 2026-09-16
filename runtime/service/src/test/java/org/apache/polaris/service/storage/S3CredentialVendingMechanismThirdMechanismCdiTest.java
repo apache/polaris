@@ -38,6 +38,7 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
+import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
@@ -66,8 +67,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * {@code @Nested} test classes ({@code io.quarkus.test.junit.QuarkusTestExtension}: "@Nested tests
  * may not contain @TestProfile annotations"), and the two scenarios need different application
  * instances regardless: {@code getEnabledAlternatives()} is profile-wide, and {@link
- * S3CredentialVendingMechanismCdiTest} asserts {@code availableIds()} is exactly {@code {STS}} in
- * its own application instance, which this test's third mechanism would otherwise widen.
+ * S3CredentialVendingMechanismCdiTest} asserts {@code availableIds()} is exactly {@code {DEFAULT,
+ * STS}} in its own application instance, which this test's third mechanism would otherwise widen.
  */
 @QuarkusTest
 @TestProfile(ThirdMechanismProfile.class)
@@ -207,7 +208,7 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
     return PolarisCatalog.builder()
         .setType(Catalog.TypeEnum.INTERNAL)
         .setName(name)
-        .setProperties(new org.apache.polaris.core.admin.model.CatalogProperties(basePath))
+        .setProperties(new CatalogProperties(basePath))
         .setStorageConfigInfo(
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setCredentialVendingMechanism(TestS3CredentialVendingMechanism.ID)

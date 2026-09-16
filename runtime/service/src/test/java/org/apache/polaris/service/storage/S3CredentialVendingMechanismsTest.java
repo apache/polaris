@@ -58,7 +58,7 @@ class S3CredentialVendingMechanismsTest {
   private final Instance<S3CredentialVendingMechanism> candidates = mock(Instance.class);
 
   @Test
-  void identifiersComeFromEveryBeanAndResolutionPicksTheAlternative() {
+  void identifiersComeFromEveryBeanAndResolutionUsesTheSelectedBean() {
     S3CredentialVendingMechanism sts = mock(S3CredentialVendingMechanism.class);
     S3CredentialVendingMechanism override = mock(S3CredentialVendingMechanism.class);
     beans(

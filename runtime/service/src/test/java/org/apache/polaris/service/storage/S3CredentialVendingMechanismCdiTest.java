@@ -157,8 +157,8 @@ class S3CredentialVendingMechanismCdiTest {
    * UNINSTALLED_MECHANISM} is refused with "not available in this server"; a catalog created while
    * {@link #TEST_MECHANISM} is installed in a live registry this test installs over the real one is
    * refused the same way, everywhere, once that registry loses the mechanism, the Iceberg,
-   * generic-table and policy routes alike. An STS catalog in the same realm is untouched
-   * throughout.
+   * generic-table and policy routes alike. A catalog with an empty mechanism in the same realm is
+   * untouched throughout.
    */
   @Test
   void anUninstalledMechanismIsRefusedAtCreateAndUpdateAndAStoredOneEverywhere(
@@ -187,17 +187,20 @@ class S3CredentialVendingMechanismCdiTest {
       GenericTableApi genericTableApi = client.genericTableApi(adminToken);
       PolicyApi policyApi = client.policyApi(adminToken);
 
-      String stsCatalog = "cdi-sts-cat";
+      String emptyMechanismCatalog = "cdi-empty-cat";
 
-      // The STS catalog: content created normally, left untouched for the rest of the test.
-      createStsCatalog(managementApi, stsCatalog);
+      // The catalog with an empty mechanism: content created normally, left untouched for the
+      // rest of the test.
+      createEmptyMechanismCatalog(managementApi, emptyMechanismCatalog);
       try (Response r =
-          managementApi.request("v1/catalogs/{name}", Map.of("name", stsCatalog)).get()) {
+          managementApi
+              .request("v1/catalogs/{name}", Map.of("name", emptyMechanismCatalog))
+              .get()) {
         assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
         assertThat(r.readEntity(String.class)).doesNotContain("credentialVendingMechanism");
       }
-      catalogApi.createNamespace(stsCatalog, "ns");
-      createTable(catalogApi, stsCatalog, "ns", "t");
+      catalogApi.createNamespace(emptyMechanismCatalog, "ns");
+      createTable(catalogApi, emptyMechanismCatalog, "ns", "t");
 
       // Creating a catalog that selects a mechanism the server never ships is refused before any
       // content exists.
@@ -211,11 +214,14 @@ class S3CredentialVendingMechanismCdiTest {
         assertRefused(refused, NOT_AVAILABLE_UNINSTALLED);
       }
 
-      // Switching the STS catalog to the same mechanism at update is refused the same way.
+      // Switching the catalog with an empty mechanism to the same mechanism at update is refused
+      // the same way.
       try (Response refused =
           managementApi
-              .request("v1/catalogs/{name}", Map.of("name", stsCatalog))
-              .put(Entity.json(updateToUninstalledMechanismRequest(managementApi, stsCatalog)))) {
+              .request("v1/catalogs/{name}", Map.of("name", emptyMechanismCatalog))
+              .put(
+                  Entity.json(
+                      updateToUninstalledMechanismRequest(managementApi, emptyMechanismCatalog)))) {
         assertRefused(refused, NOT_AVAILABLE_UNINSTALLED);
       }
 
@@ -254,16 +260,16 @@ class S3CredentialVendingMechanismCdiTest {
               .get(),
           NOT_AVAILABLE_TEST);
 
-      // The STS catalog in the same realm is unaffected throughout.
+      // The catalog with an empty mechanism in the same realm is unaffected throughout.
       try (Response ok =
-          catalogApi.request("v1/{cat}/namespaces", Map.of("cat", stsCatalog)).get()) {
+          catalogApi.request("v1/{cat}/namespaces", Map.of("cat", emptyMechanismCatalog)).get()) {
         assertThat(ok.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       }
       try (Response ok =
           catalogApi
               .request(
                   "v1/{cat}/namespaces/{ns}/tables/{table}",
-                  Map.of("cat", stsCatalog, "ns", "ns", "table", "t"))
+                  Map.of("cat", emptyMechanismCatalog, "ns", "ns", "table", "t"))
               .get()) {
         assertThat(ok.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       }
@@ -424,7 +430,7 @@ class S3CredentialVendingMechanismCdiTest {
     }
   }
 
-  private static void createStsCatalog(ManagementApi managementApi, String name) {
+  private static void createEmptyMechanismCatalog(ManagementApi managementApi, String name) {
     managementApi.createCatalog(
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -470,9 +476,9 @@ class S3CredentialVendingMechanismCdiTest {
   }
 
   /**
-   * Builds the request that would switch an existing STS catalog to a mechanism the server never
-   * ships. {@link ManagementApi#updateCatalog(Catalog, Map)} always reuses the existing storage
-   * config, so the switch needs a raw request carrying the new one.
+   * Builds the request that would switch an existing catalog with an empty mechanism to a mechanism
+   * the server never ships. {@link ManagementApi#updateCatalog(Catalog, Map)} always reuses the
+   * existing storage config, so the switch needs a raw request carrying the new one.
    */
   private static UpdateCatalogRequest updateToUninstalledMechanismRequest(
       ManagementApi managementApi, String name) {

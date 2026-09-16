@@ -51,13 +51,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * Every Iceberg route that opens a catalog whose selected mechanism has no installed bean is
  * refused at initialization, namespace reads included, with or without
- * SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION; an STS catalog in the same realm is untouched. The
- * catalog is created directly with {@link #TEST_MECHANISM}, a mechanism {@link TestServices}
- * installs through {@code additionalVendingMechanisms}, populated while that mechanism is
- * installed, then the "not available" scenario removes it from {@code installedMechanisms()}
- * afterwards, which is what a server rebuilt without the mechanism looks like to a stored catalog.
- * Every catalog gets its own allowed location: upstream rejects overlapping catalog locations at
- * create and update.
+ * SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION; a catalog with an empty mechanism in the same realm is
+ * untouched. The catalog is created directly with {@link #TEST_MECHANISM}, a mechanism {@link
+ * TestServices} installs through {@code additionalVendingMechanisms}, populated while that
+ * mechanism is installed, then the "not available" scenario removes it from {@code
+ * installedMechanisms()} afterwards, which is what a server rebuilt without the mechanism looks
+ * like to a stored catalog. Every catalog gets its own allowed location: upstream rejects
+ * overlapping catalog locations at create and update.
  *
  * <p>The policy routes go through {@code PolicyCatalogHandler}, which {@link TestServices} does not
  * wire (it has no policy API): building that handler by hand here would need the authorizer and
@@ -90,7 +90,7 @@ class S3CredentialVendingMechanismRoutesTest {
         .build();
   }
 
-  private static Catalog stsCatalog(String name) {
+  private static Catalog emptyMechanismCatalog(String name) {
     return PolarisCatalog.builder()
         .setType(Catalog.TypeEnum.INTERNAL)
         .setName(name)
@@ -107,7 +107,7 @@ class S3CredentialVendingMechanismRoutesTest {
     try (Response r =
         svc.catalogsApi()
             .createCatalog(
-                new CreateCatalogRequest(stsCatalog(name)),
+                new CreateCatalogRequest(emptyMechanismCatalog(name)),
                 svc.realmContext(),
                 svc.securityContext())) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
@@ -218,9 +218,9 @@ class S3CredentialVendingMechanismRoutesTest {
     createTestMechanismCatalog(svc, "mechcat");
     createNamespace(svc, "mechcat", "ns");
     createTable(svc, "mechcat", "ns", "t");
-    createCatalog(svc, "stscat");
-    createNamespace(svc, "stscat", "ns");
-    createTable(svc, "stscat", "ns", "t");
+    createCatalog(svc, "emptycat");
+    createNamespace(svc, "emptycat", "ns");
+    createTable(svc, "emptycat", "ns", "t");
     svc.installedMechanisms().remove(TEST_MECHANISM);
 
     assertThatThrownBy(
@@ -251,7 +251,8 @@ class S3CredentialVendingMechanismRoutesTest {
     assertLoadTableRefused(svc, "mechcat", "ns", "t", "vended-credentials", NOT_AVAILABLE);
     assertLoadTableRefused(svc, "mechcat", "ns", "t", null, NOT_AVAILABLE);
 
-    // Management reads are unaffected, and the STS catalog in the same realm still serves.
+    // Management reads are unaffected, and the catalog with an empty mechanism in the same realm
+    // still serves.
     try (Response r =
         svc.catalogsApi().getCatalog("mechcat", svc.realmContext(), svc.securityContext())) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -259,10 +260,10 @@ class S3CredentialVendingMechanismRoutesTest {
     try (Response r =
         svc.restApi()
             .listNamespaces(
-                "stscat", null, null, null, svc.realmContext(), svc.securityContext())) {
+                "emptycat", null, null, null, svc.realmContext(), svc.securityContext())) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
-    assertLoadTableSucceeds(svc, "stscat", "ns", "t");
+    assertLoadTableSucceeds(svc, "emptycat", "ns", "t");
   }
 
   @ParameterizedTest
@@ -273,9 +274,9 @@ class S3CredentialVendingMechanismRoutesTest {
     createTestMechanismCatalog(svc, "mechkill");
     createNamespace(svc, "mechkill", "ns");
     createTable(svc, "mechkill", "ns", "t");
-    createCatalog(svc, "stskill");
-    createNamespace(svc, "stskill", "ns");
-    createTable(svc, "stskill", "ns", "t");
+    createCatalog(svc, "emptykill");
+    createNamespace(svc, "emptykill", "ns");
+    createTable(svc, "emptykill", "ns", "t");
 
     // Engage the kill switch: the realm no longer lists TEST_MECHANISM. The mechanism itself
     // stays installed throughout.
@@ -316,14 +317,14 @@ class S3CredentialVendingMechanismRoutesTest {
                     .updateCatalog("mechkill", touch, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(notEnabled);
-    // The STS catalog in the same realm is unaffected.
+    // The catalog with an empty mechanism in the same realm is unaffected.
     try (Response r =
         svc.restApi()
             .listNamespaces(
-                "stskill", null, null, null, svc.realmContext(), svc.securityContext())) {
+                "emptykill", null, null, null, svc.realmContext(), svc.securityContext())) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
-    assertLoadTableSucceeds(svc, "stskill", "ns", "t");
+    assertLoadTableSucceeds(svc, "emptykill", "ns", "t");
   }
 
   /**
@@ -373,7 +374,7 @@ class S3CredentialVendingMechanismRoutesTest {
    * reached); with the kill switch engaged it stops with "not enabled".
    */
   @Test
-  void theRealmKillSwitchGatesAnExternalCatalogBeforeItsFederatedFactory() {
+  void anUninstalledMechanismAndThenTheKillSwitchRefuseTheCatalog() {
     Map<String, Object> config = config(false);
     config.put("ENABLE_CATALOG_FEDERATION", true);
     TestServices svc = services(config);
@@ -402,7 +403,7 @@ class S3CredentialVendingMechanismRoutesTest {
    * Generic-table routes open the catalog through their own handler; the gate applies there too.
    */
   @Test
-  void theRealmKillSwitchRefusesGenericTableRoutesToo() {
+  void anUninstalledMechanismAndThenTheKillSwitchRefuseGenericTableRoutes() {
     Map<String, Object> config = config(false);
     TestServices svc = services(config);
     createTestMechanismCatalog(svc, "mechgen");

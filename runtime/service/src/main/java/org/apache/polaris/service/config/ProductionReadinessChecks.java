@@ -31,7 +31,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeSet;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
@@ -375,12 +374,14 @@ public class ProductionReadinessChecks {
       return;
     }
     if (!mechanisms.isAvailable(name)) {
+      List<String> available = new ArrayList<>(mechanisms.availableIds());
+      available.remove(S3CredentialVendingMechanism.DEFAULT);
       errors.add(
           Error.of(
               format(
                   "S3 credential vending mechanism '%s' listed in %s is not available in this "
                       + "server; catalogs that select it are refused at use. Available: %s",
-                  name, offendingProperty, new TreeSet<>(mechanisms.availableIds())),
+                  name, offendingProperty, available),
               offendingProperty));
     }
   }

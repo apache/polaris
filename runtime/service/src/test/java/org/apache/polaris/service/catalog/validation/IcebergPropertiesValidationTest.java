@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.exceptions.ValidationException;
@@ -53,7 +54,7 @@ class IcebergPropertiesValidationTest {
   }
 
   private static S3CredentialVendingMechanisms installed(String... ids) {
-    Map<String, S3CredentialVendingMechanism> mechanisms = new java.util.HashMap<>();
+    Map<String, S3CredentialVendingMechanism> mechanisms = new HashMap<>();
     for (String id : ids) {
       mechanisms.put(id, mock(S3CredentialVendingMechanism.class));
     }
