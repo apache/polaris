@@ -87,7 +87,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "operations to the existing catalog-properties-read access type; do not enable "
                   + "this flag for Ranger until a dedicated catalog-config-read access type exists "
                   + "(or accept that coarse mapping). This flag is temporary: the default is "
-                  + "expected to flip to true and the flag removed in subsequent releases.")
+                  + "expected to flip to true and the flag removed in subsequent releases. A "
+                  + "production-readiness warning is emitted while the flag remains false.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
