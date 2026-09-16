@@ -235,15 +235,14 @@ class IcebergCatalogHandlerTest {
   }
 
   /**
-   * The Iceberg REST spec makes {@code X-Iceberg-Access-Delegation} a hint: "The server may choose
-   * to supply access via any or none of the requested mechanisms." When the resolver degrades a
-   * both-modes request to {@link AccessDelegationMode#REMOTE_SIGNING} (credential vending not
-   * possible for the catalog) and remote signing is not implemented, the handler must answer with
-   * the table and no delegated access, not with an error.
+   * When the resolver degrades a both-modes request to {@link AccessDelegationMode#REMOTE_SIGNING}
+   * (credential vending is not possible for the catalog) and remote signing is not implemented, the
+   * request fails fast with a message that tells the client what to do, matching how a
+   * vended-credentials-only request already behaves in that situation.
    */
   @Test
-  void bothModesRequestedAndResolverDegradesToRemoteSigningReturnsTableWithoutDelegation() {
-    Catalog catalog = mockRegisterTableCatalog(false);
+  void bothModesRequestedAndResolverDegradesToRemoteSigningFailsWithActionableMessage() {
+    mockRegisterTableCatalog(false);
     EnumSet<AccessDelegationMode> bothModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
     when(accessDelegationModeResolver.resolve(eq(bothModes), any()))
         .thenReturn(Optional.of(REMOTE_SIGNING));
@@ -251,20 +250,18 @@ class IcebergCatalogHandlerTest {
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
-    LoadTableResponse response =
-        handler.registerTable(NS1, registerTableRequest(false), bothModes, Optional.empty());
-
-    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
-    // No delegated access: no storage credentials in the response, neither as a credential entry
-    // nor merged into the table config.
-    assertThat(response.credentials()).isEmpty();
-    assertThat(response.config()).doesNotContainKeys("fake.access.key", "fake.secret.key");
+    assertThatThrownBy(
+            () ->
+                handler.registerTable(
+                    NS1, registerTableRequest(false), bothModes, Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("This catalog cannot vend credentials or sign requests")
+        .hasMessageContaining("request without X-Iceberg-Access-Delegation");
   }
 
-  /** The header is optional, so even a request for {@code remote-signing} alone gets the table. */
   @Test
-  void remoteSigningRequestedAloneReturnsTableWithoutDelegation() {
-    Catalog catalog = mockRegisterTableCatalog(false);
+  void remoteSigningRequestedAloneFailsWithActionableMessage() {
+    mockRegisterTableCatalog(false);
     EnumSet<AccessDelegationMode> remoteSigningOnly = EnumSet.of(REMOTE_SIGNING);
     when(accessDelegationModeResolver.resolve(eq(remoteSigningOnly), any()))
         .thenReturn(Optional.of(REMOTE_SIGNING));
@@ -272,13 +269,12 @@ class IcebergCatalogHandlerTest {
     @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
-    LoadTableResponse response =
-        handler.registerTable(
-            NS1, registerTableRequest(false), remoteSigningOnly, Optional.empty());
-
-    verify(catalog).registerTable(TABLE2, TABLE_LOCATION, false);
-    assertThat(response.credentials()).isEmpty();
-    assertThat(response.config()).doesNotContainKeys("fake.access.key", "fake.secret.key");
+    assertThatThrownBy(
+            () ->
+                handler.registerTable(
+                    NS1, registerTableRequest(false), remoteSigningOnly, Optional.empty()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("This catalog cannot vend credentials or sign requests");
   }
 
   @Test

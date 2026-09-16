@@ -201,14 +201,13 @@ public class RestCatalogFlociS3SpecialIT extends AbstractRestCatalogFlociS3Speci
   }
 
   /**
-   * A client requesting remote signing, alone or together with vended credentials, against a
-   * catalog that cannot vend credentials must get the table back without delegated access (Iceberg
-   * REST spec: "the server may choose to supply access via any or none of the requested
-   * mechanisms"), not an HTTP 400.
+   * A request that resolves to remote signing (not implemented) against a catalog that cannot vend
+   * credentials fails fast with a message telling the client what to do, instead of the opaque
+   * "Unsupported access delegation mode: REMOTE_SIGNING".
    */
   @ParameterizedTest
   @ValueSource(strings = {"vended-credentials,remote-signing", "remote-signing"})
-  public void testLoadTableWithRemoteSigningRequestedWithoutStsReturnsTableWithoutCredentials(
+  public void testLoadTableWithRemoteSigningRequestedWithoutStsFailsWithActionableMessage(
       String accessDelegationHeader) throws IOException {
     try (var restCatalog =
         createCatalog(
@@ -222,18 +221,15 @@ public class RestCatalogFlociS3SpecialIT extends AbstractRestCatalogFlociS3Speci
       var id = TableIdentifier.of("test-ns", "t4");
       restCatalog.createTable(id, SCHEMA);
 
-      var response =
-          catalogApi.loadTable(
-              catalogName,
-              id,
-              "ALL",
-              Map.of("X-Iceberg-Access-Delegation", accessDelegationHeader));
-
-      assertThat(response.credentials()).isEmpty();
-      assertThat(response.config())
-          .doesNotContainKey(ACCESS_KEY_ID)
-          .doesNotContainKey(SECRET_ACCESS_KEY)
-          .doesNotContainKey(REFRESH_CREDENTIALS_ENDPOINT);
+      assertThatThrownBy(
+              () ->
+                  catalogApi.loadTable(
+                      catalogName,
+                      id,
+                      "ALL",
+                      Map.of("X-Iceberg-Access-Delegation", accessDelegationHeader)))
+          .hasMessageContaining("This catalog cannot vend credentials or sign requests")
+          .hasMessageContaining("request without X-Iceberg-Access-Delegation");
     }
   }
 
