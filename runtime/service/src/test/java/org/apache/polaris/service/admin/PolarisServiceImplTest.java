@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -49,7 +50,9 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -64,6 +67,8 @@ public class PolarisServiceImplTest {
   private CallContext callContext;
   private ReservedProperties reservedProperties;
   private RealmConfig realmConfig;
+  private S3CredentialVendingMechanism stsMechanism;
+  private S3CredentialVendingMechanism defaultMechanism;
 
   private PolarisAdminService adminService;
   private PolarisServiceImpl polarisService;
@@ -78,6 +83,8 @@ public class PolarisServiceImplTest {
     callContext = Mockito.mock(CallContext.class);
     reservedProperties = Mockito.mock(ReservedProperties.class);
     realmConfig = Mockito.mock(RealmConfig.class);
+    stsMechanism = Mockito.mock(S3CredentialVendingMechanism.class);
+    defaultMechanism = Mockito.mock(S3CredentialVendingMechanism.class);
     PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
 
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
@@ -87,6 +94,8 @@ public class PolarisServiceImplTest {
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of("OAUTH"));
 
+    S3CredentialVendingMechanisms vendingMechanisms =
+        new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism, "DEFAULT", defaultMechanism));
     adminService =
         new PolarisAdminService(
             callContext,
@@ -96,7 +105,8 @@ public class PolarisServiceImplTest {
             serviceIdentityProvider,
             principal,
             polarisAuthorizer,
-            reservedProperties);
+            reservedProperties,
+            vendingMechanisms);
     polarisService =
         new PolarisServiceImpl(
             realmConfig, reservedProperties, adminService, serviceIdentityProvider);

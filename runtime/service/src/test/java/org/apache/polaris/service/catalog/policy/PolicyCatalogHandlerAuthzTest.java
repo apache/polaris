@@ -47,13 +47,12 @@ import org.junit.jupiter.api.TestFactory;
  * every handler built below targets it by name. Standing up a second, S3-backed catalog selecting a
  * mechanism the server never installs to reach the gate would need widening {@link
  * Profiles.PolarisAuthzBaseProfile}'s realm-wide allowlist (shared by every authz test class in
- * this package), a fresh catalog created and switched from STS under {@code
- * ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES} the way the CDI test does it, and its own catalog
- * roles and grants before an authorized {@code listPolicies} call could ever reach {@code
- * initializeCatalog()}, which is not a cheap addition to this fixture. That case is already covered
- * end-to-end, through the real REST API and a catalog switched to a mechanism the server never
- * installs, by {@link
- * org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest#stsOnlyDiscoveryAndUninstalledMechanismsAreRefusedEverywhere}.
+ * this package), a fresh catalog created with an installed test mechanism that is later removed
+ * from a live registry the way the CDI test does it, and its own catalog roles and grants before an
+ * authorized {@code listPolicies} call could ever reach {@code initializeCatalog()}, which is not a
+ * cheap addition to this fixture. That case is already covered end-to-end, through the real REST
+ * API and a stored catalog whose mechanism is removed from a live registry, by {@link
+ * org.apache.polaris.service.storage.S3CredentialVendingMechanismCdiTest#anUninstalledMechanismIsRefusedAtCreateAndUpdateAndAStoredOneEverywhere}.
  */
 @QuarkusTest
 @TestProfile(Profiles.PolarisAuthzBaseProfile.class)

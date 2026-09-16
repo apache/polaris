@@ -596,7 +596,8 @@ public record TestServices(
                     serviceIdentityProvider,
                     principal,
                     authorizer,
-                    reservedProperties);
+                    reservedProperties,
+                    vendingMechanisms);
             return new PolarisCatalogsApi(
                 new PolarisServiceImpl(
                     realmConfig, reservedProperties, adminService, serviceIdentityProvider));

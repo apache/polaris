@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage.aws;
 
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.jspecify.annotations.Nullable;
 
 /**
  * How Polaris vends S3 credentials for one S3 catalog. Implementations are CDI beans annotated with
@@ -48,4 +49,16 @@ public interface S3CredentialVendingMechanism {
   /** The storage integration that vends for one S3 catalog under this mechanism. */
   PolarisStorageIntegration integrationFor(
       AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig);
+
+  /**
+   * Checks a storage config that selects this mechanism before it is stored. Called at catalog
+   * create with {@code current} null, and at catalog update with the stored config as {@code
+   * current}, after authorization, the realm allowlist and the availability check. Throw {@link
+   * IllegalArgumentException} or {@link org.apache.iceberg.exceptions.ValidationException} to
+   * refuse the request with HTTP 400. The default accepts every config.
+   */
+  default void validate(
+      @Nullable AwsStorageConfigurationInfo current,
+      AwsStorageConfigurationInfo updated,
+      RealmConfig realmConfig) {}
 }

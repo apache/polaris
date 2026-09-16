@@ -42,6 +42,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
@@ -92,6 +93,24 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
 
       String catalog = "cdi-test-mech-cat";
       managementApi.createCatalog(testMechanismCatalog(catalog));
+      assertThat(testMechanism.validations()).hasSize(1);
+      assertThat(testMechanism.validations().get(0).current()).isNull();
+      assertThat(testMechanism.validations().get(0).updated().getCredentialVendingMechanism())
+          .isEqualTo(TestS3CredentialVendingMechanism.ID);
+
+      // A config the mechanism itself refuses at validate() time: CatalogEntity accepts it (the
+      // base location sits inside the one allowed location) and the refusal comes from validate().
+      String refusedBase = "s3://bucket/base/refused/cdi-refused-cat";
+      try (Response refused =
+          managementApi
+              .request("v1/catalogs")
+              .post(
+                  Entity.json(
+                      new CreateCatalogRequest(
+                          testMechanismCatalog("cdi-refused-cat", refusedBase))))) {
+        assertRefused(refused, "TEST_MECHANISM refuses the allowed location " + refusedBase + "/");
+      }
+
       // The catalog's auto-granted catalog_admin role (assigned to service_admin at creation)
       // carries CATALOG_MANAGE_ACCESS and CATALOG_MANAGE_METADATA only; loadTable with vended
       // credentials needs CATALOG_MANAGE_CONTENT too, the same grant ManagementApi.makeAdmin gives
@@ -152,20 +171,48 @@ class S3CredentialVendingMechanismThirdMechanismCdiTest {
             refused, "S3 credential vending mechanism TEST_MECHANISM is not enabled in this realm");
       }
       assertThat(testMechanism.calls()).hasSize(callsAfterVending);
+
+      // Updating the first catalog with a second allowed location validates again, this time
+      // with the stored config as current().
+      Catalog fetched = managementApi.getCatalog(catalog);
+      int validationsBeforeUpdate = testMechanism.validations().size();
+      UpdateCatalogRequest addLocation =
+          new UpdateCatalogRequest(
+              fetched.getEntityVersion(),
+              Map.of(),
+              AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                  .setCredentialVendingMechanism(TestS3CredentialVendingMechanism.ID)
+                  .setRoleArn("arn:aws:iam::123456789012:role/r")
+                  .setAllowedLocations(
+                      List.of(
+                          "s3://bucket/base/" + catalog + "/",
+                          "s3://bucket/base/" + catalog + "-extra/"))
+                  .build());
+      try (Response r =
+          managementApi
+              .request("v1/catalogs/{name}", Map.of("name", catalog))
+              .put(Entity.json(addLocation))) {
+        assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      }
+      assertThat(testMechanism.validations()).hasSize(validationsBeforeUpdate + 1);
+      assertThat(testMechanism.validations().get(validationsBeforeUpdate).current()).isNotNull();
     }
   }
 
   private static Catalog testMechanismCatalog(String name) {
+    return testMechanismCatalog(name, "s3://bucket/base/" + name);
+  }
+
+  private static Catalog testMechanismCatalog(String name, String basePath) {
     return PolarisCatalog.builder()
         .setType(Catalog.TypeEnum.INTERNAL)
         .setName(name)
-        .setProperties(
-            new org.apache.polaris.core.admin.model.CatalogProperties("s3://bucket/base/" + name))
+        .setProperties(new org.apache.polaris.core.admin.model.CatalogProperties(basePath))
         .setStorageConfigInfo(
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setCredentialVendingMechanism(TestS3CredentialVendingMechanism.ID)
                 .setRoleArn("arn:aws:iam::123456789012:role/r")
-                .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
+                .setAllowedLocations(List.of(basePath + "/"))
                 .build())
         .build();
   }

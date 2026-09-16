@@ -49,13 +49,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Only STS is installed in {@link TestServices}, so every Iceberg route that opens a catalog
- * selecting a mechanism the server never ships is refused at initialization, namespace reads
- * included, with or without SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION; an STS catalog in the same
- * realm is untouched. The catalog is produced by updating an STS catalog under
- * ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES, because nothing can be created inside such a
- * catalog through the REST API in this server. Every catalog gets its own allowed location:
- * upstream rejects overlapping catalog locations at create and update.
+ * Every Iceberg route that opens a catalog whose selected mechanism has no installed bean is
+ * refused at initialization, namespace reads included, with or without
+ * SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION; an STS catalog in the same realm is untouched. The
+ * catalog is created directly with {@link #TEST_MECHANISM}, a mechanism {@link TestServices}
+ * installs through {@code additionalVendingMechanisms}, populated while that mechanism is
+ * installed, then the "not available" scenario removes it from {@code installedMechanisms()}
+ * afterwards, which is what a server rebuilt without the mechanism looks like to a stored catalog.
+ * Every catalog gets its own allowed location: upstream rejects overlapping catalog locations at
+ * create and update.
  *
  * <p>The policy routes go through {@code PolicyCatalogHandler}, which {@link TestServices} does not
  * wire (it has no policy API): building that handler by hand here would need the authorizer and
@@ -64,19 +66,16 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class S3CredentialVendingMechanismRoutesTest {
 
-  private static final String UNINSTALLED_MECHANISM = "UNINSTALLED_MECHANISM";
+  private static final String TEST_MECHANISM = "TEST_MECHANISM";
   private static final String NOT_AVAILABLE =
-      "S3 credential vending mechanism "
-          + UNINSTALLED_MECHANISM
-          + " is not available in this server";
+      "S3 credential vending mechanism " + TEST_MECHANISM + " is not available in this server";
   private static final String NOT_ENABLED =
-      "S3 credential vending mechanism " + UNINSTALLED_MECHANISM + " is not enabled in this realm";
+      "S3 credential vending mechanism " + TEST_MECHANISM + " is not enabled in this realm";
 
   /** A mutable config map: TestServices reads it live, so a test can flip the realm allowlist. */
   private static Map<String, Object> config(boolean skipSubscoping) {
     Map<String, Object> config = new HashMap<>();
-    config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS", UNINSTALLED_MECHANISM));
-    config.put("ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES", true);
+    config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS", TEST_MECHANISM));
     config.put("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION", skipSubscoping);
     return config;
   }
@@ -84,6 +83,7 @@ class S3CredentialVendingMechanismRoutesTest {
   private static TestServices services(Map<String, Object> config) {
     return TestServices.builder()
         .config(config)
+        .additionalVendingMechanisms(Map.of(TEST_MECHANISM, TestServices.fakeMechanism()))
         .fileIOFactorySupplier(
             () ->
                 (FileIOFactory) (accessConfig, ioImplClassName, properties) -> new InMemoryFileIO())
@@ -185,25 +185,28 @@ class S3CredentialVendingMechanismRoutesTest {
     }
   }
 
-  private static void switchToUninstalledMechanism(TestServices svc, String name) {
-    Catalog fetched;
-    try (Response r =
-        svc.catalogsApi().getCatalog(name, svc.realmContext(), svc.securityContext())) {
-      fetched = (Catalog) r.getEntity();
-    }
-    UpdateCatalogRequest toUninstalled =
-        new UpdateCatalogRequest(
-            fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://bucket/base/" + name),
+  private static Catalog testMechanismCatalog(String name) {
+    return PolarisCatalog.builder()
+        .setType(Catalog.TypeEnum.INTERNAL)
+        .setName(name)
+        .setProperties(new CatalogProperties("s3://bucket/base/" + name))
+        .setStorageConfigInfo(
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                .setCredentialVendingMechanism(UNINSTALLED_MECHANISM)
+                .setCredentialVendingMechanism(TEST_MECHANISM)
                 .setRoleArn("arn:aws:iam::123456789012:role/r")
                 .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
-                .build());
+                .build())
+        .build();
+  }
+
+  private static void createTestMechanismCatalog(TestServices svc, String name) {
     try (Response r =
         svc.catalogsApi()
-            .updateCatalog(name, toUninstalled, svc.realmContext(), svc.securityContext())) {
-      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+            .createCatalog(
+                new CreateCatalogRequest(testMechanismCatalog(name)),
+                svc.realmContext(),
+                svc.securityContext())) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
   }
 
@@ -212,13 +215,13 @@ class S3CredentialVendingMechanismRoutesTest {
   void everyIcebergRouteOnAnUninstalledMechanismCatalogIsRefusedAtInitialization(
       boolean skipSubscoping) {
     TestServices svc = services(config(skipSubscoping));
-    createCatalog(svc, "mechcat");
+    createTestMechanismCatalog(svc, "mechcat");
     createNamespace(svc, "mechcat", "ns");
     createTable(svc, "mechcat", "ns", "t");
     createCatalog(svc, "stscat");
     createNamespace(svc, "stscat", "ns");
     createTable(svc, "stscat", "ns", "t");
-    switchToUninstalledMechanism(svc, "mechcat");
+    svc.installedMechanisms().remove(TEST_MECHANISM);
 
     assertThatThrownBy(
             () ->
@@ -267,21 +270,18 @@ class S3CredentialVendingMechanismRoutesTest {
   void theRealmKillSwitchRefusesTheCatalogWithNotEnabled(boolean skipSubscoping) {
     Map<String, Object> config = config(skipSubscoping);
     TestServices svc = services(config);
-    createCatalog(svc, "mechkill");
+    createTestMechanismCatalog(svc, "mechkill");
     createNamespace(svc, "mechkill", "ns");
     createTable(svc, "mechkill", "ns", "t");
     createCatalog(svc, "stskill");
     createNamespace(svc, "stskill", "ns");
     createTable(svc, "stskill", "ns", "t");
-    switchToUninstalledMechanism(svc, "mechkill");
 
-    // Engage the kill switch: the realm no longer lists UNINSTALLED_MECHANISM.
+    // Engage the kill switch: the realm no longer lists TEST_MECHANISM. The mechanism itself
+    // stays installed throughout.
     config.put("SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS", List.of("STS"));
 
-    String notEnabled =
-        "S3 credential vending mechanism "
-            + UNINSTALLED_MECHANISM
-            + " is not enabled in this realm";
+    String notEnabled = NOT_ENABLED;
     assertThatThrownBy(
             () ->
                 svc.restApi()
@@ -327,10 +327,10 @@ class S3CredentialVendingMechanismRoutesTest {
   }
 
   /**
-   * An EXTERNAL catalog with an Iceberg REST connection and a storage config selecting a mechanism
-   * the server never ships.
+   * An EXTERNAL catalog with an Iceberg REST connection and a storage config selecting {@link
+   * #TEST_MECHANISM}, installed at create time.
    */
-  private static void createExternalUninstalledMechanismCatalog(TestServices svc, String name) {
+  private static void createExternalTestMechanismCatalog(TestServices svc, String name) {
     ConnectionConfigInfo connection =
         IcebergRestConnectionConfigInfo.builder(
                 ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
@@ -344,9 +344,9 @@ class S3CredentialVendingMechanismRoutesTest {
                     .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
                     .build())
             .build();
-    AwsStorageConfigInfo uninstalled =
+    AwsStorageConfigInfo testMechanism =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setCredentialVendingMechanism(UNINSTALLED_MECHANISM)
+            .setCredentialVendingMechanism(TEST_MECHANISM)
             .setRoleArn("arn:aws:iam::123456789012:role/r")
             .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
             .build();
@@ -355,7 +355,7 @@ class S3CredentialVendingMechanismRoutesTest {
             .setType(ExternalCatalog.TypeEnum.EXTERNAL)
             .setName(name)
             .setProperties(new CatalogProperties("s3://bucket/base/" + name))
-            .setStorageConfigInfo(uninstalled)
+            .setStorageConfigInfo(testMechanism)
             .setConnectionConfigInfo(connection)
             .build();
     try (Response r =
@@ -368,16 +368,17 @@ class S3CredentialVendingMechanismRoutesTest {
 
   /**
    * An EXTERNAL catalog never reaches LocalIcebergCatalog, so the handler's own check is its only
-   * gate. With the mechanism enabled the request stops at the gate with "not available" (the
-   * federated factory lookup, which TestServices leaves unsatisfied, is never reached); with the
-   * kill switch engaged it stops with "not enabled".
+   * gate. With the mechanism enabled but uninstalled the request stops at the gate with "not
+   * available" (the federated factory lookup, which TestServices leaves unsatisfied, is never
+   * reached); with the kill switch engaged it stops with "not enabled".
    */
   @Test
   void theRealmKillSwitchGatesAnExternalCatalogBeforeItsFederatedFactory() {
     Map<String, Object> config = config(false);
     config.put("ENABLE_CATALOG_FEDERATION", true);
     TestServices svc = services(config);
-    createExternalUninstalledMechanismCatalog(svc, "mechext");
+    createExternalTestMechanismCatalog(svc, "mechext");
+    svc.installedMechanisms().remove(TEST_MECHANISM);
 
     assertThatThrownBy(
             () ->
@@ -404,9 +405,9 @@ class S3CredentialVendingMechanismRoutesTest {
   void theRealmKillSwitchRefusesGenericTableRoutesToo() {
     Map<String, Object> config = config(false);
     TestServices svc = services(config);
-    createCatalog(svc, "mechgen");
+    createTestMechanismCatalog(svc, "mechgen");
     createNamespace(svc, "mechgen", "ns");
-    switchToUninstalledMechanism(svc, "mechgen");
+    svc.installedMechanisms().remove(TEST_MECHANISM);
 
     assertThatThrownBy(
             () ->

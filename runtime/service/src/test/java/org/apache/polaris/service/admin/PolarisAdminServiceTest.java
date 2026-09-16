@@ -85,7 +85,9 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -106,6 +108,8 @@ public class PolarisAdminServiceTest {
   @Mock private PolarisResolutionManifest resolutionManifest;
   @Mock private PolarisResolvedPathWrapper resolvedPathWrapper;
   @Mock private RealmConfig realmConfig;
+  @Mock private S3CredentialVendingMechanism stsMechanism;
+  @Mock private S3CredentialVendingMechanism defaultMechanism;
 
   private PolarisAdminService adminService;
 
@@ -139,6 +143,8 @@ public class PolarisAdminServiceTest {
         .resolveAuthorizationInputs(any(), any());
     when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.allow());
 
+    S3CredentialVendingMechanisms vendingMechanisms =
+        new S3CredentialVendingMechanisms(Map.of("STS", stsMechanism, "DEFAULT", defaultMechanism));
     adminService =
         new PolarisAdminService(
             callContext,
@@ -148,7 +154,8 @@ public class PolarisAdminServiceTest {
             identityProvider,
             authenticatedPrincipal,
             authorizer,
-            reservedProperties);
+            reservedProperties,
+            vendingMechanisms);
   }
 
   protected static void assertSuccess(BaseResult result) {
@@ -229,9 +236,17 @@ public class PolarisAdminServiceTest {
   }
 
   private static CreateCatalogRequest secondMechanismCatalogRequest() {
+    return mechanismCatalogRequest("SECOND_MECHANISM");
+  }
+
+  private static CreateCatalogRequest stsCatalogRequest() {
+    return mechanismCatalogRequest("STS");
+  }
+
+  private static CreateCatalogRequest mechanismCatalogRequest(String mechanism) {
     AwsStorageConfigInfo storage =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setCredentialVendingMechanism("SECOND_MECHANISM")
+            .setCredentialVendingMechanism(mechanism)
             .setRoleArn("arn:aws:iam::123456789012:role/r")
             .setAllowedLocations(List.of("s3://bucket/base/"))
             .build();
@@ -267,6 +282,29 @@ public class PolarisAdminServiceTest {
             "S3 credential vending mechanism SECOND_MECHANISM is not enabled in this realm");
     verify(authorizer).authorize(any(), any());
     verify(metaStoreManager, never()).createCatalog(any(), any(), any());
+  }
+
+  /** The registry this test's adminService holds carries only STS and DEFAULT mocks. */
+  @Test
+  void authorizedCreateCatalogWithAnUninstalledMechanismIsRefusedAfterAuthorization() {
+    when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS))
+        .thenReturn(List.of("STS", "SECOND_MECHANISM"));
+    assertThatThrownBy(() -> adminService.createCatalog(secondMechanismCatalogRequest()))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(
+            "S3 credential vending mechanism SECOND_MECHANISM is not available in this server");
+  }
+
+  /**
+   * A denied caller gets the 403 before the mechanism the registry does hold, STS, is ever
+   * validated.
+   */
+  @Test
+  void deniedCreateCatalogNeverValidatesTheMechanism() {
+    when(authorizer.authorize(any(), any())).thenReturn(AuthorizationDecision.deny("denied"));
+    assertThatThrownBy(() -> adminService.createCatalog(stsCatalogRequest()))
+        .isInstanceOf(ForbiddenException.class);
+    verify(stsMechanism, never()).validate(any(), any(), any());
   }
 
   @Test

@@ -20,15 +20,18 @@ package org.apache.polaris.service.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -47,6 +50,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
+import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
@@ -63,32 +68,36 @@ import org.junit.jupiter.api.extension.ExtendWith;
 /**
  * CDI-level coverage for {@link S3CredentialVendingMechanisms}: discovery through the real
  * container, and the standalone contract this module alone must satisfy: an allowlisted mechanism
- * with no bean installed is refused everywhere it would be used, never confused with DEFAULT or
- * STS, and never aborts startup, while the DEFAULT and STS beans are proven to still vend through
- * the real registry dispatch. No cloud calls: every catalog's table content goes through {@link
- * TestInMemoryFileIOFactory} (selected by {@code polaris.file-io.type=test-in-memory}).
+ * with no bean installed is refused at create, at update, and everywhere a stored catalog that
+ * selected it is used, never confused with DEFAULT or STS, and never aborts startup, while the
+ * DEFAULT and STS beans are proven to still vend through the real registry dispatch. No cloud
+ * calls: every catalog's table content goes through {@link TestInMemoryFileIOFactory} (selected by
+ * {@code polaris.file-io.type=test-in-memory}).
  *
- * <p>The generic-table and policy routes are namespace-scoped: {@code
+ * <p>The container cannot uninstall a bean, so the first test method installs, for its own duration
+ * only, a registry over a live, mutable map through {@link QuarkusMock#installMockForType}: a
+ * catalog is created selecting {@link #TEST_MECHANISM}, a fake mechanism this test adds to that
+ * map, then the map loses the mechanism, which is what a server rebuilt without the mechanism looks
+ * like to a catalog that already stored it. Quarkus restores the real registry after the test
+ * method. The generic-table and policy routes are namespace-scoped: {@code
  * CatalogHandler.authorizeBasicNamespaceOperationOrThrow} resolves and checks the namespace's
  * existence, throwing {@code NoSuchNamespaceException} on a namespace that was never created,
  * before it calls {@code initializeCatalog()} (the method the mechanism gate lives in; see that
  * class's own javadoc: "{@code initializeCatalog}... Called after all {@code authorize...}
- * methods."). Since nothing can be created inside a catalog whose mechanism has no installed bean,
- * this class follows the same pattern {@link
- * org.apache.polaris.service.admin.S3CredentialVendingMechanismRoutesTest} already established:
- * populate the namespace and table while the catalog is still {@code STS}, then switch its storage
- * config to the uninstalled mechanism through an update, so the namespace-scoped routes resolve
- * past authorization and reach {@code initializeCatalog()}'s gate.
+ * methods."), so the namespace and table are created while the mechanism is still installed.
  *
- * <p>The "not available in this server" assertions target a mechanism identifier the server never
- * ships, {@code UNINSTALLED_MECHANISM}.
+ * <p>The "not available in this server" assertions against a mechanism identifier the server never
+ * ships at all, {@code UNINSTALLED_MECHANISM}, cover create-time and update-time refusal; the ones
+ * against {@link #TEST_MECHANISM} cover a mechanism that was installed when a catalog selected it
+ * and is later removed from the live registry.
  *
  * <p>This class installs only the {@code DEFAULT} and {@code STS} mechanisms (the server's real,
- * shipped beans) and allowlists {@code UNINSTALLED_MECHANISM} without installing it. {@link
- * S3CredentialVendingMechanismThirdMechanismCdiTest} swaps in a test-only mechanism, under its own
- * profile, to prove the registry and the gates work for a mechanism the server itself does not
- * ship. Quarkus does not allow {@code @TestProfile} on a {@code @Nested} class, so that scenario
- * cannot share this file: it needs its own application instance, since {@code
+ * shipped beans) plus, for the first test method's own live registry, a fake it adds itself, and
+ * allowlists {@code UNINSTALLED_MECHANISM} without ever installing it. {@link
+ * S3CredentialVendingMechanismThirdMechanismCdiTest} swaps in a test-only mechanism as a real CDI
+ * bean, under its own profile, to prove the registry and the gates work for a mechanism the server
+ * itself does not ship. Quarkus does not allow {@code @TestProfile} on a {@code @Nested} class, so
+ * that scenario cannot share this file: it needs its own application instance, since {@code
  * getEnabledAlternatives()} is a profile-wide, one-instance setting, and this class asserts {@code
  * availableIds()} is exactly {@code {DEFAULT, STS}}.
  */
@@ -100,6 +109,9 @@ class S3CredentialVendingMechanismCdiTest {
   private static final String UNINSTALLED_MECHANISM = "UNINSTALLED_MECHANISM";
   private static final String NOT_AVAILABLE_UNINSTALLED =
       "S3 credential vending mechanism UNINSTALLED_MECHANISM is not available in this server";
+  private static final String TEST_MECHANISM = "TEST_MECHANISM";
+  private static final String NOT_AVAILABLE_TEST =
+      "S3 credential vending mechanism TEST_MECHANISM is not available in this server";
 
   /** A second realm, used only to run the STS-vending check with the skip flag turned off. */
   private static final String NO_SKIP_REALM = "POLARIS2";
@@ -111,7 +123,6 @@ class S3CredentialVendingMechanismCdiTest {
           Map.entry("polaris.realm-context.realms", "POLARIS," + NO_SKIP_REALM),
           Map.entry("polaris.file-io.type", "test-in-memory"),
           Map.entry("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"S3\"]"),
-          Map.entry("polaris.features.\"ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES\"", "true"),
           Map.entry("polaris.features.\"ENABLE_GENERIC_TABLES\"", "true"),
           Map.entry("polaris.features.\"ENABLE_POLICY_STORE\"", "true"),
           Map.entry("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true"),
@@ -122,7 +133,7 @@ class S3CredentialVendingMechanismCdiTest {
               "false"),
           Map.entry(
               "polaris.features.\"SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS\"",
-              "[\"STS\",\"" + UNINSTALLED_MECHANISM + "\"]"),
+              "[\"STS\",\"" + TEST_MECHANISM + "\",\"" + UNINSTALLED_MECHANISM + "\"]"),
           Map.entry("polaris.event-listener.type", "test"),
           Map.entry("polaris.authentication.token-broker.type", "symmetric-key"),
           Map.entry("polaris.authentication.token-broker.symmetric-key.secret", "secret"));
@@ -131,21 +142,43 @@ class S3CredentialVendingMechanismCdiTest {
 
   @Inject S3CredentialVendingMechanisms mechanisms;
 
+  @Inject
+  @Identifier(S3CredentialVendingMechanism.STS)
+  S3CredentialVendingMechanism stsBean;
+
+  @Inject
+  @Identifier(S3CredentialVendingMechanism.DEFAULT)
+  S3CredentialVendingMechanism defaultBean;
+
   /**
    * With the default readiness settings (no {@code polaris.readiness.ignore-severe-issues}
-   * override) and one mechanism allowlisted but not installed, the application starts, only {@code
-   * STS} is available, and every route that would open an uninstalled-mechanism catalog or vend for
-   * it refuses with "not available in this server": the Iceberg, generic-table and policy routes
-   * alike, and a storage-access resolution under {@code SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}
-   * too. An STS catalog in the same realm is untouched throughout.
+   * override) and two mechanisms allowlisted but not installed, the application starts, only {@code
+   * STS} is available on the real registry, and: creating or updating a catalog to select {@code
+   * UNINSTALLED_MECHANISM} is refused with "not available in this server"; a catalog created while
+   * {@link #TEST_MECHANISM} is installed in a live registry this test installs over the real one is
+   * refused the same way, everywhere, once that registry loses the mechanism, the Iceberg,
+   * generic-table and policy routes alike. An STS catalog in the same realm is untouched
+   * throughout.
    */
   @Test
-  void stsOnlyDiscoveryAndUninstalledMechanismsAreRefusedEverywhere(
+  void anUninstalledMechanismIsRefusedAtCreateAndUpdateAndAStoredOneEverywhere(
       PolarisApiEndpoints endpoints, ClientCredentials credentials) throws Exception {
     // The application started at all, with two mechanisms allowlisted and neither installed, and
     // default readiness settings, is itself part of what this proves; availableIds() shows only
     // STS installed.
     assertThat(mechanisms.availableIds()).containsExactly("DEFAULT", "STS");
+
+    Map<String, S3CredentialVendingMechanism> live =
+        new ConcurrentHashMap<>(
+            Map.of(
+                S3CredentialVendingMechanism.STS,
+                stsBean,
+                S3CredentialVendingMechanism.DEFAULT,
+                defaultBean,
+                TEST_MECHANISM,
+                TestServices.fakeMechanism()));
+    QuarkusMock.installMockForType(
+        new S3CredentialVendingMechanisms(live), S3CredentialVendingMechanisms.class);
 
     try (PolarisClient client = PolarisClient.polarisClient(endpoints)) {
       String adminToken = client.obtainToken(credentials);
@@ -155,7 +188,6 @@ class S3CredentialVendingMechanismCdiTest {
       PolicyApi policyApi = client.policyApi(adminToken);
 
       String stsCatalog = "cdi-sts-cat";
-      String uninstalledCatalog = "cdi-uninstalled-cat";
 
       // The STS catalog: content created normally, left untouched for the rest of the test.
       createStsCatalog(managementApi, stsCatalog);
@@ -167,38 +199,66 @@ class S3CredentialVendingMechanismCdiTest {
       catalogApi.createNamespace(stsCatalog, "ns");
       createTable(catalogApi, stsCatalog, "ns", "t");
 
-      // The namespace-scoped routes (generic-tables, policies, loadTable) resolve and check the
-      // namespace's existence before initializeCatalog() runs, so nothing gates them on a catalog
-      // that never had a namespace. Populate this one as STS, then switch it to a mechanism the
-      // server never ships, so its namespace and table already exist when the gate is exercised.
-      createStsCatalog(managementApi, uninstalledCatalog);
-      catalogApi.createNamespace(uninstalledCatalog, "ns");
-      createTable(catalogApi, uninstalledCatalog, "ns", "t");
-      switchToUninstalledMechanism(managementApi, uninstalledCatalog);
+      // Creating a catalog that selects a mechanism the server never ships is refused before any
+      // content exists.
+      try (Response refused =
+          managementApi
+              .request("v1/catalogs")
+              .post(
+                  Entity.json(
+                      new CreateCatalogRequest(
+                          uninstalledMechanismCatalog("cdi-create-uninstalled-cat"))))) {
+        assertRefused(refused, NOT_AVAILABLE_UNINSTALLED);
+      }
+
+      // Switching the STS catalog to the same mechanism at update is refused the same way.
+      try (Response refused =
+          managementApi
+              .request("v1/catalogs/{name}", Map.of("name", stsCatalog))
+              .put(Entity.json(updateToUninstalledMechanismRequest(managementApi, stsCatalog)))) {
+        assertRefused(refused, NOT_AVAILABLE_UNINSTALLED);
+      }
+
+      // A catalog created while TEST_MECHANISM is installed in the live registry this test
+      // installed above, populated with a namespace and table, then the registry loses the
+      // mechanism.
+      String testMechCatalog = "cdi-test-mech-cat";
+      createTestMechanismCatalog(managementApi, testMechCatalog);
+      catalogApi.createNamespace(testMechCatalog, "ns");
+      createTable(catalogApi, testMechCatalog, "ns", "t");
+
+      live.remove(TEST_MECHANISM);
 
       assertRefused(
-          catalogApi.request("v1/{cat}/namespaces", Map.of("cat", uninstalledCatalog)).get(),
-          NOT_AVAILABLE_UNINSTALLED);
+          catalogApi.request("v1/{cat}/namespaces", Map.of("cat", testMechCatalog)).get(),
+          NOT_AVAILABLE_TEST);
       assertRefused(
           genericTableApi
               .request(
                   "polaris/v1/{cat}/namespaces/{ns}/generic-tables",
-                  Map.of("cat", uninstalledCatalog, "ns", "ns"))
+                  Map.of("cat", testMechCatalog, "ns", "ns"))
               .get(),
-          NOT_AVAILABLE_UNINSTALLED);
+          NOT_AVAILABLE_TEST);
       assertRefused(
           policyApi
               .request(
                   "polaris/v1/{cat}/namespaces/{ns}/policies",
-                  Map.of("cat", uninstalledCatalog, "ns", "ns"))
+                  Map.of("cat", testMechCatalog, "ns", "ns"))
               .get(),
-          NOT_AVAILABLE_UNINSTALLED);
+          NOT_AVAILABLE_TEST);
+      assertRefused(
+          catalogApi
+              .request(
+                  "v1/{cat}/namespaces/{ns}/tables/{table}",
+                  Map.of("cat", testMechCatalog, "ns", "ns", "table", "t"))
+              .get(),
+          NOT_AVAILABLE_TEST);
 
-      // SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION is on in this realm: the STS catalog's loadTable
-      // still succeeds, while the uninstalled-mechanism catalog's loadTable stays refused. Which
-      // of the two gates in that path fires first is proven separately by
-      // StorageAccessConfigProviderMechanismGateTest; this assertion only shows the route's
-      // outcome.
+      // The STS catalog in the same realm is unaffected throughout.
+      try (Response ok =
+          catalogApi.request("v1/{cat}/namespaces", Map.of("cat", stsCatalog)).get()) {
+        assertThat(ok.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      }
       try (Response ok =
           catalogApi
               .request(
@@ -207,13 +267,6 @@ class S3CredentialVendingMechanismCdiTest {
               .get()) {
         assertThat(ok.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       }
-      assertRefused(
-          catalogApi
-              .request(
-                  "v1/{cat}/namespaces/{ns}/tables/{table}",
-                  Map.of("cat", uninstalledCatalog, "ns", "ns", "table", "t"))
-              .get(),
-          NOT_AVAILABLE_UNINSTALLED);
     }
   }
 
@@ -232,7 +285,9 @@ class S3CredentialVendingMechanismCdiTest {
    * call entirely, and returns only the catalog's non-credential storage properties (its region and
    * endpoint). A load succeeding with those properties present and no access key anywhere in the
    * response is only possible if the registry actually resolved the bean and ran its integration.
-   * The sequence runs once for each mechanism, on its own catalog.
+   * The sequence runs once for each mechanism, on its own catalog. This method runs against the
+   * real registry: Quarkus restores it after the previous test method installed a mock over it for
+   * its own duration only.
    */
   @Test
   void theDefaultAndStsMechanismsVendThroughTheRegistryWithoutARealStsCall(
@@ -383,28 +438,53 @@ class S3CredentialVendingMechanismCdiTest {
             .build());
   }
 
-  /**
-   * Switches an existing STS catalog's storage config to a mechanism the server never ships,
-   * freezing its content. {@link ManagementApi#updateCatalog(Catalog, Map)} always reuses the
-   * existing storage config, so the switch needs a raw request carrying the new one.
-   */
-  private static void switchToUninstalledMechanism(ManagementApi managementApi, String name) {
-    Catalog fetched = managementApi.getCatalog(name);
-    UpdateCatalogRequest toUninstalled =
-        new UpdateCatalogRequest(
-            fetched.getEntityVersion(),
-            Map.of("default-base-location", "s3://bucket/base/" + name),
+  /** A catalog created directly with {@link #TEST_MECHANISM}, installed at create time. */
+  private static void createTestMechanismCatalog(ManagementApi managementApi, String name) {
+    managementApi.createCatalog(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(name)
+            .setProperties(new CatalogProperties("s3://bucket/base/" + name))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setCredentialVendingMechanism(TEST_MECHANISM)
+                    .setRoleArn("arn:aws:iam::123456789012:role/r")
+                    .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
+                    .build())
+            .build());
+  }
+
+  /** A catalog request selecting a mechanism the server never ships, used at create time. */
+  private static Catalog uninstalledMechanismCatalog(String name) {
+    return PolarisCatalog.builder()
+        .setType(Catalog.TypeEnum.INTERNAL)
+        .setName(name)
+        .setProperties(new CatalogProperties("s3://bucket/base/" + name))
+        .setStorageConfigInfo(
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setCredentialVendingMechanism(UNINSTALLED_MECHANISM)
                 .setRoleArn("arn:aws:iam::123456789012:role/r")
                 .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
-                .build());
-    try (Response r =
-        managementApi
-            .request("v1/catalogs/{name}", Map.of("name", name))
-            .put(Entity.json(toUninstalled))) {
-      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-    }
+                .build())
+        .build();
+  }
+
+  /**
+   * Builds the request that would switch an existing STS catalog to a mechanism the server never
+   * ships. {@link ManagementApi#updateCatalog(Catalog, Map)} always reuses the existing storage
+   * config, so the switch needs a raw request carrying the new one.
+   */
+  private static UpdateCatalogRequest updateToUninstalledMechanismRequest(
+      ManagementApi managementApi, String name) {
+    Catalog fetched = managementApi.getCatalog(name);
+    return new UpdateCatalogRequest(
+        fetched.getEntityVersion(),
+        Map.of("default-base-location", "s3://bucket/base/" + name),
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setCredentialVendingMechanism(UNINSTALLED_MECHANISM)
+            .setRoleArn("arn:aws:iam::123456789012:role/r")
+            .setAllowedLocations(List.of("s3://bucket/base/" + name + "/"))
+            .build());
   }
 
   private static void createTable(CatalogApi catalogApi, String catalog, String ns, String table) {
