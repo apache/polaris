@@ -42,7 +42,6 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
@@ -643,11 +642,7 @@ public class PolarisAdminService {
                         catalogName, identifier.namespace(), identifier.name()),
                     PolarisSecurableMapper.catalogRole(catalogName, catalogRoleName))));
     authorizer.resolveAuthorizationInputs(authorizationState, authorizationRequest);
-    if (!authorizer.authorize(authorizationState, authorizationRequest).isAllowed()) {
-      // Keep denial responses independent of whether the requested resources were resolved.
-      throw new ForbiddenException(
-          "Principal '%s' is not authorized for op %s", polarisPrincipal.getName(), op);
-    }
+    authorizer.authorize(authorizationState, authorizationRequest).throwIfDenied();
 
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatusOrThrow();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {

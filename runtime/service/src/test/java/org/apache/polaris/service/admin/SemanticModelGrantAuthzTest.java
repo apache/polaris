@@ -272,12 +272,7 @@ class SemanticModelGrantAuthzTest extends PolarisAuthzTestBase {
               }
             })
         .isInstanceOf(ForbiddenException.class)
-        .hasMessage(
-            "Principal '%s' is not authorized for op %s",
-            principalEntity.getName(),
-            revoke
-                ? "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
-                : "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE");
+        .hasMessage("Not authorized");
     verify(authorizer).authorize(any(), any());
   }
 
