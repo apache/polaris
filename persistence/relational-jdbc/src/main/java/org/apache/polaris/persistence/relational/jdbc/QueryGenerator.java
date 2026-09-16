@@ -435,6 +435,7 @@ public class QueryGenerator {
     // //bucket/ns/tA_backup).
     conditions.add("location_without_scheme LIKE ?");
     parameters.add(StorageLocation.ensureTrailingSlash(locationWithoutScheme) + "%");
+
     String locationClause = String.join(" OR ", conditions);
     String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";
 
@@ -452,10 +453,5 @@ public class QueryGenerator {
             where.sql(),
             null);
     return new PreparedQuery(query.sql(), where.parameters());
-  }
-
-  static String getFullyQualifiedTableName(String tableName) {
-    // TODO: make schema name configurable.
-    return "POLARIS_SCHEMA." + tableName;
   }
 }
