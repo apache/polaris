@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -448,18 +449,63 @@ public class DatasourceOperationsTest {
   }
 
   @Test
-  void executeUpdate_executeFailureIsAmbiguousNotNonWrite() throws Exception {
+  void executeUpdate_connectionDropBeforeCommitIsDefiniteNonWrite() throws Exception {
     when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(1));
     when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
 
     QueryGenerator.PreparedQuery query =
         new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
-    // The statement is prepared and executeUpdate is entered, then the connection drops (SQLSTATE
-    // 08006). Because the mutating call had started, the outcome is ambiguous, not a non-write.
+    // executeUpdate now runs under an explicit transaction; the connection drops (SQLSTATE 08006)
+    // during the DML, before commit. Nothing was committed, so this is a definite non-write, not an
+    // ambiguous outcome, even though 08006 is a connection-class state.
     when(mockDataSource.getConnection()).thenReturn(mockConnection);
     when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeUpdate())
         .thenThrow(new SQLException("connection reset", "08006"));
+
+    SQLException thrown =
+        assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
+
+    assertTrue(datasourceOperations.isWriteNotStartedFailure(thrown));
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
+  }
+
+  @Test
+  void executeUpdate_deterministicFailureBeforeCommitIsNeitherAmbiguousNorNonWrite()
+      throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(1));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    // A deterministic failure (unique violation, SQLSTATE 23505) before commit keeps its original
+    // type: it is not ambiguous, and it is not tagged as a not-started transient failure, so
+    // higher-level mapping (e.g. already-exists) and non-retryability are preserved.
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate())
+        .thenThrow(new SQLException("unique violation", "23505"));
+
+    SQLException thrown =
+        assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
+
+    assertTrue(!datasourceOperations.isWriteNotStartedFailure(thrown));
+    assertTrue(!datasourceOperations.isAmbiguousCommitOutcome(thrown));
+  }
+
+  @Test
+  void executeUpdate_commitFailureIsAmbiguous() throws Exception {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(1));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("UPDATE users SET active = ?", List.of());
+    // The DML runs, then commit() drops the connection (SQLSTATE 08006). The write may or may not
+    // have been applied, so the outcome is ambiguous and must not be reported as a non-write.
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeUpdate()).thenReturn(1);
+    doThrow(new SQLException("connection reset", "08006")).when(mockConnection).commit();
 
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
