@@ -221,7 +221,8 @@ public abstract class AbstractLocalIcebergCatalogViewTest
             storageAccessConfigProvider,
             fileIOFactory,
             polarisEventDispatcher,
-            eventMetadataFactory);
+            eventMetadataFactory,
+            new TableMetadataCache(() -> 1024 * 1024));
     Map<String, String> properties =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
@@ -335,7 +336,8 @@ public abstract class AbstractLocalIcebergCatalogViewTest
             storageAccessConfigProvider,
             spiedFactory,
             polarisEventDispatcher,
-            eventMetadataFactory);
+            eventMetadataFactory,
+            new TableMetadataCache(() -> 1024 * 1024));
     spiedCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.<String, String>builder()

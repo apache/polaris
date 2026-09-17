@@ -454,6 +454,15 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
   protected LocalIcebergCatalog newIcebergCatalog(
       String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
+    return newIcebergCatalog(
+        catalogName, metaStoreManager, fileIOFactory, new TableMetadataCache(() -> 1024 * 1024));
+  }
+
+  protected LocalIcebergCatalog newIcebergCatalog(
+      String catalogName,
+      PolarisMetaStoreManager metaStoreManager,
+      FileIOFactory fileIOFactory,
+      TableMetadataCache tableMetadataCache) {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, catalogName);
@@ -469,7 +478,8 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         storageAccessConfigProvider,
         fileIOFactory,
         polarisEventDispatcher,
-        eventMetadataFactory);
+        eventMetadataFactory,
+        tableMetadataCache);
   }
 
   @Test
@@ -573,6 +583,33 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> catalog.createNamespace(child1))
         .isInstanceOf(NoSuchNamespaceException.class)
         .hasMessageContaining("Parent");
+  }
+
+  @Test
+  public void testCommitSucceedsWhenMetadataCachePopulationFails() {
+    TableMetadataCache throwingCache =
+        new TableMetadataCache(() -> 1024 * 1024) {
+          @Override
+          public void put(TableMetadataCache.Key key, String metadataJson) {
+            throw new RuntimeException("cache population failed");
+          }
+        };
+    LocalIcebergCatalog catalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, fileIOFactory, throwingCache);
+    catalog.setCatalogFileIo(new InMemoryFileIO());
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(TABLE_PREFIXES)
+            .buildKeepingLast());
+
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+    catalog.buildTable(TABLE, SCHEMA).create();
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+    assertFiles(catalog.loadTable(TABLE), FILE_A);
   }
 
   @Test
@@ -3018,15 +3055,19 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             catalog.newTableOps(TABLE, updateMetadataOnCommit);
     LocalIcebergCatalog.BasePolarisTableOperations ops = Mockito.spy(realOps);
 
+    // Refreshes parse the metadata document through fromJson(location, json); with the cache
+    // disabled in tests its invocation count equals the number of metadata loads from storage.
     try (MockedStatic<TableMetadataParser> mocked =
         Mockito.mockStatic(TableMetadataParser.class, Mockito.CALLS_REAL_METHODS)) {
       TableMetadata base1 = ops.current();
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
+          Mockito.times(1));
 
       TableMetadata base2 = ops.refresh();
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
+          Mockito.times(1));
 
       Assertions.assertThat(base1.metadataFileLocation()).isEqualTo(base2.metadataFileLocation());
       Assertions.assertThat(base1).isEqualTo(base2);
@@ -3037,20 +3078,49 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
           TableMetadata.buildFrom(base1).setCurrentSchema(newSchema, 100).build();
       ops.commit(base2, newMetadata);
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()), Mockito.times(1));
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
+          Mockito.times(1));
 
       ops.current();
       int expectedReads = updateMetadataOnCommit ? 1 : 2;
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()),
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
           Mockito.times(expectedReads));
       ops.refresh();
       mocked.verify(
-          () -> TableMetadataParser.read(Mockito.any(), Mockito.anyString()),
+          () -> TableMetadataParser.fromJson(Mockito.anyString(), Mockito.anyString()),
           Mockito.times(expectedReads));
     } finally {
       catalog.dropTable(TABLE, true);
     }
+  }
+
+  @Test
+  public void testRefreshAfterCommitServedFromMetadataCache() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
+    LocalIcebergCatalog cachingCatalog =
+        newIcebergCatalog(
+            CATALOG_NAME, metaStoreManager, measured, new TableMetadataCache(() -> 1024 * 1024));
+    cachingCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    cachingCatalog.createNamespace(NS);
+    cachingCatalog.buildTable(TABLE, SCHEMA).create();
+
+    // The commit seeded the cache, so a fresh ops instance refreshes without reading storage.
+    measured.newInputFileExceptionSupplier =
+        Optional.of(() -> new RuntimeException("metadata should be served from the cache"));
+    TableMetadata metadata = cachingCatalog.newTableOps(TABLE).current();
+    Assertions.assertThat(metadata).isNotNull();
+    Assertions.assertThat(metadata.schema().columns()).hasSameSizeAs(SCHEMA.columns());
+
+    measured.newInputFileExceptionSupplier = Optional.empty();
+    cachingCatalog.dropTable(TABLE, true);
   }
 
   @ParameterizedTest
